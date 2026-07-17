@@ -43,9 +43,9 @@
       </ContextBar>
     </template>
 
-    <a-skeleton v-if="loading" active :paragraph="{ rows: 6 }" />
+    <UiSkeletonState v-if="loading" :rows="6" compact />
 
-    <UiEmpty v-else-if="!detail" description="当前没有可展示的内容" class="score-detail__empty" />
+    <UiEmpty size="sm" v-else-if="!detail" description="暂无本场成绩详情" class="score-detail__empty" />
 
     <template v-else-if="detail">
       <ConfidentialStatusBar v-if="isExamConfidential" class="score-detail__confidential-strip" />
@@ -91,9 +91,9 @@
                 <BarChartOutlined />
                 <span>答题卡</span>
               </div>
-              <a-select
+              <UiSelect
                 v-if="clusterLabelOptions.length > 0"
-                v-model:value="selectedClusterLabel"
+                v-model="selectedClusterLabel"
                 class="score-detail__cluster-select"
                 placeholder="错题聚类"
                 :options="clusterLabelOptions"
@@ -109,8 +109,8 @@
             <UiTag tone="red" size="sm">零分 {{ zeroCount }} 题</UiTag>
           </div>
 
-          <UiEmpty v-if="detail.questions.length === 0" description="当前没有可展示的内容" />
-          <UiEmpty v-else-if="filteredQuestions.length === 0" description="当前没有可展示的内容" />
+          <UiEmpty size="sm" v-if="detail.questions.length === 0" description="本卷暂无题目成绩" />
+          <UiEmpty size="sm" v-else-if="filteredQuestions.length === 0" description="当前筛选条件下无题目" />
           <MarkHeatmapSection
             v-else
             title="得分率热力图"
@@ -131,10 +131,24 @@
               <span>题目详情</span>
             </div>
           </template>
-          <UiEmpty v-if="!selectedQuestion" description="请选择" />
-          <a-spin v-else :spinning="panelLoading">
-            <UiEmpty v-if="panelError" :description="panelError" />
-            <UiEmpty v-else-if="!panelLoading && !currentDetail" description="未加载到答题明细" />
+          <UiAlertStrip
+            v-if="!selectedQuestion"
+            tone="info"
+            size="sm"
+            dense
+            inline
+            :show-icon="false"
+          >
+            <template #default>
+              <span style="display:inline-flex;align-items:center;gap:8px">
+                <UiTag tone="blue" size="sm">未选择题目</UiTag>
+                <span>请在左侧选择题目后查看作答与得分明细</span>
+              </span>
+            </template>
+          </UiAlertStrip>
+          <UiSpin v-else :spinning="panelLoading">
+            <UiEmpty size="sm" v-if="panelError" :description="panelError" />
+            <UiEmpty size="sm" v-else-if="!panelLoading && !currentDetail" description="未加载到答题明细" />
             <div v-else-if="currentDetail && selectedQuestion" class="answer-panel">
               <div class="answer-panel__summary">
                 <UiTag tone="blue" size="sm">第 {{ currentDetail.questionNo }} 题</UiTag>
@@ -172,18 +186,18 @@
                   <FileImageOutlined />
                   <span>作答切片</span>
                 </header>
-                <UiEmpty v-if="!currentDetail.sliceFileId" description="当前没有可展示的内容" />
-                <a-spin :spinning="sliceLoading" tip="加载切片中...">
+                <UiEmpty size="sm" v-if="!currentDetail.sliceFileId" description="本题暂无切图" />
+                <UiSpin :spinning="sliceLoading" tip="加载切片中...">
                   <ScanImageStage
                     v-if="sliceImageUrl"
                     :src="sliceImageUrl"
                     :confidential="isExamConfidential"
                     :watermark-lines="sliceWatermarkLines"
                     :min-height="320"
-                    empty-text="当前没有可展示的内容"
+                    empty-text="切图加载失败"
                   />
-                  <UiEmpty v-else-if="!sliceLoading" description="当前没有可展示的内容" />
-                </a-spin>
+                  <UiEmpty size="sm" v-else-if="!sliceLoading" description="切图加载中或暂不可用" />
+                </UiSpin>
               </section>
 
               <section class="answer-panel__section">
@@ -192,8 +206,9 @@
                   <span>OCR 识别作答</span>
                 </header>
                 <UiEmpty
+                  size="sm"
                   v-if="!currentDetail.recognizedAnswer"
-                  description="当前没有可展示的内容"
+                  description="本题暂无 OCR 识别作答"
                 />
                 <div v-else class="answer-panel__text">{{ currentDetail.recognizedAnswer }}</div>
               </section>
@@ -203,7 +218,7 @@
                   <FormOutlined />
                   <span>教师评语</span>
                 </header>
-                <UiEmpty v-if="!currentDetail.commentText" description="教师未填写评语" />
+                <UiEmpty size="sm" v-if="!currentDetail.commentText" description="教师未填写评语" />
                 <div v-else class="answer-panel__text">{{ currentDetail.commentText }}</div>
               </section>
 
@@ -243,7 +258,7 @@
                 </UiButton>
               </div>
             </div>
-          </a-spin>
+          </UiSpin>
         </WorkbenchSurfaceCard>
       </div>
 
@@ -270,8 +285,9 @@
           </div>
         </template>
         <UiEmpty
+          size="sm"
           v-if="!wrongBookLoading && wrongBookRows.length === 0"
-          description="当前没有可展示的内容"
+          description="暂无数据"
         />
         <UiDataTable
           v-model:current="wrongBookPagination.current"
@@ -341,9 +357,10 @@
           </div>
         </template>
 
-        <a-spin :spinning="reportLoading">
-          <UiEmpty v-if="!reportLoading && !learningReport" description="当前没有可展示的内容" />
+        <UiSpin :spinning="reportLoading">
+          <UiEmpty size="sm" v-if="!reportLoading && !learningReport" description="暂无学习报告" />
           <UiEmpty
+            size="sm"
             v-else-if="learningReport && !learningReport.available"
             :description="unavailableLearningReportMessage(learningReport)"
           />
@@ -354,8 +371,8 @@
 
             <div v-if="profileDiagnosisItems.length > 0" class="profile-section">
               <strong>知识掌握分析：</strong>
-              <a-list size="small" bordered>
-                <a-list-item
+              <UiList size="small" bordered>
+                <UiListItem
                   v-for="(item, index) in profileDiagnosisItems"
                   :key="`${item.questionType}-${item.masteryLevel}-${index}`"
                 >
@@ -380,8 +397,8 @@
                       <strong>失分题号：</strong>{{ item.lostQuestionNos.join(', ') }}
                     </div>
                   </div>
-                </a-list-item>
-              </a-list>
+                </UiListItem>
+              </UiList>
             </div>
 
             <div v-if="profileSuggestions.length > 0" class="profile-section">
@@ -398,8 +415,8 @@
 
             <div v-if="errorClusters.length > 0" class="profile-section">
               <strong>错题聚类：</strong>
-              <a-list size="small" bordered>
-                <a-list-item
+              <UiList size="small" bordered>
+                <UiListItem
                   v-for="(item, index) in errorClusters"
                   :key="`${item.causeName}-${index}`"
                 >
@@ -419,11 +436,11 @@
                       <strong>典型表现：</strong>{{ item.typicalExamples.join('；') }}
                     </div>
                   </div>
-                </a-list-item>
-              </a-list>
+                </UiListItem>
+              </UiList>
             </div>
           </div>
-        </a-spin>
+        </UiSpin>
       </WorkbenchSurfaceCard>
     </template>
   </StageWorkbenchShell>
@@ -479,6 +496,11 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiList from '@/components/ui-guide/ui/UiList.vue'
+import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -601,7 +623,7 @@ const { chartOption: scoreHeatmapOption } = useChartOption(() =>
 
 const scoreHeatmapAriaLabel = computed(() => {
   const count = scoreHeatmapCells.value.length
-  if (count <= 0) return '得分率热力图，当前没有可展示的内容'
+  if (count <= 0) return '得分率热力图暂无数据'
   return `得分率热力图，共 ${count} 道题`
 })
 
@@ -933,7 +955,7 @@ onBeforeUnmount(() => {
   &__layout {
     display: grid;
     grid-template-columns: 300px minmax(0, 1fr);
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
     align-items: start;
     margin-top: 8px;
 
@@ -955,7 +977,7 @@ onBeforeUnmount(() => {
   }
 
   &__empty {
-    padding: 48px 0;
+    padding: 20px 0;
   }
 
   &__confidential-strip {
@@ -995,7 +1017,7 @@ onBeforeUnmount(() => {
 .answer-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 
   &__summary {
     display: flex;
@@ -1003,7 +1025,7 @@ onBeforeUnmount(() => {
     gap: 8px;
     flex-wrap: wrap;
     padding-bottom: 12px;
-    border-bottom: 1px dashed var(--ant-color-border-secondary, #e5e7eb);
+    border-bottom: 1px dashed var(--dp-border-subtle);
   }
 
   &__section {
@@ -1017,12 +1039,12 @@ onBeforeUnmount(() => {
     align-items: center;
     gap: 6px;
     font-weight: 600;
-    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
+    color: var(--dp-text);
   }
 
   &__slice {
     position: relative;
-    border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
+    border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
     padding: 8px;
     background: var(--dp-surface-soft);
@@ -1041,12 +1063,12 @@ onBeforeUnmount(() => {
     padding: 12px;
     background: var(--dp-surface-soft);
     border-radius: 6px;
-    border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
+    border: 1px solid var(--dp-border-subtle);
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.7;
     font-size: 13px;
-    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
+    color: var(--dp-text);
   }
 
   &__ai {
@@ -1056,14 +1078,14 @@ onBeforeUnmount(() => {
     padding: 12px;
     background: var(--dp-surface-soft);
     border-radius: 6px;
-    border: 1px solid var(--ant-color-border-secondary, #e5e7eb);
+    border: 1px solid var(--dp-border-subtle);
   }
 
   &__ai-line {
     margin: 0;
     line-height: 1.7;
     font-size: 13px;
-    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
+    color: var(--dp-text);
     display: flex;
     align-items: baseline;
     gap: 6px;
@@ -1089,7 +1111,7 @@ onBeforeUnmount(() => {
 .profile-summary {
   margin: 0;
   line-height: 1.7;
-  color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
+  color: var(--dp-text);
 }
 
 .profile-section {
@@ -1117,13 +1139,13 @@ onBeforeUnmount(() => {
 
 .diagnosis-rate {
   margin-left: auto;
-  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.65));
+  color: var(--dp-text-secondary);
 }
 
 .diagnosis-text {
   font-size: 13px;
   line-height: 1.6;
-  color: var(--ant-color-text-secondary, rgba(0, 0, 0, 0.75));
+  color: var(--dp-text-secondary);
 }
 
 .suggestion-list {

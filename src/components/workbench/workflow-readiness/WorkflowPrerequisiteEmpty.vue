@@ -1,5 +1,5 @@
 <template>
-  <UiEmpty :title="model.title" :description="model.description" size="md">
+  <UiEmpty :title="model.title" :description="model.description" size="sm">
     <ol v-if="model.steps?.length" class="workflow-prerequisite-empty__steps">
       <li v-for="step in model.steps" :key="step.code" class="workflow-prerequisite-empty__step">
         {{ step.label }}

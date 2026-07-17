@@ -120,7 +120,7 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
   }
 
   &__empty {
-    padding: 24px 0;
+    padding: var(--dp-space-3, 12px) 0;
     text-align: center;
     font-size: 13px;
     color: var(--dp-text-muted);
@@ -129,17 +129,17 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
   &__list {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
+    gap: var(--dp-space-2, 8px);
   }
 
   &__card {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 12px;
+    gap: var(--dp-space-2, 8px);
+    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
     text-align: left;
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);
     cursor: pointer;
     transition:
@@ -147,20 +147,20 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
       box-shadow 0.2s ease;
 
     &:hover {
-      border-color: var(--ant-color-primary, #1677ff);
+      border-color: var(--dp-color-primary);
     }
 
     &--selected {
-      border-color: var(--ant-color-primary, #1677ff);
-      box-shadow: 0 0 0 1px var(--ant-color-primary, #1677ff);
+      border-color: var(--dp-color-primary);
+      box-shadow: 0 0 0 1px var(--dp-color-primary);
     }
 
     &--online {
-      background: var(--ant-color-success-bg, #f0fdf4);
+      background: var(--dp-success-bg);
     }
 
     &--offline {
-      background: var(--ant-color-warning-bg, #fffbeb);
+      background: var(--dp-warning-bg);
     }
   }
 
@@ -175,11 +175,11 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--ant-color-warning, #f59e0b);
+    background: var(--dp-warning);
     flex-shrink: 0;
 
     &--online {
-      background: var(--ant-color-success, #16a34a);
+      background: var(--dp-success);
       animation: scan-device-pulse 2s ease-in-out infinite;
     }
   }

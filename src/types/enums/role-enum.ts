@@ -18,22 +18,22 @@ export const ROLE_CONFIG: Record<RoleEnum, { name: string, description: string, 
   [RoleEnum.SUPER_ADMIN]: {
     name: '超级管理员',
     description: '平台超级管理员，拥有所有权限',
-    color: 'var(--ant-color-error)'
+    color: 'var(--dp-error)'
   },
   [RoleEnum.SCH_TECH]: {
     name: '教师',
     description: '学校教师',
-    color: 'var(--ant-color-primary)'
+    color: 'var(--dp-color-primary)'
   },
   [RoleEnum.SCH_STU]: {
     name: '学生',
     description: '学校学生',
-    color: 'var(--ant-color-success)'
+    color: 'var(--dp-success)'
   },
   [RoleEnum.SYSTEM]: {
     name: '系统',
     description: '系统自动操作',
-    color: 'var(--ant-color-text-tertiary)'
+    color: 'var(--dp-text-tertiary)'
   },
 }
 

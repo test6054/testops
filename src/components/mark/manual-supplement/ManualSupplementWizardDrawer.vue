@@ -1,5 +1,5 @@
 <template>
-  <a-drawer
+  <UiDrawer
     :open="open"
     :title="drawerTitle"
     width="720"
@@ -8,11 +8,11 @@
     :footer-style="{ textAlign: 'right' }"
     @update:open="emit('update:open', $event)"
   >
-    <a-steps :current="currentStep" size="small" class="manual-supplement-wizard__steps">
-      <a-step title="确认目标" />
-      <a-step title="上传影像" />
-      <a-step title="完成" />
-    </a-steps>
+    <UiSteps :current="currentStep" size="small" class="manual-supplement-wizard__steps">
+      <UiStep title="确认目标" />
+      <UiStep title="上传影像" />
+      <UiStep title="完成" />
+    </UiSteps>
 
     <div v-if="currentStep === 0" class="manual-supplement-wizard__panel">
       <template v-if="scenario === 'file-import'">
@@ -28,23 +28,23 @@
         </p>
       </template>
       <template v-else>
-        <a-descriptions bordered :column="1" size="small">
-          <a-descriptions-item label="考生">
+        <UiDescriptions bordered :column="1" size="small">
+          <UiDescriptionsItem label="考生">
             {{ activeContext?.studentName }}（{{ activeContext?.studentNo }}）
-          </a-descriptions-item>
-          <a-descriptions-item v-if="activeContext?.className" label="班级">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="activeContext?.className" label="班级">
             {{ activeContext.className }}
-          </a-descriptions-item>
-          <a-descriptions-item label="补扫场景">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="补扫场景">
             {{ scenarioLabel }}
-          </a-descriptions-item>
-          <a-descriptions-item v-if="activeContext?.targetPageNo" label="目标页">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="activeContext?.targetPageNo" label="目标页">
             模板第 {{ activeContext.targetPageNo }} 页
-          </a-descriptions-item>
-          <a-descriptions-item v-if="activeContext?.missingTemplatePageNos?.length" label="缺口页">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="activeContext?.missingTemplatePageNos?.length" label="缺口页">
             {{ activeContext.missingTemplatePageNos.join('、') }}
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
         <p v-if="scenarioBlockReason" class="manual-supplement-wizard__warn muted">
           {{ scenarioBlockReason }}
         </p>
@@ -73,7 +73,7 @@
     </div>
 
     <div v-else class="manual-supplement-wizard__panel">
-      <UiEmpty v-if="submitResult" description="补录提交成功" :image="false">
+      <UiEmpty size="sm" v-if="submitResult" description="补录提交成功" :image="false">
         <template #description>
           <p class="manual-supplement-wizard__success">
             {{ successMessage }}
@@ -83,18 +83,18 @@
     </div>
 
     <template #footer>
-      <UiButton v-if="currentStep > 0 && currentStep < 2" variant="outline" @click="goPrev">
+      <UiButton size="sm" v-if="currentStep > 0 && currentStep < 2" variant="outline" @click="goPrev">
         上一步
       </UiButton>
-      <UiButton v-if="currentStep < 2" variant="primary" :loading="submitting" @click="goNext">
+      <UiButton size="sm" v-if="currentStep < 2" variant="primary" :loading="submitting" @click="goNext">
         {{ currentStep === 1 ? '提交补录' : '下一步' }}
       </UiButton>
       <template v-if="currentStep === 2">
-        <UiButton variant="outline" @click="emit('continue-next')"> 继续补下一页 </UiButton>
-        <UiButton variant="primary" @click="handleViewImages"> 查看该卷影像 </UiButton>
+        <UiButton size="sm" variant="outline" @click="emit('continue-next')"> 继续补下一页 </UiButton>
+        <UiButton size="sm" variant="primary" @click="handleViewImages"> 查看该卷影像 </UiButton>
       </template>
     </template>
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <script lang="ts" setup>
@@ -125,6 +125,11 @@ import ManualSupplementFormCore from '@/components/mark/manual-supplement/Manual
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiStep from '@/components/ui-guide/ui/UiStep.vue'
+import UiSteps from '@/components/ui-guide/ui/UiSteps.vue'
 import { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
 import { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
 import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
@@ -518,6 +523,9 @@ async function goNext(): Promise<void> {
     message.warning(prepareBlockDescription.value || classScopeWarning.value || '当前不可提交补录')
     return
   }
+  if (submitting.value) {
+    return
+  }
 
   await formCoreRef.value?.validate()
   const ctx = activeContext.value
@@ -601,7 +609,7 @@ watch(
 }
 
 .manual-supplement-wizard__panel {
-  min-height: 240px;
+  min-height: 120px;
 }
 
 .manual-supplement-wizard__hint,
@@ -614,6 +622,6 @@ watch(
 
 .manual-supplement-wizard__warn,
 .muted {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 </style>

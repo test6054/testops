@@ -29,7 +29,7 @@
       </div>
     </template>
   </div>
-  <UiEmpty v-else description="暂无生命周期数据" />
+  <UiEmpty size="sm" v-else description="暂无生命周期数据" />
 </template>
 
 <script lang="ts" setup>
@@ -105,13 +105,13 @@ function connectorClass(index: number): string {
 
   &--done {
     background: var(--dp-success);
-    color: var(--ant-color-white);
+    color: var(--dp-text-inverse);
   }
 
   &--active {
     background: var(--dp-primary);
-    color: var(--ant-color-white);
-    box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.15);
+    color: var(--dp-text-inverse);
+    box-shadow: 0 0 0 3px var(--dp-focus-ring);
   }
 
   &--pending {
@@ -122,7 +122,7 @@ function connectorClass(index: number): string {
 
   &--warn {
     background: var(--dp-warning);
-    color: var(--ant-color-white);
+    color: var(--dp-text-inverse);
   }
 }
 

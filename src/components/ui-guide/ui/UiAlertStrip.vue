@@ -126,13 +126,13 @@ const handleClose = () => {
 
 <style scoped>
 .ui-alert-strip {
-  --alert-border: var(--ant-color-info-border, #91caff);
-  --alert-surface: var(--ant-color-info-bg, #e6f4ff);
-  --alert-icon: var(--ant-color-info, #1677ff);
+  --alert-border: var(--dp-info-border);
+  --alert-surface: var(--dp-info-bg);
+  --alert-icon: var(--dp-info);
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--dp-space-3, 10px);
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
   border: 1px solid var(--alert-border);
   border-radius: var(--dp-radius-control, 4px);
   background: var(--alert-surface);
@@ -140,44 +140,44 @@ const handleClose = () => {
 }
 
 .ui-alert-strip--sm {
-  padding: 8px 10px;
-  gap: 8px;
+  padding: var(--dp-space-2, 8px) 10px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .ui-alert-strip--dense {
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
   padding: 6px 10px;
 }
 
 .ui-alert-strip--inline {
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
   padding: 4px 10px;
   min-height: 32px;
 }
 
 .ui-alert-strip--info {
-  --alert-border: var(--ant-color-info-border, #91caff);
-  --alert-surface: var(--ant-color-info-bg, #e6f4ff);
-  --alert-icon: var(--ant-color-info, #1677ff);
+  --alert-border: var(--dp-info-border);
+  --alert-surface: var(--dp-info-bg);
+  --alert-icon: var(--dp-info);
 }
 
 .ui-alert-strip--success {
-  --alert-border: var(--ant-color-success-border, #b7eb8f);
-  --alert-surface: var(--ant-color-success-bg, #f6ffed);
-  --alert-icon: var(--ant-color-success, #52c41a);
+  --alert-border: var(--dp-success-border);
+  --alert-surface: var(--dp-success-bg);
+  --alert-icon: var(--dp-success);
 }
 
 .ui-alert-strip--warning {
-  --alert-border: var(--ant-color-warning-border, #ffe58f);
-  --alert-surface: var(--ant-color-warning-bg, #fffbe6);
-  --alert-icon: var(--ant-color-warning, #faad14);
+  --alert-border: var(--dp-warning-border);
+  --alert-surface: var(--dp-warning-bg);
+  --alert-icon: var(--dp-warning);
 }
 
 .ui-alert-strip--error {
-  --alert-border: var(--ant-color-error-border, #ffccc7);
-  --alert-surface: var(--ant-color-error-bg, #fff2f0);
-  --alert-icon: var(--ant-color-error, #ff4d4f);
+  --alert-border: var(--dp-error-border);
+  --alert-surface: var(--dp-error-bg);
+  --alert-icon: var(--dp-danger);
 }
 
 .ui-alert-strip__icon {
@@ -243,7 +243,7 @@ const handleClose = () => {
   font-size: 13px;
   font-weight: 600;
   line-height: 20px;
-  color: var(--dp-text-primary, var(--ant-color-text));
+  color: var(--dp-text-primary, var(--dp-text-primary));
 }
 
 .ui-alert-strip--inline .ui-alert-strip__title {
@@ -259,7 +259,7 @@ const handleClose = () => {
   white-space: nowrap;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dp-text-secondary, var(--ant-color-text-secondary));
+  color: var(--dp-text-secondary, var(--dp-text-secondary));
 }
 
 .ui-alert-strip__meta {
@@ -274,7 +274,7 @@ const handleClose = () => {
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dp-text-secondary, var(--ant-color-text-secondary));
+  color: var(--dp-text-secondary, var(--dp-text-secondary));
 }
 
 .ui-alert-strip__actions {
@@ -295,13 +295,13 @@ const handleClose = () => {
   border: 0;
   border-radius: var(--dp-radius-control, 4px);
   background: transparent;
-  color: var(--dp-text-secondary, var(--ant-color-text-secondary));
+  color: var(--dp-text-secondary, var(--dp-text-secondary));
   cursor: pointer;
 }
 
 .ui-alert-strip__close:hover {
-  background: rgba(0, 0, 0, 0.04);
-  color: var(--dp-text-primary, var(--ant-color-text));
+  background: var(--dp-fill-tertiary);
+  color: var(--dp-text-primary, var(--dp-text-primary));
 }
 
 @media (max-width: 900px) {

@@ -1,6 +1,7 @@
 import type { ArchiveTemplateScopeCode } from '@/apis/mark/archive-template-scope'
 import type { ArchiveExamFormCode, ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { PageResult, QueryDto } from '@/types'
+import type { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import type { ArchiveSetupActionLinkCode } from '@/types/enums/archive-setup-action-link-enum'
 import type { ArchiveTenantTemplateOperationTypeCode } from '@/types/enums/archive-tenant-template-operation-type-enum'
 import http from '@/config/axios'
@@ -25,6 +26,7 @@ export interface ArchivePlatformMaterialItemResponse {
   requiredFlag?: boolean
   sortOrder?: number
   categoryGroup?: string
+  deliveryMode?: ArchiveMaterialDeliveryModeCode
 }
 
 export interface ArchivePlatformSelfCheckItemResponse {
@@ -85,6 +87,7 @@ export interface ArchiveMaterialCatalogTemplateResponse {
   requiredFlag?: boolean
   delayAllowedFlag?: boolean
   sortOrder?: number
+  deliveryMode?: ArchiveMaterialDeliveryModeCode
 }
 
 export interface ArchiveSelfCheckTemplateResponse {
@@ -105,6 +108,7 @@ export interface ArchiveTenantTemplateMaterialItemRequest {
   requiredFlag: boolean
   delayAllowedFlag?: boolean
   sortOrder?: number
+  deliveryMode?: ArchiveMaterialDeliveryModeCode
 }
 
 export interface ArchiveTenantTemplateSelfCheckItemRequest {
@@ -130,6 +134,7 @@ export interface ArchivePlatformTemplateMaterialItemRequest {
   requiredFlag: boolean
   sortOrder?: number
   categoryGroup?: string
+  deliveryMode?: ArchiveMaterialDeliveryModeCode
 }
 
 export interface ArchivePlatformTemplateSelfCheckItemRequest {
@@ -163,9 +168,7 @@ export interface ArchiveSetupActionLinkResponse {
 }
 
 export interface ArchiveTenantSetupReadinessResponse {
-  rolesReady?: boolean
   templatesReady?: boolean
-  dutiesReady?: boolean
   overallReady?: boolean
   historicalVolumeExists?: boolean
   missingItems?: string[]

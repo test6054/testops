@@ -18,7 +18,9 @@ import {
 } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -241,7 +243,7 @@ onMounted(() => {
         </template>
       </template>
     </UiDataTable>
-    <a-modal
+    <UiDialog
       v-model:open="actionModalOpen"
       :title="`${actionLabel}疑似混扫批次`"
       ok-text="确认执行"
@@ -251,14 +253,15 @@ onMounted(() => {
       @ok="submitBatchAction"
     >
       <p>本次将处理 {{ selectedRowKeys.length }} 个批次，操作按整批事务执行。</p>
-      <a-textarea
-        v-model:value="actionReason"
+      <UiTextarea
+        size="sm"
+        v-model="actionReason"
         :maxlength="200"
         :rows="3"
-        show-count
+        :show-count="true"
         placeholder="请填写处置判断与依据"
       />
-    </a-modal>
+    </UiDialog>
   </WorkbenchSurfaceCard>
 </template>
 
@@ -270,6 +273,6 @@ onMounted(() => {
 }
 .archive-scan-batch-review__error {
   margin: 0 0 12px;
-  color: var(--ant-color-error);
+  color: var(--dp-error);
 }
 </style>

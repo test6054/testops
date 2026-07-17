@@ -5,8 +5,9 @@
  * 将 workflow.errorMessage / successMessage 映射为右上角单条 notification；
  * 错误优先于成功，同一时刻只展示一条。
  */
-import { Button, notification } from 'ant-design-vue'
+import { notification } from 'ant-design-vue'
 import { computed, h, onBeforeUnmount, watch } from 'vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import {
   KIOSK_BROWSER_PUSH_TOKEN_REJECTED_MESSAGE,
   KIOSK_BROWSER_SESSION_SYNC_FAILED_MESSAGE,
@@ -63,10 +64,10 @@ function syncNotice() {
         ? {
             btn: () =>
               h(
-                Button,
+                UiButton,
                 {
-                  type: 'primary',
-                  size: 'small',
+                  variant: 'primary',
+                  size: 'sm',
                   onClick: openReactivationModal,
                 },
                 () => '打开激活窗口',

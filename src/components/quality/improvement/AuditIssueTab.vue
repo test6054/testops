@@ -38,8 +38,17 @@ import {
 } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -414,12 +423,15 @@ function buildAuditIssueActions(record: AuditIssueVO): UiTableRowActionItem[] {
       disabled: !canEditAuditIssue(record.status),
     },
   ]
+  // 行内仅 1 个 primary：首个可迁状态
+  let primaryAssigned = false
   for (const status of nextAuditIssueStatuses(record.status)) {
     actions.push({
       key: status,
       label: issueStatusLabel(status),
-      tone: 'primary',
+      tone: primaryAssigned ? undefined : 'primary',
     })
+    primaryAssigned = true
   }
   if (record.status === AuditIssueStatusCode.OPEN && !hasLinkedRectification(record.id)) {
     actions.push({ key: 'delete', label: '删除', tone: 'danger' })
@@ -539,120 +551,132 @@ defineExpose({
     </UiDataTable>
   </ImprovementWorkbenchPanel>
 
-  <a-modal
+  <UiDialog
     v-model:open="issueEditorVisible"
     :title="issueEditorMode === 'create' ? '登记审核评估问题' : '编辑审核评估问题'"
     :confirm-loading="issueEditorSubmitting"
     width="820px"
     @ok="submitIssueEditor"
   >
-    <a-form layout="vertical" :model="issueEditor">
-      <a-row :gutter="12">
-        <a-col :span="6">
-          <a-form-item label="编码" required>
-            <a-input v-model:value="issueEditor.issueCode" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="6">
-          <a-form-item label="问题来源" required>
-            <a-select
-              v-model:value="issueEditor.issueSource"
+    <UiForm layout="vertical" :model="issueEditor">
+      <UiRow :gutter="12">
+        <UiCol :span="6">
+          <UiFormItem label="编码" required>
+            <UiInput
+              size="sm" v-model="issueEditor.issueCode"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="6">
+          <UiFormItem label="问题来源" required>
+            <UiSelect
+              size="sm"
+              v-model="issueEditor.issueSource"
               :options="AUDIT_ISSUE_SOURCE_OPTIONS"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="6">
-          <a-form-item label="严重程度" required>
-            <a-select
-              v-model:value="issueEditor.severity"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="6">
+          <UiFormItem label="严重程度" required>
+            <UiSelect
+              size="sm"
+              v-model="issueEditor.severity"
               :options="AUDIT_ISSUE_SEVERITY_OPTIONS"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="6">
-          <a-form-item label="审核年度">
-            <a-input v-model:value="issueEditor.auditYear" />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-form-item label="标题" required>
-        <a-input v-model:value="issueEditor.issueTitle" />
-      </a-form-item>
-      <a-form-item label="详细描述">
-        <a-textarea v-model:value="issueEditor.issueDescription" :rows="4" />
-      </a-form-item>
-      <a-row :gutter="12">
-        <a-col :span="8">
-          <a-form-item label="审核轮次">
-            <a-input v-model:value="issueEditor.auditRound" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="提出人">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="6">
+          <UiFormItem label="审核年度">
+            <UiInput
+              size="sm" v-model="issueEditor.auditYear"
+            />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiFormItem label="标题" required>
+        <UiInput
+          size="sm" v-model="issueEditor.issueTitle"
+        />
+      </UiFormItem>
+      <UiFormItem label="详细描述">
+        <UiTextarea size="sm" v-model="issueEditor.issueDescription" :rows="4" />
+      </UiFormItem>
+      <UiRow :gutter="12">
+        <UiCol :span="8">
+          <UiFormItem label="审核轮次">
+            <UiInput
+              size="sm" v-model="issueEditor.auditRound"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="提出人">
             <TeacherSelector
               :value="issueEditor.raisedUserId || null"
               placeholder="选择提出人（可选）"
               @change="handleIssueRaisedByChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="提出时间">
-            <a-input v-model:value="issueEditor.raisedTime" placeholder="yyyy-MM-dd HH:mm:ss" />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-divider orientation="left">关联业务对象（可选）</a-divider>
-      <a-row :gutter="12">
-        <a-col :span="8">
-          <a-form-item label="所属专业">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="提出时间">
+            <UiInput
+              size="sm" v-model="issueEditor.raisedTime" placeholder="yyyy-MM-dd HH:mm:ss"
+            />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiDivider orientation="left">关联业务对象（可选）</UiDivider>
+      <UiRow :gutter="12">
+        <UiCol :span="8">
+          <UiFormItem label="所属专业">
             <ProgramSelector
               :value="issueEditor.programId || null"
               @change="handleIssueProgramChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="培养方案">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="培养方案">
             <TrainingPlanSelector
               :value="issueEditor.trainingPlanId || null"
               :program-id="issueEditor.programId || null"
               @change="handleIssueTrainingPlanChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="质量评价课程">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="质量评价课程">
             <CourseSelector
               :value="issueEditor.qualityCourseId || null"
               :program-id="issueEditor.programId || null"
               :training-plan-id="issueEditor.trainingPlanId || null"
               @change="handleIssueCourseChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-row :gutter="12">
-        <a-col :span="8">
-          <a-form-item label="观测点">
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiRow :gutter="12">
+        <UiCol :span="8">
+          <UiFormItem label="观测点">
             <RequirementIndicatorSelector
               :value="issueEditor.requirementIndicatorId || null"
               :training-plan-id="issueEditor.trainingPlanId || null"
               @change="handleIssueRequirementIndicatorChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="课程目标">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="课程目标">
             <CourseGoalSelector
               :value="issueEditor.courseGoalId || null"
               :quality-course-id="issueEditor.qualityCourseId || null"
               @change="handleIssueCourseGoalChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="达成度结果">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="达成度结果">
             <AchievementResultSelector
               :value="issueEditor.achievementResultId || null"
               :program-id="issueEditor.programId || null"
@@ -660,11 +684,11 @@ defineExpose({
               :quality-course-id="issueEditor.qualityCourseId || null"
               @change="handleIssueAchievementResultChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-    </a-form>
-  </a-modal>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+    </UiForm>
+  </UiDialog>
 </template>
 
 <style scoped lang="scss">

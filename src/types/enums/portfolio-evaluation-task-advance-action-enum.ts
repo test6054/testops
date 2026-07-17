@@ -11,6 +11,8 @@ export enum PortfolioEvaluationTaskAdvanceActionCode {
   RESUME = 'RESUME',
   VOID = 'VOID',
   CLOSE = 'CLOSE',
+  START_CORRECTION_REVIEW = 'START_CORRECTION_REVIEW',
+  COMPLETE_CORRECTION_REVIEW = 'COMPLETE_CORRECTION_REVIEW',
 }
 
 export const ALL_PORTFOLIO_EVALUATION_TASK_ADVANCE_ACTION_CODES: readonly PortfolioEvaluationTaskAdvanceActionCode[] = [
@@ -25,6 +27,8 @@ export const ALL_PORTFOLIO_EVALUATION_TASK_ADVANCE_ACTION_CODES: readonly Portfo
   PortfolioEvaluationTaskAdvanceActionCode.RESUME,
   PortfolioEvaluationTaskAdvanceActionCode.VOID,
   PortfolioEvaluationTaskAdvanceActionCode.CLOSE,
+  PortfolioEvaluationTaskAdvanceActionCode.START_CORRECTION_REVIEW,
+  PortfolioEvaluationTaskAdvanceActionCode.COMPLETE_CORRECTION_REVIEW,
 ]
 
 export const PortfolioEvaluationTaskAdvanceActionDescription: Record<PortfolioEvaluationTaskAdvanceActionCode, string> = {
@@ -39,4 +43,6 @@ export const PortfolioEvaluationTaskAdvanceActionDescription: Record<PortfolioEv
   [PortfolioEvaluationTaskAdvanceActionCode.RESUME]: '恢复',
   [PortfolioEvaluationTaskAdvanceActionCode.VOID]: '作废',
   [PortfolioEvaluationTaskAdvanceActionCode.CLOSE]: '关闭',
+  [PortfolioEvaluationTaskAdvanceActionCode.START_CORRECTION_REVIEW]: '进入更正复核',
+  [PortfolioEvaluationTaskAdvanceActionCode.COMPLETE_CORRECTION_REVIEW]: '完成更正复核',
 }

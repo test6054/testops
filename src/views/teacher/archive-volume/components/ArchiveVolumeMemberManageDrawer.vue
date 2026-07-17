@@ -5,6 +5,8 @@ import { ref, watch } from 'vue'
 import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   ArchiveVolumeMemberRoleCode,
@@ -42,6 +44,9 @@ function close() {
 }
 
 async function handleAdd() {
+  if (submitting.value) {
+    return
+  }
   if (!addUserId.value.trim()) {
     showFormValidationMessage('请输入用户编号')
     return
@@ -64,7 +69,7 @@ async function handleAdd() {
 }
 
 async function handleRemove(member: ArchiveVolumeMemberDisplayVO) {
-  if (!member.memberId) return
+  if (!member.memberId || submitting.value) return
   const confirmed = await confirmAsync({
     title: '移除协作老师？',
     content: `将移除「${member.userName ?? member.userId}」在当前归档卷中的协作权限。`,
@@ -72,7 +77,7 @@ async function handleRemove(member: ArchiveVolumeMemberDisplayVO) {
     okText: '移除',
     cancelText: '取消',
   })
-  if (!confirmed) return
+  if (!confirmed || submitting.value) return
   submitting.value = true
   try {
     await removeArchiveVolumeMember({ volumeId: props.volumeId, memberId: member.memberId })
@@ -94,7 +99,7 @@ const roleOptions = [
 </script>
 
 <template>
-  <a-drawer :open="open" title="管理协作老师" width="420" @close="close">
+  <UiDrawer :open="open" title="管理协作老师" width="420" @close="close">
     <div class="member-list">
       <div v-for="m in collaborators" :key="m.memberId" class="member-row">
         <div class="member-row__info">
@@ -118,8 +123,9 @@ const roleOptions = [
         placeholder="选择本租户协作老师"
         :disabled="submitting"
       />
-      <a-select
-        v-model:value="addRole"
+      <UiSelect
+        size="sm"
+        v-model="addRole"
         :options="roleOptions"
         style="width: 100%; margin-top: 8px"
       />
@@ -133,7 +139,7 @@ const roleOptions = [
         添加或更新
       </UiButton>
     </div>
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <style scoped lang="scss">

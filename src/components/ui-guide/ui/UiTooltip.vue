@@ -82,15 +82,15 @@ const getPopupContainer = (triggerNode?: HTMLElement) => {
 .ui-tooltip-overlay .ant-tooltip-inner {
   max-width: 320px;
   border-radius: var(--dp-radius-overlay);
-  padding: 8px 12px;
-  color: #f8fafc;
-  background: rgba(15, 23, 42, 0.92);
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  color: var(--dp-text-inverse);
+  background: color-mix(in srgb, var(--dp-text-primary) 92%, transparent);
+  box-shadow: var(--dp-shadow-md);
   font-size: 12px;
   line-height: 1.6;
 }
 
 .ui-tooltip-overlay .ant-tooltip-arrow::before {
-  background: rgba(15, 23, 42, 0.92);
+  background: color-mix(in srgb, var(--dp-text-primary) 92%, transparent);
 }
 </style>

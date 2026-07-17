@@ -66,20 +66,20 @@ const handleClick = (event: MouseEvent) => {
   font-weight: 600;
   line-height: 1.4;
   white-space: nowrap;
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--dp-color-primary);
   transition: color 0.2s ease, opacity 0.2s ease;
 }
 
 .ui-action-link:hover:not(:disabled) {
-  color: var(--ant-color-primary-hover, #4096ff);
+  color: var(--dp-color-primary-hover);
 }
 
 .ui-action-link--danger {
-  color: var(--ant-color-error, #ff4d4f);
+  color: var(--dp-error);
 }
 
 .ui-action-link--danger:hover:not(:disabled) {
-  color: var(--ant-color-error-hover, #ff7875);
+  color: var(--dp-error-hover);
 }
 
 .ui-action-link--disabled {

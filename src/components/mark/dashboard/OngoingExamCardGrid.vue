@@ -35,41 +35,41 @@
             </div>
           </div>
 
-          <div class="ongoing-exam-card__stats">
-            <div class="ongoing-exam-card__stat">
-              <span class="ongoing-exam-card__stat-label">考生数</span>
-              <span class="ongoing-exam-card__stat-value">{{
+          <div class="ongoing-exam-card__metrics" role="group" aria-label="考试关键指标">
+            <div class="ongoing-exam-card__metric">
+              <span class="ongoing-exam-card__metric-label">考生数</span>
+              <span class="ongoing-exam-card__metric-value">{{
                 formatCount(exam.candidateCount)
               }}</span>
             </div>
-            <div class="ongoing-exam-card__stat">
-              <span class="ongoing-exam-card__stat-label">扫描关注</span>
+            <div class="ongoing-exam-card__metric">
+              <span class="ongoing-exam-card__metric-label">扫描关注</span>
               <span
-                class="ongoing-exam-card__stat-value"
+                class="ongoing-exam-card__metric-value"
                 :class="{
-                  'ongoing-exam-card__stat-value--alert': (exam.scanAttentionCount ?? 0) > 0,
+                  'ongoing-exam-card__metric-value--alert': (exam.scanAttentionCount ?? 0) > 0,
                 }"
               >
                 {{ formatCount(exam.scanAttentionCount) }}
               </span>
             </div>
-            <div class="ongoing-exam-card__stat">
-              <span class="ongoing-exam-card__stat-label">待复核</span>
+            <div class="ongoing-exam-card__metric">
+              <span class="ongoing-exam-card__metric-label">待复核</span>
               <span
-                class="ongoing-exam-card__stat-value"
+                class="ongoing-exam-card__metric-value"
                 :class="{
-                  'ongoing-exam-card__stat-value--warn': (exam.pendingReviewTaskCount ?? 0) > 0,
+                  'ongoing-exam-card__metric-value--warn': (exam.pendingReviewTaskCount ?? 0) > 0,
                 }"
               >
                 {{ formatCount(exam.pendingReviewTaskCount) }}
               </span>
             </div>
-            <div class="ongoing-exam-card__stat">
-              <span class="ongoing-exam-card__stat-label">待确认题</span>
+            <div class="ongoing-exam-card__metric">
+              <span class="ongoing-exam-card__metric-label">待确认题</span>
               <span
-                class="ongoing-exam-card__stat-value"
+                class="ongoing-exam-card__metric-value"
                 :class="{
-                  'ongoing-exam-card__stat-value--warn': (exam.pendingGradeCount ?? 0) > 0,
+                  'ongoing-exam-card__metric-value--warn': (exam.pendingGradeCount ?? 0) > 0,
                 }"
               >
                 {{ formatCount(exam.pendingGradeCount) }}
@@ -86,6 +86,7 @@
               {{ formatAcademicYearSemester(exam.academicYear, exam.semester) }}
             </UiTag>
             <UiButton
+              variant="outline"
               size="sm"
               class="ongoing-exam-card__enter"
               @click="emitNavigate(exam.recommendedWorkspacePath, exam.examId)"
@@ -178,15 +179,16 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
 .ongoing-exam-card-grid-wrap > :deep(.ui-empty) {
   flex: 1;
   justify-content: center;
-  padding: var(--dp-space-6) var(--dp-space-4);
+  padding: var(--dp-space-3) var(--dp-space-4);
   background: var(--dp-surface);
-  min-height: 200px;
+  min-height: 120px;
 }
 
+/* 考试卡网格：卡与卡明确分离，参考截图有空隙 */
 .ongoing-exam-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-5);
 }
 
 .ongoing-exam-card__tooltip-target {
@@ -198,41 +200,40 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
 .ongoing-exam-card {
   display: flex;
   flex-direction: column;
-  padding: var(--dp-space-5);
+  height: 100%;
+  padding: var(--dp-space-4);
   border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-panel);
+  border-radius: var(--dp-radius-control-inner);
   background: var(--dp-surface);
-  cursor: default;
-  transition:
-    border-color var(--dp-duration-normal) ease,
-    box-shadow var(--dp-duration-normal) ease;
+  box-shadow: none;
+  transition: border-color var(--dp-duration-normal) ease;
 }
 
 .ongoing-exam-card:hover {
-  border-color: var(--ant-color-primary-border);
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.1);
+  border-color: var(--dp-color-primary-border);
+  box-shadow: none;
 }
 
 .ongoing-exam-card--blocking {
-  border-color: var(--ant-color-error-border);
+  border-color: var(--dp-error-border);
 }
 
 .ongoing-exam-card__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-3);
+  gap: var(--dp-space-3);
 }
 
 .ongoing-exam-card__title-block {
   min-width: 0;
+  flex: 1;
 }
 
 .ongoing-exam-card__name {
   font-size: var(--dp-font-size-lg);
   font-weight: 600;
-  line-height: 22px;
+  line-height: 1.35;
   color: var(--dp-text-primary);
   letter-spacing: -0.01em;
 }
@@ -243,8 +244,9 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
   color: var(--dp-text-secondary);
 }
 
+/* 进度：独立一层，与指标分离 */
 .ongoing-exam-card__progress {
-  margin: var(--dp-space-3) 0;
+  margin-top: var(--dp-space-3);
 }
 
 .ongoing-exam-card__progress-track {
@@ -259,67 +261,85 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
   width: 100%;
   transform-origin: left center;
   border-radius: inherit;
-  background: var(--ant-color-primary);
+  background: var(--dp-color-primary);
   transition: transform var(--dp-duration-slow) ease;
 }
 
 .ongoing-exam-card__progress-fill--success {
-  background: var(--ant-color-success);
+  background: var(--dp-success);
 }
 
 .ongoing-exam-card__progress-fill--warning {
-  background: var(--ant-color-warning);
+  background: var(--dp-warning);
 }
 
 .ongoing-exam-card__progress-label {
   display: flex;
   justify-content: space-between;
-  margin-top: 4px;
+  gap: var(--dp-space-2);
+  margin-top: var(--dp-space-1);
   font-size: var(--dp-type-hint-size);
   color: var(--dp-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 
-.ongoing-exam-card__stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: var(--dp-space-4);
-  row-gap: var(--dp-space-3);
+/*
+ * 四指标一行：flex 均分 + 真实间距，禁止 2×2 挤在一起。
+ * 对齐参考截图：label 上 / value 下，四列并列。
+ */
+.ongoing-exam-card__metrics {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
   margin-top: var(--dp-space-3);
   padding-top: var(--dp-space-3);
   border-top: 1px solid var(--dp-border);
 }
 
-.ongoing-exam-card__stat {
+.ongoing-exam-card__metric {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  min-width: 0;
+  gap: 2px;
+  padding: 0 var(--dp-space-3);
+  border-radius: 0;
+  background: transparent;
 }
 
-.ongoing-exam-card__stat-label {
+.ongoing-exam-card__metric:first-child {
+  padding-left: 0;
+}
+
+.ongoing-exam-card__metric + .ongoing-exam-card__metric {
+  border-left: 1px solid var(--dp-border);
+}
+
+.ongoing-exam-card__metric-label {
   font-size: 11px;
-  line-height: 1.4;
+  line-height: 1.35;
   color: var(--dp-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.ongoing-exam-card__stat-value {
-  font-size: 14px;
+.ongoing-exam-card__metric-value {
+  font-size: 16px;
   font-weight: 600;
-  line-height: 1.4;
+  line-height: 1.3;
   font-variant-numeric: tabular-nums;
   color: var(--dp-text-primary);
 }
 
-.ongoing-exam-card__stat-value--alert {
-  color: var(--ant-color-error);
+.ongoing-exam-card__metric-value--alert {
+  color: var(--dp-error);
 }
 
-.ongoing-exam-card__stat-value--warn {
-  color: var(--ant-color-warning);
+.ongoing-exam-card__metric-value--warn {
+  color: var(--dp-warning);
 }
 
 .ongoing-exam-card__footer {
@@ -327,21 +347,13 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
   align-items: center;
   justify-content: space-between;
   gap: var(--dp-space-2);
-  margin-top: var(--dp-space-3);
+  margin-top: auto;
+  padding-top: var(--dp-space-3);
+  border-top: 1px solid var(--dp-border);
 }
 
 .ongoing-exam-card__enter {
   margin-left: auto;
-}
-
-.ongoing-exam-card__enter {
-  background: var(--dp-blue-600);
-  border-color: var(--dp-blue-600);
-}
-
-.ongoing-exam-card__enter:hover {
-  background: var(--dp-blue-700);
-  border-color: var(--dp-blue-700);
 }
 
 @media (max-width: bp.$layout-mobile-max) {
@@ -349,10 +361,19 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
     grid-template-columns: 1fr;
   }
 
-  .ongoing-exam-card__stat-label {
-    white-space: normal;
-    overflow: visible;
-    text-overflow: unset;
+  .ongoing-exam-card__metrics {
+    flex-wrap: wrap;
+  }
+
+  .ongoing-exam-card__metric {
+    flex: 1 1 calc(50% - var(--dp-space-2));
+    min-width: calc(50% - var(--dp-space-2));
+  }
+}
+
+@media (max-width: 1100px) and (min-width: bp.$layout-desktop-min) {
+  .ongoing-exam-card__metric-value {
+    font-size: 14px;
   }
 }
 </style>

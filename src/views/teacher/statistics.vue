@@ -2,10 +2,10 @@
   <StageWorkbenchShell class="stats-page">
     <template v-if="currentExamId" #signal>
       <UiSkeletonState v-if="paperAnalysisLoading" variant="card" :card-count="3" compact />
-      <SignalBand v-else variant="tiles" compact :metrics="statsSignalMetrics" />
+      <SignalBand v-else compact :metrics="statsSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!currentExamId" description="请选择考试" class="stats-page__empty" />
+    <ExamSelectGateStrip v-if="!currentExamId" class="stats-page__empty" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -32,12 +32,13 @@
           <div class="stats-page__linkage">
             <div class="stats-page__linkage-main">
               <span class="stats-page__linkage-label">联动范围</span>
-              <a-select
-                :value="activeClassId"
+              <UiSelect
+                size="sm"
+                :model-value="activeClassId"
                 class="stats-page__class-select"
                 placeholder="全部班级"
                 allow-clear
-                show-search
+                allow-search
                 option-filter-prop="label"
                 :options="classOptions"
                 :loading="rosterLoading"
@@ -167,11 +168,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import MarkQualitySyncChip from '@/components/quality/MarkQualitySyncChip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -456,11 +458,11 @@ onBeforeUnmount(() => {
 .stats-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   min-width: 0;
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__notice {
@@ -507,7 +509,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
     width: 100%;
     flex-wrap: wrap;
   }

@@ -9,8 +9,11 @@ import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -160,6 +163,8 @@ async function removeRecord(id: string, title: string) {
 }
 
 async function exportHonor() {
+  if (writing.value) return
+  operationKey.value = 'export'
   try {
     const result = await portfolioDevelopmentRecordApi.honorExport({
       levelCode: query.value.levelCode || undefined,
@@ -172,6 +177,8 @@ async function exportHonor() {
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出荣誉库失败')
+  } finally {
+    if (operationKey.value === 'export') operationKey.value = ''
   }
 }
 </script>
@@ -191,28 +198,39 @@ async function exportHonor() {
         </span>
       </div>
       <div class="toolbar">
-        <a-input v-model:value="query.levelCode" placeholder="等级" style="width: 100px" />
-        <a-input v-model:value="query.awardUnit" placeholder="授予单位" style="width: 140px" />
-        <a-input v-model:value="query.categoryCode" placeholder="分类" style="width: 100px" />
-        <a-date-picker
-          v-model:value="query.recordDateFrom"
+        <UiInput
+          size="sm" v-model="query.levelCode" placeholder="等级" style="width: 100px"
+        />
+        <UiInput
+          size="sm" v-model="query.awardUnit" placeholder="授予单位" style="width: 140px"
+        />
+        <UiInput
+          size="sm" v-model="query.categoryCode" placeholder="分类" style="width: 100px"
+        />
+        <UiDatePicker
+          size="sm"
+          v-model="query.recordDateFrom"
           value-format="YYYY-MM-DD"
           placeholder="起始日期"
         />
-        <a-date-picker
-          v-model:value="query.recordDateTo"
+        <UiDatePicker
+          size="sm"
+          v-model="query.recordDateTo"
           value-format="YYYY-MM-DD"
           placeholder="截止日期"
         />
-        <UiButton :disabled="writing" @click="search"> 查询 </UiButton>
-        <UiButton :disabled="writing" @click="exportHonor"> 导出 </UiButton>
-        <UiButton :disabled="writing" @click="importModalOpen = true"> 批量导入 </UiButton>
+        <UiButton size="sm" :disabled="writing" @click="search"> 查询 </UiButton>
+        <UiButton size="sm" :disabled="writing" @click="exportHonor"> 导出 </UiButton>
+        <UiButton size="sm" :disabled="writing" @click="importModalOpen = true"> 批量导入 </UiButton>
       </div>
       <div class="form-row">
-        <a-input v-model:value="form.recordTitle" placeholder="荣誉标题" style="width: 180px" />
-        <a-select
-          v-model:value="form.teacherUserId"
-          show-search
+        <UiInput
+          size="sm" v-model="form.recordTitle" placeholder="荣誉标题" style="width: 180px"
+        />
+        <UiSelect
+          size="sm"
+          v-model="form.teacherUserId"
+          allow-search
           allow-clear
           placeholder="搜索教师姓名或工号"
           style="width: 220px"
@@ -220,14 +238,20 @@ async function exportHonor() {
           :options="teacherOptions"
           @search="searchTeachers"
         />
-        <a-input v-model:value="form.levelCode" placeholder="等级" style="width: 88px" />
-        <a-input v-model:value="form.awardUnit" placeholder="授予单位" style="width: 140px" />
-        <a-date-picker
-          v-model:value="form.recordDate"
+        <UiInput
+          size="sm" v-model="form.levelCode" placeholder="等级" style="width: 88px"
+        />
+        <UiInput
+          size="sm" v-model="form.awardUnit" placeholder="授予单位" style="width: 140px"
+        />
+        <UiDatePicker
+          size="sm"
+          v-model="form.recordDate"
           value-format="YYYY-MM-DD"
           placeholder="日期"
         />
         <UiButton
+          size="sm"
           variant="primary"
           :loading="operationKey === 'save'"
           :disabled="writing"
@@ -237,6 +261,7 @@ async function exportHonor() {
         </UiButton>
       </div>
       <UiEmpty
+        size="sm"
         v-if="!loading && rows.length === 0"
         description="当前筛选无荣誉记录，请调整条件或新建"
       />

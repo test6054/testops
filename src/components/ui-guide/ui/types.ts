@@ -16,8 +16,8 @@ export type UiAlertStripTone = 'info' | 'success' | 'warning' | 'error'
 /** 状态块状态 */
 export type UiStateBlockState = 'empty' | 'loading' | 'success' | 'warning' | 'error' | 'info'
 
-/** 通用尺寸 */
-export type UiComponentSize = 'sm' | 'md' | 'lg'
+/** 通用尺寸：产品 densify 用 sm/md/lg；兼容 ant SizeType 别名 */
+export type UiComponentSize = 'sm' | 'md' | 'lg' | 'small' | 'middle' | 'large'
 
 /** 通用字段状态 */
 export type UiFieldStatus = 'default' | 'error' | 'warning' | 'success'

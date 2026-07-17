@@ -14,11 +14,17 @@ import {
 } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -197,11 +203,18 @@ onMounted(loadRules)
     </template>
     <UiCard>
       <div class="toolbar">
-        <UiButton :loading="loading" :disabled="writing" @click="loadRules"> 刷新 </UiButton>
-        <UiButton variant="primary" :disabled="writing" @click="openCreate"> 新增规则 </UiButton>
+        <UiButton size="sm" :loading="loading" :disabled="writing" @click="loadRules"> 刷新 </UiButton>
+        <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate"> 新增规则 </UiButton>
       </div>
-      <UiEmpty v-if="!loading && !loadError && rows.length === 0" description="暂无档案计分规则" />
+      <WorkbenchContextGateStrip
+        v-if="!loading && !loadError && rows.length === 0"
+        tag="未配置"
+        body="暂无档案计分规则，请先新增规则"
+        cta-label="新增规则"
+        @cta="openCreate"
+      />
       <UiDataTable
+        v-else
         :columns="columns"
         :data-source="rows"
         :loading="loading"
@@ -227,59 +240,66 @@ onMounted(loadRules)
       </UiDataTable>
     </UiCard>
 
-    <a-modal
+    <UiDialog
       v-model:open="modalOpen"
       :title="editingId ? '编辑评分规则' : '新增评分规则'"
       :confirm-loading="saving"
       :closable="!writing"
       :mask-closable="!writing"
-      :keyboard="!writing"
-      :cancel-button-props="{ disabled: writing }"
       ok-text="保存"
       cancel-text="取消"
       @ok="handleSave"
     >
-      <a-form layout="vertical">
-        <a-form-item label="规则类型" required>
-          <a-select
-            v-model:value="form.ruleType"
+      <UiForm layout="vertical">
+        <UiFormItem label="规则类型" required>
+          <UiSelect
+            size="sm"
+            v-model="form.ruleType"
             :options="PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS"
             :disabled="writing"
             @change="handleRuleTypeChange"
           />
-        </a-form-item>
-        <a-form-item label="规则名称" required>
-          <a-input v-model:value="form.ruleName" :disabled="writing" />
-        </a-form-item>
-        <a-form-item
+        </UiFormItem>
+        <UiFormItem label="规则名称" required>
+          <UiInput
+            size="sm" v-model="form.ruleName" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem
           v-if="form.ruleType === PortfolioArchiveScoreRuleTypeCode.CATEGORY"
           label="分类编号"
           required
         >
-          <a-input v-model:value="form.categoryId" placeholder="档案分类编号" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="分值" required>
-          <a-input-number
-            v-model:value="form.scorePoints"
+          <UiInput
+            size="sm" v-model="form.categoryId" placeholder="档案分类编号" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="分值" required>
+          <UiInputNumber
+            size="sm"
+            v-model="form.scorePoints"
             style="width: 100%"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="权重">
-          <a-input-number v-model:value="form.weight" style="width: 100%" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="仅正式档案计分">
-          <a-select
-            v-model:value="form.officialOnly"
+        </UiFormItem>
+        <UiFormItem label="权重">
+          <UiInputNumber
+            size="sm" v-model="form.weight" style="width: 100%" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="仅正式档案计分">
+          <UiSelect
+            size="sm"
+            v-model="form.officialOnly"
             :options="[
               { value: 1, label: '是' },
               { value: 0, label: '否' },
             ]"
             :disabled="writing"
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 

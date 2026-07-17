@@ -4,6 +4,7 @@ import type {
   PortfolioAchievementStatsVO,
   PortfolioDevelopmentRecordVO,
 } from '@/apis/portfolio/teacher-platform'
+import { onMounted, reactive, ref } from 'vue'
 import {
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDevelopmentRecordTypeDescription,
@@ -12,6 +13,8 @@ import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -31,6 +34,8 @@ function recordTypeLabel(type: PortfolioDevelopmentRecordTypeCode): string {
 }
 
 const loading = ref(false)
+/** 列表+统计共用请求 token，防止筛选连点串写 */
+const pageRequestToken = ref(0)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
 const stats = ref<PortfolioAchievementStatsVO | null>(null)
 const { hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
@@ -52,28 +57,47 @@ const columns: ColumnsType = [
 ]
 
 async function loadPage() {
+  const currentToken = ++pageRequestToken.value
+  const request = {
+    pageNum: query.pageNum,
+    pageSize: query.pageSize,
+    searchText: query.searchText || undefined,
+    levelCode: query.nationalOnly ? 'NATIONAL' : query.levelCode || undefined,
+    nationalOnly: query.nationalOnly || undefined,
+    recordTypes: [...query.recordTypes],
+  }
   loading.value = true
   try {
-    const page = await portfolioDevelopmentRecordApi.comprehensivePage({
-      pageNum: query.pageNum,
-      pageSize: query.pageSize,
-      searchText: query.searchText || undefined,
-      levelCode: query.nationalOnly ? 'NATIONAL' : query.levelCode || undefined,
-      nationalOnly: query.nationalOnly || undefined,
-      recordTypes: query.recordTypes,
-    })
-    rows.value = page.list
+    const page = await portfolioDevelopmentRecordApi.comprehensivePage(request)
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
+    rows.value = page.list ?? []
     await hydrateTeacherLabels(
       rows.value.map((row) => row.teacherUserId).filter((id): id is string => Boolean(id)),
     )
-    stats.value = await portfolioDevelopmentRecordApi.achievementStats({
-      levelCode: query.nationalOnly ? 'NATIONAL' : query.levelCode || undefined,
-      nationalOnly: query.nationalOnly || undefined,
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
+    const nextStats = await portfolioDevelopmentRecordApi.achievementStats({
+      levelCode: request.levelCode,
+      nationalOnly: request.nationalOnly,
     })
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
+    stats.value = nextStats
   } catch (error) {
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
+    rows.value = []
+    stats.value = null
     showUserError(error, '加载成果综合查询失败')
   } finally {
-    loading.value = false
+    if (currentToken === pageRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
@@ -90,23 +114,25 @@ onMounted(loadPage)
     </UiCard>
     <UiCard style="margin-top: 16px">
       <div class="toolbar">
-        <a-input
-          v-model:value="query.searchText"
+        <UiInput
+          size="sm"
+          v-model="query.searchText"
           placeholder="标题关键词"
           style="width: 180px"
           @press-enter="loadPage"
         />
-        <a-input
-          v-model:value="query.levelCode"
+        <UiInput
+          size="sm"
+          v-model="query.levelCode"
           placeholder="级别编码"
           style="width: 120px"
           :disabled="query.nationalOnly"
           @press-enter="loadPage"
         />
-        <a-checkbox v-model:checked="query.nationalOnly"> 仅国家级 </a-checkbox>
-        <UiButton variant="primary" @click="loadPage"> 查询 </UiButton>
+        <UiCheckbox v-model="query.nationalOnly"> 仅国家级 </UiCheckbox>
+        <UiButton size="sm" variant="primary" @click="loadPage"> 查询 </UiButton>
       </div>
-      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无综合成果" />
+      <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="当前筛选无综合成果" />
       <UiDataTable :columns="columns" :data-source="rows" :loading="loading" row-key="id">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'recordType'">

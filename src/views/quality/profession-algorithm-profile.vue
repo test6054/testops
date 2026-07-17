@@ -42,13 +42,23 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { showUserError } from '@/utils/error-handler'
@@ -650,7 +660,13 @@ onActivated(() => {
         </template>
       </UiFilterBar>
 
-      <UiEmpty v-if="!loading && total === 0" description="无算法实例" />
+      <WorkbenchContextGateStrip
+        v-if="!loading && total === 0"
+        tag="未配置"
+        body="暂无算法实例"
+        cta-label="新建实例"
+        @cta="openCreate"
+      />
       <UiDataTable
         v-else
         v-model:current="query.pageNum"
@@ -692,243 +708,253 @@ onActivated(() => {
       </UiDataTable>
     </UiCard>
 
-    <a-modal
+    <UiDialog
       v-model:open="editorVisible"
       :title="editorMode === 'create' ? '新建专业算法实例' : '编辑专业算法实例'"
       :confirm-loading="submitting"
-      width="900px"
+      :width="900"
       @ok="submitEditor"
     >
-      <a-form layout="vertical" :model="editor">
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="编码" required>
-              <a-input v-model:value="editor.profileCode" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="16">
-            <a-form-item label="名称" required>
-              <a-input v-model:value="editor.profileName" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="算法模板" required>
-              <a-select
-                v-model:value="editor.templateId"
+      <UiForm layout="vertical" :model="editor">
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="编码" required>
+              <UiInput
+                size="sm" v-model="editor.profileCode"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="16">
+            <UiFormItem label="名称" required>
+              <UiInput
+                size="sm" v-model="editor.profileName"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="算法模板" required>
+              <UiSelect
+                v-model="editor.templateId"
                 placeholder="选择模板会自动继承默认值"
-                show-search
+                allow-search
                 :filter-option="false"
                 :disabled="editorMode === 'edit'"
                 @search="handleTemplateDictSearch"
                 @change="onTemplateSelectChange"
-              >
-                <a-select-option
-                  v-for="t in templates"
-                  :key="t.id"
-                  :value="t.id"
-                  :label="`${t.templateCode} · ${t.templateName}`"
-                >
-                  {{ t.templateCode }} · {{ t.templateName }}
-                </a-select-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="专业" required>
+              
+                size="sm"
+                :options="templates.map((t) => ({ value: t.id, label: `${t.templateCode} · ${t.templateName}` }))"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="专业" required>
               <ProgramSelector
                 :value="editor.programId || null"
                 placeholder="选择本租户专业"
                 :disabled="editorMode === 'edit'"
                 @change="handleEditorProgramChange"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="认证类型" required>
-              <a-select v-model:value="editor.accreditationType" :options="accreditationOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="认证级别">
-              <a-input v-model:value="editor.accreditationLevel" placeholder="如 二级 / 三级" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="标准年份">
-              <a-input v-model:value="editor.standardYear" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="关联认证标准">
-          <a-select
-            v-model:value="editor.standardId"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="认证类型" required>
+              <UiSelect
+                size="sm" v-model="editor.accreditationType" :options="accreditationOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="认证级别">
+              <UiInput
+                size="sm" v-model="editor.accreditationLevel" placeholder="如 二级 / 三级"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="标准年份">
+              <UiInput
+                size="sm" v-model="editor.standardYear"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="关联认证标准">
+          <UiSelect
+            v-model="editor.standardId"
             allow-clear
-            show-search
+            allow-search
             :filter-option="false"
             @search="handleStandardDictSearch"
-          >
-            <a-select-option
-              v-for="s in standards"
-              :key="s.id"
-              :value="s.id"
-              :label="`${s.standardCode} · ${s.standardName}`"
-            >
-              {{ s.standardCode }} · {{ s.standardName }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
+          
+            size="sm"
+            :options="standards.map((s) => ({ value: s.id, label: `${s.standardCode} · ${s.standardName}` }))"
+          />
+        </UiFormItem>
 
-        <a-divider orientation="left">聚合策略</a-divider>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="课程目标">
-              <a-select
-                v-model:value="editor.courseGoalAggregation"
+        <UiDivider orientation="left">聚合策略</UiDivider>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="课程目标">
+              <UiSelect
+                size="sm"
+                v-model="editor.courseGoalAggregation"
                 :options="aggregationOptions"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="观测点">
-              <a-select v-model:value="editor.indicatorAggregation" :options="aggregationOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="毕业要求">
-              <a-select
-                v-model:value="editor.requirementAggregation"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="观测点">
+              <UiSelect
+                size="sm" v-model="editor.indicatorAggregation" :options="aggregationOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="毕业要求">
+              <UiSelect
+                size="sm"
+                v-model="editor.requirementAggregation"
                 :options="aggregationOptions"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
 
-        <a-divider orientation="left">权重 / 样本 / 阈值</a-divider>
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="直接评价权重" required>
-              <a-input-number
-                v-model:value="editor.directWeight"
+        <UiDivider orientation="left">权重 / 样本 / 阈值</UiDivider>
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="直接评价权重" required>
+              <UiInputNumber
+                size="sm"
+                v-model="editor.directWeight"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="间接评价权重" required>
-              <a-input-number
-                v-model:value="editor.indirectWeight"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="间接评价权重" required>
+              <UiInputNumber
+                size="sm"
+                v-model="editor.indirectWeight"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="间接最低样本">
-              <a-input-number
-                v-model:value="editor.indirectMinValidSampleCount"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="间接最低样本">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.indirectMinValidSampleCount"
                 :min="0"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="间接覆盖率阈值">
-              <a-input-number
-                v-model:value="editor.indirectCoverageThreshold"
-                :min="0"
-                :max="1"
-                :step="0.01"
-                style="width: 100%"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="课程目标阈值">
-              <a-input-number
-                v-model:value="editor.courseGoalThreshold"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="间接覆盖率阈值">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.indirectCoverageThreshold"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="观测点阈值">
-              <a-input-number
-                v-model:value="editor.indicatorThreshold"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="课程目标阈值">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.courseGoalThreshold"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="毕业要求阈值">
-              <a-input-number
-                v-model:value="editor.requirementThreshold"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="观测点阈值">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.indicatorThreshold"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="毕业要求阈值">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.requirementThreshold"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
 
-        <a-divider orientation="left">模板继承与调整</a-divider>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="继承模板策略">
-              <a-space direction="vertical" size="small">
-                <a-checkbox v-model:checked="editor.inheritAggregationStrategy">
+        <UiDivider orientation="left">模板继承与调整</UiDivider>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="继承模板策略">
+              <div class="dp-space dp-space--vertical" style="--dp-space-gap: 8px">
+                <UiCheckbox v-model="editor.inheritAggregationStrategy">
                   聚合策略
-                </a-checkbox>
-                <a-checkbox v-model:checked="editor.inheritWeightStrategy"> 权重策略 </a-checkbox>
-                <a-checkbox v-model:checked="editor.inheritThresholdStrategy">
+                </UiCheckbox>
+                <UiCheckbox v-model="editor.inheritWeightStrategy"> 权重策略 </UiCheckbox>
+                <UiCheckbox v-model="editor.inheritThresholdStrategy">
                   阈值策略
-                </a-checkbox>
-              </a-space>
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="本专业调整项">
-              <a-space direction="vertical" size="small">
-                <a-checkbox v-model:checked="editor.overrideAggregationStrategy">
+                </UiCheckbox>
+              </div>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="本专业调整项">
+              <div class="dp-space dp-space--vertical" style="--dp-space-gap: 8px">
+                <UiCheckbox v-model="editor.overrideAggregationStrategy">
                   调整聚合策略
-                </a-checkbox>
-                <a-checkbox v-model:checked="editor.overrideWeightStrategy">
+                </UiCheckbox>
+                <UiCheckbox v-model="editor.overrideWeightStrategy">
                   调整权重策略
-                </a-checkbox>
-                <a-checkbox v-model:checked="editor.overrideThresholdStrategy">
+                </UiCheckbox>
+                <UiCheckbox v-model="editor.overrideThresholdStrategy">
                   调整阈值策略
-                </a-checkbox>
-              </a-space>
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="覆盖原因">
-          <a-input
-            v-model:value="editor.overrideReason"
+                </UiCheckbox>
+              </div>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="覆盖原因">
+          <UiInput
+            size="sm"
+            v-model="editor.overrideReason"
             placeholder="存在调整项时填写专业负责人确认理由"
           />
-        </a-form-item>
+        </UiFormItem>
 
-        <a-checkbox v-model:checked="editor.enabled">启用</a-checkbox>
-      </a-form>
-    </a-modal>
+        <UiCheckbox v-model="editor.enabled">启用</UiCheckbox>
+      </UiForm>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -941,8 +967,8 @@ onActivated(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {

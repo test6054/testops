@@ -1,15 +1,17 @@
 <template>
   <span v-bind="$attrs" class="menu-collapsed-tooltip">
-    <a-tooltip v-if="collapsed && label" :title="label" placement="right">
+    <UiTooltip v-if="collapsed && label" :title="label" placement="right">
       <span class="menu-collapsed-tooltip__target">
         <slot />
       </span>
-    </a-tooltip>
+    </UiTooltip>
     <slot v-else />
   </span>
 </template>
 
 <script lang="ts" setup>
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
+
 defineOptions({
   name: 'MenuCollapsedTooltip',
   inheritAttrs: false,

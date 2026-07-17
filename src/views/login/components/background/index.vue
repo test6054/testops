@@ -29,7 +29,7 @@
   top: 100px;
   width: 120px;
   height: 120px;
-  background: color-mix(in srgb, var(--ant-color-primary) 8%, transparent);
+  background: color-mix(in srgb, var(--dp-color-primary) 8%, transparent);
 }
 
 .login-bg__orb--b {
@@ -37,7 +37,7 @@
   bottom: 6%;
   width: 160px;
   height: 160px;
-  background: color-mix(in srgb, var(--ant-color-primary) 6%, transparent);
+  background: color-mix(in srgb, var(--dp-color-primary) 6%, transparent);
 }
 
 .login-bg__orb--c {
@@ -45,6 +45,6 @@
   top: 18%;
   width: 140px;
   height: 140px;
-  background: color-mix(in srgb, var(--ant-color-primary) 5%, transparent);
+  background: color-mix(in srgb, var(--dp-color-primary) 5%, transparent);
 }
 </style>

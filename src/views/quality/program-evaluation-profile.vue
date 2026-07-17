@@ -37,14 +37,23 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { showUserError } from '@/utils/error-handler'
@@ -456,7 +465,13 @@ onActivated(() => {
         @reset="resetQuery"
       />
 
-      <UiEmpty v-if="!loading && total === 0" description="未配置专业评价口径" />
+      <WorkbenchContextGateStrip
+        v-if="!loading && total === 0"
+        tag="未配置"
+        body="未配置专业评价口径"
+        cta-label="新建评价口径"
+        @cta="openCreate"
+      />
       <UiDataTable
         v-else
         v-model:current="query.pageNum"
@@ -511,142 +526,158 @@ onActivated(() => {
       ok-text="保存"
       @ok="submitEditor"
     >
-      <a-form layout="vertical" :model="editor">
-        <a-row :gutter="12">
-          <a-col :span="24">
-            <a-form-item label="专业" required>
+      <UiForm layout="vertical" :model="editor">
+        <UiRow :gutter="12">
+          <UiCol :span="24">
+            <UiFormItem label="专业" required>
               <ProgramSelector
                 :value="editor.programId || null"
                 :disabled="editorMode === 'edit'"
                 @change="handleProgramChange"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="认证类型" required>
-              <a-select v-model:value="editor.accreditationType" :options="accreditationOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="认证级别">
-              <a-input v-model:value="editor.accreditationLevel" placeholder="如 二级 / 三级" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="标准年份">
-              <a-input v-model:value="editor.standardYear" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="关联认证标准">
-          <a-select
-            v-model:value="editor.standardId"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="认证类型" required>
+              <UiSelect
+                size="sm" v-model="editor.accreditationType" :options="accreditationOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="认证级别">
+              <UiInput
+                size="sm" v-model="editor.accreditationLevel" placeholder="如 二级 / 三级"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="标准年份">
+              <UiInput
+                size="sm" v-model="editor.standardYear"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="关联认证标准">
+          <UiSelect
+            v-model="editor.standardId"
             :allow-clear="editorMode === 'create'"
-            show-search
+            allow-search
             :filter-option="false"
             @search="handleStandardDictSearch"
-          >
-            <a-select-option
-              v-for="s in standards"
-              :key="s.id"
-              :value="s.id"
-              :label="`${s.standardCode} · ${s.standardName}`"
-            >
-              {{ s.standardCode }} · {{ s.standardName }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="评价方法" required>
-              <a-select
-                v-model:value="editor.evaluationMethod"
+          
+            size="sm"
+            :options="standards.map((s) => ({ value: s.id, label: `${s.standardCode} · ${s.standardName}` }))"
+          />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="评价方法" required>
+              <UiSelect
+                size="sm"
+                v-model="editor.evaluationMethod"
                 :options="evaluationMethodOptions"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="评价周期" required>
-              <a-select v-model:value="editor.evaluationCycle" :options="evaluationCycleOptions" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-divider orientation="left">样本范围</a-divider>
-        <a-form-item>
-          <a-space wrap>
-            <a-checkbox v-model:checked="editor.includeGraduateSamples">毕业生</a-checkbox>
-            <a-checkbox v-model:checked="editor.includeEmployerSamples">用人单位</a-checkbox>
-            <a-checkbox v-model:checked="editor.includeAlumniSamples">校友</a-checkbox>
-            <a-checkbox v-model:checked="editor.includeCurrentStudentSamples">在校生</a-checkbox>
-          </a-space>
-        </a-form-item>
-        <a-form-item label="样本范围补充说明">
-          <a-input
-            v-model:value="editor.sampleScopeRemark"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="评价周期" required>
+              <UiSelect
+                size="sm" v-model="editor.evaluationCycle" :options="evaluationCycleOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiDivider orientation="left">样本范围</UiDivider>
+        <UiFormItem>
+          <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+            <UiCheckbox v-model="editor.includeGraduateSamples">毕业生</UiCheckbox>
+            <UiCheckbox v-model="editor.includeEmployerSamples">用人单位</UiCheckbox>
+            <UiCheckbox v-model="editor.includeAlumniSamples">校友</UiCheckbox>
+            <UiCheckbox v-model="editor.includeCurrentStudentSamples">在校生</UiCheckbox>
+          </div>
+        </UiFormItem>
+        <UiFormItem label="样本范围补充说明">
+          <UiInput
+            size="sm"
+            v-model="editor.sampleScopeRemark"
             placeholder="如覆盖年级、抽样口径或排除条件"
           />
-        </a-form-item>
+        </UiFormItem>
 
-        <a-divider orientation="left">责任链</a-divider>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="校级责任">
-              <a-input v-model:value="editor.collegeReviewOwner" placeholder="责任单位或负责人" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="院系责任">
-              <a-input
-                v-model:value="editor.departmentReviewOwner"
+        <UiDivider orientation="left">责任链</UiDivider>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="校级责任">
+              <UiInput
+                size="sm" v-model="editor.collegeReviewOwner" placeholder="责任单位或负责人"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="院系责任">
+              <UiInput
+                size="sm"
+                v-model="editor.departmentReviewOwner"
                 placeholder="责任单位或负责人"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="专业责任">
-              <a-input v-model:value="editor.programReviewOwner" placeholder="责任单位或负责人" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="责任链补充说明">
-          <a-input
-            v-model:value="editor.reviewChainRemark"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="专业责任">
+              <UiInput
+                size="sm" v-model="editor.programReviewOwner" placeholder="责任单位或负责人"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="责任链补充说明">
+          <UiInput
+            size="sm"
+            v-model="editor.reviewChainRemark"
             placeholder="如复核顺序、签字节点或归口要求"
           />
-        </a-form-item>
+        </UiFormItem>
 
-        <a-divider orientation="left">归档策略</a-divider>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="保存年限">
-              <a-input-number
-                v-model:value="editor.archiveRetentionYears"
+        <UiDivider orientation="left">归档策略</UiDivider>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="保存年限">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.archiveRetentionYears"
                 :min="0"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="归档位置">
-              <a-input v-model:value="editor.archiveLocation" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="责任单位">
-              <a-input v-model:value="editor.archiveResponsibleUnit" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="归档策略补充说明">
-          <a-input
-            v-model:value="editor.archivePolicyRemark"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="归档位置">
+              <UiInput
+                size="sm" v-model="editor.archiveLocation"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="责任单位">
+              <UiInput
+                size="sm" v-model="editor.archiveResponsibleUnit"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="归档策略补充说明">
+          <UiInput
+            size="sm"
+            v-model="editor.archivePolicyRemark"
             placeholder="如电子/纸质材料同步要求"
           />
-        </a-form-item>
-        <a-checkbox v-model:checked="editor.enabled"> 启用 </a-checkbox>
-      </a-form>
+        </UiFormItem>
+        <UiCheckbox v-model="editor.enabled"> 启用 </UiCheckbox>
+      </UiForm>
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
@@ -664,8 +695,8 @@ onActivated(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {
@@ -674,7 +705,7 @@ onActivated(() => {
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
   }

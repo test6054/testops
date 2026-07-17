@@ -5,14 +5,14 @@
   gap: var(--dp-space-2);
   font-size: var(--dp-font-size-md);
   font-weight: 600;
-  border-radius: var(--ant-border-radius);
+  border-radius: var(--dp-radius-control);
   border: 1px solid transparent;
   cursor: pointer;
   transition: background-color var(--dp-duration-normal) ease, color var(--dp-duration-normal) ease, border-color var(--dp-duration-normal) ease, box-shadow var(--dp-duration-normal) ease;
 }
 
 :global(.dp-btn:focus-visible) {
-  outline: 2px solid var(--ant-color-primary-border);
+  outline: 2px solid var(--dp-color-primary-border);
   outline-offset: 2px;
 }
 
@@ -28,71 +28,71 @@
 }
 
 :global(.dp-btn--primary) {
-  background-color: var(--ant-color-primary);
-  color: var(--ant-color-white);
-  border-color: var(--ant-color-primary);
+  background-color: var(--dp-color-primary);
+  color: var(--dp-text-inverse);
+  border-color: var(--dp-color-primary);
   box-shadow: var(--dp-shadow-sm);
 }
 
 :global(.dp-btn--primary:hover) {
-  background-color: var(--ant-color-primary-hover);
-  border-color: var(--ant-color-primary-hover);
+  background-color: var(--dp-color-primary-hover);
+  border-color: var(--dp-color-primary-hover);
 }
 
 :global(.dp-btn--outline) {
-  background-color: var(--ant-color-bg-container);
-  color: var(--ant-color-text);
-  border-color: var(--ant-color-border);
+  background-color: var(--dp-bg-container);
+  color: var(--dp-text);
+  border-color: var(--dp-border);
 }
 
 :global(.dp-btn--outline:hover) {
-  background-color: var(--ant-color-fill-tertiary);
-  border-color: var(--ant-color-primary-border);
+  background-color: var(--dp-fill-tertiary);
+  border-color: var(--dp-color-primary-border);
 }
 
 :global(.dp-btn:disabled) {
   cursor: not-allowed;
   box-shadow: none;
   color: var(--dp-text-disabled);
-  border-color: var(--ant-color-border-secondary);
+  border-color: var(--dp-border-subtle);
   background-color: var(--dp-bg-button-disabled);
 }
 
 :global(.dp-btn--primary:disabled) {
-  color: var(--ant-color-white);
-  background: var(--ant-color-primary-border);
-  border-color: var(--ant-color-primary-border);
+  color: var(--dp-text-inverse);
+  background: var(--dp-color-primary-border);
+  border-color: var(--dp-color-primary-border);
 }
 
 // Ant Design Button + dp-btn 叠加（确保在 Ant Design CSS-in-JS 之上生效）
 :global(.ant-btn.dp-btn) {
-  border-radius: var(--ant-border-radius);
+  border-radius: var(--dp-radius-control);
   font-weight: 600;
   font-size: var(--dp-font-size-md);
   min-height: 36px;
 }
 
 :global(.ant-btn.dp-btn.dp-btn--primary) {
-  background-color: var(--ant-color-primary);
-  color: var(--ant-color-white);
-  border-color: var(--ant-color-primary);
+  background-color: var(--dp-color-primary);
+  color: var(--dp-text-inverse);
+  border-color: var(--dp-color-primary);
   box-shadow: var(--dp-shadow-sm);
 }
 
 :global(.ant-btn.dp-btn.dp-btn--primary:hover) {
-  background-color: var(--ant-color-primary-hover);
-  border-color: var(--ant-color-primary-hover);
+  background-color: var(--dp-color-primary-hover);
+  border-color: var(--dp-color-primary-hover);
 }
 
 :global(.ant-btn.dp-btn.dp-btn--outline) {
-  background-color: var(--ant-color-bg-container);
-  color: var(--ant-color-text);
-  border-color: var(--ant-color-border);
+  background-color: var(--dp-bg-container);
+  color: var(--dp-text);
+  border-color: var(--dp-border);
 }
 
 :global(.ant-btn.dp-btn.dp-btn--outline:hover) {
-  background-color: var(--ant-color-fill-tertiary);
-  border-color: var(--ant-color-primary-border);
+  background-color: var(--dp-fill-tertiary);
+  border-color: var(--dp-color-primary-border);
 }
 
 :global(.ant-btn.dp-btn:disabled),
@@ -100,12 +100,12 @@
   cursor: not-allowed;
   box-shadow: none;
   color: var(--dp-text-disabled);
-  border-color: var(--ant-color-border-secondary);
+  border-color: var(--dp-border-subtle);
   background-color: var(--dp-bg-button-disabled);
 }
 
 :global(.ant-btn.dp-btn.dp-btn--primary:disabled) {
-  color: var(--ant-color-white);
-  background: var(--ant-color-primary-border);
-  border-color: var(--ant-color-primary-border);
+  color: var(--dp-text-inverse);
+  background: var(--dp-color-primary-border);
+  border-color: var(--dp-color-primary-border);
 }

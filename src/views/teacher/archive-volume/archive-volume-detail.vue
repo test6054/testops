@@ -84,7 +84,7 @@
         class="archive-volume-detail__alert"
       >
         <template v-if="activeTab !== 'integrity'" #actions>
-          <UiButton size="sm" variant="primary" @click="setActiveTab('integrity')">
+          <UiButton size="sm" variant="outline" @click="setActiveTab('integrity')">
             去定密确认
           </UiButton>
         </template>
@@ -136,7 +136,7 @@
           </span>
         </template>
         <template #actions>
-          <UiButton size="sm" variant="primary" @click="setActiveTab(focusedRemediationTargetTab)">
+          <UiButton size="sm" variant="outline" @click="setActiveTab(focusedRemediationTargetTab)">
             {{ focusedRemediationPrimaryLabel }}
           </UiButton>
           <UiButton
@@ -182,7 +182,7 @@
         class="archive-volume-detail__alert"
       >
         <template #actions>
-          <UiButton size="sm" variant="primary" @click="setActiveTab('appraisal')">
+          <UiButton size="sm" variant="outline" @click="setActiveTab('appraisal')">
             进入鉴定管理
           </UiButton>
         </template>
@@ -233,34 +233,6 @@
       >
         <template #actions>
           <UiButton
-            v-if="detailScope.capabilities.canUpdateArchiveDueTime === true"
-            variant="ghost"
-            size="sm"
-            @click="taskSettingsOpen = true"
-          >
-            任务设置
-          </UiButton>
-          <UiButton variant="ghost" size="sm" @click="setActiveTab('ocr-search')">
-            卷内检索
-          </UiButton>
-          <UiButton
-            v-if="canRunIntegrityCheck"
-            variant="outline"
-            size="sm"
-            :loading="checkingIntegrity"
-            @click="runIntegrityCheck"
-          >
-            完整性自检
-          </UiButton>
-          <UiButton
-            v-if="detailScope.showSelfCheckButton"
-            variant="outline"
-            size="sm"
-            @click="selfCheckModalOpen = true"
-          >
-            提交前自查
-          </UiButton>
-          <UiButton
             v-if="detailScope.canStartCollecting"
             variant="primary"
             size="sm"
@@ -288,22 +260,20 @@
             提交归档
           </UiButton>
           <UiButton
-            v-if="detailScope.canRejectCollection"
+            v-if="detailScope.showSelfCheckButton"
             variant="outline"
             size="sm"
-            @click="collectionRejectOpen = true"
+            @click="selfCheckModalOpen = true"
           >
-            驳回收材
+            提交前自查
           </UiButton>
-          <UiButton
-            v-if="canExportManifest"
-            variant="outline"
-            size="sm"
-            :loading="exporting"
-            @click="handleExport"
-          >
-            导出 manifest
-          </UiButton>
+          <UiDropdownAction
+            v-if="archiveDetailMoreActionItems.length"
+            trigger-style="button"
+            button-text="更多"
+            :items="archiveDetailMoreActionItems"
+            @select="onArchiveDetailMoreAction"
+          />
         </template>
       </ArchiveFlowContextBar>
 
@@ -469,7 +439,7 @@
       />
     </template>
 
-    <UiEmpty v-else description="加载归档任务详情失败" />
+    <UiEmpty size="sm" v-else description="加载归档任务详情失败" />
 
     <TaskSettingsDrawer
       v-if="detail"
@@ -497,7 +467,7 @@
       :volume-id="volumeId"
       @rejected="loadDetail"
     />
-    <a-modal
+    <UiDialog
       v-model:open="overdueSubmitModalOpen"
       title="归档已逾期"
       ok-text="确认提交"
@@ -508,14 +478,15 @@
       <p class="archive-volume-detail__overdue-hint">
         本任务已超过归档截止时刻，须填写逾期说明后方可提交档案馆验收。
       </p>
-      <a-textarea
-        v-model:value="overdueSubmitReason"
+      <UiTextarea
+        size="sm"
+        v-model="overdueSubmitReason"
         :rows="4"
         placeholder="请说明逾期原因与整改措施（如：补扫完成、院系审核延误等）"
         :maxlength="500"
-        show-count
+        :show-count="true"
       />
-    </a-modal>
+    </UiDialog>
   </div>
 </template>
 
@@ -552,7 +523,10 @@ import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePi
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
@@ -1041,7 +1015,51 @@ async function handleMaterialOcrCompleted() {
   }
 }
 
+
+const archiveDetailMoreActionItems = computed(() => {
+  const items: Array<{ key: string, label: string, disabled?: boolean, danger?: boolean }> = []
+  if (detailScope.capabilities.canUpdateArchiveDueTime === true) {
+    items.push({ key: 'task-settings', label: '任务设置' })
+  }
+  items.push({ key: 'ocr-search', label: '卷内检索' })
+  if (canRunIntegrityCheck.value) {
+    items.push({ key: 'integrity', label: '完整性自检', disabled: checkingIntegrity.value })
+  }
+  if (canExportManifest.value) {
+    items.push({ key: 'export', label: '导出 manifest', disabled: exporting.value })
+  }
+  if (detailScope.canRejectCollection) {
+    items.push({ key: 'reject', label: '驳回收材', danger: true })
+  }
+  return items
+})
+
+function onArchiveDetailMoreAction(key: string) {
+  if (key === 'task-settings') {
+    taskSettingsOpen.value = true
+    return
+  }
+  if (key === 'ocr-search') {
+    setActiveTab('ocr-search')
+    return
+  }
+  if (key === 'integrity') {
+    void runIntegrityCheck()
+    return
+  }
+  if (key === 'export') {
+    void handleExport()
+    return
+  }
+  if (key === 'reject') {
+    collectionRejectOpen.value = true
+  }
+}
+
 async function runIntegrityCheck() {
+  if (checkingIntegrity.value) {
+    return
+  }
   checkingIntegrity.value = true
   try {
     integrityResult.value = await checkArchiveVolumeIntegrity(volumeId.value)
@@ -1055,6 +1073,7 @@ async function runIntegrityCheck() {
 }
 
 async function handleStartCollecting() {
+  if (startingCollecting.value) return
   startingCollecting.value = true
   try {
     await startArchiveCollecting(volumeId.value)
@@ -1068,6 +1087,9 @@ async function handleStartCollecting() {
 }
 
 async function executeSubmit(overdueReason?: string) {
+  if (submitting.value) {
+    return
+  }
   submitting.value = true
   try {
     await submitArchiveVolume({
@@ -1114,6 +1136,9 @@ async function confirmOverdueSubmit() {
 }
 
 async function handleExport() {
+  if (exporting.value) {
+    return
+  }
   exporting.value = true
   try {
     const result = await exportArchiveVolume(volumeId.value)
@@ -1159,6 +1184,9 @@ async function loadFocusedRemediationTask() {
 async function advanceRemediation(taskStatus: ArchiveRemediationStatusCode) {
   const task = focusedRemediationTask.value
   if (!task?.taskId) return
+  if (remediationUpdating.value) {
+    return
+  }
   remediationUpdating.value = true
   try {
     focusedRemediationTask.value = await updateRemediationTask({
@@ -1279,7 +1307,7 @@ watch(
   font: inherit;
   font-size: var(--dp-font-size-sm);
   font-weight: var(--dp-font-weight-emphasis);
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   cursor: pointer;
 }
 
@@ -1340,6 +1368,6 @@ watch(
 }
 
 .archive-volume-detail__panel-surface {
-  min-height: 320px;
+  min-height: 120px;
 }
 </style>

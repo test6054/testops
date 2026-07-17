@@ -10,7 +10,9 @@ import {
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -252,13 +254,13 @@ function navigateTab(tabKey: string) {
       <p v-if="detail.volume.departmentReviewRejectReason" class="dept-review-panel__reject">
         驳回原因：{{ detail.volume.departmentReviewRejectReason }}
       </p>
-      <a-input
+      <UiInput
+        size="sm"
         v-if="canRequest"
-        v-model:value="requestReason"
+        v-model="requestReason"
         placeholder="申请说明（可选）"
         class="dept-review-panel__input"
         :maxlength="500"
-        show-count
       />
       <p
         v-else-if="volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED"
@@ -267,7 +269,7 @@ function navigateTab(tabKey: string) {
         院系审核已通过，可提交档案馆验收；若提交前发现缺件，可撤回审核后继续补件。
       </p>
     </div>
-    <UiEmpty v-else description="当前任务尚未进入院系审核，或租户未启用院系审核门禁" />
+    <UiEmpty v-else size="sm" description="当前任务尚未进入院系审核，或租户未启用院系审核门禁" />
 
     <UiDrawer
       :open="rejectOpen"
@@ -280,12 +282,13 @@ function navigateTab(tabKey: string) {
       @close="rejectOpen = false"
       @confirm="handleReject"
     >
-      <a-textarea
-        v-model:value="rejectReason"
+      <UiTextarea
+        size="sm"
+        v-model="rejectReason"
         :rows="4"
         placeholder="驳回原因"
         :maxlength="500"
-        show-count
+        :show-count="true"
       />
     </UiDrawer>
   </WorkbenchSurfaceCard>

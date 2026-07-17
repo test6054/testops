@@ -8,7 +8,7 @@
  * @param {number} $size - 滚动条大小
  * @param {color} $color - 滚动条颜色
  */
-@mixin scrollbar($size: 6px, $color: var(--ant-color-border)) {
+@mixin scrollbar($size: 6px, $color: var(--dp-border)) {
   &::-webkit-scrollbar-thumb {
     background-color: $color;
     border-radius: $size;
@@ -36,8 +36,8 @@
  */
 @mixin horizontal-scrollbar(
   $height: 4px,
-  $thumb-color: var(--ant-color-border-secondary),
-  $thumb-hover-color: var(--ant-color-border),
+  $thumb-color: var(--dp-border-subtle),
+  $thumb-hover-color: var(--dp-border),
   $track-color: transparent
 ) {
   overflow-x: auto;
@@ -71,9 +71,9 @@
  */
 @mixin vertical-scrollbar(
   $width: 6px,
-  $thumb-color: var(--ant-color-border),
-  $thumb-hover-color: var(--ant-color-text-quaternary),
-  $track-color: var(--ant-color-fill-tertiary)
+  $thumb-color: var(--dp-border),
+  $thumb-hover-color: var(--dp-text-quaternary),
+  $track-color: var(--dp-fill-tertiary)
 ) {
   overflow-y: auto;
   overflow-x: hidden;
@@ -114,8 +114,8 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background: var(--ant-color-text-quaternary);
-    border-radius: var(--ant-border-radius-xs);
+    background: var(--dp-text-quaternary);
+    border-radius: var(--dp-radius-xs);
   }
 
   &::-webkit-scrollbar-track {

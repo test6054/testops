@@ -4,15 +4,23 @@ import type {
   PortfolioTeacherHonorCategoryVO,
   PortfolioTeacherHonorVO,
 } from '@/apis/portfolio/teacher-honor'
-import { DatePicker, Form, Input, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
@@ -21,6 +29,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import {
   PortfolioHonorLevelCode,
   PortfolioHonorLevelDescription,
@@ -30,6 +39,7 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const router = useRouter()
 
 const loading = ref(false)
@@ -177,6 +187,13 @@ function openModal(row?: PortfolioTeacherHonorVO) {
 }
 
 async function saveHonor() {
+  if (saving.value || Boolean(deletingHonorId.value) || Boolean(deletingCategoryId.value)) {
+    return
+  }
+  if (!(await confirmProxyWrite('保存荣誉档案'))) {
+    return
+  }
+
   saving.value = true
   try {
     await portfolioTeacherHonorApi.save({
@@ -205,6 +222,10 @@ async function removeHonor(row: PortfolioTeacherHonorVO) {
   if (readonlyMode.value || deletingHonorId.value || preparingArchiveId.value) {
     return
   }
+  if (!(await confirmProxyWrite('删除荣誉档案'))) {
+    return
+  }
+
   const teacherId = scopeTeacherId()
   const operationToken = requestToken.value
   const confirmed = await confirmAsync({
@@ -265,6 +286,10 @@ function openCategoryModal() {
 }
 
 async function createCategory() {
+  if (!(await confirmProxyWrite('创建荣誉自建分类'))) {
+    return
+  }
+
   creatingCategory.value = true
   try {
     await portfolioTeacherHonorApi.createCategory({
@@ -285,6 +310,10 @@ async function confirmDeleteCategory(row: PortfolioTeacherHonorCategoryVO) {
   if (readonlyMode.value || row.preset || !row.id || deletingCategoryId.value) {
     return
   }
+  if (!(await confirmProxyWrite('删除荣誉自建分类'))) {
+    return
+  }
+
   const categoryId = row.id
   const teacherId = scopeTeacherId()
   const operationToken = requestToken.value
@@ -369,16 +398,18 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
       <ContextBar layout="workbench" show-title title="获奖情况" subtitle="荣誉档案与证明材料" />
     </template>
 
-    <UiCard v-if="loadFailed" title="加载失败">
-      <UiEmpty description="荣誉档案加载失败">
-        <UiButton @click="loadData">重试</UiButton>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+
+    <UiCard v-else-if="loadFailed" title="加载失败">
+      <UiEmpty size="sm" description="荣誉档案加载失败">
+        <UiButton size="sm" @click="loadData">重试</UiButton>
       </UiEmpty>
     </UiCard>
 
     <template v-else>
       <UiCard title="荣誉记录" :loading="loading">
         <template #extra>
-          <UiButton v-if="!readonlyMode" @click="openModal()">新增荣誉</UiButton>
+          <UiButton size="sm" v-if="!readonlyMode" @click="openModal()">新增荣誉</UiButton>
         </template>
         <UiDataTable :columns="honorColumns" :data-source="rows" row-key="id" :pagination="false">
           <template #bodyCell="{ column, record }">
@@ -386,10 +417,11 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               {{ honorLevelLabel(record.levelCode) }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton variant="ghost" @click="openModal(record)">
+              <UiButton size="sm" variant="ghost" @click="openModal(record)">
                 {{ readonlyMode ? '查看' : '编辑' }}
               </UiButton>
               <UiButton
+                size="sm"
                 v-if="!readonlyMode"
                 variant="ghost"
                 :loading="preparingArchiveId === record.id"
@@ -399,6 +431,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
                 归入档案
               </UiButton>
               <UiButton
+                size="sm"
                 v-if="!readonlyMode"
                 variant="ghost"
                 danger
@@ -415,7 +448,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 
       <UiCard title="荣誉分类" :loading="categoryLoading" style="margin-top: 16px">
         <template #extra>
-          <UiButton v-if="!readonlyMode" @click="openCategoryModal">新建分类</UiButton>
+          <UiButton size="sm" v-if="!readonlyMode" @click="openCategoryModal">新建分类</UiButton>
         </template>
         <UiDataTable
           :columns="categoryColumns"
@@ -429,6 +462,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton
+                size="sm"
                 v-if="!readonlyMode && !record.preset && record.id"
                 variant="ghost"
                 danger
@@ -444,71 +478,72 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
     </template>
   </StageWorkbenchShell>
 
-  <a-modal
+  <UiDialog
     v-model:open="modalOpen"
     :title="editing ? '编辑荣誉' : '新增荣誉'"
     :confirm-loading="saving"
-    :ok-button-props="{ disabled: readonlyMode }"
     @ok="saveHonor"
     @cancel="resetForm"
   >
-    <Form layout="vertical">
-      <Form.Item label="荣誉名称" required>
-        <Input v-model:value="form.recordTitle" :disabled="readonlyMode" />
-      </Form.Item>
-      <Form.Item label="分类" required>
-        <a-select
-          v-model:value="form.categoryCode"
+    <UiForm layout="vertical">
+      <UiFormItem label="荣誉名称" required compact>
+        <UiInput v-model="form.recordTitle" size="sm" :disabled="readonlyMode" />
+      </UiFormItem>
+      <UiFormItem label="分类" required compact>
+        <UiSelect
+          size="sm"
+          v-model="form.categoryCode"
           :disabled="readonlyMode"
           placeholder="选择分类"
           :options="categoryOptions"
         />
-      </Form.Item>
-      <Form.Item label="等级" required>
-        <a-select
-          v-model:value="form.levelCode"
+      </UiFormItem>
+      <UiFormItem label="等级" required compact>
+        <UiSelect
+          size="sm"
+          v-model="form.levelCode"
           :disabled="readonlyMode"
           :options="PortfolioHonorLevelOptions"
         />
-      </Form.Item>
-      <Form.Item label="授予单位">
-        <Input v-model:value="form.awardUnit" :disabled="readonlyMode" />
-      </Form.Item>
-      <Form.Item label="获得日期">
-        <DatePicker
-          v-model:value="form.recordDate"
+      </UiFormItem>
+      <UiFormItem label="授予单位" compact>
+        <UiInput v-model="form.awardUnit" size="sm" :disabled="readonlyMode" />
+      </UiFormItem>
+      <UiFormItem label="获得日期" compact>
+        <UiDatePicker
+          v-model="form.recordDate"
           value-format="YYYY-MM-DD"
+          size="sm"
           :disabled="readonlyMode"
-          style="width: 100%"
         />
-      </Form.Item>
-      <Form.Item label="描述">
-        <Input.TextArea v-model:value="form.descriptionText" :disabled="readonlyMode" :rows="3" />
-      </Form.Item>
-      <Form.Item label="证明材料">
+      </UiFormItem>
+      <UiFormItem label="描述" compact>
+        <UiTextarea v-model="form.descriptionText" size="sm" :disabled="readonlyMode" :rows="3" />
+      </UiFormItem>
+      <UiFormItem label="证明材料" compact>
         <div class="teacher-honor__attachment">
           <span v-if="form.attachmentName">{{ form.attachmentName }}</span>
-          <UiButton v-if="!readonlyMode" :loading="uploadingFile" @click="openAttachmentPicker">
+          <UiButton size="sm" v-if="!readonlyMode" :loading="uploadingFile" @click="openAttachmentPicker">
             上传附件
           </UiButton>
         </div>
         <input ref="attachmentInputRef" type="file" hidden @change="onAttachmentPick" />
-      </Form.Item>
-    </Form>
-  </a-modal>
+      </UiFormItem>
+    </UiForm>
+  </UiDialog>
 
-  <a-modal
+  <UiDialog
     v-model:open="categoryModalOpen"
     title="新建荣誉分类"
     :confirm-loading="creatingCategory"
     @ok="createCategory"
   >
-    <Form layout="vertical">
-      <Form.Item label="分类名称" required>
-        <Input v-model:value="categoryForm.categoryName" placeholder="如 校级专项荣誉" />
-      </Form.Item>
-    </Form>
-  </a-modal>
+    <UiForm layout="vertical">
+      <UiFormItem label="分类名称" required compact>
+        <UiInput v-model="categoryForm.categoryName" size="sm" placeholder="如 校级专项荣誉" />
+      </UiFormItem>
+    </UiForm>
+  </UiDialog>
 </template>
 
 <style scoped lang="scss">

@@ -312,7 +312,7 @@ onMounted(() => {
 .student-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .login-error {

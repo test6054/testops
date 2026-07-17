@@ -10,6 +10,7 @@ import type {
   PortfolioEligibilityRuleSaveRequest,
   PortfolioEligibilityRuleVO,
   PortfolioExplainGetRequest,
+  PortfolioExplainVO,
   PortfolioExportSnapshotDiffRequest,
   PortfolioIndicatorAutoCollectPageRequest,
   PortfolioIndicatorAutoCollectRequest,
@@ -45,6 +46,7 @@ import type {
   PortfolioIndustryPackBindRequest,
   PortfolioIndustryPackSaveRequest,
   PortfolioIndustryPackVO,
+  PortfolioPublishImpactApproveRequest,
   PortfolioPublishImpactReportGetRequest,
   PortfolioPublishImpactReportVO,
   PortfolioRuleHistoryPageRequest,
@@ -145,6 +147,8 @@ export const portfolioIndicatorTenantApi: PortfolioIndicatorTenantApi = {
     http.post<string>(`${TENANT}/publish/impact-preview`, data),
   getImpactReport: (data: PortfolioPublishImpactReportGetRequest) =>
     http.post<PortfolioPublishImpactReportVO>(`${TENANT}/publish/impact-report/get`, data),
+  approveImpactReport: (data: PortfolioPublishImpactApproveRequest) =>
+    http.post<PortfolioPublishImpactReportVO>(`${TENANT}/publish/impact-report/approve`, data),
   pageImpactReport: (data: QueryDto) =>
     http.post<PageResult<PortfolioPublishImpactReportVO>>(`${TENANT}/publish/impact-report/page`, data),
   evaluateEligibility: (data: PortfolioEligibilityEvaluateRequest) =>
@@ -152,7 +156,7 @@ export const portfolioIndicatorTenantApi: PortfolioIndicatorTenantApi = {
   pageEvalLog: (data: QueryDto) =>
     http.post<PageResult<PortfolioEligibilityEvalLogVO>>(`${TENANT}/eligibility/eval-log/page`, data),
   getExplain: (data: PortfolioExplainGetRequest) =>
-    http.post<string>(`${TENANT}/explain/get`, data),
+    http.post<PortfolioExplainVO>(`${TENANT}/explain/get`, data),
   exportIndicatorCatalog: () =>
     http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/indicator-catalog`, {}),
   exportSnapshotDiff: (data: PortfolioExportSnapshotDiffRequest) =>

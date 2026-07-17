@@ -45,9 +45,10 @@
         </div>
       </template>
 
-      <a-skeleton v-if="loadingExams" active :paragraph="{ rows: 3 }" />
+      <UiSkeletonState v-if="loadingExams" :rows="3" compact />
 
       <UiEmpty
+        size="sm"
         v-else-if="appealableExams.length === 0"
         title="当前没有可申诉的考试"
         :description="appealableEmptyDescription"
@@ -147,9 +148,9 @@
             </UiTag>
           </template>
           <template v-else-if="column.key === 'requestReason'">
-            <a-tooltip :title="requests[index].requestReason">
+            <UiTooltip :title="requests[index].requestReason">
               <div class="reason-cell">{{ requests[index].requestReason }}</div>
-            </a-tooltip>
+            </UiTooltip>
           </template>
           <template v-else-if="column.key === 'requestStatus'">
             <UiTag :tone="requestStatusTone(requests[index].requestStatus)" size="sm">
@@ -163,9 +164,9 @@
             {{ formatDateTime(requests[index].reviewTime) }}
           </template>
           <template v-else-if="column.key === 'reviewNote'">
-            <a-tooltip :title="requests[index].reviewNote">
+            <UiTooltip :title="requests[index].reviewNote">
               <div class="reason-cell">{{ reviewNoteText(requests[index]) }}</div>
-            </a-tooltip>
+            </UiTooltip>
           </template>
           <template v-else-if="column.key === 'evidenceFileRefs'">
             <div v-if="requests[index].evidenceFileRefs.length === 0" class="muted">—</div>
@@ -184,7 +185,7 @@
     </WorkbenchSurfaceCard>
 
     <!-- 提交复核弹窗 -->
-    <a-modal
+    <UiDialog
       v-model:open="submitModalOpen"
       title="提交复核申请"
       :confirm-loading="submitting"
@@ -193,8 +194,8 @@
       :width="640"
       @ok="submit"
     >
-      <a-form :model="form" layout="vertical">
-        <a-form-item label="考试">
+      <UiForm :model="form" layout="vertical">
+        <UiFormItem label="考试">
           <div v-if="selectedAppealableExam" class="modal-exam-info">
             <strong>{{ selectedAppealableExam.examName }}</strong>
             <UiTag tone="green" size="sm">已发布</UiTag>
@@ -202,24 +203,26 @@
               本次得分 <strong>{{ formatPublishedScore(selectedAppealableExam) }}</strong>
             </span>
           </div>
-        </a-form-item>
-        <a-form-item label="申请原因类型" required>
-          <a-select
-            v-model:value="form.reasonType"
+        </UiFormItem>
+        <UiFormItem label="申请原因类型" required>
+          <UiSelect
+            size="sm"
+            v-model="form.reasonType"
             placeholder="请选择原因类型"
             :options="GRADE_REVIEW_REASON_TYPE_OPTIONS"
           />
-        </a-form-item>
-        <a-form-item label="申请理由" required>
-          <a-textarea
-            v-model:value="form.requestReason"
+        </UiFormItem>
+        <UiFormItem label="申请理由" required>
+          <UiTextarea
+            size="sm"
+            v-model="form.requestReason"
             :rows="4"
             placeholder="请简要说明申请复核的原因（10-500 字）"
             :maxlength="500"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-        <a-form-item label="佐证材料（可选）">
+        </UiFormItem>
+        <UiFormItem label="佐证材料（可选）">
           <input
             ref="evidenceInputRef"
             type="file"
@@ -246,25 +249,26 @@
           <div class="appeal-evidence-hint">
             支持 JPG / PNG / WEBP / PDF，最多 {{ EVIDENCE_MAX_COUNT }} 个，单个不超过 10MB。
           </div>
-        </a-form-item>
-        <a-form-item
+        </UiFormItem>
+        <UiFormItem
           :label="
             sourceQuestionId ? '复核题目（已带入成绩明细中的题目，可调整）' : '复核题目（可选）'
           "
         >
-          <a-select
-            v-model:value="form.questionIds"
+          <UiSelect
+            size="sm"
+            v-model="form.questionIds"
             mode="multiple"
             placeholder="不选择题目表示申请总分复核"
             :options="questionOptions"
             :loading="scoreDetailLoading"
             :disabled="scoreDetailLoading"
             option-filter-prop="label"
-            show-search
+            allow-search
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -319,8 +323,15 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -782,6 +793,9 @@ function openSubmitModal() {
 }
 
 async function submit() {
+  if (submitting.value) {
+    return
+  }
   if (!selectedAppealableExam.value) {
     showFormValidationMessage('请选择一个考试')
     return
@@ -938,24 +952,24 @@ async function loadSelectedExamQuestions(): Promise<void> {
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  border: 1px solid var(--ant-color-border-secondary);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
   cursor: pointer;
-  background: var(--ant-color-bg-container);
+  background: var(--dp-bg-container);
   transition:
     border-color 0.2s ease,
     background 0.2s ease,
     box-shadow 0.2s ease;
 
   &:hover {
-    border-color: var(--ant-color-primary-border);
+    border-color: var(--dp-color-primary-border);
     box-shadow: var(--dp-shadow-sm);
   }
 
   &--active {
-    border-color: var(--ant-color-primary);
+    border-color: var(--dp-color-primary);
     background: var(--dp-blue-50);
-    box-shadow: inset 0 0 0 1px var(--ant-color-primary);
+    box-shadow: inset 0 0 0 1px var(--dp-color-primary);
   }
 
   &__radio {
@@ -964,13 +978,13 @@ async function loadSelectedExamQuestions(): Promise<void> {
     justify-content: center;
     width: 18px;
     height: 18px;
-    border: 1.5px solid var(--ant-color-border);
+    border: 1.5px solid var(--dp-border);
     border-radius: 50%;
     flex-shrink: 0;
     transition: border-color 0.2s ease;
 
     .exam-pick-item--active & {
-      border-color: var(--ant-color-primary);
+      border-color: var(--dp-color-primary);
     }
   }
 
@@ -982,7 +996,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
     transition: background 0.2s ease;
 
     .exam-pick-item--active & {
-      background: var(--ant-color-primary);
+      background: var(--dp-color-primary);
     }
   }
 
@@ -1002,16 +1016,16 @@ async function loadSelectedExamQuestions(): Promise<void> {
   &__title {
     font-size: 15px;
     font-weight: 600;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
     margin: 0;
   }
 
   &__meta {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
     font-size: 12px;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
     flex-wrap: wrap;
 
     .meta-item {
@@ -1021,12 +1035,12 @@ async function loadSelectedExamQuestions(): Promise<void> {
     }
 
     .score-text {
-      color: var(--ant-color-success);
+      color: var(--dp-success);
       font-weight: 600;
     }
 
     .meta-item--countdown {
-      color: var(--ant-color-warning);
+      color: var(--dp-warning);
       font-weight: 600;
     }
   }
@@ -1038,13 +1052,13 @@ async function loadSelectedExamQuestions(): Promise<void> {
   gap: 2px;
 
   &__title {
-    color: var(--ant-color-text);
+    color: var(--dp-text);
     font-weight: 500;
   }
 
   &__sub {
     font-size: 12px;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-tertiary);
   }
 }
 
@@ -1052,11 +1066,11 @@ async function loadSelectedExamQuestions(): Promise<void> {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .muted {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 
 .appeal-evidence-list {
@@ -1072,7 +1086,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
 .appeal-evidence-hint {
   margin-top: 6px;
   font-size: 12px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   line-height: 1.5;
 }
 
@@ -1087,16 +1101,16 @@ async function loadSelectedExamQuestions(): Promise<void> {
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
   border-radius: var(--dp-radius-control-inner);
 
   &__score {
     margin-left: auto;
     font-size: 13px;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
 
     strong {
-      color: var(--ant-color-success);
+      color: var(--dp-success);
       font-size: 16px;
     }
   }
@@ -1104,7 +1118,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
 
 .question-load-error {
   margin-top: 6px;
-  color: var(--ant-color-error);
+  color: var(--dp-error);
   font-size: 12px;
 }
 </style>

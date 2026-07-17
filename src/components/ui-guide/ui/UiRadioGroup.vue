@@ -85,7 +85,7 @@ provide(uiRadioGroupKey, true)
   color: var(--dp-text-secondary);
   font-size: 14px;
   font-weight: 500;
-  line-height: 32px;
+  line-height: var(--dp-control-height-sm, 32px);
   box-shadow: none;
   transition:
     color 0.2s ease,
@@ -98,7 +98,7 @@ provide(uiRadioGroupKey, true)
 }
 
 .ui-radio-group--lg :deep(.ant-radio-button-wrapper) {
-  line-height: 36px;
+  line-height: var(--dp-control-height-md, 36px);
 }
 
 .ui-radio-group--block :deep(.ant-radio-button-wrapper) {
@@ -117,7 +117,7 @@ provide(uiRadioGroupKey, true)
 .ui-radio-group :deep(.ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)) {
   background: var(--dp-surface);
   color: var(--dp-text-primary);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--dp-shadow-xs);
 }
 
 .ui-radio-group

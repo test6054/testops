@@ -106,4 +106,10 @@ export default antfu(
       'antfu/consistent-list-newline': 'off',
     },
   },
+  {
+    files: ['scripts/**/*.{js,mjs,cjs,ts}'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
 )

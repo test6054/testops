@@ -1,6 +1,6 @@
 <template>
-  <a-breadcrumb v-if="!hideBreadcrumb" class="breadcrumb-wrapper">
-    <a-breadcrumb-item v-for="(item, index) in breadcrumbs" :key="index">
+  <UiBreadcrumb v-if="!hideBreadcrumb" class="breadcrumb-wrapper">
+    <UiBreadcrumbItem v-for="(item, index) in breadcrumbs" :key="index">
       <component :is="item.icon" v-if="item.icon" class="breadcrumb-icon" />
       <a
         v-if="item.path && index !== breadcrumbs.length - 1"
@@ -10,8 +10,8 @@
         {{ item.title }}
       </a>
       <span v-else class="breadcrumb-current">{{ item.title }}</span>
-    </a-breadcrumb-item>
-  </a-breadcrumb>
+    </UiBreadcrumbItem>
+  </UiBreadcrumb>
 </template>
 
 <script lang="ts" setup>
@@ -19,6 +19,8 @@ import type { Component } from 'vue'
 import HomeOutlined from '@ant-design/icons-vue/HomeOutlined'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import UiBreadcrumb from '@/components/ui-guide/ui/UiBreadcrumb.vue'
+import UiBreadcrumbItem from '@/components/ui-guide/ui/UiBreadcrumbItem.vue'
 
 defineOptions({ name: 'Breadcrumb' })
 
@@ -90,7 +92,7 @@ function handleNavigate(path: string) {
   }
 
   .breadcrumb-current {
-    color: var(--ant-color-text);
+    color: var(--dp-text);
     font-weight: 500;
   }
 
@@ -98,23 +100,23 @@ function handleNavigate(path: string) {
     display: flex;
     align-items: center;
     font-size: 14px;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-tertiary);
 
     a,
     .breadcrumb-link {
-      color: var(--ant-color-text-tertiary);
+      color: var(--dp-text-tertiary);
       transition: color 0.3s ease;
       cursor: pointer;
 
       &:hover {
-        color: var(--ant-color-primary);
+        color: var(--dp-color-primary);
       }
     }
   }
 
   :deep(.ant-breadcrumb-separator) {
     margin: 0 8px;
-    color: var(--ant-color-text-quaternary);
+    color: var(--dp-text-quaternary);
   }
 }
 </style>

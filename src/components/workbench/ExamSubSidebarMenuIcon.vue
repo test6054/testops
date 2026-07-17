@@ -1,9 +1,9 @@
 <template>
-  <a-tooltip v-if="collapsed" :title="label" placement="right">
+  <UiTooltip v-if="collapsed" :title="label" placement="right">
     <span class="exam-sub-sidebar-menu-icon">
       <component :is="resolvedIcon" />
     </span>
-  </a-tooltip>
+  </UiTooltip>
   <component v-else :is="resolvedIcon" />
 </template>
 
@@ -11,6 +11,7 @@
 import type { Component } from 'vue'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import { computed } from 'vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 
 defineOptions({ name: 'ExamSubSidebarMenuIcon' })
 

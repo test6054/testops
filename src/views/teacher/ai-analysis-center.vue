@@ -118,10 +118,10 @@ function handleClusterDataChanged(): void {
     </template>
 
     <template #signal>
-      <SignalBand variant="tiles" compact :metrics="headerSignalMetrics" />
+      <SignalBand compact :metrics="headerSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="overviewLoadFailed" description="AI 分析中心概览加载失败">
+    <UiEmpty size="sm" v-if="overviewLoadFailed" description="AI 分析中心概览加载失败">
       <template #action>
         <UiButton size="sm" variant="outline" @click="refreshAnalysis">
           <ReloadOutlined />

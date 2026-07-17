@@ -58,6 +58,6 @@ const resolvedAriaLabel = computed(() => {
   if (props.ariaLabel.trim()) {
     return props.ariaLabel.trim()
   }
-  return `${props.title}，${props.total > 0 ? `共 ${props.total} 项` : '当前没有可展示的内容'}`
+  return `${props.title}，${props.total > 0 ? `共 ${props.total} 项` : '暂无数据'}`
 })
 </script>

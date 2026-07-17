@@ -11,7 +11,13 @@
       </QualityPageContextBar>
     </template>
 
-    <UiCard>
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
+      class="rationality-audit__empty"
+    />
+
+    <UiCard v-else>
       <template #title>
         <SafetyCertificateOutlined />
         <span>考核评价依据合理性审核</span>
@@ -25,8 +31,9 @@
         @reset="handleReset"
       >
         <template #field-semester>
-          <a-select
-            v-model:value="filterForm.semester"
+          <UiSelect
+            size="sm"
+            v-model="filterForm.semester"
             :options="SemesterOptions"
             placeholder="学期"
             allow-clear
@@ -35,8 +42,8 @@
         </template>
       </UiFilterBar>
 
-      <a-spin :spinning="loading">
-        <UiEmpty v-if="!loading && !list.length" description="当前范围无待审核项" />
+      <UiSpin :spinning="loading">
+        <UiEmpty v-if="!loading && !list.length" size="sm" description="当前范围无待审核项" />
         <UiDataTable
           v-else
           pagination-mode="server"
@@ -63,11 +70,11 @@
               </div>
             </template>
             <template v-else-if="column.key === 'checks'">
-              <a-space size="small">
+              <div class="dp-space" style="--dp-space-gap: 8px">
                 <UiTag :tone="booleanTagTone(record.contentAligned)" size="sm">内容一致</UiTag>
                 <UiTag :tone="booleanTagTone(record.rubricMeasurable)" size="sm">标准可衡量</UiTag>
                 <UiTag :tone="booleanTagTone(record.methodReasonable)" size="sm">方法合理</UiTag>
-              </a-space>
+              </div>
             </template>
             <template v-else-if="column.key === 'source'">
               <UiTag :tone="record.hasAuditRecord ? 'blue' : 'orange'" size="sm">
@@ -85,37 +92,40 @@
             </template>
           </template>
         </UiDataTable>
-      </a-spin>
+      </UiSpin>
     </UiCard>
     <!-- 审核编辑弹窗 -->
-    <a-modal
+    <UiDialog
       v-model:open="editOpen"
       title="考核评价依据合理性审核"
       width="520px"
       :confirm-loading="editing"
       cancel-text="关闭"
     >
-      <a-form layout="vertical">
-        <a-form-item label="课程">
-          <a-input :value="editForm.courseName || ''" disabled />
-        </a-form-item>
-        <a-form-item label="考核内容是否与课程目标一致">
-          <a-switch v-model:checked="editForm.contentAligned" />
-        </a-form-item>
-        <a-form-item label="评分标准是否明确可衡量">
-          <a-switch v-model:checked="editForm.rubricMeasurable" />
-        </a-form-item>
-        <a-form-item label="评价方法是否合理">
-          <a-switch v-model:checked="editForm.methodReasonable" />
-        </a-form-item>
-        <a-form-item label="审核意见">
-          <a-textarea v-model:value="editForm.auditOpinion" :rows="3" placeholder="审核意见..." />
-        </a-form-item>
-      </a-form>
+      <UiForm layout="vertical">
+        <UiFormItem label="课程">
+          <UiInput
+            size="sm" :value="editForm.courseName || ''" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="考核内容是否与课程目标一致">
+          <UiSwitch size="sm" v-model="editForm.contentAligned" />
+        </UiFormItem>
+        <UiFormItem label="评分标准是否明确可衡量">
+          <UiSwitch size="sm" v-model="editForm.rubricMeasurable" />
+        </UiFormItem>
+        <UiFormItem label="评价方法是否合理">
+          <UiSwitch size="sm" v-model="editForm.methodReasonable" />
+        </UiFormItem>
+        <UiFormItem label="审核意见">
+          <UiTextarea size="sm" v-model="editForm.auditOpinion" :rows="3" placeholder="审核意见..." />
+        </UiFormItem>
+      </UiForm>
       <template #footer>
-        <a-space>
-          <UiButton variant="outline" @click="editOpen = false">取消</UiButton>
+        <div class="dp-space" style="--dp-space-gap: 8px">
+          <UiButton size="sm" variant="outline" @click="editOpen = false">取消</UiButton>
           <UiButton
+            size="sm"
             status="danger"
             :loading="editing"
             @click="submitAudit(AssessmentRationalityAuditStatusCode.REJECTED)"
@@ -123,6 +133,7 @@
             驳回
           </UiButton>
           <UiButton
+            size="sm"
             variant="primary"
             :loading="editing"
             :disabled="
@@ -132,9 +143,9 @@
           >
             审核通过
           </UiButton>
-        </a-space>
+        </div>
       </template>
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -155,17 +166,26 @@ import {
   pageRationalityAuditCourseLedger,
   updateRationalityAudit,
 } from '@/apis/quality/rationality-audit'
-import {
-  AssessmentRationalityAuditStatusCode,
+import { AssessmentRationalityAuditStatusCode,
   AssessmentRationalityAuditStatusDescription,
+  ConfirmationStatusCode,
 } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
@@ -337,6 +357,17 @@ function handleReset() {
   }
 }
 
+
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
+
 function handleScopeChange(): void {
   if (filterForm.schoolYear && filterForm.semester && qualityStore.currentTrainingPlanId) {
     void loadList()
@@ -442,13 +473,13 @@ async function submitAudit(
 }
 
 .course-name {
-  color: var(--ant-color-text);
+  color: var(--dp-text);
   font-weight: 500;
   line-height: 22px;
 }
 
 .course-code {
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   font-size: 12px;
   line-height: 18px;
 }

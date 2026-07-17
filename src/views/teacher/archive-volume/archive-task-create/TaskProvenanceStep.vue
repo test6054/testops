@@ -57,11 +57,11 @@ const historicalCode = ArchiveTaskProvenanceCode.HISTORICAL_DIGITIZE
   align-items: flex-start;
   gap: 8px;
   width: 100%;
-  padding: 16px;
+  padding: var(--dp-space-3, 12px);
   text-align: left;
   background: var(--dp-bg-subtle);
   border: 1px solid var(--dp-border-light);
-  border-radius: 6px;
+  border-radius: var(--dp-radius-panel);
   cursor: pointer;
   transition: border-color 0.2s ease;
 

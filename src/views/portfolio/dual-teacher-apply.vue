@@ -10,6 +10,10 @@ import {
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
@@ -62,7 +66,11 @@ const canEdit = computed(() => {
   if (!status) {
     return true
   }
-  if (status === PortfolioDualTeacherApplicationStatusCode.REJECTED) {
+  // 驳回或已通过后可发起新单：清空 form.id 后进入可编辑
+  if (
+    status === PortfolioDualTeacherApplicationStatusCode.REJECTED
+    || status === PortfolioDualTeacherApplicationStatusCode.APPROVED
+  ) {
     return !form.id
   }
   return (
@@ -72,7 +80,45 @@ const canEdit = computed(() => {
   )
 })
 
-const canSubmit = computed(() => canEdit.value && !operationPending.value)
+/** 已认定通过且仍绑定旧单时，允许发起年度复核（新建申请）。 */
+const canStartReReview = computed(() => {
+  return (
+    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED
+    && !!form.id
+    && !operationPending.value
+  )
+})
+
+/** 复核填写中：已通过态下已清空申请主键，尚未保存新草稿。 */
+const reReviewDrafting = computed(() => {
+  return (
+    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED
+    && !form.id
+  )
+})
+
+/** 清空主键与材料，进入复核新建；字段预填最近一次认定结果供修改。 */
+function startReReview() {
+  if (!canStartReReview.value) {
+    return
+  }
+  form.id = ''
+  form.certLevel = application.value?.certLevel ?? ''
+  form.certYear = String(new Date().getFullYear())
+  form.enterprisePracticeDays = application.value?.enterprisePracticeDays ?? 0
+  attachmentItems.value = []
+  message.info('已进入复核申请，保存草稿将创建新申请单')
+}
+
+const canSubmit = computed(() => {
+  if (!canEdit.value || operationPending.value) {
+    return false
+  }
+  if (!form.certLevel.trim()) {
+    return false
+  }
+  return /^\d{4}$/.test(form.certYear.trim())
+})
 
 async function loadMine() {
   const currentToken = ++applicationRequestToken.value
@@ -258,27 +304,32 @@ watch(
       <div v-if="application" class="status-bar">
         <span>申请单号 {{ application.applicationNo }}</span>
         <span>状态 {{ statusLabel(application.applicationStatus) }}</span>
+        <span v-if="reReviewDrafting" class="re-review-hint">正在填写复核申请（尚未保存）</span>
       </div>
-      <a-form layout="vertical" class="form">
-        <a-form-item label="认定等级" required>
-          <a-input
-            v-model:value="form.certLevel"
+      <UiForm layout="vertical" class="form">
+        <UiFormItem label="认定等级" required>
+          <UiInput
+            size="sm"
+            v-model="form.certLevel"
             :disabled="!canEdit || operationPending"
             placeholder="如 高级"
           />
-        </a-form-item>
-        <a-form-item label="认定年度" required>
-          <a-input v-model:value="form.certYear" :disabled="!canEdit || operationPending" />
-        </a-form-item>
-        <a-form-item label="企业实践天数">
-          <a-input-number
-            v-model:value="form.enterprisePracticeDays"
+        </UiFormItem>
+        <UiFormItem label="认定年度" required>
+          <UiInput
+            size="sm" v-model="form.certYear" :disabled="!canEdit || operationPending"
+          />
+        </UiFormItem>
+        <UiFormItem label="企业实践天数">
+          <UiInputNumber
+            size="sm"
+            v-model="form.enterprisePracticeDays"
             :disabled="!canEdit || operationPending"
             :min="0"
             style="width: 100%"
           />
-        </a-form-item>
-        <a-form-item label="证明材料">
+        </UiFormItem>
+        <UiFormItem label="证明材料">
           <input
             ref="attachmentInputRef"
             type="file"
@@ -288,6 +339,7 @@ watch(
             @change="onAttachmentPick"
           />
           <UiButton
+            size="sm"
             :loading="uploading"
             :disabled="!canEdit || operationPending"
             @click="openAttachmentPicker"
@@ -300,12 +352,22 @@ watch(
               <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)">移除</a>
             </li>
           </ul>
-        </a-form-item>
+        </UiFormItem>
         <div class="actions">
-          <UiButton :loading="saving" :disabled="!canEdit || operationPending" @click="saveDraft">
+          <UiButton
+            v-if="canStartReReview"
+            size="sm"
+            variant="primary"
+            :disabled="operationPending"
+            @click="startReReview"
+          >
+            发起复核申请
+          </UiButton>
+          <UiButton size="sm" :loading="saving" :disabled="!canEdit || operationPending" @click="saveDraft">
             保存草稿
           </UiButton>
           <UiButton
+            size="sm"
             variant="primary"
             :loading="submitting"
             :disabled="!canSubmit"
@@ -314,7 +376,7 @@ watch(
             提交审核
           </UiButton>
         </div>
-      </a-form>
+      </UiForm>
     </UiCard>
   </StageWorkbenchShell>
 </template>
@@ -322,9 +384,13 @@ watch(
 <style scoped>
 .status-bar {
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3, 12px);
   font-size: 14px;
+}
+.re-review-hint {
+  color: var(--dp-color-warning);
 }
 .form {
   max-width: 480px;

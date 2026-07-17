@@ -1,5 +1,5 @@
 <template>
-  <a-spin :spinning="loading">
+  <UiSpin :spinning="loading">
     <div v-if="gate" class="archive-exam-score-gate-panel">
       <div v-for="row in gateRows" :key="row.key" class="archive-exam-score-gate-panel__row">
         <span
@@ -22,40 +22,41 @@
         </div>
       </div>
 
-      <div v-if="showStats && hasGradablePapers" class="archive-exam-score-gate-panel__stats">
-        <div class="archive-exam-score-gate-panel__stat">
-          <div class="archive-exam-score-gate-panel__stat-val">
-            {{ gate.gradablePaperCount ?? 0 }}
-          </div>
-          <div class="archive-exam-score-gate-panel__stat-label">考生总数</div>
-        </div>
-        <div class="archive-exam-score-gate-panel__stat">
-          <div
+      <div
+        v-if="showStats && hasGradablePapers"
+        class="archive-exam-score-gate-panel__stats"
+        role="group"
+        aria-label="成绩门禁人数"
+      >
+        <span class="archive-exam-score-gate-panel__stat">
+          <span class="archive-exam-score-gate-panel__stat-label">考生</span>
+          <span class="archive-exam-score-gate-panel__stat-val">{{
+            gate.gradablePaperCount ?? 0
+          }}</span>
+        </span>
+        <span class="archive-exam-score-gate-panel__stat">
+          <span class="archive-exam-score-gate-panel__stat-label">已录入</span>
+          <span
             class="archive-exam-score-gate-panel__stat-val archive-exam-score-gate-panel__stat-val--ok"
-          >
-            {{ gate.publishedScoreCount ?? 0 }}
-          </div>
-          <div class="archive-exam-score-gate-panel__stat-label">成绩已录入</div>
-        </div>
-        <div class="archive-exam-score-gate-panel__stat">
-          <div
+          >{{ gate.publishedScoreCount ?? 0 }}</span>
+        </span>
+        <span class="archive-exam-score-gate-panel__stat">
+          <span class="archive-exam-score-gate-panel__stat-label">缺失</span>
+          <span
             class="archive-exam-score-gate-panel__stat-val"
             :class="
               missingStudents > 0
                 ? 'archive-exam-score-gate-panel__stat-val--danger'
                 : 'archive-exam-score-gate-panel__stat-val--ok'
             "
-          >
-            {{ missingStudents }}
-          </div>
-          <div class="archive-exam-score-gate-panel__stat-label">缺失考生</div>
-        </div>
+          >{{ missingStudents }}</span>
+        </span>
       </div>
       <p v-else-if="showStats" class="archive-exam-score-gate-panel__empty-papers">
         本场考试无可评阅试卷，成绩门禁已按零卷口径满足；完成关考后即可进入建卷。
       </p>
     </div>
-  </a-spin>
+  </UiSpin>
 </template>
 
 <script setup lang="ts">
@@ -65,6 +66,7 @@ import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
 import CloseOutlined from '@ant-design/icons-vue/CloseOutlined'
 import { computed } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import {
   buildExamClosedGateHint,
   buildScoresPublishedGateHint,
@@ -152,13 +154,13 @@ defineExpose({
 .archive-exam-score-gate-panel {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-2);
 }
 
 .archive-exam-score-gate-panel__row {
   display: flex;
-  align-items: flex-start;
-  gap: var(--dp-space-3);
+  align-items: center;
+  gap: var(--dp-space-2);
   padding: var(--dp-space-3);
   border-radius: var(--dp-radius-md);
   background: var(--dp-surface-sunken);
@@ -175,7 +177,7 @@ defineExpose({
   font-size: 11px;
 
   &--pass {
-    color: var(--ant-color-white);
+    color: var(--dp-text-inverse);
     background: var(--dp-green-600);
   }
 
@@ -218,22 +220,29 @@ defineExpose({
 }
 
 .archive-exam-score-gate-panel__stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: var(--dp-space-3);
   margin-top: var(--dp-space-1);
+  padding: 4px 10px;
+  min-height: 32px;
+  max-width: 100%;
+  border: 1px solid var(--dp-border-light);
+  border-radius: var(--dp-radius-control, 4px);
+  background: var(--dp-surface-subtle, var(--dp-surface));
 }
 
 .archive-exam-score-gate-panel__stat {
-  padding: var(--dp-space-3);
-  border: 1px solid var(--dp-border-light);
-  border-radius: var(--dp-radius-md);
-  background: var(--dp-surface);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
 }
 
 .archive-exam-score-gate-panel__stat-val {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
   color: var(--dp-text-primary);
@@ -248,7 +257,6 @@ defineExpose({
 }
 
 .archive-exam-score-gate-panel__stat-label {
-  margin-top: 4px;
   font-size: 12px;
   color: var(--dp-text-secondary);
 }

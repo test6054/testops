@@ -27,32 +27,32 @@ export const USER_STATUS_CONFIG: Record<UserStatusEnum, {
 }> = {
   [UserStatusEnum.ACTIVE]: {
     label: '正常',
-    color: 'var(--ant-color-success)',
+    color: 'var(--dp-success)',
     description: '用户状态正常，可以正常使用系统'
   },
   [UserStatusEnum.INACTIVE]: {
     label: '停用',
-    color: 'var(--ant-color-border)',
+    color: 'var(--dp-border)',
     description: '用户已被停用，无法登录系统'
   },
   [UserStatusEnum.PENDING_APPROVAL]: {
     label: '待审批',
-    color: 'var(--ant-color-warning)',
+    color: 'var(--dp-warning)',
     description: '用户注册申请待管理员审批'
   },
   [UserStatusEnum.SUSPENDED]: {
     label: '已锁定',
-    color: 'var(--ant-color-error)',
+    color: 'var(--dp-error)',
     description: '用户账户已被锁定'
   },
   [UserStatusEnum.REJECTED]: {
     label: '注册拒绝',
-    color: 'var(--ant-color-error)',
+    color: 'var(--dp-error)',
     description: '用户注册申请已被拒绝'
   },
   [UserStatusEnum.DELETED]: {
     label: '已删除',
-    color: 'var(--ant-color-text-secondary)',
+    color: 'var(--dp-text-secondary)',
     description: '用户已被删除'
   },
 }

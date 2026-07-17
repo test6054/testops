@@ -29,13 +29,14 @@
           :allow-clear="false"
           width="100%"
         />
-        <a-select
+        <UiSelect
+          size="sm"
           v-else
-          v-model:value="form.classId"
+          v-model="form.classId"
           :options="classOptions"
           :loading="classLoading"
           placeholder="请选择所选考试共有班级"
-          show-search
+          allow-search
           option-filter-prop="label"
           allow-clear
         />
@@ -152,6 +153,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useChartOption } from '@/hooks/modules/useChartOption'
@@ -566,6 +568,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
+  if (generating.value) return
   if (
     !ensureRequiredAcademicYearSemester(
       effectiveTeachingAcademicYear.value,

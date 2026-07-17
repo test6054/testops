@@ -209,7 +209,7 @@ function onCandidateChange(event: Event) {
 }
 
 async function submitBind() {
-  if (!canBindCandidate.value) return
+  if (binding.value || !canBindCandidate.value) return
   const examId = workflow.examId.value
   const profile = getKioskBindingProfile()
   if (!examId || !profile) return

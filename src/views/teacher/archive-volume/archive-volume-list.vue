@@ -31,7 +31,6 @@
 
     <template v-if="showSignalBand" #signal>
       <SignalBand
-        variant="tiles"
         :metrics="activeSignalMetrics"
         compact
         @metric-click="handleSignalMetricClick"
@@ -276,11 +275,11 @@
       @close="batchRejectOpen = false"
       @confirm="submitBatchReject"
     >
-      <a-form layout="vertical">
-        <a-form-item label="退回原因" required>
-          <a-textarea v-model:value="batchRejectReason" :rows="3" :maxlength="500" show-count />
-        </a-form-item>
-      </a-form>
+      <UiForm layout="vertical">
+        <UiFormItem label="退回原因" required>
+          <UiTextarea size="sm" v-model="batchRejectReason" :rows="3" :maxlength="500" :show-count="true" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <DepartmentReviewListDrawer
@@ -343,9 +342,12 @@ import ArchiveDimPill from '@/components/archive-volume/ArchiveDimPill.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiBatchActionBar from '@/components/ui-guide/ui/UiBatchActionBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
@@ -355,10 +357,10 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { resolveSubmitChecklistRoute } from '@/composables/useArchiveSubmitChecklistRouter'
-import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useArchiveTenantSetupReadiness } from '@/composables/useArchiveTenantSetupReadiness'
 import { useArchiveVolumeFilterPresets } from '@/composables/useArchiveVolumeFilterPresets'
 import { canSubmitArchiveVolumeRow } from '@/composables/useArchiveVolumeSubmitGate'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
@@ -452,6 +454,7 @@ const loading = ref(false)
 const listLoadFailed = ref(false)
 const batchRejecting = ref(false)
 const batchRejectOpen = ref(false)
+const withdrawingVolumeId = ref<string | null>(null)
 const deptReviewDrawerOpen = ref(false)
 const deptReviewVolumeId = ref<string | null>(null)
 const importDrawerOpen = ref(false)
@@ -921,12 +924,12 @@ function shouldRemindVolume(record: ArchiveVolumeResponse) {
 function buildVolumeActions(record: ArchiveVolumeResponse): UiTableRowActionItem[] {
   const submitBlocked = isSubmitBlockedByRemediation(record)
   const canSubmit = canSubmitVolumeRow(record)
+  // 行内仅 1 个 primary：详情为主路径；阶段动作按显隐展示但无第二 primary
   return [
     { key: 'detail', label: '详情', tone: 'primary' },
     {
       key: 'appraisal',
       label: '鉴定',
-      tone: 'primary',
       hidden:
         record.appraisalStatus !== ArchiveAppraisalStatusCode.REMINDER_SENT
         || !hasDutyForDepartment(ArchiveDutyTypeCode.ARCHIVE_ADMIN, record.departmentId),
@@ -934,19 +937,16 @@ function buildVolumeActions(record: ArchiveVolumeResponse): UiTableRowActionItem
     {
       key: 'remediation',
       label: '去整改',
-      tone: 'primary',
       hidden: !showSubmitInMine.value || !hasOpenRemediationForVolume(record.volumeId),
     },
     {
       key: 'dept-review',
       label: '发起院系审核',
-      tone: 'primary',
       hidden: !showSubmitInMine.value || record.canRequestDepartmentReview !== true,
     },
     {
       key: 'dept-audit',
       label: '院系审核',
-      tone: 'primary',
       hidden:
         record.canApproveDepartmentReview !== true
         || record.volumeStatus !== ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING,
@@ -954,7 +954,6 @@ function buildVolumeActions(record: ArchiveVolumeResponse): UiTableRowActionItem
     {
       key: 'dept-withdraw',
       label: '撤回审核',
-      tone: 'primary',
       hidden: !showSubmitInMine.value || record.canWithdrawDepartmentReview !== true,
     },
     {
@@ -1347,6 +1346,7 @@ function openBatchReject() {
 }
 
 async function submitBatchReject() {
+  if (batchRejecting.value) return
   if (!batchRejectReason.value.trim()) {
     showFormValidationMessage('请填写退回原因')
     return
@@ -1490,6 +1490,7 @@ async function goDetailForSubmitBlocker(volumeId: string) {
 }
 
 async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
+  if (withdrawingVolumeId.value) return
   const confirmed = await confirmAsync({
     title: '撤回院系审核？',
     content: '撤回后归档卷回到材料收集状态，原审核通过结果失效；补件完成后需要重新发起院系审核。',
@@ -1497,12 +1498,15 @@ async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
     okText: '确认撤回',
   })
   if (!confirmed) return
+  withdrawingVolumeId.value = record.volumeId
   try {
     await withdrawArchiveVolumeDepartmentReview({ volumeId: record.volumeId })
     message.success('已撤回院系审核，可继续补件')
     await loadVolumes()
   } catch (error) {
     showUserError(error, '撤回院系审核失败')
+  } finally {
+    withdrawingVolumeId.value = null
   }
 }
 
@@ -1826,16 +1830,16 @@ onMounted(async () => {
 }
 
 :deep(.archive-volume-list__table) {
-  .ant-table-tbody > tr.archive-volume-list__row--error > td:first-child {
-    box-shadow: inset 3px 0 0 var(--dp-color-error);
+  .ant-table-tbody > tr.archive-volume-list__row--error > td {
+    background: color-mix(in srgb, var(--dp-color-error) 7%, transparent);
   }
 
-  .ant-table-tbody > tr.archive-volume-list__row--warning > td:first-child {
-    box-shadow: inset 3px 0 0 var(--dp-color-warning);
+  .ant-table-tbody > tr.archive-volume-list__row--warning > td {
+    background: color-mix(in srgb, var(--dp-color-warning) 8%, transparent);
   }
 
-  .ant-table-tbody > tr.archive-volume-list__row--info > td:first-child {
-    box-shadow: inset 3px 0 0 var(--dp-blue-400);
+  .ant-table-tbody > tr.archive-volume-list__row--info > td {
+    background: color-mix(in srgb, var(--dp-blue-400) 8%, transparent);
   }
 }
 </style>

@@ -132,8 +132,8 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--ant-color-bg-container);
-  border-right: 1px solid var(--ant-color-border-secondary);
+  background: var(--dp-surface);
+  border-right: 1px solid var(--dp-border-subtle);
   min-height: 0;
 
   &--collapsed {
@@ -141,30 +141,30 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
   }
 
   &__header {
-    padding: 16px 16px 12px;
+    padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) var(--dp-space-3, 12px);
     flex-shrink: 0;
   }
 
   &__back {
     display: inline-flex;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: var(--dp-space-2, 8px);
     padding: 0;
     border: none;
     background: transparent;
-    color: var(--ant-color-text-quaternary);
+    color: var(--dp-text-muted);
     font-size: 12px;
     cursor: pointer;
 
     &:hover {
-      color: var(--ant-color-text-secondary);
+      color: var(--dp-text-secondary);
     }
   }
 
   &__title-row {
     display: flex;
     align-items: flex-start;
-    gap: 8px;
+    gap: var(--dp-space-2, 8px);
     min-width: 0;
   }
 
@@ -174,26 +174,26 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     margin-top: 6px;
     border-radius: 50%;
     flex-shrink: 0;
-    background: var(--ant-color-text-quaternary);
+    background: var(--dp-text-muted);
 
     &--green {
-      background: var(--ant-color-success);
+      background: var(--dp-success);
     }
 
     &--blue {
-      background: var(--ant-color-primary);
+      background: var(--dp-color-primary);
     }
 
     &--orange {
-      background: var(--ant-color-warning);
+      background: var(--dp-warning);
     }
 
     &--red {
-      background: var(--ant-color-error);
+      background: var(--dp-danger);
     }
 
     &--gray {
-      background: var(--ant-color-text-quaternary);
+      background: var(--dp-text-muted);
     }
   }
 
@@ -202,7 +202,7 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     font-size: 14px;
     font-weight: 600;
     line-height: 1.4;
-    color: var(--ant-color-text);
+    color: var(--dp-text-primary);
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -213,16 +213,16 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     margin: 6px 0 0;
     font-size: 12px;
     line-height: 1.4;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-muted);
     word-break: break-all;
   }
 
   &__section-label {
-    padding: 8px 16px 4px;
+    padding: var(--dp-space-2, 8px) var(--dp-space-4, 16px) var(--dp-space-1, 4px);
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.02em;
-    color: var(--ant-color-text-quaternary);
+    color: var(--dp-text-muted);
     text-transform: uppercase;
     flex-shrink: 0;
 
@@ -232,17 +232,17 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
   }
 
   &__group-label {
-    padding: 10px 12px 4px;
+    padding: 10px var(--dp-space-3, 12px) var(--dp-space-1, 4px);
     font-size: 11px;
     font-weight: 600;
-    color: var(--ant-color-text-quaternary);
+    color: var(--dp-text-muted);
   }
 
   &__nav {
     flex: 1;
     min-height: 0;
     overflow: auto;
-    padding: 0 8px 8px;
+    padding: 0 var(--dp-space-2, 8px) var(--dp-space-2, 8px);
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -252,13 +252,13 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: var(--dp-space-2, 8px);
     width: 100%;
-    padding: 8px 12px;
+    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
     border: none;
     border-radius: var(--dp-radius-panel);
     background: transparent;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
     font-size: 13px;
     text-align: left;
     cursor: pointer;
@@ -267,18 +267,18 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
       color 0.2s;
 
     &:hover {
-      background: var(--ant-color-fill-tertiary);
-      color: var(--ant-color-text);
+      background: var(--dp-fill-tertiary);
+      color: var(--dp-text-primary);
     }
 
     &--active {
-      background: color-mix(in srgb, var(--ant-color-primary) 8%, transparent);
-      color: var(--ant-color-primary);
+      background: color-mix(in srgb, var(--dp-color-primary) 8%, transparent);
+      color: var(--dp-color-primary);
       font-weight: 500;
     }
 
     &--warn:not(&--active) {
-      color: var(--ant-color-warning);
+      color: var(--dp-warning);
     }
   }
 
@@ -294,22 +294,22 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     height: 6px;
     border-radius: 50%;
     flex-shrink: 0;
-    background: var(--ant-color-fill-secondary);
+    background: var(--dp-fill-secondary);
 
     &--done {
-      background: var(--ant-color-success);
+      background: var(--dp-success);
     }
 
     &--current {
-      background: var(--ant-color-primary);
+      background: var(--dp-color-primary);
     }
 
     &--warn {
-      background: var(--ant-color-warning);
+      background: var(--dp-warning);
     }
 
     &--pending {
-      background: var(--ant-color-fill-secondary);
+      background: var(--dp-fill-secondary);
     }
   }
 
@@ -317,8 +317,8 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     min-width: 18px;
     padding: 0 6px;
     border-radius: 9px;
-    background: color-mix(in srgb, var(--ant-color-primary) 12%, transparent);
-    color: var(--ant-color-primary);
+    background: color-mix(in srgb, var(--dp-color-primary) 12%, transparent);
+    color: var(--dp-color-primary);
     font-size: 11px;
     font-weight: 500;
     line-height: 18px;
@@ -339,19 +339,19 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     justify-content: space-between;
     gap: 8px;
     font-size: 12px;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-muted);
   }
 
   &__meta-value {
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
     text-align: right;
     word-break: break-all;
   }
 
   &__footer {
     margin-top: auto;
-    padding: 12px 16px;
-    border-top: 1px solid var(--ant-color-border-secondary);
+    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    border-top: 1px solid var(--dp-border, var(--dp-border-subtle));
     display: flex;
     justify-content: flex-end;
     flex-shrink: 0;
@@ -366,12 +366,12 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     border: none;
     border-radius: var(--dp-radius-panel);
     background: transparent;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-muted);
     cursor: pointer;
 
     &:hover {
-      background: var(--ant-color-fill-tertiary);
-      color: var(--ant-color-text);
+      background: var(--dp-fill-tertiary);
+      color: var(--dp-text-primary);
     }
   }
 

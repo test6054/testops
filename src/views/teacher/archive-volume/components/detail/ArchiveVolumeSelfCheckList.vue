@@ -7,10 +7,10 @@ import {
   ArchiveSelfCheckStatusDescription,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveVolumeSelfCheck } from '@/composables/useArchiveVolumeSelfCheck'
 import { formatDateTime } from '@/utils/format'
@@ -130,7 +130,13 @@ defineExpose({ loadSelfCheck })
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
-    <UiEmpty v-else-if="items.length === 0" description="暂无自查项，请先在设置页配置模板" />
+    <WorkbenchContextGateStrip
+      v-else-if="items.length === 0"
+      tag="未配置"
+      body="暂无自查项，请先在设置页配置模板"
+      cta-label="打开归档设置"
+      list-route-name="TeacherArchiveVolumeSettings"
+    />
 
     <ul v-else class="archive-volume-self-check-list__items">
       <li

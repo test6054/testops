@@ -23,9 +23,14 @@ import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import {
   annualReportMaterialPhaseHint,
@@ -435,51 +440,43 @@ defineExpose({ loadMaterials, openCreate })
 <template>
   <div class="annual-report-material-panel">
     <div class="material-toolbar">
-      <a-input
-        v-model:value="query.keyword"
+      <UiInput
+        size="sm"
+        v-model="query.keyword"
         class="toolbar-input"
-        allow-clear
+        clearable
         placeholder="搜索材料名称或说明"
         @press-enter="searchMaterials"
       />
-      <a-input
-        v-model:value="query.reportYear"
+      <UiInput
+        size="sm"
+        v-model="query.reportYear"
         class="year-input"
-        allow-clear
+        clearable
         placeholder="年度"
         @press-enter="searchMaterials"
       />
-      <a-select
-        v-model:value="query.materialCategory"
+      <UiSelect
+        v-model="query.materialCategory"
         class="category-select"
         allow-clear
         placeholder="材料类别"
-      >
-        <a-select-option
-          v-for="item in ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS"
-          :key="item.value"
-          :value="item.value"
-        >
-          {{ item.label }}
-        </a-select-option>
-      </a-select>
-      <a-select
-        v-model:value="query.reportStatus"
+      
+        size="sm"
+        :options="ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS"
+      />
+      <UiSelect
+        v-model="query.reportStatus"
         class="status-select"
         allow-clear
         placeholder="状态"
-      >
-        <a-select-option
-          v-for="item in MATERIAL_STATUS_OPTIONS"
-          :key="item.value"
-          :value="item.value"
-        >
-          {{ item.label }}
-        </a-select-option>
-      </a-select>
-      <UiButton variant="outline" @click="searchMaterials">查询</UiButton>
-      <UiButton variant="ghost" @click="resetFilters">重置</UiButton>
-      <UiButton variant="primary" :disabled="!canMutateMaterial" @click="openCreate">
+      
+        size="sm"
+        :options="MATERIAL_STATUS_OPTIONS"
+      />
+      <UiButton size="sm" variant="outline" @click="searchMaterials">查询</UiButton>
+      <UiButton size="sm" variant="ghost" @click="resetFilters">重置</UiButton>
+      <UiButton size="sm" variant="primary" :disabled="!canMutateMaterial" @click="openCreate">
         新增材料
       </UiButton>
     </div>
@@ -548,7 +545,7 @@ defineExpose({ loadMaterials, openCreate })
         </template>
       </template>
       <template #empty>
-        <UiEmpty description="暂无年度报备材料，请上传持续改进、达成度和支撑条件等原始材料" />
+        <UiEmpty size="sm" description="暂无年度报备材料，请上传持续改进、达成度和支撑条件等原始材料" />
       </template>
     </UiDataTable>
 
@@ -561,22 +558,20 @@ defineExpose({ loadMaterials, openCreate })
       ok-text="保存"
       @ok="submitMaterial"
     >
-      <a-form layout="vertical">
-        <a-form-item label="年度" required>
-          <a-input v-model:value="form.reportYear" placeholder="如 2025" :disabled="!!form.id" />
-        </a-form-item>
-        <a-form-item label="材料类别" required>
-          <a-select v-model:value="form.materialCategory" :disabled="!!form.id">
-            <a-select-option
-              v-for="item in ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS"
-              :key="item.value"
-              :value="item.value"
-            >
-              {{ item.label }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item
+      <UiForm layout="vertical">
+        <UiFormItem label="年度" required>
+          <UiInput
+            size="sm" v-model="form.reportYear" placeholder="如 2025" :disabled="!!form.id"
+          />
+        </UiFormItem>
+        <UiFormItem label="材料类别" required>
+          <UiSelect
+            v-model="form.materialCategory" :disabled="!!form.id"
+            size="sm"
+            :options="ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS"
+          />
+        </UiFormItem>
+        <UiFormItem
           label="关联课程"
           :required="isCourseEvaluationMaterial(form.materialCategory)"
           :extra="
@@ -597,14 +592,16 @@ defineExpose({ loadMaterials, openCreate })
                 : '当前材料类别无需关联课程'
             "
           />
-        </a-form-item>
-        <a-form-item label="材料名称" required>
-          <a-input v-model:value="form.materialName" />
-        </a-form-item>
-        <a-form-item label="材料说明">
-          <a-textarea v-model:value="form.materialDescription" :rows="3" />
-        </a-form-item>
-        <a-form-item label="材料文件" required>
+        </UiFormItem>
+        <UiFormItem label="材料名称" required>
+          <UiInput
+            size="sm" v-model="form.materialName"
+          />
+        </UiFormItem>
+        <UiFormItem label="材料说明">
+          <UiTextarea size="sm" v-model="form.materialDescription" :rows="3" />
+        </UiFormItem>
+        <UiFormItem label="材料文件" required>
           <UiPlatformFileField
             v-model:file-node-id="form.storageFileId"
             v-model:file-name="materialFileName"
@@ -612,8 +609,8 @@ defineExpose({ loadMaterials, openCreate })
             button-text="选择文件"
           />
           <p v-if="form.storageFileId" class="file-hint">当前 fileId：{{ form.storageFileId }}</p>
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -625,24 +622,26 @@ defineExpose({ loadMaterials, openCreate })
       ok-text="提交审核"
       @ok="submitReview"
     >
-      <a-form layout="vertical">
-        <a-form-item label="审核结论" required>
-          <a-select v-model:value="reviewForm.reviewStatus">
-            <a-select-option value="APPROVED">通过</a-select-option>
-            <a-select-option value="REJECTED">退回</a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item
+      <UiForm layout="vertical">
+        <UiFormItem label="审核结论" required>
+          <UiSelect
+            v-model="reviewForm.reviewStatus"
+            size="sm"
+            :options="[{ value: 'APPROVED', label: '通过' }, { value: 'REJECTED', label: '退回' }]"
+          />
+        </UiFormItem>
+        <UiFormItem
           label="审核意见"
           :required="reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED"
         >
-          <a-textarea
-            v-model:value="reviewForm.reviewComment"
+          <UiTextarea
+            size="sm"
+            v-model="reviewForm.reviewComment"
             :rows="4"
             placeholder="退回时必须说明需补充或更正的材料问题"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </div>
 </template>
@@ -676,7 +675,7 @@ defineExpose({ loadMaterials, openCreate })
 
 .muted,
 .file-hint {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
   font-size: 12px;
 }
 

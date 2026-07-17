@@ -116,20 +116,20 @@ const resolvedStatus = computed<UiFieldStatus>(() => (props.error ? 'error' : pr
 }
 
 .ui-textarea--sm :deep(.ant-input) {
-  min-height: 72px !important;
-  padding: 8px 12px !important;
+  min-height: 64px !important;
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px) !important;
   font-size: 13px !important;
 }
 
 .ui-textarea--md :deep(.ant-input) {
-  min-height: 92px !important;
-  padding: 10px 12px !important;
+  min-height: 80px !important;
+  padding: 8px var(--dp-space-3, 12px) !important;
   font-size: 14px !important;
 }
 
 .ui-textarea--lg :deep(.ant-input) {
-  min-height: 112px !important;
-  padding: 12px 14px !important;
+  min-height: 96px !important;
+  padding: var(--dp-space-3, 12px) !important;
   font-size: 15px !important;
 }
 

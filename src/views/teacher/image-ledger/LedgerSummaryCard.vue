@@ -1,9 +1,21 @@
 <template>
   <UiSkeletonState v-if="loading" variant="card" :card-count="3" compact />
-  <UiEmpty
+  <UiAlertStrip
     v-else-if="!ledger"
-    description="尚未建立影像账本，执行整体对账后将汇总扫描收录与绑定进度"
-  />
+    tone="info"
+    size="sm"
+    dense
+    inline
+    :show-icon="false"
+    class="ledger-summary__gate"
+  >
+    <template #default>
+      <span class="ledger-summary__gate-row">
+        <UiTag tone="blue" size="sm">待建立账本</UiTag>
+        <span>尚未建立影像账本，执行整体对账后将汇总扫描收录与绑定进度</span>
+      </span>
+    </template>
+  </UiAlertStrip>
   <div v-else class="ledger-summary">
     <!-- 顶栏：状态 + 进度环 + 操作 -->
     <div class="ledger-summary__hero">
@@ -25,7 +37,7 @@
               aria-label="页级扫描进度"
             />
             <div v-if="ledger.diagnostic" class="ledger-summary__diagnostic">
-              <ExclamationCircleOutlined style="color: var(--ant-color-warning)" />
+              <ExclamationCircleOutlined style="color: var(--dp-warning)" />
               <span>{{ ledgerDiagnosticText(ledger.diagnostic) }}</span>
             </div>
           </div>
@@ -69,8 +81,8 @@ import { computed } from 'vue'
 import { LEDGER_STATUS_TONE, LedgerStatusDescription } from '@/apis/mark/image-ledger'
 import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiProgressBarNew from '@/components/ui-guide/ui/UiProgressBar.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -262,15 +274,15 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 .ledger-summary {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .ledger-summary__hero {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 24px;
-  padding: 16px 20px;
+  gap: var(--dp-space-3, 12px);
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
   background: var(--dp-surface-subtle);
   border-radius: var(--dp-radius-panel);
 }
@@ -278,7 +290,7 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 .ledger-summary__hero-left {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: var(--dp-space-3, 12px);
   flex: 1;
   min-width: 0;
 }
@@ -286,7 +298,7 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 .ledger-summary__hero-meta {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--dp-space-2, 8px);
   flex: 1;
   min-width: 0;
 }
@@ -294,7 +306,7 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
 .ledger-summary__hero-status {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .ledger-summary__hero-time {
@@ -323,5 +335,13 @@ const deviationSignalMetrics = computed((): SignalMetric[] => {
   font-size: var(--dp-type-table-head-size);
   font-weight: var(--dp-type-table-head-weight);
   color: var(--dp-text-primary);
+}
+
+.ledger-summary__gate { margin: var(--dp-space-2) 0; }
+.ledger-summary__gate-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  min-width: 0;
 }
 </style>

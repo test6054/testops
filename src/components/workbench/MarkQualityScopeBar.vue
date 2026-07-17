@@ -6,9 +6,10 @@
         <span v-if="mode === 'workbench'" class="mark-quality-scope-bar__org-label">
           阅卷组织：{{ organizationLabel }}
         </span>
-        <a-select
+        <UiSelect
+          size="sm"
           v-else
-          :value="selectedOrganizationId"
+          :model-value="selectedOrganizationId"
           class="mark-quality-scope-bar__org-select"
           placeholder="选择阅卷组织"
           :options="organizationOptions"
@@ -43,8 +44,9 @@
       v-else-if="mode === 'standalone' && organizationDetail"
       class="mark-quality-scope-bar__row"
     >
-      <a-select
-        :value="selectedGroupId"
+      <UiSelect
+        size="sm"
+        :model-value="selectedGroupId"
         class="mark-quality-scope-bar__group-select"
         placeholder="选择题组（可选）"
         :options="groupOptions"
@@ -64,6 +66,7 @@ import {
   QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkQualityScopeBar' })

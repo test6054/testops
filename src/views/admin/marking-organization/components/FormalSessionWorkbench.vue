@@ -35,7 +35,7 @@
       </template>
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'groupName'">
-          <a-typography-text strong>{{ record.groupName }}</a-typography-text>
+          <UiTypographyText strong>{{ record.groupName }}</UiTypographyText>
         </template>
         <template v-else-if="column.key === 'status'">
           <UiTag
@@ -90,7 +90,6 @@ import type { FormalSessionResponse } from '@/apis/mark/marking-organization'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
 import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
-import { Modal } from 'ant-design-vue'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -108,6 +107,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEllipsisText from '@/components/ui-guide/ui/UiEllipsisText.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import WorkflowPrerequisiteEmpty from '@/components/workbench/workflow-readiness/WorkflowPrerequisiteEmpty.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -302,7 +302,8 @@ function canDelete(status: FormalSessionStatusCode): boolean {
 }
 
 function buildRowActions(record: FormalSessionResponse): UiTableRowActionItem[] {
-  return [
+  // 行内仅 1 个 primary：启动 > 完成 > 恢复 > 关闭归档
+  const actions: UiTableRowActionItem[] = [
     {
       key: 'start',
       label: '启动正评',
@@ -343,6 +344,21 @@ function buildRowActions(record: FormalSessionResponse): UiTableRowActionItem[] 
       disabled: deletingId.value === record.id,
     },
   ]
+  const primaryKey = canStart(record.sessionStatus)
+    ? 'start'
+    : canComplete(record)
+      ? 'complete'
+      : canResume(record.sessionStatus)
+        ? 'resume'
+        : canClose(record.sessionStatus)
+          && record.sessionStatus === FormalSessionStatusCode.SESSION_COMPLETED
+          ? 'close'
+          : undefined
+  return actions.map((action) =>
+    action.key === primaryKey && !action.hidden && action.tone !== 'danger'
+      ? { ...action, tone: 'primary' as const }
+      : action,
+  )
 }
 
 function guardManageAction(): boolean {
@@ -361,28 +377,34 @@ function handleFormalStartError(error: unknown): void {
       && (detail.includes(EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX)
         || detail.includes(EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX))
   if (isExperienceAssistBlock && props.examId) {
-    Modal.warning({
+    void confirmAsync({
       title: '无法启动正评',
       content: detail,
+      type: 'warning',
       okText: '前往经验辅助评阅',
-      onOk: () =>
-        router.push({
+      cancelText: '关闭',
+      onOk: () => {
+        void router.push({
           name: 'TeacherExamWorkspaceMarkingExperienceAssistPolicy',
           params: { examId: props.examId },
-        }),
+        })
+      },
     })
     return
   }
   if (isFormalStartPendingReviewConflict(error) && props.examId) {
-    Modal.warning({
+    void confirmAsync({
       title: '无法启动正评',
       content: detail,
+      type: 'warning',
       okText: '前往识别复核',
-      onOk: () =>
-        router.push({
+      cancelText: '关闭',
+      onOk: () => {
+        void router.push({
           name: 'TeacherExamWorkspaceReviewBatchConfirm',
           params: { examId: props.examId },
-        }),
+        })
+      },
     })
     return
   }
@@ -391,6 +413,9 @@ function handleFormalStartError(error: unknown): void {
 
 async function submitStart(sessionId: string): Promise<void> {
   if (!guardManageAction()) {
+    return
+  }
+  if (startingId.value || completingId.value || resumingId.value || deletingId.value) {
     return
   }
   startingId.value = sessionId
@@ -409,6 +434,9 @@ async function submitComplete(sessionId: string): Promise<void> {
   if (!guardManageAction()) {
     return
   }
+  if (completingId.value || startingId.value || resumingId.value || deletingId.value) {
+    return
+  }
   completingId.value = sessionId
   try {
     await completeFormalSession(sessionId)
@@ -425,6 +453,9 @@ async function submitResume(sessionId: string): Promise<void> {
   if (!guardManageAction()) {
     return
   }
+  if (resumingId.value || startingId.value || completingId.value || deletingId.value) {
+    return
+  }
   resumingId.value = sessionId
   try {
     await resumeFormalSession(sessionId)
@@ -439,6 +470,9 @@ async function submitResume(sessionId: string): Promise<void> {
 
 async function submitDelete(sessionId: string): Promise<void> {
   if (!guardManageAction()) {
+    return
+  }
+  if (deletingId.value || startingId.value || completingId.value || resumingId.value) {
     return
   }
   deletingId.value = sessionId

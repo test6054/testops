@@ -34,7 +34,7 @@
         </UiButton>
       </template>
     </UiAlertStrip>
-    <a-spin :spinning="ac.submitting.value" tip="正在创建…">
+    <UiSpin :spinning="ac.submitting.value" tip="正在创建…">
       <TaskProvenanceStep @select="handleProvenanceSelect" @batch-excel="ac.goBatchExcelImport" />
       <TaskBasicInfoStep
         :basic-rules="ac.basicRules"
@@ -52,11 +52,12 @@
         @update:plan-form-ref="ac.planFormRef.value = $event"
       />
       <TaskConfirmStep :provenance-label="ac.provenanceLabel.value" />
-    </a-spin>
+    </UiSpin>
 
     <template #footer>
-      <UiButton variant="ghost" @click="ac.handleGoBack">取消</UiButton>
+      <UiButton size="sm" variant="ghost" @click="ac.handleGoBack">取消</UiButton>
       <UiButton
+        size="sm"
         :loading="ac.submitting.value"
         :disabled="ac.submitting.value || ac.templateLoading.value || ac.templateLoadFailed.value"
         @click="handleSubmit"
@@ -75,6 +76,7 @@ import { provide } from 'vue'
 import CreateFormPageShell from '@/components/create-form/CreateFormPageShell.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { useCreateFormScrollSpy } from '@/composables/useCreateFormScrollSpy'
 import {
   archiveTaskCreateBasicFormKey,

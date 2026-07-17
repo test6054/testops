@@ -66,7 +66,7 @@ const handleShowSizeChange = (page: number, size: number) => {
 .ui-pagination :deep(.ant-pagination) {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--dp-space-1, 4px);
   color: var(--dp-text-secondary);
   font-family: var(--dp-font-family);
 }

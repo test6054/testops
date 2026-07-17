@@ -2,11 +2,14 @@
   <div class="portfolio-intake-panel">
     <SignalBand v-if="signalMetrics.length" :metrics="signalMetrics" variant="inline" compact />
 
-    <UiCard title="材料来源" class="portfolio-intake-panel__section">
+    <section class="portfolio-intake-panel__section">
+      <h3 class="portfolio-intake-panel__section-title">材料来源</h3>
       <div class="portfolio-intake-panel__upload-grid">
         <div>
           <div class="portfolio-intake-panel__label">材料标题</div>
-          <a-input v-model:value="materialTitle" :disabled="readOnly" placeholder="材料标题" />
+          <UiInput
+            size="sm" v-model="materialTitle" :disabled="readOnly" placeholder="材料标题"
+          />
         </div>
         <div>
           <div class="portfolio-intake-panel__label">材料文件</div>
@@ -23,6 +26,7 @@
       </div>
       <div v-if="showRestartRejected" class="portfolio-intake-panel__actions">
         <UiButton
+          size="sm"
           variant="outline"
           :loading="restartingRejected"
           :disabled="writePending"
@@ -33,6 +37,7 @@
       </div>
       <div v-else-if="!readOnly" class="portfolio-intake-panel__actions">
         <UiButton
+          size="sm"
           variant="outline"
           :loading="scanOpening"
           :disabled="writePending"
@@ -41,6 +46,7 @@
           一体机扫描
         </UiButton>
         <UiButton
+          size="sm"
           v-if="showRegisterStart"
           :loading="starting"
           :disabled="writePending"
@@ -49,6 +55,7 @@
           登记并开始处理
         </UiButton>
         <UiButton
+          size="sm"
           v-if="showRetryAi"
           variant="outline"
           :loading="retryingAi"
@@ -58,9 +65,10 @@
           重新智能抽取
         </UiButton>
       </div>
-    </UiCard>
+    </section>
 
-    <UiCard title="智能反馈" class="portfolio-intake-panel__section">
+    <section class="portfolio-intake-panel__section">
+      <h3 class="portfolio-intake-panel__section-title">智能反馈</h3>
       <UiAlertStrip
         v-if="status?.latestRejectReason"
         tone="warning"
@@ -79,9 +87,10 @@
       <p v-if="status?.ocrStatus" class="portfolio-intake-panel__meta">
         文字识别状态：{{ status.ocrStatus }}
       </p>
-    </UiCard>
+    </section>
 
-    <UiCard title="分类与字段" class="portfolio-intake-panel__section">
+    <section class="portfolio-intake-panel__section">
+      <h3 class="portfolio-intake-panel__section-title">分类与字段</h3>
       <div class="portfolio-intake-panel__category-row">
         <div class="portfolio-intake-panel__label">档案分类</div>
         <PortfolioCategoryTreePicker
@@ -122,38 +131,55 @@
             {{ field.fieldLabel }}
             <UiTag v-if="field.required" tone="orange" size="sm">必填</UiTag>
           </div>
-          <a-select
+          <UiSelect
+            size="sm"
             v-if="field.fieldType === 'SEMESTER'"
-            v-model:value="fieldValues[field.fieldCode]"
+            v-model="fieldValues[field.fieldCode]"
             :disabled="readOnly"
             :options="SemesterOptions"
             allow-clear
             placeholder="请选择学期"
             class="portfolio-intake-panel__field-control"
           />
-          <a-input
+          <UiInput
+            size="sm"
             v-else
-            v-model:value="fieldValues[field.fieldCode]"
+            v-model="fieldValues[field.fieldCode]"
             :disabled="readOnly"
             :placeholder="field.fieldLabel"
             class="portfolio-intake-panel__field-control"
           />
         </div>
       </div>
-      <UiEmpty v-else-if="categoryIdModel && !loading" description="请先登记材料并选择分类" />
-    </UiCard>
+      <UiAlertStrip
+        v-else-if="categoryIdModel && !loading"
+        tone="info"
+        size="sm"
+        dense
+        inline
+        :show-icon="false"
+      >
+        <template #default>
+          <span style="display: inline-flex; align-items: center; gap: 8px">
+            <UiTag tone="blue" size="sm">待登记</UiTag>
+            <span>请先登记材料并选择分类后再填写字段</span>
+          </span>
+        </template>
+      </UiAlertStrip>
+    </section>
 
-    <UiCard title="归档动作" class="portfolio-intake-panel__section">
+    <section class="portfolio-intake-panel__section">
+      <h3 class="portfolio-intake-panel__section-title">归档动作</h3>
       <p v-if="archiveActionHint" class="portfolio-intake-panel__meta">{{ archiveActionHint }}</p>
       <div v-if="!readOnly" class="portfolio-intake-panel__actions">
-        <UiButton variant="outline" :loading="saving" :disabled="writePending" @click="saveDraft">
+        <UiButton size="sm" variant="outline" :loading="saving" :disabled="writePending" @click="saveDraft">
           保存草稿
         </UiButton>
-        <UiButton :loading="submitting" :disabled="writePending" @click="handleSubmit">
+        <UiButton size="sm" :loading="submitting" :disabled="writePending" @click="handleSubmit">
           提交审核
         </UiButton>
       </div>
-    </UiCard>
+    </section>
     <ScanDispatchResultDialog
       v-model:open="dispatchResultOpen"
       :payload="dispatchResult"
@@ -185,10 +211,10 @@ import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioAiCandidateConfirmPanel from '@/components/portfolio/PortfolioAiCandidateConfirmPanel.vue'
 import PortfolioCategoryTreePicker from '@/components/portfolio/PortfolioCategoryTreePicker.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
@@ -196,6 +222,7 @@ import {
   usePortfolioIntake,
 } from '@/composables/usePortfolioIntake'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -209,6 +236,7 @@ const emit = defineEmits<{
 
 const route = useRoute()
 const { targetTeacherId } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 const fileNodeId = ref<string>()
 const fileName = ref<string>()
@@ -446,6 +474,10 @@ async function handleStart() {
     message.error('请先上传材料文件')
     return
   }
+  if (!(await confirmProxyWrite('开始材料采集'))) {
+    return
+  }
+
   starting.value = true
   try {
     await startIntake({
@@ -463,6 +495,10 @@ async function handleRetryAi() {
     message.warning('请先选择档案分类')
     return
   }
+  if (!(await confirmProxyWrite('重新智能抽取'))) {
+    return
+  }
+
   void confirmAsync({
     title: '重新智能抽取？',
     content: '将新建一次智能识别任务；若字段已手工填写，请先保存草稿。',
@@ -481,6 +517,10 @@ async function handleRetryAi() {
 const restartingRejected = ref(false)
 
 async function handleRestartRejected() {
+  if (!(await confirmProxyWrite('恢复重新采集'))) {
+    return
+  }
+
   const confirmed = await confirmAsync({
     title: '恢复重新采集',
     content:
@@ -586,6 +626,10 @@ async function handleReassign() {
     message.warning('请选择目标分类')
     return
   }
+  if (!(await confirmProxyWrite('材料重分类'))) {
+    return
+  }
+
   void confirmAsync({
     title: '确认重分类？',
     content: '切换分类将重置部分字段值，并失效已有智能候选字段，请确认后继续。',
@@ -597,6 +641,10 @@ async function handleReassign() {
 }
 
 async function handleSubmit() {
+  if (!(await confirmProxyWrite('提交材料采集结果'))) {
+    return
+  }
+
   const result = await submitIntake()
   if (result?.archiveRecordId) {
     emit('submitted', result.archiveRecordId)
@@ -634,13 +682,24 @@ watch(
 
 <style scoped lang="scss">
 .portfolio-intake-panel__section {
-  margin: var(--dp-space-4);
+  margin: 0 0 var(--dp-space-3);
+  padding: var(--dp-space-3);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+}
+
+.portfolio-intake-panel__section-title {
+  margin: 0 0 var(--dp-space-2, 8px);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dp-text-primary);
 }
 
 .portfolio-intake-panel__upload-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-3);
 }
 
 .portfolio-intake-panel__label {
@@ -653,7 +712,7 @@ watch(
   display: flex;
   flex-wrap: wrap;
   gap: var(--dp-space-2);
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-3);
 }
 
 .portfolio-intake-panel__meta {
@@ -665,13 +724,13 @@ watch(
 .portfolio-intake-panel__category-row {
   display: grid;
   gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-4);
+  margin-bottom: var(--dp-space-3);
 }
 
 .portfolio-intake-panel__fields {
   display: grid;
   gap: var(--dp-space-3);
-  margin-top: var(--dp-space-4);
+  margin-top: var(--dp-space-3);
 }
 
 @media (max-width: 960px) {

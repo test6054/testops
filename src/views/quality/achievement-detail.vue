@@ -34,9 +34,23 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiList from '@/components/ui-guide/ui/UiList.vue'
+import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
+import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiTimeline from '@/components/ui-guide/ui/UiTimeline.vue'
+import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -187,6 +201,84 @@ const nextStatuses = computed<AchievementAuditStatusCode[]>(() => {
   if (!status) return []
   return strictEnumValue(auditTransitMap, status, '达成审核状态')
 })
+
+/** ContextBar 动作：1 主 + ≤1 次 + 更多，避免流转按钮墙 */
+interface AchievementToolbarAction {
+  key: string
+  label: string
+  kind: 'recompute' | 'review' | 'transit'
+  to?: AchievementAuditStatusCode
+  danger?: boolean
+}
+
+const achievementToolbarActions = computed((): AchievementToolbarAction[] => {
+  const list: AchievementToolbarAction[] = []
+  for (const to of nextStatuses.value) {
+    list.push({
+      key: `transit-${to}`,
+      label: `-> ${auditStatusLabel(to)}`,
+      kind: 'transit',
+      to,
+      danger: to === AchievementAuditStatusCode.RETURNED,
+    })
+  }
+  if (result.value && canRecomputeResult(result.value)) {
+    list.push({ key: 'recompute', label: '重新计算', kind: 'recompute' })
+  }
+  if (result.value && canSubmitManualReview(result.value)) {
+    list.push({ key: 'review', label: '人工复核', kind: 'review' })
+  }
+  return list
+})
+
+const achievementPrimaryAction = computed((): AchievementToolbarAction | null => {
+  const actions = achievementToolbarActions.value
+  return (
+    actions.find((item) => item.kind === 'transit' && !item.danger)
+    || actions.find((item) => item.kind === 'transit')
+    || actions.find((item) => item.kind === 'recompute')
+    || actions.find((item) => item.kind === 'review')
+    || null
+  )
+})
+
+const achievementSecondaryAction = computed((): AchievementToolbarAction | null => {
+  const primary = achievementPrimaryAction.value
+  const rest = achievementToolbarActions.value.filter((item) => item.key !== primary?.key)
+  return rest.find((item) => !item.danger) || rest[0] || null
+})
+
+const achievementMoreActionItems = computed(() => {
+  const primary = achievementPrimaryAction.value
+  const secondary = achievementSecondaryAction.value
+  return achievementToolbarActions.value
+    .filter((item) => item.key !== primary?.key && item.key !== secondary?.key)
+    .map((item) => ({
+      key: item.key,
+      label: item.label,
+      danger: Boolean(item.danger),
+    }))
+})
+
+function runAchievementToolbarAction(action: AchievementToolbarAction | null | undefined): void {
+  if (!action) return
+  if (action.kind === 'recompute') {
+    void handleRecompute()
+    return
+  }
+  if (action.kind === 'review') {
+    openReviewDrawer()
+    return
+  }
+  if (action.kind === 'transit' && action.to) {
+    void handleTransit(action.to)
+  }
+}
+
+function onAchievementMoreAction(key: string): void {
+  const action = achievementToolbarActions.value.find((item) => item.key === key)
+  runAchievementToolbarAction(action)
+}
 
 const targetTypeToComputeKind: Partial<Record<AchievementTargetTypeCode, string>> = {
   [AchievementTargetTypeCode.COURSE_GOAL]: 'COURSE_GOAL',
@@ -665,39 +757,42 @@ onActivated(() => {
         </template>
         <template #actions>
           <UiButton
-            v-if="result && canRecomputeResult(result)"
-            variant="primary"
+            v-if="achievementPrimaryAction"
             size="sm"
-            :loading="recomputeLoading"
-            @click="handleRecompute"
+            :variant="achievementPrimaryAction.danger ? 'ghost' : 'primary'"
+            :status="achievementPrimaryAction.danger ? 'danger' : 'normal'"
+            :loading="achievementPrimaryAction.kind === 'recompute' && recomputeLoading"
+            @click="runAchievementToolbarAction(achievementPrimaryAction)"
           >
-            重新计算
+            {{ achievementPrimaryAction.label }}
           </UiButton>
           <UiButton
-            v-if="result && canSubmitManualReview(result)"
-            variant="outline"
+            v-if="achievementSecondaryAction"
             size="sm"
-            @click="openReviewDrawer"
+            :variant="achievementSecondaryAction.danger ? 'ghost' : 'outline'"
+            :status="achievementSecondaryAction.danger ? 'danger' : 'normal'"
+            :loading="achievementSecondaryAction.kind === 'recompute' && recomputeLoading"
+            @click="runAchievementToolbarAction(achievementSecondaryAction)"
           >
-            人工复核
+            {{ achievementSecondaryAction.label }}
           </UiButton>
-          <UiButton
-            v-for="to in nextStatuses"
-            :key="to"
-            :variant="to === AchievementAuditStatusCode.RETURNED ? 'ghost' : 'primary'"
-            :status="to === AchievementAuditStatusCode.RETURNED ? 'danger' : 'normal'"
-            size="sm"
-            @click="handleTransit(to)"
-          >
-            -> {{ auditStatusLabel(to) }}
-          </UiButton>
+          <UiDropdownAction
+            v-if="achievementMoreActionItems.length"
+            trigger-style="button"
+            button-text="更多"
+            :items="achievementMoreActionItems"
+            @select="onAchievementMoreAction"
+          />
         </template>
       </ContextBar>
     </template>
 
-    <UiEmpty
+    <WorkbenchContextGateStrip
       v-if="!result && !loading"
-      description="当前没有可展示的内容"
+      tag="缺少上下文"
+      body="未找到达成度结果，请从达成度列表进入"
+      cta-label="返回达成度列表"
+      list-path="/quality/achievement"
       class="achievement-detail__empty"
     />
 
@@ -715,26 +810,26 @@ onActivated(() => {
             题项加权说明
           </UiButton>
         </template>
-        <a-descriptions :column="2" size="small" bordered>
-          <a-descriptions-item label="直接 D">
+        <UiDescriptions :column="2" size="small" bordered>
+          <UiDescriptionsItem label="直接 D">
             {{ formatAchievementDecimal(result.directValue) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="间接 I">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="间接 I">
             {{ formatAchievementDecimal(result.indirectValue) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="权重 w">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="权重 w">
             {{
               formatDirectIndirectWeights(
                 courseGoalWeights?.directWeight,
                 courseGoalWeights?.indirectWeight,
               ) || '-'
             }}
-          </a-descriptions-item>
-          <a-descriptions-item label="综合 C">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="综合 C">
             {{ formatAchievementDecimal(result.finalValue) }}
             <UiTag v-if="isResultStale(result)" tone="red" size="sm">已过期</UiTag>
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
         <div class="achievement-detail__synthesis-links">
           <p class="achievement-detail__synthesis-links-title">关联间接问卷</p>
           <UiEmpty
@@ -759,70 +854,70 @@ onActivated(() => {
 
       <UiCard class="achievement-detail__meta-card">
         <template #title>结果元数据</template>
-        <a-descriptions :column="3" size="small" bordered>
-          <a-descriptions-item label="目标类型">
+        <UiDescriptions :column="3" size="small" bordered>
+          <UiDescriptionsItem label="目标类型">
             {{ targetTypeLabel(result.targetType) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="目标对象">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="目标对象">
             {{ result.targetLabel }}
-          </a-descriptions-item>
-          <a-descriptions-item v-if="result.programId" label="所属专业">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="result.programId" label="所属专业">
             {{ result.programName }}
-          </a-descriptions-item>
-          <a-descriptions-item v-if="result.trainingPlanId" label="培养方案">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="result.trainingPlanId" label="培养方案">
             {{ result.trainingPlanCode }} {{ result.trainingPlanName }}
-          </a-descriptions-item>
-          <a-descriptions-item v-if="result.qualityCourseId" label="关联课程">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="result.qualityCourseId" label="关联课程">
             {{ result.qualityCourseCode }} {{ result.qualityCourseName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="学年 / 学期">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="学年 / 学期">
             {{ result.schoolYear
             }}<span v-if="result.semester"> / {{ formatSemester(result.semester) }}</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="达成结论">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="达成结论">
             <UiTag :tone="achievementStatusColorMaybe(result.achievementStatus)" size="sm">
               {{ achievementStatusLabelMaybe(result.achievementStatus) }}
             </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="计算时间">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="计算时间">
             {{ result.calculatedTime }}
-          </a-descriptions-item>
-          <a-descriptions-item label="审核状态">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="审核状态">
             <UiTag :tone="auditStatusColor(result.auditStatus)" size="sm">
               {{ auditStatusLabel(result.auditStatus) }}
             </UiTag>
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
       </UiCard>
 
       <UiCard class="achievement-detail__panel">
         <template #title>结果有效性</template>
-        <a-descriptions :column="3" size="small" bordered>
-          <a-descriptions-item label="有效性状态">
+        <UiDescriptions :column="3" size="small" bordered>
+          <UiDescriptionsItem label="有效性状态">
             <UiTag :tone="resultValidityColor(result)" size="sm">
               {{ resultValidityLabel(result) }}
             </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="过期时间">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="过期时间">
             {{ result.staleTime || '-' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="过期原因">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="过期原因">
             {{ result.staleReason || '-' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="来源类型">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="来源类型">
             {{ result.staleSourceType || '-' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="来源 ID">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="来源 ID">
             {{ result.staleSourceId || '-' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="说明">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="说明">
             {{
               isResultStale(result)
                 ? '当前结果已过期，需按最新成绩或配置重新计算'
                 : '当前结果与最新成绩、配置保持一致'
             }}
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
       </UiCard>
 
       <div class="achievement-detail__layout">
@@ -830,8 +925,8 @@ onActivated(() => {
           <template #title>计算明细</template>
           <UiEmpty
             v-if="!details.length && !detailsLoading"
-            description="当前没有可展示的内容"
             size="sm"
+            description="暂无计算明细，请先完成成绩录入与达成度计算"
           />
           <UiDataTable
             pagination-mode="server"
@@ -887,13 +982,13 @@ onActivated(() => {
           <template #title>审核责任链流水</template>
           <UiEmpty
             v-if="!audits.length && !auditsLoading"
-            description="当前没有可展示的内容"
+            description="暂无审核责任链流水"
             size="sm"
           />
           <template v-else>
-            <a-spin :spinning="auditsLoading">
-              <a-timeline class="achievement-detail__timeline">
-                <a-timeline-item
+            <UiSpin :spinning="auditsLoading">
+              <UiTimeline class="achievement-detail__timeline">
+                <UiTimelineItem
                   v-for="audit in audits"
                   :key="audit.id"
                   :color="auditStatusColorMaybe(audit.auditStatusTo) === 'red' ? 'red' : 'blue'"
@@ -917,17 +1012,16 @@ onActivated(() => {
                   <p v-if="audit.returnReason" class="achievement-detail__audit-return">
                     退回原因：{{ audit.returnReason }}
                   </p>
-                </a-timeline-item>
-              </a-timeline>
-            </a-spin>
-            <a-pagination
+                </UiTimelineItem>
+              </UiTimeline>
+            </UiSpin>
+            <UiPagination
               v-if="auditTotal > auditPageSize"
               class="achievement-detail__pager"
               size="small"
-              :current="auditPageNum"
-              :page-size="auditPageSize"
+              v-model:current="auditPageNum"
+              v-model:page-size="auditPageSize"
               :total="auditTotal"
-              show-size-changer
               @change="handleAuditPageChange"
             />
           </template>
@@ -938,33 +1032,32 @@ onActivated(() => {
         <template #title>人工复核记录</template>
         <UiEmpty
           v-if="!reviews.length && !reviewsLoading"
-          description="当前没有可展示的内容"
+          description="暂无人工复核记录"
           size="sm"
         />
         <template v-else>
-          <a-spin :spinning="reviewsLoading">
-            <a-list :data-source="reviews" item-layout="horizontal">
+          <UiSpin :spinning="reviewsLoading">
+            <UiList :data-source="reviews" item-layout="horizontal">
               <template #renderItem="{ item }">
-                <a-list-item>
-                  <a-list-item-meta
+                <UiListItem>
+                  <UiListItemMeta
                     :title="`${manualReviewDecisionLabel(item.decision)} · ${item.reviewerNickName}`"
                     :description="item.reviewRemark"
                   />
                   <template #actions>
                     <span class="achievement-detail__review-time">{{ item.reviewedTime }}</span>
                   </template>
-                </a-list-item>
+                </UiListItem>
               </template>
-            </a-list>
-          </a-spin>
-          <a-pagination
+            </UiList>
+          </UiSpin>
+          <UiPagination
             v-if="reviewTotal > reviewPageSize"
             class="achievement-detail__pager"
             size="small"
-            :current="reviewPageNum"
-            :page-size="reviewPageSize"
+            v-model:current="reviewPageNum"
+            v-model:page-size="reviewPageSize"
             :total="reviewTotal"
-            show-size-changer
             @change="handleReviewPageChange"
           />
         </template>
@@ -979,18 +1072,22 @@ onActivated(() => {
       ok-text="提交复核"
       @ok="submitReviewAndClose"
     >
-      <a-form layout="vertical" :model="reviewForm">
-        <a-form-item label="复核决定" required>
-          <a-radio-group v-model:value="reviewForm.decision">
-            <a-radio value="CONFIRMED"> 确认 </a-radio>
-            <a-radio value="RETURNED"> 退回 </a-radio>
-            <a-radio value="ARCHIVED"> 归档 </a-radio>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item label="复核备注">
-          <a-textarea v-model:value="reviewForm.reviewRemark" :rows="4" placeholder="复核备注" />
-        </a-form-item>
-      </a-form>
+      <UiForm layout="vertical" :model="reviewForm">
+        <UiFormItem label="复核决定" required>
+          <UiRadioGroup
+            v-model="reviewForm.decision"
+            size="sm"
+            :options="[
+              { label: '确认', value: 'CONFIRMED' },
+              { label: '退回', value: 'RETURNED' },
+              { label: '归档', value: 'ARCHIVED' },
+            ]"
+          />
+        </UiFormItem>
+        <UiFormItem label="复核备注">
+          <UiTextarea size="sm" v-model="reviewForm.reviewRemark" :rows="4" placeholder="复核备注" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
@@ -999,7 +1096,7 @@ onActivated(() => {
 @use '@/styles/breakpoints' as bp;
 .achievement-detail {
   &__empty {
-    margin-top: 32px;
+    margin-top: var(--dp-space-3, 12px);
   }
 
   &__signals {
@@ -1046,9 +1143,9 @@ onActivated(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
+    margin-bottom: var(--dp-space-3, 12px);
   }
 
   &__panel-header {
@@ -1062,7 +1159,7 @@ onActivated(() => {
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1075,8 +1172,8 @@ onActivated(() => {
   &__layout {
     display: grid;
     grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: var(--dp-space-3, 12px);
+    margin-bottom: var(--dp-space-3, 12px);
   }
 
   &__ref-code {
@@ -1114,7 +1211,7 @@ onActivated(() => {
 
   &__audit-return {
     margin: 4px 0 0;
-    color: var(--ant-color-error);
+    color: var(--dp-error);
   }
 
   &__review-time {

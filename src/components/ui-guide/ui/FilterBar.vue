@@ -30,21 +30,14 @@
           @update:model-value="handleFieldUpdate(field, $event)"
           @enter="() => triggerSearch()"
         />
-        <UiMultiSelect
-          v-else-if="field.type === 'select' && field.mode === 'multiple'"
-          :model-value="getMultiSelectValue(modelValue[field.key], field.defaultValue)"
-          :options="mapSelectOptions(field)"
-          :allow-clear="field.allowClear !== false"
-          :allow-search="field.allowSearch || false"
-          :placeholder="field.placeholder || ''"
-          :disabled="field.disabled"
-          :size="field.size"
-          :status="field.status"
-          @update:model-value="handleFieldUpdate(field, $event)"
-        />
         <UiSelect
           v-else-if="field.type === 'select'"
-          :model-value="getSingleSelectValue(modelValue[field.key], field.defaultValue)"
+          :mode="field.mode === 'multiple' ? 'multiple' : undefined"
+          :model-value="
+            field.mode === 'multiple'
+              ? getMultiSelectValue(modelValue[field.key], field.defaultValue)
+              : getSingleSelectValue(modelValue[field.key], field.defaultValue)
+          "
           :options="mapSelectOptions(field)"
           :allow-clear="field.allowClear !== false"
           :allow-search="field.allowSearch || false"
@@ -122,7 +115,6 @@ import UiButton from './Button.vue'
 import UiDatePicker from './DatePicker.vue'
 import UiInput from './Input.vue'
 import UiSearchBox from './SearchBox.vue'
-import UiMultiSelect from './UiMultiSelect.vue'
 import UiSelect from './UiSelect.vue'
 import UiYearPicker from './YearPicker.vue'
 
@@ -337,7 +329,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  padding: var(--dp-space-2) var(--dp-space-3);
 }
 
 .dp-filter-bar--plain {
@@ -352,7 +344,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-1, 4px);
 }
 
 .dp-filter-bar__control {
@@ -368,7 +360,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
 .dp-filter-bar__label {
   font-size: 13px;
   font-weight: 500;
-  color: var(--ant-color-text-secondary, #6b7280);
+  color: var(--dp-text-secondary);
   line-height: 1.4;
   white-space: nowrap;
 }
@@ -376,7 +368,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
 .dp-advanced-filter__actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
   flex-wrap: wrap;
   flex: 0 1 auto;
   flex-shrink: 0;
@@ -395,17 +387,17 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
 :deep(.ant-input-affix-wrapper),
 :deep(.ant-select-selector) {
   border-radius: var(--dp-radius-control);
-  height: 36px;
+  height: var(--dp-control-height-md, 36px);
 }
 
 :deep(.ant-select) {
-  height: 36px;
+  height: var(--dp-control-height-md, 36px);
 }
 
 :deep(.dp-btn),
 :deep(.ant-btn) {
-  min-height: 36px;
-  padding: 8px 16px;
+  min-height: var(--dp-control-height-md, 36px);
+  padding: 6px 12px;
   border-radius: var(--dp-radius-control);
   white-space: nowrap;
 }

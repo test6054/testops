@@ -1,6 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router'
-import Modal from 'ant-design-vue/es/modal'
 import { createRouter, createWebHistory } from 'vue-router'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { setupRouterGuard } from '@/router/guard'
 import { archiveVolumeWorkspaceRoutes } from '@/router/routes/archive-volume-workspace'
 import { commonRoutes, errorRoutes } from '@/router/routes/common'
@@ -69,19 +69,20 @@ router.onError((error) => {
   }
   chunkReloadPrompted = true
 
-  Modal.confirm({
+  void confirmAsync({
     title: '系统已更新',
     content: '检测到本地缓存的应用资源已过期。请刷新页面以加载最新版本，避免功能异常。',
     okText: '立即刷新',
     cancelText: '稍后再说',
-    centered: true,
+    type: 'warning',
     onOk() {
       window.location.reload()
     },
-    onCancel() {
-      // 不强制刷新；下次再次触发 chunk 失败时会重新弹出
+  }).then((ok) => {
+    // 用户拒绝时允许后续 chunk 失败再次提示；确认后页面会 reload
+    if (!ok) {
       chunkReloadPrompted = false
-    },
+    }
   })
 })
 

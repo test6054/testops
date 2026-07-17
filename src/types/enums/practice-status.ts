@@ -26,27 +26,27 @@ export const PRACTICE_STATUS_CONFIG: Record<PracticeStatusEnum, PracticeStatusIt
   [PracticeStatusEnum.DRAFT]: {
     code: 'DRAFT',
     description: '草稿',
-    color: 'var(--ant-color-text-tertiary)'
+    color: 'var(--dp-text-tertiary)'
   },
   [PracticeStatusEnum.NOT_STARTED]: {
     code: 'NOT_STARTED',
     description: '未开始',
-    color: 'var(--ant-color-primary)'
+    color: 'var(--dp-color-primary)'
   },
   [PracticeStatusEnum.ACTIVE]: {
     code: 'ACTIVE',
     description: '作答阶段',
-    color: 'var(--ant-color-success)'
+    color: 'var(--dp-success)'
   },
   [PracticeStatusEnum.FINISHED]: {
     code: 'FINISHED',
     description: '作答截止',
-    color: 'var(--ant-color-warning)'
+    color: 'var(--dp-warning)'
   },
   [PracticeStatusEnum.CLOSED]: {
     code: 'CLOSED',
     description: '已关闭',
-    color: 'var(--ant-color-text-tertiary)'
+    color: 'var(--dp-text-tertiary)'
   }
 }
 

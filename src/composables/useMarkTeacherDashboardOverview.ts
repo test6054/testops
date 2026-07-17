@@ -150,6 +150,7 @@ export function useMarkTeacherDashboardOverview(
       filterOptions: data.filterOptions,
       signalMetrics: data.signalMetrics,
       markingProgressSummary: data.markingProgressSummary,
+      dailyProgressTrend: data.dailyProgressTrend ?? [],
       todoTypeSummary: previous?.todoTypeSummary ?? [],
       journeyStageSummary: previous?.journeyStageSummary ?? [],
       ongoingExamPage: previous?.ongoingExamPage ?? { ...EMPTY_PAGE, pageSize: ongoingExamPageSize.value },

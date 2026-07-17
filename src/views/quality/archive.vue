@@ -18,15 +18,16 @@ import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { accreditationApi } from '@/apis/quality/accreditation'
 import { archiveApi } from '@/apis/quality/archive'
-import {
-  ALL_ARCHIVE_BUSINESS_TYPE_CODES,
+import { ALL_ARCHIVE_BUSINESS_TYPE_CODES,
   ArchiveBusinessTypeCode,
   ArchiveBusinessTypeDescription,
+  ConfirmationStatusCode,
   ExpertPackageTypeCode,
   ExpertPackageTypeDescription,
 } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import {
   AchievementResultSelector,
   AuditRectificationSelector,
@@ -41,11 +42,25 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTimeline from '@/components/ui-guide/ui/UiTimeline.vue'
+import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -125,6 +140,10 @@ const query = reactive<ArchiveQueryRequest>({
 
 type ArchiveListTab = 'expert' | 'annual'
 const archiveListTab = ref<ArchiveListTab>('expert')
+const archiveListTabItems = [
+  { key: 'expert', label: '专家材料包' },
+  { key: 'annual', label: '年度归档记录' },
+]
 
 function applyArchiveListTab(tab: ArchiveListTab): void {
   archiveListTab.value = tab
@@ -351,6 +370,17 @@ watch(
 
 onBeforeUnmount(stopDestructionPolling)
 
+
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
+
 async function handleScopeChange(): Promise<void> {
   await loadList()
 }
@@ -459,6 +489,22 @@ async function openDetail(record: Pick<ArchiveVO, 'id'>) {
     detailRecord.value = await archiveApi.detail(record.id)
   } finally {
     detailLoading.value = false
+  }
+}
+
+
+const qualityArchiveMoreActionItems = [
+  { key: 'refresh', label: '刷新' },
+  { key: 'destruction', label: '销毁清册' },
+]
+
+function onQualityArchiveMoreAction(key: string) {
+  if (key === 'refresh') {
+    void loadList()
+    return
+  }
+  if (key === 'destruction') {
+    void router.push({ name: 'QualityArchiveDestructionLedger' })
   }
 }
 
@@ -995,115 +1041,119 @@ onMounted(async () => {
     <template #context>
       <QualityPageContextBar show-title title="质量评价 - 材料归档">
         <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadList">
-            刷新
-          </UiButton>
-          <UiButton
-            variant="outline"
-            size="sm"
-            @click="router.push({ name: 'QualityArchiveDestructionLedger' })"
-          >
-            销毁清册
-          </UiButton>
           <UiButton variant="primary" size="sm" @click="openCreate"> 补登台帐 </UiButton>
           <UiButton variant="outline" size="sm" @click="openExport"> 导出专家材料包 </UiButton>
+          <UiDropdownAction
+            trigger-style="button"
+            button-text="更多"
+            :items="qualityArchiveMoreActionItems"
+            @select="onQualityArchiveMoreAction"
+          />
         </template>
       </QualityPageContextBar>
     </template>
 
-    <a-tabs
-      :active-key="archiveListTab"
-      class="archive-page__tabs"
-      @change="handleArchiveListTabChange"
-    >
-      <a-tab-pane key="expert" tab="专家材料包" />
-      <a-tab-pane key="annual" tab="年度归档记录" />
-    </a-tabs>
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
+      class="archive-page__empty"
+    />
 
-    <SignalBand :metrics="signals" compact class="archive__signals" />
-
-    <UiCard class="detail-table-card archive__table-card">
-      <template #title>归档列表</template>
-
-      <UiFilterBar
-        variant="plain"
-        v-model="filterModel"
-        :fields="filterFields"
-        show-labels
-        search-text="查询"
-        @search="handleSearch"
-        @reset="handleResetSearch"
+    <template v-else>
+      <UiSectionTabs
+        :model-value="archiveListTab"
+        :items="archiveListTabItems"
+        compact
+        divided
+        class="archive-page__tabs"
+        @change="handleArchiveListTabChange"
       />
 
-      <UiDataTable
-        v-model:current="query.pageNum"
-        v-model:page-size="query.pageSize"
-        :columns="columns"
-        :data-source="list"
-        :loading="loading"
-        row-key="id"
-        size="middle"
-        :total="total"
-        flat
-        @page-change="handlePageChange"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'businessType'">
-            <UiTag :tone="archiveBusinessTypeColor(record.businessType)" size="sm">
-              {{ archiveBusinessTypeLabel(record.businessType) }}
-            </UiTag>
+      <SignalBand :metrics="signals" compact class="archive__signals" />
+
+      <UiCard class="detail-table-card archive__table-card">
+        <template #title>归档列表</template>
+
+        <UiFilterBar
+          variant="plain"
+          v-model="filterModel"
+          :fields="filterFields"
+          show-labels
+          search-text="查询"
+          @search="handleSearch"
+          @reset="handleResetSearch"
+        />
+
+        <UiDataTable
+          v-model:current="query.pageNum"
+          v-model:page-size="query.pageSize"
+          :columns="columns"
+          :data-source="list"
+          :loading="loading"
+          row-key="id"
+          size="middle"
+          :total="total"
+          flat
+          @page-change="handlePageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'businessType'">
+              <UiTag :tone="archiveBusinessTypeColor(record.businessType)" size="sm">
+                {{ archiveBusinessTypeLabel(record.businessType) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'archiveCategory'">
+              {{ record.archiveCategory || '未设置分类' }}
+            </template>
+            <template v-else-if="column.key === 'businessRef'">
+              {{ record.businessLabel }}
+            </template>
+            <template v-else-if="column.key === 'fileRef'">
+              <UiTextAction v-if="canDownloadArchive(record)" @click="downloadArchiveFile(record)">
+                {{ record.fileName }}
+              </UiTextAction>
+              <span
+                v-else-if="record.destructionStatus === QualityArchiveDestructionStatusCode.EXECUTING"
+              >物理销毁中</span>
+              <span
+                v-else-if="
+                  record.destructionStatus === QualityArchiveDestructionStatusCode.EXECUTED
+                    || record.destructionStatus === QualityArchiveDestructionStatusCode.SUPERVISED
+                "
+              >已物理销毁</span>
+              <span v-else>文件不可用</span>
+            </template>
+            <template v-else-if="column.key === 'retentionYears'">
+              {{
+                typeof record.retentionYears === 'number'
+                  ? `${record.retentionYears} 年`
+                  : '未设置保管年限'
+              }}
+            </template>
+            <template v-else-if="column.key === 'archiveOfficeConfirmed'">
+              <UiTag :tone="record.archiveOfficeConfirmed ? 'green' : 'gray'" size="sm">
+                {{ record.archiveOfficeConfirmed ? '已确认' : '未确认' }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'destructionStatus'">
+              <UiTag :tone="destructionStatusTone(record.destructionStatus)" size="sm">
+                {{ destructionStatusLabel(record.destructionStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'archivedTime'">
+              {{ record.archivedTime || '尚未归档确认' }}
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="buildArchiveActions(record)"
+                split
+                @action="(key) => handleArchiveAction(key, record)"
+              />
+            </template>
           </template>
-          <template v-else-if="column.key === 'archiveCategory'">
-            {{ record.archiveCategory || '未设置分类' }}
-          </template>
-          <template v-else-if="column.key === 'businessRef'">
-            {{ record.businessLabel }}
-          </template>
-          <template v-else-if="column.key === 'fileRef'">
-            <UiTextAction v-if="canDownloadArchive(record)" @click="downloadArchiveFile(record)">
-              {{ record.fileName }}
-            </UiTextAction>
-            <span
-              v-else-if="record.destructionStatus === QualityArchiveDestructionStatusCode.EXECUTING"
-            >物理销毁中</span>
-            <span
-              v-else-if="
-                record.destructionStatus === QualityArchiveDestructionStatusCode.EXECUTED
-                  || record.destructionStatus === QualityArchiveDestructionStatusCode.SUPERVISED
-              "
-            >已物理销毁</span>
-            <span v-else>文件不可用</span>
-          </template>
-          <template v-else-if="column.key === 'retentionYears'">
-            {{
-              typeof record.retentionYears === 'number'
-                ? `${record.retentionYears} 年`
-                : '未设置保管年限'
-            }}
-          </template>
-          <template v-else-if="column.key === 'archiveOfficeConfirmed'">
-            <UiTag :tone="record.archiveOfficeConfirmed ? 'green' : 'gray'" size="sm">
-              {{ record.archiveOfficeConfirmed ? '已确认' : '未确认' }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'destructionStatus'">
-            <UiTag :tone="destructionStatusTone(record.destructionStatus)" size="sm">
-              {{ destructionStatusLabel(record.destructionStatus) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'archivedTime'">
-            {{ record.archivedTime || '尚未归档确认' }}
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTableActions
-              :items="buildArchiveActions(record)"
-              split
-              @action="(key) => handleArchiveAction(key, record)"
-            />
-          </template>
-        </template>
-      </UiDataTable>
-    </UiCard>
+        </UiDataTable>
+      </UiCard>
+    </template>
 
     <UiDrawer
       v-model:open="exportVisible"
@@ -1114,19 +1164,19 @@ onMounted(async () => {
       ok-text="触发导出"
       @ok="submitExport"
     >
-      <a-form layout="vertical" :model="exportForm">
-        <a-form-item label="材料包类型" required>
-          <a-radio-group v-model:value="exportForm.packageType">
-            <a-radio
+      <UiForm layout="vertical" :model="exportForm">
+        <UiFormItem label="材料包类型" required>
+          <UiRadioGroup v-model="exportForm.packageType" size="sm" block>
+            <UiRadio
               v-for="(label, value) in ExpertPackageTypeDescription"
               :key="value"
               :value="value"
             >
               {{ label }}
-            </a-radio>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item
+            </UiRadio>
+          </UiRadioGroup>
+        </UiFormItem>
+        <UiFormItem
           :label="
             exportForm.packageType === ExpertPackageTypeCode.REQUIREMENT ? '毕业要求' : '培养方案'
           "
@@ -1152,7 +1202,7 @@ onMounted(async () => {
             :program-id="qualityStore.currentProgramId || null"
             placeholder="请选择培养方案"
           />
-        </a-form-item>
+        </UiFormItem>
         <div
           v-if="
             exportForm.packageType === ExpertPackageTypeCode.PROGRAM_ACCREDITATION
@@ -1176,32 +1226,36 @@ onMounted(async () => {
             <li v-for="item in exportProgramBlockers" :key="item">{{ item }}</li>
           </ul>
         </div>
-        <a-form-item label="归档编码">
-          <a-input
-            v-model:value="exportForm.archiveCode"
+        <UiFormItem label="归档编码">
+          <UiInput
+            size="sm"
+            v-model="exportForm.archiveCode"
             placeholder="可选；为空时系统自动生成归档编码"
           />
-        </a-form-item>
-        <a-form-item label="保管年限">
-          <a-input-number v-model:value="exportForm.retentionYears" :min="1" :max="50" />
-        </a-form-item>
-        <a-form-item label="归档分类">
-          <a-input
-            v-model:value="exportForm.archiveCategory"
+        </UiFormItem>
+        <UiFormItem label="保管年限">
+          <UiInputNumber
+            size="sm" v-model="exportForm.retentionYears" :min="1" :max="50"
+          />
+        </UiFormItem>
+        <UiFormItem label="归档分类">
+          <UiInput
+            size="sm"
+            v-model="exportForm.archiveCategory"
             placeholder="可填写专家包、评审材料等分类"
           />
-        </a-form-item>
-        <a-form-item label="通知接收人">
+        </UiFormItem>
+        <UiFormItem label="通知接收人">
           <TeacherSelector
             v-model:value="exportForm.recipientUserIds"
             mode="multiple"
             placeholder="请选择通知接收人"
           />
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="exportForm.notes" :rows="2" placeholder="可选" />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+        <UiFormItem label="备注">
+          <UiTextarea size="sm" v-model="exportForm.notes" :rows="2" placeholder="可选" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -1213,30 +1267,32 @@ onMounted(async () => {
       ok-text="保存"
       @ok="submitEditor"
     >
-      <a-form layout="vertical" :model="editor">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="归档编码" required>
-              <a-input
-                v-model:value="editor.archiveCode"
+      <UiForm layout="vertical" :model="editor">
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="归档编码" required>
+              <UiInput
+                size="sm"
+                v-model="editor.archiveCode"
                 placeholder="例：EP-REQ-1-2026"
                 :disabled="editorMode === 'edit'"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="业务类型" required>
-              <a-select
-                v-model:value="editor.businessType"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="业务类型" required>
+              <UiSelect
+                size="sm"
+                v-model="editor.businessType"
                 :options="businessTypeOptions"
                 :disabled="editorMode === 'edit'"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="关联业务对象" required>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="关联业务对象" required>
               <TrainingPlanSelector
                 v-if="editor.businessType === ArchiveBusinessTypeCode.TRAINING_PLAN"
                 :value="editor.businessId || null"
@@ -1307,10 +1363,10 @@ onMounted(async () => {
                 :disabled="editorMode === 'edit'"
               />
               <span v-else class="archive-page__form-hint">该类型需要从对应业务页面发起归档</span>
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="归档文件" required>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="归档文件" required>
               <UiPlatformFileField
                 v-model:file-node-id="editor.fileId"
                 v-model:file-name="archiveFileName"
@@ -1318,97 +1374,104 @@ onMounted(async () => {
                 :disabled="editorMode === 'edit'"
                 button-text="上传归档文件"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="归档分类">
-              <a-input v-model:value="editor.archiveCategory" placeholder="例：专家材料包" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="保管期编码">
-              <a-input v-model:value="editor.retentionPolicyCode" placeholder="可选" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="保管年限">
-              <a-input-number
-                v-model:value="editor.retentionYears"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="归档分类">
+              <UiInput
+                size="sm" v-model="editor.archiveCategory" placeholder="例：专家材料包"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="保管期编码">
+              <UiInput
+                size="sm" v-model="editor.retentionPolicyCode" placeholder="可选"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="保管年限">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.retentionYears"
                 :min="1"
                 :max="50"
                 class="archive__number-full"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="电子化保管状态">
-          <a-input v-model:value="editor.digitalStatus" placeholder="例：全电子化 / 纸电混合" />
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="editor.notes" :rows="2" />
-        </a-form-item>
-      </a-form>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="电子化保管状态">
+          <UiInput
+            size="sm" v-model="editor.digitalStatus" placeholder="例：全电子化 / 纸电混合"
+          />
+        </UiFormItem>
+        <UiFormItem label="备注">
+          <UiTextarea size="sm" v-model="editor.notes" :rows="2" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer v-model:open="detailVisible" title="归档详情" :width="560" :hide-footer="true">
       <UiEmpty
         v-if="!detailRecord && !detailLoading"
-        description="当前没有可展示的内容"
+        description="暂无归档台账记录"
         size="sm"
       />
-      <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
-        <a-descriptions-item label="归档编码">
+      <UiDescriptions v-if="detailRecord" :column="1" size="small" bordered>
+        <UiDescriptionsItem label="归档编码">
           {{ detailRecord.archiveCode }}
-        </a-descriptions-item>
-        <a-descriptions-item label="业务类型">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="业务类型">
           <UiTag :tone="archiveBusinessTypeColor(detailRecord.businessType)" size="sm">
             {{ archiveBusinessTypeLabel(detailRecord.businessType) }}
           </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="关联业务对象">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="关联业务对象">
           {{ detailRecord.businessLabel }}
-        </a-descriptions-item>
-        <a-descriptions-item label="归档文件">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="归档文件">
           <UiTextAction v-if="detailRecord.fileId" @click="downloadArchiveFile(detailRecord)">
             {{ detailRecord.fileName }}
           </UiTextAction>
-        </a-descriptions-item>
-        <a-descriptions-item label="分类">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="分类">
           {{ detailRecord.archiveCategory || '未设置分类' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="保管年限">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="保管年限">
           {{
             typeof detailRecord.retentionYears === 'number'
               ? `${detailRecord.retentionYears} 年`
               : '未设置保管年限'
           }}
-        </a-descriptions-item>
-        <a-descriptions-item label="保管期编码">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="保管期编码">
           {{ detailRecord.retentionPolicyCode || '未设置保管期编码' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="档案室确认">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="档案室确认">
           <UiTag :tone="detailRecord.archiveOfficeConfirmed ? 'green' : 'gray'" size="sm">
             {{ detailRecord.archiveOfficeConfirmed ? '已确认' : '未确认' }}
           </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="销毁状态">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="销毁状态">
           <UiTag :tone="destructionStatusTone(detailRecord.destructionStatus)" size="sm">
             {{ destructionStatusLabel(detailRecord.destructionStatus) }}
           </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="保管到期">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="保管到期">
           {{ detailRecord.retentionDueTime || '未配置保管年限' }}
           <span v-if="detailRecord.retentionExpired">（已到期）</span>
-        </a-descriptions-item>
-        <a-descriptions-item label="归档时间">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="归档时间">
           {{ detailRecord.archivedTime || '尚未归档确认' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="备注">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="备注">
           {{ detailRecord.notes || '未填写备注' }}
-        </a-descriptions-item>
-      </a-descriptions>
+        </UiDescriptionsItem>
+      </UiDescriptions>
     </UiDrawer>
 
     <UiDrawer
@@ -1420,24 +1483,27 @@ onMounted(async () => {
       ok-text="确认后提交申请"
       @ok="submitDestructionRequest"
     >
-      <a-form layout="vertical">
-        <a-form-item label="销毁原因" required>
-          <a-textarea
-            v-model:value="destructionReason"
+      <UiForm layout="vertical">
+        <UiFormItem label="销毁原因" required>
+          <UiTextarea
+            size="sm"
+            v-model="destructionReason"
             :rows="3"
             placeholder="说明保管期满或鉴定依据"
           />
-        </a-form-item>
-        <a-form-item label="销毁前清册处理" required>
-          <a-radio-group
-            v-model:value="destructionLedgerDecision"
+        </UiFormItem>
+        <UiFormItem label="销毁前清册处理" required>
+          <UiRadioGroup
+            v-model="destructionLedgerDecision"
+            size="sm"
+            block
             :options="ledgerDecisionOptions"
           />
           <div class="archive-page__form-hint">
             必须先选择是否导出清册并确认后，才能提交销毁申请。
           </div>
-        </a-form-item>
-        <a-form-item
+        </UiFormItem>
+        <UiFormItem
           v-if="
             destructionLedgerDecision
               === QualityArchiveDestructionLedgerExportDecisionCode.SKIP_CONFIRMED
@@ -1445,13 +1511,14 @@ onMounted(async () => {
           label="跳过清册导出原因"
           required
         >
-          <a-textarea
-            v-model:value="destructionLedgerSkipReason"
+          <UiTextarea
+            size="sm"
+            v-model="destructionLedgerSkipReason"
             :rows="2"
             placeholder="说明为何确认跳过电子清册导出"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -1465,13 +1532,14 @@ onMounted(async () => {
       ok-text="提交审批"
       @ok="submitDestructionApproval"
     >
-      <a-form layout="vertical">
-        <a-form-item
+      <UiForm layout="vertical">
+        <UiFormItem
           label="审批意见"
           :required="destructionDecision === ArchiveDestructionDecisionCode.REJECTED"
         >
-          <a-textarea
-            v-model:value="destructionRemark"
+          <UiTextarea
+            size="sm"
+            v-model="destructionRemark"
             :rows="3"
             :placeholder="
               destructionDecision === ArchiveDestructionDecisionCode.REJECTED
@@ -1479,8 +1547,8 @@ onMounted(async () => {
                 : '可选'
             "
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -1492,11 +1560,11 @@ onMounted(async () => {
       ok-text="确认监销"
       @ok="submitDestructionSupervise"
     >
-      <a-form layout="vertical">
-        <a-form-item label="监销备注">
-          <a-textarea v-model:value="destructionRemark" :rows="3" placeholder="可选" />
-        </a-form-item>
-      </a-form>
+      <UiForm layout="vertical">
+        <UiFormItem label="监销备注">
+          <UiTextarea size="sm" v-model="destructionRemark" :rows="3" placeholder="可选" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -1506,11 +1574,12 @@ onMounted(async () => {
       :hide-footer="true"
     >
       <UiEmpty
+        size="sm"
         v-if="!destructionFlowLoading && destructionFlowRecords.length === 0"
         description="尚未发起销毁流程"
       />
-      <a-timeline v-else>
-        <a-timeline-item v-for="item in destructionFlowRecords" :key="item.id">
+      <UiTimeline v-else>
+        <UiTimelineItem v-for="item in destructionFlowRecords" :key="item.id">
           <div class="archive-page__flow-item">
             <div class="archive-page__flow-title">{{ item.eventTypeLabel }}</div>
             <div class="archive-page__flow-meta">{{ item.eventTime }}</div>
@@ -1522,8 +1591,8 @@ onMounted(async () => {
             <div v-if="item.remark" class="archive-page__flow-meta">{{ item.remark }}</div>
             <div v-if="item.detail" class="archive-page__flow-meta">{{ item.detail }}</div>
           </div>
-        </a-timeline-item>
-      </a-timeline>
+        </UiTimelineItem>
+      </UiTimeline>
     </UiDrawer>
 
     <AuditTimelineDrawer
@@ -1545,8 +1614,8 @@ onMounted(async () => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {

@@ -15,7 +15,17 @@ import {
 } from '@/apis/portfolio/national-achievement'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -42,6 +52,10 @@ interface CatalogForm extends Omit<PortfolioNationalAchievementCatalogSaveReques
 }
 
 const activeTab = ref('catalog')
+const achievementTabItems = [
+  { key: 'catalog', label: '成果标准目录' },
+  { key: 'records', label: '正式成果实例' },
+]
 const loading = ref(false)
 const loadError = ref(false)
 const requestToken = ref(0)
@@ -338,6 +352,7 @@ void loadCatalogs()
       >
         <template #actions>
           <UiButton
+            size="sm"
             v-if="activeTab === 'catalog'"
             variant="primary"
             :disabled="operating"
@@ -349,178 +364,201 @@ void loadCatalogs()
       </ContextBar>
     </template>
     <UiCard>
-      <a-tabs v-model:active-key="activeTab" @change="onTabChange">
-        <a-tab-pane key="catalog" tab="成果标准目录">
-          <div class="achievement-admin__toolbar">
-            <a-input v-model:value="filter.keyword" allow-clear placeholder="目录名称或标准描述" />
-            <a-input v-model:value="filter.categoryCode" allow-clear placeholder="分类编码" />
-            <a-select
-              v-model:value="filter.levelCode"
-              allow-clear
-              placeholder="成果级别"
-              :options="PortfolioHonorLevelOptions"
-            />
-            <a-select
-              v-model:value="filter.enabled"
-              allow-clear
-              placeholder="启用状态"
-              :options="[
-                { value: 'true', label: '已启用' },
-                { value: 'false', label: '已停用' },
-              ]"
-            />
-            <UiButton
-              @click="
-                pageNum = 1
-                loadCatalogs()
-              "
-            >
-              查询
-            </UiButton>
-          </div>
-          <UiDataTable
-            v-model:current="pageNum"
-            v-model:page-size="pageSize"
-            :columns="catalogColumns"
-            :data-source="rows"
-            :loading="loading"
-            :load-error="loadError"
-            :total="total"
-            pagination-mode="server"
-            row-key="id"
-            @page-change="
-              (page) => {
-                pageNum = page.current
-                pageSize = page.pageSize
-                loadCatalogs()
-              }
+      <UiSectionTabs
+        v-model="activeTab"
+        :items="achievementTabItems"
+        compact
+        divided
+        @change="onTabChange"
+      />
+      <template v-if="activeTab === 'catalog'">
+        <div class="achievement-admin__toolbar">
+          <UiInput
+            size="sm" v-model="filter.keyword" clearable placeholder="目录名称或标准描述"
+          />
+          <UiInput
+            size="sm" v-model="filter.categoryCode" clearable placeholder="分类编码"
+          />
+          <UiSelect
+            v-model="filter.levelCode"
+            size="sm"
+            allow-clear
+            placeholder="成果级别"
+            :options="PortfolioHonorLevelOptions"
+          />
+          <UiSelect
+            v-model="filter.enabled"
+            size="sm"
+            allow-clear
+            placeholder="启用状态"
+            :options="[
+              { value: 'true', label: '已启用' },
+              { value: 'false', label: '已停用' },
+            ]"
+          />
+          <UiButton
+            size="sm"
+            @click="
+              pageNum = 1
+              loadCatalogs()
             "
           >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'levelCode'">
-                {{
-                  levelLabel(record.levelCode)
-                }}
-              </template>
-              <template v-else-if="column.key === 'buildCycleMonths'">
-                {{
-                  record.buildCycleMonths ? `${record.buildCycleMonths} 个月` : '—'
-                }}
-              </template>
-              <template v-else-if="column.key === 'requirementCount'">
-                {{
-                  record.requirements.length
-                }}
-              </template>
-              <template v-else-if="column.key === 'enabled'">
-                <UiTag :tone="record.enabled ? 'green' : 'gray'">
-                  {{
-                    record.enabled ? '启用' : '停用'
-                  }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[
-                    { key: 'edit', label: '编辑', disabled: operating },
-                    { key: 'delete', label: '删除', tone: 'danger', disabled: operating },
-                  ]"
-                  @action="(key) => (key === 'edit' ? openEdit(record) : deleteCatalog(record))"
-                />
-              </template>
+            查询
+          </UiButton>
+        </div>
+        <UiDataTable
+          v-model:current="pageNum"
+          v-model:page-size="pageSize"
+          :columns="catalogColumns"
+          :data-source="rows"
+          :loading="loading"
+          :load-error="loadError"
+          :total="total"
+          pagination-mode="server"
+          row-key="id"
+          @page-change="
+            (page) => {
+              pageNum = page.current
+              pageSize = page.pageSize
+              loadCatalogs()
+            }
+          "
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'levelCode'">
+              {{
+                levelLabel(record.levelCode)
+              }}
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane key="records" tab="正式成果实例">
-          <div class="achievement-admin__toolbar">
-            <a-input
-              v-model:value="recordFilter.searchText"
-              allow-clear
-              placeholder="成果名称或教师"
-            />
-            <a-input v-model:value="recordFilter.categoryCode" allow-clear placeholder="分类编码" />
-            <UiButton
-              @click="
-                recordPageNum = 1
-                loadRecords()
-              "
-            >
-              查询
-            </UiButton>
-          </div>
-          <UiDataTable
-            v-model:current="recordPageNum"
-            v-model:page-size="recordPageSize"
-            :columns="recordColumns"
-            :data-source="recordRows"
-            :loading="recordLoading"
-            :load-error="recordLoadError"
-            :total="recordTotal"
-            pagination-mode="server"
-            row-key="id"
-            @page-change="
-              (page) => {
-                recordPageNum = page.current
-                recordPageSize = page.pageSize
-                loadRecords()
-              }
+            <template v-else-if="column.key === 'buildCycleMonths'">
+              {{
+                record.buildCycleMonths ? `${record.buildCycleMonths} 个月` : '—'
+              }}
+            </template>
+            <template v-else-if="column.key === 'requirementCount'">
+              {{
+                record.requirements.length
+              }}
+            </template>
+            <template v-else-if="column.key === 'enabled'">
+              <UiTag :tone="record.enabled ? 'green' : 'gray'">
+                {{
+                  record.enabled ? '启用' : '停用'
+                }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[
+                  { key: 'edit', label: '编辑', disabled: operating },
+                  { key: 'delete', label: '删除', tone: 'danger', disabled: operating },
+                ]"
+                @action="(key) => (key === 'edit' ? openEdit(record) : deleteCatalog(record))"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else-if="activeTab === 'records'">
+        <div class="achievement-admin__toolbar">
+          <UiInput
+            size="sm"
+            v-model="recordFilter.searchText"
+            clearable
+            placeholder="成果名称或教师"
+          />
+          <UiInput
+            size="sm" v-model="recordFilter.categoryCode" clearable placeholder="分类编码"
+          />
+          <UiButton
+            size="sm"
+            @click="
+              recordPageNum = 1
+              loadRecords()
             "
           >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'levelCode'">
-                {{
-                  levelLabel(record.levelCode)
-                }}
-              </template>
+            查询
+          </UiButton>
+        </div>
+        <UiDataTable
+          v-model:current="recordPageNum"
+          v-model:page-size="recordPageSize"
+          :columns="recordColumns"
+          :data-source="recordRows"
+          :loading="recordLoading"
+          :load-error="recordLoadError"
+          :total="recordTotal"
+          pagination-mode="server"
+          row-key="id"
+          @page-change="
+            (page) => {
+              recordPageNum = page.current
+              recordPageSize = page.pageSize
+              loadRecords()
+            }
+          "
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'levelCode'">
+              {{
+                levelLabel(record.levelCode)
+              }}
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-      </a-tabs>
+          </template>
+        </UiDataTable>
+      </template>
     </UiCard>
-    <a-modal
+    <UiDialog
       v-model:open="editorOpen"
       :title="form.id ? '编辑成果目录' : '新建成果目录'"
       width="860px"
       :confirm-loading="operating"
       :closable="!operating"
       :mask-closable="!operating"
-      :cancel-button-props="{ disabled: operating }"
       @ok="saveCatalog"
     >
-      <a-spin :spinning="editorLoading">
-        <a-form layout="vertical">
+      <UiSpin :spinning="editorLoading">
+        <UiForm layout="vertical">
           <div class="achievement-admin__form-grid">
-            <a-form-item label="分类编码" required>
-              <a-input v-model:value="form.categoryCode" :disabled="operating" />
-            </a-form-item>
-            <a-form-item label="成果级别" required>
-              <a-select
-                v-model:value="form.levelCode"
+            <UiFormItem label="分类编码" required>
+              <UiInput
+                size="sm" v-model="form.categoryCode" :disabled="operating"
+              />
+            </UiFormItem>
+            <UiFormItem label="成果级别" required>
+              <UiSelect
+                v-model="form.levelCode"
+                size="sm"
                 :options="PortfolioHonorLevelOptions"
                 :disabled="operating"
               />
-            </a-form-item>
-            <a-form-item label="目录名称" required>
-              <a-input v-model:value="form.catalogName" :disabled="operating" />
-            </a-form-item>
-            <a-form-item label="关联指标">
-              <a-input v-model:value="form.indicatorCode" :disabled="operating" />
-            </a-form-item>
-            <a-form-item label="打造周期（月）">
-              <a-input-number
-                v-model:value="form.buildCycleMonths"
+            </UiFormItem>
+            <UiFormItem label="目录名称" required>
+              <UiInput
+                size="sm" v-model="form.catalogName" :disabled="operating"
+              />
+            </UiFormItem>
+            <UiFormItem label="关联指标">
+              <UiInput
+                size="sm" v-model="form.indicatorCode" :disabled="operating"
+              />
+            </UiFormItem>
+            <UiFormItem label="打造周期（月）">
+              <UiInputNumber
+                size="sm"
+                v-model="form.buildCycleMonths"
                 :min="1"
                 style="width: 100%"
                 :disabled="operating"
               />
-            </a-form-item>
-            <a-form-item label="启用">
-              <a-switch v-model:checked="form.enabled" :disabled="operating" />
-            </a-form-item>
+            </UiFormItem>
+            <UiFormItem label="启用">
+              <UiSwitch size="sm" v-model="form.enabled" :disabled="operating" />
+            </UiFormItem>
           </div>
-          <a-form-item label="标准描述" required>
-            <a-textarea v-model:value="form.standardDescription" :rows="3" :disabled="operating" />
-          </a-form-item>
+          <UiFormItem label="标准描述" required>
+            <UiTextarea size="sm" v-model="form.standardDescription" :rows="3" :disabled="operating" />
+          </UiFormItem>
           <div class="achievement-admin__requirements-head">
             <strong>标准要求（权重合计 100）</strong><UiButton size="sm" :disabled="operating" @click="addRequirement">新增要求</UiButton>
           </div>
@@ -529,28 +567,33 @@ void loadCatalogs()
             :key="index"
             class="achievement-admin__requirement-row"
           >
-            <a-input
-              v-model:value="requirement.requirementCode"
+            <UiInput
+              size="sm"
+              v-model="requirement.requirementCode"
               placeholder="要求编码"
               :disabled="operating"
             />
-            <a-input
-              v-model:value="requirement.requirementTitle"
+            <UiInput
+              size="sm"
+              v-model="requirement.requirementTitle"
               placeholder="要求标题"
               :disabled="operating"
             />
-            <a-select
-              v-model:value="requirement.evidenceType"
+            <UiSelect
+              v-model="requirement.evidenceType"
+              size="sm"
               :options="evidenceTypeOptions"
               :disabled="operating"
             />
-            <a-input
-              v-model:value="requirement.evidenceMatchValue"
+            <UiInput
+              size="sm"
+              v-model="requirement.evidenceMatchValue"
               placeholder="证据匹配值"
               :disabled="operating"
             />
-            <a-input-number
-              v-model:value="requirement.weight"
+            <UiInputNumber
+              size="sm"
+              v-model="requirement.weight"
               string-mode
               :min="0.0001"
               :max="100"
@@ -567,9 +610,9 @@ void loadCatalogs()
               删除
             </UiButton>
           </div>
-        </a-form>
-      </a-spin>
-    </a-modal>
+        </UiForm>
+      </UiSpin>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 

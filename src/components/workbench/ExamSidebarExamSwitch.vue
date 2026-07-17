@@ -52,8 +52,8 @@ const statusDotClass = computed(() => {
   &__title-row {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 4px;
+    gap: var(--dp-space-2, 8px);
+    margin-bottom: var(--dp-space-1, 4px);
   }
 
   &__name {
@@ -61,7 +61,7 @@ const statusDotClass = computed(() => {
     font-size: 16px;
     font-weight: 600;
     line-height: 1.5;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
     word-break: break-word;
   }
 
@@ -72,16 +72,16 @@ const statusDotClass = computed(() => {
     border-radius: 50%;
 
     &--active {
-      background: var(--ant-color-success);
-      box-shadow: 0 0 0 2px rgba(82, 196, 26, 0.15);
+      background: var(--dp-success);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--dp-success) 18%, transparent);
     }
 
     &--closed {
-      background: var(--ant-color-text-quaternary);
+      background: var(--dp-text-quaternary);
     }
 
     &--default {
-      background: var(--ant-color-primary);
+      background: var(--dp-color-primary);
     }
   }
 
@@ -89,7 +89,7 @@ const statusDotClass = computed(() => {
     margin: 0 0 4px;
     font-size: 12px;
     line-height: 1.4;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-tertiary);
     word-break: break-all;
   }
 
@@ -97,7 +97,7 @@ const statusDotClass = computed(() => {
     margin: 0 0 8px;
     font-size: 12px;
     line-height: 1.4;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
     word-break: break-word;
   }
 }

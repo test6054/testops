@@ -1,8 +1,11 @@
 <template>
   <div class="review-task-detail-page grading-immersion-page grading-workspace-page">
-    <UiEmpty
+    <WorkbenchContextGateStrip
       v-if="!hasParams"
-      description="缺少复核任务，请从复核列表进入"
+      tag="缺少上下文"
+      body="缺少复核任务，请从复核列表进入"
+      cta-label="返回复核列表"
+      list-route-name="TeacherExamWorkspaceReviewBatchConfirm"
       class="review-task-detail-page__empty"
     />
 
@@ -15,6 +18,7 @@
     />
 
     <UiEmpty
+      size="sm"
       v-else-if="!loading && !detail"
       description="复核任务加载失败或不存在"
       class="review-task-detail-page__empty"
@@ -58,14 +62,15 @@
             :title="`题目题干 · 第 ${detail.questionNo} 题 · 满分 ${detail.fullScore}`"
           >
             <template #icon><FileTextOutlined /></template>
-            <a-typography-paragraph :ellipsis="{ rows: 4, expandable: true, symbol: '展开' }">
+            <UiTypographyParagraph :ellipsis="{ rows: 4, expandable: true, symbol: '展开' }">
               {{ detail.questionStem }}
-            </a-typography-paragraph>
+            </UiTypographyParagraph>
           </GradingImmersionSection>
 
           <GradingImmersionSection title="阅卷影像">
             <template #icon><PictureOutlined /></template>
             <UiEmpty
+              size="sm"
               v-if="!detail.sliceFileId && !detail.sourceScanPage"
               description="本题暂无阅卷影像"
             />
@@ -82,7 +87,7 @@
 
           <GradingImmersionSection title="识别答案">
             <template #icon><FileTextOutlined /></template>
-            <UiEmpty v-if="!detail.recognizedAnswer" description="本题暂无 OCR 识别答案" />
+            <UiEmpty size="sm" v-if="!detail.recognizedAnswer" description="本题暂无 OCR 识别答案" />
             <div v-else class="review-task-detail-page__text-block">
               {{ detail.recognizedAnswer }}
             </div>
@@ -123,7 +128,7 @@
                 重新 AI 复评
               </UiButton>
             </template>
-            <UiEmpty v-if="!detail.aiDiagnostic" description="暂无 AI 复评说明" />
+            <UiEmpty size="sm" v-if="!detail.aiDiagnostic" description="暂无 AI 复评说明" />
             <div v-else class="review-task-detail-page__text-block">
               {{ aiReviewDiagnosticText(detail.aiDiagnostic) }}
             </div>
@@ -133,60 +138,61 @@
         <template #aside>
           <GradingImmersionSection title="题目与评分摘要">
             <template #icon><ProfileOutlined /></template>
-            <a-descriptions :column="1" :label-style="labelStyle" size="small" bordered>
-              <a-descriptions-item label="答卷">
+            <UiDescriptions :column="1" :label-style="labelStyle" size="small" bordered>
+              <UiDescriptionsItem label="答卷">
                 {{ detail.paperDisplay.primaryText }}
-              </a-descriptions-item>
-              <a-descriptions-item label="题目">
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="题目">
                 题{{ detail.questionNo }} · {{ questionTypeLabel(detail.questionType) }}
-              </a-descriptions-item>
-              <a-descriptions-item label="评分">
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="评分">
                 <MarkScoreTriple
                   :ai-score="detail.aiScore"
                   :teacher-review-score="null"
                   :full-score="detail.fullScore"
                   compact
                 />
-              </a-descriptions-item>
-              <a-descriptions-item label="处理追踪编号">
-                <a-typography-text v-if="detail.aiTraceId" copyable>
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="处理追踪编号">
+                <UiTypographyText v-if="detail.aiTraceId" copyable>
                   {{ detail.aiTraceId }}
-                </a-typography-text>
+                </UiTypographyText>
                 <span v-else class="muted">-</span>
-              </a-descriptions-item>
-              <a-descriptions-item v-if="detail.evaluationCriteria" label="评分细则">
-                <a-typography-text :content="detail.evaluationCriteria" />
-              </a-descriptions-item>
-              <a-descriptions-item v-if="detail.commentText" label="评语">
-                <a-typography-text :content="detail.commentText" />
-              </a-descriptions-item>
-            </a-descriptions>
+              </UiDescriptionsItem>
+              <UiDescriptionsItem v-if="detail.evaluationCriteria" label="评分细则">
+                <UiTypographyText :content="detail.evaluationCriteria" />
+              </UiDescriptionsItem>
+              <UiDescriptionsItem v-if="detail.commentText" label="评语">
+                <UiTypographyText :content="detail.commentText" />
+              </UiDescriptionsItem>
+            </UiDescriptions>
           </GradingImmersionSection>
 
           <GradingImmersionSection title="批注历史">
             <template #icon><CommentOutlined /></template>
             <UiSkeletonState v-if="annotationsLoading" variant="card" compact />
-            <UiEmpty v-else-if="annotations.length === 0" description="暂无批注历史" />
+            <UiEmpty size="sm" v-else-if="annotations.length === 0" description="暂无批注历史" />
             <template v-else>
-              <a-list :data-source="annotations" size="small">
+              <UiList :data-source="annotations" size="small">
                 <template #renderItem="{ item }">
-                  <a-list-item>
-                    <a-list-item-meta>
+                  <UiListItem>
+                    <UiListItemMeta>
                       <template #title>
-                        <a-typography-text :content="item.annotationText || '（无批注正文）'" />
+                        <UiTypographyText :content="item.annotationText || '（无批注正文）'" />
                       </template>
                       <template #description>
                         <span class="muted">{{ formatDateTime(item.createTime) }}</span>
                       </template>
-                    </a-list-item-meta>
-                  </a-list-item>
+                    </UiListItemMeta>
+                  </UiListItem>
                 </template>
-              </a-list>
-              <a-pagination
+              </UiList>
+              <UiPagination
                 v-if="annotationPagination.total > annotationPagination.pageSize"
                 v-model:current="annotationPagination.pageNum"
                 v-model:page-size="annotationPagination.pageSize"
                 :total="annotationPagination.total"
+                :show-size-changer="false"
                 size="small"
                 @change="loadAnnotations"
               />
@@ -270,8 +276,16 @@ import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel
 import MarkScoreTriple from '@/components/mark/MarkScoreTriple.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiList from '@/components/ui-guide/ui/UiList.vue'
+import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
+import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import { isExamConfidentialFlag, useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -482,7 +496,7 @@ function timelineColor(status: AiExecutionStatusCode): string {
   return strictEnumTone(AI_EXECUTION_STATUS_TONE, status, 'AI 执行状态')
 }
 
-const labelStyle: CSSProperties = { color: 'var(--ant-color-text-tertiary)', width: '100px' }
+const labelStyle: CSSProperties = { color: 'var(--dp-text-tertiary)', width: '100px' }
 
 const annotations = ref<AnnotationResponse[]>([])
 const annotationsLoading = ref(false)
@@ -556,11 +570,11 @@ watch(
 .review-task-detail-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   min-width: 0;
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__invalidated-banner {
@@ -590,8 +604,8 @@ watch(
     line-height: 1.6;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    color: var(--ant-color-text);
-    background: var(--ant-color-fill-quaternary);
+    color: var(--dp-text);
+    background: var(--dp-fill-quaternary);
     padding: 12px;
     border-radius: var(--dp-radius-panel);
   }
@@ -624,6 +638,6 @@ watch(
 }
 
 .muted {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 </style>

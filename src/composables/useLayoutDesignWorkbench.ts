@@ -414,6 +414,9 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     if (!document.value || !examId || !layoutWritable.value || detecting.value) {
       return false
     }
+    if (saving.value) {
+      return false
+    }
     if (saveBlockingReasons.value.length > 0) {
       void message.warning(saveBlockingReasons.value[0])
       return false
@@ -470,6 +473,9 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
   ): Promise<void> {
     const examId = options.examId()
     if (!examId || !layoutWritable.value || detecting.value) {
+      return
+    }
+    if (generating.value) {
       return
     }
     generating.value = true

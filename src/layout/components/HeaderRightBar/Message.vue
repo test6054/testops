@@ -15,7 +15,7 @@
       </div>
     </div>
 
-    <a-spin :spinning="loading">
+    <UiSpin :spinning="loading">
       <div class="notif-list">
         <div v-if="loadError" class="notif-empty notif-empty--error">
           <span>加载失败，</span>
@@ -41,7 +41,7 @@
           </div>
         </template>
       </div>
-    </a-spin>
+    </UiSpin>
 
     <div class="notif-foot">
       <button type="button" class="notif-more" @click="goToMessageCenter">查看更多</button>
@@ -65,6 +65,7 @@ import {
   markAllAsRead,
   MessageFolderEnum,
 } from '@/apis/edu/message'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import router from '@/router'
 import { useNotificationStore } from '@/stores/modules/notification'
 import { isErrorHandled, showUserError } from '@/utils/error-handler'
@@ -318,7 +319,7 @@ onMounted(() => {
 .notif-panel {
   width: 320px;
   max-height: 440px;
-  background: var(--ant-color-bg-container);
+  background: var(--dp-surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -333,13 +334,13 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   padding: 12px 20px;
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  border-bottom: 1px solid var(--dp-border-subtle);
 }
 
 .notif-head-title {
   font-size: 13.5px;
   font-weight: 700;
-  color: var(--ant-color-text);
+  color: var(--dp-text-primary);
 }
 
 .notif-head-actions {
@@ -351,16 +352,16 @@ onMounted(() => {
   background: transparent;
   padding: 0;
   font-size: 11px;
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   cursor: pointer;
 
   &:hover:not(:disabled) {
-    color: var(--ant-color-primary-hover);
+    color: var(--dp-color-primary-hover);
   }
 
   &--disabled,
   &:disabled {
-    color: var(--ant-color-text-quaternary);
+    color: var(--dp-text-muted);
     cursor: not-allowed;
   }
 }
@@ -376,19 +377,19 @@ onMounted(() => {
   }
 
   &::-webkit-scrollbar-thumb {
-    background: var(--ant-color-fill-secondary);
+    background: var(--dp-fill-secondary);
     border-radius: 4px;
   }
 }
 
 .notif-empty {
-  padding: 40px 16px;
+  padding: var(--dp-space-4) var(--dp-space-3);
   text-align: center;
   font-size: 13px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-muted);
 
   &--error {
-    color: var(--ant-color-error);
+    color: var(--dp-danger);
   }
 }
 
@@ -396,12 +397,12 @@ onMounted(() => {
   border: none;
   background: transparent;
   padding: 0;
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   cursor: pointer;
   font-size: inherit;
 
   &:hover {
-    color: var(--ant-color-primary-hover);
+    color: var(--dp-color-primary-hover);
   }
 }
 
@@ -414,17 +415,17 @@ onMounted(() => {
   transition: background 0.15s ease;
 
   &:hover {
-    background: var(--ant-color-fill-quaternary);
+    background: var(--dp-surface-subtle);
   }
 
   &--unread {
-    background: var(--ant-color-primary-bg);
+    background: var(--dp-blue-50);
 
     &:hover {
       background: color-mix(
         in srgb,
-        var(--ant-color-primary-bg) 80%,
-        var(--ant-color-fill-quaternary) 20%
+        var(--dp-blue-50) 80%,
+        var(--dp-surface-subtle) 20%
       );
     }
   }
@@ -442,23 +443,23 @@ onMounted(() => {
   flex-shrink: 0;
 
   &--warn {
-    background: var(--ant-color-warning-bg);
-    color: var(--ant-color-warning);
+    background: var(--dp-warning-bg);
+    color: var(--dp-warning);
   }
 
   &--success {
-    background: var(--ant-color-success-bg);
-    color: var(--ant-color-success);
+    background: var(--dp-success-bg);
+    color: var(--dp-success);
   }
 
   &--error {
-    background: var(--ant-color-error-bg);
-    color: var(--ant-color-error);
+    background: var(--dp-error-bg);
+    color: var(--dp-danger);
   }
 
   &--info {
-    background: var(--ant-color-primary-bg);
-    color: var(--ant-color-primary);
+    background: var(--dp-blue-50);
+    color: var(--dp-color-primary);
   }
 }
 
@@ -470,7 +471,7 @@ onMounted(() => {
 .notif-title {
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--ant-color-text);
+  color: var(--dp-text-primary);
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -479,7 +480,7 @@ onMounted(() => {
 
 .notif-desc {
   font-size: 11px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-muted);
   margin-top: 1px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -488,7 +489,7 @@ onMounted(() => {
 
 .notif-time {
   font-size: 10px;
-  color: var(--ant-color-text-quaternary);
+  color: var(--dp-text-muted);
   margin-top: 2px;
 }
 
@@ -496,14 +497,14 @@ onMounted(() => {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--ant-color-primary);
+  background: var(--dp-color-primary);
   flex-shrink: 0;
   margin-top: 8px;
 }
 
 .notif-foot {
   padding: 8px 20px 12px;
-  border-top: 1px solid var(--ant-color-border-secondary);
+  border-top: 1px solid var(--dp-border-subtle);
   text-align: center;
 }
 
@@ -512,11 +513,11 @@ onMounted(() => {
   background: transparent;
   padding: 0;
   font-size: 12px;
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   cursor: pointer;
 
   &:hover {
-    color: var(--ant-color-primary-hover);
+    color: var(--dp-color-primary-hover);
   }
 }
 </style>

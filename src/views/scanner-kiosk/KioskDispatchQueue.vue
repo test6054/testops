@@ -11,6 +11,7 @@ import {
 } from '@/apis/mark/scanner-dispatch'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import {
   ALL_DISPATCH_QUEUE_STATUS_FILTER_CODES,
   DispatchQueueStatusFilterDescription,
@@ -155,9 +156,8 @@ async function changePage(page: number) {
         <p>手动选单 · {{ queueScopeLabel }}</p>
       </div>
       <div class="dispatch-queue__head-actions">
-        <UiButton size="sm" variant="ghost" @click="goHub">回扫描台首页</UiButton>
+        <UiButton variant="ghost" @click="goHub">回扫描台首页</UiButton>
         <UiButton
-          size="sm"
           variant="outline"
           :disabled="queue.loading.value"
           @click="queue.loadQueue"
@@ -170,7 +170,6 @@ async function changePage(page: number) {
       <UiButton
         v-for="tab in statusTabs"
         :key="tab.key"
-        size="sm"
         :variant="queue.statusFilter.value === tab.key ? 'primary' : 'outline'"
         @click="changeStatusFilter(tab.key)"
       >
@@ -180,7 +179,7 @@ async function changePage(page: number) {
     <p v-if="queue.errorMessage.value" class="dispatch-queue__error">
       {{ queue.errorMessage.value }}
     </p>
-    <a-skeleton v-if="queue.loading.value" active :paragraph="{ rows: 6 }" />
+    <UiSkeletonState v-if="queue.loading.value" :rows="6" compact />
     <ul v-else class="dispatch-queue__list">
       <li v-for="item in queue.tickets.value" :key="item.ticketId">
         <button type="button" class="dispatch-queue__item" @click="openTicket(item)">
@@ -221,7 +220,6 @@ async function changePage(page: number) {
       class="dispatch-queue__pager"
     >
       <UiButton
-        size="sm"
         variant="outline"
         :disabled="queue.pageNum.value <= 1 || queue.loading.value"
         @click="changePage(queue.pageNum.value - 1)"
@@ -230,7 +228,6 @@ async function changePage(page: number) {
       </UiButton>
       <span>{{ queue.pageNum.value }} / {{ Math.ceil(queue.total.value / queue.pageSize.value) }}</span>
       <UiButton
-        size="sm"
         variant="outline"
         :disabled="
           queue.pageNum.value >= Math.ceil(queue.total.value / queue.pageSize.value)
@@ -248,13 +245,13 @@ async function changePage(page: number) {
 .dispatch-queue {
   max-width: 960px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
 }
 .dispatch-queue__head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   margin-bottom: 12px;
 }
 .dispatch-queue__head h1 {

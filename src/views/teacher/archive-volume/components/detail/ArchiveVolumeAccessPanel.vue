@@ -12,7 +12,7 @@
       <p>查阅记录加载失败</p>
       <UiButton size="sm" variant="outline" @click="loadAccessRecords">重试</UiButton>
     </div>
-    <UiEmpty v-else-if="accessRecords.length === 0" description="暂无查阅记录" />
+    <UiEmpty size="sm" v-else-if="accessRecords.length === 0" description="暂无查阅记录" />
     <div v-else class="archive-volume-access-panel__list">
       <article
         v-for="record in accessRecords"
@@ -82,13 +82,14 @@
           class="approval-card__actions"
         >
           <template v-if="rejectingRecordId === record.accessRecordId">
-            <a-textarea
-              v-model:value="rejectAccessComment"
+            <UiTextarea
+              size="sm"
+              v-model="rejectAccessComment"
               :maxlength="500"
               :rows="2"
               placeholder="填写驳回原因"
               class="approval-card__reject-input"
-              show-count
+              :show-count="true"
             />
             <div class="approval-card__action-row">
               <UiButton
@@ -110,13 +111,14 @@
             </div>
           </template>
           <template v-else-if="approvingRecordId === record.accessRecordId">
-            <a-textarea
-              v-model:value="approveAccessComment"
+            <UiTextarea
+              size="sm"
+              v-model="approveAccessComment"
               :maxlength="500"
               :rows="2"
               placeholder="可选审批意见"
               class="approval-card__reject-input"
-              show-count
+              :show-count="true"
             />
             <div class="approval-card__action-row">
               <UiButton size="sm" variant="outline" @click="cancelApprove">取消</UiButton>
@@ -144,9 +146,10 @@
           "
           class="approval-card__actions"
         >
-          <a-select
+          <UiSelect
+            size="sm"
             v-if="!record.materialId"
-            v-model:value="activeMaterialSelections[record.accessRecordId]"
+            v-model="activeMaterialSelections[record.accessRecordId]"
             :options="materialOptions"
             placeholder="选择要查阅的材料"
             class="approval-card__material-select"
@@ -154,7 +157,8 @@
           <UiButton
             size="sm"
             variant="outline"
-            :disabled="!resolveAccessMaterialId(record)"
+            :loading="accessDownloadBusyId === record.accessRecordId"
+            :disabled="!resolveAccessMaterialId(record) || !!accessDownloadBusyId || !!accessPreviewBusyId"
             @click="handleAccessDownload(record)"
           >
             下载材料
@@ -162,7 +166,8 @@
           <UiButton
             size="sm"
             variant="outline"
-            :disabled="!resolveAccessMaterialId(record)"
+            :loading="accessPreviewBusyId === record.accessRecordId"
+            :disabled="!resolveAccessMaterialId(record) || !!accessDownloadBusyId || !!accessPreviewBusyId"
             @click="handleAccessPreview(record)"
           >
             在线预览
@@ -182,20 +187,23 @@
       @close="accessModalOpen = false"
       @confirm="submitAccessRequest"
     >
-      <a-form layout="vertical">
-        <a-form-item label="查阅范围" required>
-          <a-select v-model:value="accessRequestMaterialId" :options="accessScopeOptions" />
-        </a-form-item>
-        <a-form-item label="查阅原因" required>
-          <a-textarea
-            v-model:value="accessReason"
+      <UiForm layout="vertical">
+        <UiFormItem label="查阅范围" required>
+          <UiSelect
+            size="sm" v-model="accessRequestMaterialId" :options="accessScopeOptions"
+          />
+        </UiFormItem>
+        <UiFormItem label="查阅原因" required>
+          <UiTextarea
+            size="sm"
+            v-model="accessReason"
             :maxlength="500"
             :rows="3"
             placeholder="说明查阅用途"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -210,17 +218,18 @@
       @close="closeReadPageModal"
       @confirm="submitReadPage"
     >
-      <a-form layout="vertical">
-        <a-form-item label="最近阅读页" required>
-          <a-input-number
+      <UiForm layout="vertical">
+        <UiFormItem label="最近阅读页" required>
+          <UiInputNumber
+            size="sm"
             :value="readPageForm.lastReadPage"
             :min="1"
             :precision="0"
             style="width: 100%"
             @update:value="syncReadPageFormLastReadPage"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </WorkbenchSurfaceCard>
 </template>
@@ -246,7 +255,12 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import {
@@ -269,6 +283,8 @@ const props = defineProps<{
   materials: ArchiveVolumeMaterialResponse[]
 }>()
 
+const accessDownloadBusyId = ref<string | null>(null)
+const accessPreviewBusyId = ref<string | null>(null)
 const accessLoading = ref(false)
 const accessLoadFailed = ref(false)
 const accessSubmitting = ref(false)
@@ -320,6 +336,7 @@ async function loadAccessRecords() {
 }
 
 async function handleAccessDownload(record: ArchiveVolumeAccessRecordResponse) {
+  if (accessDownloadBusyId.value || accessPreviewBusyId.value) return
   const materialId = resolveAccessMaterialId(record)
   const downloadToken = record.downloadToken
   if (!materialId) {
@@ -330,20 +347,26 @@ async function handleAccessDownload(record: ArchiveVolumeAccessRecordResponse) {
     message.error('查阅记录缺少下载令牌，请重新申请或联系审批人')
     return
   }
-  await handleBlobDownload(
-    () =>
-      downloadArchiveAccessMaterial({
-        accessRecordId: record.accessRecordId,
-        materialId,
-        downloadToken,
-      }),
-    'archive-access-material',
-    { showSuccessMessage: true, successMessage: '材料下载已开始' },
-  )
-  await loadAccessRecords()
+  accessDownloadBusyId.value = record.accessRecordId
+  try {
+    await handleBlobDownload(
+      () =>
+        downloadArchiveAccessMaterial({
+          accessRecordId: record.accessRecordId,
+          materialId,
+          downloadToken,
+        }),
+      'archive-access-material',
+      { showSuccessMessage: true, successMessage: '材料下载已开始' },
+    )
+    await loadAccessRecords()
+  } finally {
+    accessDownloadBusyId.value = null
+  }
 }
 
 async function handleAccessPreview(record: ArchiveVolumeAccessRecordResponse) {
+  if (accessDownloadBusyId.value || accessPreviewBusyId.value) return
   const materialId = resolveAccessMaterialId(record)
   const downloadToken = record.downloadToken
   if (!materialId) {
@@ -354,6 +377,7 @@ async function handleAccessPreview(record: ArchiveVolumeAccessRecordResponse) {
     message.error('查阅记录缺少下载令牌，请重新申请或联系审批人')
     return
   }
+  accessPreviewBusyId.value = record.accessRecordId
   try {
     const response = await previewArchiveAccessMaterial({
       accessRecordId: record.accessRecordId,
@@ -375,6 +399,8 @@ async function handleAccessPreview(record: ArchiveVolumeAccessRecordResponse) {
     readPageModalOpen.value = true
   } catch (error) {
     showUserError(error, '材料预览失败')
+  } finally {
+    accessPreviewBusyId.value = null
   }
 }
 
@@ -394,6 +420,7 @@ function closeReadPageModal() {
 }
 
 async function submitReadPage() {
+  if (readPageSubmitting.value) return
   if (!readPageForm.accessRecordId) {
     readPageModalOpen.value = false
     return
@@ -430,6 +457,7 @@ function resolveAccessMaterialId(record: ArchiveVolumeAccessRecordResponse): str
 }
 
 async function submitAccessRequest() {
+  if (accessSubmitting.value) return
   if (!accessReason.value.trim()) {
     showFormValidationMessage('请填写查阅原因')
     return
@@ -464,6 +492,7 @@ function cancelApprove() {
 }
 
 async function submitApproveAccess(accessRecordId: string) {
+  if (approveAccessSubmitting.value) return
   approveAccessSubmitting.value = true
   try {
     const decisionComment = approveAccessComment.value.trim()
@@ -494,6 +523,7 @@ function cancelReject() {
 }
 
 async function submitRejectAccess(accessRecordId: string) {
+  if (rejectAccessSubmitting.value) return
   if (!rejectAccessComment.value.trim()) {
     showFormValidationMessage('请填写驳回原因')
     return

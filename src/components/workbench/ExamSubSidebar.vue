@@ -36,7 +36,7 @@
       </div>
     </div>
 
-    <a-divider v-if="!collapsed" class="exam-sub-sidebar__divider" />
+    <UiDivider v-if="!collapsed" class="exam-sub-sidebar__divider" />
 
     <ExamJourneySidebarNav
       :journey-stages="journeyStages"
@@ -49,8 +49,8 @@
     />
 
     <template v-if="activeJourneyKey !== 'overview'">
-      <a-divider v-if="!collapsed" class="exam-sub-sidebar__divider" />
-      <div v-if="!collapsed" class="exam-sub-sidebar__section-label">当前步骤功能</div>
+      <UiDivider v-if="!collapsed" class="exam-sub-sidebar__divider" />
+      <div v-if="!collapsed" class="exam-sub-sidebar__section-label">本程工具</div>
       <div class="exam-sub-sidebar__menu">
         <ExamSubSidebarNav
           :active-journey-key="activeJourneyKey"
@@ -63,7 +63,7 @@
     </template>
 
     <p v-else-if="!collapsed" class="exam-sub-sidebar__overview-hint">
-      概览页查看全局进度；选择上方旅程步骤进入具体功能。
+      概览看本场进度与待办；点上方旅程进入该程工作台，次要工具在程内打开。
     </p>
 
     <div class="exam-sub-sidebar__footer">
@@ -85,6 +85,7 @@ import type { WorkbenchStage } from '@/types/workbench'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
 import { computed } from 'vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
 import ExamJourneySidebarNav from '@/components/workbench/ExamJourneySidebarNav.vue'
 import ExamSidebarExamSwitch from '@/components/workbench/ExamSidebarExamSwitch.vue'
 import ExamSubSidebarNav from '@/components/workbench/ExamSubSidebarNav.vue'
@@ -152,8 +153,8 @@ const journeyProgressLabel = computed(() => {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--ant-color-bg-container);
-  border-right: 1px solid var(--ant-color-border-secondary);
+  background: var(--dp-surface, var(--dp-bg-container));
+  border-right: 1px solid var(--dp-border, var(--dp-border-subtle));
   min-height: 0;
 
   &--collapsed {
@@ -161,7 +162,7 @@ const journeyProgressLabel = computed(() => {
   }
 
   &__exam-switch {
-    padding: 16px 16px 12px;
+    padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px) var(--dp-space-2, 8px);
     flex-shrink: 0;
   }
 
@@ -170,11 +171,11 @@ const journeyProgressLabel = computed(() => {
   }
 
   &__section-label {
-    padding: 4px 16px 0;
+    padding: var(--dp-space-1, 4px) var(--dp-space-3, 12px) 0;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.02em;
-    color: var(--ant-color-text-quaternary);
+    color: var(--dp-text-muted, var(--dp-text-quaternary));
     text-transform: uppercase;
     flex-shrink: 0;
   }
@@ -182,10 +183,10 @@ const journeyProgressLabel = computed(() => {
   &__overview-hint {
     flex: 1;
     margin: 0;
-    padding: 12px 16px;
+    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
     font-size: 12px;
     line-height: 1.5;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-muted, var(--dp-text-tertiary));
   }
 
   &__menu {
@@ -198,8 +199,8 @@ const journeyProgressLabel = computed(() => {
 
   &__footer {
     margin-top: auto;
-    padding: 12px 16px;
-    border-top: 1px solid var(--ant-color-border-secondary);
+    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    border-top: 1px solid var(--dp-border, var(--dp-border-subtle));
     display: flex;
     justify-content: flex-end;
     flex-shrink: 0;
@@ -214,12 +215,12 @@ const journeyProgressLabel = computed(() => {
     border: none;
     border-radius: var(--dp-radius-panel);
     background: transparent;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-muted, var(--dp-text-tertiary));
     cursor: pointer;
 
     &:hover {
-      background: var(--ant-color-fill-tertiary);
-      color: var(--ant-color-text);
+      background: var(--dp-gray-100, var(--dp-fill-tertiary));
+      color: var(--dp-text-primary, var(--dp-text));
     }
   }
 
@@ -245,11 +246,11 @@ const journeyProgressLabel = computed(() => {
 }
 
 .exam-sub-sidebar__progress-pct--attention {
-  color: var(--ant-color-warning);
+  color: var(--dp-warning);
   font-weight: 600;
 }
 
 .exam-sub-sidebar__progress-bar--attention {
-  box-shadow: inset 0 0 0 1px var(--ant-color-warning-border);
+  box-shadow: inset 0 0 0 1px var(--dp-warning-border);
 }
 </style>

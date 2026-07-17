@@ -40,8 +40,7 @@ import {
 } from '@/apis/quality/ai-result'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
-import {
-  AI_OUTPUT_VALIDATION_COLOR,
+import { AI_OUTPUT_VALIDATION_COLOR,
   AI_TASK_STATUS_COLOR,
   AiManualHandlingStatusCode,
   AiManualHandlingStatusDescription,
@@ -53,9 +52,11 @@ import {
   AiTaskStatusDescription,
   AiTaskTypeCode,
   AiTaskTypeDescription,
+  ConfirmationStatusCode,
 } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import {
   AchievementResultSelector,
   CourseSelector,
@@ -69,10 +70,19 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -189,6 +199,10 @@ const submitForm = reactive<AiTaskSubmitRequest>({
 const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detailRecord = ref<AiTaskVO | null>(null)
+const detailTabActive = ref('result')
+const detailTabItems = [
+  { key: 'result', label: '智能结果' },
+]
 const detailResult = ref<AiResultVO | null>(null)
 const validationUpdating = ref(false)
 const manualHandleVisible = ref(false)
@@ -595,6 +609,17 @@ async function loadListQuietly(): Promise<void> {
   }
 }
 
+
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
+
 async function handleScopeChange(): Promise<void> {
   await loadList()
 }
@@ -968,17 +993,29 @@ async function openDetail(record: AiTaskVO) {
 }
 
 function buildAiTaskActions(record: AiTaskVO): UiTableRowActionItem[] {
+  // 行内仅 1 个 primary：立即执行 > 重置 > 人工处置
   const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
+  let primaryAssigned = false
   if (record.status === AiTaskStatusCode.PENDING) {
     actions.push({ key: 'run-now', label: '立即执行', tone: 'primary' })
+    primaryAssigned = true
   }
   if (record.status === AiTaskStatusCode.PENDING || record.status === AiTaskStatusCode.PROCESSING) {
     actions.push({ key: 'cancel', label: '取消', tone: 'danger' })
   }
   if (isSuperAdmin.value && record.status === AiTaskStatusCode.PROCESSING) {
-    actions.push({ key: 'reset-processing', label: '重置为待处理', tone: 'primary' })
+    actions.push(
+      primaryAssigned
+        ? { key: 'reset-processing', label: '重置为待处理' }
+        : { key: 'reset-processing', label: '重置为待处理', tone: 'primary' },
+    )
+    primaryAssigned = true
   }
-  actions.push({ key: 'manual-handle', label: '人工处置', tone: 'primary' })
+  actions.push(
+    primaryAssigned
+      ? { key: 'manual-handle', label: '人工处置' }
+      : { key: 'manual-handle', label: '人工处置', tone: 'primary' },
+  )
   actions.push({ key: 'audit', label: '审计' })
   return actions
 }
@@ -1241,9 +1278,9 @@ onMounted(async () => {
       </QualityPageContextBar>
     </template>
 
-    <UiEmpty
-      v-if="!qualityStore.currentTrainingPlanId"
-      description="请选择培养方案"
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
       class="ai-task__empty"
     />
 
@@ -1274,8 +1311,9 @@ onMounted(async () => {
           @reset="handleReset"
         >
           <template #field-businessType>
-            <a-select
-              :value="query.businessType || undefined"
+            <UiSelect
+              size="sm"
+              :model-value="query.businessType || undefined"
               placeholder="业务类型"
               style="width: 100%"
               allow-clear
@@ -1328,11 +1366,12 @@ onMounted(async () => {
               :width="180"
               @change="handleQueryBusinessObjectChange"
             />
-            <a-input
+            <UiInput
+              size="sm"
               v-else-if="query.businessType === AiTaskBusinessTypeCode.PORTFOLIO_EVALUATION"
               :value="query.businessId || ''"
               placeholder="评价运行或院系编号"
-              allow-clear
+              clearable
               @update:value="handleQueryBusinessObjectChange"
             />
           </template>
@@ -1408,7 +1447,7 @@ onMounted(async () => {
               {{ aiTaskBusinessTypeLabel(record.businessType) }}
             </template>
             <template v-else-if="column.key === 'businessAnchor'">
-              <a-space direction="vertical" size="small">
+              <div class="dp-space dp-space--vertical" style="--dp-space-gap: 8px">
                 <UiTag v-if="record.businessId" tone="gray" size="sm">
                   {{ record.businessLabel }}
                 </UiTag>
@@ -1427,7 +1466,7 @@ onMounted(async () => {
                 <UiTag v-if="record.reportId" tone="gray" size="sm">
                   {{ record.reportTitle }}
                 </UiTag>
-              </a-space>
+              </div>
             </template>
             <template v-else-if="column.key === 'failurePhase'">
               <span :class="{ 'ai-task__error-text': record.status === AiTaskStatusCode.FAILED }">
@@ -1458,18 +1497,21 @@ onMounted(async () => {
         :ok-button-props="{ disabled: submitDisabled }"
         @ok="submitTask"
       >
-        <a-form layout="vertical" :model="submitForm">
-          <a-form-item label="能力" required>
-            <a-select
-              :value="submitForm.taskType"
+        <UiForm layout="vertical" :model="submitForm">
+          <UiFormItem label="能力" required>
+            <UiSelect
+              size="sm"
+              :model-value="submitForm.taskType"
               :options="submitTaskTypeOptions"
               @change="handleSubmitTaskTypeChange"
             />
-          </a-form-item>
-          <a-form-item label="业务类型">
-            <a-select :value="submitForm.businessType" disabled :options="businessTypeOptions" />
-          </a-form-item>
-          <a-form-item label="关联业务对象">
+          </UiFormItem>
+          <UiFormItem label="业务类型">
+            <UiSelect
+              size="sm" :model-value="submitForm.businessType" disabled :options="businessTypeOptions"
+            />
+          </UiFormItem>
+          <UiFormItem label="关联业务对象">
             <AchievementResultSelector
               v-if="submitForm.businessType === AiTaskBusinessTypeCode.ACHIEVEMENT_RESULT"
               :value="submitForm.businessId || null"
@@ -1515,9 +1557,23 @@ onMounted(async () => {
               placeholder="选择间接评价问卷"
               @change="handleSubmitBusinessObjectChange"
             />
-            <UiEmpty v-else description="请选择" size="sm" />
-          </a-form-item>
-          <a-form-item label="培养方案">
+            <UiAlertStrip
+              v-else
+              tone="info"
+              size="sm"
+              dense
+              inline
+              :show-icon="false"
+            >
+              <template #default>
+                <span style="display:inline-flex;align-items:center;gap:8px">
+                  <UiTag tone="blue" size="sm">未选择</UiTag>
+                  <span>请选择分析对象后查看结果</span>
+                </span>
+              </template>
+            </UiAlertStrip>
+          </UiFormItem>
+          <UiFormItem label="培养方案">
             <TrainingPlanSelector
               :value="submitForm.trainingPlanId || null"
               :placeholder="
@@ -1525,15 +1581,15 @@ onMounted(async () => {
               "
               @change="handleTrainingPlanChange"
             />
-          </a-form-item>
-          <a-form-item label="专业">
+          </UiFormItem>
+          <UiFormItem label="专业">
             <ProgramSelector
               :value="submitForm.programId || null"
               placeholder="选择专业（可选）"
               @change="handleProgramChange"
             />
-          </a-form-item>
-          <a-form-item label="质量评价课程">
+          </UiFormItem>
+          <UiFormItem label="质量评价课程">
             <CourseSelector
               :value="submitForm.qualityCourseId || null"
               :training-plan-id="
@@ -1542,8 +1598,8 @@ onMounted(async () => {
               placeholder="选择质量评价课程（可选）"
               @change="syncBusinessObjectFromQualityCourse"
             />
-          </a-form-item>
-          <a-form-item label="达成度结果">
+          </UiFormItem>
+          <UiFormItem label="达成度结果">
             <AchievementResultSelector
               :value="submitForm.achievementResultId || null"
               :training-plan-id="
@@ -1553,15 +1609,15 @@ onMounted(async () => {
               placeholder="选择达成度分析结果"
               @change="syncBusinessObjectFromAchievementResult"
             />
-          </a-form-item>
-          <a-form-item label="报告">
+          </UiFormItem>
+          <UiFormItem label="报告">
             <ReportSelector
               :value="submitForm.reportId || null"
               placeholder="生成质量报告时可选择"
               @change="syncBusinessObjectFromReport"
             />
-          </a-form-item>
-          <a-form-item label="材料文件">
+          </UiFormItem>
+          <UiFormItem label="材料文件">
             <UiPlatformFileField
               v-model:file-node-id="submitForm.fileNodeId"
               v-model:file-name="materialFileName"
@@ -1569,17 +1625,18 @@ onMounted(async () => {
               :accept="submitMaterialAccept"
               button-text="上传材料"
             />
-          </a-form-item>
-          <a-form-item label="用户提问">
-            <a-textarea
-              v-model:value="submitForm.question"
+          </UiFormItem>
+          <UiFormItem label="用户提问">
+            <UiTextarea
+              size="sm"
+              v-model="submitForm.question"
               :rows="3"
               placeholder="材料问答必填，最长 1000 字符"
               :maxlength="1000"
-              show-count
+              :show-count="true"
             />
-          </a-form-item>
-        </a-form>
+          </UiFormItem>
+        </UiForm>
       </UiDrawer>
 
       <UiDrawer
@@ -1596,17 +1653,18 @@ onMounted(async () => {
           title="仅平台超级管理员可执行。重置后任务回到待处理队列，备注会写入审计日志。"
           class="ai-task__reset-alert"
         />
-        <a-form layout="vertical" class="ai-task__reset-form">
-          <a-form-item label="处置备注" required>
-            <a-textarea
-              v-model:value="resetProcessingForm.handlingRemark"
+        <UiForm layout="vertical" class="ai-task__reset-form">
+          <UiFormItem label="处置备注" required>
+            <UiTextarea
+              size="sm"
+              v-model="resetProcessingForm.handlingRemark"
               :rows="4"
               :maxlength="500"
-              show-count
+              :show-count="true"
               placeholder="说明卡住原因与重置依据"
             />
-          </a-form-item>
-        </a-form>
+          </UiFormItem>
+        </UiForm>
       </UiDrawer>
 
       <UiDrawer
@@ -1618,48 +1676,50 @@ onMounted(async () => {
         ok-text="保存"
         @ok="submitManualHandle"
       >
-        <a-form layout="vertical" :model="manualHandleForm">
-          <a-form-item label="处置状态" required>
-            <a-select
-              v-model:value="manualHandleForm.manualHandlingStatus"
+        <UiForm layout="vertical" :model="manualHandleForm">
+          <UiFormItem label="处置状态" required>
+            <UiSelect
+              size="sm"
+              v-model="manualHandleForm.manualHandlingStatus"
               :options="manualHandlingOptions"
             />
-          </a-form-item>
-          <a-form-item label="处置备注">
-            <a-textarea
-              v-model:value="manualHandleForm.manualHandlingRemark"
+          </UiFormItem>
+          <UiFormItem label="处置备注">
+            <UiTextarea
+              size="sm"
+              v-model="manualHandleForm.manualHandlingRemark"
               :rows="4"
               :maxlength="500"
-              show-count
+              :show-count="true"
             />
-          </a-form-item>
-        </a-form>
+          </UiFormItem>
+        </UiForm>
       </UiDrawer>
 
       <UiDrawer v-model:open="detailVisible" title="智能任务详情" :width="840" :hide-footer="true">
         <UiEmpty
           v-if="!detailRecord && !detailLoading"
-          description="当前没有可展示的内容"
+          description="未加载到智能任务详情"
           size="sm"
         />
-        <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
-          <a-descriptions-item label="能力">
+        <UiDescriptions v-if="detailRecord" :column="1" size="small" bordered>
+          <UiDescriptionsItem label="能力">
             {{ aiTaskTypeLabel(detailRecord.taskType) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="状态">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="状态">
             <UiTag :tone="aiTaskStatusColor(detailRecord.status)" size="sm">
               {{ aiTaskStatusLabel(detailRecord.status) }}
             </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="操作人">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="操作人">
             {{ detailRecord.operatorUserName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="业务类型">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="业务类型">
             {{ aiTaskBusinessTypeLabel(detailRecord.businessType) }}
             <span v-if="detailRecord.businessId"> / {{ detailRecord.businessLabel }} </span>
-          </a-descriptions-item>
-          <a-descriptions-item label="业务归属">
-            <a-space wrap>
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="业务归属">
+            <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
               <UiTag v-if="detailRecord.businessId" tone="gray" size="sm">
                 {{ detailRecord.businessLabel }}
               </UiTag>
@@ -1678,23 +1738,23 @@ onMounted(async () => {
               <UiTag v-if="detailRecord.reportId" tone="gray" size="sm">
                 {{ detailRecord.reportTitle }}
               </UiTag>
-            </a-space>
-          </a-descriptions-item>
-          <a-descriptions-item label="开始 / 结束">
+            </div>
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="开始 / 结束">
             {{ detailRecord.startedTime || '未开始' }} ～
             {{
               detailRecord.finishedTime
                 || (detailRecord.status === AiTaskStatusCode.PROCESSING ? '执行中' : '未结束')
             }}
-          </a-descriptions-item>
-          <a-descriptions-item label="失败阶段">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="失败阶段">
             <span
               :class="{ 'ai-task__error-text': detailRecord.status === AiTaskStatusCode.FAILED }"
             >
               {{ detailRecord.failurePhase || '不适用' }}
             </span>
-          </a-descriptions-item>
-          <a-descriptions-item label="未完成说明">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="未完成说明">
             <span
               :class="{
                 'ai-task__error-text': detailRecord.status === AiTaskStatusCode.FAILED,
@@ -1710,13 +1770,13 @@ onMounted(async () => {
                   : '无未完成说明'
               }}
             </span>
-          </a-descriptions-item>
-          <a-descriptions-item label="运维干预状态 / 备注">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="运维干预状态 / 备注">
             {{ manualHandlingStatusLabel(detailRecord.manualHandlingStatus) }} /
             {{ detailRecord.manualHandlingRemark || '未填写运维备注' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="脱敏映射">
-            <a-space>
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="脱敏映射">
+            <div class="dp-space" style="--dp-space-gap: 8px">
               <span>{{ detailRecord.maskMappingId ? '已生成脱敏映射' : '未生成脱敏映射' }}</span>
               <UiTextAction
                 v-if="detailRecord.maskMappingId"
@@ -1724,144 +1784,149 @@ onMounted(async () => {
               >
                 查看脱敏审计
               </UiTextAction>
-            </a-space>
-          </a-descriptions-item>
-          <a-descriptions-item label="智能结果">
+            </div>
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="智能结果">
             {{ detailRecord.resultId ? '已生成智能结果' : '尚未生成智能结果' }}
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
 
-        <a-divider />
+        <UiDivider />
 
-        <a-tabs v-if="detailRecord" default-active-key="result">
-          <a-tab-pane key="result" tab="智能结果">
-            <UiEmpty v-if="!detailResult" description="当前没有可展示的内容" size="sm" />
-            <template v-else>
-              <a-descriptions :column="2" size="small" bordered>
-                <a-descriptions-item label="输出校验">
-                  <UiTag :tone="validationColor(detailResult.outputValidation)" size="sm">
-                    {{ validationLabel(detailResult.outputValidation) }}
-                  </UiTag>
-                </a-descriptions-item>
-                <a-descriptions-item label="敏感检测">
-                  <UiTag
-                    :tone="sensitiveCheckStatusColor(detailResult.sensitiveCheckStatus)"
-                    size="sm"
-                  >
-                    {{ sensitiveCheckStatusLabel(detailResult.sensitiveCheckStatus) }}
-                  </UiTag>
-                </a-descriptions-item>
-                <a-descriptions-item label="调用模型">
-                  {{ detailResult.modelName }}
-                </a-descriptions-item>
-                <a-descriptions-item label="生成时间">
-                  {{ detailResult.generatedTime }}
-                </a-descriptions-item>
-                <a-descriptions-item label="提示词用量">
-                  {{ detailResult.promptTokenCount }}
-                </a-descriptions-item>
-                <a-descriptions-item label="生成内容用量">
-                  {{ detailResult.completionTokenCount }}
-                </a-descriptions-item>
-                <a-descriptions-item label="敏感检测明细" :span="2">
-                  <ul v-if="sensitiveCheckLines.length" class="ai-task__list">
-                    <li
-                      v-for="(line, index) in sensitiveCheckLines"
-                      :key="`sensitive-${index}`"
-                      class="ai-task__list-item"
-                    >
-                      {{ line }}
-                    </li>
-                  </ul>
-                  <span v-else>未生成敏感检测明细</span>
-                </a-descriptions-item>
-              </a-descriptions>
-
-              <a-divider class="ai-task__divider" />
-
-              <a-space wrap>
-                <span class="ai-task__label">校验状态：</span>
-                <UiButton
-                  v-for="opt in validationOptions"
-                  :key="opt.value"
-                  :variant="
-                    detailResult.outputValidation === opt.value
-                      ? opt.value === AiOutputValidationCode.REJECTED
-                        ? 'destructive'
-                        : 'primary'
-                      : opt.value === AiOutputValidationCode.REJECTED
-                        ? 'ghost'
-                        : 'outline'
-                  "
-                  :status="opt.value === AiOutputValidationCode.REJECTED ? 'danger' : 'normal'"
+        <UiSectionTabs
+          v-if="detailRecord"
+          v-model="detailTabActive"
+          :items="detailTabItems"
+          compact
+          divided
+        />
+        <template v-if="detailRecord && detailTabActive === 'result'">
+          <UiEmpty v-if="!detailResult" description="该任务尚无可用结果输出" size="sm" />
+          <template v-else>
+            <UiDescriptions :column="2" size="small" bordered>
+              <UiDescriptionsItem label="输出校验">
+                <UiTag :tone="validationColor(detailResult.outputValidation)" size="sm">
+                  {{ validationLabel(detailResult.outputValidation) }}
+                </UiTag>
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="敏感检测">
+                <UiTag
+                  :tone="sensitiveCheckStatusColor(detailResult.sensitiveCheckStatus)"
                   size="sm"
-                  :loading="validationUpdating"
-                  @click="updateValidation(opt.value)"
                 >
-                  {{ opt.label }}
-                </UiButton>
-              </a-space>
+                  {{ sensitiveCheckStatusLabel(detailResult.sensitiveCheckStatus) }}
+                </UiTag>
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="调用模型">
+                {{ detailResult.modelName }}
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="生成时间">
+                {{ detailResult.generatedTime }}
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="提示词用量">
+                {{ detailResult.promptTokenCount }}
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="生成内容用量">
+                {{ detailResult.completionTokenCount }}
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="敏感检测明细" :span="2">
+                <ul v-if="sensitiveCheckLines.length" class="ai-task__list">
+                  <li
+                    v-for="(line, index) in sensitiveCheckLines"
+                    :key="`sensitive-${index}`"
+                    class="ai-task__list-item"
+                  >
+                    {{ line }}
+                  </li>
+                </ul>
+                <span v-else>未生成敏感检测明细</span>
+              </UiDescriptionsItem>
+            </UiDescriptions>
 
-              <a-divider class="ai-task__divider" />
+            <UiDivider class="ai-task__divider" />
 
-              <h4 class="ai-task__section-title">分析摘要</h4>
-              <div v-if="resultSummaryLines.length" class="ai-task__text-block">
-                <p
-                  v-for="(line, index) in resultSummaryLines"
-                  :key="`summary-${index}`"
-                  class="ai-task__paragraph"
-                >
-                  {{ line }}
+            <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+              <span class="ai-task__label">校验状态：</span>
+              <UiButton
+                v-for="opt in validationOptions"
+                :key="opt.value"
+                :variant="
+                  detailResult.outputValidation === opt.value
+                    ? opt.value === AiOutputValidationCode.REJECTED
+                      ? 'destructive'
+                      : 'primary'
+                    : opt.value === AiOutputValidationCode.REJECTED
+                      ? 'ghost'
+                      : 'outline'
+                "
+                :status="opt.value === AiOutputValidationCode.REJECTED ? 'danger' : 'normal'"
+                size="sm"
+                :loading="validationUpdating"
+                @click="updateValidation(opt.value)"
+              >
+                {{ opt.label }}
+              </UiButton>
+            </div>
+
+            <UiDivider class="ai-task__divider" />
+
+            <h4 class="ai-task__section-title">分析摘要</h4>
+            <div v-if="resultSummaryLines.length" class="ai-task__text-block">
+              <p
+                v-for="(line, index) in resultSummaryLines"
+                :key="`summary-${index}`"
+                class="ai-task__paragraph"
+              >
+                {{ line }}
+              </p>
+            </div>
+            <p v-else class="ai-task__placeholder">未生成分析摘要</p>
+
+            <h4 class="ai-task__section-title">问题清单</h4>
+            <ul v-if="issueItems.length" class="ai-task__list">
+              <li
+                v-for="(item, index) in issueItems"
+                :key="`issue-${index}`"
+                class="ai-task__list-item"
+              >
+                <strong>{{ item.issueTitle }}</strong>
+                <span v-if="item.severity"> · {{ aiResultSeverityLabel(item.severity) }}</span>
+                <p v-if="item.issueDescription" class="ai-task__paragraph">
+                  {{ item.issueDescription }}
                 </p>
-              </div>
-              <p v-else class="ai-task__placeholder">未生成分析摘要</p>
+              </li>
+            </ul>
+            <p v-else class="ai-task__placeholder">未生成问题清单</p>
 
-              <h4 class="ai-task__section-title">问题清单</h4>
-              <ul v-if="issueItems.length" class="ai-task__list">
-                <li
-                  v-for="(item, index) in issueItems"
-                  :key="`issue-${index}`"
-                  class="ai-task__list-item"
-                >
-                  <strong>{{ item.issueTitle }}</strong>
-                  <span v-if="item.severity"> · {{ aiResultSeverityLabel(item.severity) }}</span>
-                  <p v-if="item.issueDescription" class="ai-task__paragraph">
-                    {{ item.issueDescription }}
-                  </p>
-                </li>
-              </ul>
-              <p v-else class="ai-task__placeholder">未生成问题清单</p>
+            <h4 class="ai-task__section-title">证据引用</h4>
+            <ul v-if="evidenceItems.length" class="ai-task__list">
+              <li
+                v-for="(item, index) in evidenceItems"
+                :key="`evidence-${index}`"
+                class="ai-task__list-item"
+              >
+                <strong>{{ item.evidenceTitle }}</strong>
+                <span v-if="item.evidenceSource"> · {{ item.evidenceSource }}</span>
+                <p class="ai-task__paragraph">{{ item.evidenceContent }}</p>
+              </li>
+            </ul>
+            <p v-else class="ai-task__placeholder">未生成证据引用</p>
 
-              <h4 class="ai-task__section-title">证据引用</h4>
-              <ul v-if="evidenceItems.length" class="ai-task__list">
-                <li
-                  v-for="(item, index) in evidenceItems"
-                  :key="`evidence-${index}`"
-                  class="ai-task__list-item"
-                >
-                  <strong>{{ item.evidenceTitle }}</strong>
-                  <span v-if="item.evidenceSource"> · {{ item.evidenceSource }}</span>
-                  <p class="ai-task__paragraph">{{ item.evidenceContent }}</p>
-                </li>
-              </ul>
-              <p v-else class="ai-task__placeholder">未生成证据引用</p>
-
-              <h4 class="ai-task__section-title">改进内容</h4>
-              <ul v-if="improvementItems.length" class="ai-task__list">
-                <li
-                  v-for="(item, index) in improvementItems"
-                  :key="`suggestion-${index}`"
-                  class="ai-task__list-item"
-                >
-                  <strong>{{ item.suggestionTitle }}</strong>
-                  <span v-if="item.priority"> · {{ aiResultPriorityLabel(item.priority) }}</span>
-                  <p class="ai-task__paragraph">{{ item.suggestionContent }}</p>
-                </li>
-              </ul>
-              <p v-else class="ai-task__placeholder">未生成改进内容</p>
-            </template>
-          </a-tab-pane>
-        </a-tabs>
+            <h4 class="ai-task__section-title">改进内容</h4>
+            <ul v-if="improvementItems.length" class="ai-task__list">
+              <li
+                v-for="(item, index) in improvementItems"
+                :key="`suggestion-${index}`"
+                class="ai-task__list-item"
+              >
+                <strong>{{ item.suggestionTitle }}</strong>
+                <span v-if="item.priority"> · {{ aiResultPriorityLabel(item.priority) }}</span>
+                <p class="ai-task__paragraph">{{ item.suggestionContent }}</p>
+              </li>
+            </ul>
+            <p v-else class="ai-task__placeholder">未生成改进内容</p>
+          </template>
+        </template>
       </UiDrawer>
     </template>
 
@@ -1892,8 +1957,8 @@ onMounted(async () => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {
@@ -1907,7 +1972,7 @@ onMounted(async () => {
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1932,7 +1997,7 @@ onMounted(async () => {
   }
 
   &__error-text {
-    color: var(--ant-color-error);
+    color: var(--dp-error);
   }
 
   &__error-pre {

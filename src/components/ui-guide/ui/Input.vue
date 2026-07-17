@@ -153,7 +153,7 @@ const handleClear = () => {
 .dp-input-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
   width: 100%;
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
@@ -171,7 +171,7 @@ const handleClear = () => {
 .dp-input {
   width: 100%;
   height: 100%;
-  padding: 0 12px;
+  padding: 0 var(--dp-space-3, 12px);
   border: none;
   background: transparent;
   font-size: inherit;
@@ -241,11 +241,11 @@ const handleClear = () => {
 }
 
 .dp-input__affix--prefix {
-  padding-left: 12px;
+  padding-left: var(--dp-space-3, 12px);
 }
 
 .dp-input__affix--suffix {
-  padding-right: 12px;
+  padding-right: var(--dp-space-3, 12px);
 }
 
 .dp-input__clear {
@@ -254,7 +254,7 @@ const handleClear = () => {
   justify-content: center;
   width: 22px;
   height: 22px;
-  margin-right: 8px;
+  margin-right: var(--dp-space-2, 8px);
   border: none;
   border-radius: 999px;
   background: transparent;

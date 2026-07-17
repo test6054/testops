@@ -632,6 +632,9 @@ export function useExamCreate() {
   }
 
   async function handleCreateExam(): Promise<ExamCreateSectionKey | null> {
+    if (submitting.value) {
+      return null
+    }
     const failedSection = await validateAllSteps()
     if (failedSection) {
       return failedSection

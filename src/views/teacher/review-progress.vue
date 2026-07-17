@@ -11,12 +11,13 @@
     </template>
 
     <template v-if="selectedExamId && progress" #signal>
-      <SignalBand variant="tiles" compact :metrics="pageSignalMetrics" />
+      <SignalBand compact :metrics="pageSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="progress-page__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="progress-page__empty" />
 
     <UiEmpty
+      size="sm"
       v-else-if="loadFailed"
       description="复核进度加载失败"
       action-label="重试"
@@ -26,13 +27,13 @@
 
     <UiSkeletonState v-else-if="loading && !progress" variant="card" compact />
 
-    <UiEmpty v-else-if="!progress" description="暂无复核进度数据" class="progress-page__empty" />
+    <UiEmpty size="sm" v-else-if="!progress" description="暂无复核进度数据" class="progress-page__empty" />
 
     <template v-else-if="progress">
       <ExamWorkspaceJourneySubNav />
 
-      <a-row :gutter="16" class="overview-row">
-        <a-col :xs="24" :md="8">
+      <UiRow :gutter="16" class="overview-row">
+        <UiCol :xs="24" :md="8">
           <WorkbenchSurfaceCard class="overview-card">
             <template #head>
               <div class="overview-card__title">
@@ -55,8 +56,8 @@
               <SignalBand :metrics="overviewSignalMetrics" compact variant="inline" />
             </div>
           </WorkbenchSurfaceCard>
-        </a-col>
-        <a-col :xs="24" :md="16">
+        </UiCol>
+        <UiCol :xs="24" :md="16">
           <WorkbenchSurfaceCard class="status-card">
             <template #head>
               <div class="status-card__title">
@@ -81,8 +82,8 @@
               />
             </div>
           </WorkbenchSurfaceCard>
-        </a-col>
-      </a-row>
+        </UiCol>
+      </UiRow>
 
       <WorkbenchSurfaceCard flush class="question-card">
         <template #head>
@@ -141,18 +142,20 @@
               </div>
             </template>
             <template v-else-if="column.key === 'progress'">
-              <a-progress
+              <UiProgressBar
                 :percent="
                   record.totalTaskCount === 0
                     ? 0
                     : Math.round((record.approvedTaskCount * 100) / record.totalTaskCount)
                 "
-                size="small"
-                :stroke-color="
+                size="sm"
+                :color="
                   record.totalTaskCount > 0 && record.approvedTaskCount >= record.totalTaskCount
                     ? successColor
                     : primaryColor
                 "
+              
+                :show-label="false"
               />
               <div class="progress-detail">
                 {{ record.approvedTaskCount }} / {{ record.totalTaskCount }} 已通过
@@ -188,8 +191,8 @@
           </div>
         </template>
         <template #toolbar>
-          <a-select
-            v-model:value="processingTaskTypeFilter"
+          <UiSelect
+            v-model="processingTaskTypeFilter"
             allow-clear
             placeholder="任务类型"
             size="small"
@@ -294,10 +297,15 @@ import MarkGaugeBlock from '@/components/chart/MarkGaugeBlock.vue'
 import MarkHeatmapSection from '@/components/chart/MarkHeatmapSection.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -474,7 +482,7 @@ function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: 
 }
 
 async function retryPaperGradeForTask(record: ExamProcessingTaskItemResponse): Promise<void> {
-  if (!selectedExamId.value || !record.paperInstanceId) return
+  if (retryingPaperInstanceId.value || !selectedExamId.value || !record.paperInstanceId) return
   retryingPaperInstanceId.value = record.paperInstanceId
   try {
     await retryPaperGradeSuggestion({
@@ -720,7 +728,7 @@ const { chartOption: questionHeatmapOption } = useChartOption(() =>
 const questionHeatmapAriaLabel = computed(() => {
   const count = questionHeatmapCells.value.length
   if (count <= 0) {
-    return '题号确认率热力图，当前没有可展示的内容'
+    return '题号确认率热力图暂无数据'
   }
   return `题号确认率热力图，共 ${count} 道题`
 })
@@ -744,7 +752,7 @@ const { chartOption: reviewProgressChartOption } = useChartOption(() =>
 const reviewProgressChartAriaLabel = computed(() => {
   const count = reviewProgressBarItems.value.length
   if (count <= 0) {
-    return '按题目维度的复核进度，当前没有可展示的内容'
+    return '按题目维度的复核进度暂无数据'
   }
   return `按题目维度的复核进度，共 ${count} 道题`
 })
@@ -843,17 +851,17 @@ onActivated(() => {
 .progress-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   min-width: 0;
   padding: 8px 10px;
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 }
 
 .overview-row {
-  row-gap: 16px;
+  row-gap: var(--dp-space-3, 12px);
 }
 
 .status-card {
@@ -871,12 +879,12 @@ onActivated(() => {
   &__body {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
   }
 
   &__aux {
-    padding-top: 16px;
-    border-top: 1px solid var(--ant-color-border-secondary);
+    padding-top: var(--dp-space-3, 12px);
+    border-top: 1px solid var(--dp-border-subtle);
   }
 }
 
@@ -895,7 +903,7 @@ onActivated(() => {
   &__body {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
   }
 
   &__ring-block {
@@ -912,14 +920,14 @@ onActivated(() => {
 
   &__formula {
     font-size: 16px;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
     text-align: center;
   }
 
   &__hint {
     margin: 0;
     font-size: 12px;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-tertiary);
     text-align: center;
   }
 }
@@ -963,7 +971,7 @@ onActivated(() => {
 }
 
 .question-cell--highlight {
-  outline: 2px solid var(--ant-color-primary);
+  outline: 2px solid var(--dp-color-primary);
   outline-offset: 2px;
   border-radius: var(--dp-radius-control-inner);
 }
@@ -981,7 +989,7 @@ onActivated(() => {
 }
 
 .question-type {
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   font-size: 13px;
   white-space: nowrap;
 }
@@ -989,14 +997,14 @@ onActivated(() => {
 .progress-detail {
   margin-top: 4px;
   font-size: 12px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 
 .muted {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 
 .empty-block {
-  padding: 60px 0;
+  padding: var(--dp-space-3, 12px) 0;
 }
 </style>

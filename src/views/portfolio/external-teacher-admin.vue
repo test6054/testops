@@ -23,13 +23,23 @@ import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQueryTable } from '@/composables/useQueryTable'
@@ -39,8 +49,17 @@ import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const activeTab = ref('roster')
+const externalTabItems = [
+  { key: 'roster', label: '名册' },
+  { key: 'stats', label: '统计' },
+  { key: 'import-batch', label: '导入批次' },
+]
 const statsLoading = ref(false)
+/** 统计请求 token，与名册筛选切换隔离 */
+const statsRequestToken = ref(0)
 const saving = ref(false)
+const revokingId = ref('')
+const exporting = ref(false)
 const editLoading = ref(false)
 const stats = ref<PortfolioExternalTeacherStatsVO | null>(null)
 const drawerOpen = ref(false)
@@ -156,32 +175,28 @@ const batchDiagnosticColumns: ColumnsType<ExcelImportRowDiagnostic> = [
 ]
 
 const batchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() => {
-  const raw = batchDetail.value?.errorReportJson
-  if (!raw) {
+  const items = batchDetail.value?.errorReport
+  if (!items?.length) {
     return []
   }
-  try {
-    const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed)) {
-      return [{ rowIndex: -1, valid: false, invalidReason: '导入错误报告格式异常' }]
+  return items.flatMap((item, index) => {
+    const invalidReason = item.message?.trim() || '导入失败'
+    const errorCode = item.conflictAction
+    if (item.rowIndexes?.length) {
+      return item.rowIndexes.map((rowIndex) => ({
+        rowIndex,
+        valid: false,
+        invalidReason,
+        errorCode,
+      }))
     }
-    return parsed.map((item, index) => {
-      if (typeof item !== 'object' || item === null) {
-        return {
-          rowIndex: -(index + 1),
-          valid: false,
-          invalidReason: '导入错误报告明细格式异常',
-        }
-      }
-      const rowIndex
-        = 'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : -(index + 1)
-      const invalidReason
-        = 'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
-      return { rowIndex, valid: false, invalidReason }
-    })
-  } catch {
-    return [{ rowIndex: -1, valid: false, invalidReason: '导入错误报告不是合法结构化文本' }]
-  }
+    return [{
+      rowIndex: item.rowIndex ?? -(index + 1),
+      valid: false,
+      invalidReason,
+      errorCode,
+    }]
+  })
 })
 
 const contractStatusStatsColumns: ColumnsType = [
@@ -292,17 +307,31 @@ function buildRosterFilters() {
 }
 
 async function loadStats() {
+  const currentToken = ++statsRequestToken.value
+  const requestFilters = buildRosterFilters()
   statsLoading.value = true
   try {
-    stats.value = await portfolioExternalTeacherApi.stats(buildRosterFilters())
+    const next = await portfolioExternalTeacherApi.stats(requestFilters)
+    if (currentToken !== statsRequestToken.value) {
+      return
+    }
+    stats.value = next
   } catch (error) {
+    if (currentToken !== statsRequestToken.value) {
+      return
+    }
+    stats.value = null
     showUserError(error, '加载外聘教师统计失败')
   } finally {
-    statsLoading.value = false
+    if (currentToken === statsRequestToken.value) {
+      statsLoading.value = false
+    }
   }
 }
 
 async function searchRoster() {
+  // 先作废在途统计，避免旧筛选统计覆盖新列表
+  statsRequestToken.value += 1
   await Promise.all([search(), loadStats()])
 }
 
@@ -372,6 +401,9 @@ async function openEdit(id: string) {
 }
 
 async function saveRecord() {
+  if (saving.value) {
+    return
+  }
   if (!form.fullName.trim()) {
     showFormValidationMessage('请填写姓名')
     return
@@ -413,6 +445,9 @@ async function saveRecord() {
 }
 
 async function revokeRecord(id: string) {
+  if (revokingId.value || saving.value || exporting.value) {
+    return
+  }
   const ok = await confirmAsync({
     title: '确认停用',
     content: '确认停用此外聘教师记录？',
@@ -421,12 +456,15 @@ async function revokeRecord(id: string) {
   if (!ok) {
     return
   }
+  revokingId.value = id
   try {
     await portfolioExternalTeacherApi.revoke({ id })
     message.success('已停用')
     await loadPage()
   } catch (error) {
     showUserError(error, '停用外聘教师失败')
+  } finally {
+    revokingId.value = ''
   }
 }
 
@@ -448,12 +486,18 @@ async function openBatchDetail(id: string) {
 }
 
 async function exportRoster() {
+  if (exporting.value || saving.value) {
+    return
+  }
+  exporting.value = true
   try {
     const result = await portfolioExternalTeacherApi.exportRoster(buildRosterFilters())
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出外聘教师名册失败')
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -469,255 +513,307 @@ onMounted(async () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="外聘教师台账">
         <template #actions>
-          <UiButton variant="primary" @click="openCreate"> 新增外聘教师 </UiButton>
+          <UiButton size="sm" variant="primary" @click="openCreate"> 新增外聘教师 </UiButton>
         </template>
       </ContextBar>
     </template>
-    <a-tabs v-model:active-key="activeTab">
-      <a-tab-pane key="roster" tab="名册">
-        <UiCard title="批量导入">
-          <UiButton @click="importModalOpen = true"> 表格文件批量导入 </UiButton>
-        </UiCard>
-        <UiPlatformExcelImportModal
-          v-model:open="importModalOpen"
-          :scene-key="ExcelImportSceneKey.PORTFOLIO_EXTERNAL_TEACHER"
-          entity-label="外聘教师"
-          @success="handleImportSuccess"
+    <UiSectionTabs
+      v-model="activeTab"
+      :items="externalTabItems"
+      compact
+      divided
+    />
+    <template v-if="activeTab === 'roster'">
+      <UiCard title="批量导入">
+        <UiButton size="sm" @click="importModalOpen = true"> 表格文件批量导入 </UiButton>
+      </UiCard>
+      <UiPlatformExcelImportModal
+        v-model:open="importModalOpen"
+        :scene-key="ExcelImportSceneKey.PORTFOLIO_EXTERNAL_TEACHER"
+        entity-label="外聘教师"
+        @success="handleImportSuccess"
+      />
+      <UiCard>
+        <div class="toolbar">
+          <UiSelect
+            size="sm"
+            v-model="filters.dataStatus"
+            allow-clear
+            placeholder="数据状态"
+            style="width: 120px"
+            :options="PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS"
+            @change="searchRoster"
+          />
+          <UiInput
+            size="sm"
+            v-model="filters.teachSubject"
+            clearable
+            placeholder="任教科目"
+            style="width: 120px"
+            @press-enter="searchRoster"
+          />
+          <UiInput
+            size="sm"
+            v-model="filters.teacherSource"
+            clearable
+            placeholder="教师来源"
+            style="width: 120px"
+            @press-enter="searchRoster"
+          />
+          <UiInput
+            size="sm"
+            v-model="filters.contractStatus"
+            clearable
+            placeholder="合同状态"
+            style="width: 120px"
+            @press-enter="searchRoster"
+          />
+          <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
+          <UiButton size="sm" variant="outline" :loading="exporting" :disabled="exporting || saving" @click="exportRoster"> 导出台账 </UiButton>
+        </div>
+        <WorkbenchContextGateStrip
+          v-if="!loading && rows.length === 0"
+          tag="无记录"
+          body="当前筛选无外聘教师，可新增或调整筛选"
+          cta-label="新增外聘教师"
+          @cta="openCreate"
         />
-        <UiCard>
-          <div class="toolbar">
-            <a-select
-              v-model:value="filters.dataStatus"
-              allow-clear
-              placeholder="数据状态"
-              style="width: 120px"
-              :options="PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS"
-              @change="searchRoster"
-            />
-            <a-input
-              v-model:value="filters.teachSubject"
-              allow-clear
-              placeholder="任教科目"
-              style="width: 120px"
-              @press-enter="searchRoster"
-            />
-            <a-input
-              v-model:value="filters.teacherSource"
-              allow-clear
-              placeholder="教师来源"
-              style="width: 120px"
-              @press-enter="searchRoster"
-            />
-            <a-input
-              v-model:value="filters.contractStatus"
-              allow-clear
-              placeholder="合同状态"
-              style="width: 120px"
-              @press-enter="searchRoster"
-            />
-            <UiButton @click="loadPage"> 刷新 </UiButton>
-            <UiButton variant="outline" @click="exportRoster"> 导出台账 </UiButton>
-          </div>
-          <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无外聘教师" />
-          <UiDataTable
-            v-model:current="pageNum"
-            v-model:page-size="pageSize"
-            pagination-mode="server"
-            :total="pageTotal"
-            :columns="columns"
-            :data-source="rows"
-            :loading="loading"
-            row-key="id"
-            @page-change="handlePageChange"
-          >
-            <template
-              #bodyCell="{
-                column,
-                record,
-              }: {
+        <UiDataTable
+          v-else
+          v-model:current="pageNum"
+          v-model:page-size="pageSize"
+          pagination-mode="server"
+          :total="pageTotal"
+          :columns="columns"
+          :data-source="rows"
+          :loading="loading"
+          row-key="id"
+          @page-change="handlePageChange"
+        >
+          <template
+            #bodyCell="{
+              column,
+              record,
+            }: {
                 column: { key?: string }
                 record: PortfolioExternalTeacherVO
-              }"
-            >
-              <template v-if="column.key === 'dataStatus'">
-                <UiTag
-                  :tone="
-                    record.dataStatus === PortfolioExternalTeacherDataStatusCode.ACTIVE
-                      ? 'green'
-                      : 'gray'
-                  "
-                >
-                  {{ dataStatusLabel(record.dataStatus) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="buildExternalTeacherRowActions(record)"
-                  split
-                  @action="(key) => handleExternalTeacherAction(key, record)"
-                />
-              </template>
-            </template>
-          </UiDataTable>
-        </UiCard>
-      </a-tab-pane>
-      <a-tab-pane key="stats" tab="统计">
-        <UiCard>
-          <UiButton :loading="statsLoading" @click="loadStats"> 刷新统计 </UiButton>
-          <a-spin :spinning="statsLoading">
-            <div v-if="stats" class="stats-grid">
-              <div>
-                <h4>合同状态分布</h4>
-                <UiDataTable
-                  :columns="contractStatusStatsColumns"
-                  :data-source="stats.contractStatusCounts"
-                  row-key="dimensionCode"
-                  size="small"
-                  flat
-                  pagination-mode="none"
-                  :show-pagination="false"
-                  :sticky-header="false"
-                  :total="stats.contractStatusCounts.length"
-                />
-              </div>
-              <div>
-                <h4>教师来源分布</h4>
-                <UiDataTable
-                  :columns="teacherSourceStatsColumns"
-                  :data-source="stats.teacherSourceCounts"
-                  row-key="dimensionCode"
-                  size="small"
-                  flat
-                  pagination-mode="none"
-                  :show-pagination="false"
-                  :sticky-header="false"
-                  :total="stats.teacherSourceCounts.length"
-                />
-              </div>
-            </div>
-            <UiEmpty v-else-if="!statsLoading" description="暂无统计数据" />
-          </a-spin>
-        </UiCard>
-      </a-tab-pane>
-      <a-tab-pane key="import-batch" tab="导入批次">
-        <UiCard>
-          <UiButton :loading="batchLoading" @click="loadImportBatches"> 刷新批次 </UiButton>
-          <UiDataTable
-            v-model:current="batchPageNum"
-            v-model:page-size="batchPageSize"
-            pagination-mode="server"
-            :total="batchPageTotal"
-            :columns="batchColumns"
-            :data-source="batchRows"
-            :loading="batchLoading"
-            row-key="id"
-            style="margin-top: 16px"
-            @page-change="handleBatchPageChange"
+            }"
           >
-            <template
-              #bodyCell="{
-                column,
-                record,
-              }: {
+            <template v-if="column.key === 'dataStatus'">
+              <UiTag
+                :tone="
+                  record.dataStatus === PortfolioExternalTeacherDataStatusCode.ACTIVE
+                    ? 'green'
+                    : 'gray'
+                "
+              >
+                {{ dataStatusLabel(record.dataStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="buildExternalTeacherRowActions(record)"
+                split
+                @action="(key) => handleExternalTeacherAction(key, record)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
+    </template>
+    <template v-else-if="activeTab === 'stats'">
+      <UiCard>
+        <UiButton size="sm" :loading="statsLoading" @click="loadStats"> 刷新统计 </UiButton>
+        <UiSpin :spinning="statsLoading">
+          <div v-if="stats" class="stats-grid">
+            <div>
+              <h4>合同状态分布</h4>
+              <UiDataTable
+                :columns="contractStatusStatsColumns"
+                :data-source="stats.contractStatusCounts"
+                row-key="dimensionCode"
+                size="sm"
+                flat
+                pagination-mode="none"
+                :show-pagination="false"
+                :sticky-header="false"
+                :total="stats.contractStatusCounts.length"
+              />
+            </div>
+            <div>
+              <h4>教师来源分布</h4>
+              <UiDataTable
+                :columns="teacherSourceStatsColumns"
+                :data-source="stats.teacherSourceCounts"
+                row-key="dimensionCode"
+                size="small"
+                flat
+                pagination-mode="none"
+                :show-pagination="false"
+                :sticky-header="false"
+                :total="stats.teacherSourceCounts.length"
+              />
+            </div>
+          </div>
+          <UiEmpty size="sm" v-else-if="!statsLoading" description="暂无统计数据" />
+        </UiSpin>
+      </UiCard>
+    </template>
+    <template v-else-if="activeTab === 'import-batch'">
+      <UiCard>
+        <UiButton size="sm" :loading="batchLoading" @click="loadImportBatches"> 刷新批次 </UiButton>
+        <UiDataTable
+          v-model:current="batchPageNum"
+          v-model:page-size="batchPageSize"
+          pagination-mode="server"
+          :total="batchPageTotal"
+          :columns="batchColumns"
+          :data-source="batchRows"
+          :loading="batchLoading"
+          row-key="id"
+          style="margin-top: 16px"
+          @page-change="handleBatchPageChange"
+        >
+          <template
+            #bodyCell="{
+              column,
+              record,
+            }: {
                 column: { key?: string }
                 record: PortfolioExternalTeacherImportBatchVO
-              }"
-            >
-              <template v-if="column.key === 'batchStatus'">
-                {{ batchStatusLabel(record.batchStatus) }}
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[{ key: 'detail', label: '详情' }]"
-                  split
-                  @action="() => openBatchDetail(record.id)"
-                />
-              </template>
+            }"
+          >
+            <template v-if="column.key === 'batchStatus'">
+              {{ batchStatusLabel(record.batchStatus) }}
             </template>
-          </UiDataTable>
-        </UiCard>
-      </a-tab-pane>
-    </a-tabs>
-    <a-drawer
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[{ key: 'detail', label: '详情' }]"
+                split
+                @action="() => openBatchDetail(record.id)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
+    </template>
+    <UiDrawer
       v-model:open="drawerOpen"
       :title="form.id ? '编辑外聘教师' : '新增外聘教师'"
       width="480"
       @close="resetEditorContext"
     >
-      <a-spin :spinning="editLoading">
-        <a-form layout="vertical">
-          <a-form-item label="姓名" required>
-            <a-input v-model:value="form.fullName" />
-          </a-form-item>
-          <a-form-item label="性别">
-            <a-input v-model:value="form.gender" />
-          </a-form-item>
-          <a-form-item label="专业">
-            <a-input v-model:value="form.major" />
-          </a-form-item>
-          <a-form-item label="职称">
-            <a-input v-model:value="form.title" />
-          </a-form-item>
-          <a-form-item label="年龄">
-            <a-input-number v-model:value="form.age" :min="0" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="身份证号">
-            <a-input v-model:value="form.idCardNo" />
-          </a-form-item>
-          <a-form-item label="聘任学期">
-            <a-input v-model:value="form.hireTerm" />
-          </a-form-item>
-          <a-form-item label="任教科目">
-            <a-input v-model:value="form.teachSubject" />
-          </a-form-item>
-          <a-form-item label="授课学时">
-            <a-input-number v-model:value="form.teachHours" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="任职单位">
-            <a-input v-model:value="form.employerUnit" />
-          </a-form-item>
-          <a-form-item label="任教专业">
-            <a-input v-model:value="form.teachMajor" />
-          </a-form-item>
-          <a-form-item label="教师来源">
-            <a-input v-model:value="form.teacherSource" />
-          </a-form-item>
-          <a-form-item label="试讲成绩">
-            <a-input v-model:value="form.trialScore" />
-          </a-form-item>
-          <a-form-item label="行业经历">
-            <a-input v-model:value="form.industryExperience" />
-          </a-form-item>
-          <a-form-item label="合同状态">
-            <a-input v-model:value="form.contractStatus" />
-          </a-form-item>
-          <a-form-item label="联系电话">
-            <a-input v-model:value="form.contactPhone" />
-          </a-form-item>
-          <a-form-item label="联系邮箱">
-            <a-input v-model:value="form.contactEmail" />
-          </a-form-item>
-          <a-form-item label="聘期开始">
-            <a-date-picker
-              v-model:value="form.hireStartDate"
+      <UiSpin :spinning="editLoading">
+        <UiForm layout="vertical">
+          <UiFormItem label="姓名" required>
+            <UiInput
+              size="sm" v-model="form.fullName"
+            />
+          </UiFormItem>
+          <UiFormItem label="性别">
+            <UiInput
+              size="sm" v-model="form.gender"
+            />
+          </UiFormItem>
+          <UiFormItem label="专业">
+            <UiInput
+              size="sm" v-model="form.major"
+            />
+          </UiFormItem>
+          <UiFormItem label="职称">
+            <UiInput
+              size="sm" v-model="form.title"
+            />
+          </UiFormItem>
+          <UiFormItem label="年龄">
+            <UiInputNumber
+              size="sm" v-model="form.age" :min="0" style="width: 100%"
+            />
+          </UiFormItem>
+          <UiFormItem label="身份证号">
+            <UiInput
+              size="sm" v-model="form.idCardNo"
+            />
+          </UiFormItem>
+          <UiFormItem label="聘任学期">
+            <UiInput
+              size="sm" v-model="form.hireTerm"
+            />
+          </UiFormItem>
+          <UiFormItem label="任教科目">
+            <UiInput
+              size="sm" v-model="form.teachSubject"
+            />
+          </UiFormItem>
+          <UiFormItem label="授课学时">
+            <UiInputNumber
+              size="sm" v-model="form.teachHours" style="width: 100%"
+            />
+          </UiFormItem>
+          <UiFormItem label="任职单位">
+            <UiInput
+              size="sm" v-model="form.employerUnit"
+            />
+          </UiFormItem>
+          <UiFormItem label="任教专业">
+            <UiInput
+              size="sm" v-model="form.teachMajor"
+            />
+          </UiFormItem>
+          <UiFormItem label="教师来源">
+            <UiInput
+              size="sm" v-model="form.teacherSource"
+            />
+          </UiFormItem>
+          <UiFormItem label="试讲成绩">
+            <UiInput
+              size="sm" v-model="form.trialScore"
+            />
+          </UiFormItem>
+          <UiFormItem label="行业经历">
+            <UiInput
+              size="sm" v-model="form.industryExperience"
+            />
+          </UiFormItem>
+          <UiFormItem label="合同状态">
+            <UiInput
+              size="sm" v-model="form.contractStatus"
+            />
+          </UiFormItem>
+          <UiFormItem label="联系电话">
+            <UiInput
+              size="sm" v-model="form.contactPhone"
+            />
+          </UiFormItem>
+          <UiFormItem label="联系邮箱">
+            <UiInput
+              size="sm" v-model="form.contactEmail"
+            />
+          </UiFormItem>
+          <UiFormItem label="聘期开始">
+            <UiDatePicker
+              size="sm"
+              v-model="form.hireStartDate"
               value-format="YYYY-MM-DD"
               style="width: 100%"
             />
-          </a-form-item>
-          <a-form-item label="聘期结束">
-            <a-date-picker
-              v-model:value="form.hireEndDate"
+          </UiFormItem>
+          <UiFormItem label="聘期结束">
+            <UiDatePicker
+              size="sm"
+              v-model="form.hireEndDate"
               value-format="YYYY-MM-DD"
               style="width: 100%"
             />
-          </a-form-item>
-          <a-form-item label="数据状态">
-            <a-select
-              v-model:value="form.dataStatus"
+          </UiFormItem>
+          <UiFormItem label="数据状态">
+            <UiSelect
+              size="sm"
+              v-model="form.dataStatus"
               :options="PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS"
             />
-          </a-form-item>
-          <a-form-item label="附件材料">
+          </UiFormItem>
+          <UiFormItem label="附件材料">
             <input
               ref="attachmentInputRef"
               type="file"
@@ -725,7 +821,7 @@ onMounted(async () => {
               class="sr-only"
               @change="onAttachmentPick"
             />
-            <UiButton :loading="uploadingAttachment" @click="openAttachmentPicker">
+            <UiButton size="sm" :loading="uploadingAttachment" @click="openAttachmentPicker">
               上传附件
             </UiButton>
             <ul v-if="attachmentItems.length" class="attachment-list">
@@ -734,12 +830,12 @@ onMounted(async () => {
                 <UiTextAction @click="removeAttachment(item.fileNodeId)"> 移除 </UiTextAction>
               </li>
             </ul>
-          </a-form-item>
-          <UiButton variant="primary" :loading="saving" @click="saveRecord"> 保存 </UiButton>
-        </a-form>
-      </a-spin>
-    </a-drawer>
-    <a-drawer
+          </UiFormItem>
+          <UiButton size="sm" variant="primary" :loading="saving" @click="saveRecord"> 保存 </UiButton>
+        </UiForm>
+      </UiSpin>
+    </UiDrawer>
+    <UiDrawer
       v-model:open="batchDetailOpen"
       title="导入批次详情"
       width="480"
@@ -766,7 +862,7 @@ onMounted(async () => {
           flat
         />
       </template>
-    </a-drawer>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -781,8 +877,8 @@ onMounted(async () => {
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 16px;
+  gap: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3, 12px);
 }
 .stats-grid h4 {
   margin: 0 0 8px;
@@ -792,7 +888,7 @@ onMounted(async () => {
   margin-top: 12px;
   padding: 8px;
   font-size: 12px;
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
   border-radius: 4px;
   white-space: pre-wrap;
   word-break: break-all;

@@ -114,6 +114,9 @@ async function handleRecover(): Promise<void> {
   if (!canRecover.value) {
     return
   }
+  if (recovering.value) {
+    return
+  }
   const confirmed = await confirmAsync({
     title: '一键补救孤立扫描事件',
     content: `将按扫描设备时间窗自动创建批次，聚合 ${props.orphanPendingEventCount} 条孤立事件（共 ${props.orphanPendingPageCount} 页）。确认继续？`,
@@ -122,6 +125,9 @@ async function handleRecover(): Promise<void> {
     type: 'warning',
   })
   if (!confirmed) {
+    return
+  }
+  if (recovering.value) {
     return
   }
   recovering.value = true
@@ -155,7 +161,7 @@ async function handleRecover(): Promise<void> {
 
 .scan-orphan-recovery__failure-summary {
   margin: 0 0 4px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -163,7 +169,7 @@ async function handleRecover(): Promise<void> {
 .scan-orphan-recovery__failure-list {
   margin: 8px 0 0;
   padding-left: 18px;
-  color: var(--ant-color-text);
+  color: var(--dp-text);
   font-size: 13px;
   line-height: 1.6;
 }

@@ -31,31 +31,31 @@ export enum AiGradingStatusEnum {
 export const AI_GRADING_STATUS_CONFIG: Record<AiGradingStatusEnum, AiGradingStatusConfig> = {
   [AiGradingStatusEnum.NOT_STARTED]: {
     text: '未开始',
-    color: 'var(--ant-color-text-tertiary)',
+    color: 'var(--dp-text-tertiary)',
     loading: false,
     canPoll: false
   },
   [AiGradingStatusEnum.PENDING]: {
     text: '待处理',
-    color: 'var(--ant-color-primary)',
+    color: 'var(--dp-color-primary)',
     loading: true,
     canPoll: true
   },
   [AiGradingStatusEnum.PROCESSING]: {
     text: '处理中',
-    color: 'var(--ant-color-primary-hover)',
+    color: 'var(--dp-color-primary-hover)',
     loading: true,
     canPoll: true
   },
   [AiGradingStatusEnum.COMPLETED]: {
     text: '评分完成',
-    color: 'var(--ant-color-success)',
+    color: 'var(--dp-success)',
     loading: false,
     canPoll: false
   },
   [AiGradingStatusEnum.FAILED]: {
     text: '处理失败',
-    color: 'var(--ant-color-error)',
+    color: 'var(--dp-error)',
     loading: false,
     canPoll: false
   }
@@ -107,35 +107,35 @@ export const AI_REVIEW_STATUS_CONFIG: Record<AiReviewStatusEnum, AiReviewStatusI
   [AiReviewStatusEnum.NOT_REQUIRED]: {
     code: 'NOT_REQUIRED',
     description: '无需评审',
-    color: 'var(--ant-color-text-tertiary)',
+    color: 'var(--dp-text-tertiary)',
     icon: 'icon-minus-circle',
     canPoll: false
   },
   [AiReviewStatusEnum.PENDING]: {
     code: 'PENDING',
     description: '待评审',
-    color: 'var(--ant-color-primary)',
+    color: 'var(--dp-color-primary)',
     icon: 'icon-clock-circle',
     canPoll: true
   },
   [AiReviewStatusEnum.IN_PROGRESS]: {
     code: 'IN_PROGRESS',
     description: '评审中',
-    color: 'var(--ant-color-primary-hover)',
+    color: 'var(--dp-color-primary-hover)',
     icon: 'icon-loading',
     canPoll: true
   },
   [AiReviewStatusEnum.COMPLETED]: {
     code: 'COMPLETED',
     description: '评审完成',
-    color: 'var(--ant-color-success)',
+    color: 'var(--dp-success)',
     icon: 'icon-check-circle',
     canPoll: false
   },
   [AiReviewStatusEnum.FAILED]: {
     code: 'FAILED',
     description: '评审失败',
-    color: 'var(--ant-color-error)',
+    color: 'var(--dp-error)',
     icon: 'icon-close-circle',
     canPoll: false
   }

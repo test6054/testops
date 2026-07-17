@@ -7,6 +7,7 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { UserDetailDto, UserListItemDto } from '@/apis/edu/admin-user'
 import { computed, onMounted, ref, watch } from 'vue'
 import { getTenantUserDetail, getTenantUserList } from '@/apis/edu/tenant-user-management'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { showUserError } from '@/utils/error-handler'
 
 interface Props {
@@ -128,30 +129,21 @@ defineExpose({ reload: loadOptions, hydrateById })
 </script>
 
 <template>
-  <a-select
-    :value="internalValue"
+  <UiSelect
+    :model-value="internalValue"
     :placeholder="placeholder"
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
     style="width: 100%"
-    show-search
+    allow-search
     :filter-option="false"
     @search="handleSearch"
     @change="handleChange"
-  >
-    <a-select-option
-      v-for="opt in visibleOptions"
-      :key="opt.id"
-      :value="opt.id"
-      :label="userLabel(opt)"
-    >
-      {{ userLabel(opt) }}
-      <span v-if="opt.departmentName || opt.department" class="archive-duty-user-select__dept">
-        {{ opt.departmentName || opt.department }}
-      </span>
-    </a-select-option>
-  </a-select>
+  
+    size="sm"
+    :options="visibleOptions.map((opt) => ({ value: opt.id, label: userLabel(opt) }))"
+  />
 </template>
 
 <style scoped>

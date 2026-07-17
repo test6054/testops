@@ -180,8 +180,8 @@ export const portfolioAnalysisApi = {
     http.post<PortfolioPortraitCreditCurveVO>('/api/portfolio/portrait/teacher/credit-curve', data),
   getDepartmentPortrait: (data: { departmentId: string }) =>
     http.post<PortfolioDepartmentPortraitVO>('/api/portfolio/portrait/department/get', data),
-  getSchoolPortraitCockpit: () =>
-    http.post<PortfolioSchoolPortraitCockpitVO>('/api/portfolio/portrait/school/cockpit', {}),
+  getSchoolPortraitCockpit: (data: { campusOrgId?: string } = {}) =>
+    http.post<PortfolioSchoolPortraitCockpitVO>('/api/portfolio/portrait/school/cockpit', data),
   pageComplianceAlerts: (data: {
     pageNum: number
     pageSize: number

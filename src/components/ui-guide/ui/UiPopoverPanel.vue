@@ -181,7 +181,7 @@ const handleOpenChange = (value: boolean) => {
 }
 
 .ui-popover-panel__header {
-  padding: 16px 16px 0;
+  padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px) 0;
 }
 
 .ui-popover-panel__title {
@@ -201,15 +201,15 @@ const handleOpenChange = (value: boolean) => {
 
 .ui-popover-panel__body {
   min-width: 0;
-  padding: 14px 16px 16px;
+  padding: var(--dp-space-3, 12px);
 }
 
 .ui-popover-panel__surface--compact .ui-popover-panel__header {
-  padding: 14px 14px 0;
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px) 0;
 }
 
 .ui-popover-panel__surface--compact .ui-popover-panel__body {
-  padding: 12px 14px 14px;
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px) var(--dp-space-3, 12px);
 }
 
 .ui-popover-panel__content-text {
@@ -223,13 +223,13 @@ const handleOpenChange = (value: boolean) => {
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 0 16px 16px;
+  gap: var(--dp-space-2, 8px);
+  padding: 0 var(--dp-space-3, 12px) var(--dp-space-3, 12px);
   border-top: 1px solid var(--dp-border);
 }
 
 .ui-popover-panel__surface--compact .ui-popover-panel__footer {
-  padding: 0 14px 14px;
+  padding: 0 var(--dp-space-3, 12px) var(--dp-space-2, 8px);
 }
 </style>
 

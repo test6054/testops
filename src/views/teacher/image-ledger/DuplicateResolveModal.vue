@@ -9,26 +9,26 @@
     @update:open="$emit('update:open', $event)"
     @ok="handleOk"
   >
-    <a-form v-if="resolution" layout="vertical">
-      <a-form-item label="重复判定">
-        <a-input value="两份影像内容重复，需要选择保留的试卷" disabled />
-      </a-form-item>
-      <a-form-item label="基准影像">
-        <a-input value="系统识别为基准试卷影像" disabled />
-      </a-form-item>
-      <a-form-item label="重复影像">
-        <a-input value="系统识别为重复试卷影像" disabled />
-      </a-form-item>
-      <a-form-item label="保留的试卷" required>
-        <a-radio-group v-model:value="selectedPaperInstanceId">
-          <a-radio :value="resolution.firstPaperInstanceId"> 保留基准试卷 </a-radio>
-          <a-radio :value="resolution.secondPaperInstanceId"> 保留重复试卷 </a-radio>
-        </a-radio-group>
-      </a-form-item>
-      <a-form-item label="处置原因" required>
-        <a-textarea v-model:value="resolutionReason" :rows="3" :max-length="200" show-count />
-      </a-form-item>
-    </a-form>
+    <UiForm v-if="resolution" layout="vertical">
+      <UiFormItem label="重复判定">
+        <UiInput size="sm" model-value="两份影像内容重复，需要选择保留的试卷" disabled />
+      </UiFormItem>
+      <UiFormItem label="基准影像">
+        <UiInput size="sm" model-value="系统识别为基准试卷影像" disabled />
+      </UiFormItem>
+      <UiFormItem label="重复影像">
+        <UiInput size="sm" model-value="系统识别为重复试卷影像" disabled />
+      </UiFormItem>
+      <UiFormItem label="保留的试卷" required>
+        <UiRadioGroup v-model="selectedPaperInstanceId" size="sm" block>
+          <UiRadio :value="resolution.firstPaperInstanceId">保留基准试卷</UiRadio>
+          <UiRadio :value="resolution.secondPaperInstanceId">保留重复试卷</UiRadio>
+        </UiRadioGroup>
+      </UiFormItem>
+      <UiFormItem label="处置原因" required>
+        <UiTextarea size="sm" v-model="resolutionReason" :rows="3" :max-length="200" :show-count="true" />
+      </UiFormItem>
+    </UiForm>
   </UiDialog>
 </template>
 
@@ -37,7 +37,13 @@ import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
 import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
 import { resolveDuplicate } from '@/apis/mark/image-ledger'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRadio from '@/components/ui-guide/ui/UiRadio.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'DuplicateResolveModal' })
@@ -69,6 +75,9 @@ watch(
 )
 
 async function handleOk(): Promise<void> {
+  if (submitting.value) {
+    return
+  }
   const reason = resolutionReason.value.trim()
   if (!reason) {
     submitError.value = '请填写处置原因'

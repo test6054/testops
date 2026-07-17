@@ -98,6 +98,8 @@ export interface PortfolioTitlePromotionApplicationVO {
   materialRate?: string
   performanceRate?: string
   matchScore?: string
+  hardPass: boolean
+  performancePass: boolean
   criteriaResults?: PortfolioTitleCriteriaResultItemVO[]
   evidenceItems?: PortfolioTitleEvidenceItem[]
   canSubmit?: boolean
@@ -106,6 +108,7 @@ export interface PortfolioTitlePromotionApplicationVO {
   redlineBlocked: boolean
   redlineCoefficient?: string
   commitmentConfirmed: boolean
+  selectionConfirmed?: boolean
   bagFileNodeId?: string
   collegeOpinion?: string
   hrOpinion?: string
@@ -159,6 +162,7 @@ export interface PortfolioTitlePromotionApplicationSaveRequest {
   pathCode: PortfolioTitleCriteriaPathCode
   jobCategory?: PortfolioTitleJobCategoryCode
   commitmentConfirmed?: boolean
+  selectionConfirmed?: boolean
   evidenceItems: PortfolioTitleEvidenceItem[]
 }
 

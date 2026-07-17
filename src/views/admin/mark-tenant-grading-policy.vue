@@ -9,7 +9,13 @@
       />
     </template>
 
-    <UiEmpty v-if="!canManage" description="仅超级管理员或租户管理员可维护租户阅卷策略" />
+    <WorkbenchContextGateStrip
+      v-if="!canManage"
+      tag="无权限"
+      body="仅超级管理员或租户管理员可维护租户阅卷策略"
+      tone="warning"
+      hide-cta
+    />
     <template v-else>
       <UiSkeletonState v-if="loading" variant="card" :card-count="2" compact />
       <template v-else>
@@ -25,13 +31,14 @@
           <form class="tenant-policy__form" @submit.prevent="handleSave">
             <label class="tenant-policy__field tenant-policy__field--switch">
               <span>须人工确认最终成绩</span>
-              <a-switch v-model:checked="form.manualFinalScoreConfirmRequired" />
+              <UiSwitch size="sm" v-model="form.manualFinalScoreConfirmRequired" />
             </label>
 
             <label class="tenant-policy__field">
               <span>撤回窗口 / 延迟自动确认（分钟）</span>
-              <a-input-number
-                v-model:value="form.delayedFinalScoreConfirmMinutes"
+              <UiInputNumber
+                size="sm"
+                v-model="form.delayedFinalScoreConfirmMinutes"
                 :min="1"
                 :max="120"
               />
@@ -51,13 +58,14 @@
           <form class="tenant-policy__form" @submit.prevent="handleSave">
             <label class="tenant-policy__field tenant-policy__field--switch">
               <span>启用经验辅助评阅</span>
-              <a-switch v-model:checked="form.experienceAssistEnabled" />
+              <UiSwitch size="sm" v-model="form.experienceAssistEnabled" />
             </label>
 
             <label class="tenant-policy__field">
               <span>最低一致率</span>
-              <a-input-number
-                v-model:value="consistencyPercent"
+              <UiInputNumber
+                size="sm"
+                v-model="consistencyPercent"
                 :min="50"
                 :max="100"
                 :step="1"
@@ -68,18 +76,23 @@
 
             <label class="tenant-policy__field">
               <span>签名汉明距离上限</span>
-              <a-input-number v-model:value="form.maxHammingDistance" :min="1" :max="16" />
+              <UiInputNumber
+                size="sm" v-model="form.maxHammingDistance" :min="1" :max="16"
+              />
             </label>
 
             <label class="tenant-policy__field">
               <span>Prompt 经验条目上限</span>
-              <a-input-number v-model:value="form.maxExperienceItems" :min="1" :max="10" />
+              <UiInputNumber
+                size="sm" v-model="form.maxExperienceItems" :min="1" :max="10"
+              />
             </label>
 
             <label class="tenant-policy__field">
               <span>允许引用的来源考试性质</span>
-              <a-select
-                v-model:value="form.sourceExamKind"
+              <UiSelect
+                size="sm"
+                v-model="form.sourceExamKind"
                 :options="sourceExamKindOptions"
                 placeholder="请选择来源考试性质"
               />
@@ -87,12 +100,12 @@
 
             <label class="tenant-policy__field tenant-policy__field--switch">
               <span>须同课程来源</span>
-              <a-switch v-model:checked="form.requireSameCourse" />
+              <UiSwitch size="sm" v-model="form.requireSameCourse" />
             </label>
 
             <label class="tenant-policy__field tenant-policy__field--switch">
               <span>须有效性评估</span>
-              <a-switch v-model:checked="form.requireEffectivenessEval" />
+              <UiSwitch size="sm" v-model="form.requireEffectivenessEval" />
             </label>
 
             <div class="tenant-policy__actions">
@@ -132,6 +145,7 @@
           />
           <UiEmpty
             v-else-if="opsOverview && !opsLoading"
+            size="sm"
             description="当前无试评阶段考试"
             compact
           />
@@ -157,10 +171,14 @@ import {
 } from '@/apis/mark/grading-experience-assist'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
@@ -288,6 +306,9 @@ async function loadOpsOverview(): Promise<void> {
 
 async function handleSave(): Promise<void> {
   if (!canManage.value) return
+  if (saving.value) {
+    return
+  }
   saving.value = true
   try {
     applyPolicy(

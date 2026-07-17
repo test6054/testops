@@ -1,9 +1,9 @@
 <template>
-  <a-modal
+  <UiDialog
     v-model:open="visible"
     title="文档导入答卷"
     :width="780"
-    :footer="null"
+    hide-footer
     :mask-closable="!isBusy"
     @cancel="handleClose"
   >
@@ -53,7 +53,7 @@
 
     <template v-if="phase === 'processing'">
       <div class="ird__processing">
-        <a-spin size="large" />
+        <UiSpin size="lg" />
         <div class="ird__processing-text">
           <h4>AI 正在解析文档…</h4>
           <p class="ird__processing-hint">解析任务已提交，系统正在处理。</p>
@@ -83,7 +83,7 @@
         </p>
       </div>
       <pre v-if="extractDisplayText" class="ird__extract-text">{{ extractDisplayText }}</pre>
-      <UiEmpty v-else description="未能从文档中抽取可读文本，请检查扫描清晰度或改用 Excel 导入。" />
+      <UiEmpty size="sm" v-else description="未能从文档中抽取可读文本，请检查扫描清晰度或改用 Excel 导入。" />
       <div class="ird__action-row">
         <UiButton variant="ghost" size="sm" @click="resetToUpload"> 重新选择文件 </UiButton>
         <UiButton variant="primary" size="sm" @click="handleClose"> 关闭并对照录入 </UiButton>
@@ -91,10 +91,10 @@
     </template>
 
     <template v-if="phase === 'succeeded'">
-      <a-result
-        status="success"
+      <UiEmpty
+        size="sm"
         title="AI 文档解析完成"
-        sub-title="答卷草稿已写入，请在列表中查看并确认。"
+        description="答卷草稿已写入，请在列表中查看并确认。"
       />
       <div class="ird__action-row">
         <UiButton variant="ghost" size="sm" @click="resetToUpload"> 继续上传 </UiButton>
@@ -105,7 +105,7 @@
     </template>
 
     <template v-if="phase === 'failed'">
-      <a-result status="error" title="AI 文档解析失败" :sub-title="failureReason" />
+      <UiEmpty size="sm" title="AI 文档解析失败" :description="failureReason ?? undefined" />
       <div class="ird__action-row ird__action-row--failed">
         <UiButton variant="ghost" size="sm" @click="resetToUpload"> 重新上传 </UiButton>
         <UiButton
@@ -120,7 +120,7 @@
         <UiButton variant="primary" size="sm" @click="handleClose"> 关闭 </UiButton>
       </div>
     </template>
-  </a-modal>
+  </UiDialog>
 </template>
 
 <script setup lang="ts">
@@ -140,6 +140,8 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { usePolling } from '@/composables/usePolling'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -386,8 +388,8 @@ function formatBytes(bytes: number): string {
   }
 
   &__upload-zone {
-    padding: 24px 16px;
-    border: 1px dashed var(--ant-color-border);
+    padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+    border: 1px dashed var(--dp-border);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface-subtle);
   }
@@ -407,8 +409,8 @@ function formatBytes(bytes: number): string {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
-    padding: 40px 0 24px;
+    gap: var(--dp-space-3, 12px);
+    padding: var(--dp-space-3, 12px) 0 var(--dp-space-3, 12px);
   }
 
   &__processing-text {
@@ -450,7 +452,7 @@ function formatBytes(bytes: number): string {
     overflow: auto;
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-control);
-    background: var(--ant-color-bg-container);
+    background: var(--dp-bg-container);
     font-family: var(--dp-font-family);
     font-size: 13px;
     line-height: 1.6;

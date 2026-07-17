@@ -248,13 +248,14 @@ defineExpose({ refresh: loadTasks })
     </div>
 
     <UiEmpty
+      size="sm"
       v-if="loadFailed"
       description="导出任务加载失败"
       action-label="重试"
       @action="loadTasks"
     />
 
-    <UiEmpty v-else-if="!loading && displayTasks.length === 0" description="暂无导出任务" />
+    <UiEmpty size="sm" v-else-if="!loading && displayTasks.length === 0" description="暂无导出任务" />
 
     <UiDataTable
       v-else

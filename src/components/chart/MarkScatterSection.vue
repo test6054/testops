@@ -60,7 +60,7 @@ const resolvedAriaLabel = computed(() => {
   if (props.ariaLabel.trim()) {
     return props.ariaLabel.trim()
   }
-  return `${props.title}，${props.pointCount > 0 ? `共 ${props.pointCount} 题` : '当前没有可展示的内容'}`
+  return `${props.title}，${props.pointCount > 0 ? `共 ${props.pointCount} 题` : '暂无数据'}`
 })
 
 /** 清除 ECharts brush 选区，与下方题目清单联动 */

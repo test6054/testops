@@ -2,35 +2,43 @@
   <StageWorkbenchShell>
     <template #context>
       <ContextBar layout="workbench" show-title title="考试列表">
-        <template #status>
-          <a-select
-            v-model:value="filterForm.academicYear"
-            :options="academicYearOptions"
-            class="context-bar__filter-select"
-            :placeholder="MARK_DASHBOARD_FILTER_PLACEHOLDERS.academicYear"
-            allow-clear
-            @change="handleContextFilterChange"
-          />
-          <a-select
-            v-model:value="filterForm.semester"
-            :options="semesterSelectOptions"
-            class="context-bar__filter-select"
-            :placeholder="MARK_DASHBOARD_FILTER_PLACEHOLDERS.semester"
-            allow-clear
-            :disabled="!filterForm.academicYear"
-            @change="handleContextFilterChange"
-          />
-          <a-select
-            v-model:value="filterForm.status"
-            :options="statusSelectOptions"
-            class="context-bar__filter-select"
-            :placeholder="MARK_DASHBOARD_FILTER_PLACEHOLDERS.status"
-            allow-clear
-            @change="handleContextFilterChange"
-          />
+        <template #toolbar>
+          <div class="exam-list__scope" role="group" aria-label="考试范围筛选">
+            <div class="exam-list__scope-item">
+              <UiSelect
+                size="sm"
+                v-model="filterForm.academicYear"
+                :options="academicYearOptions"
+                :placeholder="MARK_DASHBOARD_FILTER_PLACEHOLDERS.academicYear"
+                allow-clear
+                @change="handleContextFilterChange"
+              />
+            </div>
+            <div class="exam-list__scope-item">
+              <UiSelect
+                size="sm"
+                v-model="filterForm.semester"
+                :options="semesterSelectOptions"
+                :placeholder="MARK_DASHBOARD_FILTER_PLACEHOLDERS.semester"
+                allow-clear
+                :disabled="!filterForm.academicYear"
+                @change="handleContextFilterChange"
+              />
+            </div>
+            <div class="exam-list__scope-item exam-list__scope-item--status">
+              <UiSelect
+                size="sm"
+                v-model="filterForm.status"
+                :options="statusSelectOptions"
+                :placeholder="MARK_DASHBOARD_FILTER_PLACEHOLDERS.status"
+                allow-clear
+                @change="handleContextFilterChange"
+              />
+            </div>
+          </div>
         </template>
         <template #actions>
-          <UiButton size="sm" @click="goCreateExam">
+          <UiButton size="sm" variant="primary" @click="goCreateExam">
             <template #icon><PlusOutlined /></template>
             新建考试
           </UiButton>
@@ -40,7 +48,6 @@
 
     <template #signal>
       <SignalBand
-        variant="tiles"
         compact
         :metrics="summarySignalMetrics"
         @metric-click="handleSummaryMetricClick"
@@ -75,19 +82,20 @@
           @reset="handleReset"
         >
           <template #field-dateRange>
-            <a-range-picker
-              v-model:value="filterForm.dateRange"
-              style="width: 260px"
+            <UiRangePicker
+              v-model="filterForm.dateRange"
+              size="sm"
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD HH:mm:ss"
               :placeholder="['开始日期', '结束日期']"
-              allow-clear
+              style="width: 260px"
             />
           </template>
         </UiFilterBar>
       </template>
 
       <UiEmpty
+        size="sm"
         v-if="listLoadFailed"
         description="考试列表加载失败"
         action-label="重试"
@@ -95,11 +103,13 @@
         @action="() => reloadListAndCounts()"
       />
       <UiEmpty
+        size="sm"
         v-else-if="listTab === 'priority' && !priorityLoading && priorityPagination.total === 0"
         description="暂无优先推进的考试"
         class="exam-list-page__empty"
       />
       <UiEmpty
+        size="sm"
         v-else-if="listTab === 'ongoing' && !ongoingLoading && ongoingPagination.total === 0"
         description="暂无进行中的考试"
         class="exam-list-page__empty"
@@ -237,52 +247,56 @@
     @confirm="handleSave"
   >
     <UiSkeletonState v-if="editDetailLoading" variant="card" compact />
-    <a-form v-else ref="formRef" :model="examForm" :rules="examFormRules" layout="vertical">
-      <a-form-item label="课程" name="courseId">
+    <UiForm v-else ref="formRef" :model="examForm" :rules="examFormRules" layout="vertical">
+      <UiFormItem label="课程" name="courseId">
         <CatalogCourseSelector
           v-model:value="examForm.courseId"
           placeholder="选择课程"
           :allow-clear="false"
         />
-      </a-form-item>
-      <a-form-item label="考试名称" name="examName">
-        <a-input
-          v-model:value="examForm.examName"
+      </UiFormItem>
+      <UiFormItem label="考试名称" name="examName">
+        <UiInput
+          size="sm"
+          v-model="examForm.examName"
           placeholder="例如：2026 春《工程制图》期末"
           :maxlength="100"
-          show-count
         />
-      </a-form-item>
-      <a-form-item label="考务编号" name="examNo">
-        <a-input
-          v-model:value="examForm.examNo"
+      </UiFormItem>
+      <UiFormItem label="考务编号" name="examNo">
+        <UiInput
+          size="sm"
+          v-model="examForm.examNo"
           placeholder="教务系统编号或自定义编号"
           :maxlength="64"
         />
-      </a-form-item>
-      <a-form-item label="学年" name="academicYear">
-        <a-input v-model:value="examForm.academicYear" placeholder="2024-2025" :maxlength="9" />
-      </a-form-item>
-      <a-form-item label="学期" name="semester">
-        <a-select
-          v-model:value="examForm.semester"
+      </UiFormItem>
+      <UiFormItem label="学年" name="academicYear">
+        <UiInput
+          size="sm" v-model="examForm.academicYear" placeholder="2024-2025" :maxlength="9"
+        />
+      </UiFormItem>
+      <UiFormItem label="学期" name="semester">
+        <UiSelect
+          size="sm"
+          v-model="examForm.semester"
           placeholder="选择学期"
           allow-clear
           :options="SemesterOptions"
         />
-      </a-form-item>
-      <a-form-item label="考试时间窗" name="examWindow">
-        <a-range-picker
-          v-model:value="examForm.examWindow"
-          style="width: 100%"
+      </UiFormItem>
+      <UiFormItem label="考试时间窗" name="examWindow">
+        <UiRangePicker
+          v-model="examForm.examWindow"
           show-time
           format="YYYY-MM-DD HH:mm"
           value-format="YYYY-MM-DD HH:mm:ss"
           :placeholder="['开始时间', '结束时间']"
         />
-      </a-form-item>
-      <a-form-item label="阅卷策略" name="gradingStrategy">
-        <a-input
+      </UiFormItem>
+      <UiFormItem label="阅卷策略" name="gradingStrategy">
+        <UiInput
+          size="sm"
           :value="
             strictEnumLabel(
               ExamGradingStrategyDescription,
@@ -292,46 +306,53 @@
           "
           disabled
         />
-      </a-form-item>
-      <a-form-item label="成绩构成" name="scoreCompositionMode">
-        <a-radio-group v-model:value="examForm.scoreCompositionMode">
-          <a-radio value="EXAM_ONLY">仅计入考试成绩（期末笔试）</a-radio>
-          <a-radio value="EXAM_WITH_DAILY">期末考试 + 平时成绩合成</a-radio>
-        </a-radio-group>
+      </UiFormItem>
+      <UiFormItem label="成绩构成" name="scoreCompositionMode">
+        <UiRadioGroup
+          v-model="examForm.scoreCompositionMode"
+          size="sm"
+          block
+          :options="[
+            { label: '仅计入考试成绩（期末笔试）', value: 'EXAM_ONLY' },
+            { label: '期末考试 + 平时成绩合成', value: 'EXAM_WITH_DAILY' },
+          ]"
+        />
         <div class="exam-list-form__composition-hint">
           平时成绩指出勤、作业、课堂表现等；选择合成后，成绩确认时需为每位考生录入平时分，总成绩=考试分+平时分。
         </div>
-      </a-form-item>
-      <a-form-item
+      </UiFormItem>
+      <UiFormItem
         v-if="examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'"
         label="平时成绩满分"
         name="dailyScoreFull"
       >
-        <a-input-number
-          v-model:value="examForm.dailyScoreFull"
+        <UiInputNumber
+          size="sm"
+          v-model="examForm.dailyScoreFull"
           :min="0.01"
           :max="1000"
           :precision="2"
           style="width: 100%"
           placeholder="例如 30（与培养方案中平时分满分一致）"
         />
-      </a-form-item>
-      <a-form-item label="备注" name="remark">
-        <a-textarea
-          v-model:value="examForm.remark"
+      </UiFormItem>
+      <UiFormItem label="备注" name="remark">
+        <UiTextarea
+          size="sm"
+          v-model="examForm.remark"
           :rows="3"
           placeholder="可填写考试用途、班级范围说明等"
           :maxlength="500"
-          show-count
+          :show-count="true"
         />
-      </a-form-item>
-      <a-form-item label="涉密场次" name="confidential">
-        <a-switch v-model:checked="examForm.confidential" :disabled="editDetailLoading" />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+      <UiFormItem label="涉密场次" name="confidential">
+        <UiSwitch size="sm" v-model="examForm.confidential" :disabled="editDetailLoading" />
+      </UiFormItem>
+    </UiForm>
     <template #footer>
-      <UiButton variant="outline" :disabled="saving" @click="formModalOpen = false">取消</UiButton>
-      <UiButton :loading="saving" :disabled="editDetailLoading" @click="handleSave">保存</UiButton>
+      <UiButton size="sm" variant="outline" :disabled="saving" @click="formModalOpen = false">取消</UiButton>
+      <UiButton size="sm" :loading="saving" :disabled="editDetailLoading" @click="handleSave">保存</UiButton>
     </template>
   </UiDrawer>
 </template>
@@ -379,11 +400,20 @@ import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseS
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiRangePicker from '@/components/ui-guide/ui/RangePicker.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -474,6 +504,8 @@ function createPaginationState(): TablePaginationConfig {
 }
 
 /** 三 Tab 共用同一套筛选条件，切换 Tab 时保留已填写的搜索项。 */
+const examActionLoading = ref(false)
+
 const filterForm = reactive<ExamListFilterForm>(createDefaultFilterForm())
 
 const filterModel = computed<Record<string, unknown>>({
@@ -1284,6 +1316,9 @@ function buildExamUpdateRequest(): ExamUpdateRequest | null {
 }
 
 async function handleSave(): Promise<void> {
+  if (saving.value) {
+    return
+  }
   if (editDetailLoading.value) {
     message.warning('考试详情加载中，请稍候再保存')
     return
@@ -1317,9 +1352,10 @@ function isExamOwner(exam: ExamWorkbenchSummaryResponse): boolean {
 
 /** 组装考试列表行内操作：默认展示 3 项，其余由 UiTableActions 收入「更多」。 */
 function buildExamRowActions(exam: ExamWorkbenchSummaryResponse): UiTableRowActionItem[] {
-  const actions: UiTableRowActionItem[] = [{ key: 'enter', label: '进入' }]
+  // 行内仅 1 个 primary：进入为默认主路径；阅卷为次操作
+  const actions: UiTableRowActionItem[] = [{ key: 'enter', label: '进入', tone: 'primary' }]
   if (exam.status === ExamStatusCode.ACTIVE) {
-    actions.push({ key: 'marking', label: '阅卷', tone: 'primary' })
+    actions.push({ key: 'marking', label: '阅卷' })
   }
   if (isExamArchiveReady(exam)) {
     actions.push({ key: 'archive', label: '归档' })
@@ -1358,6 +1394,9 @@ function handleExamRowAction(key: string, exam: ExamWorkbenchSummaryResponse): v
 }
 
 function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
+  if (examActionLoading.value) {
+    return
+  }
   void (async () => {
     try {
       const gate = await getArchiveVolumeExamGate(exam.examId)
@@ -1386,12 +1425,19 @@ function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
         cancelText: '取消',
         type: 'warning',
         onOk: async () => {
+          if (examActionLoading.value) {
+            return false
+          }
+          examActionLoading.value = true
           try {
             await closeExam({ examId: exam.examId })
             message.success('考试已关闭')
             await reloadAll()
           } catch (error) {
             showUserError(error, '关闭考试失败')
+            return false
+          } finally {
+            examActionLoading.value = false
           }
         },
       })
@@ -1402,6 +1448,9 @@ function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
 }
 
 function confirmDelete(exam: ExamWorkbenchSummaryResponse): void {
+  if (examActionLoading.value) {
+    return
+  }
   void confirmAsync({
     title: `删除考试 ${exam.examName}？`,
     content: '已进入模板、考生、印刷、扫描或成绩流程的考试不能删除。',
@@ -1409,6 +1458,10 @@ function confirmDelete(exam: ExamWorkbenchSummaryResponse): void {
     cancelText: '取消',
     type: 'error',
     onOk: async () => {
+      if (examActionLoading.value) {
+        return false
+      }
+      examActionLoading.value = true
       try {
         await deleteExam({ examId: exam.examId })
         message.success('考试已删除')
@@ -1421,6 +1474,9 @@ function confirmDelete(exam: ExamWorkbenchSummaryResponse): void {
         await reloadAll()
       } catch (error) {
         showUserError(error, '删除考试失败')
+        return false
+      } finally {
+        examActionLoading.value = false
       }
     },
   })
@@ -1452,14 +1508,52 @@ onActivated(() => {
 
 <style lang="scss" scoped>
 @use '@/styles/breakpoints' as bp;
-.context-bar__filter-select {
-  width: 120px;
+.exam-list__scope {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--dp-space-2);
   min-width: 0;
+  max-width: 100%;
+}
+
+.exam-list__scope-item {
+  flex: 0 0 132px;
+  width: 132px;
+  min-width: 132px;
+  max-width: 132px;
+}
+
+.exam-list__scope-item--status {
+  flex-basis: 112px;
+  width: 112px;
+  min-width: 112px;
+  max-width: 112px;
+}
+
+.exam-list__scope-item :deep(.ui-select) {
+  width: 100%;
+  max-width: 100%;
 }
 
 @media (max-width: #{bp.$ant-grid-xl - 1px}) {
-  .context-bar__filter-select {
-    width: 108px;
+  .exam-list__scope {
+    overflow-x: auto;
+  }
+
+  .exam-list__scope-item {
+    flex: 0 0 120px;
+    width: 120px;
+    min-width: 120px;
+    max-width: 120px;
+  }
+
+  .exam-list__scope-item--status {
+    flex-basis: 100px;
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
   }
 }
 
@@ -1474,7 +1568,7 @@ onActivated(() => {
 }
 
 .exam-list-page__empty {
-  padding: var(--dp-space-10) var(--dp-space-5);
+  padding: var(--dp-space-4) var(--dp-space-3);
 }
 
 .exam-list-page__exam-name-cell {
@@ -1500,7 +1594,7 @@ onActivated(() => {
 
 .exam-list-page__exam-name {
   font-weight: 500;
-  color: var(--ant-color-text);
+  color: var(--dp-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1508,13 +1602,13 @@ onActivated(() => {
 }
 
 .exam-list-page__exam-name--link {
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
 }
 
 .exam-list-page__exam-no {
   font-size: 12px;
   line-height: 1.4;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 
 .exam-list-page__exam-no-code {
@@ -1529,7 +1623,7 @@ onActivated(() => {
 .exam-list-page__term-semester {
   margin-top: 1px;
   font-size: 11px;
-  color: var(--ant-color-text-quaternary);
+  color: var(--dp-text-quaternary);
 }
 
 .exam-list-page__status-row {
@@ -1545,7 +1639,7 @@ onActivated(() => {
   height: 6px;
   margin-right: 4px;
   border-radius: 50%;
-  background: var(--ant-color-primary);
+  background: var(--dp-color-primary);
   animation: exam-list-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1572,7 +1666,7 @@ onActivated(() => {
   height: 6px;
   overflow: hidden;
   border-radius: 3px;
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
 }
 
 .exam-list-page__progress-fill {
@@ -1580,16 +1674,16 @@ onActivated(() => {
   width: 100%;
   transform-origin: left center;
   border-radius: 3px;
-  background: var(--ant-color-primary);
+  background: var(--dp-color-primary);
   transition: transform 200ms ease;
 }
 
 .exam-list-page__progress-fill--success {
-  background: var(--ant-color-success);
+  background: var(--dp-success);
 }
 
 .exam-list-page__progress-fill--warning {
-  background: var(--ant-color-warning);
+  background: var(--dp-warning);
 }
 
 .exam-list-page__progress-pct {
@@ -1597,31 +1691,31 @@ onActivated(() => {
   min-width: 32px;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .exam-list-page__progress-pct--ok {
-  color: var(--ant-color-success);
+  color: var(--dp-success);
 }
 
 .exam-list-page__progress-pct--warn {
-  color: var(--ant-color-warning);
+  color: var(--dp-warning);
 }
 
 .exam-list-page__progress-pct--zero {
-  color: var(--ant-color-text-quaternary);
+  color: var(--dp-text-quaternary);
 }
 
 .exam-table :deep(.ant-table-tbody > tr > td) {
   vertical-align: middle;
 }
 
-.exam-table :deep(.exam-list-row--priority > td:first-child) {
-  box-shadow: inset 3px 0 0 var(--ant-color-warning);
+.exam-table :deep(.exam-list-row--priority > td) {
+  background: color-mix(in srgb, var(--dp-warning) 8%, transparent);
 }
 
-.exam-table :deep(.exam-list-row--active > td:first-child) {
-  box-shadow: inset 3px 0 0 var(--ant-color-primary-border);
+.exam-table :deep(.exam-list-row--active > td) {
+  background: color-mix(in srgb, var(--dp-color-primary) 6%, transparent);
 }
 
 .exam-list-page__exam-window {
@@ -1638,25 +1732,25 @@ onActivated(() => {
 
 .exam-list-page__exam-window-phase {
   font-size: 12px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 
 .exam-list-page__exam-window-phase--upcoming {
-  color: var(--ant-color-warning);
+  color: var(--dp-warning);
 }
 
 .exam-list-page__exam-window-phase--ongoing {
-  color: var(--ant-color-success);
+  color: var(--dp-success);
 }
 
 .muted {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 
 .exam-list-form__composition-hint {
   margin-top: 8px;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 </style>

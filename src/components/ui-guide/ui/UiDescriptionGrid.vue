@@ -126,32 +126,32 @@ const getDisplayValue = (item: UiDescriptionItem) => {
 .ui-description-grid {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--dp-space-4, 16px);
 }
 
 .ui-description-grid--compact {
-  gap: 14px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .ui-description-grid__grid {
   display: grid;
-  gap: 14px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .ui-description-grid__item {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--dp-space-2, 8px);
   min-width: 0;
-  padding: 16px;
+  padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
 }
 
 .ui-description-grid--compact .ui-description-grid__item {
-  gap: 8px;
-  padding: 14px;
+  gap: var(--dp-space-1, 4px);
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
 }
 
 .ui-description-grid__item--column {
@@ -170,7 +170,7 @@ const getDisplayValue = (item: UiDescriptionItem) => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .ui-description-grid__value {
@@ -222,8 +222,8 @@ const getDisplayValue = (item: UiDescriptionItem) => {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  padding-top: 14px;
+  gap: var(--dp-space-3, 12px);
+  padding-top: var(--dp-space-3, 12px);
   border-top: 1px solid var(--dp-border);
 }
 

@@ -53,8 +53,8 @@ const iconMap = {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 36px;
-  padding: 8px 14px;
+  min-height: 32px;
+  padding: 4px 10px;
   border-radius: var(--dp-radius-panel);
 }
 

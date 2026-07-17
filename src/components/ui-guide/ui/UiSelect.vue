@@ -5,7 +5,9 @@
       `ui-select--${props.size}`,
       `ui-select--${props.status}`,
       { 'ui-select--disabled': props.disabled },
+      rootClass,
     ]"
+    :style="rootStyle"
   >
     <a-select
       v-model:value="modelValue"
@@ -24,7 +26,8 @@
       popup-class-name="ui-select-dropdown"
       placement="bottomLeft"
       style="width: 100%"
-      v-bind="$attrs"
+      v-bind="selectAttrs"
+      @change="handleChange"
     >
       <template v-if="$slots.option" #option="slotProps">
         <slot name="option" v-bind="slotProps" />
@@ -35,8 +38,10 @@
 
 <script lang="ts" setup>
 import type { SizeType } from 'ant-design-vue/es/config-provider'
+import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
+import type { CSSProperties } from 'vue'
 import type { UiComponentSize, UiFieldStatus, UiOptionValue, UiSelectOption } from './types'
-import { computed } from 'vue'
+import { computed, useAttrs } from 'vue'
 import { resolvePopupContainer } from './popup-container'
 
 defineOptions({
@@ -44,23 +49,26 @@ defineOptions({
   inheritAttrs: false,
 })
 
+/** 业务选择值：string/number 或数组；禁止 LabeledValue 对象合同 */
 const modelValue = defineModel<UiOptionValue | UiOptionValue[] | undefined>()
 
 const props = withDefaults(
   defineProps<{
-    options: UiSelectOption[]
+    options?: Array<UiSelectOption | DefaultOptionType>
     placeholder?: string
     allowClear?: boolean
     allowSearch?: boolean
     filterOption?: boolean
     optionFilterProp?: string
-    mode?: 'multiple'
+    /** multiple=多选；tags=可录入标签（如筛选多值） */
+    mode?: 'multiple' | 'tags'
     disabled?: boolean
     loading?: boolean
-    size?: UiComponentSize
+    size?: UiComponentSize | SizeType
     status?: UiFieldStatus
   }>(),
   {
+    options: () => [],
     placeholder: '请选择',
     allowClear: true,
     allowSearch: false,
@@ -74,13 +82,42 @@ const props = withDefaults(
   },
 )
 
-const antSize = computed<SizeType>(() => {
-  const sizeMap: Record<UiComponentSize, SizeType> = {
-    sm: 'small',
-    md: 'middle',
-    lg: 'large',
+const emit = defineEmits<{
+  change: [value: UiOptionValue | UiOptionValue[] | undefined]
+}>()
+
+const attrs = useAttrs()
+
+/** class/style 落到外层容器，避免 width:100% 的 .ui-select 吃掉业务定宽导致整行堆叠 */
+const rootClass = computed(() => attrs.class as string | Record<string, boolean> | Array<unknown> | undefined)
+const rootStyle = computed(() => attrs.style as CSSProperties | string | undefined)
+const selectAttrs = computed(() => {
+  const next: Record<string, unknown> = { ...attrs }
+  delete next.class
+  delete next.style
+  return next
+})
+
+/** 将 Ant Design 选择值转换为平台统一的原始值，避免把 LabeledValue 泄漏到业务层。 */
+function handleChange(
+  value: SelectValue,
+  _option?: DefaultOptionType | DefaultOptionType[],
+): void {
+  if (Array.isArray(value)) {
+    emit(
+      'change',
+      value.map((item) => (typeof item === 'object' ? item.value : item)),
+    )
+    return
   }
-  return sizeMap[props.size]
+  emit('change', typeof value === 'object' && value !== null ? value.value : value)
+}
+
+const antSize = computed<SizeType>(() => {
+  const size = props.size
+  if (size === 'sm' || size === 'small') return 'small'
+  if (size === 'lg' || size === 'large') return 'large'
+  return 'middle'
 })
 </script>
 
@@ -93,7 +130,7 @@ const antSize = computed<SizeType>(() => {
 .ui-select :deep(.ant-select-selector) {
   border-radius: var(--dp-radius-control) !important;
   border: 1px solid var(--dp-border) !important;
-  background-color: var(--dp-gray-100) !important;
+  background-color: var(--dp-surface) !important;
   box-shadow: none !important;
   transition:
     border-color 0.2s ease,
@@ -135,9 +172,9 @@ const antSize = computed<SizeType>(() => {
   min-height: 24px !important;
   margin: 1px 0 !important;
   padding: 0 8px !important;
-  border: 1px solid #d6e8ff !important;
+  border: 1px solid var(--dp-blue-200) !important;
   border-radius: var(--dp-radius-control-inner) !important;
-  background: #eef5ff !important;
+  background: var(--dp-blue-50) !important;
   color: var(--dp-text-primary) !important;
   font-size: 14px !important;
   font-weight: 500 !important;
@@ -152,7 +189,7 @@ const antSize = computed<SizeType>(() => {
 }
 
 .ui-select :deep(.ant-select-multiple .ant-select-selection-item-remove:hover) {
-  color: var(--ant-color-error, #ff4d4f) !important;
+  color: var(--dp-error) !important;
 }
 
 .ui-select :deep(.ant-select-arrow),
@@ -161,11 +198,11 @@ const antSize = computed<SizeType>(() => {
 }
 
 .ui-select--sm :deep(.ant-select-selector) {
-  min-height: 32px !important;
+  min-height: var(--dp-control-height-sm, 32px) !important;
 }
 
 .ui-select--md :deep(.ant-select-selector) {
-  min-height: 36px !important;
+  min-height: var(--dp-control-height-md, 36px) !important;
   padding-top: 2px !important;
   padding-bottom: 2px !important;
 }
@@ -196,23 +233,24 @@ const antSize = computed<SizeType>(() => {
 .ui-select-dropdown {
   border-radius: var(--dp-radius-overlay) !important;
   padding: 6px !important;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12) !important;
+  box-shadow: var(--dp-shadow-md) !important;
 
   .ant-select-item {
     display: flex !important;
     align-items: center !important;
-    min-height: 36px !important;
+    min-height: var(--dp-control-height-md, 36px) !important;
     border-radius: var(--dp-radius-control-inner) !important;
     color: var(--dp-text-primary) !important;
     font-family: var(--dp-font-family) !important;
   }
 
   .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
-    background-color: var(--dp-surface-subtle) !important;
+    background-color: var(--dp-surface) !important;
+    outline: 1px solid var(--dp-border);
   }
 
   .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
-    background-color: var(--dp-gray-100) !important;
+    background-color: color-mix(in srgb, var(--dp-primary) 8%, var(--dp-surface)) !important;
     color: var(--dp-text-primary) !important;
     font-weight: 600 !important;
   }

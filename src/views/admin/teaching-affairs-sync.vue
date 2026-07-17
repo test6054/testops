@@ -48,12 +48,13 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand variant="tiles" compact :metrics="syncSignalMetrics" />
+      <SignalBand compact :metrics="syncSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="sync-page__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="sync-page__empty" />
 
     <UiEmpty
+      size="sm"
       v-else-if="loadFailed"
       description="教务同步数据加载失败"
       action-label="重试"
@@ -114,14 +115,15 @@
               {{ syncTasks[index].retryCount }} / {{ syncTasks[index].maxRetryCount }}
             </template>
             <template v-else-if="column.key === 'lastError'">
-              <a-tooltip
+              <UiTooltip
                 v-if="syncTasks[index].lastErrorMessage"
                 :title="syncTasks[index].lastErrorMessage"
+                popup-mount="body"
               >
                 <span class="error-text">{{
                   ellipsis(syncTasks[index].lastErrorMessage, 40)
                 }}</span>
-              </a-tooltip>
+              </UiTooltip>
               <span v-else class="hint-text">-</span>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -179,14 +181,15 @@
               </UiTag>
             </template>
             <template v-else-if="column.key === 'errorMessage'">
-              <a-tooltip
+              <UiTooltip
                 v-if="passbackRecords[index].errorMessage"
                 :title="passbackRecords[index].errorMessage"
+                popup-mount="body"
               >
                 <span class="error-text">{{
                   ellipsis(passbackRecords[index].errorMessage, 40)
                 }}</span>
-              </a-tooltip>
+              </UiTooltip>
               <span v-else class="hint-text">-</span>
             </template>
           </template>
@@ -205,45 +208,40 @@
     @ok="handleCreate"
   >
     <template #footer>
-      <UiButton variant="outline" @click="createModalOpen = false">取消</UiButton>
-      <UiButton :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
+      <UiButton size="sm" variant="outline" @click="createModalOpen = false">取消</UiButton>
+      <UiButton size="sm" :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
     </template>
-    <a-form layout="vertical">
-      <a-form-item label="外部系统类型" required>
-        <a-radio-group v-model:value="createForm.externalSystemType">
-          <a-radio-button
-            v-for="option in EXTERNAL_SYSTEM_TYPE_OPTIONS"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </a-radio-button>
-        </a-radio-group>
-      </a-form-item>
-      <a-form-item label="同步类型" required>
-        <a-radio-group v-model:value="createForm.syncType">
-          <a-radio-button
-            v-for="option in CREATABLE_SYNC_TYPE_OPTIONS"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </a-radio-button>
-        </a-radio-group>
+    <UiForm layout="vertical">
+      <UiFormItem label="外部系统类型" required>
+        <UiRadioGroup
+          v-model="createForm.externalSystemType"
+          size="sm"
+          :options="EXTERNAL_SYSTEM_TYPE_OPTIONS"
+        />
+      </UiFormItem>
+      <UiFormItem label="同步类型" required>
+        <UiRadioGroup
+          v-model="createForm.syncType"
+          size="sm"
+          :options="CREATABLE_SYNC_TYPE_OPTIONS"
+        />
         <div class="hint-text" style="margin-top: 4px">
           当前仅开放成绩回写；名单导入、成绩更正与撤销将在后端能力开放后启用。
         </div>
-      </a-form-item>
-      <a-form-item label="外部课程编号">
-        <a-input v-model:value="createForm.externalCourseId" placeholder="如教务系统中的课程编号" />
-      </a-form-item>
-      <a-form-item label="外部成绩项编号">
-        <a-input
-          v-model:value="createForm.externalLineItemId"
+      </UiFormItem>
+      <UiFormItem label="外部课程编号">
+        <UiInput
+          size="sm" v-model="createForm.externalCourseId" placeholder="如教务系统中的课程编号"
+        />
+      </UiFormItem>
+      <UiFormItem label="外部成绩项编号">
+        <UiInput
+          size="sm"
+          v-model="createForm.externalLineItemId"
           placeholder="如成绩册中的成绩项编号"
         />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
   </UiDialog>
 
   <!-- 任务详情抽屉 -->
@@ -269,10 +267,9 @@
       </template>
 
       <template v-if="detailProgress">
-        <a-progress
+        <UiProgressBar
           :percent="detailProgressPercent"
-          :status="detailProgressStatus"
-          :stroke-color="detailProgressFailed > 0 ? 'var(--ant-color-error)' : undefined"
+          :color="detailProgressFailed > 0 ? 'var(--dp-error)' : 'var(--dp-color-primary)'"
         />
         <div class="progress-counts">
           <UiTag tone="gray" size="sm">总数 {{ detailProgress.totalCount }}</UiTag>
@@ -306,40 +303,40 @@
       <UiSkeletonState v-else-if="progressLoading" variant="card" compact />
     </WorkbenchSurfaceCard>
 
-    <a-descriptions v-if="detailTask" :column="1" bordered size="small">
-      <a-descriptions-item label="同步任务编号">{{ detailTask.id }}</a-descriptions-item>
-      <a-descriptions-item label="当前考试">{{ selectedExamLabel }}</a-descriptions-item>
-      <a-descriptions-item label="外部系统">
+    <UiDescriptions v-if="detailTask" :column="1" bordered size="small">
+      <UiDescriptionsItem label="同步任务编号">{{ detailTask.id }}</UiDescriptionsItem>
+      <UiDescriptionsItem label="当前考试">{{ selectedExamLabel }}</UiDescriptionsItem>
+      <UiDescriptionsItem label="外部系统">
         {{ externalSystemTypeLabel(detailTask.externalSystemType) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="同步类型">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="同步类型">
         {{ syncTypeLabel(detailTask.syncType) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="状态">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="状态">
         <UiTag :tone="syncStatusTone(detailTask.taskStatus)" size="sm">
           {{ syncTaskStatusLabel(detailTask.taskStatus) }}
         </UiTag>
-      </a-descriptions-item>
-      <a-descriptions-item label="重试">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="重试">
         {{ detailTask.retryCount }} / {{ detailTask.maxRetryCount }}
-      </a-descriptions-item>
-      <a-descriptions-item label="外部课程编号">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="外部课程编号">
         {{ detailTask.externalCourseId ?? '未绑定外部课程编号' }}
-      </a-descriptions-item>
-      <a-descriptions-item label="外部成绩项编号">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="外部成绩项编号">
         {{ detailTask.externalLineItemId ?? '未绑定外部成绩项编号' }}
-      </a-descriptions-item>
-      <a-descriptions-item label="同步目标">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="同步目标">
         {{ buildSyncTargetSummary(detailTask) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="最后同步时间">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="最后同步时间">
         {{ detailTask.lastSyncTime ?? '尚未执行同步' }}
-      </a-descriptions-item>
-      <a-descriptions-item v-if="detailTask.lastErrorMessage" label="最近处理说明">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem v-if="detailTask.lastErrorMessage" label="最近处理说明">
         <span class="error-text">{{ detailTask.lastErrorMessage }}</span>
-      </a-descriptions-item>
-      <a-descriptions-item label="操作" :span="1">
-        <a-space>
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="操作" :span="1">
+        <div class="dp-space" style="--dp-space-gap: 8px">
           <UiButton
             v-if="detailTask.id"
             size="sm"
@@ -350,9 +347,9 @@
             <template #icon><AuditOutlined /></template>
             对账
           </UiButton>
-        </a-space>
-      </a-descriptions-item>
-    </a-descriptions>
+        </div>
+      </UiDescriptionsItem>
+    </UiDescriptions>
   </UiDrawer>
 </template>
 
@@ -406,13 +403,22 @@ import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -610,7 +616,6 @@ function buildSyncTaskActions(record: ExamTeachingAffairsSyncTask): UiTableRowAc
     {
       key: 'retry',
       label: '重试',
-      tone: 'primary',
       hidden: !canRetry(record.taskStatus),
       disabled: loading,
     },
@@ -648,6 +653,7 @@ async function withTaskAction(
   hint: string,
 ): Promise<void> {
   if (!record.id) return
+  if (actionLoadingId.value) return
   actionLoadingId.value = record.id
   try {
     await action()
@@ -702,6 +708,7 @@ function openCreateModal(): void {
 
 async function handleCreate(): Promise<void> {
   if (!selectedExamId.value || !createValid.value) return
+  if (creating.value) return
   creating.value = true
   try {
     await createSyncTask({
@@ -1013,7 +1020,7 @@ onBeforeUnmount(() => {
   }
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__card-head {
@@ -1043,16 +1050,16 @@ onBeforeUnmount(() => {
 }
 
 .empty-block {
-  margin-top: 80px;
+  margin-top: var(--dp-space-3, 12px);
 }
 
 .error-text {
-  color: var(--ant-color-error);
+  color: var(--dp-error);
   font-size: 12px;
 }
 
 .hint-text {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
   font-size: 12px;
 }
 

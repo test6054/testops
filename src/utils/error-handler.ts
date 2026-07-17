@@ -136,7 +136,7 @@ const ERROR_TYPE_TITLES: Record<ErrorType, string> = {
  */
 const ERROR_TYPE_ICONS: Record<ErrorType, ReturnType<typeof h>> = {
   [ErrorType.NETWORK]: h(CloudOutlined, { style: 'color: #f59e0b' }),
-  [ErrorType.AUTH]: h(LockOutlined, { style: 'color: #2563eb' }),
+  [ErrorType.AUTH]: h(LockOutlined, { style: 'color: #1677ff' }),
   [ErrorType.PERMISSION]: h(StopOutlined, { style: 'color: #ef4444' }),
   [ErrorType.VALIDATION]: h(WarningOutlined, { style: 'color: #f59e0b' }),
   [ErrorType.BUSINESS]: h(CloseCircleOutlined, { style: 'color: #ef4444' }),

@@ -32,10 +32,10 @@
 
       <footer v-if="!props.hideFooter || $slots.footer" class="ui-drawer__footer">
         <slot name="footer">
-          <UiButton v-if="!props.hideCancel" variant="outline" @click="handleClose">
+          <UiButton size="sm" v-if="!props.hideCancel" variant="outline" @click="handleClose">
             {{ props.cancelText }}
           </UiButton>
-          <UiButton :loading="props.confirmLoading" @click="handleOk">
+          <UiButton size="sm" :loading="props.confirmLoading" @click="handleOk">
             {{ props.okText }}
           </UiButton>
         </slot>
@@ -112,13 +112,13 @@ const handleOk = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 24px 24px 0;
+  gap: var(--dp-space-2, 8px);
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) 0;
 }
 
 .ui-drawer__header--close-only {
   justify-content: flex-end;
-  padding: 8px 8px 0;
+  padding: var(--dp-space-2, 8px) var(--dp-space-2, 8px) 0;
 }
 
 .ui-drawer__header--close-only .ui-drawer__header-main {
@@ -132,8 +132,8 @@ const handleOk = () => {
 
 .ui-drawer__title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--dp-text-primary);
 }
 
@@ -158,18 +158,18 @@ const handleOk = () => {
 
 .ui-drawer__body {
   flex: 1;
-  padding: 20px 24px 24px;
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-4, 16px);
 }
 
 .ui-drawer__header--close-only + .ui-drawer__body {
-  padding-top: 8px;
+  padding-top: var(--dp-space-2, 8px);
 }
 
 .ui-drawer__footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 0 24px 24px;
+  gap: var(--dp-space-2, 8px);
+  padding: 10px var(--dp-space-4, 16px) var(--dp-space-3, 12px);
   border-top: 1px solid var(--dp-border);
 }
 </style>

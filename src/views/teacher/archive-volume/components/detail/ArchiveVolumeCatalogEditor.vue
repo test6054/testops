@@ -12,6 +12,7 @@ import {
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -209,7 +210,7 @@ defineExpose({ loadCatalog })
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
-    <UiEmpty v-else-if="editableLines.length === 0" description="尚未生成目录草稿" />
+    <UiEmpty size="sm" v-else-if="editableLines.length === 0" description="尚未生成目录草稿" />
 
     <ArchiveVolumeCatalogPreview
       v-else-if="readonly || isConfirmed"
@@ -235,10 +236,10 @@ defineExpose({ loadCatalog })
           {{ record.lineNo }}
         </template>
         <template v-else>
-          <a-input
+          <UiInput
             :value="catalogCellInputValue(record, column.dataIndex)"
             size="small"
-            allow-clear
+            clearable
             @update:value="updateCatalogLineValue(index, column.dataIndex, $event)"
           />
         </template>

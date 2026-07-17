@@ -43,7 +43,7 @@ const statusTone = computed<BadgeTone>(() => {
 
 <template>
   <div class="archive-volume-catalog-preview">
-    <UiEmpty v-if="lines.length === 0" description="尚未生成目录草稿" />
+    <UiEmpty size="sm" v-if="lines.length === 0" description="尚未生成目录草稿" />
     <div v-else class="catalog-tree">
       <template v-for="group in groups" :key="group.category">
         <div class="catalog-category">{{ group.category }}</div>

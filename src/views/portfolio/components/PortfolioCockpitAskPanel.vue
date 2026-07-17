@@ -14,6 +14,8 @@ import { PortfolioAiAnalysisTypeCode } from '@/apis/portfolio/enums'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -316,13 +318,14 @@ async function openTaskResult(taskId: string) {
 
 <template>
   <UiCard title="指标智能问数">
-    <a-textarea
-      v-model:value="userQuestion"
+    <UiTextarea
+      size="sm"
+      v-model="userQuestion"
       class="cockpit-ask__field"
       :rows="3"
       placeholder="例如：近三年企业实践不足 30 天的教师有哪些？"
     />
-    <UiButton variant="primary" :loading="loading || polling" @click="() => void submitAsk()">
+    <UiButton size="sm" variant="primary" :loading="loading || polling" @click="() => void submitAsk()">
       提交问数
     </UiButton>
   </UiCard>
@@ -381,7 +384,12 @@ async function openTaskResult(taskId: string) {
         </li>
       </ul>
     </section>
-    <a-result v-if="refusalReason" status="warning" title="问数未执行" :sub-title="refusalReason" />
+    <UiEmpty
+      v-if="refusalReason"
+      size="sm"
+      title="问数未执行"
+      :description="refusalReason"
+    />
     <UiDataTable
       v-else
       :row-key="teacherRowKey"
@@ -436,7 +444,7 @@ async function openTaskResult(taskId: string) {
   padding: 12px;
   white-space: pre-wrap;
   word-break: break-word;
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
   border-radius: 4px;
   font-size: 13px;
   line-height: 1.6;
@@ -456,7 +464,7 @@ async function openTaskResult(taskId: string) {
   line-height: 1.6;
 }
 .cockpit-ask__link {
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   cursor: pointer;
 }
 </style>

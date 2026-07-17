@@ -4,17 +4,26 @@ import type {
   PortfolioTeachingExtensionActivityVO,
   PortfolioTeachingExtensionCategoryVO,
 } from '@/apis/portfolio/teaching-extension'
-import { DatePicker, Form, Input, InputNumber, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
@@ -23,6 +32,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import {
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
@@ -36,6 +46,7 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const route = useRoute()
 const router = useRouter()
 
@@ -259,6 +270,13 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
 }
 
 async function saveActivity() {
+  if (saving.value || Boolean(deletingActivityId.value) || Boolean(deletingCategoryId.value) || Boolean(submittingTrainingId.value)) {
+    return
+  }
+  if (!(await confirmProxyWrite('保存教学拓展活动'))) {
+    return
+  }
+
   saving.value = true
   try {
     await portfolioTeachingExtensionApi.save({
@@ -291,6 +309,10 @@ async function removeActivity(row: PortfolioTeachingExtensionActivityVO) {
   if (readonlyMode.value || deletingActivityId.value || submittingTrainingId.value) {
     return
   }
+  if (!(await confirmProxyWrite('删除教学拓展活动'))) {
+    return
+  }
+
   const teacherId = scopeTeacherId()
   const operationToken = requestToken.value
   const confirmed = await confirmAsync({
@@ -347,6 +369,10 @@ function openCategoryModal() {
 }
 
 async function createCategory() {
+  if (!(await confirmProxyWrite('创建拓展自建分类'))) {
+    return
+  }
+
   creatingCategory.value = true
   try {
     await portfolioTeachingExtensionApi.createCategory({
@@ -367,6 +393,10 @@ async function confirmDeleteCategory(row: PortfolioTeachingExtensionCategoryVO) 
   if (readonlyMode.value || row.preset || !row.id || deletingCategoryId.value) {
     return
   }
+  if (!(await confirmProxyWrite('删除拓展自建分类'))) {
+    return
+  }
+
   const categoryId = row.id
   const teacherId = scopeTeacherId()
   const operationToken = requestToken.value
@@ -458,23 +488,26 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
       />
     </template>
 
-    <UiCard v-if="loadFailed" title="加载失败">
-      <UiEmpty description="拓展活动加载失败">
-        <UiButton @click="loadData">重试</UiButton>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+
+    <UiCard v-else-if="loadFailed" title="加载失败">
+      <UiEmpty size="sm" description="拓展活动加载失败">
+        <UiButton size="sm" @click="loadData">重试</UiButton>
       </UiEmpty>
     </UiCard>
 
     <template v-else>
       <UiCard title="活动记录" :loading="loading">
         <template #extra>
-          <a-select
-            v-model:value="kindFilter"
+          <UiSelect
+            size="sm"
+            v-model="kindFilter"
             allow-clear
             placeholder="大类筛选"
             style="width: 120px; margin-right: 8px"
             :options="PortfolioTeachingExtensionKindOptions"
           />
-          <UiButton v-if="!readonlyMode" @click="openModal()">新增活动</UiButton>
+          <UiButton size="sm" v-if="!readonlyMode" @click="openModal()">新增活动</UiButton>
         </template>
         <UiDataTable
           :columns="activityColumns"
@@ -505,10 +538,11 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               >
                 {{ archiveStatusLabel(record) }}
               </UiTag>
-              <UiButton variant="ghost" @click="openModal(record)">
+              <UiButton size="sm" variant="ghost" @click="openModal(record)">
                 {{ readonlyMode || !canEditActivity(record) ? '查看' : '编辑' }}
               </UiButton>
               <UiButton
+                size="sm"
                 v-if="
                   !readonlyMode
                     && record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING
@@ -521,6 +555,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
                 填写档案
               </UiButton>
               <UiButton
+                size="sm"
                 v-if="record.archiveRecordId && record.archiveCategoryId"
                 variant="ghost"
                 @click="
@@ -538,6 +573,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
                 进入档案
               </UiButton>
               <UiButton
+                size="sm"
                 v-if="!readonlyMode && !record.archiveRecordId"
                 variant="ghost"
                 danger
@@ -554,7 +590,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 
       <UiCard title="活动分类" :loading="categoryLoading" style="margin-top: 16px">
         <template #extra>
-          <UiButton v-if="!readonlyMode" @click="openCategoryModal">新建分类</UiButton>
+          <UiButton size="sm" v-if="!readonlyMode" @click="openCategoryModal">新建分类</UiButton>
         </template>
         <UiDataTable
           :columns="categoryColumns"
@@ -568,6 +604,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton
+                size="sm"
                 v-if="!readonlyMode && !record.preset && record.id"
                 variant="ghost"
                 danger
@@ -583,91 +620,92 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
     </template>
   </StageWorkbenchShell>
 
-  <a-modal
+  <UiDialog
     v-model:open="modalOpen"
     :title="editing ? '编辑活动' : '新增活动'"
     :confirm-loading="saving"
-    :ok-button-props="{ disabled: readonlyMode }"
     @ok="saveActivity"
     @cancel="resetForm"
   >
-    <Form layout="vertical">
-      <Form.Item label="活动大类" required>
-        <a-select
-          v-model:value="form.activityKind"
+    <UiForm layout="vertical">
+      <UiFormItem label="活动大类" required compact>
+        <UiSelect
+          size="sm"
+          v-model="form.activityKind"
           :disabled="readonlyMode"
           :options="PortfolioTeachingExtensionKindOptions"
         />
-      </Form.Item>
-      <Form.Item label="分类" required>
-        <a-select
-          v-model:value="form.categoryCode"
+      </UiFormItem>
+      <UiFormItem label="分类" required compact>
+        <UiSelect
+          size="sm"
+          v-model="form.categoryCode"
           :disabled="readonlyMode"
           placeholder="选择分类"
           :options="categoryOptions"
         />
-      </Form.Item>
-      <Form.Item label="活动名称" required>
-        <Input v-model:value="form.activityName" :disabled="readonlyMode" />
-      </Form.Item>
-      <Form.Item :label="isTraining ? '培训类型' : '活动类型'">
-        <Input v-model:value="form.activityType" :disabled="readonlyMode" />
-      </Form.Item>
-      <Form.Item label="开始日期">
-        <DatePicker
-          v-model:value="form.startDate"
+      </UiFormItem>
+      <UiFormItem label="活动名称" required compact>
+        <UiInput v-model="form.activityName" size="sm" :disabled="readonlyMode" />
+      </UiFormItem>
+      <UiFormItem :label="isTraining ? '培训类型' : '活动类型'" compact>
+        <UiInput v-model="form.activityType" size="sm" :disabled="readonlyMode" />
+      </UiFormItem>
+      <UiFormItem label="开始日期" compact>
+        <UiDatePicker
+          v-model="form.startDate"
           value-format="YYYY-MM-DD"
+          size="sm"
           :disabled="readonlyMode"
-          style="width: 100%"
         />
-      </Form.Item>
-      <Form.Item label="结束日期">
-        <DatePicker
-          v-model:value="form.endDate"
+      </UiFormItem>
+      <UiFormItem label="结束日期" compact>
+        <UiDatePicker
+          v-model="form.endDate"
           value-format="YYYY-MM-DD"
+          size="sm"
           :disabled="readonlyMode"
-          style="width: 100%"
         />
-      </Form.Item>
-      <Form.Item v-if="isTraining" label="学时">
-        <InputNumber
-          v-model:value="form.creditHours"
+      </UiFormItem>
+      <UiFormItem v-if="isTraining" label="学时" compact>
+        <UiInputNumber
+          v-model="form.creditHours"
+          size="sm"
           :disabled="readonlyMode"
           :min="0"
           :precision="1"
-          style="width: 100%"
         />
-      </Form.Item>
-      <Form.Item v-if="isTraining" label="培训感想">
-        <Input.TextArea v-model:value="form.reflectionText" :disabled="readonlyMode" :rows="4" />
-      </Form.Item>
-      <Form.Item v-else label="活动描述">
-        <Input.TextArea v-model:value="form.descriptionText" :disabled="readonlyMode" :rows="4" />
-      </Form.Item>
-      <Form.Item label="证明材料">
+      </UiFormItem>
+      <UiFormItem v-if="isTraining" label="培训感想" compact>
+        <UiTextarea v-model="form.reflectionText" size="sm" :disabled="readonlyMode" :rows="4" />
+      </UiFormItem>
+      <UiFormItem v-else label="活动描述" compact>
+        <UiTextarea v-model="form.descriptionText" size="sm" :disabled="readonlyMode" :rows="4" />
+      </UiFormItem>
+      <UiFormItem label="证明材料" compact>
         <div class="teacher-extension__attachment">
           <span v-if="form.attachmentName">{{ form.attachmentName }}</span>
-          <UiButton v-if="!readonlyMode" :loading="uploadingFile" @click="openAttachmentPicker">
+          <UiButton size="sm" v-if="!readonlyMode" :loading="uploadingFile" @click="openAttachmentPicker">
             上传附件
           </UiButton>
         </div>
         <input ref="attachmentInputRef" type="file" hidden @change="onAttachmentPick" />
-      </Form.Item>
-    </Form>
-  </a-modal>
+      </UiFormItem>
+    </UiForm>
+  </UiDialog>
 
-  <a-modal
+  <UiDialog
     v-model:open="categoryModalOpen"
     title="新建活动分类"
     :confirm-loading="creatingCategory"
     @ok="createCategory"
   >
-    <Form layout="vertical">
-      <Form.Item label="分类名称" required>
-        <Input v-model:value="categoryForm.categoryName" placeholder="如 校级教研活动" />
-      </Form.Item>
-    </Form>
-  </a-modal>
+    <UiForm layout="vertical">
+      <UiFormItem label="分类名称" required compact>
+        <UiInput v-model="categoryForm.categoryName" size="sm" placeholder="如 校级教研活动" />
+      </UiFormItem>
+    </UiForm>
+  </UiDialog>
 </template>
 
 <style scoped lang="scss">

@@ -72,98 +72,106 @@
         cancel-text="取消"
         @confirm="handleCreate"
       >
-        <a-form layout="vertical" :model="form">
-          <a-row :gutter="12">
-            <a-col :span="12">
-              <a-form-item label="计划名称" required>
-                <a-input v-model:value="form.planName" :maxlength="100" placeholder="必填" />
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item label="更正类型" required>
-                <a-select
-                  v-model:value="form.correctionType"
+        <UiForm layout="vertical" :model="form">
+          <UiRow :gutter="12">
+            <UiCol :span="12">
+              <UiFormItem label="计划名称" required>
+                <UiInput
+                  size="sm" v-model="form.planName" :maxlength="100" placeholder="必填"
+                />
+              </UiFormItem>
+            </UiCol>
+            <UiCol :span="12">
+              <UiFormItem label="更正类型" required>
+                <UiSelect
+                  size="sm"
+                  v-model="form.correctionType"
                   :options="correctionTypeOptions"
                   @change="handleCorrectionTypeChange"
                 />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-form-item
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+          <UiFormItem
             v-if="form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION"
             label="更正题目"
             required
           >
-            <a-select
-              v-model:value="form.layoutQuestionId"
+            <UiSelect
+              size="sm"
+              v-model="form.layoutQuestionId"
               :loading="questionOptionsLoading"
               :options="questionOptions"
               placeholder="选择需要批量更正的题目"
-              show-search
+              allow-search
               option-filter-prop="label"
               @change="handleQuestionChange"
             />
-          </a-form-item>
+          </UiFormItem>
           <UiAlertStrip
             v-if="makeupCap60Hint"
             tone="info"
             :title="makeupCap60AlertMessage"
             style="margin-bottom: 12px"
           />
-          <a-form-item label="更正原因" required>
-            <a-textarea v-model:value="form.reason" :rows="3" :maxlength="500" show-count />
-          </a-form-item>
+          <UiFormItem label="更正原因" required>
+            <UiTextarea size="sm" v-model="form.reason" :rows="3" :maxlength="500" :show-count="true" />
+          </UiFormItem>
           <div class="batch-plan-items">
             <div class="batch-plan-items__header">
               <span>更正明细</span>
-              <a-button size="small" @click="addItem">
-                <template #icon><PlusOutlined /></template>添加明细
-              </a-button>
+              <UiButton size="sm" variant="outline" @click="addItem">
+                <template #icon><PlusOutlined /></template>
+                添加明细
+              </UiButton>
             </div>
             <div v-for="(item, index) in form.items" :key="item.localId" class="batch-plan-item">
-              <a-row :gutter="12">
-                <a-col :span="14">
-                  <a-form-item label="复核申请" required>
-                    <a-select
-                      v-model:value="item.reviewRequestId"
+              <UiRow :gutter="12">
+                <UiCol :span="14">
+                  <UiFormItem label="复核申请" required>
+                    <UiSelect
+                      size="sm"
+                      v-model="item.reviewRequestId"
                       :loading="reviewRequestLoading"
                       :options="itemReviewRequestOptions"
                       placeholder="选择已通过的复核申请"
-                      show-search
+                      allow-search
                       :filter-option="false"
                       @search="onReviewRequestSearch"
-                      @change="(value) => handleItemReviewRequestChange(value, item)"
+                      @change="(value: unknown) => handleItemReviewRequestChange(value, item)"
                     />
-                  </a-form-item>
-                </a-col>
-                <a-col :span="6">
-                  <a-form-item label="更正后分数" required>
-                    <a-input-number
-                      v-model:value="item.afterScore"
+                  </UiFormItem>
+                </UiCol>
+                <UiCol :span="6">
+                  <UiFormItem label="更正后分数" required>
+                    <UiInputNumber
+                      size="sm"
+                      v-model="item.afterScore"
                       :min="0"
                       :max="batchTotalScoreMax"
                       :precision="2"
                       style="width: 100%"
                     />
-                  </a-form-item>
-                </a-col>
-                <a-col :span="4">
-                  <a-button
-                    danger
-                    size="small"
+                  </UiFormItem>
+                </UiCol>
+                <UiCol :span="4">
+                  <UiButton
+                    size="sm"
+                    status="danger"
+                    variant="ghost"
                     :disabled="form.items.length === 1"
                     @click="removeItem(index)"
                   >
                     删除
-                  </a-button>
-                </a-col>
-              </a-row>
+                  </UiButton>
+                </UiCol>
+              </UiRow>
               <div v-if="batchItemProjectionHint(item)" class="batch-plan-item__hint">
                 {{ batchItemProjectionHint(item) }}
               </div>
             </div>
           </div>
-        </a-form>
+        </UiForm>
       </UiDrawer>
 
       <UiDrawer
@@ -176,11 +184,12 @@
         cancel-text="取消"
         @confirm="handleReject"
       >
-        <a-textarea
-          v-model:value="rejectReason"
+        <UiTextarea
+          size="sm"
+          v-model="rejectReason"
           :maxlength="500"
           :rows="4"
-          show-count
+          :show-count="true"
           placeholder="请输入驳回原因"
         />
       </UiDrawer>
@@ -200,11 +209,12 @@
           title="执行后会写入当前成绩并刷新统计，此操作不可撤销。"
           style="margin-bottom: 12px"
         />
-        <a-textarea
-          v-model:value="executeReason"
+        <UiTextarea
+          size="sm"
+          v-model="executeReason"
           :maxlength="500"
           :rows="4"
-          show-count
+          :show-count="true"
           placeholder="请输入执行说明（不少于 5 字，将写入审计记录）"
         />
       </UiDrawer>
@@ -223,7 +233,6 @@ import type {
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -247,12 +256,21 @@ import {
 } from '@/apis/mark/grade-review'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
@@ -735,6 +753,9 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
 async function handleCreate(): Promise<void> {
   const request = buildCreateRequest()
   if (!request) return
+  if (creating.value || operatingId.value) {
+    return
+  }
   creating.value = true
   try {
     await createBatchCorrectionPlan(request)
@@ -750,6 +771,9 @@ async function handleCreate(): Promise<void> {
 }
 
 async function handleSubmitPlan(planId: string): Promise<void> {
+  if (operatingId.value || creating.value) {
+    return
+  }
   operatingId.value = planId
   operatingAction.value = 'submit'
   try {
@@ -765,6 +789,9 @@ async function handleSubmitPlan(planId: string): Promise<void> {
 }
 
 async function handleApprove(planId: string): Promise<void> {
+  if (operatingId.value || creating.value) {
+    return
+  }
   operatingId.value = planId
   operatingAction.value = 'approve'
   try {
@@ -793,6 +820,9 @@ async function handleReject(): Promise<void> {
   const reason = rejectReason.value.trim()
   if (!reason) {
     showFormValidationMessage('请输入驳回原因')
+    return
+  }
+  if (operatingId.value || creating.value) {
     return
   }
   operatingId.value = rejectPlanId.value
@@ -829,6 +859,9 @@ async function handleExecute(): Promise<void> {
   }
   const planId = executePlanId.value
   if (!planId) return
+  if (operatingId.value || creating.value) {
+    return
+  }
   operatingId.value = planId
   operatingAction.value = 'execute'
   try {
@@ -837,15 +870,18 @@ async function handleExecute(): Promise<void> {
     executeModalOpen.value = false
     await reload()
     emit('changed')
-    Modal.info({
+    void confirmAsync({
       title: '请确认成绩发布状态',
       content: '若更正前成绩已发布，学生端暂不可见最新分数。请前往成绩发布页重新发布。',
       okText: '前往发布',
-      onOk: () =>
-        router.push({
+      type: 'info',
+      cancelText: '稍后处理',
+      onOk: () => {
+        void router.push({
           name: 'TeacherExamWorkspaceScoreRelease',
           params: { examId: props.examId },
-        }),
+        })
+      },
     })
   } catch (e) {
     showUserError(e, '批量成绩更正计划执行失败')
@@ -873,8 +909,9 @@ function canSubmit(row: ExamBatchGradeCorrectionPlan): boolean {
 function buildBatchCorrectionPlanActions(
   row: ExamBatchGradeCorrectionPlan,
 ): UiTableRowActionItem[] {
+  // 行内仅 1 个 primary：提交 > 通过 > 执行
   const operating = (action: OperationAction) => isOperating(row.id, action)
-  return [
+  const actions: UiTableRowActionItem[] = [
     {
       key: 'submit',
       label: '提交',
@@ -901,25 +938,39 @@ function buildBatchCorrectionPlanActions(
       disabled: operating('execute'),
     },
   ]
+  const primaryKey = canSubmit(row)
+    ? 'submit'
+    : row.approvalStatus === BatchCorrectionApprovalStatusCode.PENDING_APPROVAL
+      ? 'approve'
+      : row.approvalStatus === BatchCorrectionApprovalStatusCode.APPROVED
+        ? 'execute'
+        : undefined
+  return actions.map((action) =>
+    action.key === primaryKey && !action.hidden && action.tone !== 'danger'
+      ? { ...action, tone: 'primary' as const }
+      : action,
+  )
 }
 
 function handleBatchCorrectionPlanAction(key: string, row: ExamBatchGradeCorrectionPlan): void {
   switch (key) {
     case 'submit':
       if (!canSubmit(row)) return
-      Modal.confirm({
+      void confirmAsync({
         title: '确认提交审批？',
         okText: '提交',
         cancelText: '取消',
+        type: 'warning',
         onOk: () => handleSubmitPlan(row.id),
       })
       break
     case 'approve':
       if (row.approvalStatus !== BatchCorrectionApprovalStatusCode.PENDING_APPROVAL) return
-      Modal.confirm({
+      void confirmAsync({
         title: '确认审批通过？',
         okText: '通过',
         cancelText: '取消',
+        type: 'warning',
         onOk: () => handleApprove(row.id),
       })
       break

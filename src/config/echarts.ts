@@ -14,6 +14,7 @@ import {
 import {
   BrushComponent,
   DataZoomComponent,
+  GraphicComponent,
   GridComponent,
   LegendComponent,
   MarkAreaComponent,
@@ -42,6 +43,7 @@ export function setupECharts(): void {
     PieChart,
     HeatmapChart,
     RadarChart,
+    GraphicComponent,
     GridComponent,
     TooltipComponent,
     LegendComponent,

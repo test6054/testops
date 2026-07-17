@@ -18,7 +18,7 @@
         compact
       >
         <template #actions>
-          <UiButton variant="outline" @click="goLogin">返回登录页</UiButton>
+          <UiButton size="sm" variant="outline" @click="goLogin">返回登录页</UiButton>
         </template>
       </UiStateBlock>
 
@@ -39,7 +39,7 @@
         compact
       >
         <template #actions>
-          <UiButton variant="outline" @click="goLogin">返回登录页</UiButton>
+          <UiButton size="sm" variant="outline" @click="goLogin">返回登录页</UiButton>
         </template>
       </UiStateBlock>
 
@@ -435,7 +435,7 @@ void initialize()
 .cas-completion {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--dp-space-4, 16px);
 }
 
 .cas-completion__header {
@@ -453,9 +453,9 @@ void initialize()
 
 .cas-completion__title {
   margin: 0;
-  font-size: 28px;
+  font-size: 20px;
   line-height: 1.25;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--dp-text-primary);
 }
 
@@ -469,7 +469,7 @@ void initialize()
 .cas-completion__panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .cas-completion__summary {
@@ -482,7 +482,7 @@ void initialize()
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 14px 14px 12px;
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -505,7 +505,7 @@ void initialize()
 .cas-completion__form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .cas-completion__submit-error {

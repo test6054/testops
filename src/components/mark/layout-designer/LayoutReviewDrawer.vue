@@ -5,6 +5,8 @@ import { computed, ref } from 'vue'
 import { adjustExamLayoutQuestionRegion } from '@/apis/mark/exam-layout-design'
 import LayoutCanvasLite from '@/components/mark/layout-designer/LayoutCanvasLite.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { showUserError } from '@/utils/error-handler'
 
 const open = defineModel<boolean>('open', { default: false })
@@ -37,6 +39,9 @@ function handleFocus(block: ExamLayoutBlockDto | null): void {
 }
 
 async function persistAdjust(): Promise<void> {
+  if (saving.value) {
+    return
+  }
   if (props.readonly) {
     message.warning('考试已开印或已开始扫描，制卷设计不可修改')
     return
@@ -71,13 +76,14 @@ async function persistAdjust(): Promise<void> {
 </script>
 
 <template>
-  <a-drawer v-model:open="open" title="复核微调" width="min(1080px, 98vw)" destroy-on-close>
+  <UiDrawer v-model:open="open" title="复核微调" width="min(1080px, 98vw)" destroy-on-close>
     <p class="layout-review-drawer__hint">
       仅调整当前页主观/客观识别区，保存后写入正式 layout 块坐标。
     </p>
     <div class="layout-review-drawer__toolbar">
-      <a-select
-        :value="focusedBlockId ?? undefined"
+      <UiSelect
+        size="sm"
+        :model-value="focusedBlockId ?? undefined"
         allow-clear
         placeholder="选择识别块"
         style="min-width: 240px"
@@ -89,7 +95,7 @@ async function persistAdjust(): Promise<void> {
         "
         @change="focusedBlockId = ($event as string | undefined) ?? null"
       />
-      <UiButton variant="primary" :loading="saving" :disabled="readonly" @click="persistAdjust">
+      <UiButton size="sm" variant="primary" :loading="saving" :disabled="readonly" @click="persistAdjust">
         保存微调
       </UiButton>
     </div>
@@ -100,7 +106,7 @@ async function persistAdjust(): Promise<void> {
       @focus-block="handleFocus"
       @patch="emit('patch', $event)"
     />
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <style scoped lang="scss">

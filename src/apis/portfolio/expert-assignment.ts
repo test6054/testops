@@ -1,12 +1,19 @@
 import type { PageResult } from '@/types'
 import http from '@/config/axios'
 
+/** 对齐后端 PortfolioExpertMaterialScope */
+export interface PortfolioExpertMaterialScope {
+  categoryCodes: string[]
+  categoryIds?: string[]
+}
+
 export interface PortfolioExpertAssignmentVO {
   id: string
   evaluationTaskId: string
+  evaluationTaskName?: string
   expertUserId: string
   subjectTeacherIds: string[]
-  materialScopeJson: string
+  materialScope: PortfolioExpertMaterialScope
   accessToken?: string
   maskRequired: boolean
   assignmentStatus: string
@@ -15,15 +22,23 @@ export interface PortfolioExpertAssignmentVO {
 }
 
 export interface PortfolioExpertAssignmentSubjectTeacherVO {
-  teacherUserId: string
+  /** 脱敏稳定引用，如 T01；maskRequired 时作为行键 */
+  subjectRef?: string
+  /** 脱敏时后端不返回 */
+  teacherUserId?: string
   maskedDisplayName: string
 }
 
 export interface PortfolioExpertReviewMaterialItemVO {
-  teacherUserId: string
+  /** 脱敏材料稳定引用，如 M0001；maskRequired 时作为行键 */
+  materialRef?: string
+  /** 脱敏时后端不返回 */
+  teacherUserId?: string
   maskedTeacherLabel: string
-  archiveRecordId: string
-  categoryId: string
+  /** 脱敏时后端不返回 */
+  archiveRecordId?: string
+  /** 脱敏时后端不返回 */
+  categoryId?: string
   categoryCode?: string
   categoryName?: string
   academicYear?: string
@@ -32,6 +47,14 @@ export interface PortfolioExpertReviewMaterialItemVO {
   hasPrimaryFile: boolean
   fileNodeId?: string
   supportMaterialCount: number
+  /** 是否关联正式 AI 初审结果 */
+  hasAiPreReview?: boolean
+  /** AI 初审结论编码 */
+  aiPreReviewConclusionCode?: string
+  /** AI 初审结果标题；maskRequired 时不返回 */
+  aiPreReviewResultTitle?: string
+  /** AI 初审摘要；maskRequired 时不返回 */
+  aiPreReviewSummary?: string
 }
 
 export interface PortfolioExpertAssignmentReviewBundleVO {
@@ -39,7 +62,7 @@ export interface PortfolioExpertAssignmentReviewBundleVO {
   evaluationTaskId: string
   evaluationTaskName: string
   maskRequired: boolean
-  materialScopeJson: string
+  materialScope: PortfolioExpertMaterialScope
   assignmentStatus: string
   expireTime: string
   readOnly: boolean
@@ -52,7 +75,7 @@ export const portfolioExpertAssignmentApi = {
     evaluationTaskId: string
     expertUserId: string
     subjectTeacherIds: string[]
-    materialScopeJson: string
+    materialScope: PortfolioExpertMaterialScope
     expireDays: number
     maskRequired: boolean
   }) => http.post<PortfolioExpertAssignmentVO>('/api/portfolio/expert-assignment/create', data),

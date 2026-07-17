@@ -7,6 +7,8 @@ import { QUALITY_DECISION_TONE, QualityDecisionDescription } from '@/apis/mark/e
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSegmented from '@/components/ui-guide/ui/UiSegmented.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -164,13 +166,14 @@ onBeforeUnmount(releaseImages)
 
 <template>
   <div class="marking-scan-material">
-    <UiEmpty v-if="!hasSlice && !hasSource && !hasLayout" description="暂无阅卷影像材料" />
+    <UiEmpty size="sm" v-if="!hasSlice && !hasSource && !hasLayout" description="暂无阅卷影像材料" />
     <template v-else>
-      <a-segmented
+      <UiSegmented
         v-if="showTabs"
-        v-model:value="activeTab"
+        v-model="activeTab"
         class="marking-scan-material__tabs"
         :options="tabOptions"
+        size="sm"
       />
       <div v-else-if="hasSource && !hasSlice" class="marking-scan-material__solo-label">
         原始扫描页
@@ -184,7 +187,7 @@ onBeforeUnmount(releaseImages)
       >
         制卷页
       </div>
-      <a-spin :spinning="loading" tip="加载影像中...">
+      <UiSpin :spinning="loading" tip="加载影像中...">
         <div v-if="activeTab === 'slice'" class="marking-scan-material__viewer">
           <ScanImageStage
             v-if="sliceImageUrl"
@@ -194,7 +197,7 @@ onBeforeUnmount(releaseImages)
             :watermark-lines="props.watermarkLines"
             empty-text="切片图片加载失败"
           />
-          <UiEmpty v-else-if="!loading" description="暂无影像" />
+          <UiEmpty size="sm" v-else-if="!loading" description="暂无影像" />
         </div>
         <div v-else-if="activeTab === 'source'" class="marking-scan-material__viewer">
           <div v-if="sourceScanPage" class="marking-scan-material__source-meta">
@@ -209,7 +212,7 @@ onBeforeUnmount(releaseImages)
             :watermark-lines="props.watermarkLines"
             empty-text="原始扫描页加载失败"
           />
-          <UiEmpty v-else-if="!loading" description="暂无影像" />
+          <UiEmpty size="sm" v-else-if="!loading" description="暂无影像" />
         </div>
         <div v-else-if="activeTab === 'layout'" class="marking-scan-material__viewer">
           <!-- 制卷页对照（ANSWER_SHEET 模式自动展示，含ROI题目区域高亮） -->
@@ -226,9 +229,9 @@ onBeforeUnmount(releaseImages)
             :watermark-lines="props.watermarkLines"
             empty-text="制卷页加载失败"
           />
-          <UiEmpty v-else-if="!loading" description="暂无影像" />
+          <UiEmpty size="sm" v-else-if="!loading" description="暂无影像" />
         </div>
-      </a-spin>
+      </UiSpin>
     </template>
   </div>
 </template>

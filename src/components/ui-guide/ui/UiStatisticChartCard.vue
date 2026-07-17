@@ -24,7 +24,7 @@
       </template>
     </UiPanelHeader>
 
-    <a-spin :spinning="props.loading" style="width: 100%">
+    <UiSpin :spinning="props.loading" style="width: 100%">
       <div
         v-if="hasContent"
         class="ui-statistic-chart-card__content"
@@ -70,8 +70,13 @@
         </aside>
       </div>
 
-      <UiEmpty size="sm" title="暂无图表内容" :description="props.emptyText" />
-    </a-spin>
+      <UiEmpty
+        v-else
+        size="sm"
+        title="暂无图表内容"
+        :description="props.emptyText"
+      />
+    </UiSpin>
 
     <footer v-if="props.summary || $slots.footer" class="ui-statistic-chart-card__footer">
       <slot name="footer">
@@ -84,6 +89,7 @@
 <script lang="ts" setup>
 import type { BadgeTone, UiStatisticChartMetric } from './types'
 import { computed, useSlots } from 'vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiBadge from './Badge.vue'
 import UiEmpty from './Empty.vue'
 import UiPanelHeader from './UiPanelHeader.vue'
@@ -169,9 +175,9 @@ const sideStyle = computed(() => ({
 .ui-statistic-chart-card {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--dp-space-3, 12px);
   min-width: 0;
-  padding: 18px;
+  padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -179,14 +185,14 @@ const sideStyle = computed(() => ({
 }
 
 .ui-statistic-chart-card--compact {
-  gap: 14px;
-  padding: 16px;
+  gap: var(--dp-space-2, 8px);
+  padding: var(--dp-space-3, 12px);
 }
 
 .ui-statistic-chart-card__content {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   min-width: 0;
 }
 
@@ -196,7 +202,7 @@ const sideStyle = computed(() => ({
 
 .ui-statistic-chart-card__main {
   min-width: 0;
-  padding: 14px;
+  padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface-subtle);
@@ -205,19 +211,19 @@ const sideStyle = computed(() => ({
 .ui-statistic-chart-card__side {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--dp-space-2, 8px);
   min-width: 0;
 }
 
 .ui-statistic-chart-card__stats {
   display: grid;
-  gap: 10px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .ui-statistic-chart-card__stat {
   display: grid;
-  gap: 8px;
-  padding: 12px 14px;
+  gap: var(--dp-space-1, 4px);
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -226,7 +232,7 @@ const sideStyle = computed(() => ({
 .ui-statistic-chart-card__stat-head {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
   min-width: 0;
 }
 
@@ -238,27 +244,27 @@ const sideStyle = computed(() => ({
 }
 
 .ui-statistic-chart-card__stat-dot--gray {
-  background: #64748b;
+  background: var(--dp-text-muted);
 }
 
 .ui-statistic-chart-card__stat-dot--blue {
-  background: #2563eb;
+  background: var(--dp-blue-500);
 }
 
 .ui-statistic-chart-card__stat-dot--green {
-  background: #16a34a;
+  background: var(--dp-green-600);
 }
 
 .ui-statistic-chart-card__stat-dot--orange {
-  background: #ea580c;
+  background: var(--dp-orange-600);
 }
 
 .ui-statistic-chart-card__stat-dot--red {
-  background: #dc2626;
+  background: var(--dp-red-600);
 }
 
 .ui-statistic-chart-card__stat-dot--yellow {
-  background: #ca8a04;
+  background: var(--dp-orange-600);
 }
 
 .ui-statistic-chart-card__stat-dot--purple {
@@ -280,9 +286,9 @@ const sideStyle = computed(() => ({
 }
 
 .ui-statistic-chart-card__stat-value {
-  font-size: 26px;
-  line-height: 1.1;
-  font-weight: 800;
+  font-size: 20px;
+  line-height: 1.15;
+  font-weight: 700;
   color: var(--dp-text-primary);
 }
 

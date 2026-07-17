@@ -9,48 +9,80 @@
         </template>
         <template #actions>
           <UiButton
-            v-for="action in visibleTopActions"
-            :key="action"
+            v-if="scanBatchPrimaryAction"
             size="sm"
-            :variant="
-              action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER
-                || action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES
-                ? 'primary'
-                : 'outline'
-            "
-            :status="
-              action === ScanBatchWorkbenchTopActionCode.DISCARD
-                || action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES
-                ? 'danger'
-                : undefined
-            "
-            :loading="actionLoading === action"
-            @click="handleTopAction(action)"
+            :variant="isScanBatchPrimaryVariant(scanBatchPrimaryAction) ? 'primary' : 'outline'"
+            :status="isScanBatchDangerAction(scanBatchPrimaryAction) ? 'danger' : undefined"
+            :loading="actionLoading === scanBatchPrimaryAction"
+            @click="handleTopAction(scanBatchPrimaryAction)"
           >
             {{
-              strictEnumLabel(ScanBatchWorkbenchTopActionDescription, action, '扫描批次顶栏动作')
+              strictEnumLabel(
+                ScanBatchWorkbenchTopActionDescription,
+                scanBatchPrimaryAction,
+                '扫描批次顶栏动作',
+              )
             }}
           </UiButton>
           <UiButton
-            v-if="canViewOriginalImage"
+            v-if="scanBatchSecondaryAction"
+            size="sm"
+            :variant="isScanBatchPrimaryVariant(scanBatchSecondaryAction) ? 'primary' : 'outline'"
+            :status="isScanBatchDangerAction(scanBatchSecondaryAction) ? 'danger' : undefined"
+            :loading="actionLoading === scanBatchSecondaryAction"
+            @click="handleTopAction(scanBatchSecondaryAction)"
+          >
+            {{
+              strictEnumLabel(
+                ScanBatchWorkbenchTopActionDescription,
+                scanBatchSecondaryAction,
+                '扫描批次顶栏动作',
+              )
+            }}
+          </UiButton>
+          <UiButton
+            v-if="!scanBatchPrimaryAction"
             size="sm"
             variant="outline"
-            :loading="previewLoading"
-            @click="loadOriginalPreview"
+            @click="goBack"
           >
-            查看原始影像
+            返回监控台
           </UiButton>
-          <UiButton size="sm" variant="outline" @click="goBack"> 返回监控台 </UiButton>
+          <UiDropdownAction
+            v-if="scanBatchMoreActionItems.length"
+            trigger-style="button"
+            button-text="更多"
+            :items="scanBatchMoreActionItems"
+            @select="onScanBatchMoreAction"
+          />
         </template>
       </ContextBar>
     </template>
 
     <template v-if="workbench" #signal>
-      <SignalBand variant="tiles" compact :metrics="workbenchSignalMetrics" />
+      <SignalBand compact :metrics="workbenchSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!selectedExamId || !scanBatchId" description="缺少批次上下文" />
-    <a-spin v-else :spinning="workbenchLoading">
+    <ExamSelectGateStrip
+      v-if="!selectedExamId"
+      body="请先选择考试后再查看扫描批次明细"
+    />
+    <UiAlertStrip
+      v-else-if="!scanBatchId"
+      tone="info"
+      size="sm"
+      dense
+      inline
+      :show-icon="false"
+    >
+      <template #default>
+        <span style="display:inline-flex;align-items:center;gap:8px">
+          <UiTag tone="blue" size="sm">未选择批次</UiTag>
+          <span>缺少扫描批次上下文，请从扫描监控或批次列表进入</span>
+        </span>
+      </template>
+    </UiAlertStrip>
+    <UiSpin v-else :spinning="workbenchLoading">
       <UiAlertStrip
         v-if="workbench?.signalBandMessage"
         :tone="workbenchSignalTone"
@@ -115,8 +147,8 @@
           compact
           @update:model-value="handlePageStatusFilterChange"
         />
-        <a-input-search
-          v-model:value="pageKeyword"
+        <UiSearchBox
+          v-model="pageKeyword"
           allow-clear
           placeholder="学号 / 姓名 / 班级搜索"
           class="scan-batch-detail-workbench__keyword"
@@ -172,11 +204,13 @@
             empty-text="预览加载失败"
           />
           <UiEmpty
+            size="sm"
             v-else-if="previewLoadFailed"
             description="影像预览加载失败"
             class="scan-batch-detail-workbench__preview-empty"
           />
           <UiEmpty
+            size="sm"
             v-else
             :description="previewEmptyDescription"
             class="scan-batch-detail-workbench__preview-empty"
@@ -196,7 +230,7 @@
           />
         </aside>
       </div>
-    </a-spin>
+    </UiSpin>
 
     <UiDrawer v-model:open="leftDrawerOpen" title="页轨" width="360" hide-footer>
       <ScanBatchPageRail
@@ -248,6 +282,7 @@
       hide-footer
     >
       <UiEmpty
+        size="sm"
         v-if="!orderAuditLoading && !orderAuditDetail?.issues?.length"
         description="暂无顺序审计异常"
       />
@@ -312,13 +347,17 @@ import ScanBatchSupplementModal from '@/components/mark/ScanBatchSupplementModal
 import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -454,6 +493,74 @@ const contextSubtitle = computed(() => {
 })
 
 const visibleTopActions = computed(() => workbench.value?.topActions ?? [])
+
+/** 顶栏 1 主 + ≤1 次 + 更多；原始影像/返回收入次级与更多 */
+const scanBatchPrimaryAction = computed((): ScanBatchWorkbenchTopActionCode | null => {
+  const actions = visibleTopActions.value
+  if (!actions.length) return null
+  const preferred = actions.find(
+    (action) =>
+      action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER
+      || action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES,
+  )
+  return preferred || actions[0] || null
+})
+
+const scanBatchSecondaryAction = computed((): ScanBatchWorkbenchTopActionCode | null => {
+  const primary = scanBatchPrimaryAction.value
+  return visibleTopActions.value.find((action) => action !== primary) || null
+})
+
+const scanBatchMoreActionItems = computed(() => {
+  const primary = scanBatchPrimaryAction.value
+  const secondary = scanBatchSecondaryAction.value
+  const items = visibleTopActions.value
+    .filter((action) => action !== primary && action !== secondary)
+    .map((action) => ({
+      key: `top-${action}`,
+      label: strictEnumLabel(ScanBatchWorkbenchTopActionDescription, action, '扫描批次顶栏动作'),
+      danger:
+        action === ScanBatchWorkbenchTopActionCode.DISCARD
+        || action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES,
+    }))
+  if (canViewOriginalImage.value) {
+    items.push({ key: 'preview-original', label: '查看原始影像', danger: false })
+  }
+  // 有主操作时「返回」进更多；无主操作时模板已直出返回
+  if (primary) {
+    items.push({ key: 'go-back', label: '返回监控台', danger: false })
+  }
+  return items
+})
+
+function isScanBatchPrimaryVariant(action: ScanBatchWorkbenchTopActionCode): boolean {
+  return (
+    action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER
+    || action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES
+  )
+}
+
+function isScanBatchDangerAction(action: ScanBatchWorkbenchTopActionCode): boolean {
+  return (
+    action === ScanBatchWorkbenchTopActionCode.DISCARD
+    || action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES
+  )
+}
+
+function onScanBatchMoreAction(key: string): void {
+  if (key === 'preview-original') {
+    void loadOriginalPreview()
+    return
+  }
+  if (key === 'go-back') {
+    goBack()
+    return
+  }
+  if (key.startsWith('top-')) {
+    const action = key.slice(4) as ScanBatchWorkbenchTopActionCode
+    void handleTopAction(action)
+  }
+}
 const canViewOriginalImage = computed(() =>
   Boolean(workbench.value?.canViewOriginalImage && selectedPage.value?.pageId),
 )
@@ -1105,6 +1212,9 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   if (!batch?.scanBatchId || !selectedExamId.value) {
     return
   }
+  if (actionLoading.value) {
+    return
+  }
   if (action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER) {
     actionLoading.value = action
     try {
@@ -1156,6 +1266,9 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
       type: 'warning',
       width: 520,
       onOk: async () => {
+        if (actionLoading.value) {
+          return false
+        }
         actionLoading.value = action
         try {
           const response = await rebuildCompositeScanPages({
@@ -1204,6 +1317,9 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
       type: 'warning',
       width: 520,
       onOk: async () => {
+        if (actionLoading.value) {
+          return false
+        }
         actionLoading.value = action
         try {
           await sealScanBatchByTeacher({ scanBatchId: batch.scanBatchId })
@@ -1237,6 +1353,9 @@ async function confirmDiscardBatch(reason: string): Promise<void> {
   const batch = workbench.value?.batch
   if (!batch?.scanBatchId) {
     discardModalOpen.value = false
+    return
+  }
+  if (actionLoading.value) {
     return
   }
   actionLoading.value = ScanBatchWorkbenchTopActionCode.DISCARD
@@ -1289,8 +1408,8 @@ onUnmounted(() => {
 }
 
 .scan-batch-detail-workbench__collate-alert :deep(.ui-alert-strip) {
-  background: var(--ant-color-warning-bg);
-  border-color: var(--ant-color-warning-border);
+  background: var(--dp-warning-bg);
+  border-color: var(--dp-warning-border);
 }
 
 .scan-batch-detail-workbench__filters {
@@ -1307,7 +1426,7 @@ onUnmounted(() => {
 }
 
 .scan-batch-detail-workbench__attribution-summary {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
   font-size: 12px;
 }
 
@@ -1318,12 +1437,12 @@ onUnmounted(() => {
 }
 
 .scan-batch-detail-workbench__attribution-main {
-  color: var(--ant-color-text);
+  color: var(--dp-text);
   font-weight: 600;
 }
 
 .scan-batch-detail-workbench__attribution-sub {
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   font-size: 12px;
 }
 
@@ -1339,7 +1458,7 @@ onUnmounted(() => {
 
 .scan-batch-detail-workbench__rail-summary {
   padding: 8px 12px 0;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
   font-size: 12px;
 }
 
@@ -1363,9 +1482,9 @@ onUnmounted(() => {
 .scan-batch-detail-workbench__rail,
 .scan-batch-detail-workbench__inspector {
   min-height: 0;
-  border: 1px solid var(--ant-color-border-secondary);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: 8px;
-  background: var(--ant-color-bg-container);
+  background: var(--dp-bg-container);
 }
 
 .scan-batch-detail-workbench__inspector {
@@ -1386,6 +1505,10 @@ onUnmounted(() => {
 }
 
 .scan-batch-detail-workbench__preview-empty {
-  min-height: 480px;
+  /* 空态不占满预览舞台；有影像时由 viewer 自行撑开 */
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>

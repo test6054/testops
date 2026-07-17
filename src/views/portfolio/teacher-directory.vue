@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {PortfolioTeacherLifecycleChangeTypeCode, PortfolioTeacherLifecycleEventVO, PortfolioTeacherLifecycleStateVO} from '@/apis/portfolio/teacher-lifecycle';
 import type {
   PortfolioCompletenessLevelCode,
   PortfolioTeacherDetailVO,
@@ -13,6 +14,7 @@ import type { UserStatusEnum } from '@/types/enums/user-status'
 import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   ALL_PORTFOLIO_COMPLETENESS_LEVEL_CODES,
   PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS,
@@ -25,6 +27,14 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
+  PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
+  PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
+  portfolioTeacherLifecycleApi
+  
+  
+  
+} from '@/apis/portfolio/teacher-lifecycle'
+import {
   portfolioTeacherLibraryApi,
   portfolioTeacherSalaryApi,
 } from '@/apis/portfolio/teacher-platform'
@@ -32,11 +42,19 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
@@ -202,6 +220,11 @@ const salarySummary = ref('')
 const librarySummary = ref('')
 const extensionLoadError = ref(false)
 const detailRequestToken = ref(0)
+const lifecycleState = ref<PortfolioTeacherLifecycleStateVO | null>(null)
+const lifecycleLoadError = ref('')
+const lifecycleChangeType = ref<PortfolioTeacherLifecycleChangeTypeCode | undefined>(undefined)
+const lifecycleReason = ref('')
+const lifecycleEvents = ref<PortfolioTeacherLifecycleEventVO[]>([])
 
 const identityVisible = ref(false)
 const identityMode = ref<'create' | 'edit'>('create')
@@ -276,6 +299,11 @@ function resetDetailContext() {
   salarySummary.value = ''
   librarySummary.value = ''
   extensionLoadError.value = false
+  lifecycleState.value = null
+  lifecycleLoadError.value = ''
+  lifecycleChangeType.value = undefined
+  lifecycleReason.value = ''
+  lifecycleEvents.value = []
 }
 
 async function loadPage() {
@@ -323,9 +351,9 @@ function buildTeacherDirectoryRowActions(
   record: PortfolioTeacherSummaryVO,
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = [
-    { key: 'detail', label: '详情' },
-    { key: 'home', label: '首页' },
+    { key: 'home', label: '进入工作台' },
     { key: 'archive', label: '档案' },
+    { key: 'detail', label: '详情' },
     { key: 'one-table', label: '一张表' },
   ]
   if (canManageTeacherAi(record.userId)) {
@@ -376,7 +404,10 @@ async function openDetail(row: PortfolioTeacherSummaryVO) {
     }
     detail.value = nextDetail
     detailVisible.value = true
-    await loadTeacherExtensions(row.userId, requestToken)
+    await Promise.all([
+      loadTeacherExtensions(row.userId, requestToken),
+      loadTeacherLifecycle(row.userId, requestToken),
+    ])
   } catch (error) {
     if (detailRequestToken.value !== requestToken) {
       return
@@ -548,6 +579,170 @@ function openOneTable(userId: string) {
   })
 }
 
+
+const lifecycleChangeOptions = computed(() => {
+  const status = lifecycleState.value?.lifecycleStatus ?? 'ACTIVE'
+  return PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS.filter((item) => item.from.includes(status)).map(
+    (item) => ({ label: item.label, value: item.value }),
+  )
+})
+
+const lifecycleStatusLabel = computed(() => {
+  const status = lifecycleState.value?.lifecycleStatus
+  if (!status) {
+    return '—'
+  }
+  return (
+    lifecycleState.value?.lifecycleStatusLabel
+    || PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL[status]
+    || status
+  )
+})
+
+async function loadTeacherLifecycle(userId: string, requestToken = detailRequestToken.value) {
+  lifecycleState.value = null
+  lifecycleLoadError.value = ''
+  lifecycleChangeType.value = undefined
+  lifecycleReason.value = ''
+  try {
+    const state = await portfolioTeacherLifecycleApi.get({ teacherUserId: userId })
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
+    lifecycleState.value = state
+    const options = PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS.filter((item) =>
+      item.from.includes(state.lifecycleStatus ?? 'ACTIVE'),
+    )
+    lifecycleChangeType.value = options[0]?.value
+    const eventPage = await portfolioTeacherLifecycleApi.pageEvents({
+      teacherUserId: userId,
+      pageNum: 1,
+      pageSize: 5,
+    })
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
+    lifecycleEvents.value = eventPage?.list ?? []
+  } catch (error) {
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
+    lifecycleLoadError.value = '生命周期状态加载失败'
+    showUserError(error, '加载教师生命周期失败')
+  }
+}
+
+async function applyLifecycleChange() {
+  if (!detail.value?.userId || !lifecycleChangeType.value) {
+    message.warning('请选择生命周期变更类型')
+    return
+  }
+  const operation = `lifecycle:apply:${detail.value.userId}`
+  if (!beginOperation(operation)) {
+    return
+  }
+  try {
+    const next = await portfolioTeacherLifecycleApi.apply({
+      teacherUserId: detail.value.userId,
+      changeType: lifecycleChangeType.value,
+      reasonText: lifecycleReason.value?.trim() || undefined,
+    })
+    lifecycleState.value = next
+    const options = PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS.filter((item) =>
+      item.from.includes(next.lifecycleStatus ?? 'ACTIVE'),
+    )
+    lifecycleChangeType.value = options[0]?.value
+    lifecycleReason.value = ''
+    message.success(`已更新为${next.lifecycleStatusLabel || next.lifecycleStatus}`)
+    const eventPage = await portfolioTeacherLifecycleApi.pageEvents({
+      teacherUserId: detail.value.userId,
+      pageNum: 1,
+      pageSize: 5,
+    })
+    lifecycleEvents.value = eventPage?.list ?? []
+  } catch (error) {
+    showUserError(error, '生命周期变更失败')
+  } finally {
+    endOperation(operation)
+  }
+}
+
+async function exportTransferPackage() {
+  if (!detail.value?.userId) {
+    return
+  }
+  if (lifecycleState.value?.lifecycleStatus !== 'TRANSFER_FROZEN') {
+    message.warning('仅迁出冻结态可导出迁出数据包')
+    return
+  }
+  const operation = `lifecycle:export:${detail.value.userId}`
+  if (!beginOperation(operation)) {
+    return
+  }
+  try {
+    const result = await portfolioTeacherLifecycleApi.exportTransferPackage({
+      teacherUserId: detail.value.userId,
+    })
+    lifecycleState.value = {
+      teacherUserId: result.teacherUserId,
+      lifecycleStatus: result.lifecycleStatus || 'TRANSFERRED',
+      lifecycleStatusLabel: result.lifecycleStatusLabel,
+      archiveWriteForbidden: true,
+      evaluationHeld: true,
+    }
+    lifecycleChangeType.value = undefined
+    if (result.fileNodeId) {
+      await downloadPortfolioExcelExport({
+        fileName: result.fileName || `teacher-transfer-${detail.value.userId}.zip`,
+        fileNodeId: String(result.fileNodeId),
+      })
+    }
+    message.success(
+      `迁出数据包已生成（正式档 ${result.officialRecordCount ?? 0} 条，附件 ${result.attachmentCount ?? 0}）`,
+    )
+  } catch (error) {
+    showUserError(error, '导出迁出数据包失败')
+  } finally {
+    endOperation(operation)
+  }
+}
+
+async function importTransferPackageFromFile(event: Event) {
+  if (!detail.value?.userId) {
+    return
+  }
+  if (!(event.target instanceof HTMLInputElement)) {
+    return
+  }
+  const input = event.target
+  const file = input.files?.[0]
+  if (!file) {
+    return
+  }
+  const operation = `lifecycle:import:${detail.value.userId}`
+  if (!beginOperation(operation)) {
+    input.value = ''
+    return
+  }
+  try {
+    const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
+    const result = await portfolioTeacherLifecycleApi.importTransferPackage({
+      targetTeacherUserId: detail.value.userId,
+      fileNodeId: uploaded.id,
+    })
+    message.success(
+      result.idempotentHit
+        ? `迁出数据包已导入过（正式档 ${result.officialRecordCount ?? 0} 条）`
+        : `迁出数据包导入成功（正式档 ${result.officialRecordCount ?? 0} 条，材料 ${result.materialCount ?? 0} 条）`,
+    )
+  } catch (error) {
+    showUserError(error, '导入迁出数据包失败')
+  } finally {
+    endOperation(operation)
+    input.value = ''
+  }
+}
+
 async function exportRoster() {
   const operation = 'roster:export'
   if (!beginOperation(operation)) return
@@ -587,7 +782,7 @@ onMounted(async () => {
     />
     <UiCard>
       <div class="list-toolbar">
-        <UiButton :loading="exporting" :disabled="interactionLocked" @click="exportRoster">
+        <UiButton size="sm" :loading="exporting" :disabled="interactionLocked" @click="exportRoster">
           导出名册
         </UiButton>
       </div>
@@ -653,46 +848,135 @@ onMounted(async () => {
       @close="resetDetailContext"
     >
       <template v-if="detail">
-        <a-descriptions :column="2" size="small" bordered>
-          <a-descriptions-item label="工号">
+        <UiDescriptions :column="2" size="small" bordered>
+          <UiDescriptionsItem label="工号">
             {{ detail.teacherNumber ?? '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="姓名">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="姓名">
             {{ detail.nickName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="账号">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="账号">
             {{ detail.userName ?? '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="院系">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="院系">
             {{ detail.departmentName ?? '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="职称">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="职称">
             {{ detail.title ?? '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="手机">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="手机">
             {{ detail.mobile ?? '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="邮箱" :span="2">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="邮箱" :span="2">
             {{ detail.email ?? '—' }}
-          </a-descriptions-item>
-        </a-descriptions>
-        <a-descriptions
+          </UiDescriptionsItem>
+        </UiDescriptions>
+        <UiDescriptions
           v-if="salarySummary || librarySummary"
           :column="1"
           size="small"
           bordered
           style="margin-top: 16px"
         >
-          <a-descriptions-item v-if="salarySummary" label="工资摘要">
+          <UiDescriptionsItem v-if="salarySummary" label="工资摘要">
             {{ salarySummary }}
-          </a-descriptions-item>
-          <a-descriptions-item v-if="librarySummary" label="图书借阅">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="librarySummary" label="图书借阅">
             {{ librarySummary }}
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
         <p v-if="extensionLoadError" class="teacher-directory__extension-error">
           工资与借阅摘要加载失败，主档案信息不受影响。
         </p>
+
+        <div class="teacher-directory__lifecycle">
+          <h4>生命周期管理</h4>
+          <p v-if="lifecycleLoadError" class="teacher-directory__extension-error">
+            {{ lifecycleLoadError }}
+          </p>
+          <UiDescriptions v-else :column="2" size="small" bordered>
+            <UiDescriptionsItem label="当前状态">
+              {{ lifecycleStatusLabel }}
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="最近变更">
+              {{ lifecycleState?.changeTypeLabel || lifecycleState?.changeType || '—' }}
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="档案写禁">
+              {{ lifecycleState?.archiveWriteForbidden ? '是' : '否' }}
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="评价 hold">
+              {{ lifecycleState?.evaluationHeld ? '是' : '否' }}
+            </UiDescriptionsItem>
+            <UiDescriptionsItem v-if="lifecycleState?.reasonText" label="原因" :span="2">
+              {{ lifecycleState.reasonText }}
+            </UiDescriptionsItem>
+          </UiDescriptions>
+          <div class="teacher-directory__lifecycle-actions">
+            <UiSelect
+              v-model="lifecycleChangeType"
+              size="sm"
+              placeholder="选择变更类型"
+              :options="lifecycleChangeOptions"
+              :disabled="interactionLocked || !lifecycleChangeOptions.length"
+              style="min-width: 200px"
+            />
+            <UiInput
+              v-model="lifecycleReason"
+              size="sm"
+              placeholder="变更原因（可选）"
+              :disabled="interactionLocked || !lifecycleChangeOptions.length"
+              style="flex: 1"
+            />
+            <UiButton
+              size="sm"
+              variant="primary"
+              :disabled="interactionLocked || !lifecycleChangeType"
+              :loading="operationKey.startsWith('lifecycle:apply:')"
+              @click="applyLifecycleChange"
+            >
+              应用变更
+            </UiButton>
+            <UiButton
+              v-if="lifecycleState?.lifecycleStatus === 'TRANSFER_FROZEN'"
+              size="sm"
+              :disabled="interactionLocked"
+              :loading="operationKey.startsWith('lifecycle:export:')"
+              @click="exportTransferPackage"
+            >
+              导出迁出数据包
+            </UiButton>
+            <label class="teacher-directory__import-transfer">
+              <span class="teacher-directory__import-transfer-btn">
+                <UiButton
+                  size="sm"
+                  :disabled="interactionLocked"
+                  :loading="operationKey.startsWith('lifecycle:import:')"
+                >
+                  导入迁出数据包
+                </UiButton>
+              </span>
+              <input
+                class="teacher-directory__import-transfer-input"
+                type="file"
+                accept=".zip,application/zip"
+                :disabled="interactionLocked || operationKey.startsWith('lifecycle:import:')"
+                @change="importTransferPackageFromFile"
+              />
+            </label>
+          </div>
+          <div v-if="lifecycleEvents.length" class="teacher-directory__lifecycle-events">
+            <h5>最近变更事件</h5>
+            <ul>
+              <li v-for="item in lifecycleEvents" :key="String(item.id)">
+                {{ item.changeTypeLabel || item.changeType }}：
+                {{ item.fromStatusLabel || item.fromStatus || '—' }}
+                → {{ item.toStatusLabel || item.toStatus }}
+                <span v-if="item.effectiveTime">（{{ item.effectiveTime }}）</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
         <div class="teacher-directory__identity-header">
           <h4>扩展身份</h4>
           <UiButton
@@ -742,80 +1026,92 @@ onMounted(async () => {
             </template>
           </template>
           <template #empty>
-            <UiEmpty description="暂无扩展身份" />
+            <UiEmpty size="sm" description="暂无扩展身份" />
           </template>
         </UiDataTable>
       </template>
     </UiDrawer>
-    <a-modal
+    <UiDialog
       v-model:open="identityVisible"
       :title="identityMode === 'edit' ? '编辑教师身份' : '新增教师身份'"
       :confirm-loading="operationKey.startsWith('identity:save:')"
       :closable="!writing"
       :mask-closable="!writing"
-      :keyboard="!writing"
-      :cancel-button-props="{ disabled: writing }"
       @ok="submitIdentity"
     >
-      <a-form layout="vertical">
-        <a-form-item label="身份类型" required>
-          <a-select
-            v-model:value="identityEditor.identityType"
+      <UiForm layout="vertical">
+        <UiFormItem label="身份类型" required>
+          <UiSelect
+            v-model="identityEditor.identityType"
+            size="sm"
             :options="PORTFOLIO_TEACHER_IDENTITY_TYPE_OPTIONS"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="身份状态" required>
-          <a-select
-            v-model:value="identityEditor.identityStatus"
+        </UiFormItem>
+        <UiFormItem label="身份状态" required>
+          <UiSelect
+            v-model="identityEditor.identityStatus"
+            size="sm"
             :options="PORTFOLIO_TEACHER_IDENTITY_STATUS_OPTIONS"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="聘任编号">
-          <a-input v-model:value="identityEditor.appointmentNo" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="展示名称">
-          <a-input v-model:value="identityEditor.displayName" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="企业/单位">
-          <a-input v-model:value="identityEditor.enterpriseName" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="归属院系">
-          <a-select
-            v-model:value="identityEditor.anchorDepartmentId"
+        </UiFormItem>
+        <UiFormItem label="聘任编号">
+          <UiInput
+            size="sm" v-model="identityEditor.appointmentNo" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="展示名称">
+          <UiInput
+            size="sm" v-model="identityEditor.displayName" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="企业/单位">
+          <UiInput
+            size="sm" v-model="identityEditor.enterpriseName" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="归属院系">
+          <UiSelect
+            v-model="identityEditor.anchorDepartmentId"
+            size="sm"
             allow-clear
             :options="departmentOptions()"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="归属扩展组织编号">
-          <a-select
-            v-model:value="identityEditor.anchorPortfolioOrgId"
+        </UiFormItem>
+        <UiFormItem label="归属扩展组织编号">
+          <UiSelect
+            v-model="identityEditor.anchorPortfolioOrgId"
+            size="sm"
             allow-clear
             :options="portfolioOrgOptions()"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="该身份下职称/职务">
-          <a-input v-model:value="identityEditor.titleAtIdentity" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="有效起始">
-          <a-input
-            v-model:value="identityEditor.validFrom"
+        </UiFormItem>
+        <UiFormItem label="该身份下职称/职务">
+          <UiInput
+            size="sm" v-model="identityEditor.titleAtIdentity" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="有效起始">
+          <UiInput
+            size="sm"
+            v-model="identityEditor.validFrom"
             placeholder="年-月-日，例如 2026-07-16"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="有效截止">
-          <a-input
-            v-model:value="identityEditor.validTo"
+        </UiFormItem>
+        <UiFormItem label="有效截止">
+          <UiInput
+            size="sm"
+            v-model="identityEditor.validTo"
             placeholder="年-月-日，例如 2026-07-16"
             :disabled="writing"
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -837,7 +1133,51 @@ onMounted(async () => {
 }
 .teacher-directory__extension-error {
   margin: 12px 0 0;
-  color: var(--ant-color-error);
+  color: var(--dp-error);
   font-size: 13px;
+}
+.teacher-directory__lifecycle {
+  margin-top: 16px;
+  h4 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+}
+.teacher-directory__lifecycle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+}
+.teacher-directory__lifecycle-events {
+  margin-top: 12px;
+  h5 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  ul {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--dp-text-secondary);
+    font-size: 12px;
+  }
+}
+
+.teacher-directory__import-transfer {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+}
+.teacher-directory__import-transfer-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.teacher-directory__import-transfer-input:disabled {
+  cursor: not-allowed;
 }
 </style>

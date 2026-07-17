@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { AiAnalysisClusterSignalResponse } from '@/apis/mark/analysis-center'
 import { computed, ref, watch } from 'vue'
+import UiCollapse from '@/components/ui-guide/ui/UiCollapse.vue'
+import UiCollapsePanel from '@/components/ui-guide/ui/UiCollapsePanel.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkflowReadinessPanel from '@/components/workbench/workflow-readiness/WorkflowReadinessPanel.vue'
 import {
@@ -80,12 +82,12 @@ function handleClusterDataChanged(): void {
       @generated="handleClusterDataChanged"
     />
 
-    <a-collapse
+    <UiCollapse
       v-model:active-key="governanceActiveKeys"
       :bordered="false"
       class="ai-analysis-cluster-workbench__governance"
     >
-      <a-collapse-panel key="mapping">
+      <UiCollapsePanel key="mapping">
         <template #header>
           <span class="ai-analysis-cluster-workbench__panel-title">试题-课程目标映射</span>
           <span
@@ -101,8 +103,8 @@ function handleClusterDataChanged(): void {
           embedded
           @changed="handleClusterDataChanged"
         />
-      </a-collapse-panel>
-      <a-collapse-panel key="rejudge">
+      </UiCollapsePanel>
+      <UiCollapsePanel key="rejudge">
         <template #header>
           <span class="ai-analysis-cluster-workbench__panel-title">重判计划</span>
           <span
@@ -126,7 +128,7 @@ function handleClusterDataChanged(): void {
           embedded
           @changed="handleClusterDataChanged"
         />
-      </a-collapse-panel>
-    </a-collapse>
+      </UiCollapsePanel>
+    </UiCollapse>
   </div>
 </template>

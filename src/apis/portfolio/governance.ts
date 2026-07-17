@@ -2,11 +2,27 @@ import type { PortfolioAnalysisComplianceAlertVO } from '@/apis/portfolio/analys
 import type { PageResult } from '@/types'
 import http from '@/config/axios'
 
+/** 对齐后端 PortfolioExportBusinessRef */
+export interface PortfolioExportBusinessRef {
+  teacherId?: string
+  academicYear?: string
+  semester?: string
+  departmentId?: string
+  planYear?: string
+  portfolioOrgId?: string
+  teachingGroupId?: string
+  completenessLevel?: string
+  constructionPeriodLabel?: string
+  baselinePeriodLabel?: string
+  majorGroupName?: string
+  reportType?: string
+}
+
 export interface PortfolioExportApprovalVO {
   id: string
   applicantUserId: string
   exportType: string
-  businessRefJson: string
+  businessRef: PortfolioExportBusinessRef
   exportPurpose: string
   approvalStatus: string
   approverUserId?: string
@@ -73,8 +89,11 @@ export interface PortfolioAuditLogVO {
 }
 
 export const portfolioSecurityApi = {
-  applyExport: (data: { exportType: string, businessRefJson: string, exportPurpose: string }) =>
-    http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/apply', data),
+  applyExport: (data: {
+    exportType: string
+    businessRef: PortfolioExportBusinessRef
+    exportPurpose: string
+  }) => http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/apply', data),
   approveExport: (data: { id: string, approved: boolean, rejectReason?: string }) =>
     http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/approve', data),
   pageExport: (data: {

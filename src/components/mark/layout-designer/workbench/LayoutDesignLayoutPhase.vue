@@ -12,7 +12,8 @@ import LayoutPropertyDrawer from '@/components/mark/layout-designer/LayoutProper
 import LayoutQuestionCropStrip from '@/components/mark/layout-designer/LayoutQuestionCropStrip.vue'
 import LayoutQuestionOutlinePanel from '@/components/mark/layout-designer/LayoutQuestionOutlinePanel.vue'
 import LayoutQuestionPropertyPanel from '@/components/mark/layout-designer/LayoutQuestionPropertyPanel.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import { isFullPaperWorkspace } from '@/utils/layout-design-workspace'
 
@@ -59,7 +60,22 @@ const focusedBlock = computed(
 </script>
 
 <template>
-  <UiEmpty v-if="!document?.pages?.length" description="请先完成资料入口并同步页底图" />
+  <UiAlertStrip
+    v-if="!document?.pages?.length"
+    tone="info"
+    size="sm"
+    dense
+    inline
+    :show-icon="false"
+    class="layout-design-layout-phase__gate"
+  >
+    <template #default>
+      <span class="layout-design-layout-phase__gate-row">
+        <UiTag tone="blue" size="sm">待同步页底图</UiTag>
+        <span class="layout-design-layout-phase__gate-text">请先完成资料入口并同步页底图</span>
+      </span>
+    </template>
+  </UiAlertStrip>
   <div v-else class="layout-design-layout-phase">
     <aside class="layout-design-layout-phase__left">
       <LayoutQuestionOutlinePanel
@@ -120,6 +136,24 @@ const focusedBlock = computed(
 
 <style scoped lang="scss">
 @use '@/styles/breakpoints' as bp;
+
+.layout-design-layout-phase__gate {
+  margin: var(--dp-space-3) 0;
+  max-width: 100%;
+}
+
+.layout-design-layout-phase__gate-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  min-width: 0;
+}
+
+.layout-design-layout-phase__gate-text {
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+
 .layout-design-layout-phase {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr) 300px;

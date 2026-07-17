@@ -4,8 +4,9 @@
       <template #head>整改活动</template>
       <template #toolbar>
         <div class="archive-volume-remediation-panel__actions">
-          <a-select
-            v-model:value="selectedCampaignId"
+          <UiSelect
+            size="sm"
+            v-model="selectedCampaignId"
             :loading="campaignLoading"
             :options="campaignOptions"
             allow-clear
@@ -76,8 +77,22 @@
       </template>
 
       <UiSkeletonState v-if="taskLoading" variant="card" compact />
-      <UiEmpty v-else-if="!selectedCampaignId" description="请选择评估批次查看整改任务" />
-      <UiEmpty v-else-if="tasks.length === 0" description="当前批次暂无整改任务" />
+      <UiAlertStrip
+        v-else-if="!selectedCampaignId"
+        tone="info"
+        size="sm"
+        dense
+        inline
+        :show-icon="false"
+      >
+        <template #default>
+          <span style="display:inline-flex;align-items:center;gap:8px">
+            <UiTag tone="blue" size="sm">未选择批次</UiTag>
+            <span>请选择评估批次后查看整改任务</span>
+          </span>
+        </template>
+      </UiAlertStrip>
+      <UiEmpty size="sm" v-else-if="tasks.length === 0" description="当前批次暂无整改任务" />
       <div v-else class="archive-remediation-card-list">
         <article
           v-for="task in tasks"
@@ -140,76 +155,84 @@
       @close="campaignModalOpen = false"
       @confirm="submitCampaign"
     >
-      <a-form layout="vertical">
-        <a-form-item label="批次名称" required>
-          <a-input v-model:value="campaignForm.campaignName" :maxlength="200" show-count />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="学年起始年" required>
-              <a-select
-                v-model:value="campaignForm.academicYearStartYear"
+      <UiForm layout="vertical">
+        <UiFormItem label="批次名称" required>
+          <UiInput size="sm" v-model="campaignForm.campaignName" :maxlength="200" />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="学年起始年" required>
+              <UiSelect
+                size="sm"
+                v-model="campaignForm.academicYearStartYear"
                 :options="academicYearStartOptions"
                 placeholder="请选择起始年"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="学年结束年">
-              <a-input :value="campaignForm.academicYearEndYear" disabled />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="学期" required>
-              <a-select
-                v-model:value="campaignForm.semester"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="学年结束年">
+              <UiInput
+                size="sm" :value="campaignForm.academicYearEndYear" disabled
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="学期" required>
+              <UiSelect
+                size="sm"
+                v-model="campaignForm.semester"
                 :options="SemesterOptions"
                 allow-clear
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="状态" required>
-          <a-select
-            v-model:value="campaignForm.campaignStatus"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="状态" required>
+          <UiSelect
+            size="sm"
+            v-model="campaignForm.campaignStatus"
             :options="ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS"
             :disabled="!campaignForm.campaignId"
             style="width: 100%"
           />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="开始时间" required>
-              <a-date-picker
-                v-model:value="campaignForm.startTime"
-                show-time
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="开始时间" required>
+              <UiDatePicker
+                size="sm"
+                v-model="campaignForm.startTime"
+                :show-time="true"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="结束时间" required>
-              <a-date-picker
-                v-model:value="campaignForm.endTime"
-                show-time
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="结束时间" required>
+              <UiDatePicker
+                size="sm"
+                v-model="campaignForm.endTime"
+                :show-time="true"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="说明">
-          <a-textarea
-            v-model:value="campaignForm.description"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="说明">
+          <UiTextarea
+            size="sm"
+            v-model="campaignForm.description"
             :rows="2"
             :maxlength="2000"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -223,51 +246,57 @@
       @close="createTaskOpen = false"
       @confirm="submitCreateTask"
     >
-      <a-form layout="vertical">
-        <a-form-item label="关联批次">
-          <a-select
-            v-model:value="createTaskForm.campaignId"
+      <UiForm layout="vertical">
+        <UiFormItem label="关联批次">
+          <UiSelect
+            size="sm"
+            v-model="createTaskForm.campaignId"
             :options="activeCampaignOptions"
             allow-clear
             placeholder="可选"
             style="width: 100%"
           />
-        </a-form-item>
-        <a-form-item label="卷编号" required>
-          <a-input v-model:value="createTaskForm.volumeId" />
-        </a-form-item>
-        <a-form-item label="任务标题" required>
-          <a-input v-model:value="createTaskForm.taskTitle" :maxlength="200" show-count />
-        </a-form-item>
-        <a-form-item label="诊断码">
-          <a-select
-            v-model:value="createTaskForm.diagnosticCode"
+        </UiFormItem>
+        <UiFormItem label="卷编号" required>
+          <UiInput
+            size="sm" v-model="createTaskForm.volumeId"
+          />
+        </UiFormItem>
+        <UiFormItem label="任务标题" required>
+          <UiInput size="sm" v-model="createTaskForm.taskTitle" :maxlength="200" />
+        </UiFormItem>
+        <UiFormItem label="诊断码">
+          <UiSelect
+            size="sm"
+            v-model="createTaskForm.diagnosticCode"
             :options="ARCHIVE_REMEDIATION_DIAGNOSTIC_CODE_OPTIONS"
             allow-clear
             placeholder="选择诊断类型"
             style="width: 100%"
           />
-        </a-form-item>
-        <a-form-item label="说明">
-          <a-textarea
-            v-model:value="createTaskForm.taskDescription"
+        </UiFormItem>
+        <UiFormItem label="说明">
+          <UiTextarea
+            size="sm"
+            v-model="createTaskForm.taskDescription"
             :rows="2"
             :maxlength="2000"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-        <a-form-item label="责任人" required>
+        </UiFormItem>
+        <UiFormItem label="责任人" required>
           <ArchiveDutyUserSelect v-model:value="createTaskForm.assigneeUserId" />
-        </a-form-item>
-        <a-form-item label="截止时间">
-          <a-date-picker
-            v-model:value="createTaskForm.dueTime"
-            show-time
+        </UiFormItem>
+        <UiFormItem label="截止时间">
+          <UiDatePicker
+            size="sm"
+            v-model="createTaskForm.dueTime"
+            :show-time="true"
             value-format="YYYY-MM-DD HH:mm:ss"
             style="width: 100%"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
     <ArchiveEvaluationExportTaskModal />
   </div>
@@ -303,10 +332,19 @@ import {
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
@@ -524,6 +562,7 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
 }
 
 async function submitCampaign() {
+  if (campaignSaving.value) return
   if (!campaignForm.campaignName.trim()) {
     showFormValidationMessage('请填写批次名称')
     return
@@ -567,7 +606,7 @@ async function submitCampaign() {
 }
 
 async function handleExportCampaign() {
-  if (!selectedCampaignId.value) return
+  if (!selectedCampaignId.value || exporting.value) return
   exporting.value = true
   try {
     await runArchiveEvaluationExportFlow({
@@ -585,7 +624,7 @@ async function handleExportCampaign() {
 }
 
 async function handleExportArchiveCampaign() {
-  if (!selectedCampaignId.value) return
+  if (!selectedCampaignId.value || exportingArchive.value) return
   exportingArchive.value = true
   try {
     await runArchiveEvaluationExportFlow({
@@ -614,6 +653,7 @@ function openCreateTaskModal() {
 }
 
 async function submitCreateTask() {
+  if (createTaskSubmitting.value) return
   if (!createTaskForm.volumeId.trim()) {
     showFormValidationMessage('请填写归档卷编号')
     return

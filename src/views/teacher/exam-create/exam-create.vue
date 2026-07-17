@@ -7,7 +7,7 @@
     @back="ec.handleGoBack"
     @nav-select="(key) => void scrollToSection(key)"
   >
-    <a-spin :spinning="ec.submitting.value" tip="正在创建…">
+    <UiSpin :spinning="ec.submitting.value" tip="正在创建…">
       <BasicSettingsStep
         :basic-rules="ec.basicRules"
         @course-change="ec.setCourseSelection"
@@ -29,11 +29,12 @@
         @update:roster-form-ref="ec.rosterFormRef.value = $event"
       />
       <ConfirmStep />
-    </a-spin>
+    </UiSpin>
 
     <template #footer>
-      <UiButton variant="ghost" @click="ec.handleGoBack">取消</UiButton>
+      <UiButton size="sm" variant="ghost" @click="ec.handleGoBack">取消</UiButton>
       <UiButton
+        size="sm"
         :loading="ec.submitting.value"
         :disabled="ec.submitting.value || ec.rosterPreviewSyncing.value"
         @click="handleSubmit"
@@ -64,6 +65,7 @@ import { nextTick, provide } from 'vue'
 import CreateFormPageShell from '@/components/create-form/CreateFormPageShell.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { useCreateFormScrollSpy } from '@/composables/useCreateFormScrollSpy'
 import BasicSettingsStep from './BasicSettingsStep.vue'
 import CandidateScopeStep from './CandidateScopeStep.vue'

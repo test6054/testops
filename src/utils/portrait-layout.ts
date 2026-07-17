@@ -51,100 +51,54 @@ function isPortraitDimension(value: string): value is PortfolioPortraitDimension
   return DIMENSION_CODES.has(value)
 }
 
-/** 解析后端 layoutJson 为可视化编辑模型 */
-export function parsePortraitLayoutJson(json: string): PortfolioPortraitLayoutWidget[] {
-  if (!json.trim()) {
-    return []
-  }
-  const raw: unknown = JSON.parse(json)
-  const list = Array.isArray(raw) ? raw : readUnknownArrayProperty(raw, 'widgets')
+/** 将 API layout + chartConfig 合并为可视化编辑模型 */
+export function mergeLayoutWithChartConfig(
+  layout: Array<{ widget: string, x: number, y: number, w: number, h: number }>,
+  chartConfig?: Array<{ widgetIndex: number, dimensionCode: string }>,
+): PortfolioPortraitLayoutWidget[] {
   const widgets: PortfolioPortraitLayoutWidget[] = []
-  for (const item of list) {
-    if (typeof item !== 'object' || item === null) {
+  for (const item of layout) {
+    if (!isPortraitWidget(item.widget)) {
       continue
     }
-    const widget = String(Object.getOwnPropertyDescriptor(item, 'widget')?.value ?? '')
-    if (!isPortraitWidget(widget)) {
-      continue
-    }
-    const dimensionValue = Object.getOwnPropertyDescriptor(item, 'dimensionCode')?.value
-    const dimensionRaw = dimensionValue != null ? String(dimensionValue) : undefined
     widgets.push({
-      widget,
-      x: Number(Object.getOwnPropertyDescriptor(item, 'x')?.value ?? 0),
-      y: Number(Object.getOwnPropertyDescriptor(item, 'y')?.value ?? 0),
-      w: Number(Object.getOwnPropertyDescriptor(item, 'w')?.value ?? 6),
-      h: Number(Object.getOwnPropertyDescriptor(item, 'h')?.value ?? 4),
-      dimensionCode: dimensionRaw && isPortraitDimension(dimensionRaw) ? dimensionRaw : undefined,
+      widget: item.widget,
+      x: item.x,
+      y: item.y,
+      w: item.w,
+      h: item.h,
     })
   }
-  return widgets
-}
-
-function readUnknownArrayProperty(source: unknown, key: string): unknown[] {
-  if (typeof source !== 'object' || source === null) {
-    return []
+  if (!chartConfig?.length) {
+    return widgets
   }
-  const value = Object.getOwnPropertyDescriptor(source, key)?.value
-  return Array.isArray(value) ? value : []
-}
-
-/** 序列化为后端 layoutJson 契约（不含 chartConfigJson 部分） */
-export function serializePortraitLayout(widgets: PortfolioPortraitLayoutWidget[]): string {
-  return JSON.stringify(widgets.map(({ widget, x, y, w, h }) => ({ widget, x, y, w, h })))
-}
-
-/** 解析 chartConfigJson 并合并到 widgets 的 dimensionCode */
-export function mergeChartConfigIntoWidgets(
-  widgets: PortfolioPortraitLayoutWidget[],
-  chartConfigJson?: string,
-): PortfolioPortraitLayoutWidget[] {
-  if (!chartConfigJson?.trim()) {
-    return widgets.map((row) => ({ ...row }))
-  }
-  const entries = parsePortraitChartConfigJson(chartConfigJson)
   return widgets.map((row, index) => {
-    const entry = entries.find((item) => item.widgetIndex === index)
-    if (!entry) {
-      return { ...row }
+    const entry = chartConfig.find((item) => item.widgetIndex === index)
+    if (!entry || !isPortraitDimension(entry.dimensionCode)) {
+      return row
     }
     return { ...row, dimensionCode: entry.dimensionCode }
   })
 }
 
-/** 解析 chartConfigJson */
-export function parsePortraitChartConfigJson(json: string): PortfolioPortraitChartConfigEntry[] {
-  if (!json.trim()) {
-    return []
-  }
-  const raw: unknown = JSON.parse(json)
-  const list = Array.isArray(raw) ? raw : []
-  const entries: PortfolioPortraitChartConfigEntry[] = []
-  for (const item of list) {
-    if (typeof item !== 'object' || item === null) {
-      continue
-    }
-    const dimensionRaw = String(Object.getOwnPropertyDescriptor(item, 'dimensionCode')?.value ?? '')
-    if (!isPortraitDimension(dimensionRaw)) {
-      continue
-    }
-    entries.push({
-      widgetIndex: Number(Object.getOwnPropertyDescriptor(item, 'widgetIndex')?.value ?? 0),
-      dimensionCode: dimensionRaw,
-    })
-  }
-  return entries
+/** 从编辑模型拆出 API layout（不含维度） */
+export function toPortraitLayoutPayload(
+  widgets: PortfolioPortraitLayoutWidget[],
+): Array<{ widget: PortraitWidgetTypeCode, x: number, y: number, w: number, h: number }> {
+  return widgets.map(({ widget, x, y, w, h }) => ({ widget, x, y, w, h }))
 }
 
-/** 从 widgets 维度绑定序列化 chartConfigJson */
-export function serializePortraitChartConfig(widgets: PortfolioPortraitLayoutWidget[]): string {
+/** 从编辑模型拆出 API chartConfig */
+export function toPortraitChartConfigPayload(
+  widgets: PortfolioPortraitLayoutWidget[],
+): PortfolioPortraitChartConfigEntry[] {
   const entries: PortfolioPortraitChartConfigEntry[] = []
   widgets.forEach((row, index) => {
     if (row.dimensionCode) {
       entries.push({ widgetIndex: index, dimensionCode: row.dimensionCode })
     }
   })
-  return JSON.stringify(entries)
+  return entries
 }
 
 export function defaultPortraitLayout(): PortfolioPortraitLayoutWidget[] {

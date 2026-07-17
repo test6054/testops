@@ -70,10 +70,10 @@ const { isDesktop } = useDevice()
   height: 100%;
   min-height: 0;
   position: relative;
-  border-right: 1px solid var(--ant-color-border-secondary);
+  border-right: 1px solid var(--dp-border-subtle);
   box-sizing: border-box;
-  color: var(--ant-color-text);
-  background-color: var(--ant-color-bg-container);
+  color: var(--dp-text);
+  background-color: var(--dp-bg-container);
   transition: width 0.2s ease;
 
   &.collapsed {
@@ -94,7 +94,7 @@ const { isDesktop } = useDevice()
 
     &::-webkit-scrollbar-thumb {
       border-radius: var(--dp-radius-xs);
-      background-color: var(--ant-color-border-secondary);
+      background-color: var(--dp-border-subtle);
     }
 
     &::-webkit-scrollbar-track {
@@ -112,7 +112,7 @@ const { isDesktop } = useDevice()
     justify-content: center;
     align-items: center;
     height: 56px;
-    border-top: 1px solid var(--ant-color-border-secondary);
+    border-top: 1px solid var(--dp-border-subtle);
     background-color: inherit;
   }
 }

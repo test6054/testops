@@ -2,7 +2,7 @@
   <StageWorkbenchShell>
     <ExamWorkspaceJourneySubNav />
 
-    <UiEmpty v-if="!examId" description="缺少考试上下文" />
+    <ExamSelectGateStrip v-if="!examId" body="缺少考试上下文，请先进入考试工作台" />
     <UiSkeletonState v-else-if="loading" variant="card" :card-count="2" compact />
     <template v-else>
       <UiAlertStrip
@@ -198,13 +198,13 @@ import {
 import ExamExperienceAssistPolicyEnableModal from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
 import QuestionExperienceAssistBindingModal from '@/components/mark/QuestionExperienceAssistBindingModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -563,7 +563,7 @@ async function handlePolicySaved(
 }
 
 async function handleDisable(): Promise<void> {
-  if (!examId.value) return
+  if (!examId.value || saving.value) return
   saving.value = true
   try {
     policy.value = await disableExamGradingExperienceAssistPolicy(examId.value)
@@ -635,7 +635,7 @@ function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
 }
 
 async function handleUnbind(row: ExamQuestionExperienceAssistBindingResponse): Promise<void> {
-  if (!examId.value) return
+  if (!examId.value || unbindingQuestionId.value != null) return
   unbindingQuestionId.value = row.layoutQuestionId
   try {
     await saveExamExperienceAssistBinding({

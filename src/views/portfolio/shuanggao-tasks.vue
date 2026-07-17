@@ -16,13 +16,17 @@ import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiCheckboxGroup from '@/components/ui-guide/ui/UiCheckboxGroup.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   flattenPortfolioOrgOptionsUnderDepartment,
@@ -495,7 +499,7 @@ async function submitActionModal() {
       await portfolioDoubleHighApi.submitStage({
         id: activeTask.value.id,
         stageIndex: activeTask.value.currentStageIndex,
-        materialRefJson: JSON.stringify({ archiveRecordIds: selectedArchiveIds.value }),
+        materialRef: { archiveRecordIds: selectedArchiveIds.value },
       })
       message.success('阶段材料已提交')
     } else if (actionMode.value === 'void') {
@@ -631,7 +635,7 @@ watch(
     </template>
     <UiCard>
       <div class="shuanggao-tasks__toolbar">
-        <UiButton :disabled="busy" @click="openCreateModal">发布任务</UiButton>
+        <UiButton size="sm" :disabled="busy" @click="openCreateModal">发布任务</UiButton>
       </div>
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
       <UiDataTable
@@ -670,11 +674,16 @@ watch(
           </template>
         </template>
         <template #emptyText>
-          <UiEmpty description="暂无双高任务" />
+          <WorkbenchContextGateStrip
+            tag="未配置"
+            body="暂无双高任务，请先发布任务"
+            cta-label="发布任务"
+            @cta="openCreateModal"
+          />
         </template>
       </UiDataTable>
     </UiCard>
-    <a-modal
+    <UiDialog
       v-model:open="createOpen"
       title="发布双高任务"
       width="720px"
@@ -741,7 +750,7 @@ watch(
         <div class="create-form__stages">
           <div class="create-form__stages-head">
             <span>阶段节点</span>
-            <UiButton variant="secondary" @click="addCreateStage">增加阶段</UiButton>
+            <UiButton size="sm" variant="secondary" @click="addCreateStage">增加阶段</UiButton>
           </div>
           <div
             v-for="(stage, index) in createForm.stages"
@@ -751,13 +760,13 @@ watch(
             <span class="create-form__stage-index">第{{ stage.stageIndex }}阶</span>
             <UiInput v-model="stage.stageName" placeholder="阶段名称" />
             <UiDatePicker v-model="stage.stageDeadline" placeholder="阶段截止日" />
-            <UiButton variant="secondary" @click="removeCreateStage(index)">移除</UiButton>
+            <UiButton size="sm" variant="secondary" @click="removeCreateStage(index)">移除</UiButton>
           </div>
         </div>
       </div>
-    </a-modal>
-    <a-drawer v-model:open="detailOpen" title="双高任务阶段明细" width="520">
-      <a-spin :spinning="detailLoading">
+    </UiDialog>
+    <UiDrawer v-model:open="detailOpen" title="双高任务阶段明细" width="520">
+      <UiSpin :spinning="detailLoading">
         <template v-if="detailTask">
           <p class="shuanggao-tasks__detail-title">
             {{ detailTask.taskCode }} · {{ detailTask.taskTitle }}
@@ -794,10 +803,10 @@ watch(
             </li>
           </ul>
         </template>
-        <UiEmpty v-else description="暂无明细" />
-      </a-spin>
-    </a-drawer>
-    <a-modal
+        <UiEmpty size="sm" v-else description="暂无明细" />
+      </UiSpin>
+    </UiDrawer>
+    <UiDialog
       v-model:open="actionOpen"
       :title="
         actionMode === 'submit' ? '提交阶段材料' : actionMode === 'void' ? '作废任务' : '阶段审核'
@@ -808,15 +817,15 @@ watch(
       <template v-if="actionMode === 'submit'">
         <div class="shuanggao-tasks__action-body">
           <span>选择正式档案作为阶段举证材料</span>
-          <a-spin :spinning="evidenceLoading">
+          <UiSpin :spinning="evidenceLoading">
             <UiCheckboxGroup
               v-if="evidenceOptions.length"
               v-model="selectedArchiveIds"
               direction="vertical"
               :options="evidenceOptions"
             />
-            <UiEmpty v-else title="暂无内容" />
-          </a-spin>
+            <UiEmpty size="sm" v-else title="暂无内容" />
+          </UiSpin>
         </div>
       </template>
       <template v-else-if="actionMode === 'void'">
@@ -830,7 +839,7 @@ watch(
         />
         <UiTextarea v-model="reviewComment" placeholder="审核意见（退回必填）" :rows="3" />
       </template>
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 

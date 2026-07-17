@@ -1,10 +1,16 @@
 import type { PageResult, QueryDto } from '@/types'
+import type {
+  PfCurrentTaskRuleStrategyCode} from '@/types/enums/pf-current-task-rule-strategy-enum';
 import type { PfEligibilityAuditStatusCode } from '@/types/enums/pf-eligibility-audit-status-enum'
 import type { PfEligibilityNodeTypeCode } from '@/types/enums/pf-eligibility-node-type-enum'
+import type {
+  PfImpactApprovalStatusCode} from '@/types/enums/pf-impact-approval-status-enum';
 import type { PfIndicatorBusinessReferenceSceneCode } from '@/types/enums/pf-indicator-business-reference-scene-enum'
 import type { PfIndicatorDataSourceChannelCode } from '@/types/enums/pf-indicator-data-source-channel-enum'
 import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
 import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
+import type {
+  PfRuleChangeLevelCode} from '@/types/enums/pf-rule-change-level-enum';
 import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
 import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import {
@@ -40,10 +46,10 @@ import {
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
-  ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
-  PfEligibilityAuditStatusCode,
-  PfEligibilityAuditStatusDescription,
-} from '@/types/enums/pf-eligibility-audit-status-enum'
+  PF_CURRENT_TASK_RULE_STRATEGY_OPTIONS,
+  PfCurrentTaskRuleStrategyCode,
+  PfCurrentTaskRuleStrategyDescription,
+} from '@/types/enums/pf-current-task-rule-strategy-enum'
 
 export const PF_SCENE_CODE_OPTIONS: Array<{ value: PfSceneCode, label: string }>
   = ALL_PF_SCENE_CODES.map((value) => ({
@@ -52,10 +58,10 @@ export const PF_SCENE_CODE_OPTIONS: Array<{ value: PfSceneCode, label: string }>
   }))
 
 export {
-  ALL_PF_ELIGIBILITY_NODE_TYPE_CODES,
-  PfEligibilityNodeTypeCode,
-  PfEligibilityNodeTypeDescription,
-} from '@/types/enums/pf-eligibility-node-type-enum'
+  ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
+  PfEligibilityAuditStatusCode,
+  PfEligibilityAuditStatusDescription,
+} from '@/types/enums/pf-eligibility-audit-status-enum'
 
 export const PF_INDICATOR_STATUS_OPTIONS: Array<{ value: PfIndicatorStatusCode, label: string }>
   = ALL_PF_INDICATOR_STATUS_CODES.map((value) => ({
@@ -64,10 +70,29 @@ export const PF_INDICATOR_STATUS_OPTIONS: Array<{ value: PfIndicatorStatusCode, 
   }))
 
 export {
+  ALL_PF_ELIGIBILITY_NODE_TYPE_CODES,
+  PfEligibilityNodeTypeCode,
+  PfEligibilityNodeTypeDescription,
+} from '@/types/enums/pf-eligibility-node-type-enum'
+
+export {
+  pfImpactApprovalAllowsPublish,
+  PfImpactApprovalStatusCode,
+  PfImpactApprovalStatusDescription,
+} from '@/types/enums/pf-impact-approval-status-enum'
+
+export {
   ALL_PF_IMPACT_REPORT_STATUS_CODES,
   PfImpactReportStatusCode,
   PfImpactReportStatusDescription,
 } from '@/types/enums/pf-impact-report-status-enum'
+
+/** 指标业务引用场景 - PfIndicatorBusinessReferenceSceneEnum */
+export {
+  ALL_PF_INDICATOR_BUSINESS_REFERENCE_SCENE_CODES,
+  PfIndicatorBusinessReferenceSceneCode,
+  PfIndicatorBusinessReferenceSceneDescription,
+} from '@/types/enums/pf-indicator-business-reference-scene-enum'
 
 export const PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS: Array<{
   value: PfIndicatorDataSourceChannelCode
@@ -77,12 +102,11 @@ export const PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS: Array<{
   label: strictEnumLabel(PfIndicatorDataSourceChannelDescription, value, '指标数据来源渠道'),
 }))
 
-/** 指标业务引用场景 - PfIndicatorBusinessReferenceSceneEnum */
 export {
-  ALL_PF_INDICATOR_BUSINESS_REFERENCE_SCENE_CODES,
-  PfIndicatorBusinessReferenceSceneCode,
-  PfIndicatorBusinessReferenceSceneDescription,
-} from '@/types/enums/pf-indicator-business-reference-scene-enum'
+  ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES,
+  PfIndicatorDataSourceChannelCode,
+  PfIndicatorDataSourceChannelDescription,
+} from '@/types/enums/pf-indicator-data-source-channel-enum'
 
 export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode, label: string }>
   = ALL_PF_SCORE_RULE_TYPE_CODES.map((value) => ({
@@ -91,10 +115,10 @@ export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode, lab
   }))
 
 export {
-  ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES,
-  PfIndicatorDataSourceChannelCode,
-  PfIndicatorDataSourceChannelDescription,
-} from '@/types/enums/pf-indicator-data-source-channel-enum'
+  ALL_PF_INDICATOR_STATUS_CODES,
+  PfIndicatorStatusCode,
+  PfIndicatorStatusDescription,
+} from '@/types/enums/pf-indicator-status-enum'
 
 export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode, label: string }>
   = ALL_PF_MODEL_STATUS_CODES.map((value) => ({
@@ -103,10 +127,10 @@ export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode, label: s
   }))
 
 export {
-  ALL_PF_INDICATOR_STATUS_CODES,
-  PfIndicatorStatusCode,
-  PfIndicatorStatusDescription,
-} from '@/types/enums/pf-indicator-status-enum'
+  ALL_PF_MODEL_STATUS_CODES,
+  PfModelStatusCode,
+  PfModelStatusDescription,
+} from '@/types/enums/pf-model-status-enum'
 
 export const PF_IMPACT_REPORT_STATUS_TONE: Record<
   PfImpactReportStatusCode,
@@ -233,10 +257,10 @@ export interface PortfolioIndicatorPlatformSummaryVO {
 }
 
 export {
-  ALL_PF_MODEL_STATUS_CODES,
-  PfModelStatusCode,
-  PfModelStatusDescription,
-} from '@/types/enums/pf-model-status-enum'
+  PfRuleChangeLevelCode,
+  PfRuleChangeLevelDescription,
+  pfRuleChangeLevelRequiresApproval,
+} from '@/types/enums/pf-rule-change-level-enum'
 
 export interface PortfolioIndicatorBusinessReferenceStatusVO {
   referenceScene: PfIndicatorBusinessReferenceSceneCode
@@ -432,17 +456,68 @@ export interface PfEligibilityRuleTreeNodeDto {
   children?: PfEligibilityRuleTreeNodeDto[]
 }
 
+export interface PortfolioImpactTeacherSummaryDto {
+  affectedTeacherCount?: number
+  sampleTeacherCount?: number
+}
+
+export interface PortfolioImpactOrgSummaryDto {
+  affectedDepartmentCount?: number
+  departmentRows?: PortfolioImpactOrgItemDto[]
+}
+
+export interface PortfolioImpactOrgItemDto {
+  departmentId?: string
+  departmentName?: string
+  affectedTeacherCount?: number
+}
+
+export interface PortfolioImpactEligibilitySummaryDto {
+  affectedEligibilityCount?: number
+  changedEligibilityCodes?: string[]
+}
+
+export interface PortfolioImpactSampleCaseDto {
+  teacherId?: string
+  teacherName?: string
+  indicatorCode?: string
+  beforeScore?: number
+  afterScore?: number
+  deltaScore?: number
+}
+
+export interface PortfolioImpactEvaluationTaskSummaryDto {
+  inProgressTaskCount?: number
+  frozenInProgressTaskCount?: number
+  publicizedOrArchivedTaskCount?: number
+  affectedTeacherCount?: number
+  averageProgressRatio?: number
+}
+
 export interface PortfolioPublishImpactReportVO {
   id: string
   sceneCode: PfSceneCode
   draftSnapshotHash: string
   reportStatus: PfImpactReportStatusCode
-  indicatorSummaryJson: string
-  teacherSummaryJson: string
-  orgSummaryJson: string
-  eligibilitySummaryJson: string
-  sampleCasesJson: string
+  /** 后端结构化摘要；兼容历史 Json 字段名时由拦截层解析 */
+  indicatorSummary?: PortfolioImpactIndicatorSummaryDto
+  teacherSummary?: PortfolioImpactTeacherSummaryDto
+  orgSummary?: PortfolioImpactOrgSummaryDto
+  eligibilitySummary?: PortfolioImpactEligibilitySummaryDto
+  sampleCases?: PortfolioImpactSampleCaseDto[]
+  /** 兼容旧契约：若仅返回 Json 字符串，页面应解析后写入 summary */
+  indicatorSummaryJson?: string
+  teacherSummaryJson?: string
+  orgSummaryJson?: string
+  eligibilitySummaryJson?: string
+  sampleCasesJson?: string
   expiredTime: string
+  changeLevel?: PfRuleChangeLevelCode | string
+  evaluationTaskSummary?: PortfolioImpactEvaluationTaskSummaryDto
+  approvalStatus?: PfImpactApprovalStatusCode | string
+  approvedUser?: string
+  approvedTime?: string
+  approvalOpinion?: string
 }
 
 export interface PortfolioRulePublishSnapshotVO {
@@ -566,6 +641,13 @@ export interface PortfolioTenantSceneModelSaveRequest {
 export interface PortfolioTenantSceneModelPublishRequest extends PortfolioSceneCodeRequest {
   impactReportId: string
   academicYear: string
+  currentTaskRuleStrategy?: PfCurrentTaskRuleStrategyCode | string
+}
+
+export interface PortfolioPublishImpactApproveRequest {
+  impactReportId: string
+  approved: boolean
+  approvalOpinion?: string
 }
 
 export interface PortfolioEligibilityRuleSaveRequest {
@@ -734,6 +816,9 @@ export interface PortfolioIndicatorTenantApi {
   impactPreview: (data: PortfolioSceneCodeRequest) => Promise<string>
   getImpactReport: (
     data: PortfolioPublishImpactReportGetRequest,
+  ) => Promise<PortfolioPublishImpactReportVO>
+  approveImpactReport: (
+    data: PortfolioPublishImpactApproveRequest,
   ) => Promise<PortfolioPublishImpactReportVO>
   pageImpactReport: (data: QueryDto) => Promise<PageResult<PortfolioPublishImpactReportVO>>
   evaluateEligibility: (

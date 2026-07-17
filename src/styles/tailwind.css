@@ -18,14 +18,14 @@
   --radius-dp-control: var(--dp-radius-control);
   --radius-dp-panel: var(--dp-radius-panel);
 
-  --color-ant-primary: var(--ant-color-primary);
-  --color-ant-primary-hover: var(--ant-color-primary-hover);
-  --color-ant-text: var(--ant-color-text);
-  --color-ant-text-secondary: var(--ant-color-text-secondary);
-  --color-ant-border: var(--ant-color-border);
-  --color-ant-bg-container: var(--ant-color-bg-container);
-  --color-ant-bg-layout: var(--ant-color-bg-layout);
-  --color-ant-error: var(--ant-color-error);
-  --color-ant-success: var(--ant-color-success);
-  --color-ant-warning: var(--ant-color-warning);
+  --color-ant-primary: var(--dp-color-primary);
+  --color-ant-primary-hover: var(--dp-color-primary-hover);
+  --color-ant-text: var(--dp-text);
+  --color-ant-text-secondary: var(--dp-text-secondary);
+  --color-ant-border: var(--dp-border);
+  --color-ant-bg-container: var(--dp-bg-container);
+  --color-ant-bg-layout: var(--dp-bg-layout);
+  --color-ant-error: var(--dp-error);
+  --color-ant-success: var(--dp-success);
+  --color-ant-warning: var(--dp-warning);
 }

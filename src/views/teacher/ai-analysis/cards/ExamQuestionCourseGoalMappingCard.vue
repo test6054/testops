@@ -167,6 +167,7 @@ async function loadData() {
 }
 
 async function saveRow(row: MappingEditableRow) {
+  if (row.saving || row.deleting) return
   if (!props.examId || !row.qualityCourseGoalId) {
     showFormValidationMessage('请选择课程目标')
     return
@@ -192,6 +193,7 @@ async function saveRow(row: MappingEditableRow) {
 }
 
 async function deleteRow(row: MappingEditableRow) {
+  if (row.saving || row.deleting) return
   if (!row.mappingId) return
   const confirmed = await confirmAsync({
     title: '清除映射',
@@ -227,8 +229,8 @@ watch(
 
 <style scoped lang="scss">
 .exam-goal-mapping-card {
-  padding: 16px;
-  background: var(--ant-color-bg-container);
+  padding: var(--dp-space-3, 12px);
+  background: var(--dp-bg-container);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
 }

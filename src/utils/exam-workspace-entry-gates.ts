@@ -133,7 +133,7 @@ export function resolveSmartExamEntryRouteName(exam: {
   }
   const needReviewGrades = exam.needReviewGradeResultCount ?? 0
   if (countBlockingScanAttention(exam.scanAttentionCount, needReviewGrades) > 0) {
-    return 'TeacherExamWorkspaceScanLiveMonitor'
+    return 'TeacherExamWorkspaceScanMonitor'
   }
   const pendingReview = exam.pendingReviewTaskCount + exam.inProgressReviewTaskCount
   const hasGradableWork = (exam.gradablePaperCount ?? 0) > 0 || exam.totalQuestionGradeCount > 0

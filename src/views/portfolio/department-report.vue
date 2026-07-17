@@ -317,6 +317,7 @@ onMounted(() => {
         </label>
         <div class="report-filter__actions">
           <UiButton
+            size="sm"
             variant="secondary"
             :loading="previewLoading"
             :disabled="busy"
@@ -324,12 +325,12 @@ onMounted(() => {
           >
             预览摘要
           </UiButton>
-          <UiButton :loading="applying" :disabled="busy" @click="applyExport"> 提交审批 </UiButton>
+          <UiButton size="sm" :loading="applying" :disabled="busy" @click="applyExport"> 提交审批 </UiButton>
         </div>
       </div>
     </UiCard>
     <UiCard v-if="previewStats.length" title="报告摘要预览">
-      <UiStatPanel title="院系报告口径" :items="previewStats" />
+      <UiStatPanel title="院系报告口径" :items="previewStats" compact />
     </UiCard>
   </StageWorkbenchShell>
 </template>

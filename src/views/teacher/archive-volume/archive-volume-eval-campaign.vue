@@ -16,7 +16,7 @@
     </template>
 
     <template #signal>
-      <SignalBand variant="tiles" compact :metrics="evalCampaignSignalMetrics" />
+      <SignalBand compact :metrics="evalCampaignSignalMetrics" />
     </template>
 
     <WorkbenchSurfaceCard flush>
@@ -109,16 +109,33 @@
           <UiTextAction tone="default" @click="dismissReadinessVolumeFocus">查看整批</UiTextAction>
         </p>
         <div class="archive-eval-campaign__readiness-toolbar">
-          <a-select
-            v-model:value="selectedCampaignId"
+          <UiSelect
+            size="sm"
+            v-model="selectedCampaignId"
             :loading="campaignOptionLoading"
             :options="campaignOptions"
             allow-clear
             placeholder="选择迎评批次"
             style="width: 280px"
           />
-          <a-checkbox v-model:checked="onlyOpenRemediation">仅待整改卷（含他人跟进）</a-checkbox>
+          <UiCheckbox v-model="onlyOpenRemediation">仅待整改卷（含他人跟进）</UiCheckbox>
         </div>
+        <UiAlertStrip
+          v-if="!selectedCampaignId"
+          tone="info"
+          size="sm"
+          dense
+          inline
+          :show-icon="false"
+          class="archive-eval-campaign__gate"
+        >
+          <template #default>
+            <span style="display: inline-flex; align-items: center; gap: 8px">
+              <UiTag tone="blue" size="sm">未选批次</UiTag>
+              <span>请选择迎评批次后查询归档任务就绪度</span>
+            </span>
+          </template>
+        </UiAlertStrip>
         <ArchiveEvalCampaignScopeSummary
           v-if="selectedCampaignMeta && scopeSummary"
           :campaign-name="selectedCampaignMeta.campaignName"
@@ -128,6 +145,7 @@
         />
 
         <UiDataTable
+          v-if="selectedCampaignId"
           v-model:current="readinessPagination.pageNum"
           v-model:page-size="readinessPagination.pageSize"
           pagination-mode="server"
@@ -138,7 +156,7 @@
           flat
           row-key="volumeId"
           size="middle"
-          empty-description="请选择迎评批次后查询"
+          empty-description="当前批次暂无就绪卷"
           @page-change="loadReadinessVolumes"
         >
           <template #bodyCell="{ column, record }">
@@ -221,22 +239,25 @@
           院系范围内仍待复核的疑似混扫批次，点击档案号进入卷详情 scan-review Tab。
         </p>
         <div class="archive-eval-campaign__mixed-toolbar">
-          <a-select
-            v-model:value="mixedFilterForm.departmentId"
+          <UiSelect
+            size="sm"
+            v-model="mixedFilterForm.departmentId"
             :options="mixedDepartmentOptions"
             :disabled="mixedDepartmentDisabled"
             allow-clear
             placeholder="学院"
             style="width: 160px"
           />
-          <a-input
-            v-model:value="mixedFilterForm.academicYear"
-            allow-clear
+          <UiInput
+            size="sm"
+            v-model="mixedFilterForm.academicYear"
+            clearable
             placeholder="学年"
             style="width: 140px"
           />
-          <a-select
-            v-model:value="mixedFilterForm.semester"
+          <UiSelect
+            size="sm"
+            v-model="mixedFilterForm.semester"
             :options="SemesterOptions"
             allow-clear
             placeholder="学期"
@@ -274,31 +295,32 @@
         </UiDataTable>
       </div>
     </WorkbenchSurfaceCard>
-    <a-modal
+    <UiDialog
       v-model:open="campaignPickOpen"
       title="选择迎评批次"
       ok-text="确认"
       cancel-text="取消"
-      :ok-button-props="{ disabled: !campaignPickPendingId }"
       @ok="confirmCampaignPick"
     >
       <p v-if="campaignPickTruncated" class="archive-eval-campaign__pick-hint">
         命中批次较多，仅展示部分结果，请手动选择。
       </p>
-      <a-radio-group
-        v-model:value="campaignPickPendingId"
+      <UiRadioGroup
+        v-model="campaignPickPendingId"
         class="archive-eval-campaign__pick-group"
+        size="sm"
+        block
       >
-        <a-radio
+        <UiRadio
           v-for="item in pendingCampaignOptions"
           :key="item.campaignId"
           :value="item.campaignId"
           class="archive-eval-campaign__pick-item"
         >
           {{ item.campaignName }}
-        </a-radio>
-      </a-radio-group>
-    </a-modal>
+        </UiRadio>
+      </UiRadioGroup>
+    </UiDialog>
     <ArchiveEvaluationExportTaskModal />
   </StageWorkbenchShell>
 </template>
@@ -320,7 +342,6 @@ import type {
 } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
-import { Modal } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
@@ -340,10 +361,16 @@ import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveEvalCampaignScopeSummary from '@/components/archive-volume/ArchiveEvalCampaignScopeSummary.vue'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiRadio from '@/components/ui-guide/ui/UiRadio.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -352,6 +379,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ArchiveVolumeDetailTabKey } from '@/constants/archive-volume-detail-tabs'
 import { DEFAULT_LIST_PAGE_SIZE, EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import { ArchiveEvaluationCampaignScopeMatchKindCode } from '@/types/enums/archive-evaluation-campaign-scope-match-kind-enum'
@@ -911,9 +939,10 @@ async function handleExportArchive(record: ArchiveEvaluationCampaignResponse): P
   if (exportingCampaignId.value) {
     return
   }
-  Modal.confirm({
+  await confirmAsync({
     title: '导出四级目录包',
     content: `将导出批次范围内四级目录结构包（元数据为主）。${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}`,
+    type: 'warning',
     okText: '确认导出',
     onOk: async () => {
       exportingCampaignId.value = record.campaignId
@@ -927,6 +956,7 @@ async function handleExportArchive(record: ArchiveEvaluationCampaignResponse): P
         })
       } catch (error) {
         showUserError(error, '导出四级目录包失败')
+        return false
       } finally {
         exportingCampaignId.value = ''
       }
@@ -938,9 +968,10 @@ async function handleExportEntity(record: ArchiveEvaluationCampaignResponse): Pr
   if (exportingCampaignId.value) {
     return
   }
-  Modal.confirm({
+  await confirmAsync({
     title: '导出实体文件包',
     content: `将导出含便携文档等实体材料的完整文件包。${ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT}`,
+    type: 'warning',
     okText: '确认导出',
     onOk: async () => {
       exportingCampaignId.value = record.campaignId
@@ -954,6 +985,7 @@ async function handleExportEntity(record: ArchiveEvaluationCampaignResponse): Pr
         })
       } catch (error) {
         showUserError(error, '导出实体文件包失败')
+        return false
       } finally {
         exportingCampaignId.value = ''
       }

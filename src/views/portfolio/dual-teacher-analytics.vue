@@ -9,6 +9,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -70,12 +71,13 @@ onMounted(loadStats)
     <template #context>
       <ContextBar show-title layout="workbench" title="双师认定分析">
         <template #actions>
-          <UiButton :loading="loading" @click="loadStats">刷新</UiButton>
+          <UiButton size="sm" :loading="loading" @click="loadStats">刷新</UiButton>
         </template>
       </ContextBar>
     </template>
-    <a-spin :spinning="loading">
+    <UiSpin :spinning="loading">
       <UiEmpty
+        size="sm"
         v-if="!loading && !stats"
         :description="loadFailed ? '双师分析数据加载失败' : '暂无双师分析数据'"
       />
@@ -117,14 +119,14 @@ onMounted(loadStats)
           />
         </UiCard>
       </div>
-    </a-spin>
+    </UiSpin>
   </StageWorkbenchShell>
 </template>
 
 <style scoped>
 .grid {
   display: grid;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 </style>

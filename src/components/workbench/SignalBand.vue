@@ -4,7 +4,6 @@
     :class="{
       'signal-band--compact': compact,
       'signal-band--panel': variant === 'panel',
-      'signal-band--tiles': variant === 'tiles',
     }"
   >
     <component
@@ -19,7 +18,6 @@
       }"
       @click="metric.clickable ? emit('metric-click', metric.key) : undefined"
     >
-      <span v-if="variant === 'tiles'" class="signal-band__dot" :class="dotClass(metric.tone)" />
       <div class="signal-band__body">
         <span class="signal-band__label">{{ metric.label }}</span>
         <div class="signal-band__value-row">
@@ -36,6 +34,22 @@
           </span>
         </div>
         <span v-if="metric.helper" class="signal-band__helper">{{ metric.helper }}</span>
+        <span
+          v-if="sparkPolyline(metric)"
+          class="signal-band__spark"
+          aria-hidden="true"
+        >
+          <svg viewBox="0 0 80 18" preserveAspectRatio="none">
+            <polyline
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              :points="sparkPolyline(metric)"
+            />
+          </svg>
+        </span>
       </div>
     </component>
   </div>
@@ -53,7 +67,7 @@ const props = withDefaults(
   defineProps<{
     metrics?: SignalMetric[]
     compact?: boolean
-    variant?: 'inline' | 'panel' | 'tiles'
+    variant?: 'inline' | 'panel'
     trendPolarity?: SignalMetricTrendPolarity
   }>(),
   {
@@ -72,9 +86,6 @@ function toneClass(tone?: BadgeTone): string {
   return tone ? `signal-band__value--${tone}` : ''
 }
 
-function dotClass(tone?: BadgeTone): string {
-  return tone ? `signal-band__dot--${tone}` : 'signal-band__dot--gray'
-}
 
 function trendClass(metric: SignalMetric): string {
   const trend = metric.trend
@@ -87,6 +98,24 @@ function trendClass(metric: SignalMetric): string {
   const isAdverse = polarity === 'negative' ? isUp : !isUp
   return isAdverse ? 'signal-band__trend--adverse' : 'signal-band__trend--favorable'
 }
+
+/** 仅渲染 Live sparkValues，不编造序列 */
+function sparkPolyline(metric: SignalMetric): string {
+  const values = metric.sparkValues
+  if (!values?.length) return ''
+  if (!values.some((value) => value > 0)) return ''
+  const max = Math.max(...values, 1)
+  const min = Math.min(...values, 0)
+  const range = Math.max(max - min, 1)
+  const n = values.length
+  return values
+    .map((value, index) => {
+      const x = n === 1 ? 40 : (index / (n - 1)) * 80
+      const y = 16 - ((value - min) / range) * 14
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+}
 </script>
 
 <style scoped>
@@ -95,111 +124,47 @@ function trendClass(metric: SignalMetric): string {
 .signal-band {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dp-space-6);
-}
-
-.signal-band--compact {
   gap: var(--dp-space-4);
 }
 
+.signal-band--compact {
+  gap: var(--dp-space-3);
+}
+
+/* panel：独立指标卡 + 真实间距，禁止 1px 连体条 */
 .signal-band--panel {
   flex-wrap: nowrap;
-  gap: 1px;
+  gap: var(--dp-space-4);
   padding: 0;
-  border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-panel);
-  background: var(--dp-border);
+  border: none;
+  border-radius: 0;
+  background: transparent;
   overflow-x: auto;
+}
+
+.signal-band--panel.signal-band--compact {
+  gap: var(--dp-space-3);
 }
 
 .signal-band--panel.signal-band--compact .signal-band__item {
-  padding: var(--dp-space-3) var(--dp-space-4);
-}
-
-.signal-band--tiles {
-  flex-wrap: nowrap;
-  gap: var(--dp-space-2);
-  overflow-x: auto;
-}
-
-.signal-band--tiles .signal-band__item {
-  display: flex;
-  align-items: center;
-  gap: var(--dp-space-3);
-  flex: 1;
-  min-width: 120px;
-  padding: var(--dp-space-3) var(--dp-space-4);
-  background: var(--dp-surface-subtle);
-  border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-panel);
-  transition:
-    border-color var(--dp-duration-fast) ease,
-    box-shadow var(--dp-duration-fast) ease;
-}
-
-.signal-band--tiles .signal-band__item--clickable:hover {
-  border-color: var(--dp-border-strong);
-  box-shadow: var(--dp-shadow-xs);
-}
-
-.signal-band--tiles .signal-band__item--active {
-  border-color: var(--dp-primary-light);
-  background: color-mix(in srgb, var(--dp-primary) 6%, var(--dp-surface-subtle));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-primary) 12%, transparent);
+  padding: var(--dp-space-3);
 }
 
 .signal-band--panel .signal-band__item--active {
-  background: color-mix(in srgb, var(--dp-primary) 6%, var(--dp-surface-subtle));
+  background: color-mix(in srgb, var(--dp-primary) 6%, var(--dp-surface));
+  border-color: color-mix(in srgb, var(--dp-primary) 28%, var(--dp-border));
+  box-shadow: none;
+  color: var(--dp-primary);
 }
 
-.signal-band--tiles .signal-band__body {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
 
-.signal-band--tiles .signal-band__value {
-  font-size: var(--dp-font-size-md);
-}
 
-.signal-band__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--dp-radius-full);
-  flex-shrink: 0;
-}
-
-.signal-band__dot--blue {
-  background: var(--ant-color-primary);
-  box-shadow: 0 0 0 2px rgb(22 119 255 / 12%);
-}
-
-.signal-band__dot--green {
-  background: var(--ant-color-success);
-  box-shadow: 0 0 0 2px rgb(82 196 26 / 12%);
-}
-
-.signal-band__dot--orange {
-  background: var(--ant-color-warning);
-  box-shadow: 0 0 0 2px rgb(250 173 20 / 12%);
-}
-
-.signal-band__dot--red {
-  background: var(--ant-color-error);
-  box-shadow: 0 0 0 2px rgb(255 77 79 / 12%);
-}
-
-.signal-band__dot--gray {
-  background: var(--dp-border-strong);
-}
 
 .signal-band__body {
   display: contents;
 }
 
-.signal-band--panel .signal-band__body,
-.signal-band--tiles .signal-band__body {
+.signal-band--panel .signal-band__body {
   display: flex;
   flex-direction: column;
 }
@@ -229,18 +194,26 @@ function trendClass(metric: SignalMetric): string {
 }
 
 .signal-band--panel .signal-band__item {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 120px;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
   gap: 2px;
-  padding: var(--dp-space-4) var(--dp-space-5);
+  min-height: 64px;
+  padding: var(--dp-space-3) var(--dp-space-4);
   background: var(--dp-surface);
-  transition: background var(--dp-duration-normal) ease;
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control-inner);
+  box-shadow: none;
+  transition:
+    background var(--dp-duration-normal) ease,
+    border-color var(--dp-duration-normal) ease;
 }
 
 .signal-band--panel .signal-band__item--clickable:hover {
-  background: var(--dp-gray-50);
+  background: var(--dp-surface);
+  border-color: var(--dp-color-primary-border);
 }
 
 .signal-band--panel .signal-band__value-row {
@@ -263,7 +236,7 @@ function trendClass(metric: SignalMetric): string {
 }
 
 .signal-band__item--clickable:hover .signal-band__value {
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
 }
 
 .signal-band__label {
@@ -273,7 +246,7 @@ function trendClass(metric: SignalMetric): string {
 }
 
 .signal-band__value {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: var(--dp-font-weight-metric);
   color: var(--dp-text-primary);
   line-height: 1.2;
@@ -281,7 +254,8 @@ function trendClass(metric: SignalMetric): string {
 }
 
 .signal-band--compact .signal-band__value {
-  font-size: var(--dp-font-size-lg);
+  font-size: 20px;
+  line-height: 1.15;
 }
 
 .signal-band__unit {
@@ -297,15 +271,15 @@ function trendClass(metric: SignalMetric): string {
 }
 
 .signal-band__trend--adverse {
-  color: var(--ant-color-error);
+  color: var(--dp-error);
 }
 
 .signal-band__trend--favorable {
-  color: var(--ant-color-success);
+  color: var(--dp-success);
 }
 
 .signal-band__trend--neutral {
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
 }
 
 .signal-band__helper {
@@ -315,19 +289,19 @@ function trendClass(metric: SignalMetric): string {
 }
 
 .signal-band__value--green {
-  color: var(--ant-color-success);
+  color: var(--dp-success);
 }
 
 .signal-band__value--red {
-  color: var(--ant-color-error);
+  color: var(--dp-error);
 }
 
 .signal-band__value--orange {
-  color: var(--ant-color-warning);
+  color: var(--dp-warning);
 }
 
 .signal-band__value--blue {
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
 }
 
 .signal-band__value--purple {
@@ -342,16 +316,28 @@ function trendClass(metric: SignalMetric): string {
   color: var(--dp-text-secondary);
 }
 
-@media (max-width: bp.$layout-mobile-max) {
-  .signal-band--tiles {
-    flex-wrap: wrap;
-    overflow-x: visible;
-  }
 
-  .signal-band--tiles .signal-band__item {
-    flex: 1 1 calc(50% - var(--dp-space-1));
-    min-width: 0;
-  }
+.signal-band__spark {
+  display: block;
+  width: 100%;
+  max-width: 88px;
+  height: 16px;
+  margin-top: 2px;
+  color: var(--dp-color-primary);
+}
+
+.signal-band__spark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.signal-band__item--active .signal-band__spark,
+.signal-band__value--blue + * .signal-band__spark {
+  color: var(--dp-color-primary);
+}
+
+@media (max-width: bp.$layout-mobile-max) {
 
   .signal-band--panel {
     flex-wrap: wrap;
@@ -359,7 +345,7 @@ function trendClass(metric: SignalMetric): string {
   }
 
   .signal-band--panel .signal-band__item {
-    flex: 1 1 calc(50% - 1px);
+    flex: 1 1 calc(50% - var(--dp-space-3));
     min-width: 0;
   }
 }

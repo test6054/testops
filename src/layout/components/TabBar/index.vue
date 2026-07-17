@@ -9,7 +9,7 @@
     >
       <component :is="item.icon" class="tab-bar-icon" />
       <span class="tab-bar-label">{{ item.label }}</span>
-      <a-badge v-if="item.badge && item.badge > 0" :count="item.badge" :offset="[-8, 4]" />
+      <UiCountBadge v-if="item.badge && item.badge > 0" :count="item.badge" :offset="[-8, 4]" />
     </div>
   </div>
 </template>
@@ -23,6 +23,7 @@ import MailOutlined from '@ant-design/icons-vue/MailOutlined'
 import ReconciliationOutlined from '@ant-design/icons-vue/ReconciliationOutlined'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import UiCountBadge from '@/components/ui-guide/ui/UiCountBadge.vue'
 import { useDevice } from '@/hooks'
 import { useAuthStore } from '@/stores'
 import { isValidRole, RoleEnum } from '@/utils/permission'
@@ -144,8 +145,8 @@ function handleNavigate(path: string) {
   align-items: center;
   justify-content: space-around;
   height: 56px;
-  background-color: var(--ant-color-bg-container);
-  border-top: 1px solid var(--ant-color-border-secondary);
+  background-color: var(--dp-bg-container);
+  border-top: 1px solid var(--dp-border-subtle);
   box-shadow: var(--dp-shadow-sm);
   padding: 0 8px;
   padding-bottom: env(safe-area-inset-bottom); // iOS安全区域适配
@@ -165,7 +166,7 @@ function handleNavigate(path: string) {
 
     .tab-bar-icon {
       font-size: 20px;
-      color: var(--ant-color-text-tertiary);
+      color: var(--dp-text-tertiary);
       transition:
         color 0.3s ease,
         transform 0.3s ease;
@@ -173,19 +174,19 @@ function handleNavigate(path: string) {
 
     .tab-bar-label {
       font-size: 11px;
-      color: var(--ant-color-text-tertiary);
+      color: var(--dp-text-tertiary);
       transition: color 0.3s ease;
       white-space: nowrap;
     }
 
     &.active {
       .tab-bar-icon {
-        color: var(--ant-color-primary);
+        color: var(--dp-color-primary);
         transform: scale(1.1);
       }
 
       .tab-bar-label {
-        color: var(--ant-color-primary);
+        color: var(--dp-color-primary);
         font-weight: 600;
       }
     }

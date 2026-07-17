@@ -1,5 +1,5 @@
 <template>
-  <a-form
+  <UiForm
     ref="formRef"
     :model="planForm"
     :rules="planRules"
@@ -14,68 +14,72 @@
       </div>
       <p class="section-desc">选定目录模板套、密级与成绩事实；模板决定材料目录与自查项。</p>
 
-      <a-form-item
+      <UiFormItem
         label="目录模板套"
         name="templateSetCode"
         required
         tooltip="含平台母版与本校副本；创建任务后按此套解析材料目录与自查项。"
       >
-        <a-select
-          v-model:value="templateSetCodeSelectValue"
+        <UiSelect
+          size="sm"
+          v-model="templateSetCodeSelectValue"
           :options="templateSetOptions"
           :loading="templateLoading"
           placeholder="选择模板套"
-          show-search
+          allow-search
           option-filter-prop="label"
           @change="handleTemplateChange"
         />
-      </a-form-item>
+      </UiFormItem>
 
-      <a-row :gutter="24" class="create-form__split-row">
-        <a-col :span="12">
-          <a-form-item label="考核形式" :label-col="labelCol" :wrapper-col="wrapperCol">
-            <a-select
-              v-model:value="planForm.examForm"
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem label="考核形式" :label-col="labelCol" :wrapper-col="wrapperCol">
+            <UiSelect
+              size="sm"
+              v-model="planForm.examForm"
               :options="ARCHIVE_EXAM_FORM_OPTIONS"
               allow-clear
               placeholder="可选"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             label="成绩事实源"
             name="scoreSource"
             required
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select
-              :value="planForm.scoreSource"
+            <UiSelect
+              size="sm"
+              :model-value="planForm.scoreSource"
               :options="scoreSourceOptions"
               @change="handleScoreSourceChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
 
-      <a-row :gutter="24" class="create-form__split-row">
-        <a-col :span="12">
-          <a-form-item
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem
             label="密级"
             name="securityLevel"
             required
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select
-              v-model:value="planForm.securityLevel"
+            <UiSelect
+              size="sm"
+              v-model="planForm.securityLevel"
               :options="ARCHIVE_SECURITY_LEVEL_OPTIONS"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             label="归档责任人"
             name="responsibleUserId"
             required
@@ -88,41 +92,41 @@
               placeholder="默认当前用户"
               @change="handleResponsibleChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
 
-      <a-form-item label="保管年限">
+      <UiFormItem label="保管年限">
         <div class="retention-field">
-          <a-input-number
-            v-model:value="planForm.retentionYears"
+          <UiInputNumber
+            size="sm"
+            v-model="planForm.retentionYears"
             :min="1"
             :max="100"
             :disabled="planForm.permanentRetention"
           />
           <span class="retention-field__unit">年</span>
-          <a-checkbox v-model:checked="planForm.permanentRetention">永久保管</a-checkbox>
+          <UiCheckbox v-model="planForm.permanentRetention">永久保管</UiCheckbox>
         </div>
-      </a-form-item>
+      </UiFormItem>
 
-      <a-form-item label="归档截止" tooltip="可选；留空时由租户归档时限策略自动计算。">
-        <a-date-picker
-          v-model:value="archiveDueOverrideValue"
+      <UiFormItem label="归档截止" tooltip="可选；留空时由租户归档时限策略自动计算。">
+        <UiDatePicker
+          v-model="planForm.archiveDueTimeOverride"
           show-time
           format="YYYY-MM-DD HH:mm"
+          value-format="YYYY-MM-DD HH:mm:ss"
           placeholder="留空则按法规策略自动计算"
-          style="width: 100%"
-          allow-clear
         />
-      </a-form-item>
+      </UiFormItem>
 
-      <a-form-item
+      <UiFormItem
         v-if="requiresScoreProof"
         label="成绩证明"
         tooltip="线下成绩已核实时可上传成绩证明；未上传时任务保持待确认。"
       >
         <div class="score-proof-field">
-          <a-upload
+          <UiUpload
             :show-upload-list="false"
             :before-upload="handleScoreProofBeforeUpload"
             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
@@ -130,24 +134,22 @@
             <UiButton size="sm" variant="outline" :loading="scoreProofUploading">
               {{ planForm.scoreProofFileId ? '重新上传' : '上传成绩证明' }}
             </UiButton>
-          </a-upload>
+          </UiUpload>
           <span v-if="planForm.scoreProofFileId" class="score-proof-field__id">
             文件编号：{{ planForm.scoreProofFileId }}
           </span>
         </div>
-      </a-form-item>
+      </UiFormItem>
     </div>
-  </a-form>
+  </UiForm>
 </template>
 
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { SelectValue } from 'ant-design-vue/es/select'
-import type { Dayjs } from 'dayjs'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import type { UiOptionValue } from '@/components/ui-guide/ui/types'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
 import {
   ARCHIVE_EXAM_FORM_OPTIONS,
@@ -158,6 +160,15 @@ import {
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiUpload from '@/components/ui-guide/ui/UiUpload.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { ArchiveScoreSourceCode } from '@/types/enums/archive-score-source-enum'
 import { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance-enum'
@@ -231,7 +242,9 @@ async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {
   return false
 }
 
-async function handleScoreSourceChange(value: SelectValue): Promise<void> {
+async function handleScoreSourceChange(
+  value: UiOptionValue | UiOptionValue[] | undefined,
+): Promise<void> {
   const nextSource = String(value) as ArchiveScoreSourceCode
   if (nextSource === planForm.scoreSource) return
   if (nextSource !== ArchiveScoreSourceCode.OFFLINE_CONFIRMED && planForm.scoreProofFileId) {
@@ -246,22 +259,9 @@ async function handleScoreSourceChange(value: SelectValue): Promise<void> {
   planForm.scoreSource = nextSource
 }
 
-const archiveDueOverrideValue = computed({
-  get: (): Dayjs | undefined => {
-    if (!planForm.archiveDueTimeOverride) return undefined
-    const parsed = dayjs(planForm.archiveDueTimeOverride)
-    return parsed.isValid() ? parsed : undefined
-  },
-  set: (value: Dayjs | undefined | null) => {
-    planForm.archiveDueTimeOverride = value?.isValid()
-      ? value.format('YYYY-MM-DD HH:mm:ss')
-      : undefined
-  },
-})
-
 const templateSetCodeSelectValue = computed({
   get: () => nullableStringToSelectValue(planForm.templateSetCode),
-  set: (value: SelectValue) => {
+  set: (value: UiOptionValue | UiOptionValue[] | undefined) => {
     planForm.templateSetCode = selectValueToNullableString(value)
   },
 })
@@ -288,7 +288,7 @@ const scoreSourceOptions = computed(() => {
   return []
 })
 
-function handleTemplateChange(value: SelectValue): void {
+function handleTemplateChange(value: UiOptionValue | UiOptionValue[] | undefined): void {
   const code = selectValueToNullableString(value)
   planForm.templateSetCode = code
   if (!code) {

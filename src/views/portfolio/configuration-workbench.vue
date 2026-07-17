@@ -69,6 +69,7 @@ function openConfiguration(routeName: string) {
         <h2>{{ section.title }}</h2>
         <div class="configuration-workbench__actions">
           <UiButton
+            size="sm"
             v-for="action in section.actions"
             :key="action.routeName"
             variant="outline"
@@ -88,9 +89,9 @@ function openConfiguration(routeName: string) {
 }
 
 .configuration-workbench__section + .configuration-workbench__section {
-  margin-top: var(--dp-space-6);
-  padding-top: var(--dp-space-5);
-  border-top: 1px solid var(--ant-color-border-secondary);
+  margin-top: var(--dp-space-3);
+  padding-top: var(--dp-space-3);
+  border-top: 1px solid var(--dp-border-subtle);
 }
 
 .configuration-workbench__section h2 {

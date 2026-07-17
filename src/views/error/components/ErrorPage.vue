@@ -130,21 +130,21 @@ function goSecondary() {
   align-items: center;
   justify-content: center;
   padding: var(--dp-space-4);
-  background: var(--ant-color-bg-layout);
+  background: var(--dp-bg-layout);
 
   &--embedded {
-    min-height: 240px;
-    background: var(--ant-color-bg-container);
+    min-height: 120px;
+    background: var(--dp-bg-container);
     padding: var(--dp-space-4);
   }
 }
 
 .platform-error-page__panel {
   width: min(420px, 100%);
-  padding: 20px 18px;
-  border: 1px solid var(--ant-color-border-secondary);
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--ant-color-bg-container);
+  background: var(--dp-bg-container);
   text-align: center;
 }
 
@@ -156,8 +156,8 @@ function goSecondary() {
   padding: 0 8px;
   margin-bottom: 10px;
   border-radius: var(--dp-radius-control);
-  background: var(--ant-color-fill-tertiary);
-  color: var(--ant-color-text-secondary);
+  background: var(--dp-fill-tertiary);
+  color: var(--dp-text-secondary);
   font-size: 12px;
   font-weight: 600;
   line-height: 22px;
@@ -168,14 +168,14 @@ function goSecondary() {
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
-  color: var(--ant-color-text);
+  color: var(--dp-text);
 }
 
 .platform-error-page__subtitle {
   margin: 0 0 16px;
   font-size: 13px;
   line-height: 20px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .platform-error-page__actions {

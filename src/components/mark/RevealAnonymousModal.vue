@@ -4,7 +4,12 @@ import type { AnonymousRevealResponse } from '@/apis/mark/marking-organization'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
 import { revealAnonymous } from '@/apis/mark/marking-organization'
+import PasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'RevealAnonymousModal' })
@@ -53,6 +58,9 @@ async function submitReveal(): Promise<void> {
   } catch {
     return
   }
+  if (submitting.value) {
+    return
+  }
   submitting.value = true
   try {
     const result = await revealAnonymous({
@@ -80,7 +88,7 @@ watch(open, (value) => {
 </script>
 
 <template>
-  <a-modal
+  <UiDialog
     v-model:open="open"
     title="解匿名查看学生身份"
     :confirm-loading="submitting"
@@ -95,23 +103,24 @@ watch(open, (value) => {
       :inline="false"
       style="margin-bottom: 12px"
     />
-    <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
-      <a-form-item label="登录密码" name="currentPassword" required>
-        <a-input-password
-          v-model:value="form.currentPassword"
+    <UiForm ref="formRef" :model="form" :rules="rules" layout="vertical">
+      <UiFormItem label="登录密码" name="currentPassword" required>
+        <PasswordInput
+          v-model="form.currentPassword"
           placeholder="输入当前登录账号的密码"
           autocomplete="new-password"
         />
-      </a-form-item>
-      <a-form-item label="解匿名理由" name="reason" required>
-        <a-textarea
-          v-model:value="form.reason"
+      </UiFormItem>
+      <UiFormItem label="解匿名理由" name="reason" required>
+        <UiTextarea
+          size="sm"
+          v-model="form.reason"
           :rows="3"
           :maxlength="500"
           placeholder="必填。例如：核对学生身份 / 处理申诉 / 仲裁前置等"
-          show-count
+          :show-count="true"
         />
-      </a-form-item>
-    </a-form>
-  </a-modal>
+      </UiFormItem>
+    </UiForm>
+  </UiDialog>
 </template>

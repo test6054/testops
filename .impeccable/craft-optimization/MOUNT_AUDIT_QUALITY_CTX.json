@@ -1,0 +1,104 @@
+[
+  {
+    "file": "views/quality/accreditation-cockpit.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/achievement.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/ai-task.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/archive-destruction-ledger.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/archive.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/dashboard.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/improvement-workbench.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/indirect-evaluation.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/process-evaluation.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/quality-course-matrix.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/quality-ingest-hub-layout.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/rationality-audit.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/report.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/score-batch.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/score-record.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/training-plan-review-queue.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  },
+  {
+    "file": "views/quality/training-plan-workbench.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "quality"
+  }
+]

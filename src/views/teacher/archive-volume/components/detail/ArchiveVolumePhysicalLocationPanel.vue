@@ -11,6 +11,11 @@ import {
   updateArchiveVolumePhysicalLocation,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -94,6 +99,7 @@ async function loadLocationHistory() {
 }
 
 async function handleSave() {
+  if (submitting.value) return
   const building = form.building.trim()
   const cabinet = form.cabinet.trim()
   if (!building || !cabinet) {
@@ -179,73 +185,77 @@ onMounted(() => {
         密级: {{ securityLevelText }} · 保管至 {{ retentionUntilText }}
       </div>
     </section>
-    <a-form layout="vertical" class="archive-volume-physical-location__form">
-      <a-row :gutter="12">
-        <a-col :span="12">
-          <a-form-item label="楼宇/库区" required>
-            <a-input
-              v-model:value="form.building"
+    <UiForm layout="vertical" class="archive-volume-physical-location__form">
+      <UiRow :gutter="12">
+        <UiCol :span="12">
+          <UiFormItem label="楼宇/库区" required>
+            <UiInput
+              size="sm"
+              v-model="form.building"
               :maxlength="128"
               placeholder="例如 A区"
               :disabled="!canEdit"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item label="房间/库室">
-            <a-input
-              v-model:value="form.room"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem label="房间/库室">
+            <UiInput
+              size="sm"
+              v-model="form.room"
               :maxlength="128"
               placeholder="例如 03室"
               :disabled="!canEdit"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             label="柜号"
             required
             :class="{
               'archive-volume-physical-location__field--filled': Boolean(form.cabinet.trim()),
             }"
           >
-            <a-input
-              v-model:value="form.cabinet"
+            <UiInput
+              size="sm"
+              v-model="form.cabinet"
               :maxlength="128"
               placeholder="例如 03柜"
               :disabled="!canEdit"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             label="层/格位"
             :class="{
               'archive-volume-physical-location__field--filled': Boolean(form.slot.trim()),
             }"
           >
-            <a-input
-              v-model:value="form.slot"
+            <UiInput
+              size="sm"
+              v-model="form.slot"
               :maxlength="128"
               placeholder="例如 2层"
               :disabled="!canEdit"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-form-item label="柜位说明">
-        <a-input
-          v-model:value="form.physicalLocationNote"
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiFormItem label="柜位说明">
+        <UiInput
+          size="sm"
+          v-model="form.physicalLocationNote"
           :maxlength="512"
           placeholder="可选补充说明"
           :disabled="!canEdit"
-          show-count
         />
-      </a-form-item>
+      </UiFormItem>
       <p v-if="!canEdit" class="archive-volume-physical-location__readonly">
         当前卷状态不允许修改柜位
       </p>
-    </a-form>
+    </UiForm>
     <section class="archive-volume-physical-location__timeline">
       <h3 class="archive-volume-physical-location__timeline-title">位置变更历史</h3>
       <UiSkeletonState v-if="historyLoading" variant="card" compact />
@@ -317,10 +327,10 @@ onMounted(() => {
 .archive-volume-physical-location__readonly {
   margin: 0;
   font-size: 13px;
-  color: var(--nybc-text-secondary, #8c8c8c);
+  color: var(--dp-text-secondary);
 }
 .archive-volume-physical-location__timeline {
-  margin-top: 24px;
+  margin-top: var(--dp-space-4, 16px);
   max-width: 640px;
 }
 .archive-volume-physical-location__audit {
@@ -328,7 +338,7 @@ onMounted(() => {
 }
 .archive-volume-physical-location__field--filled :deep(.ant-input) {
   border-color: var(--dp-primary);
-  background: color-mix(in srgb, var(--dp-primary) 4%, var(--ant-color-bg-container));
+  background: color-mix(in srgb, var(--dp-primary) 4%, var(--dp-bg-container));
 }
 .archive-volume-physical-location__field--filled :deep(.ant-form-item-label > label) {
   color: var(--dp-primary);
@@ -342,7 +352,7 @@ onMounted(() => {
 .archive-volume-physical-location__empty {
   margin: 0;
   font-size: 13px;
-  color: var(--nybc-text-secondary, #8c8c8c);
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-physical-location__history-error {

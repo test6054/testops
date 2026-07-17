@@ -8,23 +8,31 @@ import type {
 } from '@/apis/portfolio/title-promotion'
 import type { PortfolioArchiveCategoryTreeNodeVO, PortfolioArchiveRecordSummaryVO } from '@/apis/portfolio/types'
 import type { PortfolioTitleJobCategoryCode } from '@/types/enums/portfolio-title-job-category-enum'
-import { Checkbox, message, Radio, Select } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { PortfolioArchiveRecordStatusCode } from '@/apis/portfolio/enums'
 import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import TitlePromotionFlowPanel from '@/components/portfolio/TitlePromotionFlowPanel.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
-import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { PortfolioArchiveCategoryStatusCode } from '@/types/enums/portfolio-archive-category-status-enum'
 import {
   PortfolioTitleCriteriaCheckTypeCode,
@@ -37,11 +45,23 @@ import {
 } from '@/types/enums/portfolio-title-criteria-satisfy-mode-enum'
 import { PortfolioTitleEvidenceTypeCode } from '@/types/enums/portfolio-title-evidence-type-enum'
 import { PortfolioTitleJobCategoryDescription } from '@/types/enums/portfolio-title-job-category-enum'
+import {
+  PortfolioTitlePromotionApplicationStatusCode,
+  PortfolioTitlePromotionApplicationStatusDescription,
+} from '@/types/enums/portfolio-title-promotion-application-status-enum'
 import { PortfolioTitlePromotionTaskStatusCode } from '@/types/enums/portfolio-title-promotion-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const router = useRouter()
+function goMasterpiecePreview() {
+  void router.push({
+    path: '/portfolio/teacher/masterpiece',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
 const loading = ref(false)
 const matchLoading = ref(false)
 const draftLoading = ref(false)
@@ -53,6 +73,7 @@ const selectedTaskId = ref<string | undefined>()
 const pathCode = ref(PortfolioTitleCriteriaPathCode.NORMAL)
 const jobCategory = ref<PortfolioTitleJobCategoryCode | undefined>()
 const commitmentConfirmed = ref(false)
+const selectionConfirmed = ref(false)
 const evidenceByCriteria = ref<Record<string, string[]>>({})
 const manualNoteByCriteria = ref<Record<string, string>>({})
 const matchResult = ref<PortfolioTitlePromotionApplicationVO | null>(null)
@@ -63,6 +84,8 @@ const taskRequestToken = ref(0)
 const recordRequestToken = ref(0)
 const applicationRequestToken = ref(0)
 const flowRequestToken = ref(0)
+/** 职称申报页面批量读取分页资源的单页上限。 */
+const PROMOTION_PAGE_MAX = 100
 
 const selectedTask = computed(() =>
   publishedTasks.value.find(item => item.id === selectedTaskId.value),
@@ -79,8 +102,10 @@ const taskCriteria = computed<PortfolioTitleTaskCriteriaVO[]>(() => {
 const jobOptions = computed(() => {
   const set = new Set<PortfolioTitleJobCategoryCode>()
   for (const item of selectedTask.value?.taskCriteria || []) {
-    if (item.jobCategory) {
-      set.add(item.jobCategory as PortfolioTitleJobCategoryCode)
+    const pathOk = item.pathCode === PortfolioTitleCriteriaPathCode.COMMON
+      || item.pathCode === pathCode.value
+    if (pathOk && item.jobCategory) {
+      set.add(item.jobCategory)
     }
   }
   return [...set].map(value => ({
@@ -88,10 +113,26 @@ const jobOptions = computed(() => {
     label: strictEnumLabel(PortfolioTitleJobCategoryDescription, value, '岗位类型'),
   }))
 })
-const jobRequired = computed(() => jobOptions.value.length > 0)
-const commitmentRequired = computed(() => taskCriteria.value.some(
-  item => item.checkType === PortfolioTitleCriteriaCheckTypeCode.COMMITMENT_CONFIRMED,
-))
+const applicationEditable = computed(() => !matchResult.value?.id || [
+  PortfolioTitlePromotionApplicationStatusCode.DRAFT,
+  PortfolioTitlePromotionApplicationStatusCode.COLLEGE_RETURNED,
+  PortfolioTitlePromotionApplicationStatusCode.HR_RETURNED,
+].includes(matchResult.value.applicationStatus))
+const jobRequired = computed(() => applicationEditable.value
+  ? jobOptions.value.length > 0
+  : Boolean(matchResult.value?.jobCategory))
+const commitmentRequired = computed(() => applicationEditable.value
+  ? taskCriteria.value.some(
+      item => item.checkType === PortfolioTitleCriteriaCheckTypeCode.COMMITMENT_CONFIRMED,
+    )
+  : Boolean(matchResult.value?.criteriaResults?.some(
+      item => item.checkType === PortfolioTitleCriteriaCheckTypeCode.COMMITMENT_CONFIRMED,
+    )))
+const pathCodeOptions = [
+  { value: PortfolioTitleCriteriaPathCode.NORMAL, label: '正常路径' },
+  { value: PortfolioTitleCriteriaPathCode.EXCEPTION, label: '破格路径' },
+]
+
 const taskOptions = computed(() =>
   publishedTasks.value.map(task => ({
     value: task.id,
@@ -180,6 +221,7 @@ function applyApplicationToForm(app: PortfolioTitlePromotionApplicationVO) {
   }
   jobCategory.value = app.jobCategory
   commitmentConfirmed.value = Boolean(app.commitmentConfirmed)
+  selectionConfirmed.value = Boolean(app.selectionConfirmed)
   const nextEvidence: Record<string, string[]> = {}
   const nextNotes: Record<string, string> = {}
   for (const item of app.evidenceItems || []) {
@@ -281,6 +323,7 @@ function buildRequestPayload() {
     pathCode: pathCode.value,
     jobCategory: jobCategory.value,
     commitmentConfirmed: commitmentConfirmed.value,
+    selectionConfirmed: selectionConfirmed.value,
     evidenceItems: buildEvidenceItems(),
   }
 }
@@ -288,18 +331,26 @@ function buildRequestPayload() {
 async function loadPublishedTasks() {
   const currentToken = ++taskRequestToken.value
   try {
-    const page = await portfolioTitlePromotionApi.pageTask({
-      pageNum: 1,
-      pageSize: 100,
-      taskStatus: PortfolioTitlePromotionTaskStatusCode.PUBLISHED,
-    })
-    if (taskRequestToken.value !== currentToken) {
-      return
+    const allTasks: PortfolioTitlePromotionTaskVO[] = []
+    for (let pageNum = 1; pageNum <= PROMOTION_PAGE_MAX; pageNum++) {
+      const page = await portfolioTitlePromotionApi.pageTask({
+        pageNum,
+        pageSize: 100,
+        taskStatus: PortfolioTitlePromotionTaskStatusCode.PUBLISHED,
+      })
+      if (taskRequestToken.value !== currentToken) {
+        return
+      }
+      allTasks.push(...(page.list || []))
+      if (pageNum >= page.pages || page.list.length < page.pageSize) {
+        publishedTasks.value = allTasks
+        if (!selectedTaskId.value && allTasks.length > 0) {
+          selectedTaskId.value = allTasks[0].id
+        }
+        return
+      }
     }
-    publishedTasks.value = page.list || []
-    if (!selectedTaskId.value && publishedTasks.value.length > 0) {
-      selectedTaskId.value = publishedTasks.value[0].id
-    }
+    throw new Error(`已发布职称任务分页超过 ${PROMOTION_PAGE_MAX} 页`)
   }
   catch (error) {
     showUserError(error, '加载申报任务失败')
@@ -314,16 +365,24 @@ async function loadRecords() {
   const currentToken = ++recordRequestToken.value
   loading.value = true
   try {
-    const page = await portfolioArchiveApi.pageRecords({
-      pageNum: 1,
-      pageSize: 200,
-      teacherId: targetTeacherId.value,
-      recordStatus: PortfolioArchiveRecordStatusCode.OFFICIAL,
-    })
-    if (recordRequestToken.value !== currentToken) {
-      return
+    const allRecords: PortfolioArchiveRecordSummaryVO[] = []
+    for (let pageNum = 1; pageNum <= PROMOTION_PAGE_MAX; pageNum++) {
+      const page = await portfolioArchiveApi.pageRecords({
+        pageNum,
+        pageSize: 200,
+        teacherId: targetTeacherId.value,
+        recordStatus: PortfolioArchiveRecordStatusCode.OFFICIAL,
+      })
+      if (recordRequestToken.value !== currentToken) {
+        return
+      }
+      allRecords.push(...(page.list || []))
+      if (pageNum >= page.pages || page.list.length < page.pageSize) {
+        records.value = allRecords
+        return
+      }
     }
-    records.value = page.list || []
+    throw new Error(`正式档案分页超过 ${PROMOTION_PAGE_MAX} 页`)
   }
   catch (error) {
     showUserError(error, '加载正式档案失败')
@@ -349,6 +408,10 @@ async function loadArchiveCategories() {
 }
 
 async function previewMatch() {
+  if (!applicationEditable.value) {
+    showFormValidationMessage('申报已进入审核流程，当前仅可查看提交快照')
+    return
+  }
   try {
     matchLoading.value = true
     matchResult.value = await portfolioTitlePromotionApi.previewMatch(buildRequestPayload())
@@ -366,6 +429,16 @@ async function previewMatch() {
 }
 
 async function saveDraft() {
+  if (draftLoading.value || submitLoading.value) {
+    return
+  }
+  if (!applicationEditable.value) {
+    showFormValidationMessage('申报已进入审核流程，当前不可修改材料')
+    return
+  }
+  if (!(await confirmProxyWrite('保存职称申报草稿'))) {
+    return
+  }
   try {
     draftLoading.value = true
     const result = await portfolioTitlePromotionApi.saveDraft(buildRequestPayload())
@@ -386,7 +459,54 @@ async function saveDraft() {
   }
 }
 
+const canSubmitApplication = computed(() => {
+  if (submitLoading.value || draftLoading.value || matchLoading.value) {
+    return false
+  }
+  if (!selectedTaskId.value) {
+    return false
+  }
+  if (!applicationEditable.value) {
+    return false
+  }
+  if (jobRequired.value && !jobCategory.value) {
+    return false
+  }
+  if (commitmentRequired.value && !commitmentConfirmed.value) {
+    return false
+  }
+  if (!selectionConfirmed.value) {
+    return false
+  }
+  if (matchResult.value && matchResult.value.canSubmit === false) {
+    return false
+  }
+  return true
+})
+
 async function submitApplication() {
+  if (submitLoading.value || draftLoading.value) {
+    return
+  }
+  if (!applicationEditable.value) {
+    showFormValidationMessage('申报已进入审核流程，当前不可重复提交')
+    return
+  }
+  if (!canSubmitApplication.value) {
+    if (!selectionConfirmed.value) {
+      showFormValidationMessage('提交前须确认本包证据已甄选')
+      return
+    }
+    if (commitmentRequired.value && !commitmentConfirmed.value) {
+      showFormValidationMessage('提交前须确认申报承诺')
+      return
+    }
+    showFormValidationMessage('当前核验未通过或表单不完整，请补齐后再提交')
+    return
+  }
+  if (!(await confirmProxyWrite('提交职称申报'))) {
+    return
+  }
   try {
     submitLoading.value = true
     const draft = await portfolioTitlePromotionApi.saveDraft(buildRequestPayload())
@@ -422,6 +542,8 @@ watch(selectedTaskId, async () => {
   matchResult.value = null
   applicationId.value = undefined
   flowView.value = null
+  selectionConfirmed.value = false
+  commitmentConfirmed.value = false
   if (jobOptions.value.length === 1) {
     jobCategory.value = jobOptions.value[0].value
   }
@@ -432,6 +554,13 @@ watch(selectedTaskId, async () => {
 })
 
 watch([pathCode, jobCategory], () => {
+  const options = jobOptions.value
+  if (options.length === 1 && jobCategory.value !== options[0].value) {
+    jobCategory.value = options[0].value
+  }
+  else if (jobCategory.value && !options.some(option => option.value === jobCategory.value)) {
+    jobCategory.value = undefined
+  }
   void loadFlowView()
 })
 
@@ -443,165 +572,247 @@ usePortfolioScopedLoader(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="职称申报" description="选择路径与岗位，按条件绑定证据并预览资格核验" />
+    <ContextBar layout="workbench" title="职称申报" :subtitle="selectedTask ? selectedTask.taskName : undefined" />
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+    <template v-else>
+      <p class="promotion-scene__select-hint">
+        出包前请甄选证据：完整度不等于代表作质量；优先绑定能支撑条件的关键材料，避免堆砌。
+        <button type="button" class="promotion-scene__select-link" @click="goMasterpiecePreview">预览代表作</button>
+      </p>
 
-    <div class="grid gap-4 lg:grid-cols-2">
-      <UiCard title="申报配置">
-        <div class="flex flex-col gap-3">
-          <label class="text-sm text-[var(--dp-text-secondary)]">申报任务</label>
-          <Select
-            v-model:value="selectedTaskId"
-            :options="taskOptions"
-            placeholder="请选择已发布任务"
-            class="w-full"
-          />
-          <label class="text-sm text-[var(--dp-text-secondary)]">申报路径</label>
-          <Radio.Group v-model:value="pathCode">
-            <Radio :value="PortfolioTitleCriteriaPathCode.NORMAL">
-              正常路径
-            </Radio>
-            <Radio :value="PortfolioTitleCriteriaPathCode.EXCEPTION">
-              破格路径
-            </Radio>
-          </Radio.Group>
-          <template v-if="jobRequired">
-            <label class="text-sm text-[var(--dp-text-secondary)]">岗位类型</label>
-            <Select
-              v-model:value="jobCategory"
-              :options="jobOptions"
-              placeholder="请选择岗位类型"
-              class="w-full"
+      <div class="grid gap-4 lg:grid-cols-2">
+        <UiCard title="申报配置">
+          <div class="flex flex-col gap-3">
+            <label class="text-sm text-[var(--dp-text-secondary)]">申报任务</label>
+            <UiSelect
+              v-model="selectedTaskId"
+              size="sm"
+              :options="taskOptions"
+              placeholder="请选择已发布任务"
             />
-          </template>
-          <Checkbox v-if="commitmentRequired" v-model:checked="commitmentConfirmed">
-            本人确认申报材料真实完整，对材料真实性负责
-          </Checkbox>
-          <div class="flex flex-wrap gap-2">
-            <UiButton variant="primary" :loading="matchLoading" @click="previewMatch">
-              预览核验
-            </UiButton>
-            <UiButton :loading="draftLoading" @click="saveDraft">
-              保存草稿
-            </UiButton>
-            <UiButton variant="primary" :loading="submitLoading" @click="submitApplication">
-              提交申报
-            </UiButton>
-          </div>
-        </div>
-      </UiCard>
-
-      <TitlePromotionFlowPanel :flow="flowView" :loading="flowLoading" />
-    </div>
-
-    <div class="mt-4 grid gap-4 lg:grid-cols-2">
-      <UiCard title="核验结果">
-        <template v-if="matchResult">
-          <div class="mb-3 flex flex-wrap gap-2 text-sm">
-            <UiTag :tone="matchResult.canSubmit ? 'green' : 'red'">
-              {{ matchResult.canSubmit ? '可提交' : '不可提交' }}
-            </UiTag>
-            <UiTag :tone="matchResult.redlineBlocked ? 'red' : 'green'">
-              {{ matchResult.redlineBlocked ? '红线阻断' : '红线通过' }}
-            </UiTag>
-            <span>匹配分 {{ matchResult.matchScore || '-' }}</span>
-            <span>材料 {{ matchResult.materialRate || '-' }}</span>
-            <span>业绩 {{ matchResult.performanceRate || '-' }}</span>
-            <span>硬门槛 {{ matchResult.hardRate || '-' }}</span>
-          </div>
-          <div class="flex flex-col gap-2">
-            <div
-              v-for="item in matchResult.criteriaResults || []"
-              :key="item.taskCriteriaId"
-              class="rounded border border-[var(--dp-border)] p-3"
+            <label class="text-sm text-[var(--dp-text-secondary)]">申报路径</label>
+            <UiRadioGroup
+              v-model="pathCode"
+              size="sm"
+              :disabled="!applicationEditable"
+              :options="pathCodeOptions"
+            />
+            <template v-if="jobRequired">
+              <label class="text-sm text-[var(--dp-text-secondary)]">岗位类型</label>
+              <UiSelect
+                v-model="jobCategory"
+                size="sm"
+                :options="jobOptions"
+                :disabled="!applicationEditable"
+                placeholder="请选择岗位类型"
+              />
+            </template>
+            <UiCheckbox
+              v-if="commitmentRequired"
+              v-model="commitmentConfirmed"
+              :disabled="!applicationEditable"
             >
-              <div class="mb-1 flex flex-wrap items-center gap-2">
-                <strong>{{ item.criteriaTitle }}</strong>
-                <UiTag>
-                  {{ strictEnumLabel(PortfolioTitleCriteriaGateKindDescription, item.gateKind, '门槛类型') }}
-                </UiTag>
-                <UiTag :tone="item.satisfied ? 'green' : 'red'">
-                  {{ item.satisfied ? '满足' : '未满足' }}
-                </UiTag>
-                <UiTag v-if="item.blockOnFail && !item.satisfied" tone="red">
-                  阻断提交
-                </UiTag>
-              </div>
-              <div class="text-xs text-[var(--dp-text-secondary)]">
-                {{ strictEnumLabel(PortfolioTitleCriteriaCheckTypeDescription, item.checkType, '核验类型') }}
-                <span v-if="item.groupCode">
-                  · 组 {{ item.groupCode }}
-                </span>
-                <span v-if="item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ANY_OF_GROUP">
-                  · 任选其一
-                </span>
-                <span v-if="item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP">
-                  · 至少 {{ item.groupMinimumCount || 'N' }} 项
-                </span>
-              </div>
-              <div v-if="item.criteriaDescription" class="mt-1 text-sm">
-                {{ item.criteriaDescription }}
-              </div>
-              <div class="mt-1 text-sm">
-                {{ item.evidenceSummary }}
-              </div>
-              <div v-if="item.gapHint" class="mt-1 text-sm text-[var(--dp-danger)]">
-                {{ item.gapHint }}
-              </div>
+              本人确认申报材料真实完整，对材料真实性负责
+            </UiCheckbox>
+            <UiCheckbox v-model="selectionConfirmed" :disabled="!applicationEditable">
+              本包证据已甄选：完整度不等于代表作质量，仅绑定支撑条件的关键材料
+            </UiCheckbox>
+            <UiAlertStrip
+              v-if="!applicationEditable"
+              tone="info"
+              size="sm"
+              dense
+              inline
+              :show-icon="false"
+            >
+              申报已进入审核流程，当前展示提交时的核验与证据快照。退回补正后可继续编辑。
+            </UiAlertStrip>
+            <div v-else class="flex flex-wrap gap-2">
+              <UiButton size="sm" variant="outline" :loading="matchLoading" @click="previewMatch">
+                预览核验
+              </UiButton>
+              <UiButton size="sm" variant="ghost" :loading="draftLoading" @click="saveDraft">
+                保存草稿
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="primary"
+                :loading="submitLoading"
+                :disabled="!canSubmitApplication"
+                @click="submitApplication"
+              >
+                提交申报
+              </UiButton>
             </div>
           </div>
-        </template>
-        <UiEmpty v-else description="完成证据绑定后点击「预览核验」" />
-      </UiCard>
-    </div>
+        </UiCard>
 
-    <UiCard class="mt-4" title="条件与证据绑定">
-      <div v-if="taskCriteria.length" class="flex flex-col gap-3">
-        <div
-          v-for="criteria in taskCriteria"
-          :key="criteria.id"
-          class="rounded border border-[var(--dp-border)] p-3"
-        >
-          <div class="mb-2 flex flex-wrap items-center gap-2">
-            <strong>{{ criteria.criteriaTitle }}</strong>
-            <UiTag>
-              {{ strictEnumLabel(PortfolioTitleCriteriaGateKindDescription, criteria.gateKind, '门槛类型') }}
-            </UiTag>
-            <span class="text-xs text-[var(--dp-text-secondary)]">
-              {{ strictEnumLabel(PortfolioTitleCriteriaCheckTypeDescription, criteria.checkType, '核验类型') }}
-            </span>
-            <UiTag v-if="criteria.autoEvaluable" tone="blue">
-              系统自动核验
-            </UiTag>
-          </div>
-          <div v-if="formatGroupHint(criteria)" class="mb-2 text-xs text-[var(--dp-text-secondary)]">
-            {{ formatGroupHint(criteria) }}
-          </div>
-          <div v-if="criteria.criteriaDescription" class="mb-2 text-sm text-[var(--dp-text-secondary)]">
-            {{ criteria.criteriaDescription }}
-          </div>
-          <Select
-            v-if="isEvidenceSelectable(criteria)"
-            v-model:value="evidenceByCriteria[criteria.id]"
-            mode="multiple"
-            allow-clear
-            class="w-full"
-            placeholder="选择正式档案作为证据"
-            :options="recordOptionsForCriteria(criteria)"
-            :loading="loading"
-          />
-          <textarea
-            v-else-if="isManualCheck(criteria)"
-            v-model="manualNoteByCriteria[criteria.id]"
-            class="w-full rounded border border-[var(--dp-border)] p-2 text-sm"
-            rows="3"
-            placeholder="填写人工确认说明（必填）"
-          />
-          <div v-else class="text-sm text-[var(--dp-text-secondary)]">
-            无需绑定档案，预览时将按系统事实自动核验
+        <TitlePromotionFlowPanel :flow="flowView" :loading="flowLoading" />
+      </div>
+
+      <div class="mt-4 grid gap-4 lg:grid-cols-2">
+        <UiCard title="核验结果">
+          <template v-if="matchResult">
+            <div class="mb-3 flex flex-wrap gap-2 text-sm">
+              <UiTag v-if="applicationEditable" :tone="matchResult.canSubmit ? 'green' : 'red'">
+                {{ matchResult.canSubmit ? '可提交' : '不可提交' }}
+              </UiTag>
+              <UiTag v-else tone="blue">
+                {{ strictEnumLabel(PortfolioTitlePromotionApplicationStatusDescription, matchResult.applicationStatus, '申报状态') }}
+              </UiTag>
+              <UiTag :tone="matchResult.redlineBlocked ? 'red' : 'green'">
+                {{ matchResult.redlineBlocked ? '红线阻断' : '红线通过' }}
+              </UiTag>
+              <UiTag :tone="matchResult.hardPass ? 'green' : 'red'">
+                {{ matchResult.hardPass ? '硬门槛通过' : '硬门槛未通过' }}
+              </UiTag>
+              <UiTag :tone="matchResult.performancePass ? 'green' : 'orange'">
+                {{ matchResult.performancePass ? '业绩规则通过' : '业绩规则未全部满足' }}
+              </UiTag>
+              <span>匹配分 {{ matchResult.matchScore || '-' }}</span>
+              <span>材料 {{ matchResult.materialRate || '-' }}</span>
+              <span>业绩 {{ matchResult.performanceRate || '-' }}</span>
+              <span>硬门槛 {{ matchResult.hardRate || '-' }}</span>
+            </div>
+            <div class="flex flex-col gap-2">
+              <div
+                v-for="item in matchResult.criteriaResults || []"
+                :key="item.taskCriteriaId"
+                class="rounded border border-[var(--dp-border)] p-3"
+              >
+                <div class="mb-1 flex flex-wrap items-center gap-2">
+                  <strong>{{ item.criteriaTitle }}</strong>
+                  <UiTag>
+                    {{ strictEnumLabel(PortfolioTitleCriteriaGateKindDescription, item.gateKind, '门槛类型') }}
+                  </UiTag>
+                  <UiTag :tone="item.satisfied ? 'green' : 'red'">
+                    {{ item.satisfied ? '满足' : '未满足' }}
+                  </UiTag>
+                  <UiTag v-if="item.blockOnFail && !item.satisfied" tone="red">
+                    阻断提交
+                  </UiTag>
+                </div>
+                <div class="text-xs text-[var(--dp-text-secondary)]">
+                  {{ strictEnumLabel(PortfolioTitleCriteriaCheckTypeDescription, item.checkType, '核验类型') }}
+                  <span v-if="item.groupCode">
+                    · 组 {{ item.groupCode }}
+                  </span>
+                  <span v-if="item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ANY_OF_GROUP">
+                    · 任选其一
+                  </span>
+                  <span v-if="item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP">
+                    · 至少 {{ item.groupMinimumCount || 'N' }} 项
+                  </span>
+                </div>
+                <div v-if="item.criteriaDescription" class="mt-1 text-sm">
+                  {{ item.criteriaDescription }}
+                </div>
+                <div class="mt-1 text-sm">
+                  {{ item.evidenceSummary }}
+                </div>
+                <div v-if="item.gapHint" class="mt-1 text-sm text-[var(--dp-danger)]">
+                  {{ item.gapHint }}
+                </div>
+              </div>
+            </div>
+          </template>
+          <UiAlertStrip
+            v-else
+            tone="info"
+            size="sm"
+            dense
+            inline
+            :show-icon="false"
+            class="promotion-scene__gate"
+          >
+            <template #default>
+              <span class="promotion-scene__gate-row">
+                <UiTag tone="blue" size="sm">待预览核验</UiTag>
+                <span>完成证据绑定后点击「预览核验」</span>
+              </span>
+            </template>
+          </UiAlertStrip>
+        </UiCard>
+      </div>
+
+      <UiCard v-if="applicationEditable" class="mt-4" title="条件与证据绑定">
+        <div v-if="taskCriteria.length" class="flex flex-col gap-3">
+          <div
+            v-for="criteria in taskCriteria"
+            :key="criteria.id"
+            class="rounded border border-[var(--dp-border)] p-3"
+          >
+            <div class="mb-2 flex flex-wrap items-center gap-2">
+              <strong>{{ criteria.criteriaTitle }}</strong>
+              <UiTag>
+                {{ strictEnumLabel(PortfolioTitleCriteriaGateKindDescription, criteria.gateKind, '门槛类型') }}
+              </UiTag>
+              <span class="text-xs text-[var(--dp-text-secondary)]">
+                {{ strictEnumLabel(PortfolioTitleCriteriaCheckTypeDescription, criteria.checkType, '核验类型') }}
+              </span>
+              <UiTag v-if="criteria.autoEvaluable" tone="blue">
+                系统自动核验
+              </UiTag>
+            </div>
+            <div v-if="formatGroupHint(criteria)" class="mb-2 text-xs text-[var(--dp-text-secondary)]">
+              {{ formatGroupHint(criteria) }}
+            </div>
+            <div v-if="criteria.criteriaDescription" class="mb-2 text-sm text-[var(--dp-text-secondary)]">
+              {{ criteria.criteriaDescription }}
+            </div>
+            <UiSelect
+              v-if="isEvidenceSelectable(criteria)"
+              v-model="evidenceByCriteria[criteria.id]"
+              mode="multiple"
+              size="sm"
+              allow-clear
+              placeholder="选择正式档案作为证据"
+              :options="recordOptionsForCriteria(criteria)"
+              :loading="loading"
+              :disabled="!applicationEditable"
+            />
+            <UiTextarea
+              v-else-if="isManualCheck(criteria)"
+              v-model="manualNoteByCriteria[criteria.id]"
+              size="sm"
+              :rows="3"
+              placeholder="填写人工确认说明（必填）"
+              :disabled="!applicationEditable"
+            />
+            <div v-else class="text-sm text-[var(--dp-text-secondary)]">
+              无需绑定档案，预览时将按系统事实自动核验
+            </div>
           </div>
         </div>
-      </div>
-      <UiEmpty v-else description="请先选择申报任务" />
-    </UiCard>
+        <WorkbenchContextGateStrip
+          v-else
+          tag="未选择任务"
+          body="请先在左侧选择已发布的职称申报任务后再绑定证据"
+          hide-cta
+        />
+      </UiCard>
+    </template>
   </StageWorkbenchShell>
 </template>
+
+<style scoped lang="scss">
+.promotion-scene__select-hint {
+  margin: 0 0 var(--dp-space-2);
+  padding: 6px 10px;
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-surface-subtle);
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-sm);
+  line-height: 1.45;
+}
+.promotion-scene__select-link {
+  margin-left: 8px;
+  border: none;
+  background: transparent;
+  color: var(--dp-primary);
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+</style>

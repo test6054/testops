@@ -10,8 +10,14 @@ import { computed, reactive, ref, watch } from 'vue'
 import { accreditationApi } from '@/apis/quality/accreditation'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { canMutateAnnualEvaluationPlan } from '@/composables/useAccreditationWorkbench'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -294,7 +300,7 @@ defineExpose({ openCreate, loadPlans })
   <div class="annual-panel">
     <p v-if="annualPlanHint" class="hint">{{ annualPlanHint }}</p>
     <div class="toolbar">
-      <UiButton variant="primary" :disabled="!trainingPlanId || !canMutatePlan" @click="openCreate">
+      <UiButton size="sm" variant="primary" :disabled="!trainingPlanId || !canMutatePlan" @click="openCreate">
         新建年度计划
       </UiButton>
     </div>
@@ -312,10 +318,10 @@ defineExpose({ openCreate, loadPlans })
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'coverage'">
           <div class="coverage-cell">
-            <a-progress
+            <UiProgressBar
               :percent="coveragePercent(record)"
-              :success="{ percent: coveragePercent(record) }"
-              size="small"
+              size="sm"
+              :show-label="false"
             />
             <span class="coverage-text">
               {{ record.actualCoverageRate ?? 0 }}% / 目标 {{ record.coverageTargetRate ?? 100 }}%
@@ -335,7 +341,7 @@ defineExpose({ openCreate, loadPlans })
         </template>
       </template>
       <template #empty>
-        <UiEmpty description="暂无年度评价计划" />
+        <UiEmpty size="sm" description="暂无年度评价计划" />
       </template>
     </UiDataTable>
     <div v-if="selectedPlan" class="course-block">
@@ -345,7 +351,7 @@ defineExpose({ openCreate, loadPlans })
           须评价 {{ courseProgress.total }} 门，已完成 {{ courseProgress.done }} 门
         </span>
       </div>
-      <a-progress :percent="courseProgress.percent" size="small" class="course-progress" />
+      <UiProgressBar :percent="courseProgress.percent" size="sm" class="course-progress" :show-label="false" />
       <UiDataTable
         pagination-mode="server"
         v-model:current="coursePageNum"
@@ -396,26 +402,31 @@ defineExpose({ openCreate, loadPlans })
       ok-text="保存"
       @ok="submitPlan"
     >
-      <a-form layout="vertical">
-        <a-form-item label="计划年度" required>
-          <a-input v-model:value="form.planYear" :disabled="!!form.id" />
-        </a-form-item>
-        <a-form-item label="计划标题" required>
-          <a-input v-model:value="form.planTitle" />
-        </a-form-item>
-        <a-form-item label="目标覆盖率（%）">
-          <a-input-number
-            v-model:value="form.coverageTargetRate"
+      <UiForm layout="vertical">
+        <UiFormItem label="计划年度" required>
+          <UiInput
+            size="sm" v-model="form.planYear" :disabled="!!form.id"
+          />
+        </UiFormItem>
+        <UiFormItem label="计划标题" required>
+          <UiInput
+            size="sm" v-model="form.planTitle"
+          />
+        </UiFormItem>
+        <UiFormItem label="目标覆盖率（%）">
+          <UiInputNumber
+            size="sm"
+            v-model="form.coverageTargetRate"
             :min="0"
             :max="100"
             class="w-full"
           />
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="form.remark" :rows="3" />
-        </a-form-item>
+        </UiFormItem>
+        <UiFormItem label="备注">
+          <UiTextarea size="sm" v-model="form.remark" :rows="3" />
+        </UiFormItem>
         <p class="hint">保存后将自动纳入本培养方案下全部质量评价课程，无需手工勾选。</p>
-      </a-form>
+      </UiForm>
     </UiDrawer>
   </div>
 </template>
@@ -447,7 +458,7 @@ defineExpose({ openCreate, loadPlans })
 }
 .course-meta {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 .course-progress {
   margin-bottom: 8px;
@@ -461,11 +472,11 @@ defineExpose({ openCreate, loadPlans })
 }
 .coverage-text {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 .hint {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
   margin: 0;
 }
 .w-full {

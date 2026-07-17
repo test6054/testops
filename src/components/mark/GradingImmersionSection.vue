@@ -31,8 +31,8 @@ defineProps<{
 .grading-immersion-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--dp-space-2, 8px);
+  padding: var(--dp-space-3, 12px);
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
@@ -42,7 +42,7 @@ defineProps<{
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 8px 12px;
+    gap: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
   }
 
   &__title-row {

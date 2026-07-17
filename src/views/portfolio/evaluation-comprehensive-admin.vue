@@ -23,7 +23,9 @@ import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -251,20 +253,23 @@ onMounted(async () => {
     <ContextBar title="评价综合分析" subtitle="多任务数据采集 · 跨任务汇总 · 表格文件导出" />
     <UiCard>
       <div class="filter-row">
-        <a-select
-          v-model:value="filter.workgroupId"
+        <UiSelect
+          size="sm"
+          v-model="filter.workgroupId"
           allow-clear
           placeholder="评价工作组"
           style="width: 200px"
           :options="workgroups.map((item) => ({ value: item.id, label: item.workgroupName }))"
         />
-        <a-input
-          v-model:value="filter.planYear"
+        <UiInput
+          size="sm"
+          v-model="filter.planYear"
           placeholder="任务开始年度，如 2026"
           style="width: 160px"
         />
-        <a-select
-          v-model:value="filter.selectedTaskIds"
+        <UiSelect
+          size="sm"
+          v-model="filter.selectedTaskIds"
           mode="multiple"
           allow-clear
           placeholder="限定任务（默认当前筛选下全部）"
@@ -273,6 +278,7 @@ onMounted(async () => {
           :options="taskSelectOptions"
         />
         <UiButton
+          size="sm"
           variant="primary"
           :loading="loading"
           :disabled="!hasReadableTasks"
@@ -280,23 +286,21 @@ onMounted(async () => {
         >
           分析
         </UiButton>
-        <UiButton :loading="exporting" :disabled="!analysis" @click="exportAnalysis">
+        <UiButton size="sm" :loading="exporting" :disabled="!analysis" @click="exportAnalysis">
           导出表格文件
         </UiButton>
       </div>
       <UiEmpty
+        size="sm"
         v-if="!tasksLoading && !hasReadableTasks"
         title="暂无可分析任务"
         description="需存在已发布或已进入评审/公示/归档阶段的评价任务，且您具备对应工作组查看权限"
       />
       <UiEmpty
         v-else-if="!loading && !analysis"
-        description="按评价组、年度或任务范围筛选后，点击「分析」生成跨任务汇总"
-      >
-        <template #action>
-          <UiButton variant="primary" :loading="loading" @click="runAnalysis"> 开始分析 </UiButton>
-        </template>
-      </UiEmpty>
+        size="sm"
+        description="按评价组、年度或任务范围筛选后，点击工具栏「分析」生成跨任务汇总"
+      />
       <template v-else-if="analysis">
         <UiStatPanel :items="kpiItems" compact style="margin-top: 16px" />
         <h3 class="section-title">任务汇总</h3>

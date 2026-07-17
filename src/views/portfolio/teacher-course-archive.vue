@@ -5,16 +5,22 @@ import type {
   PortfolioCourseArchiveFrameworkVO,
 } from '@/apis/portfolio/course-archive'
 import type { PortfolioTeacherCustomCategoryVO } from '@/apis/portfolio/teacher-custom-category'
-import { Form, Input, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioCourseArchiveApi } from '@/apis/portfolio/course-archive'
 import { portfolioTeacherCustomCategoryApi } from '@/apis/portfolio/teacher-custom-category'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -22,12 +28,14 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const router = useRouter()
 const route = useRoute()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 const loading = ref(false)
 const customLoading = ref(false)
@@ -214,6 +222,10 @@ async function createCustomCategory() {
   if (creating.value) {
     return
   }
+  if (!(await confirmProxyWrite('创建课程档案自建分类'))) {
+    return
+  }
+
   creating.value = true
   try {
     await portfolioTeacherCustomCategoryApi.create({
@@ -235,6 +247,10 @@ async function confirmDeleteCustomCategory(row: PortfolioTeacherCustomCategoryVO
     return
   }
   if (deletingCategoryId.value) return
+
+  if (!(await confirmProxyWrite('删除课程档案自建分类'))) {
+    return
+  }
   const categoryId = row.categoryId
   const scopeToken = overviewRequestToken.value
   deletingCategoryId.value = categoryId
@@ -284,9 +300,11 @@ watch(
       />
     </template>
 
-    <UiCard v-if="loadFailed" title="加载失败">
-      <UiEmpty description="课程档案加载失败">
-        <UiButton @click="loadOverview">重试</UiButton>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+
+    <UiCard v-else-if="loadFailed" title="加载失败">
+      <UiEmpty size="sm" description="课程档案加载失败">
+        <UiButton size="sm" @click="loadOverview">重试</UiButton>
       </UiEmpty>
     </UiCard>
 
@@ -301,21 +319,23 @@ watch(
 
       <UiCard title="讲授课程 · 五框架" :loading="loading" style="margin-top: 16px">
         <template #extra>
-          <Input
-            v-model:value="academicYearFilter"
-            allow-clear
+          <UiInput
+            v-model="academicYearFilter"
+            size="sm"
+            clearable
             placeholder="学年筛选 如 2025-2026"
             style="width: 180px"
-            @press-enter="loadOverview"
+            @enter="loadOverview"
           />
-          <a-select
-            v-model:value="semesterFilter"
+          <UiSelect
+            size="sm"
+            v-model="semesterFilter"
             allow-clear
             placeholder="学期"
             style="width: 120px; margin-left: 8px"
             :options="SemesterOptions"
           />
-          <UiButton style="margin-left: 8px" @click="loadOverview">筛选</UiButton>
+          <UiButton size="sm" style="margin-left: 8px" @click="loadOverview">筛选</UiButton>
         </template>
         <UiDataTable
           :columns="courseColumns"
@@ -349,7 +369,7 @@ watch(
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'actions'">
-                  <UiButton variant="ghost" @click="openFrameworkIntake(record, framework)">
+                  <UiButton size="sm" variant="ghost" @click="openFrameworkIntake(record, framework)">
                     {{ framework.completed ? '查看' : '填报' }}
                   </UiButton>
                 </template>
@@ -361,7 +381,7 @@ watch(
 
       <UiCard title="框架外自建分类" :loading="customLoading" style="margin-top: 16px">
         <template #extra>
-          <UiButton v-if="!readonlyMode" @click="openCustomModal">新建分类</UiButton>
+          <UiButton size="sm" v-if="!readonlyMode" @click="openCustomModal">新建分类</UiButton>
         </template>
         <UiDataTable
           :columns="customColumns"
@@ -371,10 +391,11 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">
-              <UiButton variant="ghost" @click="openCustomCategoryArchive(record)">
+              <UiButton size="sm" variant="ghost" @click="openCustomCategoryArchive(record)">
                 进入档案
               </UiButton>
               <UiButton
+                size="sm"
                 v-if="!readonlyMode"
                 variant="ghost"
                 danger
@@ -390,24 +411,24 @@ watch(
     </template>
   </StageWorkbenchShell>
 
-  <a-modal
+  <UiDialog
     v-model:open="customModalOpen"
     title="新建框架外分类"
     :confirm-loading="creating"
     @ok="createCustomCategory"
   >
-    <Form layout="vertical">
-      <Form.Item label="分类名称" required>
-        <Input v-model:value="customForm.categoryName" placeholder="如 教学竞赛材料" />
-      </Form.Item>
-    </Form>
-  </a-modal>
+    <UiForm layout="vertical">
+      <UiFormItem label="分类名称" required compact>
+        <UiInput v-model="customForm.categoryName" size="sm" placeholder="如 教学竞赛材料" />
+      </UiFormItem>
+    </UiForm>
+  </UiDialog>
 </template>
 
 <style scoped>
 .course-archive__summary {
   margin: 0;
   font-size: 14px;
-  color: var(--nybc-text-secondary, #595959);
+  color: var(--dp-text-secondary);
 }
 </style>

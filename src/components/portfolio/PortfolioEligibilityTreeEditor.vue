@@ -7,6 +7,8 @@ import {
   PF_ELIGIBILITY_NODE_TYPE_OPTIONS,
 } from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 
 defineOptions({ name: 'PortfolioEligibilityTreeEditor' })
 
@@ -101,20 +103,23 @@ function onNodeTypeChange(nodeType: SelectValue) {
 <template>
   <div class="tree-node" :style="{ marginLeft: `${depth * 12}px` }">
     <div class="tree-row">
-      <a-select
-        :value="node.nodeType"
+      <UiSelect
+        size="sm"
+        :model-value="node.nodeType"
         :options="PF_ELIGIBILITY_NODE_TYPE_OPTIONS"
         style="width: 120px"
-        @update:value="onNodeTypeChange"
+        @update:model-value="onNodeTypeChange"
       />
       <template v-if="node.nodeType === 'LEAF'">
-        <a-input
+        <UiInput
+          size="sm"
           :value="node.fieldKey"
           placeholder="fieldKey"
           style="width: 140px"
           @update:value="patchNode({ fieldKey: $event })"
         />
-        <a-input
+        <UiInput
+          size="sm"
           :value="node.expectedValue"
           placeholder="expectedValue"
           style="width: 120px"
@@ -122,23 +127,25 @@ function onNodeTypeChange(nodeType: SelectValue) {
         />
       </template>
       <template v-else-if="node.nodeType === 'AUDIT_GATE'">
-        <a-input
+        <UiInput
+          size="sm"
           :value="node.fieldKey"
           placeholder="fieldKey"
           style="width: 140px"
           @update:value="patchNode({ fieldKey: $event })"
         />
-        <a-select
-          :value="node.auditStatus"
+        <UiSelect
+          size="sm"
+          :model-value="node.auditStatus"
           :options="PF_ELIGIBILITY_AUDIT_STATUS_OPTIONS"
           style="width: 120px"
-          @update:value="onAuditStatusChange"
+          @update:model-value="onAuditStatusChange"
         />
       </template>
       <template v-if="isLogic">
         <UiButton size="sm" @click="addChild"> 子节点 </UiButton>
       </template>
-      <UiButton v-if="depth > 0" size="sm" @click="emit('remove')"> 删除 </UiButton>
+      <UiButton size="sm" v-if="depth > 0" @click="emit('remove')"> 删除 </UiButton>
     </div>
     <div v-if="isLogic && node.children?.length" class="tree-children">
       <PortfolioEligibilityTreeEditor

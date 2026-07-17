@@ -30,9 +30,18 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import {
   normalizeTextareaLineItems,
@@ -726,63 +735,67 @@ defineExpose({
     ok-text="保存"
     @ok="submitImprovementEditor"
   >
-    <a-form layout="vertical" :model="improvementEditor">
-      <a-row :gutter="12">
-        <a-col :span="8">
-          <a-form-item label="任务编码" required>
-            <a-input
-              v-model:value="improvementEditor.taskCode"
+    <UiForm layout="vertical" :model="improvementEditor">
+      <UiRow :gutter="12">
+        <UiCol :span="8">
+          <UiFormItem label="任务编码" required>
+            <UiInput
+              size="sm"
+              v-model="improvementEditor.taskCode"
               placeholder="如 IMP-2024-001"
               :disabled="improvementEditorMode === 'edit'"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="16">
-          <a-form-item label="任务标题" required>
-            <a-input v-model:value="improvementEditor.taskTitle" />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-row :gutter="12">
-        <a-col :span="12">
-          <a-form-item label="负责人">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="16">
+          <UiFormItem label="任务标题" required>
+            <UiInput
+              size="sm" v-model="improvementEditor.taskTitle"
+            />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiRow :gutter="12">
+        <UiCol :span="12">
+          <UiFormItem label="负责人">
             <TeacherSelector
               :value="improvementEditor.ownerUserId || null"
               @change="handleImprovementOwnerChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item label="责任角色">
-            <a-input
-              v-model:value="improvementEditor.ownerRole"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem label="责任角色">
+            <UiInput
+              size="sm"
+              v-model="improvementEditor.ownerRole"
               placeholder="如 课程负责人 / 系主任"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-row :gutter="12">
-        <a-col :span="8">
-          <a-form-item label="关联专业">
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiRow :gutter="12">
+        <UiCol :span="8">
+          <UiFormItem label="关联专业">
             <ProgramSelector
               :value="improvementEditor.programId || null"
               :disabled="Boolean(qualityStore.currentTrainingPlanId)"
               @change="handleImprovementProgramChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="关联课程">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="关联课程">
             <CourseSelector
               :value="improvementEditor.qualityCourseId || null"
               :program-id="improvementEditor.programId || null"
               :training-plan-id="improvementEditor.trainingPlanId || null"
               @change="handleImprovementCourseChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="关联达成度结果">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="关联达成度结果">
             <AchievementResultSelector
               :value="improvementEditor.achievementResultId || null"
               :program-id="improvementEditor.programId || null"
@@ -790,12 +803,12 @@ defineExpose({
               :quality-course-id="improvementEditor.qualityCourseId || null"
               @change="handleImprovementAchievementResultChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-row :gutter="12">
-        <a-col :span="12">
-          <a-form-item label="关联报告">
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiRow :gutter="12">
+        <UiCol :span="12">
+          <UiFormItem label="关联报告">
             <ReportSelector
               :value="improvementEditor.reportId || null"
               :program-id="improvementEditor.programId || null"
@@ -803,40 +816,44 @@ defineExpose({
               :quality-course-id="improvementEditor.qualityCourseId || null"
               @change="handleImprovementReportChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item label="截止日期">
-            <a-input v-model:value="improvementEditor.dueDate" placeholder="yyyy-MM-dd" />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-form-item label="问题概述">
-        <a-textarea
-          v-model:value="improvementEditor.problemSummary"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem label="截止日期">
+            <UiInput
+              size="sm" v-model="improvementEditor.dueDate" placeholder="yyyy-MM-dd"
+            />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiFormItem label="问题概述">
+        <UiTextarea
+          size="sm"
+          v-model="improvementEditor.problemSummary"
           :rows="3"
           placeholder="为什么达成度低于阈值 / 暴露了什么问题"
         />
-      </a-form-item>
-      <a-form-item label="改进措施">
-        <a-textarea
-          v-model:value="improvementEditor.proposedAction"
+      </UiFormItem>
+      <UiFormItem label="改进措施">
+        <UiTextarea
+          size="sm"
+          v-model="improvementEditor.proposedAction"
           :rows="3"
           placeholder="具体改进动作"
         />
-      </a-form-item>
-      <a-form-item v-if="improvementEditorMode === 'create'" label="AI 辅助">
-        <a-checkbox
-          v-model:checked="submitAiSuggestionDraft"
+      </UiFormItem>
+      <UiFormItem v-if="improvementEditorMode === 'create'" label="AI 辅助">
+        <UiCheckbox
+          v-model="submitAiSuggestionDraft"
           :disabled="!improvementEditor.achievementResultId"
         >
           创建后同步生成 AI 改进建议草稿
-        </a-checkbox>
+        </UiCheckbox>
         <p v-if="!improvementEditor.achievementResultId" class="iwb-tab__ai-hint">
           需先关联达成度计算结果
         </p>
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
   </UiDrawer>
 
   <UiDrawer
@@ -847,40 +864,40 @@ defineExpose({
   >
     <UiEmpty
       v-if="!improvementDetailRecord && !improvementDetailLoading"
-      description="当前没有可展示的内容"
+      description="暂无改进任务"
       size="sm"
     />
-    <a-descriptions v-if="improvementDetailRecord" :column="1" size="small" bordered>
-      <a-descriptions-item label="编号">
+    <UiDescriptions v-if="improvementDetailRecord" :column="1" size="small" bordered>
+      <UiDescriptionsItem label="编号">
         {{ improvementDetailRecord.taskCode }}
-      </a-descriptions-item>
-      <a-descriptions-item label="标题">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="标题">
         {{ improvementDetailRecord.taskTitle }}
-      </a-descriptions-item>
-      <a-descriptions-item label="状态">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="状态">
         <UiTag :tone="improvementStatusColor(improvementDetailRecord.status)" size="sm">
           {{ improvementStatusLabel(improvementDetailRecord.status) }}
         </UiTag>
-      </a-descriptions-item>
-      <a-descriptions-item label="负责人">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="负责人">
         {{ improvementDetailRecord.ownerUserName }}
-      </a-descriptions-item>
-      <a-descriptions-item label="角色">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="角色">
         {{ improvementDetailRecord.ownerRole || '未指定角色' }}
-      </a-descriptions-item>
-      <a-descriptions-item label="截止">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="截止">
         {{ improvementDetailRecord.dueDate }}
-      </a-descriptions-item>
-      <a-descriptions-item label="问题概述">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="问题概述">
         {{ improvementDetailRecord.problemSummary }}
-      </a-descriptions-item>
-      <a-descriptions-item label="改进措施">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="改进措施">
         {{ improvementDetailRecord.proposedAction }}
-      </a-descriptions-item>
-      <a-descriptions-item label="进度备注">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="进度备注">
         {{ improvementDetailRecord.progressRemark || '未填写进度备注' }}
-      </a-descriptions-item>
-      <a-descriptions-item label="整改证据">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="整改证据">
         <ul
           v-if="improvementDetailRecord.rectificationEvidenceItems?.length"
           class="iwb-tab__evidence-list"
@@ -894,17 +911,17 @@ defineExpose({
           </li>
         </ul>
         <span v-else>尚未上传整改证据</span>
-      </a-descriptions-item>
-      <a-descriptions-item label="复评结论">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="复评结论">
         {{ improvementDetailRecord.reviewDecision || '尚未复评' }}
-      </a-descriptions-item>
-      <a-descriptions-item label="复评意见">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="复评意见">
         {{ improvementDetailRecord.reviewRemark || '尚未复评' }}
-      </a-descriptions-item>
-      <a-descriptions-item label="闭环时间">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="闭环时间">
         {{ improvementDetailRecord.closedTime || '未闭环' }}
-      </a-descriptions-item>
-    </a-descriptions>
+      </UiDescriptionsItem>
+    </UiDescriptions>
   </UiDrawer>
 </template>
 

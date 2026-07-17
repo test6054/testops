@@ -10,11 +10,13 @@ import LayoutDesignReviewPhase from '@/components/mark/layout-designer/workbench
 import LayoutDesignSourcePhase from '@/components/mark/layout-designer/workbench/LayoutDesignSourcePhase.vue'
 import LayoutDesignWorkflowRail from '@/components/mark/layout-designer/workbench/LayoutDesignWorkflowRail.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -260,6 +262,14 @@ async function handleReviewSaved(): Promise<void> {
   await wbReload()
   await workbenchContext?.refreshChrome?.()
 }
+
+const layoutDesignerMoreActionItems = [{ key: 'review', label: '复核微调' }]
+
+function onLayoutDesignerMoreAction(key: string) {
+  if (key === 'review') {
+    wbReviewOpen.value = true
+  }
+}
 </script>
 
 <template>
@@ -273,9 +283,9 @@ async function handleReviewSaved(): Promise<void> {
           <UiTag v-if="materialLayoutModeLabel" tone="blue" size="sm">
             形态 {{ materialLayoutModeLabel }}
           </UiTag>
-          <a-tooltip v-if="!wbLayoutWritable && writeLockTooltip" :title="writeLockTooltip">
+          <UiTooltip v-if="!wbLayoutWritable && writeLockTooltip" :title="writeLockTooltip">
             <UiTag tone="orange" size="sm">制卷已锁定</UiTag>
-          </a-tooltip>
+          </UiTooltip>
           <UiTag v-else-if="layoutModeLocked" tone="gray" size="sm">形态已锁定</UiTag>
           <UiTag v-if="layoutPaperLabel" tone="gray" size="sm">纸型 {{ layoutPaperLabel }}</UiTag>
           <UiTag v-if="scanPaperStyleLabel" tone="gray" size="sm">
@@ -300,6 +310,7 @@ async function handleReviewSaved(): Promise<void> {
         </template>
         <template #actions>
           <UiButton
+            size="sm"
             v-if="contextPrimaryAction"
             variant="primary"
             :disabled="contextPrimaryAction.disabled"
@@ -307,8 +318,19 @@ async function handleReviewSaved(): Promise<void> {
           >
             {{ contextPrimaryAction.label }}
           </UiButton>
-          <UiButton variant="outline" @click="wbReviewOpen = true">复核微调</UiButton>
+          <UiTooltip :title="wbSaveButtonTooltip">
+            <UiButton
+              size="sm"
+              :variant="contextPrimaryAction ? 'outline' : 'primary'"
+              :loading="wbSaving"
+              :disabled="wbSaveButtonDisabled"
+              @click="wbHandleSave()"
+            >
+              保存设计
+            </UiButton>
+          </UiTooltip>
           <UiButton
+            size="sm"
             variant="outline"
             :loading="wbPreviewing"
             :disabled="wbPreviewDisabled"
@@ -316,29 +338,24 @@ async function handleReviewSaved(): Promise<void> {
           >
             预览 PDF
           </UiButton>
-          <a-tooltip :title="wbSaveButtonTooltip">
-            <UiButton
-              variant="primary"
-              :loading="wbSaving"
-              :disabled="wbSaveButtonDisabled"
-              @click="wbHandleSave()"
-            >
-              保存设计
-            </UiButton>
-          </a-tooltip>
+          <UiDropdownAction
+            trigger-style="button"
+            button-text="更多"
+            :items="layoutDesignerMoreActionItems"
+            @select="onLayoutDesignerMoreAction"
+          />
         </template>
       </ContextBar>
     </template>
     <template v-if="signalMetrics.length > 0" #signal>
       <SignalBand
-        variant="tiles"
         :metrics="signalMetrics"
         compact
         @metric-click="handleSignalMetricClick"
       />
     </template>
 
-    <UiEmpty v-if="!examId" description="缺少考试上下文，请从考试工作台进入" />
+    <ExamSelectGateStrip v-if="!examId" body="缺少考试上下文，请从考试工作台进入版面设计" />
     <template v-else>
       <UiAlertStrip
         v-if="layoutDesignerScenarioAlert"
@@ -358,7 +375,7 @@ async function handleReviewSaved(): Promise<void> {
         @select="wbGoPhase"
       />
 
-      <a-tooltip v-if="designerStatusAlert" :title="designerStatusAlert.tooltip">
+      <UiTooltip v-if="designerStatusAlert" :title="designerStatusAlert.tooltip">
         <UiAlertStrip
           :tone="designerStatusAlert.tone"
           :closable="false"
@@ -397,7 +414,7 @@ async function handleReviewSaved(): Promise<void> {
             </UiButton>
           </template>
         </UiAlertStrip>
-      </a-tooltip>
+      </UiTooltip>
 
       <WorkbenchSurfaceCard flush class="layout-designer__surface">
         <UiSkeletonState v-if="pageLoading" variant="card" :card-count="2" compact />

@@ -9,7 +9,7 @@
     </template>
 
     <template #signal>
-      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" compact />
     </template>
 
     <WorkbenchSurfaceCard flush class="archive-volume-ledger__surface">
@@ -29,6 +29,7 @@
         />
 
         <UiEmpty
+          size="sm"
           v-if="!selectedVolumeId"
           description="输入档案号或关键词定位案卷，再查看查阅台账"
         />
@@ -40,6 +41,7 @@
           </div>
 
           <UiEmpty
+            size="sm"
             v-if="!volumeLoading && accessRecords.length === 0"
             description="该卷暂无查阅记录"
           />

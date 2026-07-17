@@ -2,14 +2,17 @@
 /**
  * 持续改进与审核闭环工作台（4-in-1）
  */
-import { nextTick, onActivated, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { ConfirmationStatusCode } from '@/apis/quality/types'
 import AuditIssueTab from '@/components/quality/improvement/AuditIssueTab.vue'
 import AuditRectificationTab from '@/components/quality/improvement/AuditRectificationTab.vue'
 import AuditSupervisionTab from '@/components/quality/improvement/AuditSupervisionTab.vue'
 import ImprovementTaskTab from '@/components/quality/improvement/ImprovementTaskTab.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useImprovementWorkbenchSignals } from '@/composables/quality/useImprovementWorkbenchSignals'
@@ -22,6 +25,12 @@ import { showUserError, toUserError } from '@/utils/error-handler'
 const qualityStore = useQualityStore()
 const route = useRoute()
 const activeTab = ref<'improvement' | 'issue' | 'rectification' | 'supervision'>('improvement')
+const iwbTabItems = [
+  { key: 'improvement', label: '改进任务' },
+  { key: 'issue', label: '审核评估问题' },
+  { key: 'rectification', label: '整改任务台账' },
+  { key: 'supervision', label: '督导复查' },
+]
 const loading = ref(false)
 const skipFirstActivatedLoad = ref(true)
 let scopeChangeSerial = 0
@@ -87,6 +96,17 @@ async function consumeImprovementDeepLink(): Promise<void> {
     = typeof route.query.aiTaskId === 'string' ? route.query.aiTaskId.trim() : undefined
   await improvementTaskTabRef.value?.openByDeepLink?.({ improvementTaskId, aiTaskId })
 }
+
+
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
 
 async function handleScopeChange(): Promise<void> {
   const serial = ++scopeChangeSerial
@@ -165,52 +185,58 @@ onActivated(async () => {
       <QualityPageContextBar />
     </template>
 
-    <SignalBand :metrics="signals" compact class="iwb__signals" />
-
-    <UiEmpty
-      v-if="
-        !loading
-          && qualityStore.currentTrainingPlanId
-          && activeTab === 'improvement'
-          && !signalSummary?.improvementTotal
-      "
-      description="当前范围无改进任务"
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
       class="iwb__empty"
     />
 
-    <a-tabs v-model:active-key="activeTab" class="iwb__tabs">
-      <a-tab-pane key="improvement" tab="改进任务" force-render>
-        <ImprovementTaskTab
-          ref="improvementTaskTabRef"
-          :on-load-error="handleTabLoadError"
-          :on-workbench-refresh="refreshWorkbenchSignals"
-        />
-      </a-tab-pane>
+    <template v-else>
+      <SignalBand :metrics="signals" compact class="iwb__signals" />
 
-      <a-tab-pane key="issue" tab="审核评估问题" force-render>
-        <AuditIssueTab
-          ref="auditIssueTabRef"
-          :on-load-error="handleTabLoadError"
-          :on-workbench-refresh="refreshWorkbenchSignals"
-        />
-      </a-tab-pane>
+      <UiEmpty
+        v-if="
+          !loading
+            && activeTab === 'improvement'
+            && !signalSummary?.improvementTotal
+        "
+        size="sm"
+        description="当前范围无改进任务"
+        class="iwb__empty"
+      />
 
-      <a-tab-pane key="rectification" tab="整改任务台账" force-render>
-        <AuditRectificationTab
-          ref="auditRectificationTabRef"
-          :on-load-error="handleTabLoadError"
-          :on-workbench-refresh="refreshWorkbenchSignals"
-        />
-      </a-tab-pane>
-
-      <a-tab-pane key="supervision" tab="督导复查" force-render>
-        <AuditSupervisionTab
-          ref="auditSupervisionTabRef"
-          :on-load-error="handleTabLoadError"
-          :on-workbench-refresh="refreshWorkbenchSignals"
-        />
-      </a-tab-pane>
-    </a-tabs>
+      <UiSectionTabs
+        v-model="activeTab"
+        :items="iwbTabItems"
+        compact
+        divided
+        class="iwb__tabs"
+      />
+      <ImprovementTaskTab
+        v-if="activeTab === 'improvement'"
+        ref="improvementTaskTabRef"
+        :on-load-error="handleTabLoadError"
+        :on-workbench-refresh="refreshWorkbenchSignals"
+      />
+      <AuditIssueTab
+        v-else-if="activeTab === 'issue'"
+        ref="auditIssueTabRef"
+        :on-load-error="handleTabLoadError"
+        :on-workbench-refresh="refreshWorkbenchSignals"
+      />
+      <AuditRectificationTab
+        v-else-if="activeTab === 'rectification'"
+        ref="auditRectificationTabRef"
+        :on-load-error="handleTabLoadError"
+        :on-workbench-refresh="refreshWorkbenchSignals"
+      />
+      <AuditSupervisionTab
+        v-else
+        ref="auditSupervisionTabRef"
+        :on-load-error="handleTabLoadError"
+        :on-workbench-refresh="refreshWorkbenchSignals"
+      />
+    </template>
   </StageWorkbenchShell>
 </template>
 

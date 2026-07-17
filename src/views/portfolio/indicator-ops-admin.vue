@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PfEligibilityExplainStructDto,
   PfImpactReportStatusCode,
   PfSceneCode,
+  PfScoreExplainStructDto,
   PortfolioEligibilityEvalLogVO,
   PortfolioIndicatorAutoCollectSummaryResponse,
   PortfolioIndicatorCollectedValueVO,
@@ -28,15 +30,20 @@ import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/Portfol
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { defaultTemplateParams, serializeTemplateParams } from '@/utils/indicator-template-params'
+import { defaultTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -53,6 +60,16 @@ function impactReportStatusTone(value: PfImpactReportStatusCode): BadgeTone {
 }
 
 const activeTab = ref('trial')
+const indicatorOpsTabItems = [
+  { key: 'trial', label: '规则试算' },
+  { key: 'snapshot', label: '快照计分' },
+  { key: 'diff', label: '快照对比' },
+  { key: 'compute-log', label: '计分日志' },
+  { key: 'audit-log', label: '配置审计' },
+  { key: 'eval-log', label: '资格评估日志' },
+  { key: 'collect', label: '来源采集' },
+  { key: 'impact', label: '影响报告' },
+]
 const route = useRoute()
 const operationKey = ref('')
 const operating = computed(() => Boolean(operationKey.value))
@@ -75,7 +92,8 @@ const requestToken = reactive({ compute: 0, audit: 0, eval: 0, impact: 0, collec
 const computeResult = ref<PortfolioIndicatorScoreComputeResult | null>(null)
 const explainOpen = ref(false)
 const explainText = ref('')
-const explainStructJson = ref('')
+const scoreExplain = ref<PfScoreExplainStructDto | undefined>()
+const eligibilityExplain = ref<PfEligibilityExplainStructDto | undefined>()
 
 const trialForm = reactive({
   ruleType: 'THRESHOLD',
@@ -172,7 +190,8 @@ function showComputeResult(result: PortfolioIndicatorScoreComputeResult) {
   requestToken.explain++
   computeResult.value = result
   explainText.value = result.explainText
-  explainStructJson.value = result.explainStructJson
+  scoreExplain.value = result.explainStruct
+  eligibilityExplain.value = undefined
 }
 
 async function runTrial() {
@@ -181,7 +200,7 @@ async function runTrial() {
   const request = {
     ...trialForm,
     indicatorCode: trialForm.indicatorCode.trim(),
-    paramsJson: serializeTemplateParams(trialParams.value),
+    params: trialParams.value,
   }
   if (!request.indicatorCode) {
     showFormValidationMessage('请填写指标编码')
@@ -339,7 +358,8 @@ async function openExplain(
 ) {
   const currentToken = ++requestToken.explain
   explainText.value = text ?? ''
-  explainStructJson.value = ''
+  scoreExplain.value = undefined
+  eligibilityExplain.value = undefined
   try {
     const result = await portfolioIndicatorTenantApi.getExplain({
       logId,
@@ -347,7 +367,8 @@ async function openExplain(
       teacherId,
     })
     if (requestToken.explain !== currentToken) return
-    explainStructJson.value = result
+    scoreExplain.value = result.scoreExplain
+    eligibilityExplain.value = result.eligibilityExplain
     explainOpen.value = true
   } catch (error) {
     if (requestToken.explain !== currentToken) return
@@ -536,278 +557,304 @@ watch(
       <ContextBar show-title layout="workbench" title="指标计分与审计" />
     </template>
     <UiCard>
-      <a-tabs :active-key="activeTab" @change="onTabChange">
-        <a-tab-pane key="trial" tab="规则试算">
-          <div class="form-grid">
-            <a-select
-              v-model:value="trialForm.ruleType"
-              :options="PF_SCORE_RULE_TYPE_OPTIONS"
-              placeholder="规则类型"
-              style="width: 160px"
-              :disabled="operating"
-            />
-            <a-input
-              v-model:value="trialForm.indicatorCode"
-              placeholder="指标编码"
-              :disabled="operating"
-            />
-            <a-input-number
-              v-model:value="trialForm.rawValue"
-              placeholder="原始值"
-              style="width: 120px"
-              :disabled="operating"
-            />
-            <a-switch
-              v-model:checked="trialForm.auditRequired"
-              checked-children="需审核"
-              un-checked-children="免审"
-              :disabled="operating"
-            />
-            <a-switch
-              v-model:checked="trialForm.auditApproved"
-              checked-children="已通过"
-              un-checked-children="未通过"
-              :disabled="operating"
-            />
-          </div>
-          <PortfolioIndicatorTemplateParamsForm
-            :rule-type="trialForm.ruleType"
-            :params="trialParams"
+      <UiSectionTabs
+        :model-value="activeTab"
+        :items="indicatorOpsTabItems"
+        compact
+        divided
+        @change="onTabChange"
+      />
+      <template v-if="activeTab === 'trial'">
+        <div class="form-grid">
+          <UiSelect
+            size="sm"
+            v-model="trialForm.ruleType"
+            :options="PF_SCORE_RULE_TYPE_OPTIONS"
+            placeholder="规则类型"
+            style="width: 160px"
             :disabled="operating"
-            style="margin-top: 12px"
-            @update:params="trialParams = $event"
+          />
+          <UiInput
+            size="sm"
+            v-model="trialForm.indicatorCode"
+            placeholder="指标编码"
+            :disabled="operating"
+          />
+          <UiInputNumber
+            size="sm"
+            v-model="trialForm.rawValue"
+            placeholder="原始值"
+            style="width: 120px"
+            :disabled="operating"
+          />
+          <UiSwitch
+            size="sm"
+            v-model="trialForm.auditRequired"
+            checked-children="需审核"
+            un-checked-children="免审"
+            :disabled="operating"
+          />
+          <UiSwitch
+            size="sm"
+            v-model="trialForm.auditApproved"
+            checked-children="已通过"
+            un-checked-children="未通过"
+            :disabled="operating"
+          />
+        </div>
+        <PortfolioIndicatorTemplateParamsForm
+          :rule-type="trialForm.ruleType"
+          :params="trialParams"
+          :disabled="operating"
+          style="margin-top: 12px"
+          @update:params="trialParams = $event"
+        />
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="computing"
+          :disabled="operating"
+          style="margin-top: 12px"
+          @click="runTrial"
+        >
+          执行试算
+        </UiButton>
+      </template>
+      <template v-else-if="activeTab === 'snapshot'">
+        <p class="snapshot-hint">
+          审核状态由服务端档案与审核事实决定，正式计分不接受客户端 audit 覆盖。
+        </p>
+        <div class="form-grid">
+          <UiInput
+            size="sm"
+            v-model="snapshotForm.teacherId"
+            placeholder="教师编号"
+            :disabled="operating"
+          />
+          <UiInput
+            size="sm"
+            v-model="snapshotForm.snapshotId"
+            placeholder="快照编号"
+            :disabled="operating"
+          />
+          <UiInput
+            size="sm"
+            v-model="snapshotForm.indicatorCode"
+            placeholder="指标编码"
+            :disabled="operating"
+          />
+          <UiInputNumber
+            size="sm"
+            v-model="snapshotForm.rawValue"
+            placeholder="原始值"
+            style="width: 120px"
+            :disabled="operating"
+          />
+        </div>
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="computing"
+          :disabled="operating"
+          style="margin-top: 12px"
+          @click="runSnapshotCompute"
+        >
+          正式计分
+        </UiButton>
+      </template>
+      <template v-else-if="activeTab === 'diff'">
+        <div class="form-grid">
+          <UiInput
+            size="sm"
+            v-model="diffForm.snapshotIdA"
+            placeholder="快照甲编号"
+            :disabled="operating"
+          />
+          <UiInput
+            size="sm"
+            v-model="diffForm.snapshotIdB"
+            placeholder="快照乙编号"
+            :disabled="operating"
           />
           <UiButton
-            variant="primary"
-            :loading="computing"
+            size="sm"
+            :loading="operationKey.startsWith('export:diff:')"
             :disabled="operating"
-            style="margin-top: 12px"
-            @click="runTrial"
+            @click="exportSnapshotDiff"
           >
-            执行试算
+            导出差异表格
           </UiButton>
-        </a-tab-pane>
-        <a-tab-pane key="snapshot" tab="快照计分">
-          <p class="snapshot-hint">
-            审核状态由服务端档案与审核事实决定，正式计分不接受客户端 audit 覆盖。
-          </p>
-          <div class="form-grid">
-            <a-input
-              v-model:value="snapshotForm.teacherId"
-              placeholder="教师编号"
-              :disabled="operating"
-            />
-            <a-input
-              v-model:value="snapshotForm.snapshotId"
-              placeholder="快照编号"
-              :disabled="operating"
-            />
-            <a-input
-              v-model:value="snapshotForm.indicatorCode"
-              placeholder="指标编码"
-              :disabled="operating"
-            />
-            <a-input-number
-              v-model:value="snapshotForm.rawValue"
-              placeholder="原始值"
-              style="width: 120px"
-              :disabled="operating"
-            />
-          </div>
+        </div>
+      </template>
+      <template v-else-if="activeTab === 'compute-log'">
+        <UiEmpty
+          size="sm"
+          v-if="!loadState.compute && !loadError.compute && computeLogs.length === 0"
+          description="暂无计分日志"
+        />
+        <UiDataTable
+          v-model:current="pageQuery.pageNum"
+          v-model:page-size="pageQuery.pageSize"
+          pagination-mode="server"
+          :columns="computeColumns"
+          :data-source="computeLogs"
+          :loading="loadState.compute"
+          :load-error="loadError.compute"
+          :total="computeTotal"
+          row-key="id"
+          @page-change="handlePageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[{ key: 'explain', label: '解释' }]"
+                split
+                @action="
+                  () => openExplain(record.id, 'SCORE', record.teacherId, record.explainText)
+                "
+              />
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else-if="activeTab === 'audit-log'">
+        <UiEmpty
+          size="sm"
+          v-if="!loadState.audit && !loadError.audit && auditLogs.length === 0"
+          description="暂无配置审计"
+        />
+        <UiDataTable
+          v-model:current="pageQuery.pageNum"
+          v-model:page-size="pageQuery.pageSize"
+          pagination-mode="server"
+          :columns="auditColumns"
+          :data-source="auditLogs"
+          :loading="loadState.audit"
+          :load-error="loadError.audit"
+          :total="auditTotal"
+          row-key="id"
+          @page-change="handlePageChange"
+        />
+      </template>
+      <template v-else-if="activeTab === 'eval-log'">
+        <UiEmpty
+          size="sm"
+          v-if="!loadState.eval && !loadError.eval && evalLogs.length === 0"
+          description="暂无资格评估日志"
+        />
+        <UiDataTable
+          v-model:current="pageQuery.pageNum"
+          v-model:page-size="pageQuery.pageSize"
+          pagination-mode="server"
+          :columns="evalColumns"
+          :data-source="evalLogs"
+          :loading="loadState.eval"
+          :load-error="loadError.eval"
+          :total="evalTotal"
+          row-key="id"
+          @page-change="handlePageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'eligible'">
+              <UiTag :tone="record.eligible ? 'green' : 'red'">
+                {{ record.eligible ? '通过' : '不通过' }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[{ key: 'explain', label: '解释' }]"
+                split
+                @action="
+                  () =>
+                    openExplain(record.id, 'ELIGIBILITY', record.teacherId, record.explainText)
+                "
+              />
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else-if="activeTab === 'collect'">
+        <div class="form-grid">
+          <UiInput
+            size="sm"
+            v-model="collectTeacherId"
+            placeholder="教师 userId"
+            :disabled="operating"
+          />
           <UiButton
+            size="sm"
             variant="primary"
-            :loading="computing"
+            :loading="operationKey.startsWith('collect:')"
             :disabled="operating"
-            style="margin-top: 12px"
-            @click="runSnapshotCompute"
+            @click="runAutoCollect"
           >
-            正式计分
+            执行自动采集
           </UiButton>
-        </a-tab-pane>
-        <a-tab-pane key="diff" tab="快照对比">
-          <div class="form-grid">
-            <a-input
-              v-model:value="diffForm.snapshotIdA"
-              placeholder="快照甲编号"
-              :disabled="operating"
-            />
-            <a-input
-              v-model:value="diffForm.snapshotIdB"
-              placeholder="快照乙编号"
-              :disabled="operating"
-            />
-            <UiButton
-              :loading="operationKey.startsWith('export:diff:')"
-              :disabled="operating"
-              @click="exportSnapshotDiff"
-            >
-              导出差异表格
-            </UiButton>
-          </div>
-        </a-tab-pane>
-        <a-tab-pane key="compute-log" tab="计分日志">
-          <UiEmpty
-            v-if="!loadState.compute && !loadError.compute && computeLogs.length === 0"
-            description="暂无计分日志"
-          />
-          <UiDataTable
-            v-model:current="pageQuery.pageNum"
-            v-model:page-size="pageQuery.pageSize"
-            pagination-mode="server"
-            :columns="computeColumns"
-            :data-source="computeLogs"
-            :loading="loadState.compute"
-            :load-error="loadError.compute"
-            :total="computeTotal"
-            row-key="id"
-            @page-change="handlePageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[{ key: 'explain', label: '解释' }]"
-                  split
-                  @action="
-                    () => openExplain(record.id, 'SCORE', record.teacherId, record.explainText)
-                  "
-                />
-              </template>
+        </div>
+        <p v-if="collectSummary" class="collect-summary">
+          成功 {{ collectSummary.collectedCount }} · 跳过 {{ collectSummary.skippedCount }}
+        </p>
+        <UiDataTable
+          v-if="collectSummary"
+          v-model:current="collectPageNum"
+          v-model:page-size="collectPageSize"
+          pagination-mode="server"
+          :columns="collectColumns"
+          :data-source="collectItems"
+          :loading="loadState.collect"
+          :load-error="loadError.collect"
+          :total="collectTotal"
+          row-key="indicatorCode"
+          style="margin-top: 12px"
+          @page-change="handleCollectPageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'collected'">
+              <UiTag :tone="record.collected ? 'green' : 'gray'">
+                {{ record.collected ? '是' : '否' }}
+              </UiTag>
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane key="audit-log" tab="配置审计">
-          <UiEmpty
-            v-if="!loadState.audit && !loadError.audit && auditLogs.length === 0"
-            description="暂无配置审计"
-          />
-          <UiDataTable
-            v-model:current="pageQuery.pageNum"
-            v-model:page-size="pageQuery.pageSize"
-            pagination-mode="server"
-            :columns="auditColumns"
-            :data-source="auditLogs"
-            :loading="loadState.audit"
-            :load-error="loadError.audit"
-            :total="auditTotal"
-            row-key="id"
-            @page-change="handlePageChange"
-          />
-        </a-tab-pane>
-        <a-tab-pane key="eval-log" tab="资格评估日志">
-          <UiEmpty
-            v-if="!loadState.eval && !loadError.eval && evalLogs.length === 0"
-            description="暂无资格评估日志"
-          />
-          <UiDataTable
-            v-model:current="pageQuery.pageNum"
-            v-model:page-size="pageQuery.pageSize"
-            pagination-mode="server"
-            :columns="evalColumns"
-            :data-source="evalLogs"
-            :loading="loadState.eval"
-            :load-error="loadError.eval"
-            :total="evalTotal"
-            row-key="id"
-            @page-change="handlePageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'eligible'">
-                <UiTag :tone="record.eligible ? 'green' : 'red'">
-                  {{ record.eligible ? '通过' : '不通过' }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[{ key: 'explain', label: '解释' }]"
-                  split
-                  @action="
-                    () =>
-                      openExplain(record.id, 'ELIGIBILITY', record.teacherId, record.explainText)
-                  "
-                />
-              </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else>
+        <UiEmpty
+          size="sm"
+          v-if="!loadState.impact && !loadError.impact && impactReports.length === 0"
+          description="暂无影响报告"
+        />
+        <UiDataTable
+          v-model:current="pageQuery.pageNum"
+          v-model:page-size="pageQuery.pageSize"
+          pagination-mode="server"
+          :columns="impactColumns"
+          :data-source="impactReports"
+          :loading="loadState.impact"
+          :load-error="loadError.impact"
+          :total="impactTotal"
+          row-key="id"
+          @page-change="handlePageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'sceneCode'">
+              {{ sceneCodeLabel(record.sceneCode) }}
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane key="collect" tab="来源采集">
-          <div class="form-grid">
-            <a-input
-              v-model:value="collectTeacherId"
-              placeholder="教师 userId"
-              :disabled="operating"
-            />
-            <UiButton
-              variant="primary"
-              :loading="operationKey.startsWith('collect:')"
-              :disabled="operating"
-              @click="runAutoCollect"
-            >
-              执行自动采集
-            </UiButton>
-          </div>
-          <p v-if="collectSummary" class="collect-summary">
-            成功 {{ collectSummary.collectedCount }} · 跳过 {{ collectSummary.skippedCount }}
-          </p>
-          <UiDataTable
-            v-if="collectSummary"
-            v-model:current="collectPageNum"
-            v-model:page-size="collectPageSize"
-            pagination-mode="server"
-            :columns="collectColumns"
-            :data-source="collectItems"
-            :loading="loadState.collect"
-            :load-error="loadError.collect"
-            :total="collectTotal"
-            row-key="indicatorCode"
-            style="margin-top: 12px"
-            @page-change="handleCollectPageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'collected'">
-                <UiTag :tone="record.collected ? 'green' : 'gray'">
-                  {{ record.collected ? '是' : '否' }}
-                </UiTag>
-              </template>
+            <template v-else-if="column.key === 'reportStatus'">
+              <UiTag :tone="impactReportStatusTone(record.reportStatus)">
+                {{ impactReportStatusLabel(record.reportStatus) }}
+              </UiTag>
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane key="impact" tab="影响报告">
-          <UiEmpty
-            v-if="!loadState.impact && !loadError.impact && impactReports.length === 0"
-            description="暂无影响报告"
-          />
-          <UiDataTable
-            v-model:current="pageQuery.pageNum"
-            v-model:page-size="pageQuery.pageSize"
-            pagination-mode="server"
-            :columns="impactColumns"
-            :data-source="impactReports"
-            :loading="loadState.impact"
-            :load-error="loadError.impact"
-            :total="impactTotal"
-            row-key="id"
-            @page-change="handlePageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'sceneCode'">
-                {{ sceneCodeLabel(record.sceneCode) }}
-              </template>
-              <template v-else-if="column.key === 'reportStatus'">
-                <UiTag :tone="impactReportStatusTone(record.reportStatus)">
-                  {{ impactReportStatusLabel(record.reportStatus) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[{ key: 'export', label: '导出', disabled: operating }]"
-                  split
-                  @action="() => exportImpact(record.id)"
-                />
-              </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[{ key: 'export', label: '导出', disabled: operating }]"
+                split
+                @action="() => exportImpact(record.id)"
+              />
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-      </a-tabs>
+          </template>
+        </UiDataTable>
+      </template>
+
       <div v-if="computeResult" class="result-panel">
         <p>
           计算分 {{ computeResult.calcScore ?? '—' }} → 最终分 {{ computeResult.finalScore ?? '—' }}
@@ -815,13 +862,14 @@ watch(
         <p v-if="computeResult.finalScore == null">待审核</p>
         <p v-if="computeResult.hitSegment">命中：{{ computeResult.hitSegment }}</p>
         <p>{{ computeResult.explainText }}</p>
-        <UiButton @click="explainOpen = true"> 结构化解释 </UiButton>
+        <UiButton size="sm" @click="explainOpen = true"> 结构化解释 </UiButton>
       </div>
     </UiCard>
     <PortfolioIndicatorExplainDrawer
       v-model:open="explainOpen"
       :explain-text="explainText"
-      :explain-struct-json="explainStructJson"
+      :score-explain="scoreExplain"
+      :eligibility-explain="eligibilityExplain"
     />
   </StageWorkbenchShell>
 </template>
@@ -837,7 +885,7 @@ watch(
 .result-panel {
   margin-top: 16px;
   padding: 12px;
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
   border-radius: 4px;
   font-size: 13px;
 }

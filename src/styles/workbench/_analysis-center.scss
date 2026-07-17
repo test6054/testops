@@ -44,12 +44,12 @@
   border-radius: var(--dp-radius-control);
   font-size: var(--dp-font-hint);
   font-weight: 500;
-  color: var(--ant-color-error);
-  background: var(--ant-color-error-bg);
+  color: var(--dp-error);
+  background: var(--dp-error-bg);
 
   &--warn {
-    color: var(--ant-color-warning);
-    background: var(--ant-color-warning-bg);
+    color: var(--dp-warning);
+    background: var(--dp-warning-bg);
   }
 }
 
@@ -236,9 +236,9 @@
 
 .ai-recommendation-block__advice {
   padding: var(--dp-space-2) var(--dp-space-3);
-  border-left: 3px solid var(--ant-color-primary, #1677ff);
+  border: 1px solid color-mix(in srgb, var(--dp-color-primary) 22%, transparent);
   border-radius: var(--dp-radius-control);
-  background: var(--dp-surface-subtle);
+  background: color-mix(in srgb, var(--dp-color-primary) 6%, var(--dp-surface-subtle));
 }
 
 .ai-recommendation-block__advice-label {
@@ -246,7 +246,7 @@
   margin-bottom: 2px;
   font-size: var(--dp-font-hint);
   font-weight: 600;
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--dp-color-primary);
 }
 
 .ai-recommendation-block__advice-text {
@@ -319,7 +319,7 @@
   font-size: 18px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--dp-color-primary);
 }
 
 .ai-cluster-tile__desc,
@@ -529,7 +529,7 @@
   transition: border-color var(--dp-duration-fast), box-shadow var(--dp-duration-fast);
 
   &:hover {
-    border-color: var(--ant-color-primary-border, #91caff);
+    border-color: var(--dp-color-primary-border);
     box-shadow: var(--dp-shadow-sm);
   }
 }
@@ -647,7 +647,7 @@
   transition: border-color var(--dp-duration-fast);
 
   &:hover {
-    border-color: var(--ant-color-primary-border, #91caff);
+    border-color: var(--dp-color-primary-border);
   }
 }
 

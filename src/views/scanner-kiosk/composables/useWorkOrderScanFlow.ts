@@ -371,6 +371,9 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   }
 
   async function startLocalScanAfterWorkOrder(workOrder: ScanWorkOrderLifecycleVO) {
+    if (loading.value) {
+      return rejectUserError('正在处理中')
+    }
     assertScanSessionActive()
     lifecycle.value = workOrder
     if (!workOrder.batchExternalNo || !workOrder.reportId || !workOrder.resolvedScanConfig) {
@@ -402,7 +405,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   }
 
   async function endCurrentBatch() {
-    if (!currentJob.value || !canEndBatch.value) return
+    if (!currentJob.value || !canEndBatch.value || loading.value) return
     assertScanSessionActive()
     loading.value = true
     errorMessage.value = ''
@@ -417,30 +420,56 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   }
 
   async function pauseCurrentJob() {
-    if (!currentJob.value) return
+    if (!currentJob.value || loading.value) return
     assertScanSessionActive()
-    currentJob.value = await pauseScanJob(currentJob.value.scanJobId)
+    loading.value = true
+    try {
+      currentJob.value = await pauseScanJob(currentJob.value.scanJobId)
+    } finally {
+      loading.value = false
+    }
   }
 
   async function resumeCurrentJob() {
-    if (!currentJob.value) return
+    if (!currentJob.value || loading.value) return
     assertScanSessionActive()
-    currentJob.value = await resumeScanJob(currentJob.value.scanJobId)
-    startPolling(currentJob.value.scanJobId)
+    loading.value = true
+    try {
+      currentJob.value = await resumeScanJob(currentJob.value.scanJobId)
+      startPolling(currentJob.value.scanJobId)
+    } finally {
+      loading.value = false
+    }
   }
 
   async function retryCurrentUpload() {
-    if (!currentJob.value) return
+    if (!currentJob.value || loading.value) return
     assertScanSessionActive()
-    currentJob.value = await retryUpload(currentJob.value.scanJobId)
-    startPolling(currentJob.value.scanJobId)
+    loading.value = true
+    errorMessage.value = ''
+    try {
+      currentJob.value = await retryUpload(currentJob.value.scanJobId)
+      startPolling(currentJob.value.scanJobId)
+    } catch (error) {
+      errorMessage.value = getUserErrorMessage(error, '重试上传失败')
+    } finally {
+      loading.value = false
+    }
   }
 
   async function retryCurrentCommit() {
-    if (!currentJob.value) return
+    if (!currentJob.value || loading.value) return
     assertScanSessionActive()
-    currentJob.value = await retryCommit(currentJob.value.scanJobId)
-    startPolling(currentJob.value.scanJobId)
+    loading.value = true
+    errorMessage.value = ''
+    try {
+      currentJob.value = await retryCommit(currentJob.value.scanJobId)
+      startPolling(currentJob.value.scanJobId)
+    } catch (error) {
+      errorMessage.value = getUserErrorMessage(error, '重试提交失败')
+    } finally {
+      loading.value = false
+    }
   }
 
   /** 档案袋 quality / 归档 MERGED 失败后无 local job 时，凭工单 DB 快照续做 commit。 */
@@ -451,7 +480,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
     ) {
       return
     }
-    if (!lifecycle.value?.batchExternalNo || !canRetryWorkOrderCommit.value) return
+    if (!lifecycle.value?.batchExternalNo || !canRetryWorkOrderCommit.value || loading.value) return
     assertScanSessionActive()
     loading.value = true
     errorMessage.value = ''
@@ -476,7 +505,7 @@ export function useWorkOrderScanFlow(options: WorkOrderScanFlowOptions) {
   }
 
   async function discardCurrentSession() {
-    if (!lifecycle.value?.batchExternalNo) return
+    if (!lifecycle.value?.batchExternalNo || loading.value) return
     assertScanSessionActive()
     const confirmed = await confirmAsync({
       title: '确认废弃本次扫描？',

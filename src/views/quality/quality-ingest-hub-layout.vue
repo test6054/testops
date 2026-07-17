@@ -4,8 +4,10 @@
  */
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ConfirmationStatusCode } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import { useQualityStore } from '@/stores/modules/quality'
 
 const route = useRoute()
@@ -45,17 +47,32 @@ function handleTabChange(key: string | number) {
     void router.push(target.path)
   }
 }
+
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
 </script>
 
 <template>
   <div class="ingest-hub-layout">
     <QualityPageContextBar show-title title="数据接入" />
-    <a-tabs :active-key="activeTab" class="ingest-hub-layout__tabs" @change="handleTabChange">
-      <a-tab-pane v-for="item in tabs" :key="item.key" :tab="item.label" />
-    </a-tabs>
-    <UiEmpty
-      v-if="!qualityStore.currentTrainingPlanId"
-      description="请选择培养方案后进入数据接入"
+    <UiSectionTabs
+      :model-value="activeTab"
+      :items="tabs"
+      compact
+      divided
+      class="ingest-hub-layout__tabs"
+      @change="handleTabChange"
+    />
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
     />
     <router-view v-else :key="`${route.path}-${qualityStore.scopeChangeEpoch}`" />
   </div>

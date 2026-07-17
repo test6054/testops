@@ -16,23 +16,25 @@
     <p v-if="detail.taskDiagnostic" class="archive-ocr-detail__diagnostic">
       {{ detail.taskDiagnostic }}
     </p>
-    <a-tabs v-if="detail.pages?.length" v-model:active-key="activePageKey">
-      <a-tab-pane
-        v-for="page in detail.pages"
-        :key="pageTabKey(page.pageNo)"
-        :tab="`第 ${page.pageNo} 页`"
-      >
-        <UiTag size="sm" :tone="pageStatusTone(page.status)">
-          {{ pageStatusLabel(page.status) }}
+    <template v-if="detail.pages?.length">
+      <UiSectionTabs
+        v-model="activePageKey"
+        :items="pageTabItems"
+        compact
+        divided
+      />
+      <template v-if="activePage">
+        <UiTag size="sm" :tone="pageStatusTone(activePage.status)">
+          {{ pageStatusLabel(activePage.status) }}
         </UiTag>
-        <p v-if="page.diagnostic" class="archive-ocr-detail__page-diagnostic">
-          {{ page.diagnostic }}
+        <p v-if="activePage.diagnostic" class="archive-ocr-detail__page-diagnostic">
+          {{ activePage.diagnostic }}
         </p>
         <pre class="archive-ocr-detail__text">{{
-            page.recognizedText || '（无识别文本）'
+          activePage.recognizedText || '（无识别文本）'
         }}</pre>
-      </a-tab-pane>
-    </a-tabs>
+      </template>
+    </template>
     <pre v-else-if="detail.fullText" class="archive-ocr-detail__text">{{
         detail.fullText
     }}</pre>
@@ -48,7 +50,7 @@ import type {
   DocumentOcrTaskStatusCode,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   DocumentOcrPageResultStatusDescription,
   DocumentOcrTaskStatusDescription,
@@ -57,6 +59,7 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -70,6 +73,19 @@ const loading = ref(false)
 const loadError = ref(false)
 const detail = ref<DocumentMaterialOcrDetailResponse | null>(null)
 const activePageKey = ref<string>()
+const pageTabItems = computed(() => {
+  const pages = detail.value?.pages ?? []
+  return pages.map((page) => ({
+    key: pageTabKey(page.pageNo),
+    label: `第 ${page.pageNo} 页`,
+  }))
+})
+const activePage = computed(() => {
+  const pages = detail.value?.pages ?? []
+  if (!pages.length) return null
+  const key = activePageKey.value
+  return pages.find((page) => pageTabKey(page.pageNo) === key) ?? pages[0] ?? null
+})
 let requestSequence = 0
 
 watch(
@@ -156,21 +172,21 @@ function pageStatusTone(code?: DocumentOcrPageResultStatusCode): BadgeTone {
 .archive-ocr-detail__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   margin-bottom: 12px;
   font-size: 13px;
-  color: var(--nybc-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 .archive-ocr-detail__diagnostic,
 .archive-ocr-detail__page-diagnostic {
   margin: 8px 0;
-  color: var(--nybc-danger, #cf1322);
+  color: var(--dp-danger);
   font-size: 13px;
 }
 .archive-ocr-detail__text {
   margin-top: 12px;
   padding: 12px;
-  background: var(--nybc-bg-subtle, #fafafa);
+  background: var(--dp-bg-subtle);
   border-radius: 4px;
   white-space: pre-wrap;
   word-break: break-word;
@@ -181,7 +197,7 @@ function pageStatusTone(code?: DocumentOcrPageResultStatusCode): BadgeTone {
 }
 .archive-ocr-detail__empty {
   margin: 16px 0;
-  color: var(--nybc-text-secondary, #666);
+  color: var(--dp-text-secondary);
   font-size: 13px;
 }
 </style>

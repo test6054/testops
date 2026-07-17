@@ -168,6 +168,7 @@ function handlePageChange(page: { current: number, pageSize: number }) {
 
 function rowActions(_record: PortfolioTeacherSummaryVO): UiTableRowActionItem[] {
   return [
+    { key: 'masterpiece', label: '读整袋' },
     { key: 'home', label: '首页' },
     { key: 'archive', label: '档案' },
     { key: 'course', label: '课程档案' },
@@ -187,6 +188,9 @@ function openTeacherPage(path: string, teacherId: string) {
 function handleAction(key: string, record: PortfolioTeacherSummaryVO) {
   const teacherId = record.userId
   switch (key) {
+    case 'masterpiece':
+      openTeacherPage('/portfolio/teacher/masterpiece', teacherId)
+      break
     case 'home':
       openTeacherPage('/portfolio/teacher/home', teacherId)
       break

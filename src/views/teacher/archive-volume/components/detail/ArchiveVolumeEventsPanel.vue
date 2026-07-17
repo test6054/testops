@@ -42,6 +42,7 @@ const props = defineProps<{
 const exporting = ref(false)
 
 async function handleExport() {
+  if (exporting.value) return
   exporting.value = true
   try {
     const result = await exportArchiveVolumeEvents(props.volumeId)

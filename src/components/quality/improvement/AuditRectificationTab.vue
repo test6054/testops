@@ -30,8 +30,17 @@ import {
 } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -626,73 +635,81 @@ defineExpose({
     </UiDataTable>
   </ImprovementWorkbenchPanel>
 
-  <a-modal
+  <UiDialog
     v-model:open="rectEditorVisible"
     :title="rectEditorMode === 'create' ? '新建整改任务' : '编辑整改任务'"
     :confirm-loading="rectEditorSubmitting"
     width="760px"
     @ok="submitRectEditor"
   >
-    <a-form layout="vertical" :model="rectEditor">
-      <a-row :gutter="12">
-        <a-col :span="8">
-          <a-form-item label="编码" required>
-            <a-input v-model:value="rectEditor.rectificationCode" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="16">
-          <a-form-item label="关联问题" required>
+    <UiForm layout="vertical" :model="rectEditor">
+      <UiRow :gutter="12">
+        <UiCol :span="8">
+          <UiFormItem label="编码" required>
+            <UiInput
+              size="sm" v-model="rectEditor.rectificationCode"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="16">
+          <UiFormItem label="关联问题" required>
             <AuditIssueSelector
               :value="rectEditor.auditIssueId || null"
               placeholder="选择审核评估问题"
               @change="handleRectEditorAuditIssueChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-form-item label="标题" required>
-        <a-input v-model:value="rectEditor.rectificationTitle" />
-      </a-form-item>
-      <a-form-item label="整改措施" required>
-        <a-textarea v-model:value="rectEditor.rectificationAction" :rows="4" />
-      </a-form-item>
-      <a-row :gutter="12">
-        <a-col :span="12">
-          <a-form-item label="责任人" required>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiFormItem label="标题" required>
+        <UiInput
+          size="sm" v-model="rectEditor.rectificationTitle"
+        />
+      </UiFormItem>
+      <UiFormItem label="整改措施" required>
+        <UiTextarea size="sm" v-model="rectEditor.rectificationAction" :rows="4" />
+      </UiFormItem>
+      <UiRow :gutter="12">
+        <UiCol :span="12">
+          <UiFormItem label="责任人" required>
             <TeacherSelector
               :value="rectEditor.ownerUserId || null"
               @change="handleRectEditorOwnerChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="6">
-          <a-form-item label="角色">
-            <a-input v-model:value="rectEditor.ownerRole" placeholder="如 专业负责人" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="6">
-          <a-form-item label="截止日期" required>
-            <a-input v-model:value="rectEditor.dueDate" placeholder="yyyy-MM-dd" />
-          </a-form-item>
-        </a-col>
-      </a-row>
-    </a-form>
-  </a-modal>
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="6">
+          <UiFormItem label="角色">
+            <UiInput
+              size="sm" v-model="rectEditor.ownerRole" placeholder="如 专业负责人"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="6">
+          <UiFormItem label="截止日期" required>
+            <UiInput
+              size="sm" v-model="rectEditor.dueDate" placeholder="yyyy-MM-dd"
+            />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+    </UiForm>
+  </UiDialog>
 
-  <a-modal
+  <UiDialog
     v-model:open="rectEvidenceEditorVisible"
     title="提交整改复核"
     :confirm-loading="rectEvidenceEditorSubmitting"
     width="960px"
     @ok="submitRectEvidenceEditor"
   >
-    <a-form layout="vertical" :model="rectEvidenceEditor">
-      <a-form-item label="提交说明" required>
-        <a-textarea v-model:value="rectEvidenceEditor.progressRemark" :rows="3" />
-      </a-form-item>
-      <a-divider orientation="left">整改证据明细</a-divider>
+    <UiForm layout="vertical" :model="rectEvidenceEditor">
+      <UiFormItem label="提交说明" required>
+        <UiTextarea size="sm" v-model="rectEvidenceEditor.progressRemark" :rows="3" />
+      </UiFormItem>
+      <UiDivider orientation="left">整改证据明细</UiDivider>
       <div class="iwb-tab__detail-toolbar">
-        <a-button type="primary" @click="addRectEvidenceItem">新增证据</a-button>
+        <UiButton size="sm" variant="primary" @click="addRectEvidenceItem">新增证据</UiButton>
       </div>
       <div
         v-for="(item, index) in rectEvidenceEditor.evidenceItems"
@@ -701,54 +718,62 @@ defineExpose({
       >
         <div class="iwb-tab__detail-row-head">
           <span class="iwb-tab__detail-row-title">证据 {{ index + 1 }}</span>
-          <a-button danger size="small" @click="removeRectEvidenceItem(index)">删除</a-button>
+          <UiButton size="sm" status="danger" variant="ghost" @click="removeRectEvidenceItem(index)">删除</UiButton>
         </div>
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="类型">
-              <a-select v-model:value="item.evidenceType" :options="auditEvidenceTypeOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="10">
-            <a-form-item label="标题" required>
-              <a-input v-model:value="item.evidenceTitle" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="编号">
-              <a-input v-model:value="item.evidenceCode" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="关联归档">
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="类型">
+              <UiSelect
+                size="sm" v-model="item.evidenceType" :options="auditEvidenceTypeOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="10">
+            <UiFormItem label="标题" required>
+              <UiInput
+                size="sm" v-model="item.evidenceTitle"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="编号">
+              <UiInput
+                size="sm" v-model="item.evidenceCode"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="关联归档">
               <ArchiveSelector
                 :value="item.archiveId || null"
                 @change="createRectEvidenceArchiveChangeHandler(index)"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="关联报告">
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="关联报告">
               <ReportSelector
                 :value="item.reportId || null"
                 @change="createRectEvidenceReportChangeHandler(index)"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="文件节点 ID">
-              <a-input v-model:value="item.fileNodeId" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="item.remark" :rows="2" />
-        </a-form-item>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="文件节点 ID">
+              <UiInput
+                size="sm" v-model="item.fileNodeId"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="备注">
+          <UiTextarea size="sm" v-model="item.remark" :rows="2" />
+        </UiFormItem>
       </div>
-    </a-form>
-  </a-modal>
+    </UiForm>
+  </UiDialog>
 </template>
 
 <style scoped lang="scss">

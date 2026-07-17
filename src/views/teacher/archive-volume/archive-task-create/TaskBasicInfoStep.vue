@@ -1,5 +1,5 @@
 <template>
-  <a-form
+  <UiForm
     ref="formRef"
     :model="basicForm"
     :rules="basicRules"
@@ -14,99 +14,105 @@
       </div>
       <p class="section-desc">填写课程、学年学期与归档标题；带 * 为必填。</p>
 
-      <a-form-item label="课程" name="courseId" required>
+      <UiFormItem label="课程" name="courseId" required>
         <CatalogCourseSelector
           v-model:value="basicForm.courseId"
           placeholder="请选择课程"
           :allow-clear="false"
           @change="handleCourseChange"
         />
-      </a-form-item>
+      </UiFormItem>
 
-      <a-form-item label="归档标题" name="archiveTitle" required>
-        <a-input
-          v-model:value="basicForm.archiveTitle"
+      <UiFormItem label="归档标题" name="archiveTitle" required>
+        <UiInput
+          size="sm"
+          v-model="basicForm.archiveTitle"
           placeholder="如 2024-2025 高等数学期末考查"
           :maxlength="512"
-          show-count
         />
-      </a-form-item>
+      </UiFormItem>
 
-      <a-row :gutter="24" class="create-form__split-row">
-        <a-col :span="12">
-          <a-form-item label="档案编号" :label-col="labelCol" :wrapper-col="wrapperCol">
-            <a-input
-              v-model:value="basicForm.archiveNo"
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem label="档案编号" :label-col="labelCol" :wrapper-col="wrapperCol">
+            <UiInput
+              size="sm"
+              v-model="basicForm.archiveNo"
               placeholder="不填则自动生成"
               :maxlength="64"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             label="学年起始年"
             name="academicYearStartYear"
             required
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select
-              v-model:value="basicForm.academicYearStartYear"
+            <UiSelect
+              size="sm"
+              v-model="basicForm.academicYearStartYear"
               :options="academicYearStartOptions"
               placeholder="请选择起始年"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
 
-      <a-row :gutter="24" class="create-form__split-row">
-        <a-col :span="12">
-          <a-form-item label="学年结束年" :label-col="labelCol" :wrapper-col="wrapperCol">
-            <a-input :value="academicYearEndYear" disabled />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem label="学年结束年" :label-col="labelCol" :wrapper-col="wrapperCol">
+            <UiInput
+              size="sm" :value="academicYearEndYear" disabled
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             label="学期"
             name="semester"
             required
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select
-              v-model:value="basicForm.semester"
+            <UiSelect
+              size="sm"
+              v-model="basicForm.semester"
               :options="SemesterOptions"
               placeholder="请选择学期"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
 
-      <a-row :gutter="24" class="create-form__split-row">
-        <a-col :span="12">
-          <a-form-item
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem
             label="院系"
             name="departmentId"
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select
-              v-model:value="departmentIdSelectValue"
+            <UiSelect
+              size="sm"
+              v-model="departmentIdSelectValue"
               :options="departmentOptions"
               :loading="departmentLoading"
               placeholder="请选择院系"
-              show-search
+              allow-search
               option-filter-prop="label"
               allow-clear
               @change="handleDepartmentChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
 
-      <a-row :gutter="24" class="create-form__split-row">
-        <a-col :span="12">
-          <a-form-item
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem
             label="授课班级"
             name="teachingClassId"
             :label-col="labelCol"
@@ -119,45 +125,52 @@
               placeholder="请选择授课班级"
               @change="handleClassChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             label="关联考试"
             tooltip="可选项，用于挂接线上考试记录。"
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select
-              v-model:value="relatedExamIdSelectValue"
+            <UiSelect
+              size="sm"
+              v-model="relatedExamIdSelectValue"
               :options="relatedExamOptions"
               :loading="relatedExamLoading"
               :disabled="!canLoadRelatedExams"
               :placeholder="relatedExamPlaceholder"
-              show-search
+              allow-search
               allow-clear
               option-filter-prop="label"
               @search="handleRelatedExamSearch"
               @change="handleRelatedExamChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
     </div>
-  </a-form>
+  </UiForm>
 </template>
 
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { CourseListVO } from '@/apis/quality/user-catalog'
+import type { UiOptionValue } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, ref, watch } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { composeAcademicYear, generateAcademicYearStartOptions } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
@@ -187,14 +200,14 @@ const basicForm = useInjectedArchiveTaskCreateBasicForm()
 const formRef = ref<FormInstance>()
 const departmentIdSelectValue = computed({
   get: () => nullableStringToSelectValue(basicForm.departmentId),
-  set: (value: SelectValue) => {
+  set: (value: UiOptionValue | UiOptionValue[] | undefined) => {
     basicForm.departmentId = selectValueToNullableString(value)
   },
 })
 
 const relatedExamIdSelectValue = computed({
   get: () => nullableStringToSelectValue(basicForm.relatedExamId),
-  set: (value: SelectValue) => {
+  set: (value: UiOptionValue | UiOptionValue[] | undefined) => {
     basicForm.relatedExamId = selectValueToNullableString(value)
   },
 })
@@ -229,7 +242,7 @@ function handleCourseChange(courseId: string | null, option?: CourseListVO) {
   void loadRelatedExamOptions()
 }
 
-function handleDepartmentChange(value: SelectValue): void {
+function handleDepartmentChange(value: UiOptionValue | UiOptionValue[] | undefined): void {
   const departmentId = selectValueToNullableString(value)
   basicForm.departmentId = departmentId
   const selected = departmentId
@@ -301,7 +314,7 @@ function handleRelatedExamSearch(keyword: string): void {
   }, 300)
 }
 
-function handleRelatedExamChange(value: SelectValue): void {
+function handleRelatedExamChange(value: UiOptionValue | UiOptionValue[] | undefined): void {
   const examId = selectValueToNullableString(value)
   basicForm.relatedExamId = examId
   const selected = examId

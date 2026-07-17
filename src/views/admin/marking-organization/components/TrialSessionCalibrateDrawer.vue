@@ -17,26 +17,28 @@
         {{ strictEnumLabel(TrialSessionStatusDescription, session.sessionStatus, '试评会话状态') }}
       </UiTag>
     </div>
-    <a-form layout="vertical" class="trial-calibrate-drawer__form">
-      <a-form-item label="校准结论" required>
-        <a-textarea
-          v-model:value="calibrationSummary"
+    <UiForm layout="vertical" class="trial-calibrate-drawer__form">
+      <UiFormItem label="校准结论" required>
+        <UiTextarea
+          size="sm"
+          v-model="calibrationSummary"
           :rows="4"
           :maxlength="1000"
           placeholder="填写本次试评形成的评分尺度、扣分边界和执行口径"
-          show-count
+          :show-count="true"
         />
-      </a-form-item>
-      <a-form-item label="讨论笔记">
-        <a-textarea
-          v-model:value="discussionNotes"
+      </UiFormItem>
+      <UiFormItem label="讨论笔记">
+        <UiTextarea
+          size="sm"
+          v-model="discussionNotes"
           :rows="4"
           :maxlength="1000"
           placeholder="可选，记录团队讨论与共识"
-          show-count
+          :show-count="true"
         />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
   </UiDrawer>
 </template>
 
@@ -50,7 +52,10 @@ import {
   TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -87,6 +92,9 @@ async function submit(): Promise<void> {
     return
   }
   if (!props.session?.id || !calibrationSummary.value.trim()) {
+    return
+  }
+  if (submitting.value) {
     return
   }
   submitting.value = true

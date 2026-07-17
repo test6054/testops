@@ -6,7 +6,10 @@ import { portfolioTeacherSalaryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -147,9 +150,10 @@ async function exportCsv() {
     </template>
     <UiCard>
       <div class="form-row">
-        <a-select
-          v-model:value="form.teacherUserId"
-          show-search
+        <UiSelect
+          size="sm"
+          v-model="form.teacherUserId"
+          allow-search
           allow-clear
           placeholder="搜索教师姓名或工号"
           style="width: 220px"
@@ -158,31 +162,36 @@ async function exportCsv() {
           :disabled="operating"
           @search="searchTeachers"
         />
-        <a-input
-          v-model:value="form.salaryMonth"
+        <UiInput
+          size="sm"
+          v-model="form.salaryMonth"
           placeholder="月份，例如 2026-07"
           style="width: 120px"
           :disabled="operating"
         />
-        <a-input-number
-          v-model:value="form.baseAmount"
+        <UiInputNumber
+          size="sm"
+          v-model="form.baseAmount"
           placeholder="基本工资"
           style="width: 100px"
           :disabled="operating"
         />
-        <a-input-number
-          v-model:value="form.performanceAmount"
+        <UiInputNumber
+          size="sm"
+          v-model="form.performanceAmount"
           placeholder="绩效工资"
           style="width: 100px"
           :disabled="operating"
         />
-        <a-input-number
-          v-model:value="form.allowanceAmount"
+        <UiInputNumber
+          size="sm"
+          v-model="form.allowanceAmount"
           placeholder="津贴"
           style="width: 100px"
           :disabled="operating"
         />
         <UiButton
+          size="sm"
           variant="primary"
           :loading="operationKey === 'salary:save'"
           :disabled="operating"
@@ -191,6 +200,7 @@ async function exportCsv() {
           录入
         </UiButton>
         <UiButton
+          size="sm"
           :loading="operationKey === 'salary:export'"
           :disabled="operating"
           @click="exportCsv"
@@ -198,7 +208,7 @@ async function exportCsv() {
           导出
         </UiButton>
       </div>
-      <UiEmpty v-if="!loading && !loadError && rows.length === 0" description="暂无薪酬档案" />
+      <UiEmpty size="sm" v-if="!loading && !loadError && rows.length === 0" description="暂无薪酬档案" />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"

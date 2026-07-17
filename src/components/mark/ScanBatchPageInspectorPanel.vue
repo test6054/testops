@@ -1,6 +1,20 @@
 <template>
-  <a-spin :spinning="loading">
-    <UiEmpty v-if="!loading && !inspector" description="请选择页轨条目" />
+  <UiSpin :spinning="loading">
+    <UiAlertStrip
+      v-if="!loading && !inspector"
+      tone="info"
+      size="sm"
+      dense
+      inline
+      :show-icon="false"
+    >
+      <template #default>
+        <span style="display: inline-flex; align-items: center; gap: 8px">
+          <UiTag tone="blue" size="sm">未选页</UiTag>
+          <span>请在左侧页轨选择一条扫描页后查看登记与绑定详情</span>
+        </span>
+      </template>
+    </UiAlertStrip>
     <template v-else-if="inspector">
       <div class="scan-batch-page-inspector__summary">
         <div class="scan-batch-page-inspector__position">
@@ -134,38 +148,48 @@
             <InfoCircleOutlined class="scan-batch-page-inspector__tip" />
           </UiTooltip>
         </h3>
-        <a-form layout="vertical" class="scan-batch-page-inspector__bind-form">
-          <a-form-item v-if="inspector.page.ocrStudentName" label="识别姓名">
-            <a-input :value="inspector.page.ocrStudentName" disabled />
-          </a-form-item>
-          <a-form-item v-if="inspector.page.ocrClassName" label="识别班级">
-            <a-input :value="inspector.page.ocrClassName" disabled />
-          </a-form-item>
-          <a-form-item :label="recognizedStudentNoLabel">
-            <a-input
-              v-model:value="recognizedStudentNo"
+        <UiForm layout="vertical" class="scan-batch-page-inspector__bind-form">
+          <UiFormItem v-if="inspector.page.ocrStudentName" label="识别姓名">
+            <UiInput
+              size="sm" :value="inspector.page.ocrStudentName" disabled
+            />
+          </UiFormItem>
+          <UiFormItem v-if="inspector.page.ocrClassName" label="识别班级">
+            <UiInput
+              size="sm" :value="inspector.page.ocrClassName" disabled
+            />
+          </UiFormItem>
+          <UiFormItem :label="recognizedStudentNoLabel">
+            <UiInput
+              size="sm"
+              v-model="recognizedStudentNo"
               placeholder="文字识别学号或人工修正值"
               :maxlength="64"
             />
-          </a-form-item>
-          <a-form-item label="确认考生" required>
-            <a-select
-              v-model:value="confirmedCandidateRosterId"
+          </UiFormItem>
+          <UiFormItem label="确认考生" required>
+            <UiSelect
+              size="sm"
+              v-model="confirmedCandidateRosterId"
               :placeholder="candidateSearchPlaceholder"
-              show-search
+              allow-search
               :options="candidateOptions"
               :filter-option="false"
               :loading="candidatesLoading"
               allow-clear
               @search="searchCandidates"
             />
-          </a-form-item>
-          <a-form-item label="答卷状态" required>
-            <a-select v-model:value="attemptStatus" :options="BINDABLE_ATTEMPT_STATUS_OPTIONS" />
-          </a-form-item>
-          <a-form-item label="答卷编号（可选）">
-            <a-input v-model:value="attemptNo" placeholder="同一考生多卷时区分" :maxlength="32" />
-          </a-form-item>
+          </UiFormItem>
+          <UiFormItem label="答卷状态" required>
+            <UiSelect
+              size="sm" v-model="attemptStatus" :options="BINDABLE_ATTEMPT_STATUS_OPTIONS"
+            />
+          </UiFormItem>
+          <UiFormItem label="答卷编号（可选）">
+            <UiInput
+              size="sm" v-model="attemptNo" placeholder="同一考生多卷时区分" :maxlength="32"
+            />
+          </UiFormItem>
           <UiButton
             variant="primary"
             size="sm"
@@ -176,7 +200,7 @@
           >
             确认绑定
           </UiButton>
-        </a-form>
+        </UiForm>
       </section>
       <div v-else-if="showBindBlocked" class="scan-batch-page-inspector__blocked">
         <UiTag tone="orange" size="sm">无法绑定</UiTag>
@@ -195,20 +219,23 @@
             <InfoCircleOutlined class="scan-batch-page-inspector__tip" />
           </UiTooltip>
         </h3>
-        <a-form layout="vertical" class="scan-batch-page-inspector__bind-form">
-          <a-form-item label="当前归属">
-            <a-input :value="currentPaperLabel" disabled />
-          </a-form-item>
-          <a-form-item label="目标试卷" required>
-            <a-select
-              v-model:value="targetPaperInstanceId"
+        <UiForm layout="vertical" class="scan-batch-page-inspector__bind-form">
+          <UiFormItem label="当前归属">
+            <UiInput
+              size="sm" :value="currentPaperLabel" disabled
+            />
+          </UiFormItem>
+          <UiFormItem label="目标试卷" required>
+            <UiSelect
+              size="sm"
+              v-model="targetPaperInstanceId"
               :options="reassignTargetOptions"
               :disabled="reassignTargetOptions.length === 0"
               placeholder="选择当前页应归属的试卷"
-              show-search
+              allow-search
               option-filter-prop="label"
             />
-          </a-form-item>
+          </UiFormItem>
           <UiButton
             variant="primary"
             size="sm"
@@ -219,10 +246,10 @@
           >
             调整到目标试卷
           </UiButton>
-        </a-form>
+        </UiForm>
       </section>
     </template>
-  </a-spin>
+  </UiSpin>
 </template>
 
 <script lang="ts" setup>
@@ -246,8 +273,13 @@ import {
 } from '@/apis/mark/exam-scan'
 import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import {
   BINDABLE_ATTEMPT_STATUS_OPTIONS,
@@ -540,6 +572,9 @@ async function submitBind(): Promise<void> {
   if (!page?.paperInstanceId || !props.examId || !props.scanBatchId) {
     return
   }
+  if (binding.value) {
+    return
+  }
   const rosterId = confirmedCandidateRosterId.value
   const blockReason = resolveCandidateBindingBlockReason(rosterId)
   if (blockReason) {
@@ -571,6 +606,9 @@ async function submitBind(): Promise<void> {
 async function submitReassign(): Promise<void> {
   const page = props.inspector?.page
   if (!page?.pageId || !props.examId || !props.scanBatchId || !targetPaperInstanceId.value) {
+    return
+  }
+  if (reassigning.value) {
     return
   }
   reassigning.value = true
@@ -626,7 +664,7 @@ watch(
 }
 
 .scan-batch-page-inspector__order {
-  color: var(--ant-color-text);
+  color: var(--dp-text);
   font-size: 14px;
   font-weight: 600;
 }
@@ -634,7 +672,7 @@ watch(
 .scan-batch-page-inspector__position-text {
   min-width: 0;
   overflow: hidden;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -648,14 +686,14 @@ watch(
 
 .scan-batch-page-inspector__subline {
   margin: 6px 0 0;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   font-size: 12px;
   line-height: 1.4;
 }
 
 .scan-batch-page-inspector__tip {
   flex-shrink: 0;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
   font-size: 13px;
   cursor: help;
 }
@@ -663,7 +701,7 @@ watch(
 .scan-batch-page-inspector__section {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--ant-color-border-secondary);
+  border-top: 1px solid var(--dp-border-subtle);
 }
 
 .scan-batch-page-inspector__section-title {
@@ -681,7 +719,7 @@ watch(
   gap: 6px;
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--ant-color-border-secondary);
+  border-top: 1px solid var(--dp-border-subtle);
 }
 
 .scan-batch-page-inspector__bind-form {

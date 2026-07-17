@@ -32,12 +32,13 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand variant="tiles" compact :metrics="exportSignalMetrics" />
+      <SignalBand compact :metrics="exportSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="export-page__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="export-page__empty" />
 
     <UiEmpty
+      size="sm"
       v-else-if="loadFailed"
       description="导出任务加载失败"
       action-label="重试"
@@ -122,12 +123,13 @@
               {{ exportTaskFileSizeText(record) }}
             </template>
             <template v-else-if="column.key === 'errorMessage'">
-              <a-tooltip
+              <UiTooltip
                 v-if="exportTaskFailureMessageText(record)"
                 :title="exportTaskFailureMessageText(record)"
+                popup-mount="body"
               >
                 <span class="error-text">{{ clippedExportTaskFailureMessage(record) }}</span>
-              </a-tooltip>
+              </UiTooltip>
               <span v-else class="hint-text">{{ exportTaskProcessingText(record) }}</span>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -153,104 +155,90 @@
     @ok="handleCreate"
   >
     <template #footer>
-      <UiButton variant="outline" @click="createModalOpen = false">取消</UiButton>
-      <UiButton :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
+      <UiButton size="sm" variant="outline" @click="createModalOpen = false">取消</UiButton>
+      <UiButton size="sm" :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
     </template>
-    <a-form layout="vertical">
-      <a-form-item label="导出类型" required>
-        <a-radio-group v-model:value="createForm.exportType">
-          <a-radio-button
-            v-for="option in exportTypeOptions"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </a-radio-button>
-        </a-radio-group>
-      </a-form-item>
-      <a-form-item label="导出范围" required>
-        <a-radio-group v-model:value="createForm.exportScope">
-          <a-radio-button
-            v-for="option in exportScopeOptions"
-            :key="option.value"
-            :value="option.value"
-            :disabled="option.disabled"
-          >
-            {{ option.label }}
-          </a-radio-button>
-        </a-radio-group>
-      </a-form-item>
-      <a-form-item v-if="exportConstraintHint" label="导出约束">
+    <UiForm layout="vertical">
+      <UiFormItem label="导出类型" required>
+        <UiRadioGroup v-model="createForm.exportType" :options="exportTypeOptions" size="sm" />
+      </UiFormItem>
+      <UiFormItem label="导出范围" required>
+        <UiRadioGroup v-model="createForm.exportScope" :options="exportScopeOptions" size="sm" />
+      </UiFormItem>
+      <UiFormItem v-if="exportConstraintHint" label="导出约束">
         <UiTag tone="blue" size="sm">{{ exportConstraintHint }}</UiTag>
-      </a-form-item>
-      <a-form-item v-if="createForm.exportScope === ExportScopeCode.EXAM" label="范围条件">
+      </UiFormItem>
+      <UiFormItem v-if="createForm.exportScope === ExportScopeCode.EXAM" label="范围条件">
         <UiTag tone="blue" size="sm">整场考试</UiTag>
-      </a-form-item>
-      <a-form-item
+      </UiFormItem>
+      <UiFormItem
         v-else-if="createForm.exportScope === ExportScopeCode.CLASS"
         label="选择班级"
         required
       >
-        <a-select
-          v-model:value="createForm.classIds"
+        <UiSelect
+          size="sm"
+          v-model="createForm.classIds"
           mode="multiple"
           placeholder="选择需要导出的班级"
           :options="classOptions"
           :loading="rosterLoading"
-          show-search
+          allow-search
           option-filter-prop="label"
         />
-      </a-form-item>
-      <a-form-item
+      </UiFormItem>
+      <UiFormItem
         v-else-if="createForm.exportScope === ExportScopeCode.QUESTION"
         label="选择题目"
         required
       >
-        <a-select
-          v-model:value="createForm.layoutQuestionIds"
+        <UiSelect
+          size="sm"
+          v-model="createForm.layoutQuestionIds"
           mode="multiple"
           placeholder="选择需要导出的题目"
           :options="questionOptions"
           :loading="questionLoading"
-          show-search
+          allow-search
           option-filter-prop="label"
         />
-      </a-form-item>
-      <a-form-item
+      </UiFormItem>
+      <UiFormItem
         v-else-if="createForm.exportScope === ExportScopeCode.STUDENT"
         label="选择学生"
         required
       >
-        <a-select
-          v-model:value="createForm.studentUserIds"
+        <UiSelect
+          size="sm"
+          v-model="createForm.studentUserIds"
           mode="multiple"
           placeholder="选择需要导出的学生"
           :options="studentOptions"
           :loading="rosterLoading"
-          show-search
+          allow-search
           option-filter-prop="label"
           :filter-option="false"
           @search="(keyword: string) => searchStudents(keyword)"
         />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
   </UiDialog>
 
   <!-- 详情抽屉 -->
   <UiDrawer v-model:open="detailDrawerOpen" title="导出任务详情" :width="540" hide-footer>
     <UiSkeletonState v-if="detailLoading" variant="card" compact />
-    <a-descriptions v-else-if="detailTask" :column="1" bordered size="small">
-      <a-descriptions-item label="当前考试">{{ formatTaskExam(detailTask) }}</a-descriptions-item>
-      <a-descriptions-item label="类型">
+    <UiDescriptions v-else-if="detailTask" :column="1" bordered size="small">
+      <UiDescriptionsItem label="当前考试">{{ formatTaskExam(detailTask) }}</UiDescriptionsItem>
+      <UiDescriptionsItem label="类型">
         {{ exportTypeLabel(detailTask.exportType) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="范围">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="范围">
         {{ exportScopeLabel(detailTask.exportScope) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="范围条件">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="范围条件">
         {{ detailTask.scopeSummary }}
-      </a-descriptions-item>
-      <a-descriptions-item v-if="detailTask.scopeItems.length > 0" label="范围明细">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem v-if="detailTask.scopeItems.length > 0" label="范围明细">
         <div class="scope-items">
           <UiTag
             v-for="item in detailTask.scopeItems"
@@ -261,32 +249,32 @@
             {{ formatScopeItem(item) }}
           </UiTag>
         </div>
-      </a-descriptions-item>
-      <a-descriptions-item label="状态">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="状态">
         <UiTag :tone="statusTone(detailTask.taskStatus)" size="sm">
           {{ exportStatusLabel(detailTask.taskStatus) }}
         </UiTag>
-      </a-descriptions-item>
-      <a-descriptions-item label="文件名">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="文件名">
         {{ exportTaskFileNameText(detailTask) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="文件大小">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="文件大小">
         {{ exportTaskFileSizeText(detailTask) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="开始时间">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="开始时间">
         {{ exportTaskStartedTimeText(detailTask) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="完成时间">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="完成时间">
         {{ exportTaskCompletedTimeText(detailTask) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="导出处理说明">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="导出处理说明">
         <span v-if="exportTaskFailureMessageText(detailTask)" class="error-text">
           {{ exportTaskFailureMessageText(detailTask) }}
         </span>
         <span v-else class="hint-text">{{ exportTaskProcessingText(detailTask) }}</span>
-      </a-descriptions-item>
-    </a-descriptions>
-    <UiEmpty v-else-if="detailError" description="当前没有可展示的内容" />
+      </UiDescriptionsItem>
+    </UiDescriptions>
+    <UiEmpty size="sm" v-else-if="detailError" description="导出任务详情加载失败" />
   </UiDrawer>
 </template>
 
@@ -334,11 +322,19 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -970,6 +966,7 @@ async function openCreateModal(): Promise<void> {
 
 async function handleCreate(): Promise<void> {
   if (!selectedExamId.value || !createValid.value) return
+  if (creating.value) return
   creating.value = true
   try {
     const request: ExportCreateRequest = {
@@ -1141,7 +1138,7 @@ onBeforeUnmount(() => {
   }
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__active-sync-strip {
@@ -1150,12 +1147,12 @@ onBeforeUnmount(() => {
 
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .export-page {
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__card-head {
@@ -1185,16 +1182,16 @@ onBeforeUnmount(() => {
 }
 
 .empty-block {
-  margin-top: 80px;
+  margin-top: var(--dp-space-3, 12px);
 }
 
 .hint-text {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
   font-size: 12px;
 }
 
 .error-text {
-  color: var(--ant-color-error);
+  color: var(--dp-error);
   font-size: 12px;
 }
 

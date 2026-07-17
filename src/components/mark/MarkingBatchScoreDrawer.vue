@@ -1,34 +1,36 @@
 <template>
-  <a-drawer
+  <UiDrawer
     :open="open"
     title="批量同题给分"
     width="420"
     destroy-on-close
     @close="emit('update:open', false)"
   >
-    <a-form layout="vertical">
-      <a-form-item label="已选任务">
+    <UiForm layout="vertical">
+      <UiFormItem label="已选任务">
         <span>{{ selectedTaskIds.length }} 份（同题组 · 同题目）</span>
-      </a-form-item>
-      <a-form-item label="给分" required>
-        <a-input-number
-          v-model:value="score"
+      </UiFormItem>
+      <UiFormItem label="给分" required>
+        <UiInputNumber
+          size="sm"
+          v-model="score"
           :min="0"
           :max="fullScore"
           :step="0.5"
           class="marking-batch-score-drawer__score-input"
           placeholder="请输入统一给分"
         />
-      </a-form-item>
-      <a-form-item label="批注">
-        <a-textarea
-          v-model:value="annotationText"
+      </UiFormItem>
+      <UiFormItem label="批注">
+        <UiTextarea
+          size="sm"
+          v-model="annotationText"
           :maxlength="1000"
           :rows="3"
           placeholder="可选，统一批注"
         />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
 
     <UiAlertStrip
       v-if="annotationWarning"
@@ -38,24 +40,25 @@
       dense
     />
 
-    <a-progress
+    <UiProgressBar
       v-if="submitting && progressTotal > 0"
       :percent="Math.round((progressDone / progressTotal) * 100)"
-      :status="progressFailed ? 'exception' : 'active'"
-      size="small"
+      :color="progressFailed ? 'var(--dp-error)' : 'var(--dp-color-primary)'"
+      size="sm"
+      :show-label="false"
     />
 
     <template #footer>
-      <a-space>
-        <UiButton variant="outline" :disabled="submitting" @click="emit('update:open', false)">
+      <div class="dp-space" style="--dp-space-gap: 8px">
+        <UiButton size="sm" variant="outline" :disabled="submitting" @click="emit('update:open', false)">
           取消
         </UiButton>
-        <UiButton variant="primary" :loading="submitting" @click="handleSubmit">
+        <UiButton size="sm" variant="primary" :loading="submitting" @click="handleSubmit">
           预检并提交
         </UiButton>
-      </a-space>
+      </div>
     </template>
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <script lang="ts" setup>
@@ -68,7 +71,13 @@ import {
   precheckMarkingTaskBatch,
 } from '@/apis/mark/marking-batch'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWithdrawPolicy'
 import { showUserError } from '@/utils/error-handler'
@@ -154,6 +163,9 @@ async function confirmExtremeScore(): Promise<boolean> {
 }
 
 async function handleSubmit(): Promise<void> {
+  if (submitting.value) {
+    return
+  }
   if (!props.examId || !props.groupId || selectedTaskIds.value.length === 0) return
   if (score.value === undefined) {
     message.warning('请填写给分')
@@ -162,16 +174,16 @@ async function handleSubmit(): Promise<void> {
   const confirmed = await confirmExtremeScore()
   if (!confirmed) return
 
+  const questionScores = buildQuestionScores()
+  if (!questionScores) {
+    return
+  }
+
   submitting.value = true
   progressDone.value = 0
   progressTotal.value = selectedTaskIds.value.length
   progressFailed.value = false
   annotationWarning.value = ''
-
-  const questionScores = buildQuestionScores()
-  if (!questionScores) {
-    return
-  }
 
   const baseRequest = {
     examId: props.examId,

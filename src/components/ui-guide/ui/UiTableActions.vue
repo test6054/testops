@@ -99,7 +99,7 @@ const emitAction = (key: string) => {
   display: inline-flex;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 12px;
+  gap: var(--dp-space-2, 8px);
   max-width: 100%;
   white-space: nowrap;
 }
@@ -125,7 +125,7 @@ const emitAction = (key: string) => {
   width: 1px;
   height: 12px;
   margin: 0;
-  background: var(--dp-table-border, var(--ant-color-border-secondary));
+  background: var(--dp-table-border, var(--dp-border-subtle));
 }
 
 .ui-table-actions :deep(.ui-text-action),

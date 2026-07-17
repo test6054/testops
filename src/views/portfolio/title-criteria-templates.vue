@@ -3,25 +3,32 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTitleCriteriaTemplateVO } from '@/apis/portfolio/title-promotion'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
 import type { PortfolioTitleJobCategoryCode } from '@/types/enums/portfolio-title-job-category-enum'
-import { Input, InputNumber, message, Select, Switch } from 'ant-design-vue'
-import { onMounted, reactive, ref } from 'vue'
+import { message } from 'ant-design-vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioArchiveCategoryStatusCode } from '@/types/enums/portfolio-archive-category-status-enum'
+import { isPortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import {
   ALL_PORTFOLIO_TITLE_CRITERIA_CHECK_TYPE_CODES,
   isEvidenceCategoryRequiredCheckType,
   PortfolioTitleCriteriaCheckTypeCode,
   PortfolioTitleCriteriaCheckTypeDescription,
+  requiresPositiveExpectedValueCheckType,
 } from '@/types/enums/portfolio-title-criteria-check-type-enum'
 import {
   PortfolioTitleCriteriaGateKindCode,
@@ -51,13 +58,31 @@ const editorOpen = ref(false)
 const editingId = ref<string | undefined>()
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 
+interface CriteriaTemplateForm {
+  templateCode: string
+  templateTitle: string
+  criteriaDescription: string
+  gateKind: PortfolioTitleCriteriaGateKindCode
+  checkType: PortfolioTitleCriteriaCheckTypeCode
+  satisfyMode: PortfolioTitleCriteriaSatisfyModeCode
+  groupCode: string
+  groupMinimumCount?: number
+  pathCode: PortfolioTitleCriteriaPathCode
+  jobCategory?: PortfolioTitleJobCategoryCode
+  expectedValue: string
+  evidenceCategoryCode?: string
+  blockOnFail: boolean
+  enabled: boolean
+  sortNo: number
+}
+
 const query = reactive({
   pageNum: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
   keyword: '',
 })
 
-const form = reactive({
+const form = reactive<CriteriaTemplateForm>({
   templateCode: '',
   templateTitle: '',
   criteriaDescription: '',
@@ -65,11 +90,11 @@ const form = reactive({
   checkType: PortfolioTitleCriteriaCheckTypeCode.MIN_OFFICIAL_ARCHIVE,
   satisfyMode: PortfolioTitleCriteriaSatisfyModeCode.ALL,
   groupCode: '',
-  groupMinimumCount: undefined as number | undefined,
+  groupMinimumCount: undefined,
   pathCode: PortfolioTitleCriteriaPathCode.COMMON,
-  jobCategory: undefined as PortfolioTitleJobCategoryCode | undefined,
+  jobCategory: undefined,
   expectedValue: '',
-  evidenceCategoryCode: undefined as string | undefined,
+  evidenceCategoryCode: undefined,
   blockOnFail: true,
   enabled: true,
   sortNo: 10,
@@ -142,11 +167,32 @@ function openEdit(row: PortfolioTitleCriteriaTemplateVO) {
   form.jobCategory = row.jobCategory || undefined
   form.expectedValue = row.expectedValue || ''
   form.evidenceCategoryCode = row.evidenceCategoryCode
-  form.blockOnFail = row.blockOnFail
+  form.blockOnFail = row.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? true : row.blockOnFail
   form.enabled = row.enabled
   form.sortNo = row.sortNo || 0
   editorOpen.value = true
 }
+
+/** 校验表格插槽记录属于条件模板合同，避免把 unknown 行直接强转为业务对象。 */
+function isTemplateRecord(record: unknown): record is PortfolioTitleCriteriaTemplateVO {
+  return typeof record === 'object' && record !== null
+    && 'id' in record && 'templateCode' in record && 'enabled' in record
+}
+
+watch(() => form.gateKind, (gateKind) => {
+  if (gateKind === PortfolioTitleCriteriaGateKindCode.HARD) {
+    form.blockOnFail = true
+  }
+})
+
+watch(() => form.satisfyMode, (satisfyMode) => {
+  if (satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ALL) {
+    form.groupCode = ''
+  }
+  if (satisfyMode !== PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP) {
+    form.groupMinimumCount = undefined
+  }
+})
 
 async function saveTemplate() {
   if (!form.templateCode.trim() || !form.templateTitle.trim()) {
@@ -168,6 +214,25 @@ async function saveTemplate() {
     showFormValidationMessage('当前核验类型必须选择证据档案分类')
     return
   }
+  if (requiresPositiveExpectedValueCheckType(form.checkType)
+    && !/^[1-9]\d*$/.test(form.expectedValue.trim())) {
+    showFormValidationMessage('当前核验类型必须填写正整数阈值')
+    return
+  }
+  if (form.checkType === PortfolioTitleCriteriaCheckTypeCode.DEGREE_REQUIREMENT
+    && !form.expectedValue.trim()) {
+    showFormValidationMessage('学历学位要求必须填写期望值')
+    return
+  }
+  if (form.checkType === PortfolioTitleCriteriaCheckTypeCode.HONOR_LEVEL
+    && !isPortfolioHonorLevelCode(form.expectedValue.trim())) {
+    showFormValidationMessage('获奖级别必须填写有效级别编码')
+    return
+  }
+  if (form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD && !form.blockOnFail) {
+    showFormValidationMessage('硬门槛模板必须开启「不满足阻断提交」')
+    return
+  }
   saving.value = true
   try {
     await portfolioTitlePromotionApi.saveCriteriaTemplate({
@@ -178,7 +243,9 @@ async function saveTemplate() {
       gateKind: form.gateKind,
       checkType: form.checkType,
       satisfyMode: form.satisfyMode,
-      groupCode: form.groupCode || undefined,
+      groupCode: form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ALL
+        ? undefined
+        : form.groupCode || undefined,
       groupMinimumCount: form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
         ? form.groupMinimumCount
         : undefined,
@@ -186,7 +253,7 @@ async function saveTemplate() {
       jobCategory: form.jobCategory || undefined,
       expectedValue: form.expectedValue || undefined,
       evidenceCategoryCode: form.evidenceCategoryCode,
-      blockOnFail: form.blockOnFail,
+      blockOnFail: form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? true : form.blockOnFail,
       enabled: form.enabled,
       sortNo: form.sortNo,
     })
@@ -236,20 +303,21 @@ onMounted(() => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="职称资格条件模板" description="租户标准库：基本条件与业绩条件模板，任务侧可导入" />
+    <ContextBar layout="workbench" title="职称资格条件模板" />
     <UiCard>
       <div class="mb-3 flex flex-wrap items-center gap-2">
-        <Input
-          v-model:value="query.keyword"
-          allow-clear
+        <UiInput
+          v-model="query.keyword"
+          size="sm"
+          clearable
           placeholder="编码/标题"
           class="w-56"
-          @press-enter="loadData"
+          @enter="loadData"
         />
-        <UiButton variant="primary" @click="loadData">
+        <UiButton size="sm" variant="outline" @click="loadData">
           查询
         </UiButton>
-        <UiButton variant="primary" @click="openCreate">
+        <UiButton size="sm" variant="primary" @click="openCreate">
           新建模板
         </UiButton>
       </div>
@@ -287,13 +355,18 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'action'">
             <div class="flex gap-2">
-              <UiButton size="small" @click="openEdit(record as PortfolioTitleCriteriaTemplateVO)">
+              <UiButton
+                v-if="isTemplateRecord(record)"
+                size="sm"
+                @click="openEdit(record)"
+              >
                 编辑
               </UiButton>
-              <Switch
-                :checked="(record as PortfolioTitleCriteriaTemplateVO).enabled"
-                size="small"
-                @change="(checked: boolean | string | number) => toggleEnabled(record as PortfolioTitleCriteriaTemplateVO, Boolean(checked))"
+              <UiSwitch
+                v-if="isTemplateRecord(record)"
+                :model-value="Boolean(record.enabled)"
+                size="sm"
+                @change="checked => toggleEnabled(record, Boolean(checked))"
               />
             </div>
           </template>
@@ -308,52 +381,62 @@ onMounted(() => {
     >
       <div class="flex flex-col gap-3">
         <label class="text-sm">模板编码</label>
-        <Input v-model:value="form.templateCode" :disabled="Boolean(editingId)" />
+        <UiInput v-model="form.templateCode" size="sm" :disabled="Boolean(editingId)" />
         <label class="text-sm">模板标题</label>
-        <Input v-model:value="form.templateTitle" />
+        <UiInput v-model="form.templateTitle" size="sm" />
         <label class="text-sm">条件说明</label>
-        <Input.TextArea v-model:value="form.criteriaDescription" :rows="3" />
+        <UiTextarea v-model="form.criteriaDescription" size="sm" :rows="3" />
         <label class="text-sm">门槛类型</label>
-        <Select
-          v-model:value="form.gateKind"
+        <UiSelect
+          size="sm"
+          v-model="form.gateKind"
           :options="Object.values(PortfolioTitleCriteriaGateKindCode).map(code => ({
             value: code,
             label: PortfolioTitleCriteriaGateKindDescription[code],
           }))"
+          @change="() => {
+            if (form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD) {
+              form.blockOnFail = true
+            }
+          }"
         />
         <label class="text-sm">核验类型</label>
-        <Select
-          v-model:value="form.checkType"
+        <UiSelect
+          size="sm"
+          v-model="form.checkType"
           :options="ALL_PORTFOLIO_TITLE_CRITERIA_CHECK_TYPE_CODES.map(code => ({
             value: code,
             label: PortfolioTitleCriteriaCheckTypeDescription[code],
           }))"
         />
         <label class="text-sm">满足模式</label>
-        <Select
-          v-model:value="form.satisfyMode"
+        <UiSelect
+          size="sm"
+          v-model="form.satisfyMode"
           :options="Object.values(PortfolioTitleCriteriaSatisfyModeCode).map(code => ({
             value: code,
             label: PortfolioTitleCriteriaSatisfyModeDescription[code],
           }))"
         />
         <label class="text-sm">路径</label>
-        <Select
-          v-model:value="form.pathCode"
+        <UiSelect
+          size="sm"
+          v-model="form.pathCode"
           :options="Object.values(PortfolioTitleCriteriaPathCode).map(code => ({
             value: code,
             label: PortfolioTitleCriteriaPathDescription[code],
           }))"
         />
         <label class="text-sm">业绩组编码</label>
-        <Input v-model:value="form.groupCode" placeholder="组模式时填写" />
+        <UiInput v-model="form.groupCode" size="sm" placeholder="组模式时填写" />
         <template v-if="form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP">
           <label class="text-sm">组内最低满足条数</label>
-          <InputNumber v-model:value="form.groupMinimumCount" :min="1" :precision="0" class="w-full" />
+          <UiInputNumber v-model="form.groupMinimumCount" size="sm" :min="1" :precision="0" />
         </template>
         <label class="text-sm">岗位类型</label>
-        <Select
-          v-model:value="form.jobCategory"
+        <UiSelect
+          size="sm"
+          v-model="form.jobCategory"
           allow-clear
           placeholder="可空=全适用"
           :options="ALL_PORTFOLIO_TITLE_JOB_CATEGORY_CODES.map(code => ({
@@ -362,29 +445,33 @@ onMounted(() => {
           }))"
         />
         <label class="text-sm">单条核验阈值</label>
-        <Input v-model:value="form.expectedValue" placeholder="如数量、学时、年限或级别" />
+        <UiInput v-model="form.expectedValue" size="sm" placeholder="如数量、学时、年限或级别" />
         <label class="text-sm">证据档案分类</label>
-        <Select
-          v-model:value="form.evidenceCategoryCode"
+        <UiSelect
+          size="sm"
+          v-model="form.evidenceCategoryCode"
           :options="categoryOptions"
           allow-clear
-          show-search
+          allow-search
           option-filter-prop="label"
           placeholder="需要按材料类型核验时选择"
         />
         <div class="flex items-center gap-2">
-          <Switch v-model:checked="form.blockOnFail" />
-          <span>不满足阻断提交</span>
+          <UiSwitch
+            v-model="form.blockOnFail"
+            :disabled="form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD"
+          />
+          <span>不满足阻断提交{{ form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? '（硬门槛强制）' : '' }}</span>
         </div>
         <div class="flex items-center gap-2">
-          <Switch v-model:checked="form.enabled" />
+          <UiSwitch v-model="form.enabled" />
           <span>启用</span>
         </div>
         <div class="mt-2 flex justify-end gap-2">
-          <UiButton @click="editorOpen = false">
+          <UiButton size="sm" @click="editorOpen = false">
             取消
           </UiButton>
-          <UiButton variant="primary" :loading="saving" @click="saveTemplate">
+          <UiButton size="sm" variant="primary" :loading="saving" @click="saveTemplate">
             保存
           </UiButton>
         </div>

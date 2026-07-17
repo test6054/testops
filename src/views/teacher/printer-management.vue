@@ -17,7 +17,7 @@
     </template>
 
     <template #signal>
-      <SignalBand variant="tiles" compact :metrics="deviceSignalMetrics" />
+      <SignalBand compact :metrics="deviceSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav />
@@ -87,177 +87,193 @@
       @ok="handleFormSubmit"
       @cancel="showFormModal = false"
     >
-      <a-form
+      <UiForm
         ref="formRef"
         :model="formData"
         :rules="formRules"
         :label-col="{ span: 7 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item name="scannerDeviceId" label="扫描设备编号">
-              <a-input
-                v-model:value="formData.scannerDeviceId"
+        <UiRow :gutter="16">
+          <UiCol :span="12">
+            <UiFormItem name="scannerDeviceId" label="扫描设备编号">
+              <UiInput
+                size="sm"
+                v-model="formData.scannerDeviceId"
                 placeholder="租户内唯一，例如厂商型号-编号"
                 :disabled="formMode === 'edit'"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item name="scannerStationId" label="扫描站点编号">
-              <a-input
-                v-model:value="formData.scannerStationId"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem name="scannerStationId" label="扫描站点编号">
+              <UiInput
+                size="sm"
+                v-model="formData.scannerStationId"
                 placeholder="同一物理位置可有多台设备"
                 :disabled="formMode === 'edit'"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item name="deviceName" label="设备名称">
-              <a-input v-model:value="formData.deviceName" placeholder="教师可读的设备名" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item name="status" label="设备状态">
-              <a-select v-model:value="formData.status" :options="SCANNER_DEVICE_STATUS_OPTIONS" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item name="scannerIp" label="设备地址">
-              <a-input
-                v-model:value="formData.scannerIp"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="16">
+          <UiCol :span="12">
+            <UiFormItem name="deviceName" label="设备名称">
+              <UiInput
+                size="sm" v-model="formData.deviceName" placeholder="教师可读的设备名"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem name="status" label="设备状态">
+              <UiSelect
+                size="sm" v-model="formData.status" :options="SCANNER_DEVICE_STATUS_OPTIONS"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem name="scannerIp" label="设备地址">
+              <UiInput
+                size="sm"
+                v-model="formData.scannerIp"
                 placeholder="可选，一体机扫描客户端心跳会自动刷新"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item name="kioskLockEnabled" label="Kiosk 防误触锁">
-              <a-switch
-                v-model:checked="formData.kioskLockEnabled"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="16">
+          <UiCol :span="12">
+            <UiFormItem name="kioskLockEnabled" label="Kiosk 防误触锁">
+              <UiSwitch
+                size="sm"
+                v-model="formData.kioskLockEnabled"
                 checked-children="启用"
                 un-checked-children="关闭"
               />
-            </a-form-item>
-          </a-col>
-          <a-col v-if="formMode === 'edit'" :span="12">
-            <a-form-item name="webSupplementEnabled" label="Web 补录工位">
-              <a-switch
-                v-model:checked="formData.webSupplementEnabled"
+            </UiFormItem>
+          </UiCol>
+          <UiCol v-if="formMode === 'edit'" :span="12">
+            <UiFormItem name="webSupplementEnabled" label="Web 补录工位">
+              <UiSwitch
+                size="sm"
+                v-model="formData.webSupplementEnabled"
                 checked-children="启用"
                 un-checked-children="关闭"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
 
-        <a-divider orientation="left">运维信息（可选）</a-divider>
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item name="manufacturer" label="厂商">
-              <a-input
-                v-model:value="formData.manufacturer"
+        <UiDivider orientation="left">运维信息（可选）</UiDivider>
+        <UiRow :gutter="16">
+          <UiCol :span="12">
+            <UiFormItem name="manufacturer" label="厂商">
+              <UiInput
+                size="sm"
+                v-model="formData.manufacturer"
                 placeholder="如 EPSON / Canon / 富士通"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item name="model" label="型号">
-              <a-input v-model:value="formData.model" placeholder="设备型号" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item name="location" label="物理位置">
-              <a-input v-model:value="formData.location" placeholder="如 教学楼A栋 301 教研室" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item name="remark" label="备注">
-              <a-input v-model:value="formData.remark" placeholder="维护备注" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-      </a-form>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem name="model" label="型号">
+              <UiInput
+                size="sm" v-model="formData.model" placeholder="设备型号"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="16">
+          <UiCol :span="12">
+            <UiFormItem name="location" label="物理位置">
+              <UiInput
+                size="sm" v-model="formData.location" placeholder="如 教学楼A栋 301 教研室"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem name="remark" label="备注">
+              <UiInput
+                size="sm" v-model="formData.remark" placeholder="维护备注"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+      </UiForm>
     </UiDialog>
 
     <!-- 设备详情弹窗 -->
     <UiDialog v-model:open="showDetailModal" title="扫描设备详情" :width="720" hide-footer>
-      <a-descriptions v-if="detailInfo" bordered :column="2" size="small">
-        <a-descriptions-item label="设备名称">{{ detailInfo.deviceName }}</a-descriptions-item>
-        <a-descriptions-item label="扫描设备编号">
+      <UiDescriptions v-if="detailInfo" bordered :column="2" size="small">
+        <UiDescriptionsItem label="设备名称">{{ detailInfo.deviceName }}</UiDescriptionsItem>
+        <UiDescriptionsItem label="扫描设备编号">
           {{ detailInfo.scannerDeviceId }}
-        </a-descriptions-item>
-        <a-descriptions-item label="扫描站点编号">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="扫描站点编号">
           {{ detailInfo.scannerStationId }}
-        </a-descriptions-item>
-        <a-descriptions-item label="设备状态">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="设备状态">
           <UiTag :tone="statusColorOf(detailInfo.status)">
             {{ statusLabelOf(detailInfo.status) }}
           </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="设备地址">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="设备地址">
           {{ detailInfo.scannerIp || '—' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="Kiosk 防误触锁">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="Kiosk 防误触锁">
           <UiTag :tone="!detailInfo.kioskLockEnabled ? 'orange' : 'green'">
             {{ detailInfo.kioskLockEnabled === false ? '已关闭' : '已启用' }}
           </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="Web 补录工位">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="Web 补录工位">
           <UiTag :tone="detailInfo.webSupplementEnabled ? 'blue' : 'gray'">
             {{ detailInfo.webSupplementEnabled ? '已启用' : '未启用' }}
           </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="扫描组件在线状态">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="扫描组件在线状态">
           <UiTag :tone="endpointOnlineStatusDisplayColorOf(detailInfo)">
             {{ endpointOnlineStatusDisplayLabelOf(detailInfo) }}
           </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="扫描组件版本">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="扫描组件版本">
           {{ detailInfo.agentVersion || '未激活' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="客户端版本">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="客户端版本">
           {{ detailInfo.clientVersion || '—' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="端点名称">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="端点名称">
           {{ detailInfo.endpointName || '—' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="扫描仪连接">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="扫描仪连接">
           {{ detailInfo.scannerConnected === true ? '已连接' : '未连接或未上报' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="本地队列">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="本地队列">
           任务 {{ detailInfo.pendingJobCount ?? '未上报' }} / 待上传页
           {{ detailInfo.pendingUploadPageCount ?? '未上报' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="最近心跳">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="最近心跳">
           {{ detailInfo.lastHeartbeatTime || '从未心跳' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="扫描组件维护说明">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="扫描组件维护说明">
           {{
             scannerDeviceDiagnosticText(detailInfo.diagnosticMessage, detailInfo.diagnosticStatus)
           }}
-        </a-descriptions-item>
-        <a-descriptions-item label="厂商">{{ detailInfo.manufacturer || '—' }}</a-descriptions-item>
-        <a-descriptions-item label="型号">{{ detailInfo.model || '—' }}</a-descriptions-item>
-        <a-descriptions-item label="物理位置" :span="2">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="厂商">{{ detailInfo.manufacturer || '—' }}</UiDescriptionsItem>
+        <UiDescriptionsItem label="型号">{{ detailInfo.model || '—' }}</UiDescriptionsItem>
+        <UiDescriptionsItem label="物理位置" :span="2">
           {{ detailInfo.location || '—' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="最近通讯时间">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="最近通讯时间">
           {{ detailInfo.lastSeenTime || '从未通讯' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="创建时间">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="创建时间">
           {{ detailInfo.createTime || '—' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="备注" :span="2">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="备注" :span="2">
           {{ detailInfo.remark || '—' }}
-        </a-descriptions-item>
-      </a-descriptions>
+        </UiDescriptionsItem>
+      </UiDescriptions>
     </UiDialog>
 
     <UiDialog v-model:open="showActivationCodeModal" title="一体机激活码" :width="520" hide-footer>
@@ -284,8 +300,8 @@
           <span>有效期至：{{ activationCodeInfo.expireTime }}</span>
         </div>
         <div class="activation-code-modal__actions">
-          <UiButton @click="copyText(activationCodeInfo.activationCode)"> 复制激活码 </UiButton>
-          <UiButton variant="outline" @click="showActivationCodeModal = false">关闭</UiButton>
+          <UiButton size="sm" @click="copyText(activationCodeInfo.activationCode)"> 复制激活码 </UiButton>
+          <UiButton size="sm" variant="outline" @click="showActivationCodeModal = false">关闭</UiButton>
         </div>
       </div>
     </UiDialog>
@@ -334,9 +350,19 @@ import {
 } from '@/apis/mark/exam-mark-scanner'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
@@ -597,6 +623,7 @@ function handleUiPageChange(page: { current: number, pageSize: number }): void {
 const showFormModal = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
 const formSubmitting = ref(false)
+const deviceActionLoading = ref(false)
 const formRef = ref<FormInstance | null>(null)
 
 interface FormState {
@@ -666,7 +693,13 @@ function handleEdit(record: ExamScannerDeviceResponse): void {
 }
 
 async function handleFormSubmit(): Promise<void> {
+  if (formSubmitting.value) {
+    return
+  }
   await formRef.value?.validate()
+  if (formSubmitting.value) {
+    return
+  }
   formSubmitting.value = true
   try {
     if (formMode.value === 'create') {
@@ -756,6 +789,10 @@ async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<voi
     content: `将重置服务端接入密钥并生成新激活码。原一体机需使用新激活码重新绑定。设备：${record.deviceName}`,
     type: 'warning',
     onOk: async () => {
+      if (deviceActionLoading.value) {
+        return
+      }
+      deviceActionLoading.value = true
       try {
         const handoff = await resetScannerDevicePushToken(record.id)
         message.success('已生成新的绑定激活码')
@@ -763,19 +800,27 @@ async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<voi
         await syncAfterDeviceMutation()
       } catch (error) {
         showUserError(error, '重新绑定准备失败')
+      } finally {
+        deviceActionLoading.value = false
       }
     },
   })
 }
 
 async function handleCreateActivationCode(record: ExamScannerDeviceResponse): Promise<void> {
+  if (deviceActionLoading.value) {
+    return
+  }
   activationCodeDeviceName.value = record.deviceName || record.scannerDeviceId || '扫描设备'
   activationCodeInfo.value = null
   showActivationCodeModal.value = true
+  deviceActionLoading.value = true
   try {
     activationCodeInfo.value = await createScannerActivationCode({ deviceId: record.id })
   } catch (error) {
     showUserError(error, '扫描组件激活码生成失败')
+  } finally {
+    deviceActionLoading.value = false
   }
 }
 
@@ -785,12 +830,18 @@ function handleUnbindAgent(record: ExamScannerDeviceResponse): void {
     content: `确定解绑设备"${record.deviceName}"当前扫描组件吗？解绑后原一体机需要重新使用激活码绑定。`,
     type: 'warning',
     onOk: async () => {
+      if (deviceActionLoading.value) {
+        return
+      }
+      deviceActionLoading.value = true
       try {
         await unbindScannerDeviceAgent(record.id)
         message.success('扫描组件已解绑')
         await syncAfterDeviceMutation()
       } catch (error) {
         showUserError(error, '扫描组件解绑失败')
+      } finally {
+        deviceActionLoading.value = false
       }
     },
   })
@@ -837,12 +888,18 @@ function handleDelete(record: ExamScannerDeviceResponse): void {
     content: `确定删除设备"${record.deviceName}"吗？历史扫描事件保持引用，仅当前设备记录被逻辑删除。`,
     type: 'error',
     onOk: async () => {
+      if (deviceActionLoading.value) {
+        return
+      }
+      deviceActionLoading.value = true
       try {
         await deleteScannerDevice(record.id)
         message.success('扫描设备已删除')
         await syncAfterDeviceMutation()
       } catch (error) {
         showUserError(error, '扫描设备删除失败')
+      } finally {
+        deviceActionLoading.value = false
       }
     },
   })
@@ -919,7 +976,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 
   &__hint {
     width: 100%;

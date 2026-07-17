@@ -5,10 +5,11 @@
   - 当 majorCategoryId 存在时，仅返回该专业大类下的已授权课程
 -->
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { CourseListVO } from '@/apis/quality/user-catalog'
-import { onMounted, ref, watch } from 'vue'
+import type { UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
+import { computed, onMounted, ref, watch } from 'vue'
 import { courseCatalogApi } from '@/apis/quality/user-catalog'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { showUserError } from '@/utils/error-handler'
 
 interface Props {
@@ -60,7 +61,19 @@ async function loadOptions() {
   }
 }
 
-function handleChange(val: SelectValue) {
+
+const selectOptions = computed<UiSelectOption[]>(() =>
+  options.value.map((opt) => ({
+    value: opt.id,
+    label: opt.courseName,
+  })),
+)
+
+const controlStyle = computed(() => ({
+  width: typeof props.width === 'number' ? `${props.width}px` : props.width,
+}))
+
+function handleChange(val: UiOptionValue | UiOptionValue[] | undefined) {
   const next: string | null = typeof val === 'string' ? val : null
   internalValue.value = next ?? undefined
   const option = options.value.find((o) => o.id === next)
@@ -76,25 +89,32 @@ defineExpose({ reload: loadOptions })
 </script>
 
 <template>
-  <a-select
-    :value="internalValue"
+  <UiSelect
+    v-model="internalValue"
+    class="dp-quality-selector"
+    :style="controlStyle"
+    size="sm"
     :placeholder="placeholder"
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
-    :style="{ width: typeof width === 'number' ? `${width}px` : width }"
-    show-search
+    allow-search
     option-filter-prop="label"
-    @change="handleChange"
+    :options="selectOptions"
+    @update:model-value="handleChange"
   >
-    <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.courseName">
-      <span v-if="opt.courseCode" class="dp-selector-option-code">{{ opt.courseCode }}</span>
-      {{ opt.courseName }}
-      <span v-if="opt.majorCategoryName" class="dp-selector-option-meta">{{
-        opt.majorCategoryName
-      }}</span>
-    </a-select-option>
-  </a-select>
+    <template #option="{ value: optionValue }">
+      <template v-for="opt in options" :key="opt.id">
+        <template v-if="opt.id === optionValue">
+          <span v-if="opt.courseCode" class="dp-selector-option-code">{{ opt.courseCode }}</span>
+          {{ opt.courseName }}
+          <span v-if="opt.majorCategoryName" class="dp-selector-option-meta">{{
+            opt.majorCategoryName
+          }}</span>
+        </template>
+      </template>
+    </template>
+  </UiSelect>
 </template>
 
 <style scoped>
@@ -103,11 +123,11 @@ defineExpose({ reload: loadOptions })
 }
 
 .text-gray-500 {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 
 .text-gray-400 {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 
 .mr-1 {

@@ -1,23 +1,28 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { Dayjs } from 'dayjs'
 import type {
   PortfolioEthicsConstraintStatusVO,
   PortfolioEthicsReviewLogVO,
   PortfolioEthicsSanctionVO,
 } from '@/apis/portfolio/ethics-sanction'
-import { DatePicker, Input, message, Select, Textarea } from 'ant-design-vue'
-import dayjs from 'dayjs'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiRangePicker from '@/components/ui-guide/ui/RangePicker.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
@@ -71,7 +76,7 @@ const form = reactive({
   teacherId: '',
   eventType: PortfolioEthicsEventTypeCode.TEACHER_ETHICS_VIOLATION,
   handlingBasis: '',
-  dateRange: undefined as [Dayjs, Dayjs] | undefined,
+  dateRange: undefined as [string, string] | undefined,
   impactScope: PortfolioEthicsImpactScopeCode.ALL,
   releaseCondition: '',
   reviewDepartment: '',
@@ -82,7 +87,7 @@ const form = reactive({
 const reviewForm = reactive({
   reviewConclusion: PortfolioEthicsReviewConclusionCode.RELEASE,
   reviewOpinion: '',
-  newSanctionEndDate: undefined as Dayjs | undefined,
+  newSanctionEndDate: undefined as string | undefined,
 })
 
 const columns: ColumnsType = [
@@ -185,7 +190,7 @@ function openEdit(row: PortfolioEthicsSanctionVO) {
   form.teacherId = row.teacherId
   form.eventType = row.eventType as PortfolioEthicsEventTypeCode
   form.handlingBasis = row.handlingBasis
-  form.dateRange = [dayjs(row.sanctionStartDate), dayjs(row.sanctionEndDate)]
+  form.dateRange = [row.sanctionStartDate, row.sanctionEndDate]
   form.impactScope = row.impactScope as PortfolioEthicsImpactScopeCode
   form.releaseCondition = row.releaseCondition
   form.reviewDepartment = row.reviewDepartment
@@ -313,8 +318,8 @@ async function saveSanction() {
       teacherId: form.teacherId.trim(),
       eventType: form.eventType,
       handlingBasis: form.handlingBasis.trim(),
-      sanctionStartDate: form.dateRange[0].format('YYYY-MM-DD'),
-      sanctionEndDate: form.dateRange[1].format('YYYY-MM-DD'),
+      sanctionStartDate: form.dateRange[0],
+      sanctionEndDate: form.dateRange[1],
       impactScope: form.impactScope,
       releaseCondition: form.releaseCondition.trim(),
       reviewDepartment: form.reviewDepartment.trim(),
@@ -334,10 +339,15 @@ async function saveSanction() {
 async function submitReview() {
   if (!reviewTarget.value || writing.value) return
   if (
-    reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
+    (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
+      || reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN)
     && !reviewForm.newSanctionEndDate
   ) {
-    message.error('延长处分须选择新的结束日期')
+    message.error(
+      reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
+        ? '延长处分须选择新的结束日期'
+        : '维持约束须设定下一次复核截止日期',
+    )
     return
   }
   reviewing.value = true
@@ -346,7 +356,7 @@ async function submitReview() {
       sanctionId: reviewTarget.value.id,
       reviewConclusion: reviewForm.reviewConclusion,
       reviewOpinion: reviewForm.reviewOpinion.trim() || undefined,
-      newSanctionEndDate: reviewForm.newSanctionEndDate?.format('YYYY-MM-DD'),
+      newSanctionEndDate: reviewForm.newSanctionEndDate,
     })
     message.success('复核结论已提交')
     reviewOpen.value = false
@@ -384,30 +394,38 @@ onMounted(() => {
         subtitle="登记处分、期满复核；约束结果按有效状态实时生效"
       >
         <template #actions>
-          <UiButton @click="openCreate"> 登记处分 </UiButton>
+          <UiButton size="sm" @click="openCreate"> 登记处分 </UiButton>
         </template>
       </ContextBar>
     </template>
     <UiCard>
       <div class="ethics-admin__filters">
-        <Input
-          v-model:value="query.teacherId"
-          allow-clear
+        <UiInput
+          v-model="query.teacherId"
+          size="sm"
+          clearable
           placeholder="教师用户编号"
           style="width: 180px"
-          @press-enter="search"
+          @enter="search"
         />
-        <Select
-          v-model:value="query.sanctionStatus"
+        <UiSelect
+          v-model="query.sanctionStatus"
+          size="sm"
           allow-clear
           placeholder="处分状态"
           style="width: 160px"
           :options="statusFilterOptions"
         />
-        <UiButton variant="soft" @click="search"> 查询 </UiButton>
+        <UiButton size="sm" variant="soft" @click="search"> 查询 </UiButton>
       </div>
-      <a-spin :spinning="loading">
-        <UiEmpty v-if="!loading && !rows.length" description="暂无师德处分记录" />
+      <UiSpin :spinning="loading">
+        <WorkbenchContextGateStrip
+          v-if="!loading && !rows.length"
+          tag="未登记"
+          body="暂无师德处分记录，请先登记处分"
+          cta-label="登记处分"
+          @cta="openCreate"
+        />
         <UiDataTable
           v-model:current="query.pageNum"
           v-model:page-size="query.pageSize"
@@ -460,7 +478,7 @@ onMounted(() => {
             </template>
           </template>
         </UiDataTable>
-      </a-spin>
+      </UiSpin>
     </UiCard>
 
     <UiDrawer
@@ -470,27 +488,27 @@ onMounted(() => {
     >
       <div class="ethics-admin__form">
         <label>教师用户编号</label>
-        <Input v-model:value="form.teacherId" :disabled="!!editingId" placeholder="教师用户编号" />
+        <UiInput v-model="form.teacherId" size="sm" :disabled="!!editingId" placeholder="教师用户编号" />
         <label>事件类型</label>
-        <Select v-model:value="form.eventType" :options="eventOptions" />
+        <UiSelect v-model="form.eventType" size="sm" :options="eventOptions" />
         <label>处理依据</label>
-        <Input v-model:value="form.handlingBasis" placeholder="决定文件/制度条款" />
+        <UiInput v-model="form.handlingBasis" size="sm" placeholder="决定文件/制度条款" />
         <label>处分起止</label>
-        <DatePicker.RangePicker v-model:value="form.dateRange" style="width: 100%" />
+        <UiRangePicker v-model="form.dateRange" size="sm" />
         <label>影响范围</label>
-        <Select v-model:value="form.impactScope" :options="impactOptions" />
+        <UiSelect v-model="form.impactScope" size="sm" :options="impactOptions" />
         <label>解除条件</label>
-        <Input v-model:value="form.releaseCondition" />
+        <UiInput v-model="form.releaseCondition" size="sm" />
         <label>复核部门</label>
-        <Input v-model:value="form.reviewDepartment" />
+        <UiInput v-model="form.reviewDepartment" size="sm" />
         <label>公开摘要（画像可见）</label>
-        <Input v-model:value="form.publicSummary" placeholder="不含敏感细节" />
+        <UiInput v-model="form.publicSummary" size="sm" placeholder="不含敏感细节" />
         <label>敏感明细（仅管理端）</label>
-        <Textarea v-model:value="form.detailDescription" :rows="3" />
+        <UiTextarea v-model="form.detailDescription" size="sm" :rows="3" />
       </div>
       <template #footer>
-        <UiButton variant="soft" @click="editorOpen = false"> 取消 </UiButton>
-        <UiButton :loading="saving" @click="saveSanction"> 保存 </UiButton>
+        <UiButton size="sm" variant="soft" @click="editorOpen = false"> 取消 </UiButton>
+        <UiButton size="sm" :loading="saving" @click="saveSanction"> 保存 </UiButton>
       </template>
     </UiDrawer>
 
@@ -498,19 +516,21 @@ onMounted(() => {
       <div v-if="reviewTarget" class="ethics-admin__form">
         <p>教师 {{ reviewTarget.teacherId }} · 原结束日 {{ reviewTarget.sanctionEndDate }}</p>
         <label>复核结论</label>
-        <Select v-model:value="reviewForm.reviewConclusion" :options="conclusionOptions" />
-        <label v-if="reviewForm.reviewConclusion === 'EXTEND'">新结束日期</label>
-        <DatePicker
-          v-if="reviewForm.reviewConclusion === 'EXTEND'"
-          v-model:value="reviewForm.newSanctionEndDate"
-          style="width: 100%"
+        <UiSelect v-model="reviewForm.reviewConclusion" size="sm" :options="conclusionOptions" />
+        <label v-if="reviewForm.reviewConclusion === 'EXTEND' || reviewForm.reviewConclusion === 'MAINTAIN'">
+          {{ reviewForm.reviewConclusion === 'EXTEND' ? '新结束日期' : '下一次复核截止日期' }}
+        </label>
+        <UiDatePicker
+          v-if="reviewForm.reviewConclusion === 'EXTEND' || reviewForm.reviewConclusion === 'MAINTAIN'"
+          v-model="reviewForm.newSanctionEndDate"
+          size="sm"
         />
         <label>复核意见</label>
-        <Textarea v-model:value="reviewForm.reviewOpinion" :rows="3" />
+        <UiTextarea v-model="reviewForm.reviewOpinion" size="sm" :rows="3" />
       </div>
       <template #footer>
-        <UiButton variant="soft" @click="reviewOpen = false"> 取消 </UiButton>
-        <UiButton :loading="reviewing" @click="submitReview"> 提交结论 </UiButton>
+        <UiButton size="sm" variant="soft" @click="reviewOpen = false"> 取消 </UiButton>
+        <UiButton size="sm" :loading="reviewing" @click="submitReview"> 提交结论 </UiButton>
       </template>
     </UiDrawer>
 
@@ -539,7 +559,7 @@ onMounted(() => {
           {{ detailRow.lastReviewOpinion || '无意见' }}
         </p>
         <h4>复核历史</h4>
-        <UiEmpty v-if="!reviewLogs.length" description="尚无复核记录" />
+        <UiEmpty v-if="!reviewLogs.length" size="sm" description="尚无复核记录" />
         <ul v-else class="ethics-admin__logs">
           <li v-for="log in reviewLogs" :key="log.id">
             {{ log.createTime }} · {{ conclusionLabel(log.reviewConclusion) }} ·
@@ -566,7 +586,7 @@ onMounted(() => {
 }
 .ethics-admin__form label {
   font-size: 13px;
-  color: var(--dp-text-secondary, #64748b);
+  color: var(--dp-text-secondary);
 }
 .ethics-admin__constraint {
   display: flex;

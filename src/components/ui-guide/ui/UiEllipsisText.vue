@@ -204,11 +204,11 @@ onBeforeUnmount(() => {
   min-height: auto;
   height: auto;
   border-radius: var(--dp-radius-overlay);
-  padding: 8px 12px;
-  color: #f8fafc !important;
-  background-color: rgb(15 23 42 / 92%) !important;
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  color: var(--dp-text-inverse) !important;
+  background-color: color-mix(in srgb, var(--dp-text-primary) 92%, transparent) !important;
   border: none !important;
-  box-shadow: 0 12px 32px rgb(15 23 42 / 18%) !important;
+  box-shadow: var(--dp-shadow-md) !important;
   font-size: 12px;
   font-weight: 400;
   line-height: 1.6;
@@ -218,7 +218,7 @@ onBeforeUnmount(() => {
 }
 
 .ant-tooltip.ui-tooltip-overlay.ui-ellipsis-tooltip-overlay .ant-tooltip-arrow::before {
-  background-color: rgb(15 23 42 / 92%) !important;
+  background-color: color-mix(in srgb, var(--dp-text-primary) 92%, transparent) !important;
   border: none !important;
 }
 </style>

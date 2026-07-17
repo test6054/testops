@@ -30,9 +30,21 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
@@ -1013,8 +1025,8 @@ defineExpose({
 
   <slot name="after-forms" />
 
-  <a-row v-if="selectedForm" :gutter="12" class="ie__split">
-    <a-col :span="12">
+  <UiRow v-if="selectedForm" :gutter="12" class="ie__split">
+    <UiCol :span="12">
       <UiCard class="detail-table-card ie__item-card">
         <template #title>题项</template>
         <template #extra>
@@ -1082,54 +1094,62 @@ defineExpose({
           </template>
         </UiDataTable>
       </UiCard>
-    </a-col>
-    <a-col :span="12">
+    </UiCol>
+    <UiCol :span="12">
       <slot name="response" />
-    </a-col>
-  </a-row>
+    </UiCol>
+  </UiRow>
 
-  <a-modal
+  <UiDialog
     v-model:open="formEditorVisible"
     :title="formEditorMode === 'create' ? '新建问卷' : '编辑问卷'"
-    width="720px"
+    :width="720"
     @ok="submitForm"
   >
-    <a-form layout="vertical" :model="formEditor">
-      <a-row :gutter="12">
-        <a-col :span="8">
-          <a-form-item label="编码" required>
-            <a-input v-model:value="formEditor.formCode" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="问卷类型" required>
-            <a-select v-model:value="formEditor.formType" :options="formTypeOptions" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="期望样本">
-            <a-input-number
-              v-model:value="formEditor.expectedSample"
+    <UiForm layout="vertical" :model="formEditor">
+      <UiRow :gutter="12">
+        <UiCol :span="8">
+          <UiFormItem label="编码" required>
+            <UiInput
+              size="sm" v-model="formEditor.formCode"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="问卷类型" required>
+            <UiSelect
+              size="sm" v-model="formEditor.formType" :options="formTypeOptions"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="期望样本">
+            <UiInputNumber
+              size="sm"
+              v-model="formEditor.expectedSample"
               :min="0"
               style="width: 100%"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-form-item label="名称" required>
-        <a-input v-model:value="formEditor.formName" />
-      </a-form-item>
-      <a-row :gutter="12">
-        <a-col :span="8">
-          <a-form-item label="目标类型" required>
-            <a-select
-              v-model:value="formEditor.targetType"
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiFormItem label="名称" required>
+        <UiInput
+          size="sm" v-model="formEditor.formName"
+        />
+      </UiFormItem>
+      <UiRow :gutter="12">
+        <UiCol :span="8">
+          <UiFormItem label="目标类型" required>
+            <UiSelect
+              size="sm"
+              v-model="formEditor.targetType"
               :options="targetTypeOptions"
               @change="handleFormTargetTypeChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col
+          </UiFormItem>
+        </UiCol>
+        <UiCol
           v-if="
             formEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL
               || formEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT
@@ -1138,7 +1158,7 @@ defineExpose({
           "
           :span="8"
         >
-          <a-form-item
+          <UiFormItem
             :label="
               formEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL
                 ? '评价课程'
@@ -1160,10 +1180,10 @@ defineExpose({
               placeholder="选择培养方案"
               @change="handleFormTrainingPlanChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem
             :label="
               formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
                 || formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
@@ -1217,9 +1237,9 @@ defineExpose({
               placeholder="选择专业"
               @change="handleFormProgramChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col
+          </UiFormItem>
+        </UiCol>
+        <UiCol
           v-if="
             formEditor.targetType !== AchievementTargetTypeCode.PROGRAM_SUMMARY
               && formEditor.targetType !== AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
@@ -1227,22 +1247,22 @@ defineExpose({
           "
           :span="8"
         >
-          <a-form-item label="所属专业">
+          <UiFormItem label="所属专业">
             <ProgramSelector
               :value="formEditor.programId || null"
               @change="handleFormProgramChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-form-item label="说明">
-        <a-textarea v-model:value="formEditor.description" :rows="3" />
-      </a-form-item>
-      <a-checkbox v-model:checked="formEditor.enabled">启用</a-checkbox>
-    </a-form>
-  </a-modal>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiFormItem label="说明">
+        <UiTextarea size="sm" v-model="formEditor.description" :rows="3" />
+      </UiFormItem>
+      <UiCheckbox v-model="formEditor.enabled">启用</UiCheckbox>
+    </UiForm>
+  </UiDialog>
 
-  <a-modal
+  <UiDialog
     v-model:open="itemEditorVisible"
     :title="
       itemEditorViewOnly
@@ -1253,7 +1273,7 @@ defineExpose({
             ? '新建题项'
             : '编辑题项'
     "
-    width="640px"
+    :width="640"
     :ok-text="itemEditorViewOnly ? '关闭' : '确定'"
     :class="{ 'indirect-item-editor-modal--ok-only': itemEditorViewOnly }"
     @ok="submitItem"
@@ -1266,40 +1286,45 @@ defineExpose({
       dense
       class="ie__structure-lock-alert"
     />
-    <a-form layout="vertical" :model="itemEditor" :disabled="itemEditorViewOnly">
-      <a-row :gutter="12">
-        <a-col :span="8">
-          <a-form-item label="编码" required>
-            <a-input v-model:value="itemEditor.itemCode" :disabled="itemEditorContentOnlyMode" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="权重">
-            <a-input-number
-              v-model:value="itemEditor.weight"
+    <UiForm layout="vertical" :model="itemEditor" :disabled="itemEditorViewOnly">
+      <UiRow :gutter="12">
+        <UiCol :span="8">
+          <UiFormItem label="编码" required>
+            <UiInput
+              size="sm" v-model="itemEditor.itemCode" :disabled="itemEditorContentOnlyMode"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="权重">
+            <UiInputNumber
+              size="sm"
+              v-model="itemEditor.weight"
               :min="0"
               :step="0.1"
               :disabled="itemEditorContentOnlyMode"
               style="width: 100%"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="排序">
-            <a-input-number
-              v-model:value="itemEditor.sortOrder"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="排序">
+            <UiInputNumber
+              size="sm"
+              v-model="itemEditor.sortOrder"
               :min="0"
               :disabled="itemEditorContentOnlyMode"
               style="width: 100%"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-row :gutter="12">
-        <a-col :span="12">
-          <a-form-item label="题型" required>
-            <a-select
-              v-model:value="itemEditor.itemType"
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiRow :gutter="12">
+        <UiCol :span="12">
+          <UiFormItem label="题型" required>
+            <UiSelect
+              size="sm"
+              v-model="itemEditor.itemType"
               :options="INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS"
               :disabled="
                 itemEditorContentOnlyMode
@@ -1307,30 +1332,31 @@ defineExpose({
               "
               placeholder="请选择题型"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item label="必填">
-            <a-switch v-model:checked="itemEditor.required" :disabled="itemEditorContentOnlyMode" />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-form-item label="题面" required>
-        <a-textarea v-model:value="itemEditor.itemText" :rows="3" />
-      </a-form-item>
-      <a-row :gutter="12">
-        <a-col :span="12">
-          <a-form-item label="目标类型" required>
-            <a-select
-              v-model:value="itemEditor.targetType"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem label="必填">
+            <UiSwitch size="sm" v-model="itemEditor.required" :disabled="itemEditorContentOnlyMode" />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiFormItem label="题面" required>
+        <UiTextarea size="sm" v-model="itemEditor.itemText" :rows="3" />
+      </UiFormItem>
+      <UiRow :gutter="12">
+        <UiCol :span="12">
+          <UiFormItem label="目标类型" required>
+            <UiSelect
+              size="sm"
+              v-model="itemEditor.targetType"
               :options="targetTypeOptions"
               :disabled="itemEditorContentOnlyMode"
               @change="handleItemTargetTypeChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             :label="
               itemEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL
                 ? '评价课程'
@@ -1365,10 +1391,10 @@ defineExpose({
               placeholder="选择培养方案"
               @change="handleItemTrainingPlanChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-form-item
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiFormItem
         v-if="
           itemEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL
             || itemEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT
@@ -1422,64 +1448,64 @@ defineExpose({
             @change="handleItemTargetChange"
           />
         </div>
-      </a-form-item>
-      <a-form-item label="量表换算规则">
-        <a-select
-          v-model:value="itemEditor.scaleRuleId"
+      </UiFormItem>
+      <UiFormItem label="量表换算规则">
+        <UiSelect
+          v-model="itemEditor.scaleRuleId"
           allow-clear
-          show-search
+          allow-search
           option-filter-prop="label"
           :disabled="itemEditorContentOnlyMode"
-        >
-          <a-select-option
-            v-for="r in scaleRules"
-            :key="r.id"
-            :value="r.id"
-            :label="`${r.ruleCode} · ${r.ruleName}`"
-          >
-            {{ r.ruleCode }} · {{ r.ruleName }}
-          </a-select-option>
-        </a-select>
-      </a-form-item>
+        
+          size="sm"
+          :options="scaleRules.map((r) => ({ value: r.id, label: `${r.ruleCode} · ${r.ruleName}` }))"
+        />
+      </UiFormItem>
       <template v-if="isScaleItemType(itemEditor.itemType)">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="量表最小值" required>
-              <a-input-number
-                v-model:value="itemEditor.scaleMin"
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="量表最小值" required>
+              <UiInputNumber
+                size="sm"
+                v-model="itemEditor.scaleMin"
                 :min="0"
                 :disabled="itemEditorContentOnlyMode"
                 style="width: 100%"
                 @change="syncScaleLabels"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="量表最大值" required>
-              <a-input-number
-                v-model:value="itemEditor.scaleMax"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="量表最大值" required>
+              <UiInputNumber
+                size="sm"
+                v-model="itemEditor.scaleMax"
                 :min="1"
                 :disabled="itemEditorContentOnlyMode"
                 style="width: 100%"
                 @change="syncScaleLabels"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="量表标签">
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="量表标签">
           <div class="ie__config-list">
             <div
               v-for="label in itemEditor.scaleLabels"
               :key="label.scaleValue"
               class="ie__config-row"
             >
-              <a-input-number :value="label.scaleValue" disabled class="ie__config-value" />
-              <a-input v-model:value="label.label" placeholder="标签" />
+              <UiInputNumber
+                size="sm" :value="label.scaleValue" disabled class="ie__config-value"
+              />
+              <UiInput
+                size="sm" v-model="label.label" placeholder="标签"
+              />
             </div>
           </div>
-        </a-form-item>
+        </UiFormItem>
       </template>
-      <a-form-item
+      <UiFormItem
         v-if="
           isSingleChoiceItemType(itemEditor.itemType) || isMultiChoiceItemType(itemEditor.itemType)
         "
@@ -1492,12 +1518,15 @@ defineExpose({
             :key="optionIndex"
             class="ie__config-row"
           >
-            <a-input
-              v-model:value="option.optionValue"
+            <UiInput
+              size="sm"
+              v-model="option.optionValue"
               placeholder="选项值"
               :disabled="itemEditorContentOnlyMode"
             />
-            <a-input v-model:value="option.optionLabel" placeholder="选项文案" />
+            <UiInput
+              size="sm" v-model="option.optionLabel" placeholder="选项文案"
+            />
             <UiTextAction
               v-if="!itemEditorContentOnlyMode"
               tone="danger"
@@ -1515,10 +1544,10 @@ defineExpose({
             新增选项
           </UiButton>
         </div>
-      </a-form-item>
+      </UiFormItem>
       <section v-if="itemEditorContentOnlyMode && itemEditor.id" class="ie__revision-section">
         <h4 class="ie__revision-title">文案修订记录</h4>
-        <a-spin :spinning="itemContentRevisionLoading">
+        <UiSpin :spinning="itemContentRevisionLoading">
           <ul v-if="itemContentRevisions.length" class="ie__revision-list">
             <li v-for="row in itemContentRevisions" :key="row.id" class="ie__revision-item">
               <p class="ie__revision-meta">
@@ -1537,10 +1566,10 @@ defineExpose({
           <p v-else-if="!itemContentRevisionLoading" class="ie__revision-empty-tip">
             暂无文案修订记录
           </p>
-        </a-spin>
+        </UiSpin>
       </section>
-    </a-form>
-  </a-modal>
+    </UiForm>
+  </UiDialog>
 </template>
 
 <style scoped lang="scss">
@@ -1558,7 +1587,7 @@ defineExpose({
   }
 
   &__count-strong {
-    color: var(--ant-color-success);
+    color: var(--dp-success);
     font-weight: 500;
   }
 
@@ -1653,6 +1682,6 @@ defineExpose({
 }
 
 :deep(.ie__row-selected) td {
-  background-color: var(--ant-color-primary-bg) !important;
+  background-color: var(--dp-color-primary-bg) !important;
 }
 </style>

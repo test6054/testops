@@ -7,6 +7,7 @@ import LockOutlined from '@ant-design/icons-vue/LockOutlined'
 import QuestionCircleOutlined from '@ant-design/icons-vue/QuestionCircleOutlined'
 import { computed } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import { buildLayoutDesignPhaseSteps } from '@/utils/layout-design-workflow'
 
 const props = defineProps<{
@@ -45,7 +46,7 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
       <span class="layout-design-workflow-rail__meta">{{ completedCount }}/{{ steps.length }}</span>
       <UiTag v-if="!layoutWritable" tone="gray" size="sm">只读</UiTag>
       <nav class="layout-design-workflow-rail__track">
-        <a-tooltip
+        <UiTooltip
           v-for="step in steps"
           :key="step.phase"
           :title="step.lockReason ?? (step.phase === phase ? step.guide : step.summary)"
@@ -64,13 +65,13 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
             </span>
             <span class="layout-design-workflow-rail__step-label">{{ step.label }}</span>
           </button>
-        </a-tooltip>
+        </UiTooltip>
       </nav>
-      <a-tooltip v-if="activeStep?.guide" :title="activeStep.guide">
+      <UiTooltip v-if="activeStep?.guide" :title="activeStep.guide">
         <button type="button" class="layout-design-workflow-rail__help" aria-label="当前阶段说明">
           <QuestionCircleOutlined />
         </button>
-      </a-tooltip>
+      </UiTooltip>
     </div>
   </section>
 </template>
@@ -128,7 +129,7 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
       background-color 0.2s ease;
 
     &:hover:not(:disabled) {
-      border-color: var(--ant-color-primary, #1677ff);
+      border-color: var(--dp-color-primary);
     }
 
     &:disabled {
@@ -137,15 +138,15 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
     }
 
     &--active {
-      border-color: var(--ant-color-primary, #1677ff);
-      background: var(--ant-color-primary-bg, #eff6ff);
-      color: var(--ant-color-primary, #1677ff);
+      border-color: var(--dp-color-primary);
+      background: var(--dp-color-primary-bg);
+      color: var(--dp-color-primary);
       font-weight: 600;
     }
 
     &--completed {
-      border-color: var(--ant-color-success-border, #86efac);
-      background: var(--ant-color-success-bg, #f0fdf4);
+      border-color: var(--dp-success-border);
+      background: var(--dp-success-bg);
     }
   }
 
@@ -176,7 +177,7 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
     cursor: help;
 
     &:hover {
-      color: var(--ant-color-primary, #1677ff);
+      color: var(--dp-color-primary);
       background: var(--dp-surface-subtle);
     }
   }

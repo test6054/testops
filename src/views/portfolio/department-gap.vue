@@ -2,16 +2,21 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
-import { DatePicker, Input, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -161,7 +166,7 @@ void loadPage()
   <StageWorkbenchShell>
     <ContextBar title="补采督办" description="院系补采任务催办与进度跟踪">
       <template #actions>
-        <UiButton :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
+        <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
       </template>
     </ContextBar>
 
@@ -198,33 +203,33 @@ void loadPage()
           </template>
         </template>
       </UiDataTable>
-      <UiEmpty v-else description="暂无开放补采任务" />
+      <UiEmpty size="sm" v-else description="暂无开放补采任务" />
     </UiCard>
-    <a-modal
+    <UiDialog
       v-model:open="extendDialogOpen"
       title="延期补采任务"
       :confirm-loading="Boolean(extendingId)"
       @ok="extendTask"
     >
-      <a-form layout="vertical">
-        <a-form-item label="新的截止时间" required>
-          <DatePicker
-            v-model:value="extensionForm.dueTime"
+      <UiForm layout="vertical">
+        <UiFormItem label="新的截止时间" required>
+          <UiDatePicker
+            v-model="extensionForm.dueTime"
             show-time
             value-format="YYYY-MM-DD HH:mm:ss"
+            size="sm"
             :disabled="writing"
-            style="width: 100%"
           />
-        </a-form-item>
-        <a-form-item label="延期理由" required>
-          <Input
-            v-model:value="extensionForm.reason"
+        </UiFormItem>
+        <UiFormItem label="延期理由" required>
+          <UiInput
+            v-model="extensionForm.reason"
+            size="sm"
             :maxlength="500"
             :disabled="writing"
-            show-count
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>

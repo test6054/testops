@@ -13,8 +13,15 @@ import { facultyProfileApi } from '@/apis/quality/faculty-profile'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ProgramSupportProfileStatusCode } from '@/types/enums/program-support-profile-status-enum'
@@ -454,180 +461,208 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 <template>
   <div v-if="loading" class="loading">加载中...</div>
   <div v-else class="support-panel">
-    <section class="support-section">
-      <div class="status-bar">
-        <div>
-          <p class="section-kicker">标准 6 / 标准 7</p>
-          <h3 class="section-title">师资与支持条件概述档案</h3>
-        </div>
-        <div class="status-actions">
-          <span v-if="profile?.profileStatus === ProgramSupportProfileStatusCode.CONFIRMED" class="confirmed">已确认</span>
-          <span v-else-if="profile" class="draft">草稿</span>
-          <span v-else class="draft">尚未建档</span>
-          <div class="actions">
-            <UiButton
-              variant="outline"
-              :loading="saving"
-              :disabled="isProfileLocked"
-              @click="saveProfile"
-            >
-              保存
-            </UiButton>
-            <UiButton
-              variant="primary"
-              :disabled="!form.id || isProfileLocked"
-              @click="confirmProfile"
-            >
-              确认档案
-            </UiButton>
+    <UiAlertStrip
+      v-if="!trainingPlanId"
+      tone="info"
+      size="sm"
+      dense
+      inline
+      :show-icon="false"
+    >
+      <template #default>
+        <span style="display: inline-flex; align-items: center; gap: 8px">
+          <UiTag tone="blue" size="sm">未选择培养方案</UiTag>
+          <span>请先在页面上方选择培养方案后再维护支撑与师资档案</span>
+        </span>
+      </template>
+    </UiAlertStrip>
+
+    <template v-else>
+      <section class="support-section">
+        <div class="status-bar">
+          <div>
+            <p class="section-kicker">标准 6 / 标准 7</p>
+            <h3 class="section-title">师资与支持条件概述档案</h3>
+          </div>
+          <div class="status-actions">
+            <span v-if="profile?.profileStatus === ProgramSupportProfileStatusCode.CONFIRMED" class="confirmed">已确认</span>
+            <span v-else-if="profile" class="draft">草稿</span>
+            <span v-else class="draft">尚未建档</span>
+            <div class="actions">
+              <UiButton
+                size="sm"
+                variant="outline"
+                :loading="saving"
+                :disabled="isProfileLocked"
+                @click="saveProfile"
+              >
+                保存
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="primary"
+                :disabled="!form.id || isProfileLocked"
+                @click="confirmProfile"
+              >
+                确认档案
+              </UiButton>
+            </div>
           </div>
         </div>
-      </div>
-      <a-form layout="vertical" class="form-grid">
-        <a-form-item label="师资队伍概况（标准 6）">
-          <a-textarea v-model:value="form.facultySummary" :rows="4" :disabled="isProfileLocked" />
-        </a-form-item>
-        <a-form-item label="师资结构说明">
-          <a-textarea
-            v-model:value="form.facultyStructureRemark"
-            :rows="3"
-            :disabled="isProfileLocked"
-          />
-        </a-form-item>
-        <a-form-item label="实验与工程训练设施（标准 7）">
-          <a-textarea
-            v-model:value="form.supportFacilitySummary"
-            :rows="4"
-            :disabled="isProfileLocked"
-          />
-        </a-form-item>
-        <a-form-item label="图书与文献资源">
-          <a-textarea
-            v-model:value="form.supportLibraryRemark"
-            :rows="3"
-            :disabled="isProfileLocked"
-          />
-        </a-form-item>
-        <a-form-item label="信息化与计算资源">
-          <a-textarea v-model:value="form.supportItRemark" :rows="3" :disabled="isProfileLocked" />
-        </a-form-item>
-        <a-form-item label="产学合作与实习基地">
-          <a-textarea
-            v-model:value="form.industryCoopRemark"
-            :rows="3"
-            :disabled="isProfileLocked"
-          />
-        </a-form-item>
-        <a-form-item label="学生发展与支持">
-          <a-textarea
-            v-model:value="form.studentDevelopmentRemark"
-            :rows="3"
-            :disabled="isProfileLocked"
-          />
-        </a-form-item>
-        <a-form-item label="质量保障体系">
-          <a-textarea
-            v-model:value="form.qualityAssuranceRemark"
-            :rows="3"
-            :disabled="isProfileLocked"
-          />
-        </a-form-item>
-      </a-form>
-    </section>
-
-    <section class="support-section">
-      <div class="faculty-header">
-        <div>
-          <p class="section-kicker">培养方案维度</p>
-          <h3 class="section-title">教师粒度师资档案</h3>
-          <p class="section-desc">
-            每位教师按当前培养方案建档，供自评报告、专家材料包和标准 6 师资举证引用。
-          </p>
-        </div>
-        <UiButton
-          variant="primary"
-          :disabled="!trainingPlanId || isProfileLocked"
-          @click="openFacultyCreate"
-        >
-          新增教师档案
-        </UiButton>
-      </div>
-
-      <div class="faculty-toolbar">
-        <a-input
-          v-model:value="facultyQuery.keyword"
-          class="faculty-search"
-          allow-clear
-          placeholder="搜索教师姓名、工号或研究方向"
-          @press-enter="searchFacultyProfiles"
-        />
-        <a-input
-          v-model:value="facultyQuery.department"
-          class="faculty-filter"
-          allow-clear
-          placeholder="院系"
-          @press-enter="searchFacultyProfiles"
-        />
-        <a-input
-          v-model:value="facultyQuery.title"
-          class="faculty-filter"
-          allow-clear
-          placeholder="职称"
-          @press-enter="searchFacultyProfiles"
-        />
-        <UiButton variant="outline" @click="searchFacultyProfiles">查询</UiButton>
-        <UiButton variant="ghost" @click="resetFacultyFilters">重置</UiButton>
-      </div>
-
-      <UiDataTable
-        v-model:current="facultyQuery.pageNum"
-        v-model:page-size="facultyQuery.pageSize"
-        :columns="facultyColumns"
-        :data-source="facultyProfiles"
-        :loading="facultyLoading"
-        :total="facultyTotal"
-        row-key="id"
-        @page-change="handleFacultyPageChange"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'teacher'">
-            <div class="teacher-cell">
-              <strong>{{ record.teacherName }}</strong>
-              <span>工号 {{ record.teacherNo }}</span>
-            </div>
-          </template>
-          <template v-else-if="column.key === 'ethicsTraining'">
-            <span :class="record.hasTeachingEthicsTraining ? 'training-yes' : 'training-no'">
-              {{ record.hasTeachingEthicsTraining ? '已完成' : '未完成' }}
-            </span>
-            <span class="training-date">
-              {{ record.ethicsTrainingDate }}
-            </span>
-          </template>
-          <template v-else-if="column.key === 'engineeringEvidence'">
-            <div class="evidence-cell">
-              <span>实践：{{ record.engineeringPracticeExperience }}</span>
-              <span>能力：{{ record.engineeringAbilityEvidence }}</span>
-            </div>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTableActions
-              :items="[
-                { key: 'edit', label: '编辑', disabled: isProfileLocked },
-                { key: 'delete', label: '删除', tone: 'danger', disabled: isProfileLocked },
-              ]"
-              split
-              @action="(key) => handleFacultyRowAction(key, record)"
+        <UiForm layout="vertical" class="form-grid">
+          <UiFormItem label="师资队伍概况（标准 6）">
+            <UiTextarea size="sm" v-model="form.facultySummary" :rows="4" :disabled="isProfileLocked" />
+          </UiFormItem>
+          <UiFormItem label="师资结构说明">
+            <UiTextarea
+              size="sm"
+              v-model="form.facultyStructureRemark"
+              :rows="3"
+              :disabled="isProfileLocked"
             />
-          </template>
-        </template>
-        <template #empty>
-          <UiEmpty description="尚未为当前培养方案建立教师粒度师资档案" />
-        </template>
-      </UiDataTable>
-    </section>
+          </UiFormItem>
+          <UiFormItem label="实验与工程训练设施（标准 7）">
+            <UiTextarea
+              size="sm"
+              v-model="form.supportFacilitySummary"
+              :rows="4"
+              :disabled="isProfileLocked"
+            />
+          </UiFormItem>
+          <UiFormItem label="图书与文献资源">
+            <UiTextarea
+              size="sm"
+              v-model="form.supportLibraryRemark"
+              :rows="3"
+              :disabled="isProfileLocked"
+            />
+          </UiFormItem>
+          <UiFormItem label="信息化与计算资源">
+            <UiTextarea size="sm" v-model="form.supportItRemark" :rows="3" :disabled="isProfileLocked" />
+          </UiFormItem>
+          <UiFormItem label="产学合作与实习基地">
+            <UiTextarea
+              size="sm"
+              v-model="form.industryCoopRemark"
+              :rows="3"
+              :disabled="isProfileLocked"
+            />
+          </UiFormItem>
+          <UiFormItem label="学生发展与支持">
+            <UiTextarea
+              size="sm"
+              v-model="form.studentDevelopmentRemark"
+              :rows="3"
+              :disabled="isProfileLocked"
+            />
+          </UiFormItem>
+          <UiFormItem label="质量保障体系">
+            <UiTextarea
+              size="sm"
+              v-model="form.qualityAssuranceRemark"
+              :rows="3"
+              :disabled="isProfileLocked"
+            />
+          </UiFormItem>
+        </UiForm>
+      </section>
 
-    <UiEmpty v-if="!trainingPlanId" description="请选择培养方案" />
+      <section class="support-section">
+        <div class="faculty-header">
+          <div>
+            <p class="section-kicker">培养方案维度</p>
+            <h3 class="section-title">教师粒度师资档案</h3>
+            <p class="section-desc">
+              每位教师按当前培养方案建档，供自评报告、专家材料包和标准 6 师资举证引用。
+            </p>
+          </div>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :disabled="!trainingPlanId || isProfileLocked"
+            @click="openFacultyCreate"
+          >
+            新增教师档案
+          </UiButton>
+        </div>
+
+        <div class="faculty-toolbar">
+          <UiInput
+            size="sm"
+            v-model="facultyQuery.keyword"
+            class="faculty-search"
+            clearable
+            placeholder="搜索教师姓名、工号或研究方向"
+            @press-enter="searchFacultyProfiles"
+          />
+          <UiInput
+            size="sm"
+            v-model="facultyQuery.department"
+            class="faculty-filter"
+            clearable
+            placeholder="院系"
+            @press-enter="searchFacultyProfiles"
+          />
+          <UiInput
+            size="sm"
+            v-model="facultyQuery.title"
+            class="faculty-filter"
+            clearable
+            placeholder="职称"
+            @press-enter="searchFacultyProfiles"
+          />
+          <UiButton size="sm" variant="outline" @click="searchFacultyProfiles">查询</UiButton>
+          <UiButton size="sm" variant="ghost" @click="resetFacultyFilters">重置</UiButton>
+        </div>
+
+        <UiDataTable
+          v-model:current="facultyQuery.pageNum"
+          v-model:page-size="facultyQuery.pageSize"
+          :columns="facultyColumns"
+          :data-source="facultyProfiles"
+          :loading="facultyLoading"
+          :total="facultyTotal"
+          row-key="id"
+          @page-change="handleFacultyPageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'teacher'">
+              <div class="teacher-cell">
+                <strong>{{ record.teacherName }}</strong>
+                <span>工号 {{ record.teacherNo }}</span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'ethicsTraining'">
+              <span :class="record.hasTeachingEthicsTraining ? 'training-yes' : 'training-no'">
+                {{ record.hasTeachingEthicsTraining ? '已完成' : '未完成' }}
+              </span>
+              <span class="training-date">
+                {{ record.ethicsTrainingDate }}
+              </span>
+            </template>
+            <template v-else-if="column.key === 'engineeringEvidence'">
+              <div class="evidence-cell">
+                <span>实践：{{ record.engineeringPracticeExperience }}</span>
+                <span>能力：{{ record.engineeringAbilityEvidence }}</span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[
+                  { key: 'edit', label: '编辑', disabled: isProfileLocked },
+                  { key: 'delete', label: '删除', tone: 'danger', disabled: isProfileLocked },
+                ]"
+                split
+                @action="(key) => handleFacultyRowAction(key, record)"
+              />
+            </template>
+          </template>
+          <template #empty>
+            <UiEmpty size="sm" description="尚未为当前培养方案建立教师粒度师资档案" />
+          </template>
+        </UiDataTable>
+      </section>
+    </template>
 
     <UiDrawer
       v-model:open="facultyDrawerOpen"
@@ -638,77 +673,92 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
       ok-text="保存"
       @ok="submitFacultyProfile"
     >
-      <a-form layout="vertical">
-        <a-form-item label="教师" required>
+      <UiForm layout="vertical">
+        <UiFormItem label="教师" required>
           <TeacherSelector
             v-model:value="selectedTeacherId"
             placeholder="从教师目录选择"
             @change="handleTeacherChange"
           />
-        </a-form-item>
-        <a-form-item label="教师姓名" required>
-          <a-input v-model:value="facultyForm.teacherName" disabled />
-        </a-form-item>
-        <a-form-item label="教工号" required>
-          <a-input v-model:value="facultyForm.teacherNo" disabled />
-        </a-form-item>
-        <a-form-item label="所属院系" required>
-          <a-input v-model:value="facultyForm.department" disabled />
-        </a-form-item>
-        <a-form-item label="职称" required>
-          <a-input v-model:value="facultyForm.title" disabled />
-        </a-form-item>
-        <a-form-item label="师德师风培训" required>
-          <a-switch v-model:checked="facultyForm.hasTeachingEthicsTraining" />
-        </a-form-item>
-        <a-form-item label="培训日期" required>
-          <a-input v-model:value="facultyForm.ethicsTrainingDate" placeholder="如 2025-09-10" />
-        </a-form-item>
-        <a-form-item label="承担课程" required>
-          <a-textarea v-model:value="facultyForm.courses" :rows="2" />
-        </a-form-item>
-        <a-form-item label="科研方向">
-          <a-textarea v-model:value="facultyForm.researchDirection" :rows="2" />
-        </a-form-item>
-        <a-form-item label="教学评价结果" required>
-          <a-textarea v-model:value="facultyForm.teachingEvaluation" :rows="3" />
-        </a-form-item>
-        <a-form-item label="工程实践经历" required>
-          <a-textarea
-            v-model:value="facultyForm.engineeringPracticeExperience"
+        </UiFormItem>
+        <UiFormItem label="教师姓名" required>
+          <UiInput
+            size="sm" v-model="facultyForm.teacherName" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="教工号" required>
+          <UiInput
+            size="sm" v-model="facultyForm.teacherNo" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="所属院系" required>
+          <UiInput
+            size="sm" v-model="facultyForm.department" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="职称" required>
+          <UiInput
+            size="sm" v-model="facultyForm.title" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="师德师风培训" required>
+          <UiSwitch size="sm" v-model="facultyForm.hasTeachingEthicsTraining" />
+        </UiFormItem>
+        <UiFormItem label="培训日期" required>
+          <UiInput
+            size="sm" v-model="facultyForm.ethicsTrainingDate" placeholder="如 2025-09-10"
+          />
+        </UiFormItem>
+        <UiFormItem label="承担课程" required>
+          <UiTextarea size="sm" v-model="facultyForm.courses" :rows="2" />
+        </UiFormItem>
+        <UiFormItem label="科研方向">
+          <UiTextarea size="sm" v-model="facultyForm.researchDirection" :rows="2" />
+        </UiFormItem>
+        <UiFormItem label="教学评价结果" required>
+          <UiTextarea size="sm" v-model="facultyForm.teachingEvaluation" :rows="3" />
+        </UiFormItem>
+        <UiFormItem label="工程实践经历" required>
+          <UiTextarea
+            size="sm"
+            v-model="facultyForm.engineeringPracticeExperience"
             :rows="3"
             placeholder="填写企业实践、工程项目、行业服务或工程训练经历"
           />
-        </a-form-item>
-        <a-form-item label="工程能力支撑证据" required>
-          <a-textarea
-            v-model:value="facultyForm.engineeringAbilityEvidence"
+        </UiFormItem>
+        <UiFormItem label="工程能力支撑证据" required>
+          <UiTextarea
+            size="sm"
+            v-model="facultyForm.engineeringAbilityEvidence"
             :rows="3"
             placeholder="填写工程设计、工程实现、工程问题解决能力的证明材料"
           />
-        </a-form-item>
-        <a-form-item label="教师发展记录" required>
-          <a-textarea
-            v-model:value="facultyForm.teacherDevelopmentRecord"
+        </UiFormItem>
+        <UiFormItem label="教师发展记录" required>
+          <UiTextarea
+            size="sm"
+            v-model="facultyForm.teacherDevelopmentRecord"
             :rows="3"
             placeholder="填写教师发展培训、职业发展、教学能力提升记录"
           />
-        </a-form-item>
-        <a-form-item label="教学改革与持续改进记录" required>
-          <a-textarea
-            v-model:value="facultyForm.teachingReformContribution"
+        </UiFormItem>
+        <UiFormItem label="教学改革与持续改进记录" required>
+          <UiTextarea
+            size="sm"
+            v-model="facultyForm.teachingReformContribution"
             :rows="3"
             placeholder="填写教学研究、课程改革、达成度改进任务参与情况"
           />
-        </a-form-item>
-        <a-form-item label="毕业设计或工程项目指导情况" required>
-          <a-textarea
-            v-model:value="facultyForm.graduationDesignGuidance"
+        </UiFormItem>
+        <UiFormItem label="毕业设计或工程项目指导情况" required>
+          <UiTextarea
+            size="sm"
+            v-model="facultyForm.graduationDesignGuidance"
             :rows="3"
             placeholder="填写毕业设计、课程设计、工程项目或竞赛指导情况"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </div>
 </template>
@@ -717,14 +767,14 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 .support-panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .support-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px;
+  gap: var(--dp-space-2, 8px);
+  padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface-subtle);
@@ -735,7 +785,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .status-actions {
@@ -766,7 +816,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 }
 
 .confirmed {
-  color: var(--ant-color-success);
+  color: var(--dp-success);
   font-weight: 600;
 }
 
@@ -826,18 +876,18 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 }
 
 .training-yes {
-  color: var(--ant-color-success);
+  color: var(--dp-success);
   font-weight: 600;
 }
 
 .training-no {
-  color: var(--ant-color-warning);
+  color: var(--dp-warning);
   font-weight: 600;
 }
 
 .loading {
-  padding: 24px;
-  color: rgba(0, 0, 0, 0.45);
+  padding: var(--dp-space-3, 12px);
+  color: var(--dp-text-muted);
 }
 
 @media (max-width: 720px) {

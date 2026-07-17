@@ -8,8 +8,11 @@ import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -174,15 +177,17 @@ function handlePageChange(page: number, pageSize: number) {
     </template>
     <UiCard>
       <div class="policy-browse__search">
-        <a-input
-          v-model:value="keyword"
+        <UiInput
+          size="sm"
+          v-model="keyword"
           placeholder="输入关键词检索正文"
           @press-enter="() => void search(true)"
         />
-        <UiButton :loading="loading" @click="() => void search(true)"> 检索 </UiButton>
+        <UiButton size="sm" :loading="loading" @click="() => void search(true)"> 检索 </UiButton>
       </div>
-      <a-spin :spinning="loading">
+      <UiSpin :spinning="loading">
         <UiEmpty
+          size="sm"
           v-if="!loading && !rows.length"
           :description="
             loadFailed
@@ -222,13 +227,14 @@ function handlePageChange(page: number, pageSize: number) {
           class="policy-browse__pagination"
           @change="handlePageChange"
         />
-      </a-spin>
+      </UiSpin>
     </UiCard>
-    <a-modal v-model:open="previewOpen" :title="previewTitle">
+    <UiDialog v-model:open="previewOpen" :title="previewTitle">
       <pre class="policy-browse__preview">{{ previewText }}</pre>
       <template #footer>
-        <UiButton @click="previewOpen = false"> 关闭 </UiButton>
+        <UiButton size="sm" @click="previewOpen = false"> 关闭 </UiButton>
         <UiButton
+          size="sm"
           v-if="previewAttachmentFileId"
           variant="primary"
           :loading="downloading"
@@ -237,7 +243,7 @@ function handlePageChange(page: number, pageSize: number) {
           下载附件
         </UiButton>
       </template>
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -254,7 +260,7 @@ function handlePageChange(page: number, pageSize: number) {
 }
 .policy-browse__item {
   padding: 12px 0;
-  border-bottom: 1px solid var(--nybc-border-subtle, #f0f0f0);
+  border-bottom: 1px solid var(--dp-border-subtle);
 }
 .policy-browse__head {
   display: flex;
@@ -263,7 +269,7 @@ function handlePageChange(page: number, pageSize: number) {
 }
 .policy-browse__meta {
   margin: 4px 0;
-  color: var(--nybc-text-secondary, #666);
+  color: var(--dp-text-secondary);
   font-size: 12px;
 }
 .policy-browse__snippet {

@@ -1,7 +1,7 @@
 <template>
-  <a-breadcrumb>
+  <UiBreadcrumb>
     <transition-group name="breadcrumb">
-      <a-breadcrumb-item
+      <UiBreadcrumbItem
         v-for="(item, index) in breadcrumbList"
         :key="`${item.path}-${breadcrumbTitle(item)}`"
         v-bind="attrs"
@@ -20,15 +20,17 @@
           @click="handleLink(item)"
         >{{ breadcrumbTitle(item) }}</span>
         <RightOutlined v-if="index !== breadcrumbList.length - 1" />
-      </a-breadcrumb-item>
+      </UiBreadcrumbItem>
     </transition-group>
-  </a-breadcrumb>
+  </UiBreadcrumb>
 </template>
 
 <script lang="ts" setup>
 import type { RouteRecordRaw } from 'vue-router'
 import RightOutlined from '@ant-design/icons-vue/RightOutlined'
 import XEUtils from 'xe-utils'
+import UiBreadcrumb from '@/components/ui-guide/ui/UiBreadcrumb.vue'
+import UiBreadcrumbItem from '@/components/ui-guide/ui/UiBreadcrumbItem.vue'
 import { useRouteStore } from '@/stores'
 
 const route = useRoute()
@@ -131,7 +133,7 @@ function breadcrumbTitle(item: RouteRecordRaw): string {
   cursor: pointer;
 
   &:hover {
-    color: var(--ant-color-primary);
+    color: var(--dp-color-primary);
     font-weight: 600;
   }
 }

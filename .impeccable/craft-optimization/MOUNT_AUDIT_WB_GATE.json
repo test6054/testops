@@ -1,0 +1,212 @@
+[
+  {
+    "file": "views/admin/mark-tenant-grading-policy.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/admin/marking-organization/detail.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/admin/marking-organization/index.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/admin/marking-organization/marking-org-entry.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/admin/marking-organization/marking-org-session-hub.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/admin/marking-quality-dashboard.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/archive-score-rule-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/compliance-threshold-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/development-plan-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/ethics-sanction-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/evaluation-task-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/expert-assignment-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/external-teacher-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/integration-dashboard.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/promotion-scene.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/reporting-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/school-evaluation.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/shuanggao-tasks.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/template-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/title-promotion-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/accreditation-standard.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/achievement-detail.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/ai-model-profile.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/external-pull.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/profession-algorithm-profile.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/profession-algorithm-template.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/program-evaluation-profile.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/scale-conversion-rule.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume-detail-layout.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/archive-volume-suspected-mixed-scan.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/components/detail/ArchiveVolumeSelfCheckList.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/exam-workspace/marking-progress-dashboard.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/marking-task-detail.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/ocr-settings.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/review-task-detail.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  }
+]

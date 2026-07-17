@@ -9,37 +9,42 @@
     </template>
 
     <template #signal>
-      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" compact />
     </template>
 
     <WorkbenchSurfaceCard flush class="archive-readiness-matrix">
       <template #toolbar>
         <div class="archive-readiness-matrix__filters">
-          <a-select
-            v-model:value="filterForm.academicYearStartYear"
+          <UiSelect
+            size="sm"
+            v-model="filterForm.academicYearStartYear"
             :options="academicYearStartOptions"
             placeholder="起始年"
             style="width: 140px"
           />
-          <a-input
+          <UiInput
+            size="sm"
             :value="filterForm.academicYearEndYear"
             disabled
             style="width: 100px"
             placeholder="结束年"
           />
-          <a-select
-            v-model:value="filterForm.semester"
+          <UiSelect
+            size="sm"
+            v-model="filterForm.semester"
             :options="SemesterOptions"
             placeholder="学期"
             style="width: 120px"
           />
-          <a-select
-            v-model:value="filterForm.termCount"
+          <UiSelect
+            size="sm"
+            v-model="filterForm.termCount"
             :options="termCountOptions"
             style="width: 120px"
           />
-          <a-select
-            v-model:value="filterForm.campaignId"
+          <UiSelect
+            size="sm"
+            v-model="filterForm.campaignId"
             :loading="campaignOptionLoading"
             :options="campaignOptions"
             allow-clear
@@ -51,7 +56,21 @@
       </template>
 
       <UiSkeletonState v-if="loading && !matrixMeta" variant="card" compact />
-      <UiEmpty v-else-if="!matrixMeta" description="请选择截止学年与学期后查询" />
+      <UiAlertStrip
+        v-else-if="!matrixMeta"
+        tone="info"
+        size="sm"
+        dense
+        inline
+        :show-icon="false"
+      >
+        <template #default>
+          <span style="display:inline-flex;align-items:center;gap:8px">
+            <UiTag tone="blue" size="sm">未选择范围</UiTag>
+            <span>请选择截止学年与学期后查询就绪矩阵</span>
+          </span>
+        </template>
+      </UiAlertStrip>
       <UiDataTable
         v-else
         v-model:current="pagination.pageNum"
@@ -119,8 +138,11 @@ import {
   pageSupervisionReadinessMatrix,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'

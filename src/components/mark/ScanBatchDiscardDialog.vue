@@ -11,28 +11,32 @@
     @ok="handleOk"
     @cancel="handleCancel"
   >
-    <a-form layout="vertical" class="scan-batch-discard-dialog__form">
-      <a-form-item
+    <UiForm layout="vertical" class="scan-batch-discard-dialog__form">
+      <UiFormItem
         label="废弃原因"
         required
         :validate-status="reasonError ? 'error' : undefined"
         :help="reasonError"
       >
-        <a-textarea
-          v-model:value="reason"
+        <UiTextarea
+          size="sm"
+          v-model="reason"
           placeholder="请输入废弃原因（必填，1-255 字）"
           :maxlength="255"
-          show-count
+          :show-count="true"
           :rows="4"
         />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
   </UiConfirmModal>
 </template>
 
 <script lang="ts" setup>
 import { ref, watch } from 'vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 
 defineOptions({ name: 'ScanBatchDiscardDialog' })
 

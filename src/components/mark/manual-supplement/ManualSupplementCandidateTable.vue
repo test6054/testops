@@ -165,15 +165,15 @@ function handleAction(key: string, record: ExamManualSupplementCandidateItemResp
 
 .manual-supplement-candidate-table__name {
   font-weight: 500;
-  color: var(--ant-color-text);
+  color: var(--dp-text);
 }
 
 .manual-supplement-candidate-table__no {
   font-size: 12px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .manual-supplement-candidate-table__muted {
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 </style>

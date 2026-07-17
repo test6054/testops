@@ -98,6 +98,6 @@ function handleClassChange(value?: SelectValue): void {
 .ai-analysis-teaching-tab {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 </style>

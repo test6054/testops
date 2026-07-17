@@ -19,11 +19,29 @@ import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImp
 import { ClassSelector, StudentSelector, TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCheckboxGroup from '@/components/ui-guide/ui/UiCheckboxGroup.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
+import UiCollapse from '@/components/ui-guide/ui/UiCollapse.vue'
+import UiCollapsePanel from '@/components/ui-guide/ui/UiCollapsePanel.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRadio from '@/components/ui-guide/ui/UiRadio.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSegmented from '@/components/ui-guide/ui/UiSegmented.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTimeline from '@/components/ui-guide/ui/UiTimeline.vue'
+import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { isIndirectEvaluationItemType } from '@/types/enums/indirect-evaluation-item-type-enum'
 import {
@@ -688,15 +706,30 @@ defineExpose({
 </script>
 
 <template>
-  <UiEmpty v-if="!selectedItem" description="请选择" class="ie__empty" />
+  <UiAlertStrip
+    v-if="!selectedItem"
+    tone="info"
+    size="sm"
+    dense
+    inline
+    :show-icon="false"
+    class="ie__empty"
+  >
+    <template #default>
+      <span style="display:inline-flex;align-items:center;gap:8px">
+        <UiTag tone="blue" size="sm">未选择条目</UiTag>
+        <span>请在左侧选择问卷/评价条目后查看作答</span>
+      </span>
+    </template>
+  </UiAlertStrip>
 
   <UiCard v-else class="detail-table-card ie__response-card">
     <template #title>
       「{{ selectedItem.itemCode }} · {{ selectedItem.itemText.substring(0, 24) }}…」答卷
     </template>
     <template #extra>
-      <a-space>
-        <a-segmented v-model:value="responseListFilter" :options="responseListFilterOptions" />
+      <div class="dp-space" style="--dp-space-gap: 8px">
+        <UiSegmented v-model="responseListFilter" :options="responseListFilterOptions" size="sm" />
         <UiButton
           v-if="selectedForm && isTeacherResponseWritable(selectedForm)"
           variant="outline"
@@ -729,7 +762,7 @@ defineExpose({
         >
           重建统计
         </UiButton>
-      </a-space>
+      </div>
     </template>
 
     <UiAlertStrip
@@ -852,15 +885,15 @@ defineExpose({
     </UiDataTable>
   </UiCard>
 
-  <a-modal
+  <UiDialog
     v-model:open="responseEditorVisible"
     :title="responseEditorMode === 'create' ? '新增答卷' : '编辑答卷'"
     @ok="submitResponse"
   >
-    <a-form layout="vertical" :model="responseEditor">
-      <a-row :gutter="12">
-        <a-col :span="12">
-          <a-form-item label="应答人类型" required>
+    <UiForm layout="vertical" :model="responseEditor">
+      <UiRow :gutter="12">
+        <UiCol :span="12">
+          <UiFormItem label="应答人类型" required>
             <span
               v-if="
                 isSystemCollectedRespondentType(responseEditor.respondentType)
@@ -870,24 +903,25 @@ defineExpose({
             >
               {{ respondentTypeLabel(responseEditor.respondentType) }}
             </span>
-            <a-select
+            <UiSelect
+              size="sm"
               v-else
-              v-model:value="responseEditor.respondentType"
+              v-model="responseEditor.respondentType"
               :options="MANUAL_RESPONDENT_TYPE_OPTIONS"
               @change="handleResponseRespondentTypeChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col v-if="responseEditor.respondentType === RespondentTypeCode.STUDENT" :span="12">
-          <a-form-item label="班级" required>
+          </UiFormItem>
+        </UiCol>
+        <UiCol v-if="responseEditor.respondentType === RespondentTypeCode.STUDENT" :span="12">
+          <UiFormItem label="班级" required>
             <ClassSelector
               :value="responseEditorClassId || null"
               placeholder="选择班级"
               @change="handleResponseClassChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col
+          </UiFormItem>
+        </UiCol>
+        <UiCol
           v-else-if="
             responseEditor.respondentType === RespondentTypeCode.TEACHER
               || responseEditor.respondentType === RespondentTypeCode.EXPERT
@@ -895,16 +929,16 @@ defineExpose({
           "
           :span="12"
         >
-          <a-form-item label="应答人" required>
+          <UiFormItem label="应答人" required>
             <TeacherSelector
               :value="responseEditor.respondentId || null"
               placeholder="选择人员"
               @change="handleResponseRespondentChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-form-item
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiFormItem
         v-if="responseEditor.respondentType === RespondentTypeCode.STUDENT"
         label="应答学生"
         required
@@ -915,79 +949,90 @@ defineExpose({
           placeholder="选择在校学生"
           @change="handleResponseRespondentChange"
         />
-      </a-form-item>
-      <a-row
+      </UiFormItem>
+      <UiRow
         v-if="
           responseEditor.respondentType === RespondentTypeCode.GRADUATE
             || responseEditor.respondentType === RespondentTypeCode.EMPLOYER
         "
         :gutter="12"
       >
-        <a-col :span="8">
-          <a-form-item label="姓名" required>
-            <a-input v-model:value="responseIdentityName" placeholder="填写姓名" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="单位">
-            <a-input v-model:value="responseIdentityOrganization" placeholder="填写单位名称" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="联系方式">
-            <a-input v-model:value="responseIdentityContact" placeholder="填写联系方式" />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-row :gutter="12">
-        <a-col :span="12">
-          <a-form-item label="答案" required>
-            <a-radio-group
+        <UiCol :span="8">
+          <UiFormItem label="姓名" required>
+            <UiInput
+              size="sm" v-model="responseIdentityName" placeholder="填写姓名"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="单位">
+            <UiInput
+              size="sm" v-model="responseIdentityOrganization" placeholder="填写单位名称"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="联系方式">
+            <UiInput
+              size="sm" v-model="responseIdentityContact" placeholder="填写联系方式"
+            />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiRow :gutter="12">
+        <UiCol :span="12">
+          <UiFormItem label="答案" required>
+            <UiRadioGroup
               v-if="isScaleItemType(selectedItem?.itemType)"
-              v-model:value="responseEditor.scaleValue"
+              v-model="responseEditor.scaleValue"
               class="ie__answer-group"
+              size="sm"
+              block
             >
-              <a-radio
+              <UiRadio
                 v-for="option in selectedItemScaleOptions()"
                 :key="option.scaleValue"
                 :value="option.scaleValue"
               >
                 {{ option.label }}
-              </a-radio>
-            </a-radio-group>
-            <a-radio-group
+              </UiRadio>
+            </UiRadioGroup>
+            <UiRadioGroup
               v-else-if="isSingleChoiceItemType(selectedItem?.itemType)"
-              v-model:value="responseEditor.singleChoiceValue"
+              v-model="responseEditor.singleChoiceValue"
               class="ie__answer-group"
+              size="sm"
+              block
             >
-              <a-radio
+              <UiRadio
                 v-for="option in selectedItemChoiceOptions()"
                 :key="option.optionValue"
                 :value="option.optionValue"
               >
                 {{ option.optionLabel }}
-              </a-radio>
-            </a-radio-group>
-            <a-checkbox-group
+              </UiRadio>
+            </UiRadioGroup>
+            <UiCheckboxGroup
               v-else-if="isMultiChoiceItemType(selectedItem?.itemType)"
-              v-model:value="responseMultiChoiceValues"
+              v-model="responseMultiChoiceValues"
               class="ie__answer-group"
             >
-              <a-row :gutter="[8, 8]">
-                <a-col
+              <UiRow :gutter="[8, 8]">
+                <UiCol
                   v-for="option in selectedItemChoiceOptions()"
                   :key="option.optionValue"
                   :span="12"
                 >
-                  <a-checkbox :value="option.optionValue">
+                  <UiCheckbox :value="option.optionValue">
                     {{ option.optionLabel }}
-                  </a-checkbox>
-                </a-col>
-              </a-row>
-            </a-checkbox-group>
-            <a-textarea
+                  </UiCheckbox>
+                </UiCol>
+              </UiRow>
+            </UiCheckboxGroup>
+            <UiTextarea
+              size="sm"
               v-else-if="isOpenTextItemType(selectedItem?.itemType)"
-              v-model:value="responseEditor.openText"
+              v-model="responseEditor.openText"
               :rows="3"
               placeholder="填写开放回答"
             />
@@ -998,12 +1043,13 @@ defineExpose({
               :closable="false"
               dense
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item label="换算分（0~1）">
-            <a-input-number
-              v-model:value="responseEditor.convertedScore"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem label="换算分（0~1）">
+            <UiInputNumber
+              size="sm"
+              v-model="responseEditor.convertedScore"
               :min="0"
               :max="1"
               :step="0.01"
@@ -1020,35 +1066,37 @@ defineExpose({
             >
               已换算答卷仅支持修正换算分，不支持清除；修正将写入审计记录。
             </p>
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-row :gutter="12">
-        <a-col :span="8">
-          <a-form-item label="有效样本">
-            <a-select
-              v-model:value="responseEditorValidFlagChoice"
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiRow :gutter="12">
+        <UiCol :span="8">
+          <UiFormItem label="有效样本">
+            <UiSelect
+              size="sm"
+              v-model="responseEditorValidFlagChoice"
               :options="VALID_FLAG_EDITOR_OPTIONS"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="16">
-          <a-form-item label="无效原因">
-            <a-input
-              v-model:value="responseEditor.invalidReason"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="16">
+          <UiFormItem label="无效原因">
+            <UiInput
+              size="sm"
+              v-model="responseEditor.invalidReason"
               :disabled="responseEditorValidFlagChoice !== 'invalid'"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-collapse
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiCollapse
         v-if="showConversionWorkflow && responseEditorMode === 'edit'"
         class="ie__audit-collapse"
       >
-        <a-collapse-panel key="audit" header="换算审计记录">
-          <a-spin :spinning="conversionAuditLoading">
-            <a-timeline v-if="conversionAuditLogs.length">
-              <a-timeline-item v-for="log in conversionAuditLogs" :key="log.id">
+        <UiCollapsePanel key="audit" header="换算审计记录">
+          <UiSpin :spinning="conversionAuditLoading">
+            <UiTimeline v-if="conversionAuditLogs.length">
+              <UiTimelineItem v-for="log in conversionAuditLogs" :key="log.id">
                 <div class="ie__audit-entry">
                   <span class="ie__audit-action">
                     {{ formatConversionAuditAction(log.oldScore, log.newScore) }}
@@ -1065,14 +1113,14 @@ defineExpose({
                     · {{ formatConversionAuditTime(log.operateTime) }}
                   </template>
                 </div>
-              </a-timeline-item>
-            </a-timeline>
+              </UiTimelineItem>
+            </UiTimeline>
             <span v-else class="ie__sub-desc">暂无换算审计记录</span>
-          </a-spin>
-        </a-collapse-panel>
-      </a-collapse>
-    </a-form>
-  </a-modal>
+          </UiSpin>
+        </UiCollapsePanel>
+      </UiCollapse>
+    </UiForm>
+  </UiDialog>
 
   <UiPlatformExcelImportModal
     v-model:open="importExcelVisible"
@@ -1094,7 +1142,7 @@ defineExpose({
 <style scoped lang="scss">
 .ie {
   &__empty {
-    margin-top: 32px;
+    margin-top: var(--dp-space-3, 12px);
   }
 
   &__sub-desc {

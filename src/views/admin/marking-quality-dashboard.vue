@@ -24,8 +24,9 @@
             @search="onExamSearch"
           />
           <template v-if="!isExamWorkspaceRoute">
-            <a-select
-              :value="selectedOrganizationId"
+            <UiSelect
+              size="sm"
+              :model-value="selectedOrganizationId"
               class="quality-dashboard__org-select"
               placeholder="选择阅卷组织"
               :options="organizationOptions"
@@ -33,8 +34,9 @@
               allow-clear
               @change="handleOrganizationChange"
             />
-            <a-select
-              :value="selectedGroupId"
+            <UiSelect
+              size="sm"
+              :model-value="selectedGroupId"
               class="quality-dashboard__group-select"
               placeholder="选择题组"
               :options="groupOptions"
@@ -53,10 +55,10 @@
       </ContextBar>
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="quality-dashboard__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="quality-dashboard__empty" />
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" compact />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="selectedExamId && isExamWorkspaceRoute" />
@@ -149,7 +151,7 @@
             <template #head>
               <span class="quality-dashboard__panel-title">质量雷达图</span>
             </template>
-            <UiEmpty v-if="!examQualityPanel" description="暂无质量概览数据" />
+            <UiEmpty v-if="!examQualityPanel" size="sm" description="暂无质量概览数据" />
             <template v-else>
               <div class="quality-dashboard__consistency-summary">
                 <span class="quality-dashboard__consistency-label">考试级一致性</span>
@@ -171,7 +173,7 @@
                 aria-label="考试质量雷达图"
                 class="quality-dashboard__radar-chart"
               />
-              <UiEmpty v-else description="暂无质量维度数据" />
+              <UiEmpty v-else size="sm" description="暂无质量维度数据" />
               <ul
                 v-if="examQualityPanel.qualityOverviewItems.length > 0"
                 class="quality-dashboard__consistency-list"
@@ -195,7 +197,7 @@
                   <span class="quality-dashboard__consistency-rate">{{ item.consistencyRate }}%</span>
                 </li>
               </ul>
-              <UiEmpty v-else description="暂无评阅员一致性样本" />
+              <UiEmpty v-else size="sm" description="暂无评阅员一致性样本" />
             </template>
           </WorkbenchSurfaceCard>
         </div>
@@ -386,7 +388,22 @@
           <template #toolbar>
             <span class="quality-dashboard__panel-hint">点击题组查看进度快照与走势</span>
           </template>
-          <UiEmpty v-if="!scopeValid" description="请先配置阅卷组织" />
+          <UiAlertStrip
+            v-if="!scopeValid"
+            tone="info"
+            size="sm"
+            dense
+            inline
+            :show-icon="false"
+            class="quality-dashboard__alert"
+          >
+            <template #default>
+              <span style="display:inline-flex;align-items:center;gap:8px">
+                <UiTag tone="blue" size="sm">未选择组织</UiTag>
+                <span>请选择阅卷组织后查看题组进度汇总</span>
+              </span>
+            </template>
+          </UiAlertStrip>
           <UiDataTable
             v-else
             pagination-mode="none"
@@ -435,7 +452,7 @@
             <span class="quality-dashboard__panel-title">进度快照</span>
           </template>
           <template #toolbar>
-            <a-space>
+            <div class="dp-space" style="--dp-space-gap: 8px">
               <UiButton
                 size="sm"
                 variant="outline"
@@ -455,49 +472,60 @@
                 <template #icon><SyncOutlined /></template>
                 立即快照
               </UiButton>
-            </a-space>
+            </div>
           </template>
 
-          <UiEmpty
+          <UiAlertStrip
             v-if="!scopeValid"
-            description="请选择阅卷组织"
+            tone="info"
+            size="sm"
+            dense
+            inline
+            :show-icon="false"
             class="quality-dashboard__alert"
-          />
-          <a-skeleton v-else-if="progressLoading" active :paragraph="{ rows: 3 }" />
-          <a-descriptions v-else-if="progress" :column="3" bordered size="small">
-            <a-descriptions-item label="总任务数">
+          >
+            <template #default>
+              <span style="display:inline-flex;align-items:center;gap:8px">
+                <UiTag tone="blue" size="sm">未选择组织</UiTag>
+                <span>请选择阅卷组织后查看质量快照与进度</span>
+              </span>
+            </template>
+          </UiAlertStrip>
+          <UiSkeletonState v-else-if="progressLoading" :rows="3" compact />
+          <UiDescriptions v-else-if="progress" :column="3" bordered size="small">
+            <UiDescriptionsItem label="总任务数">
               <b>{{ progress.totalTasks }}</b>
-            </a-descriptions-item>
-            <a-descriptions-item label="已分配">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="已分配">
               {{ progress.allocatedTasks }}
-            </a-descriptions-item>
-            <a-descriptions-item label="进行中">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="进行中">
               {{ progress.inProgressTasks }}
-            </a-descriptions-item>
-            <a-descriptions-item label="已提交">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="已提交">
               {{ progress.submittedTasks }}
-            </a-descriptions-item>
-            <a-descriptions-item label="已定稿">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="已定稿">
               <b class="quality-dashboard__num-success">{{ progress.finalizedTasks }}</b>
-            </a-descriptions-item>
-            <a-descriptions-item label="已回收">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="已回收">
               <b class="quality-dashboard__num-warning">{{ progress.recycledTasks }}</b>
-            </a-descriptions-item>
-            <a-descriptions-item label="完成率">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="完成率">
               {{ progress.completionRate.toFixed(2) }}%
-            </a-descriptions-item>
-            <a-descriptions-item label="预估剩余">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="预估剩余">
               {{ estimatedRemainingText(progress.estimatedRemainingMinutes) }}
-            </a-descriptions-item>
-            <a-descriptions-item label="风险等级">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="风险等级">
               <UiTag :tone="riskTone(progress.riskLevel)" size="sm">
                 {{ riskLabel(progress.riskLevel) }}
               </UiTag>
-            </a-descriptions-item>
-            <a-descriptions-item label="快照时间" :span="2">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="快照时间" :span="2">
               {{ progress.snapshotTime }}
-            </a-descriptions-item>
-            <a-descriptions-item v-if="progressRiskItems.length > 0" label="风险详情" :span="3">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem v-if="progressRiskItems.length > 0" label="风险详情" :span="3">
               <ul class="quality-dashboard__risk-list">
                 <li
                   v-for="(riskItem, riskIndex) in progressRiskItems"
@@ -511,12 +539,15 @@
                   <span class="quality-dashboard__risk-desc">{{ riskItem.riskDescription }}</span>
                 </li>
               </ul>
-            </a-descriptions-item>
-          </a-descriptions>
-          <UiEmpty
+            </UiDescriptionsItem>
+          </UiDescriptions>
+          <WorkbenchContextGateStrip
             v-else
-            description="暂无进度快照，请点击「立即快照」生成"
+            tag="无快照"
+            body="暂无进度快照，请先生成当前进度"
+            cta-label="立即快照"
             class="quality-dashboard__alert"
+            @cta="handleSnapshot"
           />
 
           <div v-if="progress" class="quality-dashboard__charts">
@@ -629,39 +660,45 @@
             <span class="quality-dashboard__panel-title">创建抽检任务</span>
           </template>
 
-          <a-form layout="vertical" class="quality-dashboard__form quality-dashboard__form--spot">
-            <a-form-item v-if="!isExamWorkspaceRoute" label="阅卷组织" required>
-              <a-select :value="selectedOrganizationId" :options="organizationOptions" disabled />
-            </a-form-item>
-            <a-form-item v-if="!isExamWorkspaceRoute" label="题组（可选）">
-              <a-select
-                :value="selectedGroupId"
+          <UiForm layout="vertical" class="quality-dashboard__form quality-dashboard__form--spot">
+            <UiFormItem v-if="!isExamWorkspaceRoute" label="阅卷组织" required>
+              <UiSelect
+                size="sm" :model-value="selectedOrganizationId" :options="organizationOptions" disabled
+              />
+            </UiFormItem>
+            <UiFormItem v-if="!isExamWorkspaceRoute" label="题组（可选）">
+              <UiSelect
+                size="sm"
+                :model-value="selectedGroupId"
                 :options="groupOptions"
                 disabled
                 placeholder="组织级抽检"
               />
-            </a-form-item>
-            <a-form-item label="抽检比例（%）" required>
-              <a-input-number
-                v-model:value="spotForm.sampleRate"
+            </UiFormItem>
+            <UiFormItem label="抽检比例（%）" required>
+              <UiInputNumber
+                size="sm"
+                v-model="spotForm.sampleRate"
                 :min="1"
                 :max="100"
                 class="quality-dashboard__field-full"
                 placeholder="请输入 1~100 之间的抽检比例"
               />
-            </a-form-item>
-            <a-form-item label="目标教师（可选）">
-              <a-select
-                v-model:value="spotForm.targetReviewerUserId"
+            </UiFormItem>
+            <UiFormItem label="目标教师（可选）">
+              <UiSelect
+                size="sm"
+                v-model="spotForm.targetReviewerUserId"
                 :options="reviewerOptions"
                 placeholder="选择目标教师；留空对全组抽检"
                 allow-clear
-                show-search
+                allow-search
                 option-filter-prop="label"
               />
-            </a-form-item>
-            <a-form-item>
+            </UiFormItem>
+            <UiFormItem>
               <UiButton
+                size="sm"
                 :loading="creatingSpot"
                 :disabled="!scopeValid || !spotForm.sampleRate"
                 @click="handleCreateSpotCheck"
@@ -669,8 +706,8 @@
                 <template #icon><PlusOutlined /></template>
                 创建抽检任务
               </UiButton>
-            </a-form-item>
-          </a-form>
+            </UiFormItem>
+          </UiForm>
         </WorkbenchSurfaceCard>
 
         <WorkbenchSurfaceCard class="quality-dashboard__inner-panel">
@@ -807,45 +844,50 @@
             <span class="quality-dashboard__panel-title">触发异常批次重处理</span>
           </template>
 
-          <a-form layout="vertical" class="quality-dashboard__form">
-            <a-form-item label="扫描批次" required>
-              <a-select
-                v-model:value="reprocessForm.scanBatchId"
+          <UiForm layout="vertical" class="quality-dashboard__form">
+            <UiFormItem label="扫描批次" required>
+              <UiSelect
+                size="sm"
+                v-model="reprocessForm.scanBatchId"
                 :options="scannerBatchOptions"
                 :loading="scannerBatchLoading"
                 placeholder="选择扫描批次"
-                show-search
+                allow-search
                 :filter-option="false"
                 @search="onScannerBatchSearch"
               />
-            </a-form-item>
-            <a-form-item label="重处理范围" required>
-              <a-radio-group v-model:value="reprocessForm.scope">
-                <a-radio-button value="FAILED_ONLY">仅失败页</a-radio-button>
-                <a-radio-button value="ALL">整批次</a-radio-button>
-              </a-radio-group>
-            </a-form-item>
-            <a-form-item label="重处理原因" required>
-              <a-textarea
-                v-model:value="reprocessForm.reason"
+            </UiFormItem>
+            <UiFormItem label="重处理范围" required>
+              <UiRadioGroup
+                v-model="reprocessForm.scope"
+                size="sm"
+                :options="[
+                  { label: '仅失败页', value: 'FAILED_ONLY' },
+                  { label: '整批次', value: 'ALL' },
+                ]"
+              />
+            </UiFormItem>
+            <UiFormItem label="重处理原因" required>
+              <UiTextarea
+                size="sm"
+                v-model="reprocessForm.reason"
                 :rows="3"
                 placeholder="请描述重处理原因（必填，会进入审计日志）"
               />
-            </a-form-item>
-            <a-form-item>
-              <a-popconfirm
-                title="确认触发异常批次重处理？"
-                ok-text="确认"
-                cancel-text="取消"
-                @confirm="handleReprocess"
+            </UiFormItem>
+            <UiFormItem>
+              <UiButton
+                size="sm"
+                variant="destructive"
+                :loading="reprocessing"
+                :disabled="!reprocessValid"
+                @click="requestReprocess"
               >
-                <UiButton variant="destructive" :loading="reprocessing" :disabled="!reprocessValid">
-                  <template #icon><WarningOutlined /></template>
-                  触发重处理
-                </UiButton>
-              </a-popconfirm>
-            </a-form-item>
-          </a-form>
+                <template #icon><WarningOutlined /></template>
+                触发重处理
+              </UiButton>
+            </UiFormItem>
+          </UiForm>
         </WorkbenchSurfaceCard>
       </template>
     </WorkbenchSurfaceCard>
@@ -920,15 +962,28 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import MarkQualityScopeBar from '@/components/workbench/MarkQualityScopeBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useChartOption } from '@/hooks/modules/useChartOption'
@@ -1205,7 +1260,7 @@ const { chartOption: progressTaskBarOption } = useChartOption(() =>
 const progressTaskBarAriaLabel = computed(() => {
   const count = progressTaskBarItems.value.length
   if (count <= 0) {
-    return '当前任务状态分布，当前没有可展示的内容'
+    return '当前任务状态分布暂无数据'
   }
   return `当前任务状态分布，共 ${count} 种状态`
 })
@@ -1395,6 +1450,7 @@ async function loadProgress(): Promise<void> {
 
 async function handleSnapshot(): Promise<void> {
   if (!scopeValid.value) return
+  if (snapshotting.value) return
   snapshotting.value = true
   try {
     progress.value = await takeProgressSnapshot({
@@ -1527,6 +1583,7 @@ function handleReviewerFilterReset(): void {
 
 async function handleRefreshMetrics(): Promise<void> {
   if (!scopeValid.value) return
+  if (refreshing.value) return
   refreshing.value = true
   try {
     await refreshReviewerMetrics({
@@ -1557,6 +1614,7 @@ const spotForm = reactive<{
 
 async function handleCreateSpotCheck(): Promise<void> {
   if (!scopeValid.value || !spotForm.sampleRate) return
+  if (creatingSpot.value) return
   creatingSpot.value = true
   try {
     const created = await createSpotCheckTasks({
@@ -1592,8 +1650,22 @@ const reprocessValid = computed(() =>
   Boolean(selectedExamId.value && reprocessForm.scanBatchId && reprocessForm.reason.trim()),
 )
 
+async function requestReprocess(): Promise<void> {
+  const ok = await confirmAsync({
+    title: '确认触发异常批次重处理？',
+    content: '将按当前筛选范围重新投递异常扫描批次，可能产生队列负载。',
+    type: 'warning',
+    okText: '确认',
+  })
+  if (!ok) {
+    return
+  }
+  await handleReprocess()
+}
+
 async function handleReprocess(): Promise<void> {
   if (!reprocessValid.value) return
+  if (reprocessing.value) return
   reprocessing.value = true
   try {
     await reprocessBatch({
@@ -2132,8 +2204,8 @@ onActivated(() => {
   &__charts {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 16px;
-    margin-top: 16px;
+    gap: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-3, 12px);
   }
 
   &__exam-select {
@@ -2165,15 +2237,15 @@ onActivated(() => {
   }
 
   &__empty {
-    margin-top: 80px;
+    margin-top: var(--dp-space-3, 12px);
   }
 
   &__num-success {
-    color: var(--ant-color-success, #16a34a);
+    color: var(--dp-success);
   }
 
   &__num-warning {
-    color: var(--ant-color-warning, #ea580c);
+    color: var(--dp-warning);
   }
 
   &__risk-list {
@@ -2190,6 +2262,24 @@ onActivated(() => {
 }
 
 .quality-dashboard__inner-panel {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-3, 12px);
+}
+
+/* 嵌套 Surface：去双层重阴影/松 padding，保留边框分区 */
+.quality-dashboard__surface :deep(.quality-dashboard__inner-panel) {
+  box-shadow: none;
+}
+
+.quality-dashboard__surface :deep(.quality-dashboard__inner-panel .workbench-surface-card__head) {
+  padding: 8px 12px;
+}
+
+.quality-dashboard__surface :deep(.quality-dashboard__inner-panel .workbench-surface-card__toolbar) {
+  padding: 6px 12px;
+}
+
+.quality-dashboard__surface
+  :deep(.quality-dashboard__inner-panel .workbench-surface-card__body:not(.workbench-surface-card__body--flush)) {
+  padding: 12px;
 }
 </style>

@@ -16,9 +16,14 @@ import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -39,6 +44,7 @@ const canManage = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 const loading = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
+const deleting = ref(false)
 const releases = ref<ScannerAgentReleaseResponse[]>([])
 const pagination = reactive({ current: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 const filters = reactive({ keyword: '' })
@@ -152,6 +158,7 @@ async function loadReleases() {
 }
 
 async function submitRegister() {
+  if (saving.value) return
   const version = registerForm.version.trim()
   if (!version) {
     showFormValidationMessage('请填写版本号')
@@ -206,6 +213,7 @@ async function submitPublish() {
   if (!publishTarget.value) {
     return
   }
+  if (publishing.value) return
   publishing.value = true
   try {
     await publishScannerAgentRelease({
@@ -228,6 +236,7 @@ async function confirmDelete(record: ScannerAgentReleaseResponse) {
     showFormValidationMessage('当前发布版本不能删除')
     return
   }
+  if (deleting.value) return
   const confirmed = await confirmAsync({
     title: `删除版本 ${record.version}？`,
     content: '仅未发布包可删除；删除后需重新上传安装包才能再次注册。',
@@ -237,12 +246,15 @@ async function confirmDelete(record: ScannerAgentReleaseResponse) {
   if (!confirmed) {
     return
   }
+  deleting.value = true
   try {
     await deleteScannerAgentRelease({ releaseId: record.id })
     message.success('发布包已删除')
     await loadReleases()
   } catch (error) {
     showUserError(error, '删除失败')
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -292,10 +304,10 @@ onMounted(() => {
     </template>
 
     <template #signal>
-      <SignalBand v-if="signalMetrics.length" variant="tiles" :metrics="signalMetrics" compact />
+      <SignalBand v-if="signalMetrics.length" :metrics="signalMetrics" compact />
     </template>
 
-    <UiEmpty v-if="!canManage" description="仅平台超级管理员可维护扫描端发布包" />
+    <UiEmpty size="sm" v-if="!canManage" description="仅平台超级管理员可维护扫描端发布包" />
 
     <WorkbenchSurfaceCard v-else flush>
       <template #toolbar>
@@ -371,11 +383,13 @@ onMounted(() => {
       ok-text="注册"
       @ok="submitRegister"
     >
-      <a-form layout="vertical">
-        <a-form-item label="版本号" required>
-          <a-input v-model:value="registerForm.version" placeholder="例如 1.2.0" :maxlength="32" />
-        </a-form-item>
-        <a-form-item label="安装包" required>
+      <UiForm layout="vertical">
+        <UiFormItem label="版本号" required>
+          <UiInput
+            size="sm" v-model="registerForm.version" placeholder="例如 1.2.0" :maxlength="32"
+          />
+        </UiFormItem>
+        <UiFormItem label="安装包" required>
           <UiPlatformFileField
             v-model:file-node-id="registerForm.fileNodeId"
             v-model:file-name="registerForm.fileName"
@@ -384,17 +398,18 @@ onMounted(() => {
             button-text="选择安装包"
             tip="支持主流安装包格式；交互式引导包不支持服务端下发"
           />
-        </a-form-item>
-        <a-form-item label="发布说明">
-          <a-textarea
-            v-model:value="registerForm.releaseNotes"
+        </UiFormItem>
+        <UiFormItem label="发布说明">
+          <UiTextarea
+            size="sm"
+            v-model="registerForm.releaseNotes"
             :rows="3"
             :maxlength="1000"
             placeholder="可选，记录本次更新要点"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDialog>
 
     <UiDialog
@@ -408,11 +423,11 @@ onMounted(() => {
       <p v-if="publishTarget">
         将 <strong>{{ publishTarget.version }}</strong>（{{ publishTarget.fileName }}）设为当前发布版本，其他已发布包会自动下线。
       </p>
-      <a-form-item v-if="publishTarget && isMsiPackage(publishTarget)" label="主动推送更新">
-        <a-checkbox v-model:checked="publishPushEnabled">
+      <UiFormItem v-if="publishTarget && isMsiPackage(publishTarget)" label="主动推送更新">
+        <UiCheckbox v-model="publishPushEnabled">
           启用后将于发布次日 01:00 向在线一体机推送安装包更新
-        </a-checkbox>
-      </a-form-item>
+        </UiCheckbox>
+      </UiFormItem>
       <p v-else-if="publishTarget" class="scanner-agent-releases__hint">
         可执行安装包不支持主动推送，一体机需通过扫描端自更新或人工安装。
       </p>
@@ -424,17 +439,17 @@ onMounted(() => {
 .scanner-agent-releases__sub {
   margin-top: 4px;
   font-size: 12px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 
 .scanner-agent-releases__hint {
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .muted {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 </style>

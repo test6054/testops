@@ -3,11 +3,10 @@
   常用过滤：targetType / auditStatus / trainingPlanId / qualityCourseId / schoolYear
 -->
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
 import type { AchievementAuditStatusCode, AchievementTargetTypeCode } from '@/apis/quality/types'
+import type { UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { Tag } from 'ant-design-vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
 import {
@@ -15,6 +14,8 @@ import {
   AchievementAuditStatusDescription,
   AchievementTargetTypeDescription,
 } from '@/apis/quality/types'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -31,8 +32,6 @@ const emit = defineEmits<{
   'update:value': [value: string | null]
   "change": [value: string | null, option?: AchievementResultVO]
 }>()
-
-const AuditStatusTag = Tag
 
 interface Props {
   value?: string | null
@@ -123,11 +122,23 @@ const filteredOptions = computed(() => {
   })
 })
 
+
+const selectOptions = computed<UiSelectOption[]>(() =>
+  filteredOptions.value.map((opt) => ({
+    value: opt.id,
+    label: labelOf(opt),
+  })),
+)
+
+const controlStyle = computed(() => ({
+  width: typeof props.width === 'number' ? `${props.width}px` : props.width,
+}))
+
 function handleSearch(val: string) {
   searchText.value = val
 }
 
-function handleChange(val: SelectValue) {
+function handleChange(val: UiOptionValue | UiOptionValue[] | undefined) {
   const next: string | null = typeof val === 'string' ? val : null
   internalValue.value = next ?? undefined
   const option = options.value.find((o) => o.id === next)
@@ -169,38 +180,41 @@ defineExpose({ reload: loadOptions })
 </script>
 
 <template>
-  <a-select
-    :value="internalValue"
+  <UiSelect
+    v-model="internalValue"
+    class="dp-quality-selector"
+    :style="controlStyle"
+    size="sm"
     :placeholder="placeholder"
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
-    :style="{ width: typeof width === 'number' ? `${width}px` : width }"
-    show-search
+    allow-search
     :filter-option="false"
     @search="handleSearch"
-    @change="handleChange"
+    :options="selectOptions"
+    @update:model-value="handleChange"
   >
-    <a-select-option
-      v-for="opt in filteredOptions"
-      :key="opt.id"
-      :value="opt.id"
-      :label="labelOf(opt)"
-    >
-      {{ labelOf(opt) }}
-      <span v-if="opt.qualityCourseId" class="dp-selector-option-meta">
-        · {{ qualityCourseText(opt) }}
-      </span>
-      <span v-if="opt.schoolYear" class="dp-selector-option-meta">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ formatSemester(opt.semester) }}</span>)
-      </span>
-      <AuditStatusTag
-        v-if="opt.auditStatus"
-        :color="auditStatusColor(opt.auditStatus)"
-        class="dp-selector-option-tag-gap"
-      >
-        {{ auditStatusLabel(opt.auditStatus) }}
-      </AuditStatusTag>
-    </a-select-option>
-  </a-select>
+    <template #option="{ value: optionValue }">
+      <template v-for="opt in filteredOptions" :key="opt.id">
+        <template v-if="opt.id === optionValue">
+          {{ labelOf(opt) }}
+          <span v-if="opt.qualityCourseId" class="dp-selector-option-meta">
+            · {{ qualityCourseText(opt) }}
+          </span>
+          <span v-if="opt.schoolYear" class="dp-selector-option-meta">
+            ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ formatSemester(opt.semester) }}</span>)
+          </span>
+          <UiTag
+            v-if="opt.auditStatus"
+            :tone="auditStatusColor(opt.auditStatus)"
+            size="sm"
+            class="dp-selector-option-tag-gap"
+          >
+            {{ auditStatusLabel(opt.auditStatus) }}
+          </UiTag>
+        </template>
+      </template>
+    </template>
+  </UiSelect>
 </template>

@@ -15,10 +15,10 @@
       description="创建后在列表中启动正评；题目范围与任务单元在启动时按策略固化。"
       class="formal-create-dialog__hint"
     />
-    <a-form layout="vertical">
-      <a-form-item label="选择题组" required>
+    <UiForm layout="vertical">
+      <UiFormItem label="选择题组" required>
         <UiSelect v-model="groupId" placeholder="选择参加正评的题组" :options="groupOptions" />
-      </a-form-item>
+      </UiFormItem>
       <SessionGroupCreateSummary
         v-if="groupId"
         phase="formal"
@@ -31,15 +31,15 @@
         title="该题组创建前还需完成"
         :steps="selectedGroupWorkflowSteps"
       />
-      <a-form-item label="批阅任务单元" required>
+      <UiFormItem label="批阅任务单元" required>
         <UiSelect
           v-model="allocationUnit"
           placeholder="选择正评任务拆分方式"
           :options="ALLOCATION_UNIT_OPTIONS"
           :disabled="!selectedGroupCanCreate"
         />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
   </UiDialog>
 </template>
 
@@ -55,6 +55,8 @@ import { computed, ref, watch } from 'vue'
 import { ALLOCATION_UNIT_OPTIONS, createFormalSession } from '@/apis/mark/marking-organization'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { blockingItemsToWorkflowSteps } from '@/components/workbench/workflow-readiness/workflow-blocking-items'
 import WorkflowReadinessPanel from '@/components/workbench/workflow-readiness/WorkflowReadinessPanel.vue'
@@ -172,6 +174,7 @@ async function submit(): Promise<void> {
   ) {
     return
   }
+  if (submitting.value) return
   submitting.value = true
   try {
     const sessionId = await createFormalSession({

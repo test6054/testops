@@ -108,6 +108,7 @@
         <UiButton size="sm" variant="outline" @click="loadAppraisalFlowRecords">重试</UiButton>
       </div>
       <UiEmpty
+        size="sm"
         v-if="!flowLoading && !flowLoadFailed && flowRecords.length === 0"
         description="保管期未到或尚未发起鉴定"
       />
@@ -192,7 +193,7 @@
             && !destructionFlowLoadFailed
             && destructionFlowRecords.length === 0
         "
-        description="尚未发起销毁流程"
+        size="sm" description="尚未发起销毁流程"
       />
       <div
         v-if="!destructionFlowLoading && destructionFlowRecords.length > 0"
@@ -244,32 +245,37 @@
       @close="appraisalModalOpen = false"
       @confirm="submitAppraisalOpinion"
     >
-      <a-form layout="vertical">
-        <a-form-item label="决议" required>
-          <a-radio-group v-model:value="appraisalForm.decision">
-            <a-radio :value="ArchiveAppraisalDecisionCode.RETAIN">继续保留</a-radio>
-            <a-radio :value="ArchiveAppraisalDecisionCode.DESTROY">可销毁</a-radio>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item
+      <UiForm layout="vertical">
+        <UiFormItem label="决议" required>
+          <UiRadioGroup
+            v-model="appraisalForm.decision"
+            size="sm"
+            :options="[
+              { label: '继续保留', value: ArchiveAppraisalDecisionCode.RETAIN },
+              { label: '可销毁', value: ArchiveAppraisalDecisionCode.DESTROY },
+            ]"
+          />
+        </UiFormItem>
+        <UiFormItem
           v-if="appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN"
           label="延长保管（年）"
         >
-          <a-input-number
+          <UiInputNumber
+            size="sm"
             :value="appraisalForm.retentionExtensionYears"
             :min="1"
             :disabled="appraisalForm.permanentRetention"
             style="width: 100%"
             @update:value="syncAppraisalRetentionYears"
           />
-        </a-form-item>
-        <a-form-item v-if="appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN">
-          <a-checkbox v-model:checked="appraisalForm.permanentRetention">永久保管</a-checkbox>
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="appraisalForm.remark" :rows="3" :maxlength="500" show-count />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+        <UiFormItem v-if="appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN">
+          <UiCheckbox v-model="appraisalForm.permanentRetention">永久保管</UiCheckbox>
+        </UiFormItem>
+        <UiFormItem label="备注">
+          <UiTextarea size="sm" v-model="appraisalForm.remark" :rows="3" :maxlength="500" :show-count="true" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -283,11 +289,11 @@
       @close="destructionModalOpen = false"
       @confirm="submitDestructionRequest"
     >
-      <a-form layout="vertical">
-        <a-form-item label="销毁原因" required>
-          <a-textarea v-model:value="destructionReason" :rows="3" :maxlength="500" show-count />
-        </a-form-item>
-      </a-form>
+      <UiForm layout="vertical">
+        <UiFormItem label="销毁原因" required>
+          <UiTextarea size="sm" v-model="destructionReason" :rows="3" :maxlength="500" :show-count="true" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -301,11 +307,11 @@
       @close="rejectAppraisalOpen = false"
       @confirm="submitRejectAppraisal"
     >
-      <a-form layout="vertical">
-        <a-form-item label="驳回原因" required>
-          <a-textarea v-model:value="rejectAppraisalReason" :rows="3" :maxlength="500" show-count />
-        </a-form-item>
-      </a-form>
+      <UiForm layout="vertical">
+        <UiFormItem label="驳回原因" required>
+          <UiTextarea size="sm" v-model="rejectAppraisalReason" :rows="3" :maxlength="500" :show-count="true" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -319,8 +325,8 @@
       @close="destructionApprovalOpen = false"
       @confirm="submitDestructionApproval"
     >
-      <a-form layout="vertical">
-        <a-form-item
+      <UiForm layout="vertical">
+        <UiFormItem
           :label="
             destructionApprovalDecision === ArchiveDestructionDecisionCode.REJECTED
               ? '驳回原因'
@@ -328,14 +334,15 @@
           "
           :required="destructionApprovalDecision === ArchiveDestructionDecisionCode.REJECTED"
         >
-          <a-textarea
-            v-model:value="destructionApprovalRemark"
+          <UiTextarea
+            size="sm"
+            v-model="destructionApprovalRemark"
             :rows="3"
             :maxlength="500"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -349,22 +356,22 @@
       @close="superviseModalOpen = false"
       @confirm="submitSupervise"
     >
-      <a-form layout="vertical">
-        <a-form-item label="见证人" required>
+      <UiForm layout="vertical">
+        <UiFormItem label="见证人" required>
           <ArchiveDutyUserSelect
             v-model:value="superviseForm.witnessUserId"
             :excluded-user-ids="supervisionExcludedUserIds"
           />
-        </a-form-item>
-        <a-form-item label="销毁清册文件" required>
+        </UiFormItem>
+        <UiFormItem label="销毁清册文件" required>
           <UiPlatformFileField
             v-model:file-node-id="superviseForm.registerFileId"
             v-model:file-name="superviseRegisterFileName"
             :scene-key="FileUploadSceneKey.MARK_ARCHIVE_VOLUME_MATERIAL"
             button-text="选择文件"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </WorkbenchSurfaceCard>
 </template>
@@ -405,8 +412,14 @@ import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -710,12 +723,16 @@ function destructionStatusTone(code: ArchiveDestructionStatusCode): BadgeTone {
 }
 
 async function handleApproveAppraisal() {
+  if (appraisalSubmitting.value) return
+  appraisalSubmitting.value = true
   try {
     await approveArchiveVolumeAppraisal(props.volumeId)
     message.success('鉴定审批通过')
     refreshPanel()
   } catch (error) {
     showUserError(error, '通过鉴定审批失败')
+  } finally {
+    appraisalSubmitting.value = false
   }
 }
 
@@ -725,6 +742,7 @@ function openRejectAppraisal() {
 }
 
 async function submitRejectAppraisal() {
+  if (rejectAppraisalSubmitting.value) return
   if (!rejectAppraisalReason.value.trim()) {
     showFormValidationMessage('请填写驳回原因')
     return
@@ -752,6 +770,7 @@ function openDestructionApproval(decision: ArchiveDestructionDecisionCode) {
 }
 
 async function submitDestructionApproval() {
+  if (destructionApprovalSubmitting.value) return
   if (
     destructionApprovalDecision.value === ArchiveDestructionDecisionCode.REJECTED
     && !destructionApprovalRemark.value.trim()
@@ -777,6 +796,7 @@ async function submitDestructionApproval() {
 }
 
 async function handleExecuteDestruction() {
+  if (destructionSubmitting.value) return
   const confirmed = await confirmAsync({
     title: '确认执行销毁？',
     content: '销毁执行后不可撤销，请确认已完成审批与备份。',
@@ -784,6 +804,7 @@ async function handleExecuteDestruction() {
     okText: '执行销毁',
   })
   if (!confirmed) return
+  destructionSubmitting.value = true
   try {
     await executeArchiveVolumeDestruction(props.volumeId)
     message.success('销毁执行已发起')
@@ -791,6 +812,8 @@ async function handleExecuteDestruction() {
     startDestructionPollIfNeeded()
   } catch (error) {
     showUserError(error, '执行销毁失败')
+  } finally {
+    destructionSubmitting.value = false
   }
 }
 
@@ -831,6 +854,7 @@ function openSuperviseModal() {
 }
 
 async function submitSupervise() {
+  if (superviseSubmitting.value) return
   if (!superviseForm.witnessUserId.trim()) {
     showFormValidationMessage('请选择见证人')
     return
@@ -857,12 +881,16 @@ async function submitSupervise() {
 }
 
 async function handleRequestAppraisal() {
+  if (appraisalSubmitting.value) return
+  appraisalSubmitting.value = true
   try {
     await requestArchiveVolumeAppraisal(props.volumeId)
     message.success('鉴定申请已提交')
     refreshPanel()
   } catch (error) {
     showUserError(error, '提交鉴定申请失败')
+  } finally {
+    appraisalSubmitting.value = false
   }
 }
 
@@ -886,6 +914,7 @@ function syncAppraisalRetentionYears(value: string | number | null | undefined) 
 }
 
 async function submitAppraisalOpinion() {
+  if (appraisalSubmitting.value) return
   if (
     appraisalForm.decision === ArchiveAppraisalDecisionCode.RETAIN
     && !appraisalForm.permanentRetention
@@ -926,6 +955,7 @@ function openDestructionRequest() {
 }
 
 async function submitDestructionRequest() {
+  if (destructionSubmitting.value) return
   if (!destructionReason.value.trim()) {
     showFormValidationMessage('请填写销毁原因')
     return

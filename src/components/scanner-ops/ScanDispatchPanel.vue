@@ -475,6 +475,9 @@ async function cancelTicket(record: ScanDispatchTicketVO) {
   if (!canCancelTicket(record) || !record.ticketId) {
     return
   }
+  if (cancellingTicketId.value) {
+    return
+  }
   await confirmAsync({
     title: '取消派单',
     content: '取消后工位将无法再 claim 该派单，确定继续？',

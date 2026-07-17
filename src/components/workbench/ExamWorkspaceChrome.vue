@@ -1,10 +1,9 @@
 <template>
   <div v-if="loading && !snapshot" class="exam-workspace-chrome exam-workspace-chrome--loading">
-    <a-skeleton active :title="{ width: '40%' }" :paragraph="{ rows: 1, width: '60%' }" />
-    <a-skeleton
-      active
-      :title="false"
-      :paragraph="{ rows: 1 }"
+    <UiSkeletonState :rows="2" compact />
+    <UiSkeletonState
+      :rows="1"
+      compact
       class="exam-workspace-chrome__rail-skeleton"
     />
   </div>
@@ -42,6 +41,7 @@
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import { storeToRefs } from 'pinia'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamJourneyRail from '@/components/workbench/ExamJourneyRail.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -96,19 +96,19 @@ function handleRefresh(): void {
   flex-direction: column;
   gap: 0;
   margin-bottom: var(--dp-space-4);
-  background: var(--ant-color-bg-container);
-  border: 1px solid var(--ant-color-border-secondary);
+  background: var(--dp-bg-container);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
   overflow: hidden;
 
   :deep(.context-bar--workbench) {
     margin-bottom: 0;
     padding: var(--dp-space-4);
-    border-bottom: 1px solid var(--ant-color-border-secondary);
+    border-bottom: 1px solid var(--dp-border-subtle);
   }
 
   :deep(.exam-journey-rail) {
-    border-bottom: 1px solid var(--ant-color-border-secondary);
+    border-bottom: 1px solid var(--dp-border-subtle);
   }
 
   &__signal {

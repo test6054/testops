@@ -472,8 +472,8 @@ defineExpose({
 .cas-login-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  min-height: 240px;
+  gap: var(--dp-space-3, 12px);
+  min-height: 120px;
   justify-content: flex-start;
 }
 
@@ -481,7 +481,7 @@ defineExpose({
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .cas-school-fixed {
@@ -489,9 +489,9 @@ defineExpose({
   flex-direction: column;
   gap: 6px;
   padding: 12px 14px;
-  border: 1px solid var(--ant-color-border-secondary);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control);
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
 }
 
 .cas-school-fixed__label {
@@ -533,7 +533,7 @@ defineExpose({
 
 .cas-tips {
   width: 100%;
-  padding: 14px 18px;
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
   background: var(--dp-gray-50);
   border-radius: var(--dp-radius-control);
   text-align: left;
@@ -549,7 +549,7 @@ defineExpose({
 .cas-hint,
 .cas-disabled,
 .cas-load-failed {
-  padding: 16px;
+  padding: var(--dp-space-3, 12px);
   border-radius: var(--dp-radius-control);
   background: var(--dp-gray-50);
   color: var(--dp-text-secondary);

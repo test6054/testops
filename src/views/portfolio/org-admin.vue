@@ -24,9 +24,17 @@ import { portfolioOrgApi } from '@/apis/portfolio/org'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTree from '@/components/ui-guide/ui/UiTree.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -502,6 +510,31 @@ async function deleteAlias(row: PortfolioOrgAliasVO) {
   }
 }
 
+
+const orgMoreActionItems = computed(() => [
+  {
+    key: 'alias',
+    label: '历史名称',
+    disabled: !canManageAlias.value || interactionLocked.value || loading.value,
+  },
+  {
+    key: 'delete',
+    label: '删除',
+    danger: true,
+    disabled: !canManageUnit.value || interactionLocked.value || loading.value,
+  },
+])
+
+function onOrgMoreAction(key: string) {
+  if (key === 'alias') {
+    openAliasEditor('create')
+    return
+  }
+  if (key === 'delete') {
+    void deleteSelectedUnit()
+  }
+}
+
 onMounted(async () => {
   await refreshTree()
   await loadLatestSync()
@@ -514,14 +547,7 @@ onMounted(async () => {
       <ContextBar layout="workbench" show-title title="组织管理" :subtitle="contextSubtitle">
         <template #actions>
           <UiButton
-            v-if="canManageTenant"
-            :loading="syncing"
-            :disabled="interactionLocked"
-            @click="handleSync"
-          >
-            校验主数据挂接
-          </UiButton>
-          <UiButton
+            size="sm"
             v-if="canManageTenant"
             variant="primary"
             :disabled="!selectedNode || interactionLocked || loading"
@@ -530,28 +556,32 @@ onMounted(async () => {
             新增扩展组织
           </UiButton>
           <UiButton
+            size="sm"
             v-if="canManageTenant && canManageUnit"
+            variant="outline"
             :disabled="interactionLocked || loading"
             @click="openUnitEditor('edit')"
           >
             编辑扩展组织
           </UiButton>
           <UiButton
+            size="sm"
             v-if="canManageTenant"
-            :disabled="!canManageAlias || interactionLocked || loading"
-            @click="openAliasEditor('create')"
+            variant="outline"
+            :loading="syncing"
+            :disabled="interactionLocked"
+            @click="handleSync"
           >
-            添加历史名称
+            校验主数据挂接
           </UiButton>
-          <UiButton
+          <UiDropdownAction
             v-if="canManageTenant"
-            status="danger"
-            :loading="operationKey.startsWith('unit:delete:')"
-            :disabled="!canManageUnit || interactionLocked || loading"
-            @click="deleteSelectedUnit"
-          >
-            删除扩展组织
-          </UiButton>
+            trigger-style="button"
+            button-text="更多"
+            :disabled="interactionLocked || loading"
+            :items="orgMoreActionItems"
+            @select="onOrgMoreAction"
+          />
         </template>
       </ContextBar>
     </template>
@@ -564,7 +594,7 @@ onMounted(async () => {
     </UiCard>
     <div class="org-admin">
       <UiCard title="组织树" class="org-admin__tree" :loading="loading">
-        <a-tree
+        <UiTree
           v-if="treeData.length"
           :tree-data="treeData"
           default-expand-all
@@ -572,7 +602,7 @@ onMounted(async () => {
           :disabled="interactionLocked"
           @select="onSelect"
         />
-        <UiEmpty v-else description="暂无组织数据，请联系学校管理员校验主数据挂接" />
+        <UiEmpty size="sm" v-else description="暂无组织数据，请联系学校管理员校验主数据挂接" />
       </UiCard>
       <UiCard title="节点详情" class="org-admin__detail">
         <template v-if="selectedRaw">
@@ -638,47 +668,69 @@ onMounted(async () => {
               </template>
             </template>
             <template #empty>
-              <UiEmpty description="暂无历史名称" />
+              <UiEmpty size="sm" description="暂无历史名称" />
             </template>
           </UiDataTable>
         </template>
-        <UiEmpty v-else description="请在左侧选择组织节点" />
+        <UiAlertStrip
+          v-else
+          tone="info"
+          size="sm"
+          dense
+          inline
+          :show-icon="false"
+        >
+          <template #default>
+            <span style="display:inline-flex;align-items:center;gap:8px">
+              <UiTag tone="blue" size="sm">未选择组织</UiTag>
+              <span>请在左侧选择组织节点后维护扩展属性</span>
+            </span>
+          </template>
+        </UiAlertStrip>
       </UiCard>
     </div>
-    <a-modal
+    <UiDialog
       v-model:open="unitVisible"
       :title="unitMode === 'edit' ? '编辑扩展组织' : '新增扩展组织'"
       :confirm-loading="operationKey.startsWith('unit:save:')"
       :closable="!writing"
       :mask-closable="!writing"
-      :keyboard="!writing"
-      :cancel-button-props="{ disabled: writing }"
       @ok="submitUnit"
     >
-      <a-form layout="vertical">
-        <a-form-item label="类型" required>
-          <a-select
-            v-model:value="unitEditor.orgType"
+      <UiForm layout="vertical">
+        <UiFormItem label="类型" required>
+          <UiSelect
+            size="sm"
+            v-model="unitEditor.orgType"
             :options="PORTFOLIO_ORG_UNIT_TYPE_OPTIONS"
             :disabled="unitMode === 'edit' || writing"
           />
-        </a-form-item>
-        <a-form-item label="名称" required>
-          <a-input v-model:value="unitEditor.orgName" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="编码">
-          <a-input v-model:value="unitEditor.orgCode" :disabled="writing" />
-        </a-form-item>
-        <a-form-item v-if="unitEditor.anchorDepartmentId" label="挂接院系">
-          <a-input :value="unitEditor.anchorDepartmentId" disabled />
-        </a-form-item>
-        <a-form-item v-if="unitEditor.anchorMajorId" label="挂接专业">
-          <a-input :value="unitEditor.anchorMajorId" disabled />
-        </a-form-item>
-        <a-form-item label="负责人">
-          <a-select
-            v-model:value="unitEditor.leaderUserId"
-            show-search
+        </UiFormItem>
+        <UiFormItem label="名称" required>
+          <UiInput
+            size="sm" v-model="unitEditor.orgName" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="编码">
+          <UiInput
+            size="sm" v-model="unitEditor.orgCode" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem v-if="unitEditor.anchorDepartmentId" label="挂接院系">
+          <UiInput
+            size="sm" :value="unitEditor.anchorDepartmentId" disabled
+          />
+        </UiFormItem>
+        <UiFormItem v-if="unitEditor.anchorMajorId" label="挂接专业">
+          <UiInput
+            size="sm" :value="unitEditor.anchorMajorId" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="负责人">
+          <UiSelect
+            size="sm"
+            v-model="unitEditor.leaderUserId"
+            allow-search
             allow-clear
             placeholder="搜索教师姓名或工号"
             :filter-option="false"
@@ -686,22 +738,21 @@ onMounted(async () => {
             :disabled="writing"
             @search="searchTeachers"
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-    <a-modal
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
+    <UiDialog
       v-model:open="aliasVisible"
       :title="aliasMode === 'edit' ? '编辑历史名称' : '添加历史名称'"
       :confirm-loading="operationKey.startsWith('alias:save:')"
       :closable="!writing"
       :mask-closable="!writing"
-      :keyboard="!writing"
-      :cancel-button-props="{ disabled: writing }"
       @ok="submitAlias"
     >
-      <a-form layout="vertical">
-        <a-form-item label="目标类型">
-          <a-input
+      <UiForm layout="vertical">
+        <UiFormItem label="目标类型">
+          <UiInput
+            size="sm"
             :value="
               strictEnumLabel(
                 PortfolioOrgAliasTargetTypeDescription,
@@ -711,29 +762,35 @@ onMounted(async () => {
             "
             disabled
           />
-        </a-form-item>
-        <a-form-item label="历史名称" required>
-          <a-input v-model:value="aliasEditor.aliasName" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="生效起始">
-          <a-input
-            v-model:value="aliasEditor.effectiveFrom"
+        </UiFormItem>
+        <UiFormItem label="历史名称" required>
+          <UiInput
+            size="sm" v-model="aliasEditor.aliasName" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="生效起始">
+          <UiInput
+            size="sm"
+            v-model="aliasEditor.effectiveFrom"
             placeholder="年-月-日，例如 2026-07-16"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="生效截止">
-          <a-input
-            v-model:value="aliasEditor.effectiveTo"
+        </UiFormItem>
+        <UiFormItem label="生效截止">
+          <UiInput
+            size="sm"
+            v-model="aliasEditor.effectiveTo"
             placeholder="年-月-日，例如 2026-07-16"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-input v-model:value="aliasEditor.remark" :disabled="writing" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+        <UiFormItem label="备注">
+          <UiInput
+            size="sm" v-model="aliasEditor.remark" :disabled="writing"
+          />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -741,12 +798,12 @@ onMounted(async () => {
 .org-admin {
   display: grid;
   grid-template-columns: minmax(280px, 36%) 1fr;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   align-items: start;
 }
 
 .org-admin__diagnostics {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-3, 12px);
 }
 
 .org-admin__diagnostic-list {

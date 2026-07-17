@@ -2,6 +2,7 @@
 import type { PortfolioAnalysisAnnualReportVO } from '@/apis/portfolio/analysis'
 import type { PortfolioEvaluationTeacherNoticeVO } from '@/apis/portfolio/types'
 import type { PortfolioAnnualReportTaskStatusCode } from '@/types/enums/portfolio-annual-report-task-status-enum'
+import { message } from 'ant-design-vue'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
@@ -10,27 +11,40 @@ import {
   PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
+import YearPicker from '@/components/ui-guide/ui/YearPicker.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const reportYear = ref(String(new Date().getFullYear()))
 const loading = ref(false)
 const generating = ref(false)
+const selectionConfirmed = ref(false)
 const annualReport = ref<PortfolioAnalysisAnnualReportVO | null>(null)
 const annualNotices = ref<PortfolioEvaluationTeacherNoticeVO[]>([])
+
+const hasPendingAnnualNotices = computed(() =>
+  annualNotices.value.some(
+    (notice) =>
+      notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED,
+  ),
+)
 const submittingNoticeId = ref('')
 const scopeRequestToken = ref(0)
 const reportRequestToken = ref(0)
@@ -146,6 +160,10 @@ async function loadAnnualReviewNotices() {
  * 确认当前年度考核材料；服务端原子校验任务仍为已发布且尚未超过截止时间。
  */
 async function submitAnnualReviewNotice(notice: PortfolioEvaluationTeacherNoticeVO) {
+  if (!(await confirmProxyWrite('确认年度考核材料'))) {
+    return
+  }
+
   if (submittingNoticeId.value || !canOperate.value) {
     return
   }
@@ -173,7 +191,15 @@ async function submitAnnualReviewNotice(notice: PortfolioEvaluationTeacherNotice
  * 触发年度发展报告生成；服务端以教师范围和年度为唯一任务口径，并拒绝无权限代操作。
  */
 async function generateAnnualReport() {
+  if (!(await confirmProxyWrite('生成年度报告'))) {
+    return
+  }
+
   if (!canOperate.value || generating.value || !targetTeacherId.value) {
+    return
+  }
+  if (!selectionConfirmed.value) {
+    message.warning('生成前请确认：本年度材料已甄选，完整度不等于发展叙事质量')
     return
   }
   const currentScopeToken = scopeRequestToken.value
@@ -217,6 +243,7 @@ usePortfolioScopedLoader(
     loading.value = false
     generating.value = false
     submittingNoticeId.value = ''
+    selectionConfirmed.value = false
     annualReport.value = null
     annualNotices.value = []
     await Promise.all([loadAnnualReport(), loadAnnualReviewNotices()])
@@ -230,23 +257,20 @@ usePortfolioScopedLoader(
     <template #context>
       <ContextBar show-title layout="workbench" title="年度考核准备">
         <template #actions>
-          <a-date-picker v-model:value="reportYear" picker="year" value-format="YYYY" />
-          <UiButton :loading="loading" :disabled="!canOperate" @click="loadAnnualReport">
+          <YearPicker v-model="reportYear" size="sm" />
+          <UiButton size="sm" :loading="loading" :disabled="!canOperate" @click="loadAnnualReport">
             刷新
           </UiButton>
         </template>
       </ContextBar>
     </template>
 
-    <UiEmpty v-if="canPickTeachers && !targetTeacherId" title="暂无内容" />
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
     <template v-else>
       <UiCard title="年度材料准备">
-        <p class="annual-review__hint">
-          先完成材料采集与确认，再通过审核进度核对可入档的正式记录。
-        </p>
         <div class="annual-review__actions">
-          <UiButton variant="primary" @click="openCollection">采集与确认材料</UiButton>
-          <UiButton variant="outline" @click="openReviewStatus">查看审核进度</UiButton>
+          <UiButton size="sm" variant="outline" @click="openCollection">采集与确认材料</UiButton>
+          <UiButton size="sm" variant="outline" @click="openReviewStatus">查看审核进度</UiButton>
         </div>
       </UiCard>
 
@@ -278,6 +302,7 @@ usePortfolioScopedLoader(
                 {{ annualNoticeStatusLabel(notice) }}
               </UiTag>
               <UiButton
+                size="sm"
                 v-if="notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED"
                 variant="primary"
                 :loading="submittingNoticeId === notice.id"
@@ -289,15 +314,19 @@ usePortfolioScopedLoader(
             </div>
           </div>
         </template>
-        <UiEmpty v-else title="暂无内容" />
+        <UiEmpty v-else size="sm" description="当前无年度考核窗口" />
       </UiCard>
 
       <UiCard title="年度发展报告" class="annual-review__report">
         <template #extra>
+          <UiCheckbox v-model="selectionConfirmed" class="annual-review__selection">
+            本年度材料已甄选
+          </UiCheckbox>
           <UiButton
-            variant="primary"
+            size="sm"
+            :variant="hasPendingAnnualNotices ? 'outline' : 'primary'"
             :loading="generating"
-            :disabled="!canOperate"
+            :disabled="!canOperate || !selectionConfirmed"
             @click="generateAnnualReport"
           >
             生成年度报告
@@ -321,7 +350,7 @@ usePortfolioScopedLoader(
             {{ annualReport.errorSummary }}
           </p>
         </template>
-        <UiEmpty v-else-if="!loading" title="暂无内容" />
+        <UiEmpty size="sm" v-else-if="!loading" title="暂无内容" />
       </UiCard>
     </template>
   </StageWorkbenchShell>
@@ -335,7 +364,7 @@ usePortfolioScopedLoader(
 }
 
 .annual-review__error {
-  color: var(--ant-color-error);
+  color: var(--dp-error);
 }
 
 .annual-review__actions {
@@ -358,7 +387,7 @@ usePortfolioScopedLoader(
   justify-content: space-between;
   gap: var(--dp-space-4);
   padding: var(--dp-space-3) 0;
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  border-bottom: 1px solid var(--dp-border-subtle);
 }
 
 .annual-review__notice-row:last-child {
@@ -376,5 +405,22 @@ usePortfolioScopedLoader(
   .annual-review__notice-row {
     flex-direction: column;
   }
+}
+
+.annual-review-scene__select-hint {
+  margin: 0 0 var(--dp-space-2);
+  padding: 6px 10px;
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-surface-subtle);
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-sm);
+  line-height: 1.45;
+}
+
+.annual-review__selection {
+  margin-right: var(--dp-space-3);
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
 }
 </style>

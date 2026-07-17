@@ -78,7 +78,8 @@ const props = withDefaults(
     items: () => [],
     variant: 'grid',
     columns: 4,
-    compact: false,
+    /** 笔记本工作台默认紧凑，避免 KPI 卡墙占高 */
+    compact: true,
   },
 )
 type Variant = 'grid' | 'strip' | 'compact'
@@ -95,16 +96,16 @@ const hasHeader = computed(() => {
 .ui-stat-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .ui-stat-panel--compact {
-  gap: 12px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .ui-stat-panel__list {
   display: grid;
-  gap: 12px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .ui-stat-panel--grid.ui-stat-panel--2col .ui-stat-panel__list,
@@ -129,11 +130,11 @@ const hasHeader = computed(() => {
 
 .ui-stat-panel--strip .ui-stat-panel__list {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--dp-space-3, 10px);
 }
 
 .ui-stat-panel--compact .ui-stat-panel__list {
-  gap: 10px;
+  gap: var(--dp-space-3, 10px);
 }
 
 @media (max-width: #{bp.$ant-grid-xl - 1px}) {

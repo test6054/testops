@@ -23,7 +23,16 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -42,6 +51,11 @@ function indicatorStatusLabel(value: PfIndicatorStatusCode): string {
 
 const router = useRouter()
 const activeTab = ref('config')
+const indicatorTenantTabItems = [
+  { key: 'config', label: '指标启停' },
+  { key: 'scene', label: '场景权重' },
+  { key: 'pack', label: '行业包挂载' },
+]
 const sceneCode = ref<PfSceneCode>(PfSceneCode.PERFORMANCE)
 const operationKey = ref('')
 const writing = computed(() => Boolean(operationKey.value))
@@ -466,10 +480,11 @@ onMounted(loadConfig)
     <template #context>
       <ContextBar show-title layout="workbench" title="租户指标配置">
         <template #actions>
-          <UiButton :loading="exporting" :disabled="interactionLocked" @click="exportCatalog">
+          <UiButton size="sm" :loading="exporting" :disabled="interactionLocked" @click="exportCatalog">
             导出目录
           </UiButton>
           <UiButton
+            size="sm"
             :disabled="interactionLocked"
             @click="router.push({ name: 'PortfolioIndicatorPublishWizard' })"
           >
@@ -479,181 +494,199 @@ onMounted(loadConfig)
       </ContextBar>
     </template>
     <UiCard>
-      <a-tabs :active-key="activeTab" @change="onTabChange">
-        <a-tab-pane key="config" tab="指标启停">
-          <div class="toolbar">
-            <a-input
-              v-model:value="configFilter"
-              placeholder="编码 / 名称"
-              style="width: 180px"
-              allow-clear
-              :disabled="writing"
-            />
-            <UiButton :loading="enabling" :disabled="writing" @click="enableAll">
-              批量启用 T001–T100
-            </UiButton>
-            <UiButton :loading="loadState.config" :disabled="writing" @click="loadConfig">
-              刷新
-            </UiButton>
-          </div>
-          <UiEmpty
-            v-if="!loadState.config && !loadError.config && filteredConfigs.length === 0"
-            description="当前筛选无租户指标配置"
+      <UiSectionTabs
+        :model-value="activeTab"
+        :items="indicatorTenantTabItems"
+        compact
+        divided
+        @change="onTabChange"
+      />
+      <template v-if="activeTab === 'config'">
+        <div class="toolbar">
+          <UiInput
+            size="sm"
+            v-model="configFilter"
+            placeholder="编码 / 名称"
+            style="width: 180px"
+            clearable
+            :disabled="writing"
           />
-          <UiDataTable
-            :columns="configColumns"
-            :data-source="filteredConfigs"
-            :loading="loadState.config"
-            :load-error="loadError.config"
-            row-key="indicatorCode"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'enabled'">
-                <a-switch
-                  :checked="record.enabled"
-                  :disabled="writing"
-                  @change="handleConfigEnabledChange(record, $event)"
-                />
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked }]"
-                  split
-                  @action="() => openEdit(record)"
-                />
-              </template>
+          <UiButton size="sm" :loading="enabling" :disabled="writing" @click="enableAll">
+            批量启用 T001–T100
+          </UiButton>
+          <UiButton size="sm" :loading="loadState.config" :disabled="writing" @click="loadConfig">
+            刷新
+          </UiButton>
+        </div>
+        <UiEmpty
+          size="sm"
+          v-if="!loadState.config && !loadError.config && filteredConfigs.length === 0"
+          description="当前筛选无租户指标配置"
+        />
+        <UiDataTable
+          :columns="configColumns"
+          :data-source="filteredConfigs"
+          :loading="loadState.config"
+          :load-error="loadError.config"
+          row-key="indicatorCode"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'enabled'">
+              <UiSwitch
+                size="sm"
+                :checked="record.enabled"
+                :disabled="writing"
+                @change="handleConfigEnabledChange(record, $event)"
+              />
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane key="scene" tab="场景权重">
-          <div class="toolbar">
-            <a-select
-              v-model:value="sceneCode"
-              :options="PF_SCENE_CODE_OPTIONS"
-              style="width: 140px"
-              :disabled="writing"
-            />
-            <UiButton
-              :loading="operationKey.startsWith('save:model:')"
-              :disabled="writing || !modelEditable"
-              @click="saveModel"
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked }]"
+                split
+                @action="() => openEdit(record)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else-if="activeTab === 'scene'">
+        <div class="toolbar">
+          <UiSelect
+            size="sm"
+            v-model="sceneCode"
+            :options="PF_SCENE_CODE_OPTIONS"
+            style="width: 140px"
+            :disabled="writing"
+          />
+          <UiButton
+            size="sm"
+            :loading="operationKey.startsWith('save:model:')"
+            :disabled="writing || !modelEditable"
+            @click="saveModel"
+          >
+            保存
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="trialing"
+            :disabled="writing || !modelEditable"
+            @click="trialModel"
+          >
+            保存并试算
+          </UiButton>
+          <UiButton
+            size="sm"
+            :loading="freezing"
+            :disabled="
+              writing || modelDirty || model?.modelStatus !== PfModelStatusCode.PUBLISHED
+            "
+            @click="freezeModel"
+          >
+            冻结
+          </UiButton>
+        </div>
+        <UiSpin :spinning="loadState.model">
+          <UiEmpty size="sm" v-if="loadError.model" description="场景模型加载失败，请重试" />
+          <template v-if="model">
+            <p class="meta">
+              {{ sceneLabel }} · 状态 {{ modelStatusLabel(model.modelStatus) }} · 权重合计
+              {{ model.weightSum ?? '—' }} · 试算 {{ model.trialPassed ? '通过' : '未通过' }}
+              <span v-if="modelDirty"> · 尚未保存</span>
+            </p>
+            <UiDataTable
+              :columns="sceneWeightColumns"
+              :data-source="model.indicators"
+              row-key="indicatorCode"
+              size="small"
+              flat
+              pagination-mode="none"
+              :show-pagination="false"
+              :sticky-header="false"
+              :total="model.indicators.length"
             >
-              保存
-            </UiButton>
-            <UiButton
-              variant="primary"
-              :loading="trialing"
-              :disabled="writing || !modelEditable"
-              @click="trialModel"
-            >
-              保存并试算
-            </UiButton>
-            <UiButton
-              :loading="freezing"
-              :disabled="
-                writing || modelDirty || model?.modelStatus !== PfModelStatusCode.PUBLISHED
-              "
-              @click="freezeModel"
-            >
-              冻结
-            </UiButton>
-          </div>
-          <a-spin :spinning="loadState.model">
-            <UiEmpty v-if="loadError.model" description="场景模型加载失败，请重试" />
-            <template v-if="model">
-              <p class="meta">
-                {{ sceneLabel }} · 状态 {{ modelStatusLabel(model.modelStatus) }} · 权重合计
-                {{ model.weightSum ?? '—' }} · 试算 {{ model.trialPassed ? '通过' : '未通过' }}
-                <span v-if="modelDirty"> · 尚未保存</span>
-              </p>
-              <UiDataTable
-                :columns="sceneWeightColumns"
-                :data-source="model.indicators"
-                row-key="indicatorCode"
-                size="small"
-                flat
-                pagination-mode="none"
-                :show-pagination="false"
-                :sticky-header="false"
-                :total="model.indicators.length"
-              >
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'enabled'">
-                    <a-switch
-                      :checked="record.enabled"
-                      :disabled="writing || !modelEditable"
-                      @change="handleSceneEnabledChange(record.indicatorCode, $event)"
-                    />
-                  </template>
-                  <template v-else-if="column.key === 'weight'">
-                    <a-input-number
-                      :value="record.weightPct"
-                      :min="0"
-                      :max="100"
-                      :disabled="writing || !modelEditable"
-                      style="width: 100px"
-                      @change="handleSceneWeightChange(record.indicatorCode, $event)"
-                    />
-                  </template>
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'enabled'">
+                  <UiSwitch
+                    size="sm"
+                    :checked="record.enabled"
+                    :disabled="writing || !modelEditable"
+                    @change="handleSceneEnabledChange(record.indicatorCode, $event)"
+                  />
                 </template>
-              </UiDataTable>
-            </template>
-          </a-spin>
-        </a-tab-pane>
-        <a-tab-pane key="pack" tab="行业包挂载">
-          <div class="bind-form">
-            <a-select
-              v-model:value="bindForm.packCode"
-              placeholder="选择行业包"
-              style="width: 200px"
-              :options="industryPacks.map((p) => ({ value: p.packCode, label: p.packName }))"
-              :disabled="writing"
-            />
-            <a-input
-              v-model:value="bindForm.majorGroupCode"
-              placeholder="专业群编码"
-              style="width: 140px"
-              :disabled="writing"
-            />
-            <a-input
-              v-model:value="bindForm.majorGroupName"
-              placeholder="专业群名称"
-              style="width: 160px"
-              :disabled="writing"
-            />
-            <a-switch
-              v-model:checked="bindForm.enabled"
-              checked-children="启用"
-              un-checked-children="停用"
-              :disabled="writing"
-            />
-            <UiButton variant="primary" :loading="binding" :disabled="writing" @click="bindPack">
-              挂载
-            </UiButton>
-          </div>
-          <UiDataTable
-            :columns="industryPackColumns"
-            :data-source="industryPacks"
-            :loading="loadState.packs"
-            :load-error="loadError.packs"
-            row-key="id"
-            size="small"
-            flat
-            pagination-mode="none"
-            :show-pagination="false"
-            :sticky-header="false"
-            :total="industryPacks.length"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'status'">
-                {{ indicatorStatusLabel(record.status) }}
+                <template v-else-if="column.key === 'weight'">
+                  <UiInputNumber
+                    size="sm"
+                    :value="record.weightPct"
+                    :min="0"
+                    :max="100"
+                    :disabled="writing || !modelEditable"
+                    style="width: 100px"
+                    @change="handleSceneWeightChange(record.indicatorCode, $event)"
+                  />
+                </template>
               </template>
+            </UiDataTable>
+          </template>
+        </UiSpin>
+      </template>
+      <template v-else>
+        <div class="bind-form">
+          <UiSelect
+            size="sm"
+            v-model="bindForm.packCode"
+            placeholder="选择行业包"
+            style="width: 200px"
+            :options="industryPacks.map((p) => ({ value: p.packCode, label: p.packName }))"
+            :disabled="writing"
+          />
+          <UiInput
+            size="sm"
+            v-model="bindForm.majorGroupCode"
+            placeholder="专业群编码"
+            style="width: 140px"
+            :disabled="writing"
+          />
+          <UiInput
+            size="sm"
+            v-model="bindForm.majorGroupName"
+            placeholder="专业群名称"
+            style="width: 160px"
+            :disabled="writing"
+          />
+          <UiSwitch
+            size="sm"
+            v-model="bindForm.enabled"
+            checked-children="启用"
+            un-checked-children="停用"
+            :disabled="writing"
+          />
+          <UiButton size="sm" variant="primary" :loading="binding" :disabled="writing" @click="bindPack">
+            挂载
+          </UiButton>
+        </div>
+        <UiDataTable
+          :columns="industryPackColumns"
+          :data-source="industryPacks"
+          :loading="loadState.packs"
+          :load-error="loadError.packs"
+          row-key="id"
+          size="small"
+          flat
+          pagination-mode="none"
+          :show-pagination="false"
+          :sticky-header="false"
+          :total="industryPacks.length"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'status'">
+              {{ indicatorStatusLabel(record.status) }}
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-      </a-tabs>
+          </template>
+        </UiDataTable>
+      </template>
     </UiCard>
-    <a-drawer
+    <UiDrawer
       v-model:open="editDrawerOpen"
       title="编辑指标配置"
       width="480"
@@ -663,36 +696,39 @@ onMounted(loadConfig)
       <p>
         <strong>{{ editForm.indicatorCode }}</strong> {{ editForm.indicatorName }}
       </p>
-      <a-form layout="vertical">
-        <a-form-item label="启用">
-          <a-switch v-model:checked="editForm.enabled" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="标准分">
-          <a-input-number
-            v-model:value="editForm.standardScore"
+      <UiForm layout="vertical">
+        <UiFormItem label="启用">
+          <UiSwitch size="sm" v-model="editForm.enabled" :disabled="writing" />
+        </UiFormItem>
+        <UiFormItem label="标准分">
+          <UiInputNumber
+            size="sm"
+            v-model="editForm.standardScore"
             style="width: 100%"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="封顶分">
-          <a-input-number
-            v-model:value="editForm.capScore"
+        </UiFormItem>
+        <UiFormItem label="封顶分">
+          <UiInputNumber
+            size="sm"
+            v-model="editForm.capScore"
             style="width: 100%"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="适用场景">
-          <a-input
-            v-model:value="editForm.applicableScenes"
+        </UiFormItem>
+        <UiFormItem label="适用场景">
+          <UiInput
+            size="sm"
+            v-model="editForm.applicableScenes"
             placeholder="如 PORTRAIT,EVALUATION"
             :disabled="writing"
           />
-        </a-form-item>
-      </a-form>
-      <UiButton variant="primary" :loading="saving" :disabled="writing" @click="saveEdit">
+        </UiFormItem>
+      </UiForm>
+      <UiButton size="sm" variant="primary" :loading="saving" :disabled="writing" @click="saveEdit">
         保存
       </UiButton>
-    </a-drawer>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -708,6 +744,6 @@ onMounted(loadConfig)
 .meta {
   margin-bottom: 12px;
   font-size: 13px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 </style>

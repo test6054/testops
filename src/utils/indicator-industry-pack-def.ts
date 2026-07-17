@@ -1,6 +1,12 @@
+import type {
+  PortfolioIndustryPackAssessmentTemplateDto,
+  PortfolioIndustryPackDefDto,
+  PortfolioIndustryPackDictionaryDto,
+  PortfolioIndustryPackWeightsDto,
+} from '@/apis/portfolio/indicator-types'
 import { showFormValidationMessage } from '@/utils/error-handler'
 
-/** 行业包定义的可视化编辑模型（对应 packDefJson 核心可维护字段） */
+/** 行业包定义可视化编辑模型（映射 packDef 可维护字段） */
 export interface PortfolioIndustryPackDefForm {
   packId: string
   packName: string
@@ -24,143 +30,94 @@ function listToLines(items: string[] | undefined): string {
   return items?.join('\n') ?? ''
 }
 
-function readStringProperty(source: object, key: string): string | undefined {
-  const value = Object.getOwnPropertyDescriptor(source, key)?.value
-  return typeof value === 'string' ? value : undefined
+/** 将 API packDef 映射为表单模型 */
+export function toIndustryPackDefForm(def: PortfolioIndustryPackDefDto): PortfolioIndustryPackDefForm {
+  return {
+    packId: def.packId,
+    packName: def.packName,
+    version: def.version,
+    applicableMajorsText: listToLines(def.applicableMajors),
+    weightEnterprisePractice: def.weights?.enterprisePractice,
+    weightQualification: def.weights?.qualification,
+    weightIndustryProject: def.weights?.industryProject,
+    weightTeachingContribution: def.weights?.teachingContribution,
+    weightSocialService: def.weights?.socialService,
+    weightTrainingDevelopment: def.weights?.trainingDevelopment,
+    materialRequiredText: listToLines(def.materialChecklist?.required),
+    materialOptionalText: listToLines(def.materialChecklist?.optional),
+  }
 }
 
-function readStringArrayProperty(source: object, key: string): string[] | undefined {
-  const value = Object.getOwnPropertyDescriptor(source, key)?.value
-  if (!Array.isArray(value)) {
-    return undefined
+function emptyDictionary(): PortfolioIndustryPackDictionaryDto {
+  return {
+    enterprisePractice: { categories: [] },
+    qualification: { categories: [] },
+    industryProject: { categories: [] },
   }
-  return value.every((item) => typeof item === 'string') ? value : undefined
 }
 
-function readObjectProperty(source: object, key: string): object | undefined {
-  const value = Object.getOwnPropertyDescriptor(source, key)?.value
-  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value : undefined
+function defaultAssessment(packCode: string): PortfolioIndustryPackAssessmentTemplateDto {
+  return {
+    templateId: `${packCode}_annual`,
+    sections: [
+      {
+        sectionId: 'default',
+        title: '默认分区',
+        fieldRefs: ['enterprisePractice.*'],
+      },
+    ],
+  }
 }
 
-function readNumberProperty(source: object | undefined, key: string): number | undefined {
-  if (!source) {
-    return undefined
-  }
-  const value = Object.getOwnPropertyDescriptor(source, key)?.value
-  return typeof value === 'number' ? value : undefined
-}
-
-function readStringListFromObject(source: object | undefined, key: string): string[] | undefined {
-  if (!source) {
-    return undefined
-  }
-  return readStringArrayProperty(source, key)
-}
-
-export function parseIndustryPackDefJson(
-  packCode: string,
-  packName: string,
-  packVersion: string,
-  json: string,
-): PortfolioIndustryPackDefForm | null {
-  const form: PortfolioIndustryPackDefForm = {
-    packId: packCode,
-    packName,
-    version: packVersion,
-    applicableMajorsText: '',
-    materialRequiredText: '',
-    materialOptionalText: '',
-  }
-  if (!json.trim()) {
-    return form
-  }
-  const raw: unknown = JSON.parse(json)
-  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
-    showFormValidationMessage('行业包定义须为结构化文本对象')
+/**
+ * 由表单组装完整 packDef；编辑时保留已有 dictionary / assessmentTemplate。
+ */
+export function buildIndustryPackDefFromForm(
+  form: PortfolioIndustryPackDefForm,
+  existing?: PortfolioIndustryPackDefDto | null,
+): PortfolioIndustryPackDefDto | null {
+  const packId = form.packId.trim()
+  const packName = form.packName.trim()
+  const version = form.version.trim()
+  const applicableMajors = linesToList(form.applicableMajorsText)
+  const required = linesToList(form.materialRequiredText)
+  const optional = linesToList(form.materialOptionalText)
+  if (!packId || !packName || !version) {
+    showFormValidationMessage('行业包定义缺少编码、名称或版本')
     return null
   }
-  const weights = readObjectProperty(raw, 'weights')
-  const materialChecklist = readObjectProperty(raw, 'materialChecklist')
-  form.packId = readStringProperty(raw, 'packId') ?? packCode
-  form.packName = readStringProperty(raw, 'packName') ?? packName
-  form.version = readStringProperty(raw, 'version') ?? packVersion
-  form.applicableMajorsText = listToLines(readStringArrayProperty(raw, 'applicableMajors'))
-  form.weightEnterprisePractice = readNumberProperty(weights, 'enterprisePractice')
-  form.weightQualification = readNumberProperty(weights, 'qualification')
-  form.weightIndustryProject = readNumberProperty(weights, 'industryProject')
-  form.weightTeachingContribution = readNumberProperty(weights, 'teachingContribution')
-  form.weightSocialService = readNumberProperty(weights, 'socialService')
-  form.weightTrainingDevelopment = readNumberProperty(weights, 'trainingDevelopment')
-  form.materialRequiredText = listToLines(readStringListFromObject(materialChecklist, 'required'))
-  form.materialOptionalText = listToLines(readStringListFromObject(materialChecklist, 'optional'))
-  return form
-}
-
-/** 保留种子 dictionary / assessmentTemplate，仅更新表单可维护字段 */
-export function mergeIndustryPackDefJson(form: PortfolioIndustryPackDefForm, existingJson: string): string | null {
-  const base: Record<string, unknown> = {}
-  if (existingJson.trim()) {
-    const parsed: unknown = JSON.parse(existingJson)
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-      showFormValidationMessage('行业包定义须为结构化文本对象')
-      return null
-    }
-    for (const key of Object.keys(parsed)) {
-      base[key] = Object.getOwnPropertyDescriptor(parsed, key)?.value
-    }
+  if (applicableMajors.length === 0) {
+    showFormValidationMessage('请至少填写一个适用专业')
+    return null
   }
-  const rawWeights = readObjectProperty(base, 'weights')
-  const weights: Record<string, number> = {}
-  if (rawWeights) {
-    for (const key of Object.keys(rawWeights)) {
-      const value = Object.getOwnPropertyDescriptor(rawWeights, key)?.value
-      if (typeof value === 'number') {
-        weights[key] = value
-      }
-    }
+  if (required.length === 0 && optional.length === 0) {
+    showFormValidationMessage('请至少填写一项材料清单')
+    return null
   }
-  if (form.weightEnterprisePractice !== undefined) {
-    weights.enterprisePractice = form.weightEnterprisePractice
+  const weights: PortfolioIndustryPackWeightsDto = {
+    enterprisePractice: form.weightEnterprisePractice,
+    qualification: form.weightQualification,
+    industryProject: form.weightIndustryProject,
+    teachingContribution: form.weightTeachingContribution,
+    socialService: form.weightSocialService,
+    trainingDevelopment: form.weightTrainingDevelopment,
   }
-  if (form.weightQualification !== undefined) {
-    weights.qualification = form.weightQualification
+  const hasWeight = Object.values(weights).some(value => typeof value === 'number')
+  if (!hasWeight) {
+    showFormValidationMessage('请至少填写一项权重')
+    return null
   }
-  if (form.weightIndustryProject !== undefined) {
-    weights.industryProject = form.weightIndustryProject
-  }
-  if (form.weightTeachingContribution !== undefined) {
-    weights.teachingContribution = form.weightTeachingContribution
-  }
-  if (form.weightSocialService !== undefined) {
-    weights.socialService = form.weightSocialService
-  }
-  if (form.weightTrainingDevelopment !== undefined) {
-    weights.trainingDevelopment = form.weightTrainingDevelopment
-  }
-  const rawMaterialChecklist = readObjectProperty(base, 'materialChecklist')
-  const materialChecklist: Record<string, string[]> = {}
-  if (rawMaterialChecklist) {
-    for (const key of Object.keys(rawMaterialChecklist)) {
-      const value = Object.getOwnPropertyDescriptor(rawMaterialChecklist, key)?.value
-      if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
-        materialChecklist[key] = value
-      }
-    }
-  }
-  materialChecklist.required = linesToList(form.materialRequiredText)
-  materialChecklist.optional = linesToList(form.materialOptionalText)
-  const payload = {
-    ...base,
-    packId: form.packId.trim() || base.packId,
-    packName: form.packName.trim() || base.packName,
-    version: form.version.trim() || base.version,
-    applicableMajors: linesToList(form.applicableMajorsText),
+  return {
+    packId,
+    packName,
+    version,
+    applicableMajors,
+    dictionary: existing?.dictionary ?? emptyDictionary(),
     weights,
-    materialChecklist,
+    assessmentTemplate: existing?.assessmentTemplate ?? defaultAssessment(packId),
+    materialChecklist: {
+      required,
+      optional,
+    },
   }
-  return JSON.stringify(payload)
-}
-
-export function buildNewIndustryPackDefJson(form: PortfolioIndustryPackDefForm): string | null {
-  return mergeIndustryPackDefJson(form, '{}')
 }

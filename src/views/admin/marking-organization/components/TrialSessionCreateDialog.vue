@@ -15,10 +15,10 @@
       description="创建后可在列表中启动试评，教师完成样本卷批阅后提交校准结论。"
       class="trial-create-dialog__hint"
     />
-    <a-form layout="vertical">
-      <a-form-item label="选择题组" required>
+    <UiForm layout="vertical">
+      <UiFormItem label="选择题组" required>
         <UiSelect v-model="groupId" placeholder="选择参加试评的题组" :options="groupOptions" />
-      </a-form-item>
+      </UiFormItem>
       <SessionGroupCreateSummary
         v-if="groupId"
         phase="trial"
@@ -31,7 +31,7 @@
         title="该题组创建前还需完成"
         :steps="selectedGroupWorkflowSteps"
       />
-    </a-form>
+    </UiForm>
   </UiDialog>
 </template>
 
@@ -46,6 +46,8 @@ import { computed, ref, watch } from 'vue'
 import { createTrialSession } from '@/apis/mark/marking-organization'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { blockingItemsToWorkflowSteps } from '@/components/workbench/workflow-readiness/workflow-blocking-items'
 import WorkflowReadinessPanel from '@/components/workbench/workflow-readiness/WorkflowReadinessPanel.vue'
@@ -135,6 +137,7 @@ async function submit(): Promise<void> {
   if (!props.organizationId || !groupId.value || !selectedGroupCanCreate.value) {
     return
   }
+  if (submitting.value) return
   submitting.value = true
   try {
     const sessionId = await createTrialSession({

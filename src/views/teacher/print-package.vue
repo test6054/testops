@@ -8,7 +8,7 @@
           </UiTag>
         </template>
         <template #actions>
-          <a-tooltip v-if="printPackageApplicable" :title="generateDisabledReason">
+          <UiTooltip v-if="printPackageApplicable" :title="generateDisabledReason">
             <UiButton
               size="sm"
               :loading="generating"
@@ -18,7 +18,7 @@
               <template #icon><ThunderboltOutlined /></template>
               一键生成印刷包
             </UiButton>
-          </a-tooltip>
+          </UiTooltip>
         </template>
       </ContextBar>
     </template>
@@ -30,20 +30,21 @@
     />
 
     <template v-if="selectedExamId && printPackageApplicable" #signal>
-      <SignalBand variant="tiles" compact :metrics="packageSignalMetrics" />
+      <SignalBand compact :metrics="packageSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="print-package-page__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="print-package-page__empty" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
 
       <UiEmpty
+        size="sm"
         v-if="!printPackageApplicable"
         :description="printPackageSkipHint"
         class="print-package-page__empty"
       >
-        <UiButton variant="primary" @click="goPrepWorkbench">
+        <UiButton size="sm" variant="primary" @click="goPrepWorkbench">
           返回准备工作台
         </UiButton>
       </UiEmpty>
@@ -106,30 +107,33 @@
           :confirm-loading="generating"
           @ok="handleGenerate"
         >
-          <a-form layout="vertical" style="margin-top: 8px">
-            <a-form-item label="印刷包编号" required>
-              <a-input
-                v-model:value="generateForm.packageNo"
+          <UiForm layout="vertical" style="margin-top: 8px">
+            <UiFormItem label="印刷包编号" required>
+              <UiInput
+                size="sm"
+                v-model="generateForm.packageNo"
                 placeholder="例如：PKG-2026-001"
                 :maxlength="50"
               />
-            </a-form-item>
-            <a-form-item label="印刷包名称" required>
-              <a-input
-                v-model:value="generateForm.packageName"
+            </UiFormItem>
+            <UiFormItem label="印刷包名称" required>
+              <UiInput
+                size="sm"
+                v-model="generateForm.packageName"
                 placeholder="例如：期末A卷-第一批次"
                 :maxlength="100"
               />
-            </a-form-item>
-            <a-form-item label="封装备注">
-              <a-textarea
-                v-model:value="generateForm.sealRemark"
+            </UiFormItem>
+            <UiFormItem label="封装备注">
+              <UiTextarea
+                size="sm"
+                v-model="generateForm.sealRemark"
                 :rows="2"
                 :maxlength="500"
                 placeholder="可选"
               />
-            </a-form-item>
-          </a-form>
+            </UiFormItem>
+          </UiForm>
         </UiDrawer>
 
         <!-- 印刷包明细 -->
@@ -175,7 +179,7 @@
             :src="previewPdfUrl"
             class="print-package__preview-frame"
           />
-          <UiEmpty v-else description="当前没有可展示的内容" />
+          <UiEmpty size="sm" v-else description="暂无印制包预览" />
         </UiDrawer>
       </template>
     </template>
@@ -208,13 +212,19 @@ import {
 } from '@/apis/mark/print-package'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamPrepScenarioPanel from '@/components/workbench/ExamPrepScenarioPanel.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -452,6 +462,7 @@ function openGenerateModal() {
 
 async function handleGenerate() {
   if (!selectedExamId.value) return
+  if (generating.value) return
   if (!generateForm.packageNo.trim()) {
     showFormValidationMessage('请填写印刷包编号')
     return
@@ -636,7 +647,7 @@ watch(
 <style lang="scss" scoped>
 .print-package-page {
   &__empty {
-    margin-top: 80px;
+    margin-top: var(--dp-space-3, 12px);
   }
 
   &__blocking-strip {
@@ -645,7 +656,7 @@ watch(
 
   &__flow-hint {
     font-size: 12px;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-tertiary);
     line-height: 1.5;
   }
 
@@ -658,8 +669,8 @@ watch(
   }
 
   &__preview-frame {
-    min-height: 360px;
-    border: 1px solid var(--ant-color-border-secondary);
+    min-height: 140px;
+    border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-md);
     overflow: hidden;
   }

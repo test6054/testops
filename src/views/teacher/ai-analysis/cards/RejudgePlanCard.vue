@@ -76,11 +76,12 @@
         :confirm-loading="operatingAction === 'reject'"
         @ok="handleReject"
       >
-        <a-textarea
-          v-model:value="rejectReason"
+        <UiTextarea
+          size="sm"
+          v-model="rejectReason"
           :maxlength="500"
           :rows="4"
-          show-count
+          :show-count="true"
           placeholder="请输入驳回原因"
         />
       </UiDrawer>
@@ -99,11 +100,12 @@
           title="执行后会重算受影响题目的成绩与考试统计，此操作不可撤销。"
           style="margin-bottom: 12px"
         />
-        <a-textarea
-          v-model:value="executeReason"
+        <UiTextarea
+          size="sm"
+          v-model="executeReason"
           :maxlength="500"
           :rows="4"
-          show-count
+          :show-count="true"
           placeholder="请输入执行原因（不少于 5 字，将写入重判计划审计记录）"
         />
       </UiDrawer>
@@ -133,6 +135,7 @@ import {
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -273,6 +276,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 }
 
 async function handleApprove(planId: string): Promise<void> {
+  if (operatingId.value) return
   operatingId.value = planId
   operatingAction.value = 'approve'
   try {
@@ -299,6 +303,7 @@ function openRejectModal(planId: string): void {
 }
 
 async function handleReject(): Promise<void> {
+  if (operatingId.value) return
   const reason = rejectReason.value.trim()
   if (!reason) {
     showFormValidationMessage('请输入驳回原因')
@@ -332,6 +337,7 @@ function openExecuteModal(planId: string): void {
 }
 
 async function handleExecute(): Promise<void> {
+  if (operatingId.value) return
   const reason = executeReason.value.trim()
   if (reason.length < 5) {
     showFormValidationMessage('请输入不少于 5 字的执行原因')

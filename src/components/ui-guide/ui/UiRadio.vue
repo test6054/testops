@@ -68,7 +68,7 @@ const inGroup = inject(uiRadioGroupKey, undefined) === true
 
 .ui-radio--single :deep(.ant-radio-checked .ant-radio-inner) {
   border-color: var(--dp-blue-600);
-  background: #fff;
+  background: var(--dp-surface);
 }
 
 .ui-radio--single :deep(.ant-radio-checked .ant-radio-inner::after) {

@@ -310,7 +310,7 @@ onActivated(reloadPage)
   padding: 0;
   border: none;
   background: none;
-  color: var(--nybc-primary);
+  color: var(--dp-primary);
   cursor: pointer;
   text-align: left;
 }
@@ -323,7 +323,7 @@ onActivated(reloadPage)
 .link-cell__sub {
   margin-top: 2px;
   font-size: 12px;
-  color: var(--nybc-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .score-cell {
@@ -331,6 +331,6 @@ onActivated(reloadPage)
 }
 
 .muted {
-  color: var(--nybc-text-secondary);
+  color: var(--dp-text-secondary);
 }
 </style>

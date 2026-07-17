@@ -3,7 +3,10 @@ import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
 import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
 import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -31,6 +34,9 @@ watch(
 )
 
 async function handleSubmit() {
+  if (submitting.value) {
+    return
+  }
   const reason = form.releaseReason.trim()
   if (!reason) {
     showFormValidationMessage('请填写强制解锁原因')
@@ -76,11 +82,11 @@ async function handleSubmit() {
     <p class="scan-dispatch-force-release__warn">
       将释放设备锁并把派单退回待处理；若已绑定进行中扫描工单，将同步废弃该工单并清除未提交页，操作写入审计日志。
     </p>
-    <a-form layout="vertical">
-      <a-form-item label="解锁原因" required>
-        <a-textarea v-model:value="form.releaseReason" :rows="3" placeholder="说明强制解锁原因" />
-      </a-form-item>
-    </a-form>
+    <UiForm layout="vertical">
+      <UiFormItem label="解锁原因" required>
+        <UiTextarea size="sm" v-model="form.releaseReason" :rows="3" placeholder="说明强制解锁原因" />
+      </UiFormItem>
+    </UiForm>
   </UiDrawer>
 </template>
 
@@ -92,6 +98,6 @@ async function handleSubmit() {
 .scan-dispatch-force-release__warn {
   margin: 0 0 12px;
   font-size: 13px;
-  color: var(--ant-color-warning);
+  color: var(--dp-warning);
 }
 </style>

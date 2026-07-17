@@ -27,15 +27,15 @@ defineProps<{
   align-items: center;
   height: 48px;
   padding: 0 16px;
-  border-bottom: 1px solid var(--ant-color-border-secondary);
-  border-right: 1px solid var(--ant-color-border-secondary);
-  background: var(--ant-color-bg-container);
+  border-bottom: 1px solid var(--dp-border-subtle);
+  border-right: 1px solid var(--dp-border-subtle);
+  background: var(--dp-bg-container);
 }
 
 .ui-info-grid-item__label {
   font-size: 14px;
   font-weight: 600;
-  color: var(--ant-color-text);
+  color: var(--dp-text);
   min-width: 70px;
   flex-shrink: 0;
 }
@@ -43,11 +43,11 @@ defineProps<{
 .ui-info-grid-item__value {
   font-size: 14px;
   font-weight: 500;
-  color: var(--ant-color-text);
+  color: var(--dp-text);
 
   :deep(strong) {
     font-size: 16px;
-    color: var(--ant-color-primary);
+    color: var(--dp-color-primary);
   }
 }
 </style>

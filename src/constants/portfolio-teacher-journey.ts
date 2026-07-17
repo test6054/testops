@@ -11,8 +11,8 @@ export interface PortfolioTeacherJourneyStepDef {
 
 /** 教师档案袋五步旅程（独立于考试 journey 常量） */
 export const PORTFOLIO_TEACHER_JOURNEY_STEPS: readonly PortfolioTeacherJourneyStepDef[] = [
-  { key: 'overview', title: '工作台', defaultRouteName: 'PortfolioTeacherHome' },
-  { key: 'learn', title: '认识档案', defaultRouteName: 'PortfolioTeacherOnboarding' },
+  { key: 'overview', title: '我的工作台', defaultRouteName: 'PortfolioTeacherHome' },
+  { key: 'learn', title: '启用档案', defaultRouteName: 'PortfolioTeacherOnboarding' },
   { key: 'collect', title: '采集材料', defaultRouteName: 'PortfolioTeacherIntake' },
   { key: 'archive', title: '我的档案', defaultRouteName: 'PortfolioTeacherArchive' },
   { key: 'review', title: '审核进度', defaultRouteName: 'PortfolioTeacherReviewStatus' },

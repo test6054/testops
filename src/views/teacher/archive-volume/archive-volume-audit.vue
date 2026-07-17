@@ -9,10 +9,11 @@
     </template>
 
     <template #signal>
-      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" compact />
     </template>
 
     <UiEmpty
+      size="sm"
       v-if="loadFailed"
       description="审计事件加载失败"
       action-label="重试"

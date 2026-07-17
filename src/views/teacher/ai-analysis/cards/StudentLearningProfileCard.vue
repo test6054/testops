@@ -5,11 +5,12 @@
     </template>
     <template v-if="!embedded" #toolbar>
       <div class="ai-analysis-card-toolbar">
-        <a-select
-          v-model:value="selectedStudentUserId"
+        <UiSelect
+          size="sm"
+          v-model="selectedStudentUserId"
           placeholder="选择学生"
           class="stats-card__select stats-card__select--student"
-          show-search
+          allow-search
           option-filter-prop="label"
           allow-clear
           :options="filteredStudentOptions"
@@ -42,11 +43,12 @@
 
     <template v-if="embedded" #actions>
       <div class="ai-analysis-card-toolbar ai-analysis-card-toolbar--student">
-        <a-select
-          v-model:value="selectedStudentUserId"
+        <UiSelect
+          size="sm"
+          v-model="selectedStudentUserId"
           placeholder="选择学生"
           class="stats-card__select stats-card__select--student"
-          show-search
+          allow-search
           option-filter-prop="label"
           allow-clear
           :options="filteredStudentOptions"
@@ -220,6 +222,7 @@ import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'

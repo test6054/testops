@@ -8,7 +8,7 @@
     </template>
 
     <UiSkeletonState v-if="loading" variant="table" :rows="4" compact />
-    <UiEmpty v-else-if="!loading && pagination.total === 0" description="暂无待分配回收任务" />
+    <UiEmpty size="sm" v-else-if="!loading && pagination.total === 0" description="暂无待分配回收任务" />
     <UiDataTable
       v-else
       v-model:current="pagination.current"
@@ -31,8 +31,9 @@
           {{ record.recycledTime ? formatDateTime(record.recycledTime) : '—' }}
         </template>
         <template v-else-if="column.key === 'targetReviewer'">
-          <a-select
-            v-model:value="targetReviewerByTaskId[record.id]"
+          <UiSelect
+            size="sm"
+            v-model="targetReviewerByTaskId[record.id]"
             placeholder="选择目标教师"
             :options="reviewerOptionsByGroupId[record.groupId ?? ''] ?? []"
             style="width: 100%"
@@ -67,6 +68,7 @@ import { pageMarkingTasks, reassignRecycledMarkingTask } from '@/apis/mark/marki
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -151,6 +153,9 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 async function submitReassign(task: MarkingTaskResponse): Promise<void> {
   const targetReviewerUserId = targetReviewerByTaskId[task.id]
   if (!targetReviewerUserId) {
+    return
+  }
+  if (reassigningId.value) {
     return
   }
   reassigningId.value = task.id

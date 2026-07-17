@@ -185,6 +185,9 @@ watch(
 )
 
 async function handleStart() {
+  if (session.loading.value || scanFlow.loading.value) {
+    return
+  }
   if (lease.leaseLost.value) {
     showFormValidationMessage(leaseLostMessage)
     return
@@ -217,7 +220,7 @@ function goBack() {
     />
     <header class="archive-scan-session__head">
       <h1 class="archive-scan-session__title">归档卷一体机扫描</h1>
-      <UiButton size="sm" variant="ghost" @click="goBack">返回</UiButton>
+      <UiButton variant="ghost" @click="goBack">返回</UiButton>
     </header>
 
     <section v-if="session.archiveContext.value" class="archive-scan-session__summary">
@@ -363,10 +366,10 @@ function goBack() {
 .archive-scan-session {
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .archive-scan-session__head {
@@ -387,9 +390,9 @@ function goBack() {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 16px;
+  padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border-subtle);
-  border-radius: 6px;
+  border-radius: var(--dp-radius-panel);
   font-size: 14px;
 }
 

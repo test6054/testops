@@ -18,8 +18,13 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -286,12 +291,13 @@ onUnmounted(() => {
         <div class="teacher-pk__form">
           <label class="teacher-pk__field teacher-pk__field--teachers">
             <span>对比教师</span>
-            <a-select
-              v-model:value="selectedTeacherIds"
+            <UiSelect
+              size="sm"
+              v-model="selectedTeacherIds"
               mode="multiple"
               placeholder="选择 2–5 名教师"
               :options="teacherOptions"
-              show-search
+              allow-search
               :filter-option="false"
               option-label-prop="label"
               :disabled="operationPending"
@@ -301,19 +307,21 @@ onUnmounted(() => {
           </label>
           <label class="teacher-pk__field teacher-pk__field--purpose">
             <span>对比用途</span>
-            <a-input
-              v-model:value="sessionPurpose"
+            <UiInput
+              size="sm"
+              v-model="sessionPurpose"
               :maxlength="200"
               placeholder="如：2026 年校级教学名师候选人评议"
               :disabled="operationPending"
             />
           </label>
           <label class="teacher-pk__mask">
-            <a-switch v-model:checked="maskMode" :disabled="operationPending" />
+            <UiSwitch size="sm" v-model="maskMode" :disabled="operationPending" />
             <span>脱敏展示</span>
           </label>
           <div class="teacher-pk__actions">
             <UiButton
+              size="sm"
               variant="outline"
               :loading="operation === 'preview'"
               :disabled="operationPending"
@@ -322,6 +330,7 @@ onUnmounted(() => {
               仅预览
             </UiButton>
             <UiButton
+              size="sm"
               variant="primary"
               :loading="operation === 'create'"
               :disabled="operationPending"
@@ -333,10 +342,24 @@ onUnmounted(() => {
         </div>
       </UiCard>
 
-      <a-spin
+      <UiSpin
         :spinning="operation === 'preview' || operation === 'create' || operation === 'detail'"
       >
-        <UiEmpty v-if="!pkResult" description="选择教师后生成对比" />
+        <UiAlertStrip
+          v-if="!pkResult"
+          tone="info"
+          size="sm"
+          dense
+          inline
+          :show-icon="false"
+        >
+          <template #default>
+            <span style="display: inline-flex; align-items: center; gap: 8px">
+              <UiTag tone="blue" size="sm">待生成</UiTag>
+              <span>请选择 2–5 名教师后预览或保存对比结果</span>
+            </span>
+          </template>
+        </UiAlertStrip>
         <section v-else class="teacher-pk__result" aria-label="教师对比结果">
           <div class="teacher-pk__result-head">
             <div>
@@ -383,7 +406,7 @@ onUnmounted(() => {
             </UiCard>
           </div>
         </section>
-      </a-spin>
+      </UiSpin>
 
       <UiCard title="我的对比会话">
         <UiDataTable
@@ -411,7 +434,7 @@ onUnmounted(() => {
             </template>
           </template>
           <template #emptyText>
-            <UiEmpty description="暂无已保存的对比会话" />
+            <UiEmpty size="sm" description="暂无已保存的对比会话" />
           </template>
         </UiDataTable>
       </UiCard>
@@ -422,13 +445,13 @@ onUnmounted(() => {
 <style scoped>
 .teacher-pk__stack {
   display: grid;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .teacher-pk__form {
   display: grid;
   grid-template-columns: minmax(320px, 1.4fr) minmax(260px, 1fr) auto auto;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   align-items: end;
 }
 
@@ -463,7 +486,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .teacher-pk__result-head > div {
@@ -498,7 +521,7 @@ onUnmounted(() => {
 .teacher-pk__table th,
 .teacher-pk__table td {
   padding: 8px;
-  border-bottom: 1px solid var(--dp-border, #f0f0f0);
+  border-bottom: 1px solid var(--dp-border);
   text-align: left;
   vertical-align: top;
   overflow-wrap: anywhere;

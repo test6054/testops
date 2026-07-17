@@ -14,16 +14,22 @@ import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { PortfolioGapTaskStatusCode, PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
@@ -38,7 +44,8 @@ function readRouteParamString(value: unknown): string {
 
 const route = useRoute()
 const router = useRouter()
-const { targetTeacherId } = usePortfolioPageScope()
+const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -186,6 +193,10 @@ async function handleSaveDraft() {
   if (!detail.value || !gapSubmissionAvailable.value) {
     return
   }
+  if (!(await confirmProxyWrite('补齐档案缺口草稿'))) {
+    return
+  }
+
   const requestToken = scopeRequestToken.value
   saving.value = true
   try {
@@ -340,17 +351,32 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" :title="detail?.taskTitle ?? '补采任务'">
         <template #actions>
-          <UiButton @click="goBack"> 返回首页 </UiButton>
-          <UiButton :loading="saving" :disabled="loading || !gapSubmissionAvailable" @click="handleSaveDraft">
-            保存草稿
-          </UiButton>
-          <UiButton :loading="submitting" :disabled="loading || !gapSubmissionAvailable" @click="handleSubmit">
-            提交补采
-          </UiButton>
+          <UiButton size="sm" variant="ghost" @click="goBack"> 返回首页 </UiButton>
+          <template v-if="!(canPickTeachers && !targetTeacherId)">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="saving"
+              :disabled="loading || !gapSubmissionAvailable"
+              @click="handleSaveDraft"
+            >
+              保存草稿
+            </UiButton>
+            <UiButton
+              size="sm"
+              variant="primary"
+              :loading="submitting"
+              :disabled="loading || !gapSubmissionAvailable"
+              @click="handleSubmit"
+            >
+              提交补采
+            </UiButton>
+          </template>
         </template>
       </ContextBar>
     </template>
-    <a-spin :spinning="loading">
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+    <UiSpin v-else :spinning="loading">
       <template v-if="detail">
         <p class="teacher-gap__meta">
           <UiTag tone="blue">
@@ -364,8 +390,8 @@ watch(
           退回原因：{{ detail.returnReason }}
         </p>
         <UiCard v-if="detail.missingFields.length" title="必填字段补采">
-          <a-form layout="vertical">
-            <a-form-item label="补交附件">
+          <UiForm layout="vertical">
+            <UiFormItem label="补交附件">
               <UiPlatformFileField
                 v-model:file-node-id="attachmentFileNodeId"
                 v-model:file-name="attachmentFileName"
@@ -375,6 +401,7 @@ watch(
                 button-text="上传附件"
               />
               <UiButton
+                size="sm"
                 class="teacher-gap__scan-btn"
                 variant="outline"
                 :loading="scanOpening"
@@ -383,30 +410,32 @@ watch(
               >
                 一体机扫描
               </UiButton>
-            </a-form-item>
-            <a-form-item
+            </UiFormItem>
+            <UiFormItem
               v-for="field in detail.missingFields"
               :key="field.fieldCode"
               :label="field.fieldLabel ?? field.fieldCode"
               :required="field.missing"
             >
-              <a-input
-                v-model:value="fieldValues[field.fieldCode]"
+              <UiInput
+                size="sm"
+                v-model="fieldValues[field.fieldCode]"
                 :disabled="!gapSubmissionAvailable"
                 placeholder="必填"
               />
-              <a-input
-                v-model:value="evidenceRefs[field.fieldCode]"
+              <UiInput
+                size="sm"
+                v-model="evidenceRefs[field.fieldCode]"
                 class="teacher-gap__evidence"
                 :disabled="!gapSubmissionAvailable"
                 placeholder="证据引用（可选）"
               />
-            </a-form-item>
-          </a-form>
+            </UiFormItem>
+          </UiForm>
         </UiCard>
-        <UiEmpty v-else description="该分类必填字段已补全，可直接提交或返回首页" />
+        <UiEmpty v-else size="sm" description="该分类必填字段已补全，可直接提交或返回首页" />
       </template>
-    </a-spin>
+    </UiSpin>
     <ScanDispatchResultDialog
       v-model:open="dispatchResultOpen"
       :payload="dispatchResult"
@@ -429,7 +458,7 @@ watch(
 .teacher-gap__return {
   margin: 0 0 var(--dp-space-4);
   font-size: 14px;
-  color: var(--ant-color-warning);
+  color: var(--dp-warning);
 }
 
 .teacher-gap__evidence {

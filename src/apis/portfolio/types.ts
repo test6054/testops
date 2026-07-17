@@ -799,6 +799,9 @@ export interface PortfolioAiAnalysisSuggestionVO {
 export interface PortfolioCockpitSummaryVO {
   departmentId?: string
   departmentName?: string
+  campusOrgId?: string
+  campusName?: string
+  crossCampusAppointmentTeacherCount?: number
   teacherCount?: number
   dualTeacherCount?: number
   keyTeacherCount?: number
@@ -936,7 +939,7 @@ export interface PortfolioArchiveTemplateChangeLogVO {
   categoryId: string
   fromVersionId?: string
   toVersionId: string
-  diffSummaryJson?: string
+  diffSummary?: PortfolioArchiveTemplateDiffSummary
   createTime?: string
 }
 
@@ -1106,6 +1109,7 @@ export type PortfolioWorkShellCode
     | 'DEPARTMENT_REVIEW'
     | 'SCHOOL_GOVERNANCE'
     | 'CONFIGURATION'
+    | 'EXTERNAL_EXPERT'
 
 /** 档案审核台访问范围 - PortfolioReviewAccessScopeVO */
 export interface PortfolioReviewAccessScopeVO {
@@ -1247,6 +1251,10 @@ export interface PortfolioTeacherWorkbenchSummaryVO {
 export interface PortfolioTeacherOnboardingStateVO {
   teacherId: string
   currentStep: number
+  totalSteps?: number
+  maxSteps?: number
+  skipPromptCount?: number
+  shouldShowSkipPrompt?: boolean
   completed: boolean
   dismissedUntil?: string
   templateReady?: boolean
@@ -1894,7 +1902,7 @@ export interface PortfolioEvaluationMaterialCategoryItemVO {
 export interface PortfolioEvaluationMaterialPreviewVO {
   evaluationTaskId: string
   taskName?: string
-  taskStatus?: string
+  taskStatus?: PortfolioEvaluationTaskStatusCode
   startTime?: string
   endTime?: string
   noticeId?: string
@@ -1968,6 +1976,39 @@ export interface PortfolioEvaluationObjectionHandleRequest {
   correctedScore?: number
 }
 
+
+export interface PortfolioEvaluationObjectionReviewPackageRequest {
+  objectionId: string
+}
+
+export interface PortfolioEvaluationObjectionScoreBasisItemVO {
+  entryId?: string
+  indicatorCode?: string
+  score?: number
+  commentText?: string
+  anonymousExpertLabel?: string
+}
+
+export interface PortfolioEvaluationObjectionPeerScoreItemVO {
+  anonymousExpertLabel?: string
+  indicatorCode?: string
+  score?: number
+}
+
+export interface PortfolioEvaluationObjectionReviewPackageVO {
+  objection?: PortfolioEvaluationObjectionSummaryVO
+  scopedEntryCount?: number
+  scopedAverageScore?: number
+  peerMinScore?: number
+  peerMaxScore?: number
+  peerMedianScore?: number
+  scoreBasis?: PortfolioEvaluationObjectionScoreBasisItemVO[]
+  peerScoreDistribution?: PortfolioEvaluationObjectionPeerScoreItemVO[]
+  materialCategories?: PortfolioEvaluationMaterialCategoryItemVO[]
+  teacherEvidenceRef?: string
+}
+
+
 export interface PortfolioEvaluationResultSummaryRequest {
   evaluationTaskId: string
   teacherId?: string
@@ -2013,6 +2054,8 @@ export interface PortfolioEvaluationObjectionSubmitRequest {
 export interface PortfolioEvaluationTaskAdvanceRequest {
   taskId: string
   action: PortfolioEvaluationTaskAdvanceActionCode
+  /** 评分离散超阈值时强制进入结果汇总（须后端审计） */
+  forceDespiteScoreVariance?: boolean
 }
 
 export interface PortfolioMaterialVO {

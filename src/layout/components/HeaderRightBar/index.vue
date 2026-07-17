@@ -5,7 +5,7 @@
       <div class="tenant-type">{{ tenantDisplayInfo.tenantTypeText }}</div>
     </div>
 
-    <a-popover
+    <UiPopover
       v-model:open="messagePopoverVisible"
       :arrow="false"
       :get-popup-container="getPopupContainer"
@@ -30,9 +30,9 @@
           @readall-success="getMessageCount"
         />
       </template>
-    </a-popover>
+    </UiPopover>
 
-    <a-dropdown trigger="hover">
+    <UiDropdown trigger="hover">
       <div v-if="variant === 'workbench'" class="user-chip">
         <div class="user-avatar">{{ avatarInitial }}</div>
         <span class="user-name">{{ userStore.nickname }}</span>
@@ -49,31 +49,31 @@
         <DownOutlined />
       </div>
       <template #overlay>
-        <a-menu>
-          <a-menu-item key="profile" @click="router.push('/profile')">
+        <UiMenu>
+          <UiMenuItem key="profile" @click="router.push('/profile')">
             <template #icon><UserOutlined /></template>
             <span>个人中心</span>
-          </a-menu-item>
-          <a-menu-item key="export" @click="openExportTaskCenter">
+          </UiMenuItem>
+          <UiMenuItem key="export" @click="openExportTaskCenter">
             <template #icon><DownloadOutlined /></template>
-            <a-space>
+            <div class="dp-space" style="--dp-space-gap: 8px">
               <span>导出任务中心</span>
-              <a-badge
+              <UiCountBadge
                 v-if="exportTaskStore.runningCount > 0"
                 :count="exportTaskStore.runningCount"
                 :max-count="99"
                 color="blue"
               />
-            </a-space>
-          </a-menu-item>
-          <a-menu-divider />
-          <a-menu-item key="logout" @click="showLogoutModal = true">
+            </div>
+          </UiMenuItem>
+          <UiMenuDivider />
+          <UiMenuItem key="logout" @click="showLogoutModal = true">
             <template #icon><LogoutOutlined /></template>
             <span>退出登录</span>
-          </a-menu-item>
-        </a-menu>
+          </UiMenuItem>
+        </UiMenu>
       </template>
-    </a-dropdown>
+    </UiDropdown>
   </div>
   <ExportTaskCenter />
 
@@ -100,6 +100,12 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import ExportTaskCenter from '@/components/export/ExportTaskCenter.vue'
 import GiCellAvatar from '@/components/GiCell/GiCellAvatar.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
+import UiCountBadge from '@/components/ui-guide/ui/UiCountBadge.vue'
+import UiDropdown from '@/components/ui-guide/ui/UiDropdown.vue'
+import UiMenu from '@/components/ui-guide/ui/UiMenu.vue'
+import UiMenuDivider from '@/components/ui-guide/ui/UiMenuDivider.vue'
+import UiMenuItem from '@/components/ui-guide/ui/UiMenuItem.vue'
+import UiPopover from '@/components/ui-guide/ui/UiPopover.vue'
 import { useAuthStore, useUserStore } from '@/stores'
 import { useExportTaskStore } from '@/stores/exportTask'
 import { useNotificationStore } from '@/stores/modules/notification'
@@ -222,11 +228,11 @@ const openExportTaskCenter = () => {
   gap: 4px;
 
   &--default {
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
   }
 
   &--workbench {
-    gap: 8px;
+    gap: var(--dp-space-2, 8px);
 
     .header-btn {
       width: 36px;
@@ -273,14 +279,14 @@ const openExportTaskCenter = () => {
   .tenant-name {
     font-size: 13px;
     font-weight: 500;
-    color: var(--ant-color-text);
+    color: var(--dp-text-primary);
     line-height: 1.4;
     white-space: nowrap;
   }
 
   .tenant-type {
     font-size: 11px;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-muted);
     line-height: 1.2;
     margin-top: 2px;
     white-space: nowrap;
@@ -297,7 +303,7 @@ const openExportTaskCenter = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-muted);
   cursor: pointer;
   padding: 0;
   transition:
@@ -305,8 +311,8 @@ const openExportTaskCenter = () => {
     color 0.15s ease;
 
   &:hover {
-    background: var(--ant-color-fill-tertiary);
-    color: var(--ant-color-text);
+    background: var(--dp-fill-tertiary);
+    color: var(--dp-text-primary);
   }
 
   &__icon {
@@ -321,14 +327,14 @@ const openExportTaskCenter = () => {
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
-  background: var(--ant-color-primary);
-  color: var(--ant-color-white);
+  background: var(--dp-color-primary);
+  color: var(--dp-text-inverse);
   font-size: 8px;
   font-weight: 700;
   line-height: 14px;
   border-radius: var(--dp-radius-full);
   text-align: center;
-  border: 1.5px solid var(--ant-color-bg-container);
+  border: 1.5px solid var(--dp-surface);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
@@ -343,7 +349,7 @@ const openExportTaskCenter = () => {
   transition: background 0.15s ease;
 
   &:hover {
-    background: var(--ant-color-fill-tertiary);
+    background: var(--dp-fill-tertiary);
   }
 }
 
@@ -351,8 +357,8 @@ const openExportTaskCenter = () => {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--ant-color-primary-bg);
-  color: var(--ant-color-primary);
+  background: var(--dp-blue-50);
+  color: var(--dp-color-primary);
   font-size: 11px;
   font-weight: 700;
   display: flex;
@@ -363,14 +369,14 @@ const openExportTaskCenter = () => {
 
 .user-name {
   font-size: 12.5px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   font-weight: 500;
   white-space: nowrap;
 }
 
 .user-chevron {
   font-size: 10px;
-  color: var(--ant-color-text-quaternary);
+  color: var(--dp-text-muted);
   transition: transform 0.3s;
 }
 
@@ -379,14 +385,14 @@ const openExportTaskCenter = () => {
   align-items: center;
   flex-wrap: nowrap;
   cursor: pointer;
-  color: var(--ant-color-text);
+  color: var(--dp-text-primary);
 
   .username {
     margin-left: 10px;
     white-space: nowrap;
     font-size: 14px;
     font-weight: 600;
-    color: var(--ant-color-text);
+    color: var(--dp-text-primary);
   }
 
   .anticon-down {
@@ -405,6 +411,6 @@ const openExportTaskCenter = () => {
 <style lang="scss">
 .ant-dropdown-menu .ant-dropdown-menu-item {
   font-weight: 500;
-  color: var(--ant-color-text);
+  color: var(--dp-text-primary);
 }
 </style>

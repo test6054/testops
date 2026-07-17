@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioAiAnalysisDetailVO,
   PortfolioAiAnalysisSummaryVO,
@@ -9,13 +8,16 @@ import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -23,16 +25,14 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { AiTaskStatusCode } from '@/types/enums/ai-task-status-enum'
 import {
   PortfolioAiAnalysisReviewStatusCode,
   PortfolioAiAnalysisReviewStatusDescription,
 } from '@/types/enums/portfolio-ai-analysis-review-status-enum'
-import {
-  PortfolioAiAnalysisTypeCode,
-  PortfolioAiAnalysisTypeDescription,
-} from '@/types/enums/portfolio-ai-analysis-type-enum'
+import { PortfolioAiAnalysisTypeCode } from '@/types/enums/portfolio-ai-analysis-type-enum'
 import { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
@@ -86,6 +86,7 @@ const tabItems: UiSectionTabItem[] = ASSISTANTS.map((item) => ({
 }))
 
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const { canManageTeacherAi } = usePortfolioTeacherAccess()
 const activeKey = ref<AssistantKey>('generate')
 const submitting = ref(false)
@@ -97,7 +98,6 @@ const historyTotal = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(10)
 const activeDetail = ref<PortfolioAiAnalysisDetailVO | null>(null)
-const detailOpen = ref(false)
 const pollToken = ref(0)
 const historyToken = ref(0)
 const reviewToken = ref(0)
@@ -119,19 +119,21 @@ const currentAssistant = computed(
 const canOperate = computed(() =>
   Boolean(targetTeacherId.value && canManageTeacherAi(targetTeacherId.value)),
 )
+/** 管理员代办：可生成草稿，不可替本人确认入库 */
+const isProxyMode = computed(
+  () =>
+    Boolean(
+      canPickTeachers.value
+      && targetTeacherId.value
+      && targetTeacherId.value !== currentUserId.value,
+    ),
+)
 const pendingReview = computed(
   () => activeDetail.value?.reviewStatus === PortfolioAiAnalysisReviewStatusCode.PENDING_REVIEW,
 )
 const canReviewResult = computed(
   () => pendingReview.value && activeDetail.value?.teacherId === currentUserId.value,
 )
-
-const columns: ColumnsType<PortfolioAiAnalysisSummaryVO> = [
-  { title: '结果', dataIndex: 'resultTitle', key: 'resultTitle', ellipsis: true },
-  { title: '状态', key: 'reviewStatus', width: 100, align: 'center' },
-  { title: '生成时间', dataIndex: 'generatedTime', key: 'generatedTime', width: 168 },
-  { title: '操作', key: 'actions', width: 92, align: 'center' },
-]
 
 function reviewStatusTone(status: PortfolioAiAnalysisReviewStatusCode): BadgeTone {
   const tones: Record<PortfolioAiAnalysisReviewStatusCode, BadgeTone> = {
@@ -156,7 +158,6 @@ function resetTeacherContext(): void {
   historyRows.value = []
   historyTotal.value = 0
   pageNum.value = 1
-  detailOpen.value = false
   activeDetail.value = null
 }
 
@@ -244,7 +245,7 @@ function applyDetail(detail: PortfolioAiAnalysisDetailVO): void {
   activeDetail.value = detail
   reviewForm.revisedDraftMarkdown = detail.draftMarkdown || detail.summary || ''
   reviewForm.reviewOpinion = ''
-  detailOpen.value = true
+  // SHIP：草稿落主列单栏，不再默认弹抽屉第三栏
 }
 
 async function openDetail(row: PortfolioAiAnalysisSummaryVO): Promise<void> {
@@ -284,6 +285,10 @@ async function submitTask(): Promise<void> {
   if (!validateSubmit()) {
     return
   }
+  if (!(await confirmProxyWrite('提交 AI 草稿任务'))) {
+    return
+  }
+
   submitting.value = true
   const token = ++pollToken.value
   try {
@@ -366,9 +371,8 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }): void {
-  pageNum.value = page.current
-  pageSize.value = page.pageSize
+function loadMoreHistory(): void {
+  pageSize.value = Math.min(pageSize.value + 10, 50)
   void loadHistory()
 }
 
@@ -376,7 +380,6 @@ watch(activeKey, () => {
   pollToken.value += 1
   submitting.value = false
   pageNum.value = 1
-  detailOpen.value = false
   activeDetail.value = null
   void loadHistory()
 })
@@ -390,212 +393,398 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
       <ContextBar
         layout="workbench"
         show-title
-        title="智能四类助手"
-        subtitle="生成结果须由教师复核确认后，才会进入档案或发展规划"
+        title="AI 四助手"
+        subtitle="AI 只出草稿 · 教师本人确认后才写入档案或发展规划"
       />
     </template>
 
-    <UiEmpty
-      v-if="canPickTeachers && !targetTeacherId"
-      title="尚未选择教师"
-      description="请从档案袋顶部教师范围中选择目标教师"
-    />
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <template v-else>
       <UiSectionTabs v-model="activeKey" :items="tabItems" />
 
-      <UiCard :title="currentAssistant.label" class="ai-assistants__form">
-        <a-form layout="vertical">
-          <a-form-item v-if="activeKey === 'generate'" label="生成场景" required>
-            <a-select v-model:value="submitForm.generateScene">
-              <a-select-option value="LESSON_PLAN_FRAME">教案框架</a-select-option>
-              <a-select-option value="COURSE_DESCRIPTION">课程描述</a-select-option>
-              <a-select-option value="REFLECTION_PROMPT">教学反思提示</a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item v-if="activeKey === 'generate'" label="生成要求">
-            <a-textarea
-              v-model:value="submitForm.generateBrief"
-              :rows="3"
+      <UiAlertStrip
+        v-if="isProxyMode"
+        dense
+        tone="warning"
+        title="代办中 · 草稿须教师本人确认入库"
+        description="管理员可代为生成与润色草稿，不可替本人确认写入档案。"
+        class="ai-assistants__proxy"
+      />
+
+      <section class="ai-assistants__params" aria-label="生成参数">
+        <div class="ai-assistants__params-head">
+          <span class="ai-assistants__params-title">{{ currentAssistant.label }}</span>
+          <span class="ai-assistants__params-meta">来源：已确认材料 · AI 草稿未入库</span>
+          <UiButton
+            size="sm"
+            class="ai-assistants__params-cta"
+            :loading="submitting"
+            :disabled="!canOperate"
+            @click="submitTask"
+          >
+            {{ activeDetail ? '重新生成' : '生成草稿' }}
+          </UiButton>
+        </div>
+        <UiForm layout="vertical" class="ai-assistants__params-form">
+          <UiFormItem v-if="activeKey === 'generate'" label="生成场景" required>
+            <UiSelect
+              v-model="submitForm.generateScene"
+              size="sm"
+              :options="[{ value: 'LESSON_PLAN_FRAME', label: '教案框架' }, { value: 'COURSE_DESCRIPTION', label: '课程描述' }, { value: 'REFLECTION_PROMPT', label: '教学反思提示' }]"
+            />
+          </UiFormItem>
+          <UiFormItem v-if="activeKey === 'generate'" label="生成要求">
+            <UiTextarea
+              size="sm"
+              v-model="submitForm.generateBrief"
+              :rows="2"
               placeholder="补充课程、教学对象、课时或写作要求"
             />
-          </a-form-item>
-          <a-form-item
+          </UiFormItem>
+          <UiFormItem
             v-if="activeKey === 'generate' || activeKey === 'optimize' || activeKey === 'effect'"
             :label="activeKey === 'generate' ? '参考正文' : '教学材料正文'"
             :required="activeKey !== 'generate'"
           >
-            <a-textarea
-              v-model:value="submitForm.sourceText"
-              :rows="8"
+            <UiTextarea
+              size="sm"
+              v-model="submitForm.sourceText"
+              :rows="4"
               :placeholder="
                 activeKey === 'generate'
                   ? '可选：粘贴已有内容作为生成参考'
                   : '粘贴需要处理的教学材料正文'
               "
             />
-          </a-form-item>
-          <a-form-item v-if="activeKey === 'effect'" label="评价数据摘要">
-            <a-textarea
-              v-model:value="submitForm.evaluationSummary"
-              :rows="5"
-              placeholder="可选：粘贴已归档的学生评教、督导意见或同行评议摘要；缺失时系统会明确标注证据不足"
+          </UiFormItem>
+          <UiFormItem v-if="activeKey === 'effect'" label="评价数据摘要">
+            <UiTextarea
+              size="sm"
+              v-model="submitForm.evaluationSummary"
+              :rows="3"
+              placeholder="可选：评教/督导/同行摘要；缺失时系统会标注证据不足"
             />
-          </a-form-item>
+          </UiFormItem>
           <template v-if="activeKey === 'development'">
-            <a-form-item label="教学总结">
-              <a-textarea
-                v-model:value="submitForm.evaluationSummary"
-                :rows="5"
-                placeholder="可选：补充本学年教学总结；系统会同时读取教师档案与最新画像"
+            <UiFormItem label="教学总结">
+              <UiTextarea
+                size="sm"
+                v-model="submitForm.evaluationSummary"
+                :rows="3"
+                placeholder="可选：本学年教学总结"
               />
-            </a-form-item>
-            <a-form-item label="发展关注方向">
-              <a-input
-                v-model:value="submitForm.developmentFocusArea"
+            </UiFormItem>
+            <UiFormItem label="发展关注方向">
+              <UiInput
+                size="sm"
+                v-model="submitForm.developmentFocusArea"
                 placeholder="如课程建设、教学研究、企业实践"
               />
-            </a-form-item>
+            </UiFormItem>
           </template>
-          <UiButton :loading="submitting" :disabled="!canOperate" @click="submitTask">
-            生成并进入复核
-          </UiButton>
-        </a-form>
-      </UiCard>
+        </UiForm>
+      </section>
 
-      <UiDataTable
-        v-model:current="pageNum"
-        v-model:page-size="pageSize"
-        title="历史结果"
-        :description="`仅展示当前教师的${currentAssistant.label}结果`"
-        :columns="columns"
-        :data-source="historyRows"
-        :loading="historyLoading"
-        :load-error="loadFailed"
-        :total="historyTotal"
-        pagination-mode="server"
-        row-key="id"
-        @page-change="handlePageChange"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'reviewStatus'">
-            <UiTag :tone="reviewStatusTone(record.reviewStatus)">
+      <section v-if="activeDetail" class="ai-assistants__draft" aria-label="草稿面">
+        <div class="ai-assistants__draft-bar">
+          <div class="ai-assistants__draft-titles">
+            <h3 class="ai-assistants__draft-title">
+              {{ activeDetail.resultTitle || `${currentAssistant.label} · 草稿` }}
+            </h3>
+            <UiTag :tone="reviewStatusTone(activeDetail.reviewStatus)" size="sm">
               {{
                 strictEnumLabel(
                   PortfolioAiAnalysisReviewStatusDescription,
-                  record.reviewStatus,
+                  activeDetail.reviewStatus,
                   '智能分析审核状态',
                 )
               }}
             </UiTag>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiButton variant="ghost" size="sm" @click="openDetail(record)">查看</UiButton>
-          </template>
-        </template>
-        <template #empty-action>
-          <UiButton variant="outline" @click="loadHistory">重新加载</UiButton>
-        </template>
-      </UiDataTable>
+          </div>
+          <div v-if="canReviewResult" class="ai-assistants__draft-actions">
+            <UiButton
+              variant="outline"
+              status="danger"
+              size="sm"
+              :loading="reviewLoading"
+              @click="reviewResult(PortfolioAiAnalysisReviewStatusCode.REJECTED)"
+            >
+              驳回
+            </UiButton>
+            <UiButton
+              size="sm"
+              :loading="reviewLoading"
+              @click="reviewResult(PortfolioAiAnalysisReviewStatusCode.APPROVED)"
+            >
+              {{
+                activeDetail.analysisType === PortfolioAiAnalysisTypeCode.DEVELOPMENT_SUGGEST
+                  ? '确认写入发展规划'
+                  : '确认写入档案'
+              }}
+            </UiButton>
+          </div>
+          <p v-else-if="pendingReview" class="ai-assistants__draft-hint">
+            该结果须由教师本人确认或驳回
+          </p>
+        </div>
+        <p v-if="activeDetail.summary" class="ai-assistants__summary">{{ activeDetail.summary }}</p>
+        <UiForm layout="vertical" class="ai-assistants__draft-form">
+          <UiFormItem label="草稿正文">
+            <UiTextarea
+              size="sm"
+              v-model="reviewForm.revisedDraftMarkdown"
+              :disabled="!canReviewResult"
+              :rows="14"
+            />
+          </UiFormItem>
+          <UiFormItem v-if="canReviewResult || pendingReview" label="复核意见">
+            <UiTextarea
+              size="sm"
+              v-model="reviewForm.reviewOpinion"
+              :disabled="!canReviewResult"
+              :rows="2"
+              placeholder="驳回时必须填写原因；确认采用时可选"
+            />
+          </UiFormItem>
+        </UiForm>
+      </section>
+
+      <section v-else class="ai-assistants__draft-empty" aria-label="草稿空态">
+        <span>生成后草稿显示在此 · 确认写入前不会进入档案</span>
+        <UiButton
+          v-if="loadFailed"
+          size="sm"
+          variant="outline"
+          @click="loadHistory"
+        >
+          重新加载历史
+        </UiButton>
+      </section>
+
+      <section class="ai-assistants__versions" aria-label="版本历史">
+        <div class="ai-assistants__versions-head">
+          <span class="ai-assistants__versions-label">历史版本</span>
+          <UiButton size="sm" variant="ghost" :loading="historyLoading" @click="loadHistory">
+            刷新
+          </UiButton>
+        </div>
+        <div v-if="historyRows.length" class="ai-assistants__chips">
+          <button
+            v-for="row in historyRows"
+            :key="row.id"
+            type="button"
+            class="ai-assistants__chip"
+            :class="{ 'ai-assistants__chip--active': activeDetail?.id === row.id }"
+            @click="openDetail(row)"
+          >
+            <span class="ai-assistants__chip-title">{{ row.resultTitle || '未命名结果' }}</span>
+            <UiTag :tone="reviewStatusTone(row.reviewStatus)" size="sm">
+              {{
+                strictEnumLabel(
+                  PortfolioAiAnalysisReviewStatusDescription,
+                  row.reviewStatus,
+                  '智能分析审核状态',
+                )
+              }}
+            </UiTag>
+            <span class="ai-assistants__chip-time">{{ row.generatedTime }}</span>
+          </button>
+        </div>
+        <p v-else-if="!historyLoading" class="ai-assistants__versions-empty">
+          {{ loadFailed ? '历史加载失败' : '暂无历史版本' }}
+        </p>
+        <UiButton
+          size="sm"
+          v-if="historyTotal > historyRows.length"
+          variant="outline"
+          :loading="historyLoading"
+          @click="loadMoreHistory"
+        >
+          加载更多（{{ historyRows.length }}/{{ historyTotal }}）
+        </UiButton>
+      </section>
     </template>
   </StageWorkbenchShell>
-
-  <UiDrawer
-    v-model:open="detailOpen"
-    :title="activeDetail?.resultTitle || '智能分析结果'"
-    width="720"
-  >
-    <template v-if="activeDetail">
-      <div class="ai-assistants__detail-meta">
-        <UiTag tone="blue">
-          {{
-            strictEnumLabel(
-              PortfolioAiAnalysisTypeDescription,
-              activeDetail.analysisType,
-              '智能分析类型',
-            )
-          }}
-        </UiTag>
-        <UiTag :tone="reviewStatusTone(activeDetail.reviewStatus)">
-          {{
-            strictEnumLabel(
-              PortfolioAiAnalysisReviewStatusDescription,
-              activeDetail.reviewStatus,
-              '智能分析审核状态',
-            )
-          }}
-        </UiTag>
-      </div>
-      <p class="ai-assistants__summary">{{ activeDetail.summary }}</p>
-      <a-form layout="vertical">
-        <a-form-item label="结果正文">
-          <a-textarea
-            v-model:value="reviewForm.revisedDraftMarkdown"
-            :disabled="!canReviewResult"
-            :rows="16"
-          />
-        </a-form-item>
-        <a-form-item label="复核意见">
-          <a-textarea
-            v-model:value="reviewForm.reviewOpinion"
-            :disabled="!canReviewResult"
-            :rows="3"
-            placeholder="驳回时必须填写原因；确认采用时可选"
-          />
-        </a-form-item>
-      </a-form>
-      <p v-if="pendingReview && !canReviewResult" class="ai-assistants__review-hint">
-        该结果须由教师本人确认或驳回。
-      </p>
-      <div v-if="canReviewResult" class="ai-assistants__review-actions">
-        <UiButton
-          variant="outline"
-          status="danger"
-          :loading="reviewLoading"
-          @click="reviewResult(PortfolioAiAnalysisReviewStatusCode.REJECTED)"
-        >
-          驳回结果
-        </UiButton>
-        <UiButton
-          :loading="reviewLoading"
-          @click="reviewResult(PortfolioAiAnalysisReviewStatusCode.APPROVED)"
-        >
-          {{
-            activeDetail.analysisType === PortfolioAiAnalysisTypeCode.DEVELOPMENT_SUGGEST
-              ? '确认写入发展规划'
-              : '确认写入档案草稿'
-          }}
-        </UiButton>
-      </div>
-    </template>
-  </UiDrawer>
 </template>
 
 <style scoped lang="scss">
-.ai-assistants__form {
-  margin: var(--dp-space-4) 0;
+.ai-assistants__proxy {
+  margin-bottom: var(--dp-space-3);
 }
 
-.ai-assistants__detail-meta,
-.ai-assistants__review-actions {
+.ai-assistants__params {
+  margin: var(--dp-space-3) 0;
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-subtle);
+}
+
+.ai-assistants__params-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-2);
+}
+
+.ai-assistants__params-title {
+  font-weight: 600;
+  color: var(--dp-text-primary);
+}
+
+.ai-assistants__params-meta {
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-sm);
+}
+
+.ai-assistants__params-cta {
+  margin-left: auto;
+}
+
+.ai-assistants__params-form {
+  margin: 0;
+}
+
+.ai-assistants__draft {
+  margin: var(--dp-space-3) 0;
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+}
+
+.ai-assistants__draft-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border-bottom: 1px solid var(--dp-border-subtle);
+  background: color-mix(in srgb, var(--dp-primary) 4%, var(--dp-surface));
+}
+
+.ai-assistants__draft-titles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
+  min-width: 0;
+}
+
+.ai-assistants__draft-title {
+  margin: 0;
+  font-size: var(--dp-font-size-md);
+  font-weight: 600;
+}
+
+.ai-assistants__draft-actions {
   display: flex;
   align-items: center;
   gap: var(--dp-space-2);
+  margin-left: auto;
+}
+
+.ai-assistants__draft-hint {
+  margin: 0 0 0 auto;
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-sm);
+}
+
+.ai-assistants__draft-form {
+  padding: 0 var(--dp-space-4) var(--dp-space-3);
 }
 
 .ai-assistants__summary {
-  margin: var(--dp-space-4) 0;
+  margin: var(--dp-space-3) var(--dp-space-4) 0;
   color: var(--dp-text-secondary);
   line-height: 1.6;
 }
 
-.ai-assistants__review-hint {
-  margin: 0;
+.ai-assistants__draft-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-2);
+  min-height: 48px;
+  margin: var(--dp-space-3) 0;
+  padding: 0 var(--dp-space-4);
+  border: 1px dashed var(--dp-border-subtle);
+  border-radius: var(--dp-radius-panel);
   color: var(--dp-text-secondary);
-  text-align: right;
+  font-size: var(--dp-font-size-sm);
+  background: var(--dp-surface-subtle);
 }
 
-.ai-assistants__review-actions {
-  justify-content: flex-end;
+.ai-assistants__versions {
+  margin-top: var(--dp-space-4);
+  padding-top: var(--dp-space-3);
+  border-top: 1px solid var(--dp-border-subtle);
+}
+
+.ai-assistants__versions-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--dp-space-2);
+}
+
+.ai-assistants__versions-label {
+  font-weight: 600;
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-primary);
+}
+
+.ai-assistants__versions-empty {
+  margin: 0;
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-sm);
+}
+
+.ai-assistants__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-2);
+}
+
+.ai-assistants__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: 999px;
+  background: var(--dp-surface);
+  color: var(--dp-text-primary);
+  cursor: pointer;
+  text-align: left;
+
+  &:hover {
+    border-color: var(--dp-primary-light);
+    background: color-mix(in srgb, var(--dp-primary) 4%, var(--dp-surface));
+  }
+
+  &--active {
+    border-color: var(--dp-primary-light);
+    background: color-mix(in srgb, var(--dp-primary) 8%, var(--dp-surface));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-primary) 16%, transparent);
+  }
+}
+
+.ai-assistants__chip-title {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--dp-font-size-sm);
+}
+
+.ai-assistants__chip-time {
+  color: var(--dp-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
 }
 </style>

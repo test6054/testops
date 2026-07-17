@@ -74,9 +74,9 @@ const statusTone = computed((): BadgeTone => {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   padding: 8px 10px;
-  border: 1px solid var(--ant-color-border-secondary);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control, 4px);
-  background: var(--ant-color-bg-container);
+  background: var(--dp-bg-container);
 }
 
 .mark-score-triple--compact {
@@ -94,23 +94,23 @@ const statusTone = computed((): BadgeTone => {
 .mark-score-triple__label {
   font-size: 11px;
   line-height: 16px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 
 .mark-score-triple__value {
   font-size: 16px;
   font-weight: 600;
   line-height: 22px;
-  color: var(--ant-color-text);
+  color: var(--dp-text);
   font-variant-numeric: tabular-nums;
 }
 
 .mark-score-triple__value--primary {
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
 }
 
 .mark-score-triple__cell--ai .mark-score-triple__value {
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   font-weight: 500;
 }
 </style>

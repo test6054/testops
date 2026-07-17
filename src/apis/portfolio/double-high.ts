@@ -29,7 +29,7 @@ export interface PortfolioDoubleHighTaskStageVO {
   stageIndex: number
   stageName: string
   stageDeadline?: string
-  materialRefJson?: string
+  materialRef?: { archiveRecordIds: string[] }
   submitTime?: string
   reviewStatus?: string
   reviewComment?: string
@@ -115,8 +115,11 @@ export const portfolioDoubleHighApi = {
     http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/claim`, data),
   startTask: (data: { id: string }) =>
     http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/start`, data),
-  submitStage: (data: { id: string, stageIndex: number, materialRefJson: string }) =>
-    http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/stage/submit`, data),
+  submitStage: (data: {
+    id: string
+    stageIndex: number
+    materialRef: { archiveRecordIds: string[] }
+  }) => http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/stage/submit`, data),
   enterStageReview: (data: { id: string }) =>
     http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/stage/enter-review`, data),
   reviewStage: (data: { id: string, stageIndex: number, approved: boolean, reviewComment?: string }) =>

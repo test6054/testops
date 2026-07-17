@@ -16,20 +16,21 @@
       :title="submitError"
       style="margin-bottom: 12px"
     />
-    <a-form layout="vertical">
-      <a-form-item label="操作原因" required>
-        <a-textarea
-          v-model:value="reason"
+    <UiForm layout="vertical">
+      <UiFormItem label="操作原因" required>
+        <UiTextarea
+          size="sm"
+          v-model="reason"
           :rows="4"
           :maxlength="500"
           placeholder="请填写操作原因，供后续运维追溯。例如：打分尺度争议临时叫停、系统升级暂停、试评交底归档等"
-          show-count
+          :show-count="true"
         />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
     <template #footer>
-      <UiButton variant="outline" @click="handleOpenChange(false)">取消</UiButton>
-      <UiButton :loading="submitting" :disabled="!canManage" @click="confirm">提交</UiButton>
+      <UiButton size="sm" variant="outline" @click="handleOpenChange(false)">取消</UiButton>
+      <UiButton size="sm" :loading="submitting" :disabled="!canManage" @click="confirm">提交</UiButton>
     </template>
   </UiDrawer>
 </template>
@@ -43,8 +44,11 @@ import {
   pauseFormalSession,
 } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 export type LifecycleAction = 'pauseFormal' | 'closeFormal' | 'closeTrial'
@@ -116,6 +120,9 @@ async function confirm(): Promise<void> {
   }
   if (!props.canManage) {
     showFormValidationMessage('仅考试主考老师可管理试评 / 正评会话')
+    return
+  }
+  if (submitting.value) {
     return
   }
   const trimmed = reason.value.trim()

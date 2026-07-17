@@ -10,11 +10,12 @@
     </template>
     <template v-if="!embedded" #toolbar>
       <div class="ai-analysis-card-toolbar">
-        <a-select
-          :value="props.classId"
+        <UiSelect
+          size="sm"
+          :model-value="props.classId"
           placeholder="选择班级"
           class="stats-card__select stats-card__select--class-wide"
-          show-search
+          allow-search
           option-filter-prop="label"
           allow-clear
           :options="props.classOptions"
@@ -45,11 +46,12 @@
 
     <template v-if="embedded" #actions>
       <div class="ai-analysis-card-toolbar">
-        <a-select
-          :value="props.classId"
+        <UiSelect
+          size="sm"
+          :model-value="props.classId"
           placeholder="选择班级"
           style="width: 220px"
-          show-search
+          allow-search
           option-filter-prop="label"
           allow-clear
           :options="props.classOptions"
@@ -138,6 +140,7 @@ import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
 import AiWeaknessRow from '@/components/mark/analysis/AiWeaknessRow.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { deriveWeaknessLevel } from '@/utils/ai-analysis-display'

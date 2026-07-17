@@ -96,9 +96,16 @@ export interface PortfolioArchiveBagExportResultVO {
 }
 
 export interface PortfolioArchiveScoreBreakdownItemVO {
-  ruleId: string
+  ruleId?: string
   ruleName: string
   earnedScore: number
+  rawScore?: number
+  decayFactor?: number
+  recognitionYear?: number
+  achievementType?: string
+  decayProfileLabel?: string
+  decayApplied?: boolean
+  lineType?: string
   explainText: string
 }
 

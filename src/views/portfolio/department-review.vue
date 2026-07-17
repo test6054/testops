@@ -16,7 +16,7 @@ import type {
   PortfolioReviewTaskSummaryVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -41,6 +41,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -126,7 +127,7 @@ const listColumns: ColumnsType = [
   { title: '档案状态', key: 'recordStatus', width: 100 },
   { title: '审核状态', key: 'reviewStatus', width: 100 },
   { title: '提交时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
-  { title: '操作', key: 'actions', width: 120 },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 
 const fieldColumns: ColumnsType = [
@@ -773,6 +774,7 @@ watch(
       />
       <div class="review-toolbar">
         <UiButton
+          size="sm"
           :loading="batchSubmitting"
           :disabled="!selectedRowKeys.length || reviewWriting"
           @click="handleBatchApprove"
@@ -780,6 +782,7 @@ watch(
           批量通过（{{ selectedRowKeys.length }}）
         </UiButton>
         <UiButton
+          size="sm"
           :loading="batchRejectSubmitting"
           :disabled="!selectedRowKeys.length || reviewWriting"
           @click="handleBatchReject"
@@ -788,8 +791,9 @@ watch(
         </UiButton>
       </div>
       <div v-if="selectedRowKeys.length" class="review-batch-reject">
-        <Input
-          v-model:value="batchRejectReason"
+        <UiInput
+          v-model="batchRejectReason"
+          size="sm"
           :disabled="reviewWriting"
           placeholder="批量退回原因"
         />
@@ -861,9 +865,20 @@ watch(
                   key: 'review',
                   label: record.riskLevel === 'SENSITIVE' ? '单条复核' : '复核',
                 },
+                {
+                  key: 'masterpiece',
+                  label: '读整袋',
+                  disabled: !record.teacherId,
+                },
               ]"
               split
-              @action="() => openDetail(record)"
+              @action="(key) => {
+                if (key === 'masterpiece') {
+                  goTeacherPortfolioPage('/portfolio/teacher/masterpiece', record.teacherId)
+                  return
+                }
+                openDetail(record)
+              }"
             />
           </template>
         </template>
@@ -883,6 +898,14 @@ watch(
         </p>
         <div v-if="activeRow.teacherId" class="review-teacher-links">
           <UiButton
+            size="sm"
+            variant="primary"
+            @click="goTeacherPortfolioPage('/portfolio/teacher/masterpiece', activeRow.teacherId)"
+          >
+            读整袋
+          </UiButton>
+          <UiButton
+            size="sm"
             v-if="showCourseArchiveLink"
             variant="ghost"
             @click="goCourseArchive(activeRow.teacherId)"
@@ -890,24 +913,28 @@ watch(
             查看课程档案
           </UiButton>
           <UiButton
+            size="sm"
             variant="ghost"
             @click="goTeacherPortfolioPage('/portfolio/teacher/philosophy', activeRow.teacherId)"
           >
             教学理念
           </UiButton>
           <UiButton
+            size="sm"
             variant="ghost"
             @click="goTeacherPortfolioPage('/portfolio/teacher/profile', activeRow.teacherId)"
           >
             个人资料
           </UiButton>
           <UiButton
+            size="sm"
             variant="ghost"
             @click="goTeacherPortfolioPage('/portfolio/teacher/honor', activeRow.teacherId)"
           >
             获奖情况
           </UiButton>
           <UiButton
+            size="sm"
             variant="ghost"
             @click="
               goTeacherPortfolioPage('/portfolio/teacher/extension-activity', activeRow.teacherId)
@@ -950,7 +977,7 @@ watch(
           flat
           @page-change="handleFieldPageChange"
         />
-        <UiEmpty v-else-if="!detailLoading" description="暂无字段快照" />
+        <UiEmpty size="sm" v-else-if="!detailLoading" description="暂无字段快照" />
         <UiDataTable
           v-if="logTotal > 0"
           class="review-logs"
@@ -973,23 +1000,25 @@ watch(
           </template>
         </UiDataTable>
         <div v-if="showReviewActions" class="review-actions">
-          <Input
-            v-model:value="approveOpinion"
+          <UiInput
+            v-model="approveOpinion"
+            size="sm"
             :disabled="reviewWriting"
             placeholder="通过意见（可选）"
           />
           <div class="review-actions__row">
-            <UiButton :loading="actionSubmitting" @click="handleApprove"> 通过 </UiButton>
+            <UiButton size="sm" :loading="actionSubmitting" @click="handleApprove"> 通过 </UiButton>
           </div>
           <template v-if="activeRow.escalateAllowed">
-            <Input
-              v-model:value="escalateReason"
+            <UiInput
+              v-model="escalateReason"
+              size="sm"
               :disabled="reviewWriting"
               placeholder="转复审原因"
             />
-            <UiButton :loading="actionSubmitting" @click="handleEscalate"> 转复审 </UiButton>
+            <UiButton size="sm" :loading="actionSubmitting" @click="handleEscalate"> 转复审 </UiButton>
           </template>
-          <Input v-model:value="rejectReason" :disabled="reviewWriting" placeholder="退回原因" />
+          <UiInput v-model="rejectReason" size="sm" :disabled="reviewWriting" placeholder="退回原因" />
           <UiDatePicker
             v-model="returnDeadline"
             show-time
@@ -999,9 +1028,9 @@ watch(
             :disabled="reviewWriting"
             style="width: 100%"
           />
-          <UiButton :loading="actionSubmitting" @click="handleReject"> 退回修改 </UiButton>
-          <Input v-model:value="dismissReason" :disabled="reviewWriting" placeholder="驳回依据" />
-          <UiButton status="danger" :loading="actionSubmitting" @click="handleDismiss">
+          <UiButton size="sm" :loading="actionSubmitting" @click="handleReject"> 退回修改 </UiButton>
+          <UiInput v-model="dismissReason" size="sm" :disabled="reviewWriting" placeholder="驳回依据" />
+          <UiButton size="sm" status="danger" :loading="actionSubmitting" @click="handleDismiss">
             驳回
           </UiButton>
         </div>
@@ -1033,7 +1062,7 @@ watch(
 }
 .review-sensitive-hint {
   margin: 0 0 12px;
-  color: var(--ant-color-error);
+  color: var(--dp-error);
   font-size: 13px;
 }
 .review-meta {

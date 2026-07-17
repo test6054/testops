@@ -778,11 +778,11 @@ const registerProgressText = computed(() => {
 }
 .issue-item.item-failed button {
   border-color: var(--kiosk-danger);
-  background: color-mix(in srgb, var(--kiosk-danger) 10%, var(--ant-color-bg-container));
+  background: color-mix(in srgb, var(--kiosk-danger) 10%, var(--dp-bg-container));
 }
 .issue-item.item-attention button {
   border-color: var(--kiosk-warning);
-  background: color-mix(in srgb, var(--kiosk-warning) 12%, var(--ant-color-bg-container));
+  background: color-mix(in srgb, var(--kiosk-warning) 12%, var(--dp-bg-container));
 }
 
 .issue-item-icon {

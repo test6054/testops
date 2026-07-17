@@ -34,12 +34,13 @@
         />
       </template>
       <template #field-experienceCaseId>
-        <a-select
-          v-model:value="form.experienceCaseId"
+        <UiSelect
+          size="sm"
+          v-model="form.experienceCaseId"
           :options="experienceOptions"
           :loading="experienceLoading"
           placeholder="请选择来源考试下的经验案例"
-          show-search
+          allow-search
           option-filter-prop="label"
           allow-clear
           :disabled="!form.sourceExamId"
@@ -160,6 +161,7 @@ import AnalysisExamSelect from '@/components/mark/AnalysisExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
@@ -368,7 +370,7 @@ const { chartOption: effectivenessBarOption } = useChartOption(() =>
 
 const effectivenessBarAriaLabel = computed(() => {
   const count = effectivenessBarItems.value.length
-  if (count <= 0) return '当前评估指标，当前没有可展示的内容'
+  if (count <= 0) return '当前评估指标暂无数据'
   return `当前评估指标，共 ${count} 项`
 })
 
@@ -546,6 +548,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
+  if (generating.value) return
   const experienceCaseId = form.experienceCaseId
   const evalExamId = form.evalExamId
   if (!experienceCaseId || !evalExamId) {
@@ -630,7 +633,7 @@ watch(
 .ai-record__charts {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 .ai-summary {
   margin: 0;
@@ -646,7 +649,7 @@ watch(
   gap: 8px;
 }
 .text-muted {
-  color: var(--gi-color-text-3, rgba(0, 0, 0, 0.45));
+  color: var(--dp-text-tertiary);
 }
 .experience-effectiveness-filter {
   width: 100%;

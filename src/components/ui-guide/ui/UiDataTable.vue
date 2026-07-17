@@ -36,7 +36,7 @@
           :loading="props.loading"
           :row-key="props.rowKey"
           :pagination="false"
-          :size="props.size"
+          :size="tableSize"
           :row-selection="rowSelection"
           :scroll="resolvedScroll"
           :table-layout="tableLayout"
@@ -122,7 +122,7 @@ const props = withDefaults(
     description?: string
     /** 当前排序说明，展示在表格上方，如「按正确率降序」 */
     sortedInfo?: string
-    size?: 'small' | 'middle' | 'large'
+    size?: 'small' | 'middle' | 'large' | 'sm' | 'md' | 'lg'
     total?: number
     showPagination?: boolean
     /** server：后端分页，需监听 @page-change；client：组件内切片；none：无分页栏 */
@@ -275,10 +275,16 @@ const resolvedEmptyDescription = computed(() => {
 })
 
 const emptySize = computed(() => {
-  if (props.flat && props.size === 'small') {
+  if (props.flat && (props.size === 'small' || props.size === 'sm')) {
     return 'sm'
   }
   return 'md'
+})
+
+const tableSize = computed<'small' | 'middle' | 'large'>(() => {
+  if (props.size === 'sm' || props.size === 'small') return 'small'
+  if (props.size === 'lg' || props.size === 'large') return 'large'
+  return 'middle'
 })
 
 const resolvedScroll = computed<TableProps['scroll']>(() => {
@@ -418,8 +424,8 @@ const handlePageChange = (page: number, size: number) => {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3, 12px);
 }
 
 .ui-data-table__meta {
@@ -450,21 +456,21 @@ const handlePageChange = (page: number, size: number) => {
 .ui-data-table__toolbar-left {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
+  gap: var(--dp-space-2, 8px);
+  margin-top: var(--dp-space-2, 8px);
 }
 
 .ui-data-table__toolbar-right {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--dp-space-2, 8px);
   flex-shrink: 0;
 }
 
 .ui-data-table__table-wrap {
   min-width: 0;
   width: 100%;
-  border: 1px solid var(--dp-border);
+  border: 1px solid var(--dp-table-border);
   border-radius: var(--dp-radius-panel);
 }
 
@@ -514,8 +520,8 @@ const handlePageChange = (page: number, size: number) => {
 }
 
 .ui-data-table--flat .ui-data-table__table-wrap :deep(.ant-table-placeholder .ui-empty--sm) {
-  padding-top: 20px;
-  padding-bottom: 20px;
+  padding-top: var(--dp-space-3, 12px);
+  padding-bottom: var(--dp-space-3, 12px);
 }
 
 .ui-data-table--has-scroll-y .ui-data-table__table :deep(.ant-table-body) {
@@ -526,8 +532,8 @@ const handlePageChange = (page: number, size: number) => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  padding: 14px 0 12px;
+  gap: var(--dp-space-2, 8px);
+  padding: var(--dp-space-3, 12px) 0;
   justify-content: space-between;
   margin-bottom: 0;
 }
@@ -545,13 +551,13 @@ const handlePageChange = (page: number, size: number) => {
   flex: 1;
   min-width: 0;
   margin-top: 0;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .ui-data-table--flat .ui-data-table__toolbar-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
   flex-shrink: 0;
 }
 
@@ -561,7 +567,7 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table__table :deep(.ant-table-thead > tr > th) {
   background: var(--dp-table-header-bg) !important;
-  border-bottom: 1px solid var(--dp-border);
+  border-bottom: 1px solid var(--dp-table-border);
 }
 
 .ui-data-table__table
@@ -575,7 +581,7 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table__table :deep(.ant-table-column-sorter-up.active),
 .ui-data-table__table :deep(.ant-table-column-sorter-down.active) {
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--dp-color-primary);
 }
 
 .ui-data-table__table
@@ -601,11 +607,11 @@ const handlePageChange = (page: number, size: number) => {
       .ant-checkbox-wrapper:hover
       .ant-checkbox-inner
   ) {
-  border-color: var(--dp-border) !important;
+  border-color: var(--dp-table-border) !important;
 }
 
 .ui-data-table__table :deep(.ant-table-tbody > tr > td) {
-  border-bottom: 1px solid var(--dp-border);
+  border-bottom: 1px solid var(--dp-table-border);
 }
 
 .ui-data-table__table :deep(.ant-table-tbody > tr > td .ui-table-actions) {
@@ -642,13 +648,13 @@ const handlePageChange = (page: number, size: number) => {
 .ui-data-table__table :deep(.ant-table-cell-fix-left-last::after) {
   right: 0;
   transform: translateX(100%);
-  box-shadow: inset 10px 0 8px -8px rgb(15 23 42 / 8%);
+  box-shadow: inset 10px 0 8px -8px color-mix(in srgb, var(--dp-text-primary) 8%, transparent);
 }
 
 .ui-data-table__table :deep(.ant-table-cell-fix-right-first::after) {
   left: 0;
   transform: translateX(-100%);
-  box-shadow: inset -10px 0 8px -8px rgb(15 23 42 / 8%);
+  box-shadow: inset -10px 0 8px -8px color-mix(in srgb, var(--dp-text-primary) 8%, transparent);
 }
 
 .ui-data-table__table :deep(.ant-table-tbody > tr:hover > td.ant-table-cell-fix-left),
@@ -745,6 +751,6 @@ const handlePageChange = (page: number, size: number) => {
 }
 
 .ui-data-table__pagination {
-  margin-top: 16px;
+  margin-top: var(--dp-space-3, 12px);
 }
 </style>

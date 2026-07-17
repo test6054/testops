@@ -298,6 +298,10 @@ function createKioskDeviceActivation() {
   }
 
   async function activateDevice(options?: KioskDeviceActivateOptions): Promise<boolean> {
+    // MVR-110：激活中禁止重入，避免并发 clear 绑定与双发后端激活
+    if (loading.value) {
+      return false
+    }
     if (options?.guard) {
       const blocked = options.guard()
       if (blocked) {

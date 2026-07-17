@@ -20,6 +20,7 @@ function dataSourceLabel(
 }
 
 const loading = ref(false)
+const listRequestToken = ref(0)
 const rows = ref<PortfolioIndicatorReferenceStatusVO[]>([])
 
 const columns: ColumnsType = [
@@ -31,13 +32,24 @@ const columns: ColumnsType = [
 ]
 
 async function loadList() {
+  const currentToken = ++listRequestToken.value
   loading.value = true
   try {
-    rows.value = await portfolioIndicatorTenantApi.listReferenceStatus()
+    const list = await portfolioIndicatorTenantApi.listReferenceStatus()
+    if (currentToken !== listRequestToken.value) {
+      return
+    }
+    rows.value = list ?? []
   } catch (error) {
+    if (currentToken !== listRequestToken.value) {
+      return
+    }
+    rows.value = []
     showUserError(error, '加载指标引用状态失败')
   } finally {
-    loading.value = false
+    if (currentToken === listRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
@@ -50,7 +62,7 @@ onMounted(loadList)
       <ContextBar show-title layout="workbench" title="指标引用状态" />
     </template>
     <UiCard>
-      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无指标引用记录" />
+      <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="当前筛选无指标引用记录" />
       <UiDataTable
         :columns="columns"
         :data-source="rows"

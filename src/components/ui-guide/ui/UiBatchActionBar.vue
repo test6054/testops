@@ -1,5 +1,10 @@
 <template>
-  <div class="ui-batch-action-bar" :class="{ 'ui-batch-action-bar--muted': props.muted }" v-bind="$attrs">
+  <div
+    v-if="visible"
+    class="ui-batch-action-bar"
+    :class="{ 'ui-batch-action-bar--muted': props.muted }"
+    v-bind="$attrs"
+  >
     <div class="ui-batch-action-bar__left">
       <slot name="left">
         <div class="ui-batch-action-bar__summary">
@@ -17,6 +22,8 @@
 </template>
 
 <script lang="ts" setup>
+import { computed } from 'vue'
+
 defineOptions({
   name: 'UiBatchActionBar',
   inheritAttrs: false,
@@ -33,6 +40,11 @@ const props = withDefaults(defineProps<{
   description: '',
   muted: false,
 })
+
+/** selectedCount 传入且为 0 时隐藏，避免无选中常驻批量条 */
+const visible = computed(
+  () => props.selectedCount === undefined || props.selectedCount > 0,
+)
 </script>
 
 <style scoped>
@@ -40,11 +52,11 @@ const props = withDefaults(defineProps<{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 12px 14px;
+  gap: var(--dp-space-4, 16px);
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 14px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
-  background: #fff;
+  background: var(--dp-surface);
 }
 
 .ui-batch-action-bar--muted {

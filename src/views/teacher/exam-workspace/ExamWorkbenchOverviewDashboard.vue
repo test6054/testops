@@ -40,25 +40,18 @@
                 </div>
                 <div class="exam-status-card__stat-label">可阅卷</div>
               </div>
-              <div v-if="markingPercent > 0 || (markingProgress?.totalQuestionGradeCount ?? 0) > 0">
-                <div class="exam-status-card__stat-value exam-status-card__stat-value--blue">
-                  {{ markingPercent }}%
-                </div>
-                <div class="exam-status-card__stat-label">批阅进度</div>
-              </div>
               <div v-if="(markingProgress?.scanAttentionCount ?? 0) > 0">
-                <div
-                  class="exam-status-card__stat-value"
-                  :class="{
-                    'exam-status-card__stat-value--orange':
-                      (markingProgress?.scanAttentionCount ?? 0) > 0,
-                  }"
-                >
+                <div class="exam-status-card__stat-value exam-status-card__stat-value--orange">
                   {{ markingProgress?.scanAttentionCount ?? 0 }}
                 </div>
                 <div class="exam-status-card__stat-label">扫描异常</div>
               </div>
             </div>
+            <p v-if="statusActionHints.length" class="exam-status-card__hints">
+              <span v-for="hint in statusActionHints" :key="hint.key" class="exam-status-card__hint">
+                {{ hint.label }}
+              </span>
+            </p>
             <footer class="exam-status-card__foot">
               <UiButton
                 size="sm"
@@ -76,32 +69,10 @@
           </article>
         </WorkbenchSurfaceCard>
 
-        <div v-if="showTaskAnalyticsRow" class="analytics-stats">
-          <div v-if="(taskSummary?.totalTaskCount ?? 0) > 0" class="analytics-stats__card">
-            <div class="analytics-stats__value">{{ taskSummary!.totalTaskCount }}</div>
-            <div class="analytics-stats__label">总任务数</div>
-          </div>
-          <div v-if="(taskSummary?.finalizedTaskCount ?? 0) > 0" class="analytics-stats__card">
-            <div class="analytics-stats__value analytics-stats__value--green">
-              {{ taskSummary!.finalizedTaskCount }}
-            </div>
-            <div class="analytics-stats__label">已完成</div>
-          </div>
-          <div v-if="examConsistencyRate != null" class="analytics-stats__card">
-            <div class="analytics-stats__value" :class="consistencyValueClass">
-              {{ examConsistencyRate }}%
-            </div>
-            <div class="analytics-stats__label">评阅一致性</div>
-          </div>
-          <div v-else-if="(taskSummary?.pendingTaskCount ?? 0) > 0" class="analytics-stats__card">
-            <div class="analytics-stats__value analytics-stats__value--warn">
-              {{ taskSummary!.pendingTaskCount }}
-            </div>
-            <div class="analytics-stats__label">待完成</div>
-          </div>
-        </div>
-
-        <WorkbenchSurfaceCard class="exam-overview-dash__quality">
+        <WorkbenchSurfaceCard
+          v-if="qualityItems.length || qualityRadarHasData"
+          class="exam-overview-dash__quality"
+        >
           <template #head>
             <div class="exam-overview-dash__quality-head">
               <h3 class="exam-overview-dash__panel-title">质量概览</h3>
@@ -110,35 +81,32 @@
               </UiButton>
             </div>
           </template>
-          <UiEmpty v-if="!qualityItems.length && !qualityRadarHasData" description="暂无质量数据" />
-          <template v-else>
-            <MarkChart
-              v-if="qualityRadarHasData"
-              :option="qualityRadarOption"
-              height="220px"
-              aria-label="考试质量雷达图"
-              class="exam-overview-dash__radar"
-            />
-            <ul v-if="qualityItems.length > 0" class="exam-overview-dash__quality-list">
-              <li
-                v-for="item in qualityItems"
-                :key="item.reviewerUserId"
-                class="exam-overview-dash__quality-row"
-              >
-                <span class="exam-overview-dash__quality-name">{{ item.reviewerDisplayName }}</span>
-                <div class="exam-overview-dash__quality-bar">
-                  <div
-                    class="exam-overview-dash__quality-fill"
-                    :class="qualityFillClass(item.consistencyRate)"
-                    :style="{
-                      transform: `scaleX(${Math.max(0, Math.min(1, item.consistencyRate / 100))})`,
-                    }"
-                  />
-                </div>
-                <span class="exam-overview-dash__quality-rate">{{ item.consistencyRate }}%</span>
-              </li>
-            </ul>
-          </template>
+          <MarkChart
+            v-if="qualityRadarHasData"
+            :option="qualityRadarOption"
+            height="180px"
+            aria-label="考试质量雷达图"
+            class="exam-overview-dash__radar"
+          />
+          <ul v-if="qualityItems.length > 0" class="exam-overview-dash__quality-list">
+            <li
+              v-for="item in qualityItems"
+              :key="item.reviewerUserId"
+              class="exam-overview-dash__quality-row"
+            >
+              <span class="exam-overview-dash__quality-name">{{ item.reviewerDisplayName }}</span>
+              <div class="exam-overview-dash__quality-bar">
+                <div
+                  class="exam-overview-dash__quality-fill"
+                  :class="qualityFillClass(item.consistencyRate)"
+                  :style="{
+                    transform: `scaleX(${Math.max(0, Math.min(1, item.consistencyRate / 100))})`,
+                  }"
+                />
+              </div>
+              <span class="exam-overview-dash__quality-rate">{{ item.consistencyRate }}%</span>
+            </li>
+          </ul>
         </WorkbenchSurfaceCard>
       </div>
 
@@ -160,25 +128,13 @@
           />
         </WorkbenchSurfaceCard>
 
-        <WorkbenchSurfaceCard v-if="quickStats" class="exam-overview-dash__panel">
+        <WorkbenchSurfaceCard v-if="quickStatItems.length" class="exam-overview-dash__panel">
           <template #head>
-            <h3 class="exam-overview-dash__panel-title">快速统计</h3>
+            <h3 class="exam-overview-dash__panel-title">办理统计</h3>
           </template>
           <ul class="exam-overview-dash__quick-list">
-            <li>
-              <span>阅卷教师</span><strong>{{ quickStats.reviewerCount }} 人</strong>
-            </li>
-            <li>
-              <span>题组数</span><strong>{{ quickStats.groupCount }} 组</strong>
-            </li>
-            <li>
-              <span>已回收</span><strong>{{ quickStats.recycledTaskCount }} 份</strong>
-            </li>
-            <li>
-              <span>仲裁中</span><strong>{{ quickStats.arbitrationPendingCount }} 份</strong>
-            </li>
-            <li>
-              <span>待抽检</span><strong>{{ quickStats.spotCheckPendingCount }} 项</strong>
+            <li v-for="item in quickStatItems" :key="item.key">
+              <span>{{ item.label }}</span><strong>{{ item.value }}</strong>
             </li>
           </ul>
         </WorkbenchSurfaceCard>
@@ -201,7 +157,6 @@ import { computed } from 'vue'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import PendingTodoFeed from '@/components/mark/dashboard/PendingTodoFeed.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ExamJourneyMiniStrip from '@/components/workbench/ExamJourneyMiniStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -263,25 +218,56 @@ const examConsistencyRate = computed(
   () => props.dashboardPanel?.qualitySummary?.examConsistencyRate ?? null,
 )
 
-const showTaskAnalyticsRow = computed(() => {
+/** 状态卡内嵌轻提示：替代同权 analytics 卡片墙 */
+const statusActionHints = computed(() => {
+  const hints: Array<{ key: string, label: string }> = []
   const summary = taskSummary.value
-  if (!summary) {
-    return false
+  if (summary && summary.pendingTaskCount > 0) {
+    hints.push({ key: 'pending-task', label: `待完成任务 ${summary.pendingTaskCount}` })
   }
   if (examConsistencyRate.value != null) {
-    return true
+    hints.push({ key: 'consistency', label: `评阅一致性 ${examConsistencyRate.value}%` })
   }
-  return (
-    summary.totalTaskCount > 0 || summary.finalizedTaskCount > 0 || summary.pendingTaskCount > 0
-  )
+  if (summary && summary.finalizedTaskCount > 0 && summary.totalTaskCount > 0) {
+    hints.push({
+      key: 'finalized',
+      label: `已完成 ${summary.finalizedTaskCount}/${summary.totalTaskCount}`,
+    })
+  }
+  return hints
 })
 
-const consistencyValueClass = computed(() => {
-  const rate = examConsistencyRate.value
-  if (rate == null) return ''
-  if (rate >= 95) return 'analytics-stats__value--green'
-  if (rate >= 85) return ''
-  return 'analytics-stats__value--warn'
+/** 侧栏只展示可推动办理的非零项，避免五格装饰统计 */
+const quickStatItems = computed(() => {
+  const stats = quickStats.value
+  if (!stats) {
+    return [] as Array<{ key: string, label: string, value: string }>
+  }
+  const items: Array<{ key: string, label: string, value: string }> = []
+  if (stats.arbitrationPendingCount > 0) {
+    items.push({
+      key: 'arbitration',
+      label: '仲裁中',
+      value: `${stats.arbitrationPendingCount} 份`,
+    })
+  }
+  if (stats.spotCheckPendingCount > 0) {
+    items.push({
+      key: 'spot-check',
+      label: '待抽检',
+      value: `${stats.spotCheckPendingCount} 项`,
+    })
+  }
+  if (stats.recycledTaskCount > 0) {
+    items.push({ key: 'recycled', label: '已回收', value: `${stats.recycledTaskCount} 份` })
+  }
+  if (stats.reviewerCount > 0) {
+    items.push({ key: 'reviewers', label: '阅卷教师', value: `${stats.reviewerCount} 人` })
+  }
+  if (stats.groupCount > 0) {
+    items.push({ key: 'groups', label: '题组数', value: `${stats.groupCount} 组` })
+  }
+  return items
 })
 
 const markingPercent = computed(() => {
@@ -388,7 +374,7 @@ function qualityFillClass(rate: number): string {
   &__quality-fill {
     width: 100%;
     height: 100%;
-    background: var(--ant-color-primary);
+    background: var(--dp-color-primary);
     border-radius: inherit;
     transform-origin: left center;
     transition: transform var(--dp-duration-normal) ease;
@@ -422,7 +408,7 @@ function qualityFillClass(rate: number): string {
     padding: 0 5px;
     border-radius: var(--dp-radius-full);
     background: var(--dp-red-500);
-    color: var(--ant-color-white);
+    color: var(--dp-text-inverse);
     font-size: 11px;
     font-weight: 600;
   }

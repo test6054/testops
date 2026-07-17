@@ -11,8 +11,8 @@ import {
   PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
 import PortfolioTeacherJourneyRail from '@/components/portfolio/PortfolioTeacherJourneyRail.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import PortfolioTeacherReviewStatusTable from '@/components/portfolio/PortfolioTeacherReviewStatusTable.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -141,20 +141,12 @@ watch(
       :record-status="appliedFilters.recordStatus"
       :highlight-record-id="highlightRecordId"
     />
-    <UiEmpty
-      v-else
-      class="teacher-review-status__empty"
-      description="请从教师名册选择目标教师，或在 URL 携带 teacherId 参数"
-    />
+    <PortfolioTeacherPickGate v-else />
   </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
 .teacher-review-status__filter {
   margin: var(--dp-space-4);
-}
-
-.teacher-review-status__empty {
-  margin: var(--dp-space-8) var(--dp-space-4);
 }
 </style>

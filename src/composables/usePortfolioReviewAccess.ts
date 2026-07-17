@@ -46,6 +46,7 @@ export function isPortfolioWorkShellCode(value: unknown): value is PortfolioWork
     || value === 'DEPARTMENT_REVIEW'
     || value === 'SCHOOL_GOVERNANCE'
     || value === 'CONFIGURATION'
+    || value === 'EXTERNAL_EXPERT'
   )
 }
 
@@ -87,7 +88,8 @@ export function selectPortfolioWorkShell(workShell: PortfolioWorkShellCode): str
 }
 
 /**
- * 加载并缓存档案审核台访问范围；供路由门禁与审核页筛选器复用。
+ * 加载并缓存档案审核台访问范围（edu-quality）。
+ * 仅教学档案袋域路由守卫与审核页调用；阅卷 /teacher 不得依赖本接口。
  */
 export async function ensurePortfolioReviewAccessLoaded(
   forceRefresh = false,

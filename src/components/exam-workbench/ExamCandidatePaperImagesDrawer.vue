@@ -1,7 +1,7 @@
 <template>
   <UiDrawer v-model:open="open" :title="drawerTitle" :width="720" hide-footer>
     <UiSkeletonState v-if="loading" variant="card" :card-count="2" compact />
-    <UiEmpty v-else-if="!pages.length" description="该考生尚无 ACTIVE 扫描页" />
+    <UiEmpty size="sm" v-else-if="!pages.length" description="该考生尚无 ACTIVE 扫描页" />
     <div v-else class="candidate-paper-images">
       <div v-for="page in pages" :key="page.pageId" class="candidate-paper-images__item">
         <div class="candidate-paper-images__meta">
@@ -118,7 +118,7 @@ watch(
     justify-content: space-between;
     gap: 12px;
     padding: 12px 16px;
-    border: 1px solid var(--ant-color-border-secondary);
+    border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
   }
 
@@ -132,7 +132,7 @@ watch(
   &__page-no {
     font-size: 14px;
     font-weight: 500;
-    color: var(--ant-color-text);
+    color: var(--dp-text-primary);
   }
 }
 </style>

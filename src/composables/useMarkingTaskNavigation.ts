@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
+import { MarkingTaskStatusCode } from '@/types/enums/marking-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
 
 export interface BatchProgress {
@@ -23,7 +24,13 @@ export function useMarkingTaskNavigation(options: UseMarkingTaskNavigationOption
   const { tasks: batchTasks } = storeToRefs(markTaskStore)
 
   const navPrevLabel = computed(() => (options.isWholePaperTask.value ? '上一份' : '上一题'))
-  const navNextLabel = computed(() => (options.isWholePaperTask.value ? '下一份' : '下一题'))
+
+  function isUnreadTaskStatus(status: MarkingTaskResponse['taskStatus']): boolean {
+    return (
+      status === MarkingTaskStatusCode.ALLOCATED
+      || status === MarkingTaskStatusCode.IN_PROGRESS
+    )
+  }
 
   const batchProgress = computed<BatchProgress | null>(() => {
     if (!options.task.value || batchTasks.value.length === 0) return null
@@ -38,10 +45,43 @@ export function useMarkingTaskNavigation(options: UseMarkingTaskNavigationOption
     return idx > 0 ? batchTasks.value[idx - 1].id : ''
   })
 
+  /** 列表序上下一份（浏览用） */
   const nextTaskId = computed<string>(() => {
     if (!batchProgress.value) return ''
     const idx = batchProgress.value.current - 1
     return idx < batchTasks.value.length - 1 ? batchTasks.value[idx + 1].id : ''
+  })
+
+  /**
+   * 下一未阅：优先当前之后的 ALLOCATED/IN_PROGRESS，再回绕到当前之前。
+   * 提交后主去向；禁跳已提交/定稿/回收。
+   */
+  const nextUnreadTaskId = computed<string>(() => {
+    if (!options.task.value || batchTasks.value.length === 0) return ''
+    const currentId = options.task.value.id
+    const idx = batchTasks.value.findIndex((item) => item.id === currentId)
+    if (idx < 0) return ''
+    for (let i = idx + 1; i < batchTasks.value.length; i += 1) {
+      if (isUnreadTaskStatus(batchTasks.value[i].taskStatus)) {
+        return batchTasks.value[i].id
+      }
+    }
+    for (let i = 0; i < idx; i += 1) {
+      if (isUnreadTaskStatus(batchTasks.value[i].taskStatus)) {
+        return batchTasks.value[i].id
+      }
+    }
+    return ''
+  })
+
+  /** 导航/提交默认去向：未阅优先，否则列表下一份 */
+  const nextNavTaskId = computed<string>(() => nextUnreadTaskId.value || nextTaskId.value)
+
+  const navNextLabel = computed(() => {
+    if (nextUnreadTaskId.value) {
+      return options.isWholePaperTask.value ? '下一未阅份' : '下一未阅'
+    }
+    return options.isWholePaperTask.value ? '下一份' : '下一题'
   })
 
   async function ensureBatchLoaded(examId: string): Promise<void> {
@@ -85,6 +125,8 @@ export function useMarkingTaskNavigation(options: UseMarkingTaskNavigationOption
     batchProgress,
     prevTaskId,
     nextTaskId,
+    nextUnreadTaskId,
+    nextNavTaskId,
     navPrevLabel,
     navNextLabel,
     ensureBatchLoaded,

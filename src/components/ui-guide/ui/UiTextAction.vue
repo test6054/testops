@@ -56,7 +56,7 @@ const onClick = (event: MouseEvent) => {
   background: transparent;
   font: inherit;
   font-weight: 500;
-  color: var(--ant-color-text);
+  color: var(--dp-text);
   cursor: pointer;
   transition: color 0.15s ease;
 }
@@ -78,47 +78,47 @@ const onClick = (event: MouseEvent) => {
 }
 
 .ui-text-action--default:hover:not(:disabled) {
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
 }
 
 .ui-text-action--table.ui-text-action--default,
 .ui-text-action--table.ui-text-action--primary {
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   font-weight: 400;
 }
 
 .ui-text-action--table.ui-text-action--default:hover:not(:disabled),
 .ui-text-action--table.ui-text-action--primary:hover:not(:disabled) {
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   background: var(--dp-blue-50);
 }
 
 .ui-text-action--primary {
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   font-weight: 600;
 }
 
 .ui-text-action--primary:hover:not(:disabled) {
-  color: var(--ant-color-primary-hover);
+  color: var(--dp-color-primary-hover);
 }
 
 .ui-text-action--table.ui-text-action--danger {
-  color: var(--ant-color-error);
+  color: var(--dp-error);
   font-weight: 400;
 }
 
 .ui-text-action--table.ui-text-action--danger:hover:not(:disabled) {
-  color: var(--ant-color-error);
+  color: var(--dp-error);
   background: var(--dp-red-50);
 }
 
 .ui-text-action--danger {
-  color: var(--ant-color-error);
+  color: var(--dp-error);
   font-weight: 500;
 }
 
 .ui-text-action--danger:hover:not(:disabled) {
-  color: color-mix(in srgb, var(--ant-color-error) 82%, var(--ant-color-text));
+  color: color-mix(in srgb, var(--dp-error) 82%, var(--dp-text));
 }
 
 .ui-text-action.is-disabled,

@@ -5,6 +5,7 @@
 import type { ExamScannerKioskBindExamCandidateVO } from '@/apis/mark/scanner-kiosk'
 import { LeftOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { computed, ref, watch } from 'vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { formatExamSubMeta, formatExamTimeRange } from '@/utils/exam-display-meta'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -149,7 +150,7 @@ function goNextPage() {
     </div>
 
     <div v-if="workflow.bindExamCandidateLoading.value" class="exam-pick__state">
-      <a-spin size="large" />
+      <UiSpin size="lg" />
       <span>加载可扫描考试中…</span>
     </div>
     <div v-else-if="visibleExams.length === 0" class="exam-pick__state exam-pick__state--empty">
@@ -338,7 +339,7 @@ function goNextPage() {
   align-items: center;
   justify-content: center;
   gap: var(--kiosk-space-4);
-  min-height: 280px;
+  min-height: 200px;
   color: var(--kiosk-ink-secondary);
   text-align: center;
 }

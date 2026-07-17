@@ -2,6 +2,7 @@
 import type { AiAnalysisRecordMetaSource } from '@/composables/useAiAnalysisRecordMeta'
 import { computed, ref } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import { useAiAnalysisRecordMeta } from '@/composables/useAiAnalysisRecordMeta'
 
 defineOptions({ name: 'AiAnalysisMetaCollapse' })
@@ -49,7 +50,7 @@ const hasError = computed(() => Boolean(props.record.errorMessage?.trim()))
         <div class="ai-analysis-meta__item ai-analysis-meta__item--wide">
           <dt>处理追踪编号</dt>
           <dd>
-            <a-typography-text
+            <UiTypographyText
               v-if="meta.traceId(record)"
               :content="meta.traceId(record)"
               copyable

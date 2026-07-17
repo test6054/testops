@@ -37,13 +37,18 @@ import {
   PORTFOLIO_COMPLETENESS_LEVEL_TONE,
 } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -53,6 +58,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -174,6 +180,7 @@ const materialLibraryColumns: ColumnsType<PortfolioMaterialVO> = [
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const { currentUserId } = usePortfolioTeacherAccess()
 
 const oneTableLoading = ref(false)
@@ -490,6 +497,10 @@ function openLocalMaterialModal() {
 
 /** 将平台暂存文件正式挂接到当前草稿档案。 */
 async function addLocalSupportMaterial() {
+  if (!(await confirmProxyWrite('添加支撑材料'))) {
+    return
+  }
+
   const archiveRecordId = recordDetail.value?.id
   const materialTitle = localMaterialTitle.value.trim()
   if (!archiveRecordId || !canManageSupportMaterials.value) {
@@ -582,6 +593,10 @@ function handleMaterialLibraryPageChange(page: { current: number, pageSize: numb
 
 /** 将教师材料库条目关联为当前草稿档案的支撑材料。 */
 async function linkSupportMaterial(material: PortfolioMaterialVO) {
+  if (!(await confirmProxyWrite('关联支撑材料'))) {
+    return
+  }
+
   const archiveRecordId = recordDetail.value?.id
   if (!archiveRecordId || !canManageSupportMaterials.value) {
     showFormValidationMessage('当前档案不可维护支撑材料')
@@ -620,6 +635,10 @@ async function downloadSupportMaterial(material: PortfolioArchiveSupportMaterial
 
 /** 删除当前草稿档案与支撑材料的关联。 */
 async function deleteSupportMaterial(material: PortfolioArchiveSupportMaterialVO) {
+  if (!(await confirmProxyWrite('删除支撑材料'))) {
+    return
+  }
+
   const archiveRecordId = recordDetail.value?.id
   if (!archiveRecordId || !canManageSupportMaterials.value) {
     showFormValidationMessage('当前档案不可维护支撑材料')
@@ -649,6 +668,10 @@ async function deleteSupportMaterial(material: PortfolioArchiveSupportMaterialVO
 }
 
 async function createRevision() {
+  if (!(await confirmProxyWrite('创建档案修订版'))) {
+    return
+  }
+
   if (!recordDetail.value) {
     return
   }
@@ -845,6 +868,10 @@ function openExportConfirm() {
 }
 
 async function confirmExportBag() {
+  if (!(await confirmProxyWrite('导出一表通'))) {
+    return
+  }
+
   const currentToken = requestToken.value
   if (!canLoadTeacherArchive.value) {
     return
@@ -907,6 +934,40 @@ async function openRecordFromRouteQuery() {
   await openRecordById(recordId)
 }
 
+
+const archiveMoreActionItems = computed(() => [
+  { key: 'preview', label: '结构化预览', disabled: !canLoadTeacherArchive.value || bagLoading.value },
+  { key: 'assemble', label: '汇聚预览', disabled: !canLoadTeacherArchive.value || bagLoading.value },
+  { key: 'correction', label: '我的纠错', disabled: !canLoadTeacherArchive.value },
+  {
+    key: 'reload',
+    label: '刷新',
+    disabled:
+      !canLoadTeacherArchive.value
+      || oneTableLoading.value
+      || recordLoading.value
+      || timelineLoading.value,
+  },
+])
+
+function onArchiveMoreAction(key: string) {
+  if (key === 'preview') {
+    void previewBag()
+    return
+  }
+  if (key === 'assemble') {
+    void assembleBag()
+    return
+  }
+  if (key === 'correction') {
+    goCorrection()
+    return
+  }
+  if (key === 'reload') {
+    void reloadAll()
+  }
+}
+
 usePortfolioScopedLoader(
   async () => {
     resetTeacherArchiveContext()
@@ -931,19 +992,7 @@ watch(
       <ContextBar show-title layout="workbench" title="我的档案">
         <template #actions>
           <UiButton
-            :loading="scoreLoading"
-            :disabled="!canLoadTeacherArchive"
-            @click="computeArchiveScore"
-          >
-            档案评分
-          </UiButton>
-          <UiButton :loading="bagLoading" :disabled="!canLoadTeacherArchive" @click="previewBag">
-            结构化预览
-          </UiButton>
-          <UiButton :loading="bagLoading" :disabled="!canLoadTeacherArchive" @click="assembleBag">
-            汇聚预览
-          </UiButton>
-          <UiButton
+            size="sm"
             :loading="bagLoading"
             :disabled="!canLoadTeacherArchive"
             variant="primary"
@@ -951,17 +1000,30 @@ watch(
           >
             导出材料包
           </UiButton>
-          <UiButton :disabled="!canLoadTeacherArchive" @click="goCorrection"> 我的纠错 </UiButton>
-          <UiButton v-if="selectedCategoryId" @click="goCategoryEdit(selectedCategoryId)">
+          <UiButton
+            size="sm"
+            v-if="selectedCategoryId"
+            variant="outline"
+            @click="goCategoryEdit(selectedCategoryId)"
+          >
             分类填报
           </UiButton>
           <UiButton
-            :loading="oneTableLoading || recordLoading || timelineLoading"
+            size="sm"
+            variant="outline"
+            :loading="scoreLoading"
             :disabled="!canLoadTeacherArchive"
-            @click="reloadAll"
+            @click="computeArchiveScore"
           >
-            刷新
+            档案评分
           </UiButton>
+          <UiDropdownAction
+            trigger-style="button"
+            button-text="更多"
+            :disabled="!canLoadTeacherArchive"
+            :items="archiveMoreActionItems"
+            @select="onArchiveMoreAction"
+          />
         </template>
       </ContextBar>
     </template>
@@ -985,8 +1047,33 @@ watch(
         </template>
       </p>
       <ul v-if="scoreResult.breakdown.length" class="teacher-archive__score-list">
-        <li v-for="item in scoreResult.breakdown" :key="item.ruleId">
-          {{ item.ruleName }}：{{ item.earnedScore }} 分 — {{ item.explainText }}
+        <li
+          v-for="(item, idx) in scoreResult.breakdown"
+          :key="`${item.lineType || 'line'}-${item.ruleId || 'x'}-${idx}`"
+          :class="{
+            'teacher-archive__score-item--detail': item.lineType === 'ACHIEVEMENT_ITEM',
+            'teacher-archive__score-item--blank': item.lineType === 'BLANK_PERIOD',
+          }"
+        >
+          <div class="teacher-archive__score-item-head">
+            <strong>{{ item.ruleName }}</strong>
+            <span>{{ item.earnedScore }} 分</span>
+          </div>
+          <div
+            v-if="item.lineType === 'ACHIEVEMENT_ITEM' || item.decayFactor != null"
+            class="teacher-archive__score-decay"
+          >
+            <template v-if="item.rawScore != null">原始 {{ item.rawScore }} · </template>
+            <template v-if="item.decayFactor != null">
+              衰减系数 {{ item.decayFactor }}
+              <template v-if="item.decayProfileLabel">（{{ item.decayProfileLabel }}）</template>
+              ·
+            </template>
+            <template v-if="item.recognitionYear != null">认定年 {{ item.recognitionYear }} · </template>
+            <template v-if="item.decayApplied">已衰减</template>
+            <template v-else-if="item.lineType === 'ACHIEVEMENT_ITEM'">未衰减</template>
+          </div>
+          <p class="teacher-archive__score-explain">{{ item.explainText }}</p>
         </li>
       </ul>
     </UiCard>
@@ -1056,19 +1143,17 @@ watch(
                 {{ item.attachmentCount }} 附件
               </li>
             </ul>
-            <UiEmpty v-else description="该分组暂无条目" />
+            <UiEmpty size="sm" v-else description="该分组暂无条目" />
           </div>
         </section>
       </div>
-      <UiEmpty v-else description="当前筛选下无可预览条目" />
+      <UiEmpty size="sm" v-else description="当前筛选下无可预览条目" />
     </UiCard>
 
-    <div v-if="canPickTeachers && !targetTeacherId" class="teacher-archive__hint">
-      <UiEmpty description="请从教师名册选择目标教师，或在 URL 携带 teacherId 参数" />
-    </div>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <div v-else class="teacher-archive__layout">
-      <a-spin :spinning="oneTableLoading">
+      <UiSpin :spinning="oneTableLoading">
         <UiCard title="分类导航" class="teacher-archive__nav">
           <ul v-if="categories.length" class="teacher-archive__category-list">
             <li
@@ -1090,9 +1175,9 @@ watch(
               <span class="teacher-archive__category-count">{{ item.recordCount }} 条</span>
             </li>
           </ul>
-          <UiEmpty v-else description="尚无档案分类配置" />
+          <UiEmpty size="sm" v-else description="尚无档案分类配置" />
         </UiCard>
-      </a-spin>
+      </UiSpin>
 
       <UiCard
         :title="selectedCategory ? `${selectedCategory.categoryName} · 材料列表` : '材料列表'"
@@ -1136,7 +1221,7 @@ watch(
         </UiDataTable>
       </UiCard>
 
-      <a-spin :spinning="timelineLoading">
+      <UiSpin :spinning="timelineLoading">
         <UiCard title="成长时间轴" class="teacher-archive__timeline">
           <ul v-if="timeline.length" class="teacher-archive__timeline-list">
             <li
@@ -1157,13 +1242,13 @@ watch(
               </p>
             </li>
           </ul>
-          <UiEmpty v-else description="尚无档案时间轴事件" />
+          <UiEmpty size="sm" v-else description="尚无档案时间轴事件" />
         </UiCard>
-      </a-spin>
+      </UiSpin>
     </div>
 
     <UiDrawer v-model:open="drawerOpen" title="档案详情" width="640">
-      <a-spin :spinning="detailLoading">
+      <UiSpin :spinning="detailLoading">
         <template v-if="recordDetail">
           <p class="teacher-archive__detail-meta">
             {{ recordDetail.categoryName }}
@@ -1174,7 +1259,7 @@ watch(
             </template>
           </p>
           <div v-if="canCreateRevision" class="teacher-archive__detail-actions">
-            <UiButton :loading="revisionLoading" @click="createRevision"> 创建修订版 </UiButton>
+            <UiButton size="sm" :loading="revisionLoading" @click="createRevision"> 创建修订版 </UiButton>
           </div>
           <section
             v-if="recordDetail.versionHistory?.length"
@@ -1206,7 +1291,7 @@ watch(
           <UiDataTable
             v-if="recordDetail.fields.length"
             row-key="fieldCode"
-            size="small"
+            size="sm"
             pagination-mode="none"
             :columns="fieldColumns"
             :data-source="recordDetail.fields"
@@ -1237,7 +1322,7 @@ watch(
               </template>
             </template>
           </UiDataTable>
-          <UiEmpty v-else description="暂无字段快照" />
+          <UiEmpty size="sm" v-else description="暂无字段快照" />
           <section class="teacher-archive__support-materials">
             <div class="teacher-archive__support-materials-head">
               <h4 class="teacher-archive__version-title">支撑材料</h4>
@@ -1296,13 +1381,13 @@ watch(
                 </div>
               </li>
             </ul>
-            <UiEmpty v-else description="暂无支撑材料" />
+            <UiEmpty size="sm" v-else description="暂无支撑材料" />
           </section>
         </template>
-      </a-spin>
+      </UiSpin>
     </UiDrawer>
 
-    <a-modal
+    <UiDialog
       v-model:open="localMaterialModalOpen"
       title="上传支撑材料"
       ok-text="确认添加"
@@ -1315,9 +1400,10 @@ watch(
         <label class="teacher-archive__material-label" for="archive-support-material-title">
           材料标题
         </label>
-        <a-input
+        <UiInput
+          size="sm"
           id="archive-support-material-title"
-          v-model:value="localMaterialTitle"
+          v-model="localMaterialTitle"
           :disabled="supportMaterialWriting"
           :maxlength="200"
           placeholder="填写可识别的材料标题"
@@ -1332,13 +1418,13 @@ watch(
           button-text="选择文件"
         />
       </div>
-    </a-modal>
+    </UiDialog>
 
-    <a-modal
+    <UiDialog
       v-model:open="materialLibraryModalOpen"
       title="关联材料库"
-      width="720px"
-      :footer="null"
+      :width="720"
+      hide-footer
       :mask-closable="!supportMaterialWriting"
     >
       <UiDataTable
@@ -1378,9 +1464,9 @@ watch(
           </template>
         </template>
       </UiDataTable>
-    </a-modal>
+    </UiDialog>
 
-    <a-modal
+    <UiDialog
       v-model:open="exportConfirmOpen"
       title="确认导出材料包"
       ok-text="确认导出"
@@ -1398,7 +1484,7 @@ watch(
         {{ bagPreview.latestMaterialPackageExport.attachmentCount }} 个。 本次将生成新的
         压缩包，不会覆盖历史导出。
       </p>
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -1427,7 +1513,7 @@ watch(
 }
 
 .teacher-archive__category-item--active {
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
 }
 
 .teacher-archive__category-name {
@@ -1455,12 +1541,12 @@ watch(
 
 .teacher-archive__timeline-item {
   padding: var(--dp-space-2) 0;
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  border-bottom: 1px solid var(--dp-border-subtle);
   cursor: pointer;
 }
 
 .teacher-archive__timeline-item:hover {
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
 }
 
 .teacher-archive__timeline-title {
@@ -1509,7 +1595,7 @@ watch(
   align-items: center;
   gap: var(--dp-space-2);
   padding: var(--dp-space-2) 0;
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  border-bottom: 1px solid var(--dp-border-subtle);
   cursor: pointer;
   font-size: 13px;
 }
@@ -1526,7 +1612,7 @@ watch(
 .teacher-archive__support-materials {
   margin-top: var(--dp-space-4);
   padding-top: var(--dp-space-3);
-  border-top: 1px solid var(--ant-color-border-secondary);
+  border-top: 1px solid var(--dp-border-subtle);
 }
 
 .teacher-archive__support-materials-head,
@@ -1563,7 +1649,7 @@ watch(
   gap: var(--dp-space-3);
   min-height: 52px;
   padding: var(--dp-space-2) 0;
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  border-bottom: 1px solid var(--dp-border-subtle);
 }
 
 .teacher-archive__support-main {
@@ -1657,7 +1743,7 @@ watch(
 }
 
 .teacher-archive__hint {
-  padding: var(--dp-space-6) 0;
+  padding: var(--dp-space-3, 12px) 0;
 }
 
 @media (max-width: 1100px) {

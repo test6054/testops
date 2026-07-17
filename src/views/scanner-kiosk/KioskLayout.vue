@@ -5,6 +5,7 @@ import type { KioskUiState } from './composables/kioskInjection'
  */
 import { computed, onActivated, provide, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import KioskActivationGate from './components/KioskActivationGate.vue'
 import KioskAppBar from './components/KioskAppBar.vue'
 import KioskBottomBar from './components/KioskBottomBar.vue'
@@ -102,7 +103,7 @@ onActivated(() => {
   <div class="kiosk-layout" :class="{ 'kiosk-layout--bind': isBindShell }">
     <template v-if="isBindShell">
       <div v-if="showBindBootstrap" class="kiosk-binding-bootstrap">
-        <a-spin size="large" />
+        <UiSpin size="lg" />
         <span>正在加载考试绑定状态…</span>
       </div>
       <router-view v-else v-slot="{ Component }">
@@ -114,7 +115,7 @@ onActivated(() => {
 
     <template v-else-if="showBootstrapShell">
       <div class="kiosk-binding-bootstrap">
-        <a-spin size="large" />
+        <UiSpin size="lg" />
         <span>正在加载考试绑定状态…</span>
       </div>
     </template>

@@ -173,13 +173,13 @@ function handleChange(value: Key) {
 
 .ui-section-tabs__tab:hover:not(:disabled):not(.ui-section-tabs__tab--active) {
   color: var(--dp-text-primary);
-  background: rgb(255 255 255 / 55%);
+  background: color-mix(in srgb, var(--dp-surface) 55%, transparent);
 }
 
 .ui-section-tabs__tab--active {
   background: var(--dp-surface);
   color: var(--dp-text-primary);
-  box-shadow: 0 1px 2px rgb(15 23 42 / 6%);
+  box-shadow: var(--dp-shadow-xs);
 }
 
 .ui-section-tabs__tab:disabled {
@@ -221,18 +221,18 @@ function handleChange(value: Key) {
 }
 
 .ui-section-tabs__count--orange {
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--dp-orange-50);
+  color: var(--dp-orange-700);
 }
 
 .ui-section-tabs__count--red {
-  background: #fef2f2;
-  color: #dc2626;
+  background: var(--dp-red-50);
+  color: var(--dp-red-600);
 }
 
 .ui-section-tabs__count--purple {
-  background: #faf5ff;
-  color: #7e22ce;
+  background: var(--dp-purple-50);
+  color: var(--dp-purple-700);
 }
 
 .ui-section-tabs__count--active-tab.ui-section-tabs__count--gray {
@@ -242,27 +242,27 @@ function handleChange(value: Key) {
 
 .ui-section-tabs__count--active-tab.ui-section-tabs__count--blue {
   background: var(--dp-blue-600);
-  color: #fff;
+  color: var(--dp-text-inverse);
 }
 
 .ui-section-tabs__count--active-tab.ui-section-tabs__count--green {
   background: var(--dp-green-600);
-  color: #fff;
+  color: var(--dp-text-inverse);
 }
 
 .ui-section-tabs__count--active-tab.ui-section-tabs__count--orange {
-  background: #ea580c;
-  color: #fff;
+  background: var(--dp-orange-600);
+  color: var(--dp-text-inverse);
 }
 
 .ui-section-tabs__count--active-tab.ui-section-tabs__count--red {
-  background: #dc2626;
-  color: #fff;
+  background: var(--dp-red-600);
+  color: var(--dp-text-inverse);
 }
 
 .ui-section-tabs__count--active-tab.ui-section-tabs__count--purple {
-  background: #9333ea;
-  color: #fff;
+  background: var(--dp-purple-500);
+  color: var(--dp-text-inverse);
 }
 
 .ui-section-tabs__helper {

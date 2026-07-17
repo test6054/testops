@@ -117,7 +117,7 @@ export function buildPortraitCohortRangeChartOption(
   )
   const personalValues = rows.map((item) => Number(item.personalScore))
   const medianValues = rows.map((item) => Number(item.cohortMedian ?? item.cohortAverage ?? 0))
-  const bandColor = resolveThemeColor('--ant-color-warning-bg', 'rgba(245, 158, 11, 0.28)')
+  const bandColor = resolveThemeColor('--dp-warning-bg', 'rgba(245, 158, 11, 0.28)')
   const medianColor = MARK_ECHARTS_PALETTE.warning
 
   return finalizeMarkChartOption({

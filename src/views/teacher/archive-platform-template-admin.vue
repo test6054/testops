@@ -23,14 +23,19 @@ import {
 import { ARCHIVE_EXAM_FORM_OPTIONS, ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAuthStore } from '@/stores/modules/auth'
 import { ArchiveExamFormCode } from '@/types/enums/archive-exam-form-enum'
+import { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveTemplateSetEditorDrawer from '@/views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue'
@@ -123,6 +128,7 @@ function mapMaterialRow(
     requiredFlag: item.requiredFlag ?? false,
     sortOrder: item.sortOrder ?? index + 1,
     categoryGroup: item.categoryGroup,
+    deliveryMode: item.deliveryMode ?? ArchiveMaterialDeliveryModeCode.PHYSICAL_SCAN,
   }
 }
 
@@ -169,6 +175,9 @@ async function loadPlatformSets() {
 }
 
 async function submitSave() {
+  if (saving.value) {
+    return
+  }
   if (loadFailed.value) {
     showFormValidationMessage('请先重新加载平台模板')
     return
@@ -231,6 +240,7 @@ async function submitSave() {
       requiredFlag: item.requiredFlag,
       sortOrder: item.sortOrder,
       categoryGroup: item.categoryGroup?.trim() || undefined,
+      deliveryMode: item.deliveryMode ?? ArchiveMaterialDeliveryModeCode.PHYSICAL_SCAN,
     })),
     selfCheckItems: selfCheckRows.value.map((item) => ({
       itemText: item.itemText.trim(),
@@ -290,6 +300,7 @@ onMounted(loadPlatformSets)
         </template>
 
         <UiEmpty
+          size="sm"
           v-if="loadFailed"
           description="平台模板加载失败"
           action-label="重新加载"
@@ -352,44 +363,53 @@ onMounted(loadPlatformSets)
           <div class="archive-template-editor__meta">
             <label class="archive-template-editor__field">
               <span>套编码</span>
-              <a-input
-                v-model:value="editorMeta.setCode"
+              <UiInput
+                size="sm"
+                v-model="editorMeta.setCode"
                 :disabled="!!editorSetCode"
                 placeholder="如 PLATFORM_PAPER_FULL"
               />
             </label>
             <label class="archive-template-editor__field">
               <span>名称</span>
-              <a-input v-model:value="editorMeta.setName" placeholder="模板套名称" />
+              <UiInput
+                size="sm" v-model="editorMeta.setName" placeholder="模板套名称"
+              />
             </label>
             <label class="archive-template-editor__field">
               <span>考核形式</span>
-              <a-select
-                v-model:value="editorMeta.examForm"
+              <UiSelect
+                size="sm"
+                v-model="editorMeta.examForm"
                 :options="ARCHIVE_EXAM_FORM_OPTIONS"
                 style="width: 100%"
               />
             </label>
             <label class="archive-template-editor__field">
               <span>发版标签</span>
-              <a-input v-model:value="editorMeta.releaseTag" placeholder="如 2026-06-30" />
+              <UiInput
+                size="sm" v-model="editorMeta.releaseTag" placeholder="如 2026-06-30"
+              />
             </label>
             <label class="archive-template-editor__field">
               <span>保管期限</span>
               <div class="archive-template-editor__retention">
-                <a-input-number
-                  v-model:value="editorMeta.defaultRetentionYears"
+                <UiInputNumber
+                  size="sm"
+                  v-model="editorMeta.defaultRetentionYears"
                   :min="1"
                   :max="100"
                   :disabled="editorMeta.defaultPermanentRetention"
                 />
                 <span>年</span>
-                <a-checkbox v-model:checked="editorMeta.defaultPermanentRetention">永久</a-checkbox>
+                <UiCheckbox v-model="editorMeta.defaultPermanentRetention">永久</UiCheckbox>
               </div>
             </label>
             <label class="archive-template-editor__field archive-template-editor__field--wide">
               <span>说明</span>
-              <a-input v-model:value="editorMeta.description" placeholder="可选" />
+              <UiInput
+                size="sm" v-model="editorMeta.description" placeholder="可选"
+              />
             </label>
           </div>
         </template>

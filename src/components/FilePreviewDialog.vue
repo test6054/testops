@@ -47,7 +47,7 @@
 
     <div class="file-preview-dialog__body">
       <div v-if="api.filePreviewLoading.value" class="file-preview-dialog__state">
-        <a-spin size="large" tip="正在打开文件..." />
+        <UiSpin size="lg" tip="正在打开文件..." />
       </div>
 
       <div v-else-if="api.filePreviewError.value" class="file-preview-dialog__state">
@@ -128,6 +128,7 @@ import FileUnknownOutlined from '@ant-design/icons-vue/FileUnknownOutlined'
 import { computed, defineAsyncComponent } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { resolveFileIcon, resolveFileIconTheme } from '@/utils/file-preview'
 import '@vue-office/docx/lib/index.css'
 import '@vue-office/excel/lib/index.css'
@@ -199,14 +200,14 @@ const dialogWidth = computed(() => {
   }
 
   strong {
-    color: var(--ant-color-text);
+    color: var(--dp-text-primary);
     font-size: 14px;
     font-weight: 600;
     line-height: 19px;
   }
 
   small {
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
     font-size: 11px;
     line-height: 16px;
   }
@@ -220,29 +221,29 @@ const dialogWidth = computed(() => {
 .file-preview-dialog__body {
   box-sizing: border-box;
   height: min(76vh, 820px);
-  min-height: 480px;
+  min-height: 280px;
   display: flex;
   flex-direction: column;
-  background: var(--ant-color-fill-quaternary);
-  padding: 12px;
+  background: var(--dp-surface-subtle, var(--dp-surface-subtle));
+  padding: var(--dp-space-2, 8px);
   overflow: hidden;
 }
 
 .file-preview-dialog__state {
   display: grid;
   place-items: center;
-  gap: 12px;
-  padding: 32px 24px;
+  gap: var(--dp-space-2, 8px);
+  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
   flex: 1;
   text-align: center;
 
   > .anticon {
-    color: var(--ant-color-text-quaternary);
-    font-size: 42px;
+    color: var(--dp-text-muted, var(--dp-text-muted));
+    font-size: 20px;
   }
 
   strong {
-    color: var(--ant-color-text);
+    color: var(--dp-text-primary);
     font-size: 14px;
   }
 }
@@ -262,7 +263,7 @@ const dialogWidth = computed(() => {
   height: 100%;
   flex: 1;
   border: 0;
-  background: var(--ant-color-bg-container);
+  background: var(--dp-surface);
 }
 
 .file-preview-dialog__office {
@@ -271,19 +272,19 @@ const dialogWidth = computed(() => {
   flex: 1 1 auto;
   min-height: 0;
   border: 0;
-  background: var(--ant-color-bg-container);
+  background: var(--dp-surface);
   overflow: auto;
 }
 
 .file-preview-dialog__text {
   flex: 1;
   margin: 0;
-  padding: 18px 20px;
-  background: var(--ant-color-bg-container);
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+  background: var(--dp-surface, var(--dp-surface));
   font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 13px;
   line-height: 1.6;
-  color: var(--ant-color-text);
+  color: var(--dp-text-primary);
   overflow: auto;
   white-space: pre-wrap;
 }
@@ -300,31 +301,31 @@ const dialogWidth = computed(() => {
 .file-preview-dialog__audio {
   display: block;
   width: min(720px, calc(100% - 48px));
-  margin: 220px auto 0;
+  margin: var(--dp-space-8, 32px) auto 0;
 }
 
 .file-icon {
-  background: var(--ant-color-fill-quaternary);
-  color: var(--ant-color-text-secondary);
+  background: var(--dp-surface-subtle);
+  color: var(--dp-text-secondary);
 
   &.file-icon--pdf {
-    background: var(--ant-color-error-bg);
-    color: var(--ant-color-error);
+    background: var(--dp-error-bg);
+    color: var(--dp-danger);
   }
   &.file-icon--image {
     background: var(--dp-purple-50);
     color: var(--dp-purple-700);
   }
   &.file-icon--word {
-    background: var(--ant-color-primary-bg);
-    color: var(--ant-color-primary-active);
+    background: var(--dp-blue-50);
+    color: var(--dp-color-primary-active);
   }
   &.file-icon--excel {
-    background: var(--ant-color-success-bg);
+    background: var(--dp-success-bg);
     color: var(--dp-green-700);
   }
   &.file-icon--ppt {
-    background: var(--ant-color-warning-bg);
+    background: var(--dp-warning-bg);
     color: var(--dp-orange-500);
   }
   &.file-icon--zip {
@@ -336,19 +337,19 @@ const dialogWidth = computed(() => {
     color: var(--dp-purple-700);
   }
   &.file-icon--video {
-    background: var(--ant-color-error-bg);
-    color: var(--ant-color-error);
+    background: var(--dp-error-bg);
+    color: var(--dp-danger);
   }
   &.file-icon--markdown,
   &.file-icon--code {
-    background: var(--ant-color-fill-quaternary);
-    color: var(--ant-color-text-secondary);
+    background: var(--dp-surface-subtle);
+    color: var(--dp-text-secondary);
   }
   &.file-icon--text,
   &.file-icon--document,
   &.file-icon--unknown {
-    background: var(--ant-color-fill-quaternary);
-    color: var(--ant-color-text-secondary);
+    background: var(--dp-surface-subtle);
+    color: var(--dp-text-secondary);
   }
 }
 </style>
@@ -357,7 +358,7 @@ const dialogWidth = computed(() => {
 .file-preview-dialog__wrap .ui-dialog__header {
   min-height: 0;
   padding: 8px 16px;
-  background: var(--ant-color-bg-container);
+  background: var(--dp-surface);
 }
 
 .file-preview-dialog__wrap .ui-dialog__body {

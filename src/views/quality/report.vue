@@ -26,7 +26,6 @@ import type {
 } from '@/types/workbench'
 import { LoadingOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import Modal from 'ant-design-vue/es/modal'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { reportApi } from '@/apis/quality/report'
@@ -43,6 +42,7 @@ import {
   ReportTypeDescription,
 } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import {
   AchievementResultSelector,
   CourseSelector,
@@ -53,10 +53,20 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
@@ -65,6 +75,7 @@ import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
+import { ConfirmationStatusCode } from '@/types/enums/confirmation-status-enum'
 import { ALL_SEMESTER_CODES, formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { getUserProcessFailureMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
@@ -98,6 +109,16 @@ function reportExportFailureMessage(errorMessage?: string): string {
 }
 
 const qualityStore = useQualityStore()
+
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
 
 const list = ref<ReportVO[]>([])
 const total = ref(0)
@@ -498,10 +519,13 @@ async function pollExportStatus(id: string) {
         return
       }
       if (exportStatus === ReportExportStatusCode.FAILED) {
-        Modal.error({
+        void confirmAsync({
           title: `${title} 导出失败`,
           content: reportExportFailureMessage(detail.exportErrorMessage),
+          type: 'error',
           width: 640,
+          hideCancel: true,
+          okText: '知道了',
         })
         return
       }
@@ -867,9 +891,9 @@ onBeforeUnmount(() => {
       </QualityPageContextBar>
     </template>
 
-    <UiEmpty
-      v-if="!qualityStore.currentTrainingPlanId"
-      description="请选择培养方案"
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
       class="report__empty"
     />
 
@@ -944,7 +968,7 @@ onBeforeUnmount(() => {
               </UiTag>
             </template>
             <template v-else-if="column.key === 'exports'">
-              <a-space size="small" wrap>
+              <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
                 <UiTextAction
                   v-if="record.wordFileId"
                   @click="downloadReportExportFile(record, 'word')"
@@ -973,13 +997,14 @@ onBeforeUnmount(() => {
                   <LoadingOutlined v-if="isExportInFlight(record.exportStatus)" />
                   {{ exportStatusLabel(record.exportStatus) }}
                 </UiTag>
-                <a-tooltip
+                <UiTooltip
                   v-if="record.exportStatus === ReportExportStatusCode.FAILED"
                   :title="reportExportFailureMessage(record.exportErrorMessage)"
+                  popup-mount="body"
                 >
                   <UiTag tone="red" size="sm"> 错误详情 </UiTag>
-                </a-tooltip>
-              </a-space>
+                </UiTooltip>
+              </div>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
@@ -1001,20 +1026,22 @@ onBeforeUnmount(() => {
         ok-text="保存"
         @ok="submitEditor"
       >
-        <a-form layout="vertical" :model="editor">
-          <a-row :gutter="12">
-            <a-col :span="16">
-              <a-form-item label="标题" required>
-                <a-input
-                  v-model:value="editor.title"
+        <UiForm layout="vertical" :model="editor">
+          <UiRow :gutter="12">
+            <UiCol :span="16">
+              <UiFormItem label="标题" required>
+                <UiInput
+                  size="sm"
+                  v-model="editor.title"
                   placeholder="例：2024-2025 学年春季学期《程序设计基础》课程评价报告"
                 />
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="类型" required>
-                <a-select
-                  v-model:value="editor.reportType"
+              </UiFormItem>
+            </UiCol>
+            <UiCol :span="8">
+              <UiFormItem label="类型" required>
+                <UiSelect
+                  size="sm"
+                  v-model="editor.reportType"
                   :options="reportTypeOptions"
                   :disabled="editorMode === 'edit'"
                   @change="
@@ -1026,22 +1053,22 @@ onBeforeUnmount(() => {
                     }
                   "
                 />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-row :gutter="12">
-            <a-col :span="8">
-              <a-form-item label="专业" required>
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+          <UiRow :gutter="12">
+            <UiCol :span="8">
+              <UiFormItem label="专业" required>
                 <ProgramSelector
                   :value="editor.programId || null"
                   placeholder="选择专业"
                   :disabled="editorMode === 'edit' || Boolean(qualityStore.currentTrainingPlanId)"
                   @change="handleEditorProgramChange"
                 />
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="培养方案">
+              </UiFormItem>
+            </UiCol>
+            <UiCol :span="8">
+              <UiFormItem label="培养方案">
                 <TrainingPlanSelector
                   :value="editor.trainingPlanId || null"
                   :program-id="editor.programId || null"
@@ -1049,10 +1076,10 @@ onBeforeUnmount(() => {
                   :disabled="editorMode === 'edit' || Boolean(qualityStore.currentTrainingPlanId)"
                   @change="handleEditorTrainingPlanChange"
                 />
-              </a-form-item>
-            </a-col>
-            <a-col :span="8">
-              <a-form-item label="质量评价课程">
+              </UiFormItem>
+            </UiCol>
+            <UiCol :span="8">
+              <UiFormItem label="质量评价课程">
                 <CourseSelector
                   :value="editor.qualityCourseId || null"
                   :training-plan-id="editor.trainingPlanId || null"
@@ -1060,12 +1087,12 @@ onBeforeUnmount(() => {
                   :disabled="editorMode === 'edit'"
                   @change="handleEditorQualityCourseChange"
                 />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-row :gutter="12">
-            <a-col :span="24">
-              <a-form-item label="达成度结果">
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+          <UiRow :gutter="12">
+            <UiCol :span="24">
+              <UiFormItem label="达成度结果">
                 <AchievementResultSelector
                   :value="editor.achievementResultId || null"
                   :program-id="editor.programId || null"
@@ -1077,74 +1104,78 @@ onBeforeUnmount(() => {
                   :disabled="editorMode === 'edit'"
                   @change="handleEditorAchievementResultChange"
                 />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-row :gutter="12">
-            <a-col :span="6">
-              <a-form-item label="学年" required>
-                <a-input v-model:value="editor.schoolYear" :disabled="editorMode === 'edit'" />
-              </a-form-item>
-            </a-col>
-            <a-col :span="6">
-              <a-form-item label="学期" required>
-                <a-select
-                  v-model:value="editor.semester"
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+          <UiRow :gutter="12">
+            <UiCol :span="6">
+              <UiFormItem label="学年" required>
+                <UiInput
+                  size="sm" v-model="editor.schoolYear" :disabled="editorMode === 'edit'"
+                />
+              </UiFormItem>
+            </UiCol>
+            <UiCol :span="6">
+              <UiFormItem label="学期" required>
+                <UiSelect
+                  size="sm"
+                  v-model="editor.semester"
                   :options="SemesterOptions"
                   :disabled="editorMode === 'edit'"
                   placeholder="选择学期"
                 />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-form-item label="报告正文">
-            <a-textarea
-              v-model:value="editor.bodyContent"
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+          <UiFormItem label="报告正文">
+            <UiTextarea
+              size="sm"
+              v-model="editor.bodyContent"
               :rows="12"
               placeholder="填写报告正文；AI 任务生成后会自动回填"
               class="report__body-editor"
             />
-          </a-form-item>
-        </a-form>
+          </UiFormItem>
+        </UiForm>
       </UiDrawer>
 
       <UiDrawer v-model:open="detailVisible" title="报告详情" :width="760" :hide-footer="true">
         <UiEmpty
           v-if="!detailRecord && !detailLoading"
-          description="当前没有可展示的内容"
+          description="未加载到报告详情"
           size="sm"
         />
-        <a-descriptions v-if="detailRecord" :column="2" size="small" bordered>
-          <a-descriptions-item label="类型">
+        <UiDescriptions v-if="detailRecord" :column="2" size="small" bordered>
+          <UiDescriptionsItem label="类型">
             {{ reportTypeLabel(detailRecord.reportType) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="状态">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="状态">
             <UiTag :tone="reportStatusColor(detailRecord.status)" size="sm">
               {{ reportStatusLabel(detailRecord.status) }}
             </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="达成度结果">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="达成度结果">
             {{ detailRecord.achievementResultLabel }}
-          </a-descriptions-item>
-          <a-descriptions-item label="所属专业">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="所属专业">
             {{ detailRecord.programName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="培养方案">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="培养方案">
             <span v-if="detailRecord.trainingPlanId">
               {{ detailRecord.trainingPlanCode }} {{ detailRecord.trainingPlanName }}
             </span>
-          </a-descriptions-item>
-          <a-descriptions-item label="关联课程">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="关联课程">
             <span v-if="detailRecord.qualityCourseId">
               {{ detailRecord.qualityCourseCode }} {{ detailRecord.qualityCourseName }}
             </span>
-          </a-descriptions-item>
-          <a-descriptions-item label="学年 / 学期">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="学年 / 学期">
             {{ detailRecord.schoolYear
             }}<span v-if="detailRecord.semester">
               / {{ formatSemester(detailRecord.semester) }}</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="Word 文件">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="Word 文件">
             <UiTextAction
               v-if="detailRecord.wordFileId"
               @click="downloadReportExportFile(detailRecord, 'word')"
@@ -1152,8 +1183,8 @@ onBeforeUnmount(() => {
               下载 Word
             </UiTextAction>
             <span v-else>未生成 Word 文件</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="PDF 文件">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="PDF 文件">
             <UiTextAction
               v-if="detailRecord.pdfFileId"
               @click="downloadReportExportFile(detailRecord, 'pdf')"
@@ -1161,8 +1192,8 @@ onBeforeUnmount(() => {
               下载 PDF
             </UiTextAction>
             <span v-else>未生成 PDF 文件</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="Excel 文件">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="Excel 文件">
             <UiTextAction
               v-if="detailRecord.excelFileId"
               @click="downloadReportExportFile(detailRecord, 'excel')"
@@ -1170,19 +1201,19 @@ onBeforeUnmount(() => {
               下载 Excel
             </UiTextAction>
             <span v-else>未生成 Excel 文件</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="导出状态">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="导出状态">
             <UiTag :tone="exportStatusColor(detailRecord.exportStatus)" size="sm">
               {{ exportStatusLabel(detailRecord.exportStatus) }}
             </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.exportStartedTime" label="导出开始">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="detailRecord.exportStartedTime" label="导出开始">
             {{ detailRecord.exportStartedTime }}
-          </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.exportFinishedTime" label="导出结束">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="detailRecord.exportFinishedTime" label="导出结束">
             {{ detailRecord.exportFinishedTime }}
-          </a-descriptions-item>
-          <a-descriptions-item
+          </UiDescriptionsItem>
+          <UiDescriptionsItem
             v-if="detailRecord.exportErrorMessage"
             label="导出处理说明"
             :span="2"
@@ -1190,22 +1221,22 @@ onBeforeUnmount(() => {
             <span class="report__export-error">
               {{ reportExportFailureMessage(detailRecord.exportErrorMessage) }}
             </span>
-          </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.confirmedTime" label="确认时间">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="detailRecord.confirmedTime" label="确认时间">
             {{ detailRecord.confirmedTime }}
-          </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.archivedTime" label="归档时间">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="detailRecord.archivedTime" label="归档时间">
             {{ detailRecord.archivedTime }}
-          </a-descriptions-item>
-          <a-descriptions-item label="标题" :span="2">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="标题" :span="2">
             {{ detailRecord.title }}
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
         <h4 class="report__section-title">正文预览</h4>
         <div v-if="detailRecord?.bodyContent" class="report__body-preview">
           {{ detailRecord.bodyContent }}
         </div>
-        <UiEmpty v-else description="当前没有可展示的内容" size="sm" />
+        <UiEmpty v-else description="暂无报告正文" size="sm" />
       </UiDrawer>
     </template>
 
@@ -1236,8 +1267,8 @@ onBeforeUnmount(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {
@@ -1251,7 +1282,7 @@ onBeforeUnmount(() => {
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1283,7 +1314,7 @@ onBeforeUnmount(() => {
   }
 
   &__export-error {
-    color: var(--ant-color-error);
+    color: var(--dp-error);
   }
 
   &__body-preview {
@@ -1304,7 +1335,7 @@ onBeforeUnmount(() => {
     margin: 0;
     white-space: pre-wrap;
     word-break: break-word;
-    color: var(--ant-color-error);
+    color: var(--dp-error);
   }
 
   &__body-editor {

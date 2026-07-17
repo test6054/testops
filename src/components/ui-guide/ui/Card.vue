@@ -92,15 +92,15 @@ const hasHeader = computed(
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 18px 20px 16px;
+  gap: var(--dp-space-3, 12px);
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
   border-bottom: 1px solid var(--dp-border);
 }
 
 .dp-card__title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
   font-size: 15px;
   font-weight: 600;
   color: var(--dp-text-primary);
@@ -119,24 +119,24 @@ const hasHeader = computed(
 .dp-card__extra {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--dp-space-3, 10px);
   flex-shrink: 0;
 }
 
 .dp-card__body {
-  padding: 24px;
+  padding: var(--dp-space-4, 16px);
 }
 
 .dp-card__body--no-header {
-  padding: 24px;
+  padding: var(--dp-space-4, 16px);
 }
 
 .dp-card--compact .dp-card__header {
-  padding: 16px 20px;
+  padding: 10px var(--dp-space-3, 12px);
 }
 
 .dp-card--compact .dp-card__body,
 .dp-card--compact .dp-card__body--no-header {
-  padding: 20px;
+  padding: var(--dp-space-3, 12px);
 }
 </style>

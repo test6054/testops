@@ -32,6 +32,7 @@
 import { ArrowLeftOutlined } from '@ant-design/icons-vue'
 import UiButton from './Button.vue'
 
+/** 仅独立办理页页头（如改密）。工作台必须用 ContextBar，禁止与 ContextBar 双标题。 */
 defineOptions({
   name: 'UiPageHeader',
 })
@@ -62,19 +63,19 @@ const emit = defineEmits<{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
-  padding-bottom: 4px;
+  gap: var(--dp-space-3, 12px);
+  padding-bottom: var(--dp-space-1, 4px);
 }
 
 .ui-page-header--divided {
-  padding-bottom: 20px;
+  padding-bottom: var(--dp-space-3, 12px);
   border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-page-header__main {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: var(--dp-space-3, 12px);
   min-width: 0;
   flex: 1;
 }
@@ -88,14 +89,14 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--dp-space-3, 10px);
 }
 
 .ui-page-header__title {
   margin: 0;
-  font-size: 28px;
+  font-size: 20px;
   line-height: 1.2;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--dp-text-primary);
 }
 
@@ -105,11 +106,11 @@ const emit = defineEmits<{
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--dp-space-3, 10px);
 }
 
 .ui-page-header__subtitle {
-  margin: 10px 0 0;
+  margin: var(--dp-space-2, 8px) 0 0;
   font-size: 14px;
   line-height: 1.7;
   color: var(--dp-text-secondary);

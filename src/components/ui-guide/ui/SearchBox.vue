@@ -75,7 +75,7 @@ const handleSearch = () => {
 }
 
 .dp-search-box .ant-input-affix-wrapper {
-  min-height: 36px;
+  min-height: var(--dp-control-height-md, 36px);
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
   background-color: var(--dp-bg-control);

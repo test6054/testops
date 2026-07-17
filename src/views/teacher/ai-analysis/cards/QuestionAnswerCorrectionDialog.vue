@@ -1,16 +1,16 @@
 <template>
-  <a-modal
+  <UiDialog
     :open="open"
     :title="dialogTitle"
     :confirm-loading="submitting"
-    width="720px"
+    :width="720"
     ok-text="保存并生效"
     cancel-text="取消"
     destroy-on-close
     @ok="handleSubmit"
     @cancel="emit('close')"
   >
-    <a-spin :spinning="loading">
+    <UiSpin :spinning="loading">
       <div class="question-answer-correction">
         <UiAlertStrip
           v-if="question"
@@ -32,92 +32,102 @@
           class="question-answer-correction__strip"
         />
 
-        <a-form layout="vertical">
-          <a-form-item v-if="isObjectiveQuestion" label="比较策略" required>
-            <a-select
-              v-model:value="form.comparePolicy"
+        <UiForm layout="vertical">
+          <UiFormItem v-if="isObjectiveQuestion" label="比较策略" required>
+            <UiSelect
+              size="sm"
+              v-model="form.comparePolicy"
               :options="OBJECTIVE_COMPARE_POLICY_OPTIONS"
               placeholder="请选择客观题比较策略"
             />
-          </a-form-item>
+          </UiFormItem>
 
           <template v-if="showChoiceSetFields">
-            <a-form-item label="声明选项" required>
-              <a-input
-                v-model:value="form.declaredOptionsText"
+            <UiFormItem label="声明选项" required>
+              <UiInput
+                size="sm"
+                v-model="form.declaredOptionsText"
                 placeholder="A,B,C,D"
               />
-            </a-form-item>
-            <a-form-item label="正确选项" required>
-              <a-input
-                v-model:value="form.choiceOptionsText"
+            </UiFormItem>
+            <UiFormItem label="正确选项" required>
+              <UiInput
+                size="sm"
+                v-model="form.choiceOptionsText"
                 placeholder="A 或 A,C"
               />
-            </a-form-item>
+            </UiFormItem>
           </template>
 
           <template v-else-if="showNumericFields">
-            <a-form-item label="数值标准值" required>
-              <a-input-number
-                v-model:value="form.numericExpectedValue"
+            <UiFormItem label="数值标准值" required>
+              <UiInputNumber
+                size="sm"
+                v-model="form.numericExpectedValue"
                 :min="0.000001"
                 :step="0.1"
                 style="width: 100%"
                 placeholder="请输入标准值"
               />
-            </a-form-item>
-            <a-form-item label="允许误差">
-              <a-input-number
-                v-model:value="form.numericTolerance"
+            </UiFormItem>
+            <UiFormItem label="允许误差">
+              <UiInputNumber
+                size="sm"
+                v-model="form.numericTolerance"
                 :min="0"
                 :step="0.1"
                 style="width: 100%"
                 placeholder="允许误差可为空"
               />
-            </a-form-item>
-            <a-form-item label="单位">
-              <a-input
-                v-model:value="form.numericUnit"
+            </UiFormItem>
+            <UiFormItem label="单位">
+              <UiInput
+                size="sm"
+                v-model="form.numericUnit"
                 placeholder="例如 V、kg、m/s"
               />
-            </a-form-item>
+            </UiFormItem>
           </template>
 
-          <a-form-item v-if="showStandardAnswerInput" label="标准答案" :required="requireStandardAnswer">
-            <a-textarea
-              v-model:value="form.standardAnswer"
+          <UiFormItem v-if="showStandardAnswerInput" label="标准答案" :required="requireStandardAnswer">
+            <UiTextarea
+              size="sm"
+              v-model="form.standardAnswer"
               :rows="3"
               placeholder="请输入标准答案"
             />
-          </a-form-item>
+          </UiFormItem>
 
-          <a-form-item label="答案解析">
-            <a-textarea
-              v-model:value="form.answerExplain"
+          <UiFormItem label="答案解析">
+            <UiTextarea
+              size="sm"
+              v-model="form.answerExplain"
               :rows="3"
               placeholder="可选，供教师与质量分析回看"
             />
-          </a-form-item>
+          </UiFormItem>
 
-          <a-form-item label="评分细则">
-            <a-textarea
-              v-model:value="form.gradingRubric"
+          <UiFormItem label="评分细则">
+            <UiTextarea
+              size="sm"
+              v-model="form.gradingRubric"
               :rows="4"
               placeholder="AI 评分或主观题可补充评分依据"
             />
-          </a-form-item>
+          </UiFormItem>
 
-          <a-form-item label="AI 评分提示">
-            <a-textarea
-              v-model:value="form.aiHint"
+          <UiFormItem label="AI 评分提示">
+            <UiTextarea
+              size="sm"
+              v-model="form.aiHint"
               :rows="3"
               placeholder="可选，供 AI 识别或评分链路参考"
             />
-          </a-form-item>
-        </a-form>
+          </UiFormItem>
+        </UiForm>
       </div>
-    </a-spin>
-  </a-modal>
+    </UiSpin>
+  </UiDialog>
 </template>
 
 <script lang="ts" setup>
@@ -141,7 +151,15 @@ import {
 } from '@/apis/mark/exam-standard-answer'
 import { correctAnswerAndConfirmEffective, getEffectiveAnswerConfig } from '@/apis/mark/question-analysis'
 import { QuestionTypeCode, QuestionTypeDescription } from '@/apis/mark/question-type'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -388,6 +406,9 @@ function validateForm(): boolean {
 }
 
 async function handleSubmit(): Promise<void> {
+  if (submitting.value) {
+    return
+  }
   if (!props.question || !validateForm()) {
     return
   }

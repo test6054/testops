@@ -1,5 +1,6 @@
 <template>
   <a-form
+    ref="formRef"
     class="ui-form"
     :class="[`ui-form--${props.layout}`, { 'ui-form--bordered': props.bordered }]"
     :model="props.model"
@@ -10,7 +11,7 @@
     :required-mark="props.requiredMark"
     :label-align="props.labelAlign"
     :scroll-to-first-error="props.scrollToFirstError"
-    :size="props.size"
+    :size="antSize"
     :style="formStyle"
     v-bind="$attrs"
     @finish="handleFinish"
@@ -21,9 +22,10 @@
 </template>
 
 <script lang="ts" setup>
+import type { FormInstance } from 'ant-design-vue/es/form'
 import type { FormProps } from 'ant-design-vue/es/form/Form'
 import type { CSSProperties } from 'vue'
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 defineOptions({
   name: 'UiForm',
@@ -32,7 +34,8 @@ defineOptions({
 
 const props = withDefaults(
   defineProps<{
-    model?: Record<string, unknown>
+    /** 表单模型：兼容业务 reactive/interface，不做 index signature 强制 */
+    model?: object
     rules?: FormProps['rules']
     layout?: 'vertical' | 'horizontal' | 'inline'
     disabled?: boolean
@@ -40,7 +43,7 @@ const props = withDefaults(
     requiredMark?: boolean | 'optional'
     labelAlign?: 'left' | 'right'
     scrollToFirstError?: boolean
-    size?: 'small' | 'middle' | 'large'
+    size?: 'small' | 'middle' | 'large' | 'sm' | 'md' | 'lg'
     labelWidth?: number | string
     gap?: number | string
     bordered?: boolean
@@ -56,15 +59,22 @@ const props = withDefaults(
     scrollToFirstError: true,
     size: 'middle',
     labelWidth: undefined,
-    gap: 16,
     bordered: false,
   },
 )
 
 const emit = defineEmits<{
-  (e: 'finish', values: Record<string, unknown>): void
+  (e: 'finish', values: object): void
   (e: 'finish-failed', errorInfo: unknown): void
 }>()
+
+const formRef = ref<FormInstance>()
+
+const antSize = computed(() => {
+  if (props.size === 'sm' || props.size === 'small') return 'small' as const
+  if (props.size === 'lg' || props.size === 'large') return 'large' as const
+  return 'middle' as const
+})
 
 type UiFormStyle = CSSProperties
   & Partial<Record<'--ui-form-label-width' | '--ui-form-gap', string>>
@@ -81,19 +91,37 @@ const formStyle = computed<UiFormStyle>(() => {
   return style
 })
 
-const handleFinish = (values: Record<string, unknown>) => {
+const handleFinish = (values: object) => {
   emit('finish', values)
 }
 
 const handleFinishFailed = (errorInfo: unknown) => {
   emit('finish-failed', errorInfo)
 }
+
+/** 透传 ant FormInstance 方法，保证 ref 校验合同不中断 */
+defineExpose({
+  validate: (...args: Parameters<FormInstance['validate']>) => formRef.value?.validate(...args),
+  validateFields: (...args: Parameters<FormInstance['validateFields']>) =>
+    formRef.value?.validateFields(...args),
+  resetFields: (...args: Parameters<FormInstance['resetFields']>) => formRef.value?.resetFields(...args),
+  clearValidate: (...args: Parameters<FormInstance['clearValidate']>) =>
+    formRef.value?.clearValidate(...args),
+  scrollToField: (...args: Parameters<FormInstance['scrollToField']>) =>
+    formRef.value?.scrollToField(...args),
+  getFieldsValue: (...args: Parameters<FormInstance['getFieldsValue']>) =>
+    formRef.value?.getFieldsValue(...args),
+  setFieldsValue: (values: object) =>
+    (formRef.value as FormInstance & { setFieldsValue?: (v: object) => void } | undefined)?.setFieldsValue?.(
+      values,
+    ),
+})
 </script>
 
 <style scoped>
 .ui-form {
   --ui-form-label-width: 120px;
-  --ui-form-gap: 16px;
+  --ui-form-gap: var(--dp-space-3, 12px);
 }
 
 .ui-form :deep(.ant-form-item) {
@@ -101,7 +129,7 @@ const handleFinishFailed = (errorInfo: unknown) => {
 }
 
 .ui-form--bordered {
-  padding: 20px;
+  padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
@@ -125,7 +153,7 @@ const handleFinishFailed = (errorInfo: unknown) => {
 .ui-form--inline {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 16px;
+  gap: 0 var(--dp-space-3, 12px);
 }
 
 .ui-form--inline :deep(.ant-form-item) {

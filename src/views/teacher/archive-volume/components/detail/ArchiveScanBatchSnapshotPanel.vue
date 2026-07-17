@@ -17,6 +17,7 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { getUserErrorMessage } from '@/utils/error-handler'
@@ -95,8 +96,9 @@ onMounted(() => {
       </div>
     </template>
     <template #toolbar>
-      <a-select
-        v-model:value="batchQualityFlag"
+      <UiSelect
+        size="sm"
+        v-model="batchQualityFlag"
         allow-clear
         placeholder="质检筛选"
         style="width: 140px"
@@ -199,7 +201,7 @@ onMounted(() => {
 }
 .archive-scan-batch-snapshot__error {
   margin: 0 0 12px;
-  color: var(--ant-color-error);
+  color: var(--dp-error);
 }
 .archive-scan-batch-snapshot__score {
   font-weight: 600;

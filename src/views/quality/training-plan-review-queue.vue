@@ -17,7 +17,10 @@ import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
+import UiTimeline from '@/components/ui-guide/ui/UiTimeline.vue'
+import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useAuthStore } from '@/stores/modules/auth'
@@ -336,6 +339,7 @@ onActivated(() => {
         </template>
         <template #empty>
           <UiEmpty
+            size="sm"
             :title="activeTab === 'pending' ? '暂无待院审培养方案' : '暂无已发布培养方案'"
           />
         </template>
@@ -344,7 +348,7 @@ onActivated(() => {
   </StageWorkbenchShell>
 
   <UiDrawer v-model:open="drawerOpen" :title="drawerTitle" :width="760" :hide-footer="true" :closable="true">
-    <a-spin :spinning="detailLoading">
+    <UiSpin :spinning="detailLoading">
       <template v-if="selectedPlan">
         <div class="training-plan-review-queue__drawer-meta">
           <span>{{ selectedPlan.planCode }}</span>
@@ -385,26 +389,26 @@ onActivated(() => {
             :placeholder="canRevoke ? '撤回原因不少于 10 个字符' : '退回意见不少于 10 个字符；确认发布无需填写'"
           />
           <div class="training-plan-review-queue__actions">
-            <UiButton v-if="canConfirm" :loading="submitting" @click="confirmPlan">确认发布</UiButton>
-            <UiButton v-if="canConfirm" variant="outline" status="danger" :disabled="reviewComment.trim().length < 10" :loading="submitting" @click="returnPlan">退回整改</UiButton>
-            <UiButton v-if="canRemind" variant="outline" :loading="submitting" @click="remindPlan">催办确认人</UiButton>
-            <UiButton v-if="canRevoke" variant="outline" status="danger" :disabled="reviewComment.trim().length < 10" :loading="submitting" @click="revokePlan">撤回发布</UiButton>
+            <UiButton size="sm" v-if="canConfirm" :loading="submitting" @click="confirmPlan">确认发布</UiButton>
+            <UiButton size="sm" v-if="canConfirm" variant="outline" status="danger" :disabled="reviewComment.trim().length < 10" :loading="submitting" @click="returnPlan">退回整改</UiButton>
+            <UiButton size="sm" v-if="canRemind" variant="outline" :loading="submitting" @click="remindPlan">催办确认人</UiButton>
+            <UiButton size="sm" v-if="canRevoke" variant="outline" status="danger" :disabled="reviewComment.trim().length < 10" :loading="submitting" @click="revokePlan">撤回发布</UiButton>
           </div>
         </section>
 
         <section class="training-plan-review-queue__section">
           <h4>院审审计</h4>
-          <a-timeline v-if="audits.length">
-            <a-timeline-item v-for="audit in audits" :key="audit.id">
+          <UiTimeline v-if="audits.length">
+            <UiTimelineItem v-for="audit in audits" :key="audit.id">
               <div class="training-plan-review-queue__audit-title">{{ auditActionLabel[audit.actionCode] }} · {{ audit.createTime }}</div>
               <div class="training-plan-review-queue__audit-meta">{{ audit.previousStatus }} → {{ audit.currentStatus }} · 操作人 {{ audit.operatorUserId }}</div>
               <div v-if="audit.comment" class="training-plan-review-queue__audit-comment">{{ audit.comment }}</div>
-            </a-timeline-item>
-          </a-timeline>
+            </UiTimelineItem>
+          </UiTimeline>
           <UiEmpty v-else size="sm" title="尚无院审审计记录" />
         </section>
       </template>
-    </a-spin>
+    </UiSpin>
   </UiDrawer>
 </template>
 
@@ -430,7 +434,7 @@ onActivated(() => {
   &__section {
     display: grid;
     gap: var(--dp-space-3);
-    margin-top: var(--dp-space-5);
+    margin-top: var(--dp-space-3);
     padding-top: var(--dp-space-4);
     border-top: 1px solid var(--dp-border);
 

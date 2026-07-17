@@ -1,20 +1,6 @@
 import type { PageResult } from '@/types'
 import http from '@/config/axios'
 
-export interface PortfolioIntegrationDatasourceVO {
-  id: string
-  channelCode: string
-  pathwayCode: string
-  datasourceName: string
-  enabled: boolean
-  sourcePriority: number
-  /** JDBC 密码已脱敏为 */
-  connectionConfigJson?: string
-  /** JDBC 通路是否已配置密码 */
-  passwordConfigured?: boolean
-  lastSyncTime?: string
-}
-
 export interface PortfolioNationalTeacherInboundRecord {
   teacherNumber: string
   teacherName?: string
@@ -22,9 +8,57 @@ export interface PortfolioNationalTeacherInboundRecord {
   employmentStatus?: string
 }
 
+/** 对齐后端 PortfolioIntegrationExcelImportContextDto */
+export interface PortfolioIntegrationExcelImportContextDto {
+  fileName?: string
+  defaultRecordType?: string
+  defaultCategoryCode?: string
+  defaultLevelCode?: string
+  commit?: boolean
+  confirmManualConflicts?: boolean
+  expectedConfigUpdateToken?: string
+  nodeId?: string
+  confirmationStatus?: string
+}
+
+/** 对齐后端 PortfolioIntegrationConnectionConfigDto */
+export interface PortfolioIntegrationConnectionConfigDto {
+  jdbcUrl?: string
+  username?: string
+  password?: string
+  querySql?: string
+  incremental?: boolean
+  initialWatermark?: string
+  endpointUrl?: string
+  soapAction?: string
+  requestEnvelope?: string
+  recordElementLocalName?: string
+  readTimeoutSeconds?: number
+  excelImportSceneKey?: string
+  sourceFileNodeId?: string
+  importContext?: PortfolioIntegrationExcelImportContextDto
+  batchSize?: number
+  syncDirection?: string
+  inboundRecords?: PortfolioNationalTeacherInboundRecord[]
+}
+
+export interface PortfolioIntegrationDatasourceVO {
+  id: string
+  channelCode: string
+  pathwayCode: string
+  datasourceName: string
+  enabled: boolean
+  sourcePriority: number
+  connectionConfig?: PortfolioIntegrationConnectionConfigDto
+  /** JDBC 通路是否已配置密码 */
+  passwordConfigured?: boolean
+  lastSyncTime?: string
+}
+
 export const PORTFOLIO_INTEGRATION_PASSWORD_MASK = '********'
 
 export const PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS = [
+  { value: 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT', label: '科研权威事实导入' },
   { value: 'PORTFOLIO_DEVELOPMENT_RECORD', label: '发展记录导入' },
   { value: 'PORTFOLIO_DEVELOPMENT_PLAN_HISTORY', label: '发展计划历史导入' },
   { value: 'PORTFOLIO_DUAL_TEACHER', label: '双师认定导入' },
@@ -83,7 +117,7 @@ export interface PortfolioIdentityUnmatchedVO {
   channelCode: string
   externalTeacherCode?: string
   externalName?: string
-  matchHintsJson?: string
+  matchHints?: string[]
   status: string
   resolvedTeacherId?: string
   resolveRemark?: string
@@ -103,12 +137,17 @@ export interface PortfolioConflictTicketVO {
   resolveRemark?: string
 }
 
+export interface PortfolioIntegrationPayloadFieldDto {
+  fieldCode: string
+  fieldValue: string
+}
+
 export interface PortfolioIntegrationMessageInboxVO {
   id: string
   datasourceConfigId: string
   channelCode: string
   messageKey: string
-  payloadJson: string
+  payloadFields: PortfolioIntegrationPayloadFieldDto[]
   processStatus: string
   processMessage?: string
   retryCount: number
@@ -153,6 +192,43 @@ export interface PortfolioIntegrationDictEntryVO {
   updateTime?: string
 }
 
+
+export interface PortfolioNationalReportIssueVO {
+  id: string
+  syncTaskId?: string
+  teacherUserId: string
+  teacherNumber?: string
+  teacherName?: string
+  issueCodes?: string
+  issueDetails?: string[]
+  status: string
+  statusLabel?: string
+  fixedTime?: string
+  fixRemark?: string
+  createTime?: string
+}
+
+export interface PortfolioNationalReportBatchVO {
+  id: string
+  syncTaskId: string
+  successCount: number
+  failedCount: number
+  packageJson?: string
+  reportStatus?: string
+  artifactFileNodeId?: string
+  artifactFileName?: string
+  exportedTime?: string
+  maskMode?: number
+  parentSyncTaskId?: string
+  createTime?: string
+}
+
+export interface PortfolioArchiveBagExportResultVO {
+  fileNodeId: string
+  fileName: string
+  rowCount?: number
+}
+
 const BASE = '/api/portfolio/integration'
 
 export const portfolioIntegrationApi = {
@@ -162,7 +238,7 @@ export const portfolioIntegrationApi = {
     pathwayCode: string
     datasourceName: string
     enabled: boolean
-    connectionConfigJson?: string
+    connectionConfig?: PortfolioIntegrationConnectionConfigDto
   }) {
     return http.post<number>(`${BASE}/datasource/save`, data)
   },
@@ -226,7 +302,7 @@ export const portfolioIntegrationApi = {
   enqueueMessage(data: {
     datasourceConfigId: string
     messageKey: string
-    payloadJson: string
+    payloadFields: PortfolioIntegrationPayloadFieldDto[]
   }) {
     return http.post<string>(`${BASE}/message/enqueue`, data)
   },
@@ -239,7 +315,7 @@ export const portfolioIntegrationApi = {
   requeueFailedMessage(data: {
     messageInboxId: string
     processMessage?: string
-    fieldCorrections?: Array<{ fieldCode: string, fieldValue: string }>
+    fieldCorrections?: PortfolioIntegrationPayloadFieldDto[]
     triggerSync?: boolean
   }) {
     return http.post<void>(`${BASE}/message/requeue`, data)
@@ -285,6 +361,36 @@ export const portfolioIntegrationApi = {
   },
   deleteDictEntry(id: string) {
     return http.post<void>(`${BASE}/dict-entry/delete`, { id })
+  },
+
+  pageNationalReportIssues(data: {
+    pageNum: number
+    pageSize: number
+    status?: string
+    teacherUserId?: string
+  }) {
+    return http.post<PageResult<PortfolioNationalReportIssueVO>>(
+      `${BASE}/national-report/issue/page`,
+      data,
+    )
+  },
+  fixNationalReportIssue(data: { issueId: string, fixRemark?: string }) {
+    return http.post<void>(`${BASE}/national-report/issue/fix`, data)
+  },
+  getNationalReportBatch(id: string) {
+    return http.post<PortfolioNationalReportBatchVO>(`${BASE}/national-report/batch/get`, { id })
+  },
+  exportNationalReportPackage(data: { syncTaskId: string, maskMode?: boolean }) {
+    return http.post<PortfolioArchiveBagExportResultVO>(
+      `${BASE}/national-report/package/export`,
+      data,
+    )
+  },
+  retransmitNationalReportIssues(data: { datasourceConfigId: string, sourceSyncTaskId?: string }) {
+    return http.post<PortfolioNationalReportBatchVO>(
+      `${BASE}/national-report/issue/retransmit`,
+      data,
+    )
   },
   healthDashboard() {
     return http.post<PortfolioIntegrationHealthDashboardVO>(`${BASE}/health/dashboard`, {})

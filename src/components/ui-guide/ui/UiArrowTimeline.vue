@@ -176,8 +176,8 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 .ui-arrow-timeline__shape-bg {
-  fill: #f8fafc;
-  stroke: #e2e8f0;
+  fill: var(--dp-surface-subtle);
+  stroke: var(--dp-border);
   stroke-width: 1;
   transition: all 0.2s ease;
 }
@@ -188,129 +188,129 @@ function handleStageClick(stage: UiArrowTimelineStage) {
   display: flex;
   align-items: center;
   height: 100%;
-  padding: 12px 24px 12px 28px;
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-3, 12px) 28px;
 }
 
 /* 第一个元素内容区左侧 padding 调整 */
 .ui-arrow-timeline__stage--first .ui-arrow-timeline__body {
-  padding-left: 16px;
+  padding-left: var(--dp-space-3, 12px);
 }
 
 /* 最后一个元素内容区右侧 padding 调整 */
 .ui-arrow-timeline__stage--last .ui-arrow-timeline__body {
-  padding-right: 16px;
+  padding-right: var(--dp-space-3, 12px);
 }
 
 /* ===== 状态：待处理（浅灰色，禁用） ===== */
 .ui-arrow-timeline__stage--pending .ui-arrow-timeline__shape-bg {
-  fill: #f8fafc;
-  stroke: #e2e8f0;
+  fill: var(--dp-surface-subtle);
+  stroke: var(--dp-border);
 }
 
 .ui-arrow-timeline__stage--pending .ui-arrow-timeline__title,
 .ui-arrow-timeline__stage--pending .ui-arrow-timeline__date,
 .ui-arrow-timeline__stage--pending .ui-arrow-timeline__status-text {
-  color: #94a3b8;
+  color: var(--dp-text-muted);
 }
 
 .ui-arrow-timeline__stage--pending .ui-arrow-timeline__index {
-  background: #e2e8f0;
-  color: #94a3b8;
+  background: var(--dp-border);
+  color: var(--dp-text-muted);
 }
 
 .ui-arrow-timeline__stage--pending .ui-arrow-timeline__status-dot {
-  background: #cbd5e1;
+  background: var(--dp-border-strong);
 }
 
 /* ===== 状态：进行中（淡蓝色背景 + 深蓝色边框） ===== */
 .ui-arrow-timeline__stage--running .ui-arrow-timeline__shape-bg,
 .ui-arrow-timeline__stage--active .ui-arrow-timeline__shape-bg {
-  fill: #eff6ff;
-  stroke: #3b82f6;
+  fill: var(--dp-blue-50);
+  stroke: var(--dp-blue-500);
 }
 
 .ui-arrow-timeline__stage--running .ui-arrow-timeline__title,
 .ui-arrow-timeline__stage--active .ui-arrow-timeline__title {
-  color: #1e40af;
+  color: var(--dp-blue-700);
 }
 
 .ui-arrow-timeline__stage--running .ui-arrow-timeline__index,
 .ui-arrow-timeline__stage--active .ui-arrow-timeline__index {
-  background: #3b82f6;
-  color: #fff;
+  background: var(--dp-blue-500);
+  color: var(--dp-text-inverse);
 }
 
 .ui-arrow-timeline__stage--running .ui-arrow-timeline__status-dot,
 .ui-arrow-timeline__stage--active .ui-arrow-timeline__status-dot {
-  background: #3b82f6;
+  background: var(--dp-blue-500);
 }
 
 .ui-arrow-timeline__stage--running .ui-arrow-timeline__progress-fill,
 .ui-arrow-timeline__stage--active .ui-arrow-timeline__progress-fill {
-  background: #3b82f6;
+  background: var(--dp-blue-500);
 }
 
 /* ===== 状态：已完成（灰色背景 + 深灰色边框） ===== */
 .ui-arrow-timeline__stage--completed .ui-arrow-timeline__shape-bg,
 .ui-arrow-timeline__stage--done .ui-arrow-timeline__shape-bg {
-  fill: #f1f5f9;
-  stroke: #64748b;
+  fill: var(--dp-surface-muted);
+  stroke: var(--dp-text-muted);
 }
 
 .ui-arrow-timeline__stage--completed .ui-arrow-timeline__title,
 .ui-arrow-timeline__stage--done .ui-arrow-timeline__title {
-  color: #475569;
+  color: var(--dp-text-secondary);
 }
 
 .ui-arrow-timeline__stage--completed .ui-arrow-timeline__index,
 .ui-arrow-timeline__stage--done .ui-arrow-timeline__index {
-  background: #64748b;
-  color: #fff;
+  background: var(--dp-text-muted);
+  color: var(--dp-text-inverse);
 }
 
 .ui-arrow-timeline__stage--completed .ui-arrow-timeline__status-dot,
 .ui-arrow-timeline__stage--done .ui-arrow-timeline__status-dot {
-  background: #64748b;
+  background: var(--dp-text-muted);
 }
 
 .ui-arrow-timeline__stage--completed .ui-arrow-timeline__progress-bar,
 .ui-arrow-timeline__stage--done .ui-arrow-timeline__progress-bar {
-  background: rgba(100, 116, 139, 0.2);
+  background: color-mix(in srgb, var(--dp-text-muted) 20%, transparent);
 }
 
 .ui-arrow-timeline__stage--completed .ui-arrow-timeline__progress-fill,
 .ui-arrow-timeline__stage--done .ui-arrow-timeline__progress-fill {
-  background: #64748b;
+  background: var(--dp-text-muted);
 }
 
 /* ===== 状态：警告 ===== */
 .ui-arrow-timeline__stage--warning .ui-arrow-timeline__shape-bg {
-  fill: #fffbeb;
-  stroke: #f59e0b;
+  fill: var(--dp-orange-50);
+  stroke: var(--dp-orange-500);
 }
 
 .ui-arrow-timeline__stage--warning .ui-arrow-timeline__index {
-  background: #f59e0b;
-  color: #fff;
+  background: var(--dp-orange-500);
+  color: var(--dp-text-inverse);
 }
 
 .ui-arrow-timeline__stage--warning .ui-arrow-timeline__status-dot {
-  background: #f59e0b;
+  background: var(--dp-orange-500);
 }
 
 /* ===== 状态：错误 ===== */
 .ui-arrow-timeline__stage--error .ui-arrow-timeline__shape-bg {
-  fill: #fef2f2;
-  stroke: #ef4444;
+  fill: var(--dp-red-50);
+  stroke: var(--dp-red-500);
 }
 
 .ui-arrow-timeline__stage--error .ui-arrow-timeline__index {
-  background: #ef4444;
-  color: #fff;
+  background: var(--dp-red-500);
+  color: var(--dp-text-inverse);
 }
 
 .ui-arrow-timeline__stage--error .ui-arrow-timeline__status-dot {
-  background: #ef4444;
+  background: var(--dp-red-500);
 }
 
 /* ===== 内容区 ===== */
@@ -337,8 +337,8 @@ function handleStageClick(stage: UiArrowTimelineStage) {
   height: 18px;
   font-size: 11px;
   font-weight: 600;
-  color: #64748b;
-  background: rgba(100, 116, 139, 0.15);
+  color: var(--dp-text-muted);
+  background: color-mix(in srgb, var(--dp-text-muted) 15%, transparent);
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -366,7 +366,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #94a3b8;
+  background: var(--dp-text-muted);
 }
 
 .ui-arrow-timeline__status-text {
@@ -385,14 +385,14 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 .ui-arrow-timeline__progress-bar {
   flex: 1;
   height: 4px;
-  background: rgba(148, 163, 184, 0.25);
+  background: color-mix(in srgb, var(--dp-text-muted) 25%, transparent);
   border-radius: 2px;
   overflow: hidden;
 }
 
 .ui-arrow-timeline__progress-fill {
   height: 100%;
-  background: var(--ant-color-primary, #2563eb);
+  background: var(--dp-color-primary);
   border-radius: 2px;
   transition: width 0.3s ease;
 }
@@ -408,7 +408,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 /* ===== 指标区 ===== */
 .ui-arrow-timeline__metrics {
   display: flex;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   margin-top: 6px;
 }
 
@@ -436,7 +436,7 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 }
 
 .ui-arrow-timeline--compact .ui-arrow-timeline__body {
-  padding: 8px 20px 8px 24px;
+  padding: var(--dp-space-2, 8px) var(--dp-space-4, 16px) var(--dp-space-2, 8px) var(--dp-space-3, 12px);
 }
 
 .ui-arrow-timeline--compact .ui-arrow-timeline__stage--first .ui-arrow-timeline__body {

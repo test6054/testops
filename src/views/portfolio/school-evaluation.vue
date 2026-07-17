@@ -5,7 +5,7 @@ import type {
   PortfolioEvaluationWorkgroupOptionVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -24,13 +24,17 @@ import {
 } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -244,6 +248,7 @@ function nextAction(
 async function advanceTask(
   row: PortfolioEvaluationTaskVO,
   action: PortfolioEvaluationTaskAdvanceActionCode | undefined = nextAction(row.taskStatus),
+  forceDespiteScoreVariance = false,
 ) {
   if (!action) {
     return
@@ -253,10 +258,33 @@ async function advanceTask(
   }
   advancingId.value = row.id
   try {
-    await portfolioEvaluationPublicityApi.advanceTask({ taskId: row.id, action })
+    await portfolioEvaluationPublicityApi.advanceTask({
+      taskId: row.id,
+      action,
+      forceDespiteScoreVariance: forceDespiteScoreVariance || undefined,
+    })
     message.success('任务状态已推进')
     await loadPage()
   } catch (error) {
+    const errText = error instanceof Error ? error.message : String(error ?? '')
+    if (
+      action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY
+      && !forceDespiteScoreVariance
+      && (errText.includes('评分 max-min') || errText.includes('forceDespiteScoreVariance'))
+    ) {
+      const confirmed = await confirmAsync({
+        title: '评分离散过大，是否强制进入结果汇总？',
+        content:
+          `${errText}\n\n请先确认已完成追加评审；强制汇总将写入审计日志，不替代评委会判断。`,
+        type: 'warning',
+        okText: '强制汇总',
+      })
+      if (confirmed) {
+        advancingId.value = ''
+        await advanceTask(row, action, true)
+        return
+      }
+    }
     showUserError(error, '推进任务失败')
   } finally {
     advancingId.value = ''
@@ -307,6 +335,9 @@ function openPublishModal(row: PortfolioEvaluationTaskVO) {
 }
 
 async function submitPublish() {
+  if (publishing.value) {
+    return
+  }
   if (!publishTarget.value) {
     return
   }
@@ -343,35 +374,104 @@ async function submitPublish() {
   }
 }
 
+
+async function createRereview(row: PortfolioEvaluationTaskVO) {
+  if (writing.value) {
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '发起更正复核',
+    content: `确认对「${row.taskName}」发起归档后更正复核？将保留四冻结快照，仅允许通过复核工单改结论。`,
+    type: 'warning',
+    okText: '确认发起',
+  })
+  if (!confirmed || writing.value) {
+    return
+  }
+  advancingId.value = row.id
+  try {
+    await portfolioEvaluationPublicityApi.createRereview({
+      evaluationTaskId: row.id,
+      reasonText: `管理员发起更正复核：${row.taskName}`,
+    })
+    message.success('已创建复核工单并进入更正复核')
+    await loadPage()
+  } catch (error) {
+    showUserError(error, '发起更正复核失败')
+  } finally {
+    advancingId.value = ''
+  }
+}
+
+function goFillCorrection(row: PortfolioEvaluationTaskVO) {
+  void router.push({
+    path: '/portfolio/school/evaluation-fill',
+    query: { evaluationTaskId: row.id },
+  })
+}
+
 /** 组装学校评价任务行内操作。 */
 function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   const advance = nextAction(row.taskStatus)
-  if (advance) {
+  // 行内仅 1 个 primary：阶段主动作优先（恢复 > 发布 > 异议 > 推进 > 归档）
+  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.SUSPENDED) {
+    actions.push({ key: 'resume', label: '恢复任务', tone: 'primary', disabled: writing.value })
+  } else if (row.taskStatus === PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY) {
+    actions.push({ key: 'publish', label: '发布公示', tone: 'primary', disabled: writing.value })
+    if (advance) {
+      actions.push({
+        key: 'advance',
+        label: advanceActionLabel(advance),
+        disabled: writing.value,
+      })
+    }
+  } else if (row.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING) {
+    actions.push({ key: 'objection', label: '处理异议', tone: 'primary' })
+    if (advance) {
+      actions.push({
+        key: 'advance',
+        label: advanceActionLabel(advance),
+        disabled: writing.value,
+      })
+    }
+  } else if (advance) {
     actions.push({
       key: 'advance',
       label: advanceActionLabel(advance),
       tone: 'primary',
       disabled: writing.value,
     })
-  }
-  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.SUSPENDED) {
-    actions.push({ key: 'resume', label: '恢复任务', tone: 'primary', disabled: writing.value })
-  } else if (canSuspendTask(row)) {
-    actions.push({ key: 'suspend', label: '暂停任务', tone: 'danger', disabled: writing.value })
-  }
-  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY) {
-    actions.push({ key: 'publish', label: '发布公示', tone: 'primary', disabled: writing.value })
-  }
-  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING) {
-    actions.push({ key: 'objection', label: '处理异议', tone: 'primary' })
-  }
-  if (canArchiveTask(row)) {
+  } else if (canArchiveTask(row)) {
     actions.push({
       key: 'archive',
       label: '归档',
       tone: 'primary',
       disabled: writing.value,
+    })
+  }
+  if (row.taskStatus !== PortfolioEvaluationTaskStatusCode.SUSPENDED && canSuspendTask(row)) {
+    actions.push({ key: 'suspend', label: '暂停任务', tone: 'danger', disabled: writing.value })
+  }
+  if (canArchiveTask(row) && !actions.some((item) => item.key === 'archive')) {
+    actions.push({
+      key: 'archive',
+      label: '归档',
+      disabled: writing.value,
+    })
+  }
+  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.ARCHIVED) {
+    actions.push({
+      key: 'rereview',
+      label: '发起更正复核',
+      tone: 'primary',
+      disabled: writing.value,
+    })
+  }
+  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW) {
+    actions.push({
+      key: 'fillCorrection',
+      label: '去改结论',
     })
   }
   return actions
@@ -397,6 +497,12 @@ function handleTaskRowAction(key: string, row: PortfolioEvaluationTaskVO): void 
     case 'archive':
       void archiveTask(row)
       break
+    case 'rereview':
+      void createRereview(row)
+      break
+    case 'fillCorrection':
+      goFillCorrection(row)
+      break
   }
 }
 
@@ -407,8 +513,8 @@ void loadPage()
   <StageWorkbenchShell>
     <ContextBar title="学校评价" description="评价任务状态推进、公示发布与归档">
       <template #actions>
-        <UiButton variant="primary" @click="() => void openCreateModal()"> 新建任务 </UiButton>
-        <UiButton :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
+        <UiButton size="sm" variant="primary" @click="() => void openCreateModal()"> 新建任务 </UiButton>
+        <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
       </template>
     </ContextBar>
 
@@ -452,39 +558,48 @@ void loadPage()
           </template>
         </template>
       </UiDataTable>
-      <UiEmpty v-else description="暂无评价任务" />
+      <WorkbenchContextGateStrip
+        v-else
+        tag="无任务"
+        body="暂无评价任务，请先新建任务"
+        cta-label="新建任务"
+        @cta="() => void openCreateModal()"
+      />
     </UiCard>
 
-    <a-modal
+    <UiDialog
       v-model:open="publishModalOpen"
       title="发布评价公示"
       ok-text="发布"
       cancel-text="取消"
       @ok="() => void submitPublish()"
     >
-      <Input
-        v-model:value="publishForm.publicityTitle"
+      <UiInput
+        size="sm"
+        v-model="publishForm.publicityTitle"
         class="school-evaluation__field"
         placeholder="公示标题"
       />
-      <a-date-picker
-        v-model:value="publishForm.startTime"
-        show-time
+      <UiDatePicker
+        size="sm"
+        v-model="publishForm.startTime"
+        :show-time="true"
         value-format="YYYY-MM-DD HH:mm:ss"
         placeholder="开始时间"
         class="school-evaluation__field"
         style="width: 100%"
       />
-      <a-date-picker
-        v-model:value="publishForm.endTime"
-        show-time
+      <UiDatePicker
+        size="sm"
+        v-model="publishForm.endTime"
+        :show-time="true"
         value-format="YYYY-MM-DD HH:mm:ss"
         placeholder="结束时间"
         style="width: 100%"
       />
-    </a-modal>
+    </UiDialog>
 
-    <a-modal
+    <UiDialog
       v-model:open="createModalOpen"
       title="新建评价任务"
       ok-text="创建"
@@ -492,13 +607,15 @@ void loadPage()
       :confirm-loading="creating"
       @ok="() => void submitCreateTask()"
     >
-      <Input
-        v-model:value="createForm.taskName"
+      <UiInput
+        size="sm"
+        v-model="createForm.taskName"
         class="school-evaluation__field"
         placeholder="任务名称"
       />
-      <a-select
-        v-model:value="createForm.workgroupId"
+      <UiSelect
+        size="sm"
+        v-model="createForm.workgroupId"
         :loading="workgroupsLoading"
         :options="
           workgroups.map((item) => ({
@@ -509,34 +626,38 @@ void loadPage()
         placeholder="选择启用的评价工作组"
         class="school-evaluation__field"
       />
-      <a-select
-        v-model:value="createForm.evaluationMode"
+      <UiSelect
+        size="sm"
+        v-model="createForm.evaluationMode"
         :options="PORTFOLIO_EVALUATION_MODE_OPTIONS"
         placeholder="评价模式"
         class="school-evaluation__field"
       />
-      <Input
+      <UiInput
+        size="sm"
         v-if="createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON"
-        v-model:value="createForm.targetIndicatorCode"
+        v-model="createForm.targetIndicatorCode"
         class="school-evaluation__field"
         placeholder="画像回流目标指标编码"
       />
-      <a-date-picker
-        v-model:value="createForm.startTime"
-        show-time
+      <UiDatePicker
+        size="sm"
+        v-model="createForm.startTime"
+        :show-time="true"
         value-format="YYYY-MM-DD HH:mm:ss"
         placeholder="评价开始时间"
         class="school-evaluation__field"
         style="width: 100%"
       />
-      <a-date-picker
-        v-model:value="createForm.endTime"
-        show-time
+      <UiDatePicker
+        size="sm"
+        v-model="createForm.endTime"
+        :show-time="true"
         value-format="YYYY-MM-DD HH:mm:ss"
         placeholder="评价结束时间"
         style="width: 100%"
       />
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 

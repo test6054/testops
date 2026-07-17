@@ -5,7 +5,7 @@ import type {
   PortfolioCorrectionSummaryVO,
 } from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, reactive, ref } from 'vue'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import {
@@ -23,8 +23,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -278,7 +280,7 @@ void loadPage()
   <StageWorkbenchShell>
     <ContextBar title="纠错处理" description="管理端受理与流转纠错工单">
       <template #actions>
-        <UiButton :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
+        <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
       </template>
     </ContextBar>
 
@@ -312,21 +314,22 @@ void loadPage()
           </template>
         </template>
       </UiDataTable>
-      <UiEmpty v-else description="暂无纠错工单" />
+      <UiEmpty size="sm" v-else description="暂无纠错工单" />
     </UiCard>
 
     <UiDrawer v-model:open="rejectDrawerOpen" title="驳回纠错" width="420">
       <p v-if="rejectTarget" class="correction-admin__reject-meta">
         {{ rejectTarget.teacherName }} · {{ rejectTarget.fieldLabel ?? rejectTarget.fieldCode }}
       </p>
-      <Input.TextArea
-        v-model:value="rejectForm.handleOpinion"
+      <UiTextarea
+        v-model="rejectForm.handleOpinion"
+        size="sm"
         :rows="4"
         placeholder="请填写驳回意见"
       />
       <template #footer>
-        <UiButton variant="ghost" @click="resetRejectContext"> 取消 </UiButton>
-        <UiButton variant="primary" :loading="!!handlingId" @click="() => void submitReject()">
+        <UiButton size="sm" variant="ghost" @click="resetRejectContext"> 取消 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="!!handlingId" @click="() => void submitReject()">
           确认驳回
         </UiButton>
       </template>
@@ -339,7 +342,7 @@ void loadPage()
       hide-footer
       @close="resetImpactContext"
     >
-      <a-spin :spinning="impactLoading">
+      <UiSpin :spinning="impactLoading">
         <template v-if="impactDetail">
           <div class="correction-admin__impact-head">
             <UiTag :tone="impactStatusTone(impactDetail.recomputeStatus)">
@@ -400,7 +403,7 @@ void loadPage()
             {{ impactDetail.failureReason }}
           </p>
         </template>
-      </a-spin>
+      </UiSpin>
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
@@ -429,21 +432,21 @@ void loadPage()
 .correction-admin__impact-failure {
   margin: var(--dp-space-3) 0 0;
   padding: var(--dp-space-3);
-  border: 1px solid var(--ant-color-border-secondary);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control);
   font-size: 14px;
   overflow-wrap: anywhere;
 }
 
 .correction-admin__impact-result {
-  border-color: var(--ant-color-success-border);
-  background: var(--ant-color-success-bg);
+  border-color: var(--dp-success-border);
+  background: var(--dp-success-bg);
 }
 
 .correction-admin__impact-failure {
-  border-color: var(--ant-color-error-border);
-  background: var(--ant-color-error-bg);
-  color: var(--ant-color-error);
+  border-color: var(--dp-error-border);
+  background: var(--dp-error-bg);
+  color: var(--dp-error);
 }
 
 .correction-admin__impact-grid {

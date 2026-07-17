@@ -11,11 +11,15 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -192,6 +196,7 @@ usePortfolioScopedLoader(
       <ContextBar show-title layout="workbench" title="教师一张表">
         <template #actions>
           <UiButton
+            size="sm"
             :loading="loading"
             :disabled="exporting || (canPickTeachers && !targetTeacherId)"
             @click="loadSummary"
@@ -199,6 +204,7 @@ usePortfolioScopedLoader(
             刷新
           </UiButton>
           <UiButton
+            size="sm"
             :loading="exporting"
             :disabled="loading || (canPickTeachers && !targetTeacherId)"
             @click="exportOneTable"
@@ -208,37 +214,34 @@ usePortfolioScopedLoader(
         </template>
       </ContextBar>
     </template>
-    <a-spin :spinning="loading">
-      <UiEmpty
-        v-if="canPickTeachers && !targetTeacherId"
-        description="请从顶部教师范围选择目标教师"
-      />
-      <UiEmpty v-else-if="loadFailed && !loading" description="加载教师一张表失败" />
-      <UiEmpty v-else-if="!loading && !summary" description="暂无教师一张表数据" />
+    <UiSpin :spinning="loading">
+      <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+      <UiEmpty size="sm" v-else-if="loadFailed && !loading" description="加载教师一张表失败" />
+      <UiEmpty size="sm" v-else-if="!loading && !summary" description="暂无教师一张表数据" />
       <UiCard v-if="summary" title="教师概要">
         <div v-if="summary.correctionPending" class="correction-badge">
           <UiTag tone="orange"> 纠错待处理 </UiTag>
         </div>
-        <a-descriptions :column="3" size="small" bordered>
-          <a-descriptions-item label="工号">
+        <UiDescriptions :column="3" size="small" bordered>
+          <UiDescriptionsItem label="工号">
             {{ summary.teacherNumber ?? '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="姓名">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="姓名">
             {{ summary.nickName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="院系">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="院系">
             {{ summary.departmentName ?? '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="职称">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="职称">
             {{ summary.title ?? '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="成果数">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="成果数">
             {{ summary.achievementCount ?? 0 }}
-          </a-descriptions-item>
-          <a-descriptions-item label="荣誉数">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="荣誉数">
             {{ summary.honorCount ?? 0 }}
-          </a-descriptions-item>
-          <a-descriptions-item label="完整度">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="完整度">
             <UiTag
               v-if="summary.completenessLevel"
               :tone="PORTFOLIO_COMPLETENESS_LEVEL_TONE[summary.completenessLevel]"
@@ -247,11 +250,11 @@ usePortfolioScopedLoader(
               {{ completenessSummaryText(summary) }}
             </UiTag>
             <span v-else>{{ completenessSummaryText(summary) }}</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="课程五框架" :span="2">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="课程五框架" :span="2">
             {{ courseArchiveSummaryText(summary) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="身份标签" :span="3">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="身份标签" :span="3">
             <UiTag
               v-for="tag in summary.identityTags"
               :key="tag"
@@ -261,11 +264,12 @@ usePortfolioScopedLoader(
               {{ identityLabel(tag) }}
             </UiTag>
             <span v-if="!summary.identityTags.length">—</span>
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
         <div class="actions">
-          <UiButton @click="openCorrection"> 数据纠错 </UiButton>
+          <UiButton size="sm" @click="openCorrection"> 数据纠错 </UiButton>
           <UiButton
+            size="sm"
             v-if="(summary.courseArchiveTaughtCourseCount ?? 0) > 0"
             @click="openCourseArchive"
           >
@@ -312,7 +316,7 @@ usePortfolioScopedLoader(
           </template>
         </UiDataTable>
       </UiCard>
-    </a-spin>
+    </UiSpin>
   </StageWorkbenchShell>
 </template>
 

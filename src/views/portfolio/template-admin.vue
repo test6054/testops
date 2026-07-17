@@ -35,14 +35,24 @@ import {
 } from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTree from '@/components/ui-guide/ui/UiTree.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
@@ -260,7 +270,7 @@ const parentCategoryOptions = computed(() => {
 const parsedChangeLogs = computed(() =>
   changeLogs.value.map((item) => ({
     item,
-    diff: parseDiffSummary(item.diffSummaryJson),
+    diff: resolveDiffSummary(item.diffSummary),
   })),
 )
 
@@ -274,26 +284,14 @@ function flattenCategoryOptions(nodes: TreeNode[], excludeId?: string) {
   return options
 }
 
-function parseDiffSummary(json?: string): PortfolioArchiveTemplateDiffSummary | DiffParseError {
-  if (!json?.trim()) return { message: '无变更摘要' }
-  try {
-    const parsed: unknown = JSON.parse(json)
-    if (!parsed || typeof parsed !== 'object') return { message: '变更摘要格式异常' }
-    const readCodes = (key: string): string[] => {
-      const val = Object.getOwnPropertyDescriptor(parsed, key)?.value
-      if (!Array.isArray(val)) throw new Error(`diff.${key} 必须为数组`)
-      return val.map((item) => {
-        if (typeof item !== 'string') throw new Error(`diff.${key} 元素必须为字符串`)
-        return item
-      })
-    }
-    return {
-      added: readCodes('added'),
-      removed: readCodes('removed'),
-      changed: readCodes('changed'),
-    }
-  } catch {
-    return { message: '变更摘要结构化文本解析失败' }
+function resolveDiffSummary(
+  summary?: PortfolioArchiveTemplateDiffSummary,
+): PortfolioArchiveTemplateDiffSummary | DiffParseError {
+  if (!summary) return { message: '无变更摘要' }
+  return {
+    added: summary.added ?? [],
+    removed: summary.removed ?? [],
+    changed: summary.changed ?? [],
   }
 }
 
@@ -1013,8 +1011,9 @@ onMounted(async () => {
       <UiCard class="tree-panel" title="档案分类" :loading="treeLoading">
         <div class="toolbar scope-filter">
           <span class="filter-label">适用范围</span>
-          <a-select
-            v-model:value="scopeFilter"
+          <UiSelect
+            size="sm"
+            v-model="scopeFilter"
             allow-clear
             placeholder="全部"
             :options="PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS"
@@ -1024,19 +1023,21 @@ onMounted(async () => {
           />
         </div>
         <div v-if="canManageTenant" class="toolbar">
-          <UiButton variant="primary" :disabled="interactionLocked" @click="openCreateCategory">
+          <UiButton size="sm" variant="primary" :disabled="interactionLocked" @click="openCreateCategory">
             新建根分类
           </UiButton>
           <UiButton
+            size="sm"
             :disabled="!selectedCategory || interactionLocked"
             @click="openCreateSubCategory"
           >
             新建子分类
           </UiButton>
-          <UiButton :disabled="!selectedCategory || interactionLocked" @click="openEditCategory">
+          <UiButton size="sm" variant="outline" :disabled="!selectedCategory || interactionLocked" @click="openEditCategory">
             编辑分类
           </UiButton>
           <UiButton
+            size="sm"
             :loading="operationKey.startsWith('category:deactivate:')"
             :disabled="
               !selectedCategory || selectedCategory?.status === 'INACTIVE' || interactionLocked
@@ -1046,6 +1047,7 @@ onMounted(async () => {
             停用分类
           </UiButton>
           <UiButton
+            size="sm"
             :loading="operationKey.startsWith('category:delete:')"
             :disabled="!selectedCategory || interactionLocked"
             status="danger"
@@ -1053,7 +1055,7 @@ onMounted(async () => {
           >
             删除分类
           </UiButton>
-          <UiButton :loading="seeding" :disabled="interactionLocked" @click="runSeedDefaults">
+          <UiButton size="sm" variant="ghost" :loading="seeding" :disabled="interactionLocked" @click="runSeedDefaults">
             初始化默认模板
           </UiButton>
         </div>
@@ -1064,7 +1066,7 @@ onMounted(async () => {
           title="档案分类读取失败"
           :description="treeLoadError"
         />
-        <a-tree
+        <UiTree
           v-if="!treeLoadError && treeData.length"
           :tree-data="treeData"
           block-node
@@ -1072,7 +1074,13 @@ onMounted(async () => {
           :disabled="interactionLocked"
           @select="onTreeSelect"
         />
-        <UiEmpty v-else-if="!treeLoadError" description="暂无分类，可初始化默认模板或新建根分类" />
+        <WorkbenchContextGateStrip
+          v-else-if="!treeLoadError"
+          tag="未配置"
+          body="暂无分类，可初始化默认模板或新建根分类"
+          cta-label="初始化默认模板"
+          @cta="runSeedDefaults"
+        />
       </UiCard>
       <UiCard class="detail-panel" :title="selectedCategory?.categoryName ?? '字段配置'">
         <template v-if="selectedCategory">
@@ -1088,9 +1096,10 @@ onMounted(async () => {
               }}
             </UiTag>
             <UiTag tone="blue"> 当前版本：{{ versionStatusLabel }} </UiTag>
-            <a-select
+            <UiSelect
+              size="sm"
               v-if="versionOptions.length"
-              :value="activeVersionId ?? undefined"
+              :model-value="activeVersionId ?? undefined"
               :options="versionOptions"
               :disabled="interactionLocked"
               style="min-width: 200px"
@@ -1106,8 +1115,9 @@ onMounted(async () => {
           </p>
           <div v-if="canManageTenant" class="audit-flow-row">
             <span class="audit-flow-label">审核流</span>
-            <a-input
-              v-model:value="auditFlowCode"
+            <UiInput
+              size="sm"
+              v-model="auditFlowCode"
               placeholder="审核流编码"
               style="width: 220px"
               :disabled="writing"
@@ -1129,20 +1139,22 @@ onMounted(async () => {
             </UiButton>
           </div>
           <div v-if="canManageTenant" class="toolbar">
-            <UiButton v-if="canViewPublished" :disabled="writing" @click="viewPublishedVersion">
+            <UiButton v-if="canViewPublished" size="sm" variant="outline" :disabled="writing" @click="viewPublishedVersion">
               查看已发布
             </UiButton>
             <UiButton
+              size="sm"
               :loading="operationKey.startsWith('version:draft:')"
               :disabled="writing"
               @click="ensureDraftVersion"
             >
               创建/获取草稿
             </UiButton>
-            <UiButton :disabled="!canEditFields || writing" @click="openCreateField">
+            <UiButton size="sm" variant="outline" :disabled="!canEditFields || writing" @click="openCreateField">
               新增字段
             </UiButton>
             <UiButton
+              size="sm"
               :loading="operationKey.startsWith('version:trial:')"
               :disabled="!canEditFields || writing"
               @click="runTrial"
@@ -1150,6 +1162,7 @@ onMounted(async () => {
               试算
             </UiButton>
             <UiButton
+              size="sm"
               variant="primary"
               :disabled="!canEditFields || writing"
               @click="openPublishModal"
@@ -1157,6 +1170,7 @@ onMounted(async () => {
               发布
             </UiButton>
             <UiButton
+              size="sm"
               :loading="operationKey.startsWith('version:deprecate:')"
               :disabled="!canDeprecate || writing"
               @click="runDeprecate"
@@ -1218,142 +1232,169 @@ onMounted(async () => {
             </template>
           </UiDataTable>
         </template>
-        <UiEmpty v-else description="请选择左侧分类" />
+        <UiAlertStrip
+          v-else
+          tone="info"
+          size="sm"
+          dense
+          inline
+          :show-icon="false"
+        >
+          <template #default>
+            <span style="display:inline-flex;align-items:center;gap:8px">
+              <UiTag tone="blue" size="sm">未选择分类</UiTag>
+              <span>请在左侧选择档案分类后再维护模板</span>
+            </span>
+          </template>
+        </UiAlertStrip>
       </UiCard>
     </div>
 
-    <a-modal
+    <UiDialog
       v-model:open="categoryVisible"
       :title="categoryModalTitle"
       :confirm-loading="operationKey.startsWith('category:save:')"
       :closable="!writing"
       :mask-closable="!writing"
-      :keyboard="!writing"
-      :cancel-button-props="{ disabled: writing }"
+      ok-text="保存"
       @ok="submitCategory"
     >
-      <a-form layout="vertical">
-        <a-form-item v-if="parentCategoryOptions.length" label="父分类">
-          <a-select
-            v-model:value="categoryEditor.parentId"
+      <UiForm layout="vertical">
+        <UiFormItem v-if="parentCategoryOptions.length" label="父分类">
+          <UiSelect
+            size="sm"
+            v-model="categoryEditor.parentId"
             allow-clear
             placeholder="留空为根分类"
             :options="parentCategoryOptions"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="分类编码" required>
-          <a-input
-            v-model:value="categoryEditor.categoryCode"
+        </UiFormItem>
+        <UiFormItem label="分类编码" required>
+          <UiInput
+            size="sm"
+            v-model="categoryEditor.categoryCode"
             :disabled="!!categoryEditor.id || writing"
           />
-        </a-form-item>
-        <a-form-item label="分类名称" required>
-          <a-input v-model:value="categoryEditor.categoryName" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="适用范围">
-          <a-select
-            v-model:value="categoryEditor.scope"
+        </UiFormItem>
+        <UiFormItem label="分类名称" required>
+          <UiInput
+            size="sm" v-model="categoryEditor.categoryName" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="适用范围">
+          <UiSelect
+            size="sm"
+            v-model="categoryEditor.scope"
             :options="PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-select
-            v-model:value="categoryEditor.status"
+        </UiFormItem>
+        <UiFormItem label="状态">
+          <UiSelect
+            size="sm"
+            v-model="categoryEditor.status"
             :options="PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="排序">
-          <a-input-number
-            v-model:value="categoryEditor.sortOrder"
+        </UiFormItem>
+        <UiFormItem label="排序">
+          <UiInputNumber
+            size="sm"
+            v-model="categoryEditor.sortOrder"
             :min="0"
             style="width: 100%"
             :disabled="writing"
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
-    <a-modal
+    <UiDialog
       v-model:open="fieldVisible"
       :title="fieldModalTitle"
       :confirm-loading="operationKey.startsWith('field:save:')"
       :closable="!writing"
       :mask-closable="!writing"
-      :keyboard="!writing"
-      :cancel-button-props="{ disabled: writing }"
+      ok-text="保存"
       @ok="submitField"
     >
-      <a-form layout="vertical">
-        <a-form-item label="字段编码" required>
-          <a-input v-model:value="fieldEditor.fieldCode" :disabled="!!fieldEditor.id || writing" />
-        </a-form-item>
-        <a-form-item label="字段名称" required>
-          <a-input v-model:value="fieldEditor.fieldLabel" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="字段类型">
-          <a-select
-            v-model:value="fieldEditor.fieldType"
+      <UiForm layout="vertical">
+        <UiFormItem label="字段编码" required>
+          <UiInput
+            size="sm" v-model="fieldEditor.fieldCode" :disabled="!!fieldEditor.id || writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="字段名称" required>
+          <UiInput
+            size="sm" v-model="fieldEditor.fieldLabel" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="字段类型">
+          <UiSelect
+            size="sm"
+            v-model="fieldEditor.fieldType"
             :options="PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="来源类型">
-          <a-select
-            v-model:value="fieldEditor.sourceType"
+        </UiFormItem>
+        <UiFormItem label="来源类型">
+          <UiSelect
+            size="sm"
+            v-model="fieldEditor.sourceType"
             :options="PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item v-if="fieldEditor.fieldType === 'ENUM'" label="枚举引用">
-          <a-input v-model:value="fieldEditor.enumRef" placeholder="字典编码" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="排序">
-          <a-input-number
-            v-model:value="fieldEditor.sortOrder"
+        </UiFormItem>
+        <UiFormItem v-if="fieldEditor.fieldType === 'ENUM'" label="枚举引用">
+          <UiInput
+            size="sm" v-model="fieldEditor.enumRef" placeholder="字典编码" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="排序">
+          <UiInputNumber
+            size="sm"
+            v-model="fieldEditor.sortOrder"
             :min="0"
             style="width: 100%"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="必填">
-          <a-switch v-model:checked="fieldEditor.required" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="只读">
-          <a-switch v-model:checked="fieldEditor.readonly" :disabled="writing" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+        <UiFormItem label="必填">
+          <UiSwitch size="sm" v-model="fieldEditor.required" :disabled="writing" />
+        </UiFormItem>
+        <UiFormItem label="只读">
+          <UiSwitch size="sm" v-model="fieldEditor.readonly" :disabled="writing" />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
-    <a-modal
+    <UiDialog
       v-model:open="publishVisible"
       title="发布模板版本"
       ok-text="确认发布"
       :confirm-loading="operationKey.startsWith('version:publish:')"
       :closable="!writing"
       :mask-closable="!writing"
-      :keyboard="!writing"
-      :cancel-button-props="{ disabled: writing }"
       @ok="submitPublish"
     >
-      <a-form layout="vertical">
-        <a-form-item label="变更摘要" required>
-          <a-textarea
-            v-model:value="publishSummary"
+      <UiForm layout="vertical">
+        <UiFormItem label="变更摘要" required>
+          <UiTextarea
+            size="sm"
+            v-model="publishSummary"
             :rows="3"
             placeholder="说明本次发布变更内容"
             :disabled="writing"
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
-    <a-drawer
+    <UiDrawer
       v-model:open="historyVisible"
       title="版本历史"
-      width="720"
+      :width="720"
       :closable="!writing"
       :mask-closable="!writing"
     >
@@ -1415,7 +1456,7 @@ onMounted(async () => {
           </p>
         </div>
       </div>
-    </a-drawer>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -1423,7 +1464,7 @@ onMounted(async () => {
 .template-layout {
   display: grid;
   grid-template-columns: 280px 1fr;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 .toolbar {
   display: flex;
@@ -1436,7 +1477,7 @@ onMounted(async () => {
 }
 .filter-label {
   font-size: 14px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 .audit-flow-row {
   display: flex;
@@ -1460,7 +1501,7 @@ onMounted(async () => {
 .readonly-hint {
   margin: 0 0 12px;
   font-size: 14px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 .change-log {
   margin-top: 16px;
@@ -1472,12 +1513,12 @@ onMounted(async () => {
 }
 .change-log-item {
   padding: 12px 0;
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  border-bottom: 1px solid var(--dp-border-subtle);
 }
 .change-log-meta {
   margin-bottom: 8px;
   font-size: 12px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 .diff-row {
   display: flex;
@@ -1489,11 +1530,11 @@ onMounted(async () => {
 .diff-label {
   min-width: 32px;
   font-size: 12px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 .diff-error {
   margin: 0;
   font-size: 12px;
-  color: var(--ant-color-error);
+  color: var(--dp-error);
 }
 </style>

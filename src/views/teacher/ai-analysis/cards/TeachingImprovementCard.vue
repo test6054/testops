@@ -33,7 +33,7 @@
       :loading="loading"
       :generating="generating"
       :has-content="true"
-      empty-description="当前没有可展示的内容，可点击重新生成"
+      empty-description="暂无改进建议，可点击重新生成"
       progress-title="AI 教学改进方案生成中"
       :progress-waiting-text="
         props.classId

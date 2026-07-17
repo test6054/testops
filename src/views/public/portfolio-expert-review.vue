@@ -116,17 +116,18 @@ onMounted(() => {
             </template>
           </template>
           <template #emptyText>
-            <UiEmpty title="暂无内容" />
+            <UiEmpty size="sm" title="暂无内容" />
           </template>
         </UiDataTable>
       </template>
       <UiEmpty
+        size="sm"
         v-else
         :title="errorMessage ? '无法打开审阅包' : '暂无内容'"
         :description="errorMessage || '当前授权没有可审阅材料。'"
       >
         <template v-if="tenantId && accessToken" #action>
-          <UiButton :loading="loading" @click="loadBundle">重试</UiButton>
+          <UiButton size="sm" :loading="loading" @click="loadBundle">重试</UiButton>
         </template>
       </UiEmpty>
     </UiCard>
@@ -137,10 +138,10 @@ onMounted(() => {
 .public-expert-review {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 24px 16px 48px;
+  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px) var(--dp-space-8, 32px);
 }
 .public-expert-review__header {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-3, 12px);
 }
 .public-expert-review__header h1 {
   margin: 0 0 8px;
@@ -149,15 +150,15 @@ onMounted(() => {
 }
 .public-expert-review__header p {
   margin: 0;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   font-size: 14px;
 }
 .public-expert-review__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: var(--dp-space-2, 8px);
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-3, 12px);
   font-size: 14px;
 }
 .public-expert-review__teachers {

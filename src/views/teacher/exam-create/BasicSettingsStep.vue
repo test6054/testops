@@ -1,5 +1,5 @@
 <template>
-  <a-form
+  <UiForm
     ref="formRef"
     :model="examForm"
     :rules="basicRules"
@@ -14,84 +14,90 @@
       </div>
       <p class="section-desc">填写课程、时间与成绩规则；带 * 为必填。</p>
 
-      <a-form-item label="课程" name="courseId" required>
+      <UiFormItem label="课程" name="courseId" required>
         <CatalogCourseSelector
           v-model:value="examForm.courseId"
           placeholder="选择课程"
           :allow-clear="false"
           @change="handleCourseChange"
         />
-      </a-form-item>
+      </UiFormItem>
 
-      <a-form-item label="考试名称" name="examName" required>
-        <a-input
-          v-model:value="examForm.examName"
+      <UiFormItem label="考试名称" name="examName" required>
+        <UiInput
+          size="sm"
+          v-model="examForm.examName"
           placeholder="例如：2026 春《工程制图》期末"
           :maxlength="100"
-          show-count
         />
-      </a-form-item>
+      </UiFormItem>
 
-      <a-row :gutter="24" class="create-form__split-row">
-        <a-col :span="12">
-          <a-form-item
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem
             label="考试性质"
             name="examKind"
             required
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select
-              v-model:value="examForm.examKind"
+            <UiSelect
+              size="sm"
+              v-model="examForm.examKind"
               :options="EXAM_KIND_FILTER_OPTIONS"
               placeholder="选择考试性质"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             label="考务编号"
             name="examNo"
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-input
-              v-model:value="examForm.examNo"
+            <UiInput
+              size="sm"
+              v-model="examForm.examNo"
               placeholder="教务系统编号或自定义编号"
               :maxlength="64"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
 
-      <a-form-item
+      <UiFormItem
         label="成绩构成"
         name="scoreCompositionMode"
         required
         :tooltip="scoreCompositionTip"
       >
-        <a-radio-group
-          v-model:value="examForm.scoreCompositionMode"
+        <UiRadioGroup
+          v-model="examForm.scoreCompositionMode"
           :disabled="nonRegularScoreLocked"
-        >
-          <a-radio value="EXAM_ONLY">仅计入考试成绩（期末笔试）</a-radio>
-          <a-radio value="EXAM_WITH_DAILY">期末考试 + 平时成绩合成</a-radio>
-        </a-radio-group>
-      </a-form-item>
+          size="sm"
+          block
+          :options="[
+            { label: '仅计入考试成绩（期末笔试）', value: 'EXAM_ONLY' },
+            { label: '期末考试 + 平时成绩合成', value: 'EXAM_WITH_DAILY' },
+          ]"
+        />
+      </UiFormItem>
 
-      <a-form-item
+      <UiFormItem
         v-if="showSourceExamField"
         label="原考试"
         name="sourceExamId"
         required
         tooltip="须关联已关闭的正考；跨学期补考时开课学期须与原正考一致。"
       >
-        <a-select
-          v-model:value="examForm.sourceExamId"
+        <UiSelect
+          size="sm"
+          v-model="examForm.sourceExamId"
           :options="sourceExamOptions"
           :loading="sourceExamLoading"
           placeholder="搜索已关闭的正考"
-          show-search
+          allow-search
           option-filter-prop="label"
           :filter-option="false"
           allow-clear
@@ -99,73 +105,77 @@
           @change="handleSourceExamChange"
           @dropdown-visible-change="handleSourceExamDropdown"
         />
-      </a-form-item>
+      </UiFormItem>
 
-      <a-form-item
+      <UiFormItem
         v-if="examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'"
         label="平时满分"
         name="dailyScoreFull"
         required
       >
-        <a-input-number
-          v-model:value="examForm.dailyScoreFull"
+        <UiInputNumber
+          size="sm"
+          v-model="examForm.dailyScoreFull"
           :min="0.01"
           :max="1000"
           :precision="2"
           style="width: 100%"
           placeholder="例如 30"
         />
-      </a-form-item>
+      </UiFormItem>
 
-      <a-row :gutter="24" class="create-form__split-row">
-        <a-col :span="12">
-          <a-form-item
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem
             label="学年"
             name="academicYear"
             required
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-input v-model:value="examForm.academicYear" placeholder="2024-2025" :maxlength="9" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+            <UiInput
+              size="sm" v-model="examForm.academicYear" placeholder="2024-2025" :maxlength="9"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             label="学期"
             name="semester"
             required
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select
-              v-model:value="examForm.semester"
+            <UiSelect
+              size="sm"
+              v-model="examForm.semester"
               placeholder="选择学期"
               :options="SemesterOptions"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
 
-      <a-form-item label="考试时间窗" name="examWindow" required>
-        <a-range-picker
-          v-model:value="examForm.examWindow"
-          style="width: 100%"
+      <UiFormItem label="考试时间窗" name="examWindow" required>
+        <UiRangePicker
+          v-model="examForm.examWindow"
           show-time
           format="YYYY-MM-DD HH:mm"
           value-format="YYYY-MM-DD HH:mm:ss"
           :placeholder="['开始时间', '结束时间']"
         />
-      </a-form-item>
+      </UiFormItem>
 
-      <a-row :gutter="24" class="create-form__split-row">
-        <a-col :span="12">
-          <a-form-item
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem
             label="阅卷策略"
             name="gradingStrategy"
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-input
+            <UiInput
+              size="sm"
               :value="
                 strictEnumLabel(
                   ExamGradingStrategyDescription,
@@ -175,10 +185,10 @@
               "
               disabled
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             label="涉密场次"
             name="confidential"
             :tooltip="confidentialFieldTip"
@@ -186,26 +196,27 @@
             :wrapper-col="wrapperCol"
           >
             <div class="create-form__switch-row">
-              <a-switch v-model:checked="examForm.confidential" />
+              <UiSwitch size="sm" v-model="examForm.confidential" />
               <span class="create-form__switch-label">
                 {{ examForm.confidential ? '已开启强制水印' : '未开启' }}
               </span>
             </div>
-          </a-form-item>
-        </a-col>
-      </a-row>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
 
-      <a-form-item label="备注" name="remark">
-        <a-textarea
-          v-model:value="examForm.remark"
+      <UiFormItem label="备注" name="remark">
+        <UiTextarea
+          size="sm"
+          v-model="examForm.remark"
           :rows="3"
           placeholder="可填写考试用途、班级范围说明等"
           :maxlength="500"
-          show-count
+          :show-count="true"
         />
-      </a-form-item>
+      </UiFormItem>
     </div>
-  </a-form>
+  </UiForm>
 </template>
 
 <script setup lang="ts">
@@ -224,6 +235,17 @@ import {
   pageExams,
 } from '@/apis/mark/exam'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiRangePicker from '@/components/ui-guide/ui/RangePicker.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'

@@ -19,17 +19,17 @@ export const DIFFICULTY_CONFIG: Record<DifficultyEnum, {
 }> = {
   [DifficultyEnum.EASY]: {
     label: '简单',
-    color: 'var(--ant-color-success)',
+    color: 'var(--dp-success)',
     level: 1,
   },
   [DifficultyEnum.MEDIUM]: {
     label: '中等',
-    color: 'var(--ant-color-warning)',
+    color: 'var(--dp-warning)',
     level: 2,
   },
   [DifficultyEnum.HARD]: {
     label: '困难',
-    color: 'var(--ant-color-error)',
+    color: 'var(--dp-error)',
     level: 3,
   },
 }

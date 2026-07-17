@@ -5,6 +5,9 @@ import type {
 } from '@/types/enums/exam-layout-block-type-enum'
 import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDropdown from '@/components/ui-guide/ui/UiDropdown.vue'
+import UiMenu from '@/components/ui-guide/ui/UiMenu.vue'
+import UiMenuItem from '@/components/ui-guide/ui/UiMenuItem.vue'
 import {
   ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES,
 } from '@/types/enums/exam-layout-block-type-enum'
@@ -75,20 +78,20 @@ function moveLayer(delta: number): void {
       <span class="layout-block-layer__count">第 {{ pageNo }} 页 · {{ pageBlocks.length }} 块</span>
     </div>
     <div class="layout-block-layer__actions">
-      <a-dropdown>
+      <UiDropdown>
         <UiButton size="sm" variant="primary">添加识别块</UiButton>
         <template #overlay>
-          <a-menu>
-            <a-menu-item
+          <UiMenu>
+            <UiMenuItem
               v-for="blockType in ALL_EXAM_LAYOUT_BLOCK_TYPE_CODES"
               :key="blockType"
               @click="addBlock(blockType)"
             >
               {{ resolveBlockTypeLabel(blockType) }}
-            </a-menu-item>
-          </a-menu>
+            </UiMenuItem>
+          </UiMenu>
         </template>
-      </a-dropdown>
+      </UiDropdown>
       <UiButton size="sm" variant="outline" :disabled="!focusedBlockId" @click="moveLayer(1)">
         上移层
       </UiButton>
@@ -124,7 +127,7 @@ function moveLayer(delta: number): void {
   padding: 12px;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--ant-color-bg-container);
+  background: var(--dp-bg-container);
 
   &__header {
     display: flex;
@@ -174,8 +177,8 @@ function moveLayer(delta: number): void {
     }
 
     &--active {
-      background: rgba(22, 119, 255, 0.08);
-      outline: 1px solid rgba(22, 119, 255, 0.35);
+      background: color-mix(in srgb, var(--dp-color-primary) 8%, transparent);
+      outline: 1px solid color-mix(in srgb, var(--dp-color-primary) 35%, transparent);
     }
   }
 
@@ -190,7 +193,7 @@ function moveLayer(delta: number): void {
   }
 
   &__empty {
-    padding: 16px 8px;
+    padding: var(--dp-space-3, 12px) var(--dp-space-2, 8px);
     font-size: 13px;
     color: var(--dp-text-secondary);
   }

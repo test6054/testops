@@ -3,6 +3,8 @@
  * 补扫启动面板：触摸屏大控件采集补扫必填项，确认后直接开批次。
  */
 import { computed, ref, watch } from 'vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { useKioskCtx } from '../composables/kioskInjection'
 
 const open = defineModel<boolean>('open', { required: true })
@@ -106,16 +108,16 @@ async function confirmSupplement() {
 </script>
 
 <template>
-  <a-modal
+  <UiDialog
     v-model:open="open"
     title="补扫"
     :width="640"
-    :footer="null"
+    hide-footer
     destroy-on-close
     class="supplement-launch-modal"
   >
     <div v-if="preparing" class="supplement-launch supplement-launch--loading">
-      <a-spin tip="加载可补扫试卷…" />
+      <UiSpin tip="加载可补扫试卷…" />
     </div>
     <div v-else-if="prepareFailed" class="supplement-launch supplement-launch--failed">
       <p>{{ workflow.errorMessage.value || '当前无法开启补扫' }}</p>
@@ -225,7 +227,7 @@ async function confirmSupplement() {
         </button>
       </div>
     </div>
-  </a-modal>
+  </UiDialog>
 </template>
 
 <style scoped>
@@ -239,7 +241,7 @@ async function confirmSupplement() {
 .supplement-launch--failed {
   align-items: center;
   justify-content: center;
-  min-height: 240px;
+  min-height: 180px;
 }
 
 .supplement-launch--failed p {

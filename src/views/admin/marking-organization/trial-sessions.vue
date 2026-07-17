@@ -43,7 +43,7 @@
     </template>
 
     <template v-if="organization && signalMetrics.length > 0" #signal>
-      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" compact />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
@@ -72,7 +72,7 @@
 
     <UiSkeletonState v-if="initialLoading && !organization" variant="card" compact />
 
-    <UiEmpty v-else-if="!organization" description="暂无阅卷组织数据" class="org-sessions__empty" />
+    <UiEmpty size="sm" v-else-if="!organization" description="暂无阅卷组织数据" class="org-sessions__empty" />
 
     <TrialSessionWorkbench
       v-else
@@ -198,6 +198,6 @@ function goFormalSessions(): void {
 
 <style lang="scss" scoped>
 .org-sessions__empty {
-  padding: 48px 0;
+  padding: 20px 0;
 }
 </style>

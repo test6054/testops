@@ -125,7 +125,7 @@ const configRows = computed((): InfoRow[] => {
 .exam-prep-info-panels {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 
   &__title {
     font-size: 14px;
@@ -136,14 +136,14 @@ const configRows = computed((): InfoRow[] => {
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--dp-space-2, 8px);
   }
 
   &__row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
     font-size: 13px;
 
     dt {

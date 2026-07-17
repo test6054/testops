@@ -1,18 +1,18 @@
 body {
-  --w-e-textarea-bg-color: var(--ant-color-bg-container);
-  --w-e-textarea-color: var(--ant-color-text);
-  --w-e-textarea-border-color: var(--ant-color-border);
-  --w-e-textarea-slight-border-color: var(--ant-color-border-secondary);
-  --w-e-textarea-slight-color: var(--ant-color-text-quaternary);
-  --w-e-textarea-slight-bg-color: var(--ant-color-fill-tertiary);
-  --w-e-textarea-selected-border-color: var(--ant-color-primary-border);
-  --w-e-textarea-handler-bg-color: var(--ant-color-primary);
-  --w-e-toolbar-color: var(--ant-color-text-secondary);
-  --w-e-toolbar-bg-color: var(--ant-color-bg-container);
-  --w-e-toolbar-active-color: var(--ant-color-text);
-  --w-e-toolbar-active-bg-color: var(--ant-color-fill-secondary);
+  --w-e-textarea-bg-color: var(--dp-bg-container);
+  --w-e-textarea-color: var(--dp-text);
+  --w-e-textarea-border-color: var(--dp-border);
+  --w-e-textarea-slight-border-color: var(--dp-border-subtle);
+  --w-e-textarea-slight-color: var(--dp-text-quaternary);
+  --w-e-textarea-slight-bg-color: var(--dp-fill-tertiary);
+  --w-e-textarea-selected-border-color: var(--dp-color-primary-border);
+  --w-e-textarea-handler-bg-color: var(--dp-color-primary);
+  --w-e-toolbar-color: var(--dp-text-secondary);
+  --w-e-toolbar-bg-color: var(--dp-bg-container);
+  --w-e-toolbar-active-color: var(--dp-text);
+  --w-e-toolbar-active-bg-color: var(--dp-fill-secondary);
   --w-e-toolbar-disabled-color: var(--dp-text-disabled);
-  --w-e-toolbar-border-color: var(--ant-color-border-secondary);
-  --w-e-modal-button-bg-color: var(--ant-color-fill-tertiary);
-  --w-e-modal-button-border-color: var(--ant-color-border);
+  --w-e-toolbar-border-color: var(--dp-border-subtle);
+  --w-e-modal-button-bg-color: var(--dp-fill-tertiary);
+  --w-e-modal-button-border-color: var(--dp-border);
 }

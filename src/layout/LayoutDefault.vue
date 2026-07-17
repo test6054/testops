@@ -1,28 +1,26 @@
 <template>
-  <a-layout :class="{ mobile: isMobile }" class="layout layout-default">
-    <!-- 无障碍：跳过导航链接 -->
-    <a href="#main-content" class="skip-link">跳转到主要内容</a>
-
+  <UiLayout :class="{ mobile: isMobile }" class="layout layout-default">
     <!-- 侧边栏：桌面端显示 -->
     <Asider v-if="!isMobile"></Asider>
 
-    <a-layout class="layout-default-right">
+    <UiLayout class="layout-default-right">
       <Header></Header>
       <PortfolioLayoutContext />
       <Main id="main-content" :class="{ 'with-tabbar': isMobile }"></Main>
-    </a-layout>
+    </UiLayout>
 
     <!-- 底部导航栏：移动端显示 -->
     <TabBar v-if="isMobile" />
 
     <!-- 公告弹窗 -->
     <NoticePopup ref="noticePopupRef" />
-  </a-layout>
+  </UiLayout>
 </template>
 
 <script lang="ts" setup>
 import { onMounted, ref } from 'vue'
 import PortfolioLayoutContext from '@/components/portfolio/PortfolioLayoutContext.vue'
+import UiLayout from '@/components/ui-guide/ui/UiLayout.vue'
 import { useDevice } from '@/hooks'
 import { getToken } from '@/utils/auth'
 import NoticePopup from '@/views/user/message/components/NoticePopup.vue'
@@ -54,29 +52,6 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-// 无障碍：跳过导航链接
-.skip-link {
-  position: absolute;
-  top: -100px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: calc(var(--dp-z-modal) + 20);
-  padding: var(--dp-space-3) var(--dp-space-5);
-  background-color: var(--ant-color-primary);
-  color: var(--ant-color-white);
-  font-size: var(--dp-font-size-md);
-  font-weight: 600;
-  border-radius: var(--dp-radius-panel);
-  text-decoration: none;
-  transition: top var(--dp-duration-fast) ease;
-
-  &:focus {
-    top: var(--dp-space-4);
-    outline: 2px solid var(--ant-color-primary-border);
-    outline-offset: 2px;
-  }
-}
-
 .layout {
   height: 100%;
   min-height: 0;
@@ -99,7 +74,7 @@ onMounted(() => {
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    background: var(--ant-color-bg-container);
+    background: var(--dp-bg-container);
   }
 
   // 移动端适配

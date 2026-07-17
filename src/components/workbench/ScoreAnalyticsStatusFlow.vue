@@ -58,7 +58,7 @@ defineProps<{
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px;
+    gap: var(--dp-space-1, 4px);
   }
 
   &__arrow {
@@ -67,13 +67,13 @@ defineProps<{
   }
 
   &__count {
-    margin-left: 4px;
+    margin-left: var(--dp-space-1, 4px);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
 
   &__tag--emphasis {
-    box-shadow: 0 0 0 1px var(--ant-color-primary-border, #91caff);
+    box-shadow: 0 0 0 1px var(--dp-color-primary-border);
   }
 }
 </style>

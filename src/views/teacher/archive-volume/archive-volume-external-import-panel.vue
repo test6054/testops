@@ -18,20 +18,23 @@
       dense
       class="archive-volume-external-import__flow"
     />
-    <a-form layout="vertical" class="archive-volume-external-import__form">
+    <UiForm layout="vertical" class="archive-volume-external-import__form">
       <div class="archive-volume-external-import__grid">
-        <a-form-item label="来源系统" required>
-          <a-input
-            v-model:value="form.sourceSystem"
+        <UiFormItem label="来源系统" required>
+          <UiInput
+            size="sm"
+            v-model="form.sourceSystem"
             placeholder="如 TEACHING_AFFAIRS"
             @change="sourceSystemError = ''"
           />
-        </a-form-item>
-        <a-form-item label="导入类型" required>
-          <a-select v-model:value="form.importType" :options="importTypeOptions" disabled />
-        </a-form-item>
+        </UiFormItem>
+        <UiFormItem label="导入类型" required>
+          <UiSelect
+            size="sm" v-model="form.importType" :options="importTypeOptions" disabled
+          />
+        </UiFormItem>
       </div>
-    </a-form>
+    </UiForm>
     <UiAlertStrip
       v-if="sourceSystemError"
       tone="error"
@@ -68,7 +71,11 @@ import {
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import {
   archiveImportResultTone,

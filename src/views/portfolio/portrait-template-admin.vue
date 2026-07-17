@@ -8,19 +8,20 @@ import PortfolioPortraitLayoutEditor from '@/components/portfolio/PortfolioPortr
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
   defaultPortraitLayout,
-  mergeChartConfigIntoWidgets,
-  parsePortraitLayoutJson,
-  serializePortraitChartConfig,
-  serializePortraitLayout,
+  mergeLayoutWithChartConfig,
+  toPortraitChartConfigPayload,
+  toPortraitLayoutPayload,
 } from '@/utils/portrait-layout'
 
 const loading = ref(false)
 const templates = ref<PortfolioPortraitTemplateVO[]>([])
+const saving = ref(false)
 const selectedId = ref<string>()
 const layoutWidgets = ref<PortfolioPortraitLayoutWidget[]>(defaultPortraitLayout())
 const listRequestToken = ref(0)
@@ -64,11 +65,8 @@ async function loadDetail(id: string) {
     }
     form.templateName = detail.templateName
     form.academicYear = detail.academicYear ?? form.academicYear
-    layoutWidgets.value = detail.layoutJson
-      ? mergeChartConfigIntoWidgets(
-          parsePortraitLayoutJson(detail.layoutJson),
-          detail.chartConfigJson,
-        )
+    layoutWidgets.value = detail.layout?.length
+      ? mergeLayoutWithChartConfig(detail.layout, detail.chartConfig)
       : defaultPortraitLayout()
   } catch (error) {
     showUserError(error, '加载画像模板详情失败')
@@ -76,6 +74,9 @@ async function loadDetail(id: string) {
 }
 
 async function saveTemplate() {
+  if (saving.value) {
+    return
+  }
   if (!form.templateName.trim()) {
     showFormValidationMessage('请填写模板名称')
     return
@@ -84,18 +85,21 @@ async function saveTemplate() {
     showFormValidationMessage('请至少添加一个布局组件')
     return
   }
+  saving.value = true
   try {
     selectedId.value = await portfolioPortraitTemplateApi.save({
       id: selectedId.value,
       templateName: form.templateName.trim(),
       academicYear: form.academicYear,
-      layoutJson: serializePortraitLayout(layoutWidgets.value),
-      chartConfigJson: serializePortraitChartConfig(layoutWidgets.value),
+      layout: toPortraitLayoutPayload(layoutWidgets.value),
+      chartConfig: toPortraitChartConfigPayload(layoutWidgets.value),
     })
     message.success('画像模板已保存')
     await loadList()
   } catch (error) {
     showUserError(error, '保存画像模板失败')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -117,8 +121,8 @@ onMounted(loadList)
     </template>
     <div class="layout">
       <UiCard title="模板列表" class="list">
-        <a-spin :spinning="loading">
-          <UiEmpty v-if="!loading && templates.length === 0" description="当前筛选无画像模板" />
+        <UiSpin :spinning="loading">
+          <UiEmpty size="sm" v-if="!loading && templates.length === 0" description="当前筛选无画像模板" />
           <ul v-else class="template-list">
             <li
               v-for="item in templates"
@@ -131,8 +135,8 @@ onMounted(loadList)
               <span class="meta">{{ item.academicYear }}</span>
             </li>
           </ul>
-        </a-spin>
-        <UiButton style="margin-top: 12px" @click="newTemplate"> 新建模板 </UiButton>
+        </UiSpin>
+        <UiButton size="sm" style="margin-top: 12px" @click="newTemplate"> 新建模板 </UiButton>
       </UiCard>
       <UiCard title="布局编辑">
         <div class="form-row">
@@ -140,7 +144,7 @@ onMounted(loadList)
           <input v-model="form.academicYear" class="input" placeholder="学年" />
         </div>
         <PortfolioPortraitLayoutEditor v-model:widgets="layoutWidgets" />
-        <UiButton variant="primary" style="margin-top: 12px" @click="saveTemplate"> 保存 </UiButton>
+        <UiButton size="sm" variant="primary" style="margin-top: 12px" :loading="saving" :disabled="saving" @click="saveTemplate"> 保存 </UiButton>
       </UiCard>
     </div>
   </StageWorkbenchShell>
@@ -150,7 +154,7 @@ onMounted(loadList)
 .layout {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 .template-list {
   margin: 0;
@@ -164,7 +168,7 @@ onMounted(loadList)
   font-size: 14px;
 }
 .template-item--active {
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
 }
 .meta {
   display: block;
@@ -178,7 +182,7 @@ onMounted(loadList)
 }
 .input {
   padding: 6px 8px;
-  border: 1px solid var(--ant-color-border);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
 }
 .input--wide {

@@ -11,15 +11,23 @@ import type {
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { PlusOutlined } from '@ant-design/icons-vue'
-import { DatePicker, Form, Input, InputNumber, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeacherCohortProfileApi } from '@/apis/portfolio/teacher-cohort-profile'
 import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -28,14 +36,22 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 const loading = ref(false)
+const profileActiveTab = ref('education')
+const profileTabItems = [
+  { key: 'education', label: '主要学历' },
+  { key: 'academic-experience', label: '主要学术经历' },
+  { key: 'academic-appointment', label: '教学学术任（兼）职' },
+]
 const savingProfile = ref(false)
 const courseLoading = ref(false)
 const courseSaving = ref(false)
@@ -217,6 +233,10 @@ async function loadProfile() {
 
 async function saveCohortProfile() {
   if (!targetTeacherId.value || savingCohortProfile.value) return
+
+  if (!(await confirmProxyWrite('保存分群画像'))) {
+    return
+  }
   const scopeToken = requestToken.value
   const teacherId = targetTeacherId.value
   savingCohortProfile.value = true
@@ -384,6 +404,10 @@ async function saveCvRecord() {
   if (!validateCvForm() || cvWriteBusy.value) {
     return
   }
+  if (!(await confirmProxyWrite('保存履历记录'))) {
+    return
+  }
+
   const scopeToken = requestToken.value
   const teacherId = targetTeacherId.value
   cvSaving.value = true
@@ -497,6 +521,13 @@ async function saveProfile() {
     showFormValidationMessage('管理员查看模式下不可编辑个人资料')
     return
   }
+  if (savingProfile.value) {
+    return
+  }
+  if (!(await confirmProxyWrite('保存个人资料'))) {
+    return
+  }
+
   savingProfile.value = true
   try {
     await portfolioTeacherProfileApi.save({
@@ -530,6 +561,13 @@ function openCourseModal(row?: PortfolioTeacherTaughtCourseVO) {
 }
 
 async function saveCourse() {
+  if (courseWriteBusy.value) {
+    return
+  }
+  if (!(await confirmProxyWrite('保存授课课程'))) {
+    return
+  }
+
   courseSaving.value = true
   try {
     await portfolioTeacherProfileApi.saveTaughtCourse({
@@ -558,6 +596,10 @@ async function removeCourse(row: PortfolioTeacherTaughtCourseVO) {
     return
   }
   if (readonlyProfile.value || courseWriteBusy.value) return
+
+  if (!(await confirmProxyWrite('删除授课课程'))) {
+    return
+  }
   const operationToken = courseRequestToken.value
   const confirmed = await confirmAsync({
     title: '删除手工讲授课程',
@@ -634,9 +676,11 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
       />
     </template>
 
-    <UiCard v-if="loadFailed" title="加载失败">
-      <UiEmpty description="个人资料加载失败">
-        <UiButton @click="loadProfile">重试</UiButton>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+
+    <UiCard v-else-if="loadFailed" title="加载失败">
+      <UiEmpty size="sm" description="个人资料加载失败">
+        <UiButton size="sm" @click="loadProfile">重试</UiButton>
       </UiEmpty>
     </UiCard>
 
@@ -650,53 +694,57 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
       </UiCard>
 
       <UiCard v-if="readonlyProfile" title="画像对标主数据" class="mt-16">
-        <Form layout="vertical">
-          <Form.Item label="岗位等级">
-            <Input v-model:value="cohortProfileForm.jobLevel" placeholder="例如：专技十级" />
-          </Form.Item>
-          <Form.Item label="专业群编码">
-            <Input
-              v-model:value="cohortProfileForm.majorGroupCode"
+        <UiForm layout="vertical">
+          <UiFormItem label="岗位等级" compact>
+            <UiInput v-model="cohortProfileForm.jobLevel" size="sm" placeholder="例如：专技十级" />
+          </UiFormItem>
+          <UiFormItem label="专业群编码" compact>
+            <UiInput
+              v-model="cohortProfileForm.majorGroupCode"
+              size="sm"
               placeholder="例如：MG-COMPUTING"
             />
-          </Form.Item>
-          <Form.Item label="专业群名称">
-            <Input
-              v-model:value="cohortProfileForm.majorGroupName"
+          </UiFormItem>
+          <UiFormItem label="专业群名称" compact>
+            <UiInput
+              v-model="cohortProfileForm.majorGroupName"
+              size="sm"
               placeholder="例如：新一代信息技术专业群"
             />
-          </Form.Item>
-          <UiButton :loading="savingCohortProfile" @click="saveCohortProfile">
+          </UiFormItem>
+          <UiButton size="sm" :loading="savingCohortProfile" @click="saveCohortProfile">
             保存对标主数据
           </UiButton>
-        </Form>
+        </UiForm>
       </UiCard>
 
       <UiCard title="可补充资料" class="mt-16">
-        <Form layout="vertical">
-          <Form.Item label="研究方向">
-            <Input
-              v-model:value="profileForm.researchDirection"
+        <UiForm layout="vertical">
+          <UiFormItem label="研究方向" compact>
+            <UiInput
+              v-model="profileForm.researchDirection"
+              size="sm"
               :disabled="readonlyProfile"
               placeholder="可补充研究方向"
             />
-          </Form.Item>
-          <Form.Item label="教研室">
-            <Input
-              v-model:value="profileForm.teachingGroupName"
+          </UiFormItem>
+          <UiFormItem label="教研室" compact>
+            <UiInput
+              v-model="profileForm.teachingGroupName"
+              size="sm"
               :disabled="readonlyProfile"
               placeholder="可补充教研室名称"
             />
-          </Form.Item>
-          <UiButton v-if="!readonlyProfile" :loading="savingProfile" @click="saveProfile">
+          </UiFormItem>
+          <UiButton size="sm" v-if="!readonlyProfile" :loading="savingProfile" @click="saveProfile">
             保存资料
           </UiButton>
-        </Form>
+        </UiForm>
       </UiCard>
 
       <UiCard title="讲授课程" class="mt-16">
         <template #extra>
-          <UiButton v-if="!readonlyProfile" @click="openCourseModal()"> 手工补充 </UiButton>
+          <UiButton size="sm" v-if="!readonlyProfile" @click="openCourseModal()"> 手工补充 </UiButton>
         </template>
         <UiDataTable
           v-model:current="coursePageNum"
@@ -715,6 +763,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton
+                size="sm"
                 v-if="record.sourceType === 'MANUAL' && !readonlyProfile"
                 variant="ghost"
                 :disabled="courseWriteBusy"
@@ -723,6 +772,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
                 编辑
               </UiButton>
               <UiButton
+                size="sm"
                 v-if="record.sourceType === 'MANUAL' && !readonlyProfile"
                 variant="ghost"
                 status="danger"
@@ -738,135 +788,139 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
       </UiCard>
 
       <UiCard title="学历与学术履历" class="mt-16">
-        <a-tabs>
-          <a-tab-pane key="education" tab="主要学历">
-            <div v-if="!readonlyProfile" class="cv-actions">
-              <UiButton :disabled="cvWriteBusy" @click="openCvModal('education')">
-                <PlusOutlined />
-                新增学历
-              </UiButton>
-            </div>
-            <UiDataTable
-              pagination-mode="none"
-              :columns="educationColumns"
-              :data-source="educations"
-              :loading="cvLoading"
-              :show-pagination="false"
-              row-key="id"
-              flat
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'period'">{{ cvPeriod(record) }}</template>
-                <template v-else-if="column.key === 'sourceType'">
-                  <UiTag>{{ sourceLabel(record.sourceType) }}</UiTag>
-                </template>
-                <template v-else-if="column.key === 'actions'">
-                  <UiTableActions
-                    :items="buildCvActions(record)"
-                    @action="(key) => handleCvAction(key, 'education', record)"
-                  />
-                </template>
+        <UiSectionTabs
+          v-model="profileActiveTab"
+          :items="profileTabItems"
+          compact
+          divided
+        />
+        <template v-if="profileActiveTab === 'education'">
+          <div v-if="!readonlyProfile" class="cv-actions">
+            <UiButton size="sm" :disabled="cvWriteBusy" @click="openCvModal('education')">
+              <PlusOutlined />
+              新增学历
+            </UiButton>
+          </div>
+          <UiDataTable
+            pagination-mode="none"
+            :columns="educationColumns"
+            :data-source="educations"
+            :loading="cvLoading"
+            :show-pagination="false"
+            row-key="id"
+            flat
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'period'">{{ cvPeriod(record) }}</template>
+              <template v-else-if="column.key === 'sourceType'">
+                <UiTag>{{ sourceLabel(record.sourceType) }}</UiTag>
               </template>
-            </UiDataTable>
-          </a-tab-pane>
-          <a-tab-pane key="academic-experience" tab="主要学术经历">
-            <div v-if="!readonlyProfile" class="cv-actions">
-              <UiButton :disabled="cvWriteBusy" @click="openCvModal('academicExperience')">
-                <PlusOutlined />
-                新增经历
-              </UiButton>
-            </div>
-            <UiDataTable
-              pagination-mode="none"
-              :columns="academicExperienceColumns"
-              :data-source="academicExperiences"
-              :loading="cvLoading"
-              :show-pagination="false"
-              row-key="id"
-              flat
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'period'">{{ cvPeriod(record) }}</template>
-                <template v-else-if="column.key === 'sourceType'">
-                  <UiTag>{{ sourceLabel(record.sourceType) }}</UiTag>
-                </template>
-                <template v-else-if="column.key === 'actions'">
-                  <UiTableActions
-                    :items="buildCvActions(record)"
-                    @action="(key) => handleCvAction(key, 'academicExperience', record)"
-                  />
-                </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTableActions
+                  :items="buildCvActions(record)"
+                  @action="(key) => handleCvAction(key, 'education', record)"
+                />
               </template>
-            </UiDataTable>
-          </a-tab-pane>
-          <a-tab-pane key="academic-appointment" tab="教学学术任（兼）职">
-            <div v-if="!readonlyProfile" class="cv-actions">
-              <UiButton :disabled="cvWriteBusy" @click="openCvModal('academicAppointment')">
-                <PlusOutlined />
-                新增任职
-              </UiButton>
-            </div>
-            <UiDataTable
-              pagination-mode="none"
-              :columns="academicAppointmentColumns"
-              :data-source="academicAppointments"
-              :loading="cvLoading"
-              :show-pagination="false"
-              row-key="id"
-              flat
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'period'">{{ cvPeriod(record) }}</template>
-                <template v-else-if="column.key === 'sourceType'">
-                  <UiTag>{{ sourceLabel(record.sourceType) }}</UiTag>
-                </template>
-                <template v-else-if="column.key === 'actions'">
-                  <UiTableActions
-                    :items="buildCvActions(record)"
-                    @action="(key) => handleCvAction(key, 'academicAppointment', record)"
-                  />
-                </template>
+            </template>
+          </UiDataTable>
+        </template>
+        <template v-else-if="profileActiveTab === 'academic-experience'">
+          <div v-if="!readonlyProfile" class="cv-actions">
+            <UiButton size="sm" :disabled="cvWriteBusy" @click="openCvModal('academicExperience')">
+              <PlusOutlined />
+              新增经历
+            </UiButton>
+          </div>
+          <UiDataTable
+            pagination-mode="none"
+            :columns="academicExperienceColumns"
+            :data-source="academicExperiences"
+            :loading="cvLoading"
+            :show-pagination="false"
+            row-key="id"
+            flat
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'period'">{{ cvPeriod(record) }}</template>
+              <template v-else-if="column.key === 'sourceType'">
+                <UiTag>{{ sourceLabel(record.sourceType) }}</UiTag>
               </template>
-            </UiDataTable>
-          </a-tab-pane>
-        </a-tabs>
+              <template v-else-if="column.key === 'actions'">
+                <UiTableActions
+                  :items="buildCvActions(record)"
+                  @action="(key) => handleCvAction(key, 'academicExperience', record)"
+                />
+              </template>
+            </template>
+          </UiDataTable>
+        </template>
+        <template v-else-if="profileActiveTab === 'academic-appointment'">
+          <div v-if="!readonlyProfile" class="cv-actions">
+            <UiButton size="sm" :disabled="cvWriteBusy" @click="openCvModal('academicAppointment')">
+              <PlusOutlined />
+              新增任职
+            </UiButton>
+          </div>
+          <UiDataTable
+            pagination-mode="none"
+            :columns="academicAppointmentColumns"
+            :data-source="academicAppointments"
+            :loading="cvLoading"
+            :show-pagination="false"
+            row-key="id"
+            flat
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'period'">{{ cvPeriod(record) }}</template>
+              <template v-else-if="column.key === 'sourceType'">
+                <UiTag>{{ sourceLabel(record.sourceType) }}</UiTag>
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTableActions
+                  :items="buildCvActions(record)"
+                  @action="(key) => handleCvAction(key, 'academicAppointment', record)"
+                />
+              </template>
+            </template>
+          </UiDataTable>
+        </template>
       </UiCard>
     </template>
   </StageWorkbenchShell>
 
-  <a-modal
+  <UiDialog
     v-model:open="courseModalOpen"
     :title="editingCourse ? '编辑讲授课程' : '手工补充讲授课程'"
     :confirm-loading="courseSaving"
     @ok="saveCourse"
     @cancel="resetCourseEditorContext"
   >
-    <Form layout="vertical">
-      <Form.Item label="课程编码" required>
-        <Input v-model:value="courseForm.courseCode" />
-      </Form.Item>
-      <Form.Item label="课程名称" required>
-        <Input v-model:value="courseForm.courseName" />
-      </Form.Item>
-      <Form.Item label="学年" required>
-        <Input v-model:value="courseForm.academicYear" placeholder="如 2025-2026" />
-      </Form.Item>
-      <Form.Item label="学期" required>
-        <Input v-model:value="courseForm.semester" placeholder="如 1 / 2" />
-      </Form.Item>
-      <Form.Item label="本人学时">
-        <InputNumber v-model:value="courseForm.personalHours" class="w-full" :min="0" />
-      </Form.Item>
-      <Form.Item label="总学时">
-        <InputNumber v-model:value="courseForm.totalHours" class="w-full" :min="0" />
-      </Form.Item>
-      <Form.Item label="选课人数">
-        <InputNumber v-model:value="courseForm.studentCount" class="w-full" :min="0" />
-      </Form.Item>
-    </Form>
-  </a-modal>
+    <UiForm layout="vertical">
+      <UiFormItem label="课程编码" required compact>
+        <UiInput v-model="courseForm.courseCode" size="sm" />
+      </UiFormItem>
+      <UiFormItem label="课程名称" required compact>
+        <UiInput v-model="courseForm.courseName" size="sm" />
+      </UiFormItem>
+      <UiFormItem label="学年" required compact>
+        <UiInput v-model="courseForm.academicYear" size="sm" placeholder="如 2025-2026" />
+      </UiFormItem>
+      <UiFormItem label="学期" required compact>
+        <UiInput v-model="courseForm.semester" size="sm" placeholder="如 1 / 2" />
+      </UiFormItem>
+      <UiFormItem label="本人学时" compact>
+        <UiInputNumber v-model="courseForm.personalHours" size="sm" :min="0" />
+      </UiFormItem>
+      <UiFormItem label="总学时" compact>
+        <UiInputNumber v-model="courseForm.totalHours" size="sm" :min="0" />
+      </UiFormItem>
+      <UiFormItem label="选课人数" compact>
+        <UiInputNumber v-model="courseForm.studentCount" size="sm" :min="0" />
+      </UiFormItem>
+    </UiForm>
+  </UiDialog>
 
-  <a-modal
+  <UiDialog
     v-model:open="cvModalOpen"
     :title="cvModalTitle"
     :confirm-loading="cvSaving"
@@ -874,65 +928,65 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
     @ok="saveCvRecord"
     @cancel="resetCvEditor"
   >
-    <Form layout="vertical">
+    <UiForm layout="vertical">
       <template v-if="cvKind === 'education'">
-        <Form.Item label="学校" required>
-          <Input v-model:value="cvForm.schoolName" :disabled="cvWriteBusy" />
-        </Form.Item>
-        <Form.Item label="系或专业">
-          <Input v-model:value="cvForm.departmentMajor" :disabled="cvWriteBusy" />
-        </Form.Item>
-        <Form.Item label="学位" required>
-          <Input v-model:value="cvForm.degreeName" :disabled="cvWriteBusy" />
-        </Form.Item>
+        <UiFormItem label="学校" required compact>
+          <UiInput v-model="cvForm.schoolName" size="sm" :disabled="cvWriteBusy" />
+        </UiFormItem>
+        <UiFormItem label="系或专业" compact>
+          <UiInput v-model="cvForm.departmentMajor" size="sm" :disabled="cvWriteBusy" />
+        </UiFormItem>
+        <UiFormItem label="学位" required compact>
+          <UiInput v-model="cvForm.degreeName" size="sm" :disabled="cvWriteBusy" />
+        </UiFormItem>
       </template>
       <template v-else>
-        <Form.Item label="单位" required>
-          <Input v-model:value="cvForm.organizationUnit" :disabled="cvWriteBusy" />
-        </Form.Item>
-        <Form.Item label="职务" :required="cvKind === 'academicAppointment'">
-          <Input v-model:value="cvForm.positionTitle" :disabled="cvWriteBusy" />
-        </Form.Item>
-        <Form.Item v-if="cvKind === 'academicExperience'" label="职称">
-          <Input v-model:value="cvForm.professionalTitle" :disabled="cvWriteBusy" />
-        </Form.Item>
+        <UiFormItem label="单位" required compact>
+          <UiInput v-model="cvForm.organizationUnit" size="sm" :disabled="cvWriteBusy" />
+        </UiFormItem>
+        <UiFormItem label="职务" :required="cvKind === 'academicAppointment'" compact>
+          <UiInput v-model="cvForm.positionTitle" size="sm" :disabled="cvWriteBusy" />
+        </UiFormItem>
+        <UiFormItem v-if="cvKind === 'academicExperience'" label="职称" compact>
+          <UiInput v-model="cvForm.professionalTitle" size="sm" :disabled="cvWriteBusy" />
+        </UiFormItem>
       </template>
       <div class="cv-period-grid">
-        <Form.Item label="开始年月" required>
-          <DatePicker
-            v-model:value="cvForm.startYearMonth"
+        <UiFormItem label="开始年月" required compact>
+          <UiDatePicker
+            v-model="cvForm.startYearMonth"
             picker="month"
             value-format="YYYY-MM"
             format="YYYY-MM"
+            size="sm"
             :disabled="cvWriteBusy"
-            class="w-full"
           />
-        </Form.Item>
-        <Form.Item label="结束年月">
-          <DatePicker
-            v-model:value="cvForm.endYearMonth"
+        </UiFormItem>
+        <UiFormItem label="结束年月" compact>
+          <UiDatePicker
+            v-model="cvForm.endYearMonth"
             picker="month"
             value-format="YYYY-MM"
             format="YYYY-MM"
             allow-clear
+            size="sm"
             :disabled="cvWriteBusy"
-            class="w-full"
           />
-        </Form.Item>
+        </UiFormItem>
       </div>
-    </Form>
-  </a-modal>
+    </UiForm>
+  </UiDialog>
 </template>
 
 <style scoped>
 .profile-readonly-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 .label {
   display: block;
-  color: var(--text-secondary, #666);
+  color: var(--dp-text-secondary);
   margin-bottom: 4px;
 }
 .mt-16 {
@@ -949,7 +1003,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
 .cv-period-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 @media (max-width: 640px) {
   .profile-readonly-grid,

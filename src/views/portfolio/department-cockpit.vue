@@ -12,6 +12,9 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -301,13 +304,14 @@ watch(
         :subtitle="summary?.departmentName || portrait?.departmentName"
       >
         <template #actions>
-          <UiButton :disabled="!departmentId" @click="goDeptOneTable()"> 部门一张表 </UiButton>
+          <UiButton size="sm" :disabled="!departmentId" @click="goDeptOneTable()"> 部门一张表 </UiButton>
         </template>
       </ContextBar>
     </template>
     <UiCard title="组织范围">
-      <a-select
-        v-model:value="departmentId"
+      <UiSelect
+        size="sm"
+        v-model="departmentId"
         class="dept-cockpit__field"
         placeholder="选择院系"
         :options="departmentOptions"
@@ -321,14 +325,29 @@ watch(
         @metric-click="handleSignalMetricClick"
       />
     </template>
-    <a-spin :spinning="loading">
-      <UiEmpty v-if="!loading && !departmentId" description="请选择院系" />
-      <UiEmpty v-else-if="!loading && !summary" description="当前院系暂无驾驶舱数据" />
+    <UiSpin :spinning="loading">
+      <UiAlertStrip
+        v-if="!loading && !departmentId"
+        tone="info"
+        size="sm"
+        dense
+        inline
+        :show-icon="false"
+      >
+        <template #default>
+          <span class="dept-cockpit__gate-row">
+            <UiTag tone="blue" size="sm">未选择院系</UiTag>
+            <span>请在上方选择院系后查看驾驶舱</span>
+          </span>
+        </template>
+      </UiAlertStrip>
+      <UiEmpty size="sm" v-else-if="!loading && !summary" description="当前院系暂无驾驶舱数据" />
       <template v-else-if="summary">
         <UiStatPanel
           v-if="portrait"
           title="院系画像均值"
           :items="portraitStats"
+          compact
           class="dept-cockpit__portrait"
         />
         <UiCard
@@ -357,7 +376,7 @@ watch(
           :initial-task-id="deepLinkTaskId || undefined"
         />
       </template>
-    </a-spin>
+    </UiSpin>
   </StageWorkbenchShell>
 </template>
 
@@ -365,6 +384,15 @@ watch(
 .dept-cockpit__field {
   width: 100%;
   max-width: 320px;
+}
+
+.dept-cockpit__gate-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  min-width: 0;
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
 }
 
 .dept-cockpit__portrait,
@@ -381,7 +409,7 @@ watch(
 .dept-cockpit__alert-item + .dept-cockpit__alert-item {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--dp-border, #f0f0f0);
+  border-top: 1px solid var(--dp-border);
 }
 
 .dept-cockpit__alert-head {

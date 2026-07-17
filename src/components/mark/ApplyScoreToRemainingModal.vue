@@ -89,11 +89,11 @@ onBeforeUnmount(clearTimer)
   max-width: 360px;
 
   &__panel {
-    padding: 16px;
-    border: 1px solid var(--ant-color-border-secondary);
+    padding: var(--dp-space-3, 12px);
+    border: 1px solid var(--dp-border, var(--dp-border-subtle));
     border-radius: var(--dp-radius-panel);
-    background: var(--ant-color-bg-container);
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+    background: var(--dp-surface, var(--dp-bg-container));
+    box-shadow: var(--dp-shadow-md));
   }
 
   &__title {
@@ -118,8 +118,8 @@ onBeforeUnmount(clearTimer)
   &__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 12px;
+    gap: var(--dp-space-2, 8px);
+    margin-top: var(--dp-space-2, 8px);
   }
 }
 </style>

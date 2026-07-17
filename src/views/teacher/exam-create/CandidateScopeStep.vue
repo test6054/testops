@@ -21,7 +21,7 @@
       @close="rosterPreviewError = ''"
     />
 
-    <a-form
+    <UiForm
       ref="formRef"
       :model="rosterForm"
       :rules="rosterRules"
@@ -30,64 +30,68 @@
       :wrapper-col="{ flex: 1 }"
       class="create-form"
     >
-      <a-form-item
+      <UiFormItem
         label="纳入方式"
         name="scopeMode"
         tooltip="整班纳入自动列出全部在籍学生；按人勾选可在班级基础上移除或追加考生。"
       >
-        <a-segmented
-          :value="rosterForm.scopeMode"
+        <UiSegmented
+          :model-value="rosterForm.scopeMode"
           :options="EXAM_ROSTER_SCOPE_MODE_OPTIONS"
           block
+          size="sm"
           @change="handleScopeModeChange"
         />
-      </a-form-item>
+      </UiFormItem>
 
-      <a-row :gutter="24" class="create-form__split-row">
-        <a-col :span="12">
-          <a-form-item
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem
             label="院系"
             required
             tooltip="须先选择院系，再选择该院系下的参考班级。"
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select
-              v-model:value="departmentId"
+            <UiSelect
+              size="sm"
+              v-model="departmentId"
               placeholder="请选择院系"
               :options="departmentOptions"
               :loading="departmentLoading"
-              show-search
+              allow-search
               option-filter-prop="label"
               allow-clear
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
             label="参考班级"
             name="classIds"
             :tooltip="referenceClassTip"
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <a-select
-              v-model:value="rosterForm.classIds"
+            <UiSelect
+              size="sm"
+              v-model="rosterForm.classIds"
               mode="multiple"
               :placeholder="departmentId ? '选择参考班级（可多选）' : '请先选择院系'"
               :options="classSelectOptions"
               :loading="classOptionsLoading"
               :disabled="!departmentId"
-              show-search
+              allow-search
               option-filter-prop="label"
               allow-clear
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-    </a-form>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+    </UiForm>
 
     <UiEmpty
+      size="sm"
       v-if="!rosterForm.candidates.length && !classOptionsLoading"
       :description="emptyDescription"
     />
@@ -139,7 +143,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
-import { message, Modal } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, ref, toRef, watch } from 'vue'
 import {
   EXAM_ROSTER_SCOPE_MODE_OPTIONS,
@@ -150,8 +154,15 @@ import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSel
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSegmented from '@/components/ui-guide/ui/UiSegmented.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamDepartmentClassScope } from '@/composables/useExamDepartmentClassScope'
 import {
   readBusinessResultCode,
@@ -258,11 +269,12 @@ function handleScopeModeChange(val: string | number): void {
     emit('change-scope-mode', mode)
     return
   }
-  Modal.confirm({
+  void confirmAsync({
     title: '切换纳入方式',
     content: '切换后将清空已选参考班级与考生预览，是否继续？',
     okText: '继续切换',
     cancelText: '取消',
+    type: 'warning',
     onOk: () => emit('change-scope-mode', mode),
   })
 }
@@ -432,7 +444,7 @@ watch(formRef, (value) => {
 
   &__name {
     font-weight: 500;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
   }
 
   &__no {

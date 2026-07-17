@@ -13,8 +13,12 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioIndicatorDashboardApi } from '@/apis/portfolio/indicator'
 import { PF_SCENE_CODE_OPTIONS, PfSceneCodeDescription } from '@/apis/portfolio/indicator-types'
 import MarkChart from '@/components/chart/MarkChart.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -248,21 +252,24 @@ onMounted(loadDashboard)
       />
     </template>
     <div class="toolbar">
-      <a-select
-        v-model:value="sceneCode"
+      <UiSelect
+        size="sm"
+        v-model="sceneCode"
         allow-clear
         placeholder="全部场景"
         :options="PF_SCENE_CODE_OPTIONS"
         style="width: 140px"
       />
-      <a-input-number v-model:value="query.topLimit" :min="5" :max="100" style="width: 120px" />
-      <a-button type="primary" :loading="loading" @click="loadDashboard"> 刷新 </a-button>
+      <UiInputNumber
+        size="sm" v-model="query.topLimit" :min="5" :max="100" style="width: 120px"
+      />
+      <UiButton size="sm" variant="primary" :loading="loading" @click="loadDashboard">刷新</UiButton>
     </div>
     <template #signal>
       <SignalBand v-if="summary" :metrics="signals" compact />
     </template>
-    <a-spin :spinning="loading">
-      <UiEmpty v-if="!loading && !summary" description="当前范围无指标看板数据" />
+    <UiSpin :spinning="loading">
+      <UiEmpty size="sm" v-if="!loading && !summary" description="当前范围无指标看板数据" />
       <div v-else-if="summary" class="chart-grid">
         <UiCard title="一级维度分布">
           <MarkChart
@@ -302,7 +309,7 @@ onMounted(loadDashboard)
           />
         </UiCard>
       </div>
-    </a-spin>
+    </UiSpin>
   </StageWorkbenchShell>
 </template>
 
@@ -315,12 +322,12 @@ onMounted(loadDashboard)
   flex-wrap: wrap;
 }
 .dashboard__signals {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-3, 12px);
 }
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 @media (max-width: #{bp.$ant-grid-xl - 1px}) {
   .chart-grid {

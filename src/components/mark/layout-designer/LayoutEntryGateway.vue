@@ -12,7 +12,13 @@ import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExamLayoutEntryKindCode } from '@/types/enums/exam-layout-entry-kind-enum'
 import {
@@ -328,8 +334,8 @@ function onSourcePdfChange(fileId: string | undefined): void {
 
 <template>
   <section class="layout-entry-gateway">
-    <a-form layout="vertical" class="layout-entry-gateway__form">
-      <a-tooltip
+    <UiForm layout="vertical" class="layout-entry-gateway__form">
+      <UiTooltip
         v-if="!materialLayoutMode"
         title="请先回到考试准备页保存答卷页模式或整卷模式，再进入制卷设计。"
       >
@@ -341,42 +347,44 @@ function onSourcePdfChange(fileId: string | undefined): void {
           :closable="false"
           class="layout-entry-gateway__alert"
         />
-      </a-tooltip>
+      </UiTooltip>
 
-      <a-form-item label="制卷名称">
-        <a-input
-          v-model:value="layoutName"
+      <UiFormItem label="制卷名称">
+        <UiInput
+          size="sm"
+          v-model="layoutName"
           :disabled="readonly"
           placeholder="如：2025 春季期末试卷"
           @blur="patchDocument({ layoutName })"
         />
-      </a-form-item>
-      <a-form-item>
+      </UiFormItem>
+      <UiFormItem>
         <template #label>
           <span class="layout-entry-gateway__label">
             安全边距（mm）
-            <a-tooltip title="印刷裁切留白，影响页边识别区与题区排版。">
+            <UiTooltip title="印刷裁切留白，影响页边识别区与题区排版。">
               <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
-            </a-tooltip>
+            </UiTooltip>
           </span>
         </template>
-        <a-input-number
-          v-model:value="printSafeMarginMm"
+        <UiInputNumber
+          size="sm"
+          v-model="printSafeMarginMm"
           :min="3"
           :max="20"
           style="width: 100%"
           @change="patchDocument({ printSafeMarginMm })"
         />
-      </a-form-item>
+      </UiFormItem>
 
       <template v-if="isFullPaperMode">
-        <a-form-item>
+        <UiFormItem>
           <template #label>
             <span class="layout-entry-gateway__label">
               整卷源文件
-              <a-tooltip title="上传便携文档、文字文档或图片后将异步识别题目、分页入库并生成题单。">
+              <UiTooltip title="上传便携文档、文字文档或图片后将异步识别题目、分页入库并生成题单。">
                 <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
-              </a-tooltip>
+              </UiTooltip>
             </span>
           </template>
           <UiPlatformFileField
@@ -388,8 +396,9 @@ function onSourcePdfChange(fileId: string | undefined): void {
             button-text="上传源文件"
             @update:file-node-id="onSourcePdfChange"
           />
-        </a-form-item>
+        </UiFormItem>
         <UiButton
+          size="sm"
           block
           variant="primary"
           :loading="detecting"
@@ -401,22 +410,23 @@ function onSourcePdfChange(fileId: string | undefined): void {
       </template>
 
       <template v-if="isAnswerSheetMode">
-        <a-form-item>
+        <UiFormItem>
           <template #label>
             <span class="layout-entry-gateway__label">
               纸型
-              <a-tooltip :title="paperSpecTooltip">
+              <UiTooltip :title="paperSpecTooltip">
                 <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
-              </a-tooltip>
+              </UiTooltip>
             </span>
           </template>
-          <a-select
-            v-model:value="paperSpec"
+          <UiSelect
+            size="sm"
+            v-model="paperSpec"
             :options="paperSpecOptions"
             :disabled="entryReadonly"
           />
-        </a-form-item>
-        <a-form-item label="题目结构">
+        </UiFormItem>
+        <UiFormItem label="题目结构">
           <div class="layout-entry-gateway__quick-actions">
             <button
               v-for="scene in QUICK_SCENE_OPTIONS"
@@ -443,14 +453,14 @@ function onSourcePdfChange(fileId: string | undefined): void {
               :key="row.id"
               class="layout-entry-gateway__question-row"
             >
-              <a-input
-                v-model:value="row.questionNo"
+              <UiInput
+                v-model="row.questionNo"
                 size="small"
                 :disabled="entryReadonly"
                 aria-label="题号"
               />
-              <a-select
-                v-model:value="row.ocrScene"
+              <UiSelect
+                v-model="row.ocrScene"
                 size="small"
                 :options="OCR_SCENE_OPTIONS"
                 :disabled="entryReadonly"
@@ -462,18 +472,18 @@ function onSourcePdfChange(fileId: string | undefined): void {
               >
                 {{ questionTypeLabel(row.questionType) }}
               </span>
-              <a-input-number
-                v-model:value="row.fullScore"
-                size="small"
+              <UiInputNumber
+                v-model="row.fullScore"
+                size="sm"
                 :min="0.5"
                 :max="100"
                 :step="0.5"
                 :disabled="entryReadonly"
                 aria-label="满分"
               />
-              <a-input-number
-                v-model:value="row.optionCount"
-                size="small"
+              <UiInputNumber
+                v-model="row.optionCount"
+                size="sm"
                 :min="2"
                 :max="8"
                 :disabled="entryReadonly || row.ocrScene !== 'CHOICE'"
@@ -491,8 +501,9 @@ function onSourcePdfChange(fileId: string | undefined): void {
               </button>
             </div>
           </div>
-        </a-form-item>
+        </UiFormItem>
         <UiButton
+          size="sm"
           block
           variant="primary"
           :loading="generating"
@@ -502,14 +513,14 @@ function onSourcePdfChange(fileId: string | undefined): void {
           生成标准答题卡
         </UiButton>
       </template>
-    </a-form>
+    </UiForm>
   </section>
 </template>
 
 <style scoped lang="scss">
 .layout-entry-gateway {
   max-width: 720px;
-  padding: 16px;
+  padding: var(--dp-space-3, 12px);
 
   &__alert {
     margin-bottom: 12px;
@@ -540,7 +551,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
     padding: 0 8px;
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
-    background: var(--ant-color-bg-container);
+    background: var(--dp-bg-container);
     color: var(--dp-text-primary);
     font-size: 12px;
     line-height: 24px;
@@ -581,7 +592,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
     top: 0;
     z-index: 1;
     min-height: 24px;
-    background: var(--ant-color-bg-container);
+    background: var(--dp-bg-container);
     color: var(--dp-text-secondary);
     font-size: 12px;
   }
@@ -600,8 +611,8 @@ function onSourcePdfChange(fileId: string | undefined): void {
     font-weight: 500;
 
     &--objective {
-      background: var(--ant-color-primary-bg);
-      color: var(--ant-color-primary-active);
+      background: var(--dp-color-primary-bg);
+      color: var(--dp-color-primary-active);
     }
 
     &--subjective {

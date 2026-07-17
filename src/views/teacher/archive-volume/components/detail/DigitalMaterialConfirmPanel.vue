@@ -10,6 +10,8 @@ import {
   confirmArchiveDigitalMaterials,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCheckboxGroup from '@/components/ui-guide/ui/UiCheckboxGroup.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import { ArchiveMaterialSubmissionStatusCode } from '@/types/enums/archive-material-submission-status-enum'
@@ -71,6 +73,7 @@ function toggleAll(checked: boolean) {
 }
 
 async function handleConfirm() {
+  if (confirming.value) return
   if (selectedIds.value.length === 0) {
     showFormValidationMessage('请勾选待确认电子材料')
     return
@@ -112,7 +115,7 @@ async function handleConfirm() {
       线上阅卷已聚合的电子槽位可一键确认，无需逐项扫描登记。
     </p>
     <label class="digital-confirm-panel__all">
-      <a-checkbox
+      <UiCheckbox
         :checked="
           selectedIds.length === confirmableMaterials.length && confirmableMaterials.length > 0
         "
@@ -121,16 +124,16 @@ async function handleConfirm() {
       />
       全选（{{ confirmableMaterials.length }} 项）
     </label>
-    <a-checkbox-group v-model:value="selectedIds" class="digital-confirm-panel__list">
+    <UiCheckboxGroup v-model="selectedIds" class="digital-confirm-panel__list" direction="vertical">
       <label
         v-for="material in confirmableMaterials"
         :key="material.materialId"
         class="digital-confirm-panel__item"
       >
-        <a-checkbox :value="material.materialId" />
+        <UiCheckbox :value="material.materialId" />
         <span>{{ materialLabel(material) }}</span>
       </label>
-    </a-checkbox-group>
+    </UiCheckboxGroup>
   </WorkbenchSurfaceCard>
 </template>
 

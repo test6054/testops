@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { ScanDispatchTicketStatusDescription } from '@/apis/mark/scanner-dispatch'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
 import { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -105,8 +106,8 @@ function goHub() {
         </UiTag>
       </div>
       <div class="dispatch-landing__head-actions">
-        <UiButton size="sm" variant="ghost" @click="goHub">回扫描台首页</UiButton>
-        <UiButton size="sm" variant="ghost" @click="goQueue">返回队列</UiButton>
+        <UiButton variant="ghost" @click="goHub">回扫描台首页</UiButton>
+        <UiButton variant="ghost" @click="goQueue">返回队列</UiButton>
       </div>
     </header>
     <p v-if="session.errorMessage.value" class="dispatch-landing__error">
@@ -115,7 +116,7 @@ function goHub() {
     <p v-if="session.lease.leaseLost.value" class="dispatch-landing__error">
       派单租约已失效，请返回队列重新领取。
     </p>
-    <a-skeleton v-if="session.loading.value" active :paragraph="{ rows: 5 }" />
+    <UiSkeletonState v-if="session.loading.value" :rows="5" compact />
     <section v-else-if="session.ticket.value?.portfolioSnapshot" class="dispatch-landing__panel">
       <h2>
         教师档案袋 ·
@@ -264,14 +265,14 @@ function goHub() {
 .dispatch-landing {
   max-width: 960px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
 }
 .dispatch-landing__head {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-3, 12px);
 }
 .dispatch-landing__head h1 {
   margin: 0 12px 0 0;
@@ -294,8 +295,8 @@ function goHub() {
 }
 .dispatch-landing__panel {
   border: 1px solid var(--kiosk-divider);
-  border-radius: 6px;
-  padding: 16px;
+  border-radius: var(--dp-radius-panel);
+  padding: var(--dp-space-3, 12px);
 }
 .dispatch-landing__panel h2 {
   margin: 0 0 8px;

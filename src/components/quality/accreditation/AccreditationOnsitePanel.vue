@@ -19,9 +19,18 @@ import {
 } from '@/apis/quality/accreditation'
 import { ArchiveSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
+import UiRadio from '@/components/ui-guide/ui/UiRadio.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
@@ -359,7 +368,7 @@ defineExpose({ openCreate, loadPlans })
       }}
     </p>
     <div class="toolbar">
-      <UiButton variant="primary" :disabled="!canCreatePlan" @click="openCreate">
+      <UiButton size="sm" variant="primary" :disabled="!canCreatePlan" @click="openCreate">
         新建考查计划
       </UiButton>
     </div>
@@ -379,7 +388,7 @@ defineExpose({ openCreate, loadPlans })
           {{ record.visitStart }} ~ {{ record.visitEnd }}
         </template>
         <template v-else-if="column.key === 'checklist'">
-          <a-progress
+          <UiProgressBar
             :percent="
               record.totalChecklistCount
                 ? Math.round(
@@ -387,7 +396,9 @@ defineExpose({ openCreate, loadPlans })
                 )
                 : 0
             "
-            size="small"
+            size="sm"
+          
+            :show-label="false"
           />
           <span class="checklist-count">
             {{ record.completedChecklistCount ?? 0 }}/{{ record.totalChecklistCount ?? 0 }}
@@ -406,7 +417,7 @@ defineExpose({ openCreate, loadPlans })
         </template>
       </template>
       <template #empty>
-        <UiEmpty description="暂无现场考查计划" />
+        <UiEmpty size="sm" description="暂无现场考查计划" />
       </template>
     </UiDataTable>
     <div v-if="selectedPlan" class="checklist-block">
@@ -414,17 +425,15 @@ defineExpose({ openCreate, loadPlans })
         <h4>{{ selectedPlan.visitTitle }} — CEEAA 检查清单</h4>
         <span class="checklist-meta">报告截止 {{ selectedPlan.reportDueDate }}</span>
       </div>
-      <a-progress :percent="checklistProgress" size="small" class="checklist-progress" />
-      <a-radio-group
-        v-model:value="checklistCategoryFilter"
-        button-style="solid"
-        size="small"
-        class="cat-filter"
-      >
-        <a-radio-button v-for="tab in CATEGORY_TABS" :key="tab.key || 'all'" :value="tab.key">
+      <UiProgressBar
+        :percent="checklistProgress" size="sm" class="checklist-progress" 
+        :show-label="false"
+      />
+      <UiRadioGroup v-model="checklistCategoryFilter" size="sm" class="cat-filter">
+        <UiRadio v-for="tab in CATEGORY_TABS" :key="tab.key || 'all'" :value="tab.key">
           {{ tab.label }}
-        </a-radio-button>
-      </a-radio-group>
+        </UiRadio>
+      </UiRadioGroup>
       <UiDataTable
         pagination-mode="server"
         v-model:current="checklistPageNum"
@@ -474,27 +483,33 @@ defineExpose({ openCreate, loadPlans })
       ok-text="保存"
       @ok="submitPlan"
     >
-      <a-form layout="vertical">
-        <a-form-item label="计划编码" required>
-          <a-input v-model:value="form.visitCode" :disabled="!!form.id" />
-        </a-form-item>
-        <a-form-item label="计划标题" required>
-          <a-input v-model:value="form.visitTitle" />
-        </a-form-item>
-        <a-form-item label="考查开始" required>
-          <a-date-picker v-model:value="form.visitStart" value-format="YYYY-MM-DD" class="w-full" />
-        </a-form-item>
-        <a-form-item label="考查结束" required>
-          <a-date-picker v-model:value="form.visitEnd" value-format="YYYY-MM-DD" class="w-full" />
-        </a-form-item>
-        <a-form-item label="组长姓名">
-          <a-input v-model:value="form.leadExpertName" />
-        </a-form-item>
-        <a-form-item label="专家组说明">
-          <a-textarea v-model:value="form.expertGroupRemark" :rows="3" />
-        </a-form-item>
+      <UiForm layout="vertical">
+        <UiFormItem label="计划编码" required>
+          <UiInput
+            size="sm" v-model="form.visitCode" :disabled="!!form.id"
+          />
+        </UiFormItem>
+        <UiFormItem label="计划标题" required>
+          <UiInput
+            size="sm" v-model="form.visitTitle"
+          />
+        </UiFormItem>
+        <UiFormItem label="考查开始" required>
+          <UiDatePicker size="sm" v-model="form.visitStart" value-format="YYYY-MM-DD" class="w-full" />
+        </UiFormItem>
+        <UiFormItem label="考查结束" required>
+          <UiDatePicker size="sm" v-model="form.visitEnd" value-format="YYYY-MM-DD" class="w-full" />
+        </UiFormItem>
+        <UiFormItem label="组长姓名">
+          <UiInput
+            size="sm" v-model="form.leadExpertName"
+          />
+        </UiFormItem>
+        <UiFormItem label="专家组说明">
+          <UiTextarea size="sm" v-model="form.expertGroupRemark" :rows="3" />
+        </UiFormItem>
         <p class="hint">报告截止日将自动设为考查结束日 + 15 天。</p>
-      </a-form>
+      </UiForm>
     </UiDrawer>
     <UiDrawer
       v-model:open="checklistDrawerOpen"
@@ -507,36 +522,32 @@ defineExpose({ openCreate, loadPlans })
       <template v-if="editingItem">
         <p class="item-title">{{ editingItem.itemTitle }}</p>
         <p class="item-desc">{{ editingItem.itemDescription }}</p>
-        <a-form layout="vertical">
-          <a-form-item label="状态" required>
-            <a-select v-model:value="checklistForm.itemStatus">
-              <a-select-option :value="OnsiteChecklistItemStatusCode.PENDING">
-                待准备
-              </a-select-option>
-              <a-select-option :value="OnsiteChecklistItemStatusCode.IN_PROGRESS">
-                准备中
-              </a-select-option>
-              <a-select-option :value="OnsiteChecklistItemStatusCode.COMPLETED">
-                已完成
-              </a-select-option>
-              <a-select-option :value="OnsiteChecklistItemStatusCode.NOT_APPLICABLE">
-                不适用
-              </a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item
+        <UiForm layout="vertical">
+          <UiFormItem label="状态" required>
+            <UiSelect
+              v-model="checklistForm.itemStatus"
+              size="sm"
+              :options="[
+                { value: OnsiteChecklistItemStatusCode.PENDING, label: '待准备' },
+                { value: OnsiteChecklistItemStatusCode.IN_PROGRESS, label: '准备中' },
+                { value: OnsiteChecklistItemStatusCode.COMPLETED, label: '已完成' },
+                { value: OnsiteChecklistItemStatusCode.NOT_APPLICABLE, label: '不适用' },
+              ]"
+            />
+          </UiFormItem>
+          <UiFormItem
             label="证据归档"
             :required="checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED"
           >
             <ArchiveSelector v-model:value="checklistForm.evidenceArchiveId" />
-          </a-form-item>
-          <a-form-item
+          </UiFormItem>
+          <UiFormItem
             label="备注"
             :required="checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE"
           >
-            <a-textarea v-model:value="checklistForm.remark" :rows="3" />
-          </a-form-item>
-        </a-form>
+            <UiTextarea size="sm" v-model="checklistForm.remark" :rows="3" />
+          </UiFormItem>
+        </UiForm>
       </template>
     </UiDrawer>
   </div>
@@ -554,7 +565,7 @@ defineExpose({ openCreate, loadPlans })
 }
 .hint {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
   margin: 0;
 }
 .checklist-block {
@@ -575,7 +586,7 @@ defineExpose({ openCreate, loadPlans })
 }
 .checklist-meta {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 .checklist-progress {
   max-width: 360px;
@@ -585,7 +596,7 @@ defineExpose({ openCreate, loadPlans })
 }
 .checklist-count {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
   margin-left: 8px;
 }
 .item-title {
@@ -594,7 +605,7 @@ defineExpose({ openCreate, loadPlans })
 }
 .item-desc {
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--dp-text-tertiary);
   margin: 0 0 12px;
 }
 .w-full {

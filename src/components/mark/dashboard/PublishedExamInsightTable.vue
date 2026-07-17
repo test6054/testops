@@ -96,7 +96,7 @@ function formatPassRate(value?: number): string {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 220px;
+  min-height: 88px;
 }
 
 .published-insight-table__head {
@@ -111,7 +111,7 @@ function formatPassRate(value?: number): string {
 
 .published-insight-table__empty {
   flex: 1;
-  min-height: 180px;
+  min-height: 88px;
   display: flex;
   align-items: center;
   justify-content: center;

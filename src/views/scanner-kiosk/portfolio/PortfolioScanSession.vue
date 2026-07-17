@@ -273,7 +273,7 @@ function goBack() {
     />
     <header class="portfolio-scan-session__head">
       <h1 class="portfolio-scan-session__title">档案袋一体机扫描</h1>
-      <UiButton size="sm" variant="ghost" @click="goBack">返回</UiButton>
+      <UiButton variant="ghost" @click="goBack">返回</UiButton>
     </header>
 
     <p v-if="lease.leaseLost.value" class="portfolio-scan-session__error">{{ leaseLostMessage }}</p>
@@ -423,10 +423,10 @@ function goBack() {
 .portfolio-scan-session {
   max-width: 720px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .portfolio-scan-session__head {

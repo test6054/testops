@@ -11,6 +11,14 @@ import {
   ObjectiveComparePolicyCode as ObjectiveComparePolicy,
 } from '@/apis/mark/exam-standard-answer'
 import { QuestionTypeCode, QuestionTypeDescription } from '@/apis/mark/question-type'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import {
   ALL_MARK_OCR_SCENE_CODES,
   MarkOcrSceneCode,
@@ -202,161 +210,194 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
 <template>
   <section class="layout-question-property">
     <h2 class="layout-question-property__title">题目属性</h2>
-    <a-empty v-if="!focusedQuestion" description="在左侧题单中选择题目" />
-    <a-form v-else layout="vertical" class="layout-question-property__form">
-      <a-form-item label="题号">
-        <a-input
-          :value="focusedQuestion.questionNo"
-          @change="
-            patchQuestion({
-              questionNo: ($event.target as HTMLInputElement).value,
-              normalizedQuestionNo: ($event.target as HTMLInputElement).value,
-            })
+    <UiEmpty v-if="!focusedQuestion" size="sm" description="在左侧题单中选择题目" />
+    <UiForm v-else layout="vertical" class="layout-question-property__form">
+      <UiFormItem label="题号">
+        <UiInput
+          size="sm"
+          :model-value="focusedQuestion.questionNo"
+          @update:model-value="
+            (value) =>
+              patchQuestion({
+                questionNo: String(value ?? ''),
+                normalizedQuestionNo: String(value ?? ''),
+              })
           "
         />
-      </a-form-item>
-      <a-form-item label="OCR 场景">
-        <a-select v-model:value="focusedOcrScene" :options="OCR_SCENE_OPTIONS" />
-      </a-form-item>
-      <a-form-item label="题型">
-        <a-input :value="formatQuestionTypeLabel(focusedQuestion)" disabled />
-      </a-form-item>
-      <a-form-item label="满分">
-        <a-input-number
-          :value="focusedQuestion.fullScore"
+      </UiFormItem>
+      <UiFormItem label="OCR 场景">
+        <UiSelect
+          size="sm" v-model="focusedOcrScene" :options="OCR_SCENE_OPTIONS"
+        />
+      </UiFormItem>
+      <UiFormItem label="题型">
+        <UiInput
+          size="sm" :value="formatQuestionTypeLabel(focusedQuestion)" disabled
+        />
+      </UiFormItem>
+      <UiFormItem label="满分">
+        <UiInputNumber
+          size="sm"
+          :model-value="focusedQuestion.fullScore"
           :min="0.5"
           :max="100"
           :step="0.5"
           style="width: 100%"
-          @change="patchQuestion({ fullScore: Number($event) || 0 })"
+          @change="(value) => patchQuestion({ fullScore: Number(value) || 0 })"
         />
-      </a-form-item>
-      <a-form-item label="题干">
-        <a-textarea
-          :value="focusedQuestion.questionStem"
+      </UiFormItem>
+      <UiFormItem label="题干">
+        <UiTextarea
+          size="sm"
+          :model-value="focusedQuestion.questionStem"
           :rows="5"
           placeholder="自动预划区会回填切题文本，可在此核对修正"
-          @change="patchQuestion({ questionStem: ($event.target as HTMLTextAreaElement).value })"
+          @update:model-value="(value) => patchQuestion({ questionStem: String(value ?? '') })"
         />
-      </a-form-item>
-      <a-divider />
-      <a-form-item label="答案资产状态">
-        <a-input :value="answerCompletenessHint(focusedQuestion)" disabled />
-      </a-form-item>
-      <a-form-item
+      </UiFormItem>
+      <UiDivider />
+      <UiFormItem label="答案资产状态">
+        <UiInput
+          size="sm" :value="answerCompletenessHint(focusedQuestion)" disabled
+        />
+      </UiFormItem>
+      <UiFormItem
         v-if="focusedQuestion.questionType === QuestionTypeCode.OBJECTIVE"
         label="比较策略"
       >
-        <a-select
-          v-model:value="focusedComparePolicy"
+        <UiSelect
+          size="sm"
+          v-model="focusedComparePolicy"
           :options="OBJECTIVE_COMPARE_POLICY_OPTIONS"
         />
-      </a-form-item>
+      </UiFormItem>
       <template v-if="focusedQuestion.answer?.comparePolicy === ObjectiveComparePolicy.CHOICE_SET">
-        <a-form-item label="声明选项">
-          <a-input
-            :value="formatOptions(focusedQuestion.answer?.declaredOptions)"
+        <UiFormItem label="声明选项">
+          <UiInput
+            size="sm"
+            :model-value="formatOptions(focusedQuestion.answer?.declaredOptions)"
             placeholder="A,B,C,D"
-            @change="updateDeclaredOptions(($event.target as HTMLInputElement).value)"
+            @update:model-value="(value) => updateDeclaredOptions(String(value ?? ''))"
           />
-        </a-form-item>
-        <a-form-item label="正确选项">
-          <a-input
-            :value="formatOptions(focusedQuestion.answer?.choiceOptions)"
+        </UiFormItem>
+        <UiFormItem label="正确选项">
+          <UiInput
+            size="sm"
+            :model-value="formatOptions(focusedQuestion.answer?.choiceOptions)"
             placeholder="A 或 A,C"
-            @change="updateChoiceOptions(($event.target as HTMLInputElement).value)"
+            @update:model-value="(value) => updateChoiceOptions(String(value ?? ''))"
           />
-        </a-form-item>
+        </UiFormItem>
       </template>
       <template
         v-else-if="
           focusedQuestion.answer?.comparePolicy === ObjectiveComparePolicy.NUMERIC_TOLERANCE
         "
       >
-        <a-form-item label="数值标准值">
-          <a-input-number
-            :value="focusedQuestion.answer?.numericExpectedValue"
+        <UiFormItem label="数值标准值">
+          <UiInputNumber
+            size="sm"
+            :model-value="focusedQuestion.answer?.numericExpectedValue"
             style="width: 100%"
             @change="
-              patchQuestionAnswer({ numericExpectedValue: Number($event), effectiveNow: true })
+              (value) =>
+                patchQuestionAnswer({ numericExpectedValue: Number(value), effectiveNow: true })
             "
           />
-        </a-form-item>
-        <a-form-item label="允许误差">
-          <a-input-number
-            :value="focusedQuestion.answer?.numericTolerance"
+        </UiFormItem>
+        <UiFormItem label="允许误差">
+          <UiInputNumber
+            size="sm"
+            :model-value="focusedQuestion.answer?.numericTolerance"
             :min="0"
             style="width: 100%"
-            @change="patchQuestionAnswer({ numericTolerance: Number($event), effectiveNow: true })"
-          />
-        </a-form-item>
-        <a-form-item label="单位">
-          <a-input
-            :value="focusedQuestion.answer?.numericUnit"
             @change="
-              patchQuestionAnswer({
-                numericUnit: ($event.target as HTMLInputElement).value,
-                effectiveNow: true,
-              })
+              (value) =>
+                patchQuestionAnswer({ numericTolerance: Number(value), effectiveNow: true })
             "
           />
-        </a-form-item>
+        </UiFormItem>
+        <UiFormItem label="单位">
+          <UiInput
+            size="sm"
+            :model-value="focusedQuestion.answer?.numericUnit"
+            @update:model-value="
+              (value) =>
+                patchQuestionAnswer({
+                  numericUnit: String(value ?? ''),
+                  effectiveNow: true,
+                })
+            "
+          />
+        </UiFormItem>
       </template>
-      <a-form-item v-else label="标准答案">
-        <a-textarea
-          :value="focusedQuestion.answer?.standardAnswer"
+      <UiFormItem v-else label="标准答案">
+        <UiTextarea
+          size="sm"
+          :model-value="focusedQuestion.answer?.standardAnswer"
           :rows="3"
-          @change="
-            patchQuestionAnswer({
-              standardAnswer: ($event.target as HTMLTextAreaElement).value,
-              effectiveNow: true,
-            })
+          @update:model-value="
+            (value) =>
+              patchQuestionAnswer({
+                standardAnswer: String(value ?? ''),
+                effectiveNow: true,
+              })
           "
         />
-      </a-form-item>
-      <a-form-item label="答案解析">
-        <a-textarea
-          :value="focusedQuestion.answer?.answerExplain"
+      </UiFormItem>
+      <UiFormItem label="答案解析">
+        <UiTextarea
+          size="sm"
+          :model-value="focusedQuestion.answer?.answerExplain"
           :rows="3"
-          @change="
-            patchQuestionAnswer({
-              answerExplain: ($event.target as HTMLTextAreaElement).value,
-              effectiveNow: true,
-            })
+          @update:model-value="
+            (value) =>
+              patchQuestionAnswer({
+                answerExplain: String(value ?? ''),
+                effectiveNow: true,
+              })
           "
         />
-      </a-form-item>
-      <a-form-item label="评分细则">
-        <a-textarea
-          :value="focusedQuestion.answer?.gradingRubric"
+      </UiFormItem>
+      <UiFormItem label="评分细则">
+        <UiTextarea
+          size="sm"
+          :model-value="focusedQuestion.answer?.gradingRubric"
           :rows="4"
-          @change="
-            patchQuestionAnswer({
-              gradingRubric: ($event.target as HTMLTextAreaElement).value,
-              effectiveNow: true,
-            })
+          @update:model-value="
+            (value) =>
+              patchQuestionAnswer({
+                gradingRubric: String(value ?? ''),
+                effectiveNow: true,
+              })
           "
         />
-      </a-form-item>
-      <a-form-item label="AI 评分提示">
-        <a-textarea
-          :value="focusedQuestion.answer?.aiHint"
+      </UiFormItem>
+      <UiFormItem label="AI 评分提示">
+        <UiTextarea
+          size="sm"
+          :model-value="focusedQuestion.answer?.aiHint"
           :rows="3"
-          @change="
-            patchQuestionAnswer({
-              aiHint: ($event.target as HTMLTextAreaElement).value,
-              effectiveNow: true,
-            })
+          @update:model-value="
+            (value) =>
+              patchQuestionAnswer({
+                aiHint: String(value ?? ''),
+                effectiveNow: true,
+              })
           "
         />
-      </a-form-item>
-      <a-form-item label="页面来源">
-        <a-input :value="sourcePageNo ? `第 ${sourcePageNo} 页` : '未配置 ROI'" disabled />
-      </a-form-item>
-      <a-form-item label="ROI 状态">
-        <a-input :value="roiReady ? '主作答区已配置' : '主作答区未配置'" disabled />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+      <UiFormItem label="页面来源">
+        <UiInput
+          size="sm" :value="sourcePageNo ? `第 ${sourcePageNo} 页` : '未配置 ROI'" disabled
+        />
+      </UiFormItem>
+      <UiFormItem label="ROI 状态">
+        <UiInput
+          size="sm" :value="roiReady ? '主作答区已配置' : '主作答区未配置'" disabled
+        />
+      </UiFormItem>
+    </UiForm>
   </section>
 </template>
 
@@ -366,7 +407,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
   padding: 12px;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--ant-color-bg-container);
+  background: var(--dp-bg-container);
   overflow: auto;
 
   &__title {

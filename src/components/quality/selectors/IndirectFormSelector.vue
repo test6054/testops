@@ -2,12 +2,13 @@
   间接评价问卷选择�?  数据源：POST /api/quality/indirect-forms/page
 -->
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { IndirectEvaluationFormVO } from '@/apis/quality/indirect-form'
 import type { AchievementTargetTypeCode, IndirectFormTypeCode } from '@/apis/quality/types'
+import type { UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, ref, watch } from 'vue'
 import { indirectFormApi } from '@/apis/quality/indirect-form'
 import { IndirectFormTypeDescription } from '@/apis/quality/types'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { loadSelectorFirstPage } from './page-contract'
@@ -86,11 +87,23 @@ const filteredOptions = computed(() => {
   )
 })
 
+
+const selectOptions = computed<UiSelectOption[]>(() =>
+  filteredOptions.value.map((opt) => ({
+    value: opt.id,
+    label: `${opt.formCode} · ${opt.formName}`,
+  })),
+)
+
+const controlStyle = computed(() => ({
+  width: typeof props.width === 'number' ? `${props.width}px` : props.width,
+}))
+
 function handleSearch(value: string): void {
   searchText.value = value
 }
 
-function handleChange(value: SelectValue): void {
+function handleChange(value: UiOptionValue | UiOptionValue[] | undefined): void {
   const next: string | null = typeof value === 'string' ? value : null
   internalValue.value = next ?? undefined
   const option = options.value.find((o) => o.id === next)
@@ -110,27 +123,29 @@ defineExpose({ reload: loadOptions })
 </script>
 
 <template>
-  <a-select
-    :value="internalValue"
+  <UiSelect
+    v-model="internalValue"
+    class="dp-quality-selector"
+    :style="controlStyle"
+    size="sm"
     :placeholder="placeholder"
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
-    :style="{ width: typeof width === 'number' ? `${width}px` : width }"
-    show-search
+    allow-search
     :filter-option="false"
     @search="handleSearch"
-    @change="handleChange"
+    :options="selectOptions"
+    @update:model-value="handleChange"
   >
-    <a-select-option
-      v-for="opt in filteredOptions"
-      :key="opt.id"
-      :value="opt.id"
-      :label="`${opt.formCode} · ${opt.formName}`"
-    >
-      <span class="dp-selector-option-code">{{ opt.formCode }}</span>
-      {{ opt.formName }}
-      <span v-if="opt.formType" class="dp-selector-option-meta">· {{ formTypeLabel(opt.formType) }}</span>
-    </a-select-option>
-  </a-select>
+    <template #option="{ value: optionValue }">
+      <template v-for="opt in filteredOptions" :key="opt.id">
+        <template v-if="opt.id === optionValue">
+          <span class="dp-selector-option-code">{{ opt.formCode }}</span>
+          {{ opt.formName }}
+          <span v-if="opt.formType" class="dp-selector-option-meta">· {{ formTypeLabel(opt.formType) }}</span>
+        </template>
+      </template>
+    </template>
+  </UiSelect>
 </template>

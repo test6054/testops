@@ -3,10 +3,11 @@
   数据源：POST /api/user/admin/classes/list-by-department 或 list-all
 -->
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ClassInfoDto } from '@/apis/edu/class'
+import type { UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, ref, watch } from 'vue'
 import { getAllClasses, getClassesByDepartment } from '@/apis/edu/class'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { showUserError } from '@/utils/error-handler'
 
 interface Props {
@@ -39,7 +40,7 @@ const effectivePlaceholder = computed(() => {
   }
   return props.placeholder
 })
-// a-select v-model:value 不接受 null（SelectValue = string | number | (string|number)[] | undefined），
+// a-select v-model:value 不接受 null（UiOptionValue | UiOptionValue[] | undefined = string | number | (string|number)[] | undefined），
 // 本选择器外部 emit 语义仍保持 string | null，内部表示未选中统一用 undefined。
 const internalValue = ref<string | undefined>(props.value ?? undefined)
 
@@ -70,7 +71,21 @@ async function loadOptions() {
   }
 }
 
-function handleChange(val: SelectValue) {
+
+const selectOptions = computed<UiSelectOption[]>(() =>
+  options.value
+    .filter((opt): opt is ClassInfoDto & { id: string } => Boolean(opt.id))
+    .map((opt) => ({
+      value: opt.id,
+      label: opt.className ?? opt.id,
+    })),
+)
+
+const controlStyle = computed(() => ({
+  width: typeof props.width === 'number' ? `${props.width}px` : props.width,
+}))
+
+function handleChange(val: UiOptionValue | UiOptionValue[] | undefined) {
   // a-select 清空时 val 为 undefined，选中时为 string（本选择器选项为单选且 value 是字符串 ID）。
   const next: string | null = typeof val === 'string' ? val : null
   internalValue.value = next ?? undefined
@@ -87,21 +102,28 @@ defineExpose({ reload: loadOptions })
 </script>
 
 <template>
-  <a-select
-    :value="internalValue"
+  <UiSelect
+    v-model="internalValue"
+    class="dp-quality-selector"
+    :style="controlStyle"
+    size="sm"
     :placeholder="effectivePlaceholder"
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
-    :style="{ width: typeof width === 'number' ? `${width}px` : width }"
-    show-search
+    allow-search
     option-filter-prop="label"
-    @change="handleChange"
+    :options="selectOptions"
+    @update:model-value="handleChange"
   >
-    <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.className">
-      {{ opt.className }}
-      <span v-if="opt.majorName" class="dp-selector-option-meta">({{ opt.majorName }})</span>
-      <span v-if="opt.studentCount != null" class="dp-selector-option-meta">{{ opt.studentCount }} 人</span>
-    </a-select-option>
-  </a-select>
+    <template #option="{ value: optionValue }">
+      <template v-for="opt in options" :key="opt.id">
+        <template v-if="opt.id === optionValue">
+          {{ opt.className }}
+          <span v-if="opt.majorName" class="dp-selector-option-meta">({{ opt.majorName }})</span>
+          <span v-if="opt.studentCount != null" class="dp-selector-option-meta">{{ opt.studentCount }} 人</span>
+        </template>
+      </template>
+    </template>
+  </UiSelect>
 </template>

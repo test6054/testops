@@ -15,6 +15,6 @@ defineOptions({ name: 'CreatePageLayout' })
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  background: var(--ant-color-bg-container, #fff);
+  background: var(--dp-bg-layout);
 }
 </style>

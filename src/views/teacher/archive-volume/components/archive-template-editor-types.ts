@@ -1,4 +1,5 @@
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import type { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 
 export interface ArchiveTemplateMaterialEditRow {
   rowKey: string
@@ -9,6 +10,7 @@ export interface ArchiveTemplateMaterialEditRow {
   delayAllowedFlag?: boolean
   sortOrder?: number
   categoryGroup?: string
+  deliveryMode?: ArchiveMaterialDeliveryModeCode
 }
 
 export interface ArchiveTemplateSelfCheckEditRow {

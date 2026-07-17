@@ -35,11 +35,11 @@ type BadgeVariant = 'solid' | 'outline' | 'soft'
   --badge-bg: var(--dp-gray-50);
   --badge-border: var(--dp-gray-200);
   --badge-solid-bg: var(--dp-gray-600);
-  --badge-solid-text: #fff;
+  --badge-solid-text: var(--dp-text-inverse);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--dp-space-1, 6px);
   border: 1px solid var(--badge-border);
   border-radius: var(--dp-radius-control-inner);
   white-space: nowrap;

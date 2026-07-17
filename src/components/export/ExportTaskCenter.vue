@@ -1,5 +1,5 @@
 <template>
-  <a-drawer
+  <UiDrawer
     :open="exportTaskStore.visible"
     :width="900"
     placement="right"
@@ -18,26 +18,26 @@
         @search="handleSearch"
         @reset="handleReset"
       >
-        <a-space>
-          <a-button type="text" size="small" @click="refreshTasks">
+        <div class="dp-space" style="--dp-space-gap: 8px">
+          <UiButton size="sm" variant="ghost" @click="refreshTasks">
             <template #icon>
               <ReloadOutlined />
             </template>
             刷新
-          </a-button>
+          </UiButton>
           <UiTag v-if="exportTaskStore.runningCount > 0" tone="blue">
             <LoadingOutlined spin style="margin-right: 4px" />
             进行中：{{ exportTaskStore.runningCount }}
           </UiTag>
-        </a-space>
+        </div>
         <template #field-dateRange>
-          <a-range-picker
-            v-model:value="filterForm.dateRange"
-            style="width: 240px"
+          <UiRangePicker
+            v-model="filterForm.dateRange"
+            size="sm"
             format="YYYY-MM-DD"
             value-format="YYYY-MM-DD"
             :placeholder="['开始日期', '结束日期']"
-            allow-clear
+            style="width: 240px"
           />
         </template>
       </UiFilterBar>
@@ -77,7 +77,7 @@
             <UiTag
               :style="{
                 backgroundColor: getFormatColor(record.exportFormat),
-                color: 'var(--ant-color-text-light-solid)',
+                color: 'var(--dp-text-inverse)',
                 border: 'none',
               }"
             >
@@ -117,11 +117,11 @@
               "
               class="progress-cell"
             >
-              <a-progress
+              <UiProgressBar
                 :percent="record.progress ?? 0"
-                size="small"
-                :status="record.status === AsyncTaskStatusEnum.PROCESSING ? 'active' : 'exception'"
-                :show-info="false"
+                size="sm"
+                :color="record.status === AsyncTaskStatusEnum.PROCESSING ? 'var(--dp-color-primary)' : 'var(--dp-error)'"
+                :show-label="false"
               />
               <span class="progress-text">{{ record.progress ?? 0 }}%</span>
             </div>
@@ -150,40 +150,39 @@
 
           <!-- 操作 -->
           <template v-else-if="column.key === 'actions'">
-            <a-space>
-              <a-button
+            <div class="dp-space" style="--dp-space-gap: 8px">
+              <UiButton
                 v-if="record.status === AsyncTaskStatusEnum.COMPLETED"
-                type="primary"
-                size="small"
+                size="sm"
+                variant="primary"
                 :loading="downloadingJobId === record.jobId"
                 @click="downloadFileByJobId(record.jobId)"
               >
                 <template #icon>
                   <DownloadOutlined />
                 </template>
-              </a-button>
-              <a-popconfirm title="确定删除这条导出记录吗？" @ok="deleteTask(record.jobId)">
-                <a-button
-                  v-if="
-                    record.status === AsyncTaskStatusEnum.COMPLETED
-                      || record.status === AsyncTaskStatusEnum.FAILED
-                  "
-                  danger
-                  size="small"
-                  type="text"
-                >
-                  <template #icon>
-                    <DeleteOutlined />
-                  </template>
-                </a-button>
-              </a-popconfirm>
-            </a-space>
+              </UiButton>
+              <UiButton
+                v-if="
+                  record.status === AsyncTaskStatusEnum.COMPLETED
+                    || record.status === AsyncTaskStatusEnum.FAILED
+                "
+                size="sm"
+                status="danger"
+                variant="ghost"
+                @click="requestDeleteTask(record.jobId)"
+              >
+                <template #icon>
+                  <DeleteOutlined />
+                </template>
+              </UiButton>
+            </div>
           </template>
         </template>
 
         <!-- 空状态 -->
         <template #empty>
-          <UiEmpty description="暂无导出任务">
+          <UiEmpty size="sm" description="暂无导出任务">
             <template #image>
               <FolderAddOutlined class="export-task-center__empty-icon" />
             </template>
@@ -191,7 +190,7 @@
         </template>
       </UiDataTable>
     </div>
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <script lang="ts" setup>
@@ -212,10 +211,15 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiRangePicker from '@/components/ui-guide/ui/RangePicker.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExportTaskStore } from '@/stores/exportTask'
 import { AsyncTaskStatusEnum, ExportFormatEnum } from '@/types/enums'
 import { showUserError } from '@/utils/error-handler'
@@ -476,6 +480,19 @@ const refreshTasks = async () => {
   message.success('刷新成功')
 }
 
+async function requestDeleteTask(jobId: string): Promise<void> {
+  const ok = await confirmAsync({
+    title: '确定删除这条导出记录吗？',
+    content: '删除后任务记录与产物入口将不可恢复。',
+    type: 'error',
+    okText: '删除',
+  })
+  if (!ok) {
+    return
+  }
+  await deleteTask(jobId)
+}
+
 const deleteTask = async (jobId: string) => {
   try {
     await exportTaskStore.deleteTask(jobId)
@@ -501,10 +518,10 @@ const formatFileSize = (bytes: number): string => {
 // 根据格式返回颜色
 const getFormatColor = (format: ExportFormatEnum): string => {
   const colorMap: Record<ExportFormatEnum, string> = {
-    [ExportFormatEnum.EXCEL]: 'var(--ant-color-success)',
-    [ExportFormatEnum.PDF]: 'var(--ant-color-error)',
-    [ExportFormatEnum.WORD]: 'var(--ant-color-primary)',
-    [ExportFormatEnum.ZIP]: 'var(--ant-color-warning)',
+    [ExportFormatEnum.EXCEL]: 'var(--dp-success)',
+    [ExportFormatEnum.PDF]: 'var(--dp-danger, var(--dp-error))',
+    [ExportFormatEnum.WORD]: 'var(--dp-color-primary)',
+    [ExportFormatEnum.ZIP]: 'var(--dp-warning)',
   }
   return colorMap[format]
 }
@@ -514,7 +531,7 @@ const getFormatColor = (format: ExportFormatEnum): string => {
 .task-center {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   height: 100%;
 }
 
@@ -535,30 +552,30 @@ const getFormatColor = (format: ExportFormatEnum): string => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .text-success {
-  color: var(--ant-color-success);
+  color: var(--dp-success);
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .text-danger {
-  color: var(--ant-color-error);
+  color: var(--dp-danger, var(--dp-error));
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
 .text-muted {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-muted);
 }
 
 .export-task-center__empty-icon {
-  font-size: 48px;
-  color: var(--ant-color-text-quaternary);
+  font-size: 20px;
+  color: var(--dp-text-muted);
 }
 
 .progress-cell {
@@ -570,14 +587,14 @@ const getFormatColor = (format: ExportFormatEnum): string => {
 
   .progress-text {
     font-size: 12px;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
     font-weight: 500;
   }
 }
 
 :deep(.ant-table) {
   .ant-table-tr:hover {
-    background-color: var(--ant-color-fill-tertiary);
+    background-color: var(--dp-surface-subtle);
   }
 }
 </style>
@@ -585,7 +602,7 @@ const getFormatColor = (format: ExportFormatEnum): string => {
 <style lang="scss">
 .export-task-drawer {
   .ant-drawer-body {
-    background-color: var(--ant-color-bg-container);
+    background-color: var(--dp-surface);
   }
 }
 </style>

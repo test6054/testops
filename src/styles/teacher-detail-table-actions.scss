@@ -11,29 +11,29 @@
 }
 
 .ai-review-btn {
-  color: var(--ant-color-primary);
-  border-color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
+  border-color: var(--dp-color-primary);
 }
 
 .stage-reject-btn {
-  color: var(--ant-color-error);
-  border-color: var(--ant-color-error);
+  color: var(--dp-error);
+  border-color: var(--dp-error);
 }
 
 .selection-info {
   font-size: 13px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .detail-table-card {
   border-radius: var(--dp-radius-panel);
-  border: 1px solid var(--ant-color-border-secondary);
+  border: 1px solid var(--dp-border-subtle);
   box-shadow: none;
 
   .section-title {
     font-size: 15px;
     font-weight: 600;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
   }
 }
 
@@ -42,19 +42,19 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   font: inherit;
   line-height: inherit;
   text-align: left;
   font-weight: 500;
 
   &:hover {
-    color: var(--ant-color-primary-hover);
+    color: var(--dp-color-primary-hover);
     text-decoration: underline;
   }
 
   &:active {
-    color: var(--ant-color-primary-active);
+    color: var(--dp-color-primary-active);
   }
 }
 

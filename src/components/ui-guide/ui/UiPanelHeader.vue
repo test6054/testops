@@ -61,16 +61,16 @@ const props = withDefaults(defineProps<{
 .ui-panel-header {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--dp-space-3, 10px);
 }
 
 .ui-panel-header--divided {
-  padding-bottom: 16px;
+  padding-bottom: var(--dp-space-3, 10px);
   border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-panel-header--compact {
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .ui-panel-header__eyebrow {
@@ -86,7 +86,7 @@ const props = withDefaults(defineProps<{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--dp-space-3, 10px);
 }
 
 .ui-panel-header__title-wrap {
@@ -98,12 +98,12 @@ const props = withDefaults(defineProps<{
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--dp-space-3, 10px);
 }
 
 .ui-panel-header__title {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1.4;
   color: var(--dp-text-primary);
@@ -113,11 +113,11 @@ const props = withDefaults(defineProps<{
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .ui-panel-header__description {
-  margin: 8px 0 0;
+  margin: var(--dp-space-2, 8px) 0 0;
   font-size: 14px;
   line-height: 1.7;
   color: var(--dp-text-secondary);
@@ -128,7 +128,7 @@ const props = withDefaults(defineProps<{
   align-items: center;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--dp-space-3, 12px);
   flex-shrink: 0;
 }
 

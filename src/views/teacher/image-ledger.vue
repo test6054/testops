@@ -12,14 +12,13 @@
 
     <template v-if="selectedExamId && ledger" #signal>
       <SignalBand
-        variant="tiles"
         compact
         :metrics="ledgerSignalMetrics"
         @metric-click="handleLedgerMetricClick"
       />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" class="ledger-page__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="ledger-page__empty" body="请先选择考试后再查看影像账本" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -63,9 +62,9 @@ import {
   getImageLedgerDetail,
   LedgerStatusCode,
 } from '@/apis/mark/image-ledger'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -160,6 +159,9 @@ async function loadAll(): Promise<void> {
 
 async function handleBalance(): Promise<void> {
   if (!selectedExamId.value) return
+  if (balancing.value) {
+    return
+  }
   const confirmed = await confirmAsync({
     title: '执行整体对账',
     content:
@@ -227,7 +229,7 @@ onBeforeUnmount(() => {
 <style lang="scss" scoped>
 .ledger-page {
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__surface {

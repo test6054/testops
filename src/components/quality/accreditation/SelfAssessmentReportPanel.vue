@@ -23,9 +23,14 @@ import {
 } from '@/apis/quality/self-assessment-section'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCheckboxGroup from '@/components/ui-guide/ui/UiCheckboxGroup.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import {
   canEditSelfAssessmentSection,
   canSubmitSelfAssessment,
@@ -274,7 +279,21 @@ watch(activeSectionKey, () => {
 
     <p class="self-assessment-panel__hint">{{ submitHint }}</p>
 
-    <UiEmpty v-if="!activeCycle" description="请先创建认证周期" />
+    <UiAlertStrip
+      v-if="!activeCycle"
+      tone="info"
+      size="sm"
+      dense
+      inline
+      :show-icon="false"
+    >
+      <template #default>
+        <span style="display: inline-flex; align-items: center; gap: 8px">
+          <UiTag tone="blue" size="sm">未登记周期</UiTag>
+          <span>请先创建并登记认证周期后再编辑自评报告章节</span>
+        </span>
+      </template>
+    </UiAlertStrip>
 
     <div v-else class="self-assessment-panel__layout">
       <nav class="self-assessment-panel__nav" aria-label="自评报告章节">
@@ -304,8 +323,9 @@ watch(activeSectionKey, () => {
 
         <label class="self-assessment-panel__field">
           <span>Narrative 正文</span>
-          <a-textarea
-            v-model:value="editor.narrativeContent"
+          <UiTextarea
+            size="sm"
+            v-model="editor.narrativeContent"
             :disabled="!canEdit || loading"
             :rows="10"
             placeholder="填写本章节自评 narrative，或通过 AI 生成后在此修订"
@@ -314,8 +334,9 @@ watch(activeSectionKey, () => {
 
         <label class="self-assessment-panel__field">
           <span>Evidence narrative</span>
-          <a-textarea
-            v-model:value="editor.evidenceNarrative"
+          <UiTextarea
+            size="sm"
+            v-model="editor.evidenceNarrative"
             :disabled="!canEdit || loading"
             :rows="6"
             placeholder="说明本章节支撑证据及其认证含义"
@@ -371,28 +392,29 @@ watch(activeSectionKey, () => {
     </p>
 
     <UiDrawer v-model:open="evidenceDrawerOpen" title="关联认证证据" width="480">
-      <a-input-search
-        v-model:value="evidenceKeyword"
+      <UiSearchBox
+        v-model="evidenceKeyword"
         placeholder="搜索证据标题"
         allow-clear
         class="self-assessment-panel__evidence-search"
         @search="(kw: string) => loadEvidenceOptions(kw)"
       />
-      <a-spin :spinning="evidenceLoading">
-        <a-checkbox-group
-          v-model:value="selectedEvidenceIds"
+      <UiSpin :spinning="evidenceLoading">
+        <UiCheckboxGroup
+          v-model="selectedEvidenceIds"
           class="self-assessment-panel__evidence-picker"
+          direction="vertical"
         >
           <label
             v-for="item in evidenceOptions"
             :key="item.id"
             class="self-assessment-panel__evidence-option"
           >
-            <a-checkbox :value="item.id" />
+            <UiCheckbox :value="item.id" />
             <span>{{ item.evidenceTitle }}</span>
           </label>
-        </a-checkbox-group>
-      </a-spin>
+        </UiCheckboxGroup>
+      </UiSpin>
       <template #footer>
         <UiButton variant="primary" size="sm" @click="applySelectedEvidence">确定</UiButton>
       </template>
@@ -410,15 +432,15 @@ watch(activeSectionKey, () => {
 .self-assessment-panel__layout {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
-  gap: 16px;
-  min-height: 420px;
+  gap: var(--dp-space-3, 12px);
+  min-height: 120px;
 }
 
 .self-assessment-panel__nav {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border-right: 1px solid var(--ant-color-border-secondary);
+  border-right: 1px solid var(--dp-border, var(--dp-border-subtle));
   padding-right: 12px;
 }
 
@@ -436,7 +458,7 @@ watch(activeSectionKey, () => {
 }
 
 .self-assessment-panel__nav-item.is-active {
-  background: var(--ant-color-fill-tertiary);
+  background: var(--dp-fill-tertiary);
 }
 
 .self-assessment-panel__nav-title {
@@ -508,7 +530,7 @@ watch(activeSectionKey, () => {
 
 .self-assessment-panel__ready {
   margin: 12px 0 0;
-  color: var(--ant-color-success);
+  color: var(--dp-success);
   font-size: 13px;
 }
 

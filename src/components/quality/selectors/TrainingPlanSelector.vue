@@ -2,11 +2,12 @@
   培养方案选择�?  数据源：POST /api/quality/training-plans/page
   可传 programId 过滤，默认只显示 CONFIRMED �?enabled=true 的方�? -->
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { TrainingPlanVO } from '@/apis/quality/training-plan'
-import { onMounted, ref, watch } from 'vue'
+import type { UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
+import { computed, onMounted, ref, watch } from 'vue'
 import { normalizeTrainingPlanId, trainingPlanApi } from '@/apis/quality/training-plan'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { showUserError } from '@/utils/error-handler'
 import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
 
@@ -102,13 +103,25 @@ async function loadOptions(keyword?: string) {
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const selectOptions = computed<UiSelectOption[]>(() =>
+  options.value.map((opt) => ({
+    value: opt.id,
+    label: `${opt.planCode} · ${opt.planName}`,
+  })),
+)
+
+const controlStyle = computed(() => ({
+  width: typeof props.width === 'number' ? `${props.width}px` : props.width,
+}))
+
 function handleSearch(val: string) {
   searchText.value = val
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => loadOptions(val), QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
 }
 
-function normalizeSelectValue(val: SelectValue): string | null {
+function normalizeSelectValue(val: UiOptionValue | UiOptionValue[] | undefined): string | null {
   if (val === null || val === undefined) {
     return null
   }
@@ -122,7 +135,7 @@ function normalizeSelectValue(val: SelectValue): string | null {
   return null
 }
 
-function handleChange(val: SelectValue) {
+function handleChange(val: UiOptionValue | UiOptionValue[] | undefined) {
   const next = normalizeSelectValue(val)
   internalValue.value = next ?? undefined
   const option = options.value.find((o) => o.id === next)
@@ -138,27 +151,29 @@ defineExpose({ reload: loadOptions })
 </script>
 
 <template>
-  <a-select
-    :value="internalValue"
+  <UiSelect
+    v-model="internalValue"
+    class="dp-quality-selector"
+    :style="controlStyle"
+    size="sm"
     :placeholder="placeholder"
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
-    :style="{ width: typeof width === 'number' ? `${width}px` : width }"
-    show-search
+    allow-search
     :filter-option="false"
     @search="handleSearch"
-    @change="handleChange"
+    :options="selectOptions"
+    @update:model-value="handleChange"
   >
-    <a-select-option
-      v-for="opt in options"
-      :key="opt.id"
-      :value="opt.id"
-      :label="`${opt.planCode} · ${opt.planName}`"
-    >
-      <span class="dp-selector-option-code">{{ opt.planCode }}</span>
-      {{ opt.planName }}
-      <span v-if="opt.schoolYear" class="dp-selector-option-meta">({{ opt.schoolYear }})</span>
-    </a-select-option>
-  </a-select>
+    <template #option="{ value: optionValue }">
+      <template v-for="opt in options" :key="opt.id">
+        <template v-if="opt.id === optionValue">
+          <span class="dp-selector-option-code">{{ opt.planCode }}</span>
+          {{ opt.planName }}
+          <span v-if="opt.schoolYear" class="dp-selector-option-meta">({{ opt.schoolYear }})</span>
+        </template>
+      </template>
+    </template>
+  </UiSelect>
 </template>

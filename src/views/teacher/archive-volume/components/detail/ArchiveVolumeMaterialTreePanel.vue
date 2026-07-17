@@ -1,9 +1,9 @@
 <template>
   <aside class="archive-volume-material-tree">
-    <UiEmpty v-if="catalogLoadFailed" description="目录加载失败">
+    <UiEmpty size="sm" v-if="catalogLoadFailed" description="目录加载失败">
       <UiTextAction tone="primary" @click="loadCatalogLines">重新加载</UiTextAction>
     </UiEmpty>
-    <UiEmpty v-else-if="!treeGroups.length" description="暂无目录项" />
+    <UiEmpty size="sm" v-else-if="!treeGroups.length" description="暂无目录项" />
     <div v-else class="catalog-tree">
       <UiAlertStrip v-if="materialStatsLoadFailed" tone="warning" title="就绪统计加载失败">
         <template #actions>
@@ -291,7 +291,7 @@ onMounted(() => {
   padding: var(--dp-space-3);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
-  background: var(--ant-color-bg-container, #fff);
+  background: var(--dp-bg-container);
 }
 
 .archive-volume-material-tree__title {

@@ -8,210 +8,220 @@
       </ContextBar>
     </template>
 
-    <template v-if="pageSignalMetrics.length > 0" #signal>
-      <SignalBand variant="tiles" :metrics="pageSignalMetrics" compact />
+    <template v-if="selectedExamId && pageSignalMetrics.length > 0" #signal>
+      <SignalBand :metrics="pageSignalMetrics" compact />
     </template>
 
-    <ExamWorkspaceJourneySubNav />
-
-    <UiAlertStrip
-      v-if="selectedClaimSessionPaused"
-      tone="warning"
-      title="当前正评会话已暂停"
-      description="所选举会话暂停期间无法领取新任务；其它进行中的会话仍可正常领取。"
-      dense
+    <ExamSelectGateStrip
+      v-if="!selectedExamId"
+      body="请从考试列表进入工作台后再领取与办理阅卷任务"
     />
 
-    <div class="marking-task-pool-page">
-      <WorkbenchSurfaceCard class="marking-task-pool-page__claim">
-        <template #head>
-          <div class="marking-task-pool-page__claim-title">
-            <ThunderboltOutlined />
-            <span>领取任务</span>
-          </div>
-        </template>
+    <template v-else>
+      <ExamWorkspaceJourneySubNav />
 
-        <UiSkeletonState v-if="claimContextLoading" variant="card" compact />
+      <UiAlertStrip
+        v-if="selectedClaimSessionPaused"
+        tone="warning"
+        title="当前正评会话已暂停"
+        description="所选举会话暂停期间无法领取新任务；其它进行中的会话仍可正常领取。"
+        dense
+      />
 
-        <UiEmpty
-          v-else-if="(claimContext?.groups.length ?? 0) === 0"
-          :description="claimEmptyDescription"
-        >
-          <template #action>
-            <UiButton variant="primary" @click="goMarkingOrg"> 前往阅卷安排 </UiButton>
+      <div class="marking-task-pool-page">
+        <WorkbenchSurfaceCard class="marking-task-pool-page__claim">
+          <template #head>
+            <div class="marking-task-pool-page__claim-title">
+              <ThunderboltOutlined />
+              <span>领取任务</span>
+            </div>
           </template>
-        </UiEmpty>
-        <a-form v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
-          <a-form-item label="题组" required>
-            <a-select
-              v-model:value="claimForm.groupId"
-              :options="claimGroupOptions"
-              :loading="claimContextLoading"
-              placeholder="选择题组"
-              style="width: 240px"
-              show-search
-              option-filter-prop="label"
-              @change="onClaimGroupChange"
-            />
-          </a-form-item>
-          <a-form-item :label="sessionSelectLabel" required>
-            <a-select
-              v-model:value="claimForm.sessionId"
-              :options="claimSessionOptions"
-              :disabled="!claimForm.groupId"
-              placeholder="选择该题组下的活跃会话"
-              style="width: 280px"
-              allow-clear
-            />
-          </a-form-item>
-          <a-form-item>
-            <a-space>
-              <UiButton :disabled="!canClaim" :loading="claiming" @click="submitClaim">
-                <template #icon><PlusOutlined /></template>
-                批量领取一批
-              </UiButton>
-            </a-space>
-          </a-form-item>
-        </a-form>
-      </WorkbenchSurfaceCard>
 
-      <WorkbenchSurfaceCard flush class="marking-task-pool-page__tasks">
-        <template #head>
-          <header class="marking-task-pool-page__task-header">
-            <h3 class="marking-task-pool-page__task-title">
-              <TableOutlined />
-              任务列表
-            </h3>
-            <UiButton variant="outline" size="sm" @click="toggleBatchMode">
-              {{ batchMode ? '退出批量' : '批量模式' }}
-            </UiButton>
-          </header>
-        </template>
+          <UiSkeletonState v-if="claimContextLoading" variant="card" compact />
 
-        <template #toolbar>
-          <UiAlertStrip
-            v-if="tasksLoadError"
-            tone="error"
-            title="任务列表加载失败"
-            :description="tasksLoadError"
-            dense
-          />
-
-          <UiBatchActionBar
-            v-if="batchMode && selectedRowKeys.length > 0"
-            :selected-count="selectedRowKeys.length"
-            selection-label="份已选"
-            description="须同题组 · 同题目 · 待批阅状态"
+          <UiEmpty
+            size="sm"
+            v-else-if="(claimContext?.groups.length ?? 0) === 0"
+            :description="claimEmptyDescription"
           >
-            <UiButton variant="primary" size="sm" @click="openBatchDrawer"> 批量给分 </UiButton>
-            <UiButton variant="outline" size="sm" @click="clearBatchSelection"> 清空 </UiButton>
-          </UiBatchActionBar>
-
-          <UiFilterBar
-            v-model="filterModel"
-            :fields="taskFilterFields"
-            variant="panel"
-            show-labels
-            search-text="查询"
-            @search="() => loadTasks({ resetPage: true })"
-            @reset="resetFilter"
-          />
-        </template>
-
-        <UiDataTable
-          v-model:current="taskPageNum"
-          v-model:page-size="taskPageSize"
-          pagination-mode="server"
-          :columns="columns"
-          :data-source="tasks"
-          :loading="loading"
-          :total="taskPageTotal"
-          row-key="id"
-          size="middle"
-          flat
-          empty-kind="first-run"
-          :empty-description="taskTableEmptyDescription"
-          :custom-row="customTableRow"
-          :enable-selection="batchMode"
-          :selected-row-keys="selectedRowKeys"
-          @selection-change="handleSelectionChange"
-          @page-change="handleTaskPageChange"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'question'">
-              <a-space direction="vertical" :size="2">
-                <a-typography-text v-if="record.taskUnit === AllocationUnitCode.WHOLE_PAPER" strong>
-                  整卷批阅
-                </a-typography-text>
-                <a-typography-text v-else strong>
-                  第 {{ record.questionNo }} 题 · {{ record.questionTypeMessage }}
-                </a-typography-text>
-              </a-space>
+            <template #action>
+              <UiButton size="sm" variant="primary" @click="goMarkingOrg"> 前往阅卷安排 </UiButton>
             </template>
-            <template v-else-if="column.key === 'anonymityMode'">
-              <UiTag
-                :tone="record.anonymityMode === AnonymityModeCode.ANONYMOUS ? 'blue' : 'gray'"
+          </UiEmpty>
+          <UiForm v-else layout="inline" :model="claimForm" @submit.prevent="submitClaim">
+            <UiFormItem label="题组" required>
+              <UiSelect
                 size="sm"
-              >
-                {{ anonymityModeLabel(record.anonymityMode) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'paperDisplay'">
-              <a-space direction="vertical" :size="2">
-                <a-typography-text strong>
-                  {{ record.paperDisplay.primaryText }}
-                </a-typography-text>
-                <span v-if="record.paperDisplay.secondaryText" class="muted">
-                  {{ record.paperDisplay.secondaryText }}
-                </span>
-              </a-space>
-            </template>
-            <template v-else-if="column.key === 'groupName'">
-              <span>{{ record.groupName }}</span>
-            </template>
-            <template v-else-if="column.key === 'reviewerName'">
-              <span>{{ record.reviewerName }}</span>
-            </template>
-            <template v-else-if="column.key === 'session'">
-              <a-space direction="vertical" :size="2">
+                v-model="claimForm.groupId"
+                :options="claimGroupOptions"
+                :loading="claimContextLoading"
+                placeholder="选择题组"
+                style="width: 240px"
+                allow-search
+                option-filter-prop="label"
+                @change="onClaimGroupChange"
+              />
+            </UiFormItem>
+            <UiFormItem :label="sessionSelectLabel" required>
+              <UiSelect
+                size="sm"
+                v-model="claimForm.sessionId"
+                :options="claimSessionOptions"
+                :disabled="!claimForm.groupId"
+                placeholder="选择该题组下的活跃会话"
+                style="width: 280px"
+                allow-clear
+              />
+            </UiFormItem>
+            <UiFormItem>
+              <div class="dp-space" style="--dp-space-gap: 8px">
+                <UiButton size="sm" :disabled="!canClaim" :loading="claiming" @click="submitClaim">
+                  <template #icon><PlusOutlined /></template>
+                  批量领取一批
+                </UiButton>
+              </div>
+            </UiFormItem>
+          </UiForm>
+        </WorkbenchSurfaceCard>
+
+        <WorkbenchSurfaceCard flush class="marking-task-pool-page__tasks">
+          <template #head>
+            <header class="marking-task-pool-page__task-header">
+              <h3 class="marking-task-pool-page__task-title">
+                <TableOutlined />
+                任务列表
+              </h3>
+              <UiButton variant="outline" size="sm" @click="toggleBatchMode">
+                {{ batchMode ? '退出批量' : '批量模式' }}
+              </UiButton>
+            </header>
+          </template>
+
+          <template #toolbar>
+            <UiAlertStrip
+              v-if="tasksLoadError"
+              tone="error"
+              title="任务列表加载失败"
+              :description="tasksLoadError"
+              dense
+            />
+
+            <UiBatchActionBar
+              v-if="batchMode && selectedRowKeys.length > 0"
+              :selected-count="selectedRowKeys.length"
+              selection-label="份已选"
+              description="须同题组 · 同题目 · 待批阅状态"
+            >
+              <UiButton variant="primary" size="sm" @click="openBatchDrawer"> 批量给分 </UiButton>
+              <UiButton variant="outline" size="sm" @click="clearBatchSelection"> 清空 </UiButton>
+            </UiBatchActionBar>
+
+            <UiFilterBar
+              v-model="filterModel"
+              :fields="taskFilterFields"
+              variant="panel"
+              show-labels
+              search-text="查询"
+              @search="() => loadTasks({ resetPage: true })"
+              @reset="resetFilter"
+            />
+          </template>
+
+          <UiDataTable
+            v-model:current="taskPageNum"
+            v-model:page-size="taskPageSize"
+            pagination-mode="server"
+            :columns="columns"
+            :data-source="tasks"
+            :loading="loading"
+            :total="taskPageTotal"
+            row-key="id"
+            size="middle"
+            flat
+            empty-kind="first-run"
+            :empty-description="taskTableEmptyDescription"
+            :custom-row="customTableRow"
+            :enable-selection="batchMode"
+            :selected-row-keys="selectedRowKeys"
+            @selection-change="handleSelectionChange"
+            @page-change="handleTaskPageChange"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'question'">
+                <div class="dp-space dp-space--vertical" style="--dp-space-gap: 2px">
+                  <UiTypographyText v-if="record.taskUnit === AllocationUnitCode.WHOLE_PAPER" strong>
+                    整卷批阅
+                  </UiTypographyText>
+                  <UiTypographyText v-else strong>
+                    第 {{ record.questionNo }} 题 · {{ record.questionTypeMessage }}
+                  </UiTypographyText>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'anonymityMode'">
                 <UiTag
-                  :tone="record.markingPhase === MarkingSessionPhaseCode.TRIAL ? 'orange' : 'green'"
+                  :tone="record.anonymityMode === AnonymityModeCode.ANONYMOUS ? 'blue' : 'gray'"
                   size="sm"
                 >
-                  {{ record.sessionStatusMessage }}
+                  {{ anonymityModeLabel(record.anonymityMode) }}
                 </UiTag>
-                <span class="muted">{{ formatDateTime(record.sessionStartTime) }}</span>
-              </a-space>
+              </template>
+              <template v-else-if="column.key === 'paperDisplay'">
+                <div class="dp-space dp-space--vertical" style="--dp-space-gap: 2px">
+                  <UiTypographyText strong>
+                    {{ record.paperDisplay.primaryText }}
+                  </UiTypographyText>
+                  <span v-if="record.paperDisplay.secondaryText" class="muted">
+                    {{ record.paperDisplay.secondaryText }}
+                  </span>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'groupName'">
+                <span>{{ record.groupName }}</span>
+              </template>
+              <template v-else-if="column.key === 'reviewerName'">
+                <span>{{ record.reviewerName }}</span>
+              </template>
+              <template v-else-if="column.key === 'session'">
+                <div class="dp-space dp-space--vertical" style="--dp-space-gap: 2px">
+                  <UiTag
+                    :tone="record.markingPhase === MarkingSessionPhaseCode.TRIAL ? 'orange' : 'green'"
+                    size="sm"
+                  >
+                    {{ record.sessionStatusMessage }}
+                  </UiTag>
+                  <span class="muted">{{ formatDateTime(record.sessionStartTime) }}</span>
+                </div>
+              </template>
+              <template v-else-if="column.key === 'taskStatus'">
+                <UiTag :tone="taskStatusTone(record.taskStatus)" size="sm">
+                  {{ taskStatusLabel(record.taskStatus) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'allocatedTime'">
+                {{ formatDateTime(record.allocatedTime) }}
+              </template>
+              <template v-else-if="column.key === 'submittedTime'">
+                {{ formatDateTime(record.submittedTime) }}
+              </template>
+              <template v-else-if="column.key === 'score'">
+                <span v-if="record.score !== undefined && record.score !== null">{{
+                  record.score
+                }}</span>
+                <span v-else class="muted">-</span>
+              </template>
+              <template v-else-if="column.key === 'actions'">
+                <UiTableActions
+                  v-if="buildMarkingTaskRowActions(record).length"
+                  :items="buildMarkingTaskRowActions(record)"
+                  split
+                  @action="() => goDetail(record)"
+                />
+                <span v-else class="muted">已结束</span>
+              </template>
             </template>
-            <template v-else-if="column.key === 'taskStatus'">
-              <UiTag :tone="taskStatusTone(record.taskStatus)" size="sm">
-                {{ taskStatusLabel(record.taskStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'allocatedTime'">
-              {{ formatDateTime(record.allocatedTime) }}
-            </template>
-            <template v-else-if="column.key === 'submittedTime'">
-              {{ formatDateTime(record.submittedTime) }}
-            </template>
-            <template v-else-if="column.key === 'score'">
-              <span v-if="record.score !== undefined && record.score !== null">{{
-                record.score
-              }}</span>
-              <span v-else class="muted">-</span>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <UiTableActions
-                v-if="buildMarkingTaskRowActions(record).length"
-                :items="buildMarkingTaskRowActions(record)"
-                split
-                @action="() => goDetail(record)"
-              />
-              <span v-else class="muted">已结束</span>
-            </template>
-          </template>
-        </UiDataTable>
-      </WorkbenchSurfaceCard>
+          </UiDataTable>
+        </WorkbenchSurfaceCard>
+      </div>
 
       <MarkingBatchScoreDrawer
         v-model:open="batchDrawerOpen"
@@ -222,7 +232,7 @@
         :selected-tasks="selectedTasks"
         @submitted="handleBatchSubmitted"
       />
-    </div>
+    </template>
   </StageWorkbenchShell>
 </template>
 
@@ -268,9 +278,14 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiBatchActionBar from '@/components/ui-guide/ui/UiBatchActionBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -854,6 +869,9 @@ function onClaimGroupChange(): void {
 const claiming = ref(false)
 
 async function submitClaim(): Promise<void> {
+  if (claiming.value) {
+    return
+  }
   if (selectedClaimSessionPaused.value) {
     message.warning('当前正评会话已暂停，暂停期间无法领取新任务')
     return
@@ -971,7 +989,7 @@ watch(markingPhase, () => {
 .marking-task-pool-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   min-width: 0;
 
   &__claim-title,
@@ -997,11 +1015,11 @@ watch(markingPhase, () => {
 }
 
 .muted {
-  color: var(--ant-color-text-quaternary);
+  color: var(--dp-text-quaternary);
 }
 
 :deep(.marking-task-pool-row--highlight > td) {
-  background-color: rgba(22, 119, 255, 0.12);
+  background-color: var(--dp-primary-50);
   transition: background-color 2s ease;
 }
 </style>

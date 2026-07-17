@@ -3,6 +3,9 @@ import { computed } from 'vue'
 import { EXAM_PRINT_SOURCE_MODE_OPTIONS, ExamMaterialLayoutModeCode, ExamPrintSourceModeCode } from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 
 defineOptions({ name: 'MaterialLayoutConfigModal' })
 
@@ -77,21 +80,22 @@ function handleSave(): void {
         </span>
       </button>
     </div>
-    <a-form
+    <UiForm
       v-if="draftLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER"
       layout="inline"
       class="material-layout-modal__print-form"
     >
-      <a-form-item label="印刷来源">
-        <a-select
-          v-model:value="draftPrintSource"
+      <UiFormItem label="印刷来源">
+        <UiSelect
+          size="sm"
+          v-model="draftPrintSource"
           :disabled="layoutModeLocked"
           placeholder="选择印刷来源"
           :options="EXAM_PRINT_SOURCE_MODE_OPTIONS"
           style="width: 200px"
         />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
     <p v-if="printSourceHint" class="material-layout-modal__hint">{{ printSourceHint }}</p>
     <p v-if="layoutModeLocked" class="material-layout-modal__hint">
       已开印或已扫描，制卷形态不可修改
@@ -101,8 +105,9 @@ function handleSave(): void {
     </p>
     <p v-if="advisoryReason" class="material-layout-modal__advisory">{{ advisoryReason }}</p>
     <template #footer>
-      <UiButton variant="outline" @click="open = false">关闭</UiButton>
+      <UiButton size="sm" variant="outline" @click="open = false">关闭</UiButton>
       <UiButton
+        size="sm"
         v-if="!layoutModeLocked"
         :variant="layoutDirty ? 'primary' : 'outline'"
         :disabled="!draftLayoutMode || !layoutDirty"
@@ -147,7 +152,7 @@ function handleSave(): void {
       background-color 0.2s ease;
 
     &:hover:not(:disabled) {
-      border-color: var(--ant-color-primary, #1677ff);
+      border-color: var(--dp-color-primary);
       background: var(--dp-surface-subtle);
     }
 
@@ -157,8 +162,8 @@ function handleSave(): void {
     }
 
     &--active {
-      border-color: var(--ant-color-primary, #1677ff);
-      background: var(--ant-color-primary-bg, #eff6ff);
+      border-color: var(--dp-color-primary);
+      background: var(--dp-color-primary-bg);
     }
   }
 
@@ -189,8 +194,8 @@ function handleSave(): void {
     padding: 8px 10px;
     font-size: 12px;
     line-height: 1.5;
-    color: var(--ant-color-warning, #d97706);
-    background: var(--ant-color-warning-bg, #fffbeb);
+    color: var(--dp-warning);
+    background: var(--dp-warning-bg);
     border-radius: 6px;
   }
 }

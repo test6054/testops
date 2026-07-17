@@ -31,7 +31,6 @@
 
     <template v-if="selectedExamId" #signal>
       <SignalBand
-        variant="tiles"
         compact
         :metrics="signalMetrics"
         class="scan-manual-entry__stats"
@@ -39,10 +38,10 @@
       />
     </template>
 
-    <UiEmpty
+    <ExamSelectGateStrip
       v-if="!selectedExamId"
-      description="未进入考试工作台"
       class="scan-manual-entry__empty"
+      body="请先选择考试后再办理缺页补录"
     />
 
     <template v-else>
@@ -168,13 +167,13 @@ import {
 import ManualSupplementCandidateTable from '@/components/mark/manual-supplement/ManualSupplementCandidateTable.vue'
 import ManualSupplementWizardDrawer from '@/components/mark/manual-supplement/ManualSupplementWizardDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -638,6 +637,6 @@ onMounted(() => {
 }
 
 .scan-manual-entry__muted {
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 </style>

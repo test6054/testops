@@ -27,10 +27,10 @@
 
       <footer v-if="!props.hideFooter" class="ui-dialog__footer">
         <slot name="footer">
-          <UiButton v-if="!props.hideCancel" variant="outline" @click="handleCancel">
+          <UiButton size="sm" v-if="!props.hideCancel" variant="outline" @click="handleCancel">
             {{ props.cancelText }}
           </UiButton>
-          <UiButton :loading="props.confirmLoading" @click="handleOk">
+          <UiButton size="sm" :loading="props.confirmLoading" @click="handleOk">
             {{ props.okText }}
           </UiButton>
         </slot>
@@ -52,7 +52,7 @@ const props = withDefaults(
   defineProps<{
     open: boolean
     title?: string
-    width?: number
+    width?: number | string
     closable?: boolean
     maskClosable?: boolean
     confirmLoading?: boolean
@@ -100,8 +100,8 @@ const handleOk = () => {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 20px 24px;
+  gap: var(--dp-space-2, 8px);
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
   background: var(--dp-surface);
   border-bottom: 1px solid var(--dp-border);
 }
@@ -113,8 +113,8 @@ const handleOk = () => {
 
 .ui-dialog__title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   color: var(--dp-text-primary);
 }
 
@@ -140,14 +140,14 @@ const handleOk = () => {
 }
 
 .ui-dialog__body {
-  padding: 24px;
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-4, 16px);
 }
 
 .ui-dialog__footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  padding: 0 24px 24px;
+  gap: var(--dp-space-2, 8px);
+  padding: 0 var(--dp-space-4, 16px) var(--dp-space-3, 12px);
 }
 </style>
 
@@ -170,7 +170,7 @@ const handleOk = () => {
   }
 
   .ant-modal-mask {
-    background-color: rgba(15, 23, 42, 0.4);
+    background-color: color-mix(in srgb, var(--dp-text-primary) 40%, transparent);
   }
 }
 </style>

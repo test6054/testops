@@ -8,7 +8,7 @@
     @close="handleClose"
   >
     <div v-if="loading" class="audit-timeline__loading">
-      <a-spin />
+      <UiSpin />
     </div>
 
     <div v-else-if="events.length === 0" class="audit-timeline__empty">
@@ -50,6 +50,7 @@
 import type { AuditTimelineEvent } from '@/types/workbench'
 
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 
 defineOptions({
   name: 'AuditTimelineDrawer',
@@ -91,11 +92,11 @@ function handleClose() {
 .audit-timeline__loading {
   display: flex;
   justify-content: center;
-  padding: 48px 0;
+  padding: var(--dp-space-3, 12px) 0;
 }
 
 .audit-timeline__empty {
-  padding: 48px 0;
+  padding: var(--dp-space-3, 12px) 0;
   text-align: center;
 }
 
@@ -123,8 +124,8 @@ function handleClose() {
 
 .audit-timeline__item {
   display: flex;
-  gap: 16px;
-  padding: 12px 0;
+  gap: var(--dp-space-3, 12px);
+  padding: var(--dp-space-2, 8px) 0;
   position: relative;
 }
 
@@ -138,7 +139,7 @@ function handleClose() {
   height: 16px;
   margin-top: 2px;
   border-radius: 50%;
-  border: 2px solid var(--ant-color-primary, #2563eb);
+  border: 2px solid var(--dp-color-primary);
   background: var(--dp-surface);
   position: relative;
   z-index: 1;

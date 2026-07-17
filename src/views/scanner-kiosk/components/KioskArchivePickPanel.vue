@@ -8,8 +8,10 @@ import {
 } from '@/apis/mark/archive-volume'
 import { createAdhocDispatchTicket, pageKioskArchiveVolumes } from '@/apis/mark/scanner-kiosk'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
@@ -147,7 +149,7 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
 </script>
 
 <template>
-  <a-drawer
+  <UiDrawer
     :open="open"
     title="临时扫描 · 选择归档卷"
     width="880"
@@ -159,8 +161,8 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
     </p>
     <WorkbenchSurfaceCard flush>
       <template #toolbar>
-        <a-input-search
-          v-model:value="keyword"
+        <UiSearchBox
+          v-model="keyword"
           placeholder="搜索卷名 / 编号 / 柜位"
           allow-clear
           class="kiosk-archive-pick__search"
@@ -171,7 +173,7 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
             }
           "
         />
-        <UiButton size="sm" variant="outline" :disabled="loading" @click="loadVolumes">
+        <UiButton variant="outline" :disabled="loading" @click="loadVolumes">
           刷新
         </UiButton>
       </template>
@@ -219,7 +221,7 @@ function volumeStatusTone(status: ScannerKioskArchiveVolumeItemVO['volumeStatus'
         </template>
       </UiDataTable>
     </WorkbenchSurfaceCard>
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <style scoped>

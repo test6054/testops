@@ -34,4 +34,6 @@ export const portfolioOnboardingApi = {
     http.post<PortfolioTeacherOnboardingStateVO>(`${BASE}/dismiss`, data),
   getReviewContent: (data: PortfolioTeacherOnboardingGetStateRequest = {}) =>
     http.post<PortfolioTeacherOnboardingReviewContentVO>(`${BASE}/get-review-content`, data),
+  recordSkipPrompt: (data: PortfolioTeacherOnboardingGetStateRequest = {}) =>
+    http.post<PortfolioTeacherOnboardingStateVO>(`${BASE}/skip-prompt/record`, data),
 }

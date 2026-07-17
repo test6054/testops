@@ -27,7 +27,7 @@ import type { ProcessEvaluationSignalSummaryVO } from '@/apis/quality/workbench'
  */
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import { message, Modal } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { processNodeApi } from '@/apis/quality/process-evaluation'
@@ -48,6 +48,7 @@ import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImp
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import {
   AssessmentItemSelector,
   CourseGoalSelector,
@@ -57,10 +58,19 @@ import {
 } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -599,13 +609,18 @@ function buildProcessNodeActions(record: ProcessEvaluationNodeVO): UiTableRowAct
   if (isNodeMutable(record)) {
     actions.push({ key: 'edit', label: '编辑' })
   }
-  for (const target of allowedConfirmationTransitions(record.confirmationStatus)) {
-    actions.push({
+  const transitions = allowedConfirmationTransitions(record.confirmationStatus)
+  // 行内仅 1 个 primary：首个状态迁移为主动作
+  transitions.forEach((target, index) => {
+    const item: UiTableRowActionItem = {
       key: target,
       label: confirmationStatusLabel(target),
-      tone: 'primary',
-    })
-  }
+    }
+    if (index === 0) {
+      item.tone = 'primary'
+    }
+    actions.push(item)
+  })
   if (isNodeMutable(record)) {
     actions.push({ key: 'delete', label: '删除', tone: 'danger' })
   }
@@ -633,13 +648,18 @@ function buildProcessRecordActions(record: ProcessEvaluationRecordVO): UiTableRo
   if (isRecordMutable(record)) {
     actions.push({ key: 'edit', label: '编辑' })
   }
-  for (const target of allowedConfirmationTransitions(record.confirmationStatus)) {
-    actions.push({
+  const transitions = allowedConfirmationTransitions(record.confirmationStatus)
+  // 行内仅 1 个 primary：首个状态迁移为主动作
+  transitions.forEach((target, index) => {
+    const item: UiTableRowActionItem = {
       key: target,
       label: confirmationStatusLabel(target),
-      tone: 'primary',
-    })
-  }
+    }
+    if (index === 0) {
+      item.tone = 'primary'
+    }
+    actions.push(item)
+  })
   if (isRecordMutable(record)) {
     actions.push({ key: 'delete', label: '删除', tone: 'danger' })
   }
@@ -685,12 +705,13 @@ function openImportExcel() {
     return
   }
   if (importConfirmationStatus.value === ConfirmationStatusCode.CONFIRMED) {
-    Modal.confirm({
+    void confirmAsync({
       title: '以「已确认」状态导入',
       content:
         '导入后记录立即锁定且不可退回修改，将直接进入达成度计算。请确认 Excel 数据已核对无误。',
       okText: '继续导入',
       cancelText: '取消',
+      type: 'warning',
       onOk: () => {
         importExcelVisible.value = true
       },
@@ -859,6 +880,17 @@ onActivated(async () => {
   await handleScopeChange()
 })
 
+
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
+
 function handleCourseChange(courseId: string | null) {
   qualityStore.setQualityCourse(courseId || '')
 }
@@ -880,21 +912,38 @@ function handleCourseChange(courseId: string | null) {
       </QualityPageContextBar>
     </template>
 
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
+      class="pe__empty"
+    />
+
     <SignalBand
-      v-if="qualityStore.currentQualityCourseId"
+      v-else-if="qualityStore.currentQualityCourseId"
       :metrics="signals"
       compact
       class="pe__signals"
     />
 
-    <UiEmpty
-      v-if="!qualityStore.currentQualityCourseId"
-      description="请选择课程"
+    <UiAlertStrip
+      v-else-if="!qualityStore.currentQualityCourseId"
+      tone="info"
+      size="sm"
+      dense
+      inline
+      :show-icon="false"
       class="pe__empty"
-    />
+    >
+      <template #default>
+        <span class="pe__gate-row">
+          <UiTag tone="blue" size="sm">未选择课程</UiTag>
+          <span>请在上方选择课程后再维护过程性评价节点与成绩</span>
+        </span>
+      </template>
+    </UiAlertStrip>
 
-    <a-row v-if="qualityStore.currentQualityCourseId" :gutter="12">
-      <a-col :span="10">
+    <UiRow v-if="!planGateMode && qualityStore.currentQualityCourseId" :gutter="12">
+      <UiCol :span="10">
         <UiCard class="detail-table-card pe__node-card">
           <template #title>过程性评价节点</template>
           <template #extra>
@@ -948,15 +997,30 @@ function handleCourseChange(courseId: string | null) {
             </template>
           </UiDataTable>
         </UiCard>
-      </a-col>
+      </UiCol>
 
-      <a-col :span="14">
-        <UiEmpty v-if="!selectedNode" description="请选择" class="pe__empty" />
+      <UiCol :span="14">
+        <UiAlertStrip
+          v-if="!selectedNode"
+          tone="info"
+          size="sm"
+          dense
+          inline
+          :show-icon="false"
+          class="pe__empty"
+        >
+          <template #default>
+            <span class="pe__gate-row">
+              <UiTag tone="blue" size="sm">未选择节点</UiTag>
+              <span>请在左侧点击过程评价节点后录入记录</span>
+            </span>
+          </template>
+        </UiAlertStrip>
 
         <UiCard v-else class="detail-table-card pe__record-card">
           <template #title>「{{ selectedNode.nodeName }}」记录</template>
           <template #extra>
-            <a-space>
+            <div class="dp-space" style="--dp-space-gap: 8px">
               <UiButton
                 variant="primary"
                 size="sm"
@@ -966,8 +1030,8 @@ function handleCourseChange(courseId: string | null) {
                 录入记录
               </UiButton>
               <span class="pe__import-status-label">导入状态</span>
-              <a-select
-                v-model:value="importConfirmationStatus"
+              <UiSelect
+                v-model="importConfirmationStatus"
                 :options="importConfirmationStatusOptions"
                 :disabled="selectedNode.confirmationStatus !== ConfirmationStatusCode.CONFIRMED"
                 size="small"
@@ -984,7 +1048,7 @@ function handleCourseChange(courseId: string | null) {
               <UiButton variant="outline" size="sm" @click="openConfirmedByGoal">
                 按课程目标查有效
               </UiButton>
-            </a-space>
+            </div>
           </template>
 
           <UiFilterBar
@@ -1038,166 +1102,183 @@ function handleCourseChange(courseId: string | null) {
             </template>
           </UiDataTable>
         </UiCard>
-      </a-col>
-    </a-row>
+      </UiCol>
+    </UiRow>
 
     <!-- 节点编辑 -->
-    <a-modal
+    <UiDialog
       v-model:open="nodeEditorVisible"
       :title="nodeEditorMode === 'create' ? '新建过程性评价节点' : '编辑节点'"
-      width="720px"
+      :width="720"
       @ok="submitNode"
     >
-      <a-form layout="vertical" :model="nodeEditor">
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="节点编码" required>
-              <a-input v-model:value="nodeEditor.nodeCode" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="节点类型" required>
-              <a-select v-model:value="nodeEditor.nodeType" :options="PROCESS_NODE_TYPE_OPTIONS" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="学期">
-              <a-select
-                v-model:value="nodeEditor.semester"
+      <UiForm layout="vertical" :model="nodeEditor">
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="节点编码" required>
+              <UiInput
+                size="sm" v-model="nodeEditor.nodeCode"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="节点类型" required>
+              <UiSelect
+                size="sm" v-model="nodeEditor.nodeType" :options="PROCESS_NODE_TYPE_OPTIONS"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="学期">
+              <UiSelect
+                size="sm"
+                v-model="nodeEditor.semester"
                 :options="SemesterOptions"
                 placeholder="学期"
                 allow-clear
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="名称" required>
-          <a-input v-model:value="nodeEditor.nodeName" />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="挂靠考核环节">
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="名称" required>
+          <UiInput
+            size="sm" v-model="nodeEditor.nodeName"
+          />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="挂靠考核环节">
               <AssessmentItemSelector
                 :value="nodeEditor.assessmentItemId || null"
                 :quality-course-id="qualityStore.currentQualityCourseId || null"
                 placeholder="可选"
                 @change="handleNodeAssessmentItemChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="挂靠课程目标">
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="挂靠课程目标">
               <CourseGoalSelector
                 :value="nodeEditor.courseGoalId || null"
                 :quality-course-id="qualityStore.currentQualityCourseId || null"
                 placeholder="可选"
                 @change="handleNodeCourseGoalChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="挂靠观测点">
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="挂靠观测点">
               <RequirementIndicatorSelector
                 :value="nodeEditor.indicatorId || null"
                 placeholder="可选"
                 @change="handleNodeIndicatorChange"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="权重 (0~1)">
-              <a-input-number
-                v-model:value="nodeEditor.weight"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="权重 (0~1)">
+              <UiInputNumber
+                size="sm"
+                v-model="nodeEditor.weight"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="满分">
-              <a-input-number v-model:value="nodeEditor.fullScore" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="覆盖率要求">
-              <a-input-number
-                v-model:value="nodeEditor.coverageRequired"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="满分">
+              <UiInputNumber
+                size="sm" v-model="nodeEditor.fullScore" :min="0" style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="覆盖率要求">
+              <UiInputNumber
+                size="sm"
+                v-model="nodeEditor.coverageRequired"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="证据类型">
-          <a-input
-            v-model:value="nodeEditor.evidenceType"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="证据类型">
+          <UiInput
+            size="sm"
+            v-model="nodeEditor.evidenceType"
             placeholder="如 实验报告 / 项目文档 / 课堂答辩"
           />
-        </a-form-item>
-        <a-form-item label="说明">
-          <a-textarea v-model:value="nodeEditor.description" :rows="3" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+        <UiFormItem label="说明">
+          <UiTextarea size="sm" v-model="nodeEditor.description" :rows="3" />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
     <!-- 记录编辑 -->
-    <a-modal
+    <UiDialog
       v-model:open="recordEditorVisible"
       :title="recordEditorMode === 'create' ? '录入节点记录' : '编辑节点记录'"
-      width="640px"
+      :width="640"
       @ok="submitRecord"
     >
-      <a-form layout="vertical" :model="recordEditor">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="学号">
-              <a-input v-model:value="recordEditor.studentNumber" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="学生">
+      <UiForm layout="vertical" :model="recordEditor">
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="学号">
+              <UiInput
+                size="sm" v-model="recordEditor.studentNumber"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="学生">
               <StudentSelector
                 :value="recordEditor.studentUserId || null"
                 placeholder="按学生选择"
                 @change="handleRecordStudentChange"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="得分" required>
-              <a-input-number v-model:value="recordEditor.score" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="换算分">
-              <a-input-number
-                v-model:value="recordEditor.convertedScore"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="得分" required>
+              <UiInputNumber
+                size="sm" v-model="recordEditor.score" :min="0" style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="换算分">
+              <UiInputNumber
+                size="sm"
+                v-model="recordEditor.convertedScore"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="数据来源">
-              <a-select v-model:value="recordEditor.sourceMode">
-                <a-select-option v-for="(v, k) in DataSourceModeDescription" :key="k" :value="k">
-                  {{ v }}
-                </a-select-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="证据文件">
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="数据来源">
+              <UiSelect
+                v-model="recordEditor.sourceMode"
+                size="sm"
+                :options="Object.entries(DataSourceModeDescription).map(([k, v]) => ({ value: k, label: v }))"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="证据文件">
           <UiPlatformFileField
             v-model:file-node-id="recordEditor.evidenceFileId"
             v-model:file-name="evidenceFileName"
@@ -1205,12 +1286,12 @@ function handleCourseChange(courseId: string | null) {
             accept=".pdf,.doc,.docx,.png,.jpg"
             button-text="上传证据文件"
           />
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="recordEditor.notes" :rows="3" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+        <UiFormItem label="备注">
+          <UiTextarea size="sm" v-model="recordEditor.notes" :rows="3" />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
     <!-- Excel 批量导入节点记录 -->
     <UiPlatformExcelImportModal
@@ -1228,13 +1309,13 @@ function handleCourseChange(courseId: string | null) {
     />
 
     <!-- 按课程目标查已确认记录 -->
-    <a-modal
+    <UiDialog
       v-model:open="confirmedByGoalVisible"
       title="按课程目标查已确认记录"
-      :footer="null"
+      hide-footer
       width="780px"
     >
-      <a-space class="pe__modal-toolbar" wrap>
+      <div class="pe__modal-toolbar dp-space dp-space--wrap" style="--dp-space-gap: 8px">
         <span>课程目标：</span>
         <CourseGoalSelector
           :value="confirmedByGoalId || null"
@@ -1251,7 +1332,7 @@ function handleCourseChange(courseId: string | null) {
         >
           查询
         </UiButton>
-      </a-space>
+      </div>
       <UiDataTable
         pagination-mode="server"
         :columns="confirmedByGoalColumns"
@@ -1280,7 +1361,7 @@ function handleCourseChange(courseId: string | null) {
           </template>
         </template>
       </UiDataTable>
-    </a-modal>
+    </UiDialog>
   </QualityIngestPageShell>
 </template>
 
@@ -1298,8 +1379,8 @@ function handleCourseChange(courseId: string | null) {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {
@@ -1313,7 +1394,7 @@ function handleCourseChange(courseId: string | null) {
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1330,7 +1411,16 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__empty {
-    margin-top: 32px;
+    margin-top: var(--dp-space-3, 12px);
+  }
+
+  &__gate-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--dp-space-2);
+    min-width: 0;
+    font-size: var(--dp-font-size-sm);
+    color: var(--dp-text-secondary);
   }
 
   &__sub-desc {
@@ -1356,6 +1446,12 @@ function handleCourseChange(courseId: string | null) {
 }
 
 :deep(.pe__row-selected) td {
-  background-color: var(--ant-color-primary-bg) !important;
+  background-color: var(--dp-color-primary-bg) !important;
+}
+.pe__gate-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  min-width: 0;
 }
 </style>

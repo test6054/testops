@@ -10,14 +10,13 @@
 
     <template v-if="examId" #signal>
       <SignalBand
-        variant="tiles"
         :metrics="hubSignalMetrics"
         compact
         @metric-click="handleHubSignalClick"
       />
     </template>
 
-    <UiEmpty v-if="!examId" description="缺少考试上下文，请从考试列表进入" />
+    <ExamSelectGateStrip v-if="!examId" body="缺少考试上下文，请从考试列表进入复核任务中心" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -37,6 +36,7 @@
         </template>
 
         <UiEmpty
+          size="sm"
           v-if="!loading && rows.length === 0"
           description="当前筛选下暂无复核任务"
           class="review-task-hub__empty"
@@ -147,6 +147,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -402,7 +403,7 @@ watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
 
 <style lang="scss" scoped>
 .review-task-hub__empty {
-  padding: 40px 0;
+  padding: var(--dp-space-3, 12px) 0;
 }
 
 .review-task-hub__paper-cell {
@@ -414,11 +415,11 @@ watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
 
 .review-task-hub__paper-primary {
   font-weight: 500;
-  color: var(--ant-color-text);
+  color: var(--dp-text);
 }
 
 .review-task-hub__paper-secondary {
   font-size: 12px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 </style>

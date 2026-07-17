@@ -3,6 +3,8 @@ import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
 import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { isScannerKioskBrowserPage } from '@/utils/kiosk-auth'
@@ -101,13 +103,12 @@ function handleOk() {
 </script>
 
 <template>
-  <a-modal
+  <UiDialog
     :open="open"
     title="认知确认"
     :confirm-loading="loading"
     ok-text="确认并开始扫描"
     cancel-text="取消"
-    :ok-button-props="{ disabled: !canConfirm }"
     @update:open="emit('update:open', $event)"
     @ok="handleOk"
     @cancel="emit('cancel')"
@@ -138,7 +139,7 @@ function handleOk() {
           <dd>{{ ticket?.traceLabelCode || '—' }}</dd>
         </div>
       </dl>
-      <UiButton size="sm" variant="ghost" disabled>无条码门禁 · 屏显确认</UiButton>
+      <UiButton variant="ghost" disabled>无条码门禁 · 屏显确认</UiButton>
     </div>
     <div v-else-if="ticket?.archiveSnapshot" class="cognitive-confirm">
       <p class="cognitive-confirm__lead">请核对柜位与卷信息后再进纸</p>
@@ -150,7 +151,7 @@ function handleOk() {
       </p>
       <div class="cognitive-confirm__preview">
         <p class="cognitive-confirm__preview-label">材料预览</p>
-        <a-skeleton v-if="previewLoading" active :paragraph="false" />
+        <UiSkeletonState v-if="previewLoading" :rows="1" compact />
         <img
           v-else-if="previewUrl"
           :src="previewUrl"
@@ -182,9 +183,9 @@ function handleOk() {
           <dd>{{ ticket.traceLabelCode || '—' }}</dd>
         </div>
       </dl>
-      <UiButton size="sm" variant="ghost" disabled>无条码门禁 · 屏显确认</UiButton>
+      <UiButton variant="ghost" disabled>无条码门禁 · 屏显确认</UiButton>
     </div>
-  </a-modal>
+  </UiDialog>
 </template>
 
 <style scoped>

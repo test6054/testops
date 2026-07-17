@@ -15,6 +15,8 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -348,25 +350,27 @@ onMounted(() => {
       />
     </template>
     <UiSectionTabs v-model="activeTab" :items="tabItems" @update:model-value="reloadActiveTab" />
-    <a-spin :spinning="loading">
+    <UiSpin :spinning="loading">
       <UiCard v-if="activeTab === 'portrait'" title="画像预警">
         <div class="alert-center__filters">
-          <a-select
-            v-model:value="portraitFilter.alertType"
+          <UiSelect
+            v-model="portraitFilter.alertType"
+            size="sm"
             allow-clear
             placeholder="预警类型"
             :options="alertTypeOptions"
             class="alert-center__field"
           />
-          <a-select
-            v-model:value="portraitFilter.alertStatus"
+          <UiSelect
+            v-model="portraitFilter.alertStatus"
+            size="sm"
             allow-clear
             placeholder="预警状态"
             :options="alertStatusOptions"
             class="alert-center__field"
           />
-          <a-button type="primary" @click="loadPortraitAlerts"> 查询 </a-button>
-          <a-button @click="resetPortraitFilter"> 重置 </a-button>
+          <UiButton size="sm" variant="primary" @click="loadPortraitAlerts">查询</UiButton>
+          <UiButton size="sm" variant="ghost" @click="resetPortraitFilter">重置</UiButton>
         </div>
         <UiDataTable
           v-model:current="portraitFilter.pageNum"
@@ -421,28 +425,30 @@ onMounted(() => {
             </template>
           </template>
           <template #emptyText>
-            <UiEmpty :description="portraitLoadFailed ? '画像预警加载失败' : '暂无画像预警'" />
+            <UiEmpty size="sm" :description="portraitLoadFailed ? '画像预警加载失败' : '暂无画像预警'" />
           </template>
         </UiDataTable>
       </UiCard>
       <UiCard v-else title="结构合规预警">
         <div class="alert-center__filters">
-          <a-select
-            v-model:value="complianceFilter.scopeType"
+          <UiSelect
+            v-model="complianceFilter.scopeType"
+            size="sm"
             allow-clear
             placeholder="范围类型"
             :options="scopeTypeOptions"
             class="alert-center__field"
           />
-          <a-select
-            v-model:value="complianceFilter.alertStatus"
+          <UiSelect
+            v-model="complianceFilter.alertStatus"
+            size="sm"
             allow-clear
             placeholder="预警状态"
             :options="alertStatusOptions"
             class="alert-center__field"
           />
-          <a-button type="primary" @click="loadComplianceAlerts"> 查询 </a-button>
-          <a-button @click="resetComplianceFilter"> 重置 </a-button>
+          <UiButton size="sm" variant="primary" @click="loadComplianceAlerts">查询</UiButton>
+          <UiButton size="sm" variant="ghost" @click="resetComplianceFilter">重置</UiButton>
         </div>
         <UiDataTable
           v-model:current="complianceFilter.pageNum"
@@ -497,11 +503,11 @@ onMounted(() => {
             </template>
           </template>
           <template #emptyText>
-            <UiEmpty :description="complianceLoadFailed ? '合规预警加载失败' : '暂无合规预警'" />
+            <UiEmpty size="sm" :description="complianceLoadFailed ? '合规预警加载失败' : '暂无合规预警'" />
           </template>
         </UiDataTable>
       </UiCard>
-    </a-spin>
+    </UiSpin>
   </StageWorkbenchShell>
 </template>
 
@@ -525,6 +531,6 @@ onMounted(() => {
 
 .alert-center__sub {
   font-size: 12px;
-  color: var(--dp-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 </style>

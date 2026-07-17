@@ -9,7 +9,6 @@ import type {
 } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -80,15 +79,17 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   const pendingBatchFullScore = ref(0)
 
   function promptMultiResponseSliceConflict(examId: string, detail: string): void {
-    Modal.warning({
+    void confirmAsync({
       title: '无法提交给分',
       content: `${detail}。请先到扫描监控清理重复作答切片后再提交。`,
       okText: '前往扫描监控',
-      onOk: () =>
-        router.push({
+      type: 'warning',
+      onOk: () => {
+        void router.push({
           name: 'TeacherExamWorkspaceScanMonitor',
           params: { examId },
-        }),
+        })
+      },
     })
   }
 
@@ -230,6 +231,9 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   async function applyScoreToRemaining(): Promise<void> {
+    if (batchApplying.value) {
+      return
+    }
     const currentTask = options.task.value
     const score = submittedScoreSnapshot.value
     const layoutQuestionId
@@ -369,19 +373,22 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     if (options.nextTaskId.value) {
       if (!applyModalOpen.value) {
         message.success(
-          `阅卷任务已提交，已切换到${options.isWholePaperTask.value ? '下一份' : '下一题'}`,
+          `阅卷任务已提交，已切换到${options.isWholePaperTask.value ? '下一未阅份' : '下一未阅'}`,
         )
         options.goToTask(options.nextTaskId.value)
       }
       return
     }
     message.success(
-      `阅卷任务已提交，当前批次已到最后${options.isWholePaperTask.value ? '一份' : '一题'}`,
+      `阅卷任务已提交，当前批次无更多未阅，已停在最后${options.isWholePaperTask.value ? '一份' : '一题'}`,
     )
     void options.loadTask()
   }
 
   async function submit(): Promise<void> {
+    if (submitting.value) {
+      return
+    }
     if (!options.taskId.value || !options.task.value || !formRef.value) return
     if (!options.usesWholePaperWorkspace.value) {
       try {

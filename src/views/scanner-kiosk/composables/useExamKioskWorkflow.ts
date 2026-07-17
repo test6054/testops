@@ -743,6 +743,7 @@ export function useExamKioskWorkflow() {
     return '仅清理本机未上报的扫描任务；上传中的任务需等待完成或失败后处理'
   })
   const canRetryUpload = computed(() => {
+    if (loading.value) return false
     const job = currentJob.value
     if (!job || job.reported) return false
     if (isPreUploadScanFailure.value) return false
@@ -766,6 +767,7 @@ export function useExamKioskWorkflow() {
     ].includes(status)
   })
   const canRetryCommit = computed(() => {
+    if (loading.value) return false
     const job = currentJob.value
     if (!job || job.reported) return false
     const status = job.status
@@ -1414,7 +1416,7 @@ export function useExamKioskWorkflow() {
   )
 
   async function retryPageRegister() {
-    if (!examId.value) {
+    if (!examId.value || pageRegisterRetryLoading.value) {
       return
     }
     const workOrderBatchExternalNo = activeBatchExternalNo.value.trim()
@@ -2993,34 +2995,35 @@ export function useExamKioskWorkflow() {
   }
 
   async function submitScanJob(): Promise<boolean> {
+    if (loading.value) return false
     if (!kioskContext.value) return false
-    await refreshKioskContext()
-    if (!kioskContext.value) return false
-    if (activeBackendScanSession.value) {
-      errorMessage.value = activeBackendScanSessionReason.value
-      return false
-    }
-    const isSupplement = scanMode.value === ScannerKioskScanModeCode.SUPPLEMENT
-    const modeBlockedReason = isSupplement
-      ? supplementScanBlockedReason.value || supplementLaunchFieldBlockedReason.value
-      : directScanBlockedReason.value
-    if (modeBlockedReason) {
-      errorMessage.value = modeBlockedReason
-      return false
-    }
-    if (currentJobBlocksWorkspace.value) {
-      errorMessage.value = '当前扫描任务未结束，不能新建扫描'
-      return false
-    }
-    const agentContextSnapshot = kioskContext.value
     loading.value = true
     errorMessage.value = ''
     successMessage.value = ''
     resetBusyState()
     clearReviewBatchAnchor()
-    const scannerDeviceId = getActiveScannerDeviceId()
-    const scannerStationId = getActiveScannerStationId()
     try {
+      await refreshKioskContext()
+      if (!kioskContext.value) return false
+      if (activeBackendScanSession.value) {
+        errorMessage.value = activeBackendScanSessionReason.value
+        return false
+      }
+      const isSupplement = scanMode.value === ScannerKioskScanModeCode.SUPPLEMENT
+      const modeBlockedReason = isSupplement
+        ? supplementScanBlockedReason.value || supplementLaunchFieldBlockedReason.value
+        : directScanBlockedReason.value
+      if (modeBlockedReason) {
+        errorMessage.value = modeBlockedReason
+        return false
+      }
+      if (currentJobBlocksWorkspace.value) {
+        errorMessage.value = '当前扫描任务未结束，不能新建扫描'
+        return false
+      }
+      const agentContextSnapshot = kioskContext.value
+      const scannerDeviceId = getActiveScannerDeviceId()
+      const scannerStationId = getActiveScannerStationId()
       if (!scannerDeviceId) {
         errorMessage.value = '考试扫描设备缺失，无法创建扫描批次'
         return false
@@ -3112,6 +3115,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function cancelCurrentJob() {
+    if (loading.value) return
     if (!currentJob.value) {
       if (activeBackendScanSession.value) {
         await discardOrphanActiveBatch()
@@ -3157,7 +3161,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function retryCurrentUpload() {
-    if (!currentJob.value) return
+    if (!currentJob.value || loading.value) return
     loading.value = true
     errorMessage.value = ''
     try {
@@ -3176,7 +3180,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function pauseCurrentJob() {
-    if (!currentJob.value) return
+    if (!currentJob.value || loading.value) return
     if (currentJob.value.status !== LocalScanJobStatusCode.SCANNING) {
       errorMessage.value = '当前任务不在采集阶段，不能暂停'
       return
@@ -3199,7 +3203,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function resumeCurrentJob() {
-    if (!currentJob.value) return
+    if (!currentJob.value || loading.value) return
     loading.value = true
     errorMessage.value = ''
     try {
@@ -3219,7 +3223,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function endCurrentBatch() {
-    if (!currentJob.value) return
+    if (!currentJob.value || loading.value) return
     if (!canEndBatch.value) {
       errorMessage.value = '当前任务不在采集阶段，不能结束批次'
       return
@@ -3229,6 +3233,7 @@ export function useExamKioskWorkflow() {
       content: '确认结束本批次吗？已扫描页面会进入上传与提交流程。',
     })
     if (!confirmed) return
+    if (loading.value) return
     loading.value = true
     errorMessage.value = ''
     try {
@@ -3321,7 +3326,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function retryCurrentCommit() {
-    if (!currentJob.value) return
+    if (!currentJob.value || loading.value) return
     loading.value = true
     errorMessage.value = ''
     try {
@@ -3354,6 +3359,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function removeCurrentScanJob() {
+    if (loading.value) return
     if (!currentJob.value) {
       if (activeBackendScanSession.value) {
         await discardOrphanActiveBatch()
@@ -3390,6 +3396,7 @@ export function useExamKioskWorkflow() {
         okText: '废弃',
       })
       if (!confirmed) return
+      if (loading.value) return
       loading.value = true
       try {
         if (!job.scanBatchId) {
@@ -3427,6 +3434,7 @@ export function useExamKioskWorkflow() {
       okText: '删除',
     })
     if (!confirmed) return
+    if (loading.value) return
     loading.value = true
     try {
       if (getActiveBatchExternalNo()) {
@@ -3450,6 +3458,7 @@ export function useExamKioskWorkflow() {
   }
 
   async function discardLedgerPage(item: { localPageId?: string, pageNo: number }) {
+    if (loading.value) return
     if (!Number.isFinite(item.pageNo)) {
       throw toUserError(null, '页级账本缺少页号')
     }

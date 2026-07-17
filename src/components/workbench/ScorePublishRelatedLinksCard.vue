@@ -40,14 +40,14 @@ const items = computed(() => SCORE_PUBLISH_RELATED_LINKS[props.variant])
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
   }
 
   &__item {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding-bottom: 16px;
+    gap: var(--dp-space-1, 4px);
+    padding-bottom: var(--dp-space-3, 12px);
     border-bottom: 1px solid var(--dp-border-subtle);
 
     &:last-child {

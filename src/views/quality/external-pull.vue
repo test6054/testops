@@ -55,12 +55,27 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
+import PasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTimeline from '@/components/ui-guide/ui/UiTimeline.vue'
+import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
@@ -1194,16 +1209,18 @@ onMounted(async () => {
         <span class="external-pull__panel-meta">{{ sourceTotal }} 个</span>
       </template>
       <template #extra>
-        <a-space>
+        <div class="dp-space" style="--dp-space-gap: 8px">
           <UiTextAction @click="reloadAll">刷新</UiTextAction>
           <UiButton variant="outline" size="sm" @click="openSourceCreate">新建数据源</UiButton>
-        </a-space>
+        </div>
       </template>
 
-      <UiEmpty
+      <WorkbenchContextGateStrip
         v-if="!sources.length && !sourceLoading"
-        description="当前没有可展示的内容"
-        size="sm"
+        tag="未配置"
+        body="暂无数据源，请先创建并执行外部拉取任务"
+        cta-label="新建数据源"
+        @cta="openSourceCreate"
       />
       <UiDataTable
         v-model:current="sourceQuery.pageNum"
@@ -1260,7 +1277,13 @@ onMounted(async () => {
         @reset="handleTaskReset"
       />
 
-      <UiEmpty v-if="!tasks.length && !taskLoading" description="当前没有可展示的内容" size="sm" />
+      <WorkbenchContextGateStrip
+        v-if="!tasks.length && !taskLoading"
+        tag="未配置"
+        body="暂无外部拉取任务"
+        cta-label="新建拔取任务"
+        @cta="openTaskCreate"
+      />
       <UiDataTable
         v-else
         v-model:current="taskQuery.pageNum"
@@ -1333,72 +1356,85 @@ onMounted(async () => {
       ok-text="保存"
       @ok="submitSource"
     >
-      <a-form layout="vertical" :model="sourceForm">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="数据源编码" required>
-              <a-input v-model:value="sourceForm.sourceCode" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="名称" required>
-              <a-input v-model:value="sourceForm.sourceName" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="数据库类型" required>
-              <a-select v-model:value="sourceForm.sourceType" :options="EXTERNAL_SOURCE_TYPE_OPTIONS" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="驱动类全名" required>
-              <a-input v-model:value="sourceForm.driverClass" placeholder="org.postgresql.Driver" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="连接地址" required>
-          <a-input
-            v-model:value="sourceForm.jdbcUrl"
+      <UiForm layout="vertical" :model="sourceForm">
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="数据源编码" required>
+              <UiInput
+                size="sm" v-model="sourceForm.sourceCode"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="名称" required>
+              <UiInput
+                size="sm" v-model="sourceForm.sourceName"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="数据库类型" required>
+              <UiSelect
+                size="sm" v-model="sourceForm.sourceType" :options="EXTERNAL_SOURCE_TYPE_OPTIONS"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="驱动类全名" required>
+              <UiInput
+                size="sm" v-model="sourceForm.driverClass" placeholder="org.postgresql.Driver"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="连接地址" required>
+          <UiInput
+            size="sm"
+            v-model="sourceForm.jdbcUrl"
             placeholder="jdbc:postgresql://host:5432/db"
           />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="账户" required>
-              <a-input v-model:value="sourceForm.username" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="密码" required>
-              <a-input-password v-model:value="sourceForm.password" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="最大行数" required>
-              <a-input-number
-                v-model:value="sourceForm.maxRowCount"
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="账户" required>
+              <UiInput
+                size="sm" v-model="sourceForm.username"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="密码" required>
+              <PasswordInput v-model="sourceForm.password" size="sm" />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="最大行数" required>
+              <UiInputNumber
+                size="sm"
+                v-model="sourceForm.maxRowCount"
                 :min="1"
                 :max="1000000"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="查询超时（秒）" required>
-              <a-input-number
-                v-model:value="sourceForm.queryTimeoutSeconds"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="查询超时（秒）" required>
+              <UiInputNumber
+                size="sm"
+                v-model="sourceForm.queryTimeoutSeconds"
                 :min="1"
                 :max="3600"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="可拔取字段" required>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="可拔取字段" required>
           <div class="external-pull__entry-list">
             <div
               v-for="(entry, index) in sourceFieldScopes"
@@ -1415,20 +1451,28 @@ onMounted(async () => {
                   删除
                 </UiTextAction>
               </div>
-              <a-row :gutter="12">
-                <a-col :span="6">
-                  <a-input v-model:value="entry.sourceObjectName" placeholder="来源对象" />
-                </a-col>
-                <a-col :span="6">
-                  <a-input v-model:value="entry.fieldName" placeholder="字段名" />
-                </a-col>
-                <a-col :span="6">
-                  <a-input v-model:value="entry.fieldLabel" placeholder="展示名称" />
-                </a-col>
-                <a-col :span="6">
-                  <a-input v-model:value="entry.fieldType" placeholder="字段类型" />
-                </a-col>
-              </a-row>
+              <UiRow :gutter="12">
+                <UiCol :span="6">
+                  <UiInput
+                    size="sm" v-model="entry.sourceObjectName" placeholder="来源对象"
+                  />
+                </UiCol>
+                <UiCol :span="6">
+                  <UiInput
+                    size="sm" v-model="entry.fieldName" placeholder="字段名"
+                  />
+                </UiCol>
+                <UiCol :span="6">
+                  <UiInput
+                    size="sm" v-model="entry.fieldLabel" placeholder="展示名称"
+                  />
+                </UiCol>
+                <UiCol :span="6">
+                  <UiInput
+                    size="sm" v-model="entry.fieldType" placeholder="字段类型"
+                  />
+                </UiCol>
+              </UiRow>
             </div>
           </div>
           <UiButton
@@ -1439,11 +1483,11 @@ onMounted(async () => {
           >
             新增字段
           </UiButton>
-        </a-form-item>
-        <a-form-item label="启用">
-          <a-switch v-model:checked="sourceForm.enabled" />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+        <UiFormItem label="启用">
+          <UiSwitch size="sm" v-model="sourceForm.enabled" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -1455,40 +1499,46 @@ onMounted(async () => {
       ok-text="提交任务"
       @ok="submitTask"
     >
-      <a-form layout="vertical" :model="taskForm">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="任务编码" required>
-              <a-input v-model:value="taskForm.taskCode" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="任务名称" required>
-              <a-input v-model:value="taskForm.taskName" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="数据源" required>
-          <a-select
-            v-model:value="taskForm.sourceId"
+      <UiForm layout="vertical" :model="taskForm">
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="任务编码" required>
+              <UiInput
+                size="sm" v-model="taskForm.taskCode"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="任务名称" required>
+              <UiInput
+                size="sm" v-model="taskForm.taskName"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="数据源" required>
+          <UiSelect
+            size="sm"
+            v-model="taskForm.sourceId"
             :options="enabledSourceOptions"
             placeholder="仅显示已启用的数据源"
             @change="resetTaskRuleAfterSourceChange"
           />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="业务归属" required>
-              <a-select
-                v-model:value="taskForm.businessAnchor"
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="业务归属" required>
+              <UiSelect
+                size="sm"
+                v-model="taskForm.businessAnchor"
                 placeholder="选择业务归属"
                 :options="BUSINESS_ANCHOR_OPTIONS"
                 @change="handleTaskBusinessAnchorChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="归属对象" required>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="归属对象" required>
               <TrainingPlanSelector
                 v-if="taskForm.businessAnchor === 'TRAINING_PLAN'"
                 :value="taskForm.businessId || null"
@@ -1538,29 +1588,31 @@ onMounted(async () => {
                 placeholder="选择整改任务"
                 @update:value="handleTaskBusinessObjectChange"
               />
-              <a-select v-else disabled placeholder="先选择业务归属" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="来源对象" required>
-          <a-select
-            v-model:value="taskForm.sourceObjectName"
+              <UiSelect v-else disabled placeholder="先选择业务归属" :options="[]" size="sm" />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="来源对象" required>
+          <UiSelect
+            size="sm"
+            v-model="taskForm.sourceObjectName"
             :options="sourceObjectOptions"
             placeholder="先选择数据源，再选择来源对象"
             :disabled="!taskForm.sourceId"
             @change="resetTaskRuleAfterObjectChange"
           />
-        </a-form-item>
-        <a-form-item label="返回字段" required>
-          <a-select
-            v-model:value="taskSelectedFields"
+        </UiFormItem>
+        <UiFormItem label="返回字段" required>
+          <UiSelect
+            size="sm"
+            v-model="taskSelectedFields"
             mode="multiple"
             :options="taskFieldOptions"
             placeholder="选择需要返回的字段"
             :disabled="!taskForm.sourceObjectName"
           />
-        </a-form-item>
-        <a-form-item label="筛选条件">
+        </UiFormItem>
+        <UiFormItem label="筛选条件">
           <div class="external-pull__entry-list">
             <div
               v-for="(entry, index) in taskFilters"
@@ -1577,32 +1629,41 @@ onMounted(async () => {
                   删除
                 </UiTextAction>
               </div>
-              <a-row :gutter="12">
-                <a-col :span="8">
-                  <a-select
-                    v-model:value="entry.fieldName"
+              <UiRow :gutter="12">
+                <UiCol :span="8">
+                  <UiSelect
+                    size="sm"
+                    v-model="entry.fieldName"
                     :options="taskFieldOptions"
                     placeholder="选择字段"
                     :disabled="!taskForm.sourceObjectName"
                   />
-                </a-col>
-                <a-col :span="6">
-                  <a-select
-                    v-model:value="entry.operator"
+                </UiCol>
+                <UiCol :span="6">
+                  <UiSelect
+                    size="sm"
+                    v-model="entry.operator"
                     :options="EXTERNAL_PULL_FILTER_OPERATOR_OPTIONS"
                     @change="handleFilterOperatorChange(entry)"
                   />
-                </a-col>
-                <a-col :span="10">
-                  <a-select
+                </UiCol>
+                <UiCol :span="10">
+                  <UiSelect
                     v-if="entry.operator === ExternalPullFilterOperatorCode.IN"
-                    v-model:value="entry.multipleValues"
+                    v-model="entry.multipleValues"
                     mode="tags"
+                    size="sm"
                     placeholder="逐项录入筛选值"
+                    :options="[]"
                   />
-                  <a-input v-else v-model:value="entry.singleValue" placeholder="填写筛选值" />
-                </a-col>
-              </a-row>
+                  <UiInput
+                    v-else
+                    v-model="entry.singleValue"
+                    size="sm"
+                    placeholder="填写筛选值"
+                  />
+                </UiCol>
+              </UiRow>
             </div>
           </div>
           <UiButton
@@ -1613,32 +1674,35 @@ onMounted(async () => {
           >
             新增筛选条件
           </UiButton>
-        </a-form-item>
-        <a-form-item label="排序规则">
+        </UiFormItem>
+        <UiFormItem label="排序规则">
           <div class="external-pull__entry-list">
             <div
               v-for="(entry, index) in taskSorts"
               :key="entry.key"
               class="external-pull__entry-card external-pull__entry-card--compact"
             >
-              <a-row :gutter="12" align="middle">
-                <a-col :span="10">
-                  <a-select
-                    v-model:value="entry.fieldName"
+              <UiRow :gutter="12" align="middle">
+                <UiCol :span="10">
+                  <UiSelect
+                    size="sm"
+                    v-model="entry.fieldName"
                     :options="taskFieldOptions"
                     placeholder="选择字段"
                     :disabled="!taskForm.sourceObjectName"
                   />
-                </a-col>
-                <a-col :span="8">
-                  <a-select v-model:value="entry.sortDirection" :options="EXTERNAL_PULL_SORT_DIRECTION_OPTIONS" />
-                </a-col>
-                <a-col :span="6">
+                </UiCol>
+                <UiCol :span="8">
+                  <UiSelect
+                    size="sm" v-model="entry.sortDirection" :options="EXTERNAL_PULL_SORT_DIRECTION_OPTIONS"
+                  />
+                </UiCol>
+                <UiCol :span="6">
                   <UiTextAction tone="danger" @click="taskSorts.splice(index, 1)">
                     删除
                   </UiTextAction>
-                </a-col>
-              </a-row>
+                </UiCol>
+              </UiRow>
             </div>
           </div>
           <UiButton
@@ -1649,8 +1713,8 @@ onMounted(async () => {
           >
             新增排序规则
           </UiButton>
-        </a-form-item>
-        <a-form-item label="提取规则预览">
+        </UiFormItem>
+        <UiFormItem label="提取规则预览">
           <div v-if="taskRuleSummaryLines.length" class="external-pull__detail-block">
             <div
               v-for="line in taskRuleSummaryLines"
@@ -1660,55 +1724,57 @@ onMounted(async () => {
               {{ line }}
             </div>
           </div>
-          <UiEmpty description="当前没有可展示的内容" class="external-pull__empty" />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="最大行数（可选）">
-              <a-input-number
-                v-model:value="taskForm.maxRowCount"
+          <UiEmpty size="sm" description="暂无任务明细" class="external-pull__empty" />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="最大行数（可选）">
+              <UiInputNumber
+                size="sm"
+                v-model="taskForm.maxRowCount"
                 :min="1"
                 :max="1000000"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="查询超时（秒，可选）">
-              <a-input-number
-                v-model:value="taskForm.queryTimeoutSeconds"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="查询超时（秒，可选）">
+              <UiInputNumber
+                size="sm"
+                v-model="taskForm.queryTimeoutSeconds"
                 :min="1"
                 :max="3600"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-      </a-form>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer v-model:open="detailVisible" title="拔取任务详情" :width="860" :hide-footer="true">
       <template v-if="detailRecord">
-        <a-descriptions :column="2" size="small" bordered class="external-pull__detail-desc">
-          <a-descriptions-item label="任务编码">
+        <UiDescriptions :column="2" size="small" bordered class="external-pull__detail-desc">
+          <UiDescriptionsItem label="任务编码">
             {{ detailRecord.taskCode }}
-          </a-descriptions-item>
-          <a-descriptions-item label="状态">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="状态">
             <UiTag :tone="taskStatusColor(detailRecord.status)" size="sm">
               {{ taskStatusLabel(detailRecord.status) }}
             </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="数据源">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="数据源">
             {{ detailRecord.sourceName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="来源对象">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="来源对象">
             {{ detailRecord.sourceObjectName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="业务归属">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="业务归属">
             {{ businessAnchorLabel(detailRecord.businessAnchor) }}
             <span> / {{ detailRecord.businessLabel }}</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="返回行数">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="返回行数">
             {{
               Number.isFinite(detailRecord.returnRows)
                 ? detailRecord.returnRows
@@ -1718,8 +1784,8 @@ onMounted(async () => {
                     ? '尚未执行'
                     : '未返回行数'
             }}
-          </a-descriptions-item>
-          <a-descriptions-item label="耗时">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="耗时">
             {{
               Number.isFinite(detailRecord.elapsedMs)
                 ? `${detailRecord.elapsedMs} ms`
@@ -1729,16 +1795,16 @@ onMounted(async () => {
                     ? '尚未开始计时'
                     : '未返回耗时'
             }}
-          </a-descriptions-item>
-          <a-descriptions-item label="开始时间">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="开始时间">
             {{
               detailRecord.startedTime
                 || (detailRecord.status === ExternalPullTaskStatusCode.PENDING
                   ? '尚未开始执行'
                   : '缺失开始时间')
             }}
-          </a-descriptions-item>
-          <a-descriptions-item label="结束时间">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="结束时间">
             {{
               detailRecord.finishedTime
                 || (detailRecord.status === ExternalPullTaskStatusCode.RUNNING
@@ -1747,8 +1813,8 @@ onMounted(async () => {
                     ? '尚未开始执行'
                     : '缺失结束时间')
             }}
-          </a-descriptions-item>
-          <a-descriptions-item v-if="detailRecord.failureReason" label="处理说明" :span="2">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="detailRecord.failureReason" label="处理说明" :span="2">
             <span class="external-pull__error-text">
               {{
                 getUserProcessFailureMessage(
@@ -1757,8 +1823,8 @@ onMounted(async () => {
                 )
               }}
             </span>
-          </a-descriptions-item>
-          <a-descriptions-item label="提取规则" :span="2">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="提取规则" :span="2">
             <div class="external-pull__detail-grid">
               <div class="external-pull__detail-line">
                 <strong>返回字段</strong>
@@ -1799,13 +1865,13 @@ onMounted(async () => {
                 <span v-else>无</span>
               </div>
             </div>
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
 
         <h4 class="external-pull__section-title">结果批次（可逐批确认 / 驳回）</h4>
         <UiEmpty
           v-if="!detailResults.length && !detailLoading"
-          description="当前没有可展示的内容"
+          description="暂无字段映射预览"
           size="sm"
         />
         <UiDataTable
@@ -1862,12 +1928,12 @@ onMounted(async () => {
         <h4 class="external-pull__section-title">审计流水</h4>
         <UiEmpty
           v-if="!detailAudits.length && !detailLoading"
-          description="当前没有可展示的内容"
+          description="暂无同步日志"
           size="sm"
         />
         <template v-else>
-          <a-timeline>
-            <a-timeline-item
+          <UiTimeline>
+            <UiTimelineItem
               v-for="audit in detailAudits"
               :key="audit.id"
               :color="auditTimelineTone(audit)"
@@ -1892,16 +1958,15 @@ onMounted(async () => {
               <p class="external-pull__sub-text">
                 {{ audit.auditedTime }}
               </p>
-            </a-timeline-item>
-          </a-timeline>
-          <a-pagination
+            </UiTimelineItem>
+          </UiTimeline>
+          <UiPagination
             v-if="detailAuditTotal > detailAuditPageSize"
             class="external-pull__audit-pager"
             size="small"
-            :current="detailAuditPageNum"
-            :page-size="detailAuditPageSize"
+            v-model:current="detailAuditPageNum"
+            v-model:page-size="detailAuditPageSize"
             :total="detailAuditTotal"
-            show-size-changer
             @change="
               (page: number, pageSize: number) =>
                 handleDetailAuditPageChange({ current: page, pageSize })
@@ -1926,9 +1991,9 @@ onMounted(async () => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
+    margin-bottom: var(--dp-space-3, 12px);
   }
 
   &__panel-header {
@@ -1942,7 +2007,7 @@ onMounted(async () => {
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -2006,7 +2071,7 @@ onMounted(async () => {
   }
 
   &__error-text {
-    color: var(--ant-color-error);
+    color: var(--dp-error);
   }
 
   &__detail-block,

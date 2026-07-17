@@ -40,10 +40,11 @@
     </template>
 
     <template v-if="taskDetail" #signal>
-      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" compact />
     </template>
 
     <UiEmpty
+      size="sm"
       v-if="loadFailed"
       description="整改任务加载失败"
       action-label="重试"
@@ -147,6 +148,7 @@
           </div>
         </template>
         <UiEmpty
+          size="sm"
           v-if="!taskDetail.evidenceItems?.length"
           description="尚未上传整改证据"
           :action-label="canUploadEvidence ? '上传文件' : undefined"
@@ -327,16 +329,16 @@
       @close="evidenceUploadOpen = false"
       @confirm="submitEvidenceUpload"
     >
-      <a-form layout="vertical">
-        <a-form-item label="证据文件" required>
+      <UiForm layout="vertical">
+        <UiFormItem label="证据文件" required>
           <UiPlatformFileField
             v-model:file-node-id="evidenceUploadFileId"
             v-model:file-name="evidenceUploadFileName"
             :scene-key="FileUploadSceneKey.MARK_ARCHIVE_VOLUME_MATERIAL"
             button-text="选择文件"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -350,17 +352,18 @@
       @close="closeVerifyModalOpen = false"
       @confirm="submitCloseWithVerification"
     >
-      <a-form layout="vertical">
-        <a-form-item label="验证备注" required>
-          <a-textarea
-            v-model:value="closeVerifyComment"
+      <UiForm layout="vertical">
+        <UiFormItem label="验证备注" required>
+          <UiTextarea
+            size="sm"
+            v-model="closeVerifyComment"
             :rows="3"
             :maxlength="1000"
-            show-count
+            :show-count="true"
             placeholder="填写协调人验证意见"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
@@ -406,8 +409,11 @@ import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
@@ -636,6 +642,7 @@ function openEvidenceUploadModal() {
 }
 
 async function submitEvidenceUpload() {
+  if (evidenceUploadSubmitting.value) return
   if (!taskDetail.value || !evidenceUploadFileId.value) {
     showFormValidationMessage('请选择证据文件')
     return
@@ -710,7 +717,7 @@ async function loadTask() {
 }
 
 async function advanceStatus(status: ArchiveRemediationStatusCode) {
-  if (!taskDetail.value) return
+  if (!taskDetail.value || updating.value) return
   updating.value = true
   try {
     taskDetail.value = await updateRemediationTask({
@@ -729,7 +736,7 @@ async function advanceStatus(status: ArchiveRemediationStatusCode) {
 }
 
 async function reassignAssignee() {
-  if (!taskDetail.value || !editAssigneeUserId.value) return
+  if (!taskDetail.value || !editAssigneeUserId.value || reassigning.value) return
   reassigning.value = true
   try {
     taskDetail.value = await updateRemediationTask({
@@ -750,7 +757,7 @@ function openCloseVerifyModal() {
 }
 
 async function submitCloseWithVerification() {
-  if (!taskDetail.value) return
+  if (!taskDetail.value || updating.value) return
   if (!closeVerifyComment.value.trim()) {
     showFormValidationMessage('请填写验证备注')
     return
@@ -965,5 +972,19 @@ onMounted(() => {
 
 .archive-remediation-detail__evidence-upload {
   margin-left: var(--dp-space-2);
+}
+
+/* nested-surface-densify: 页内多 Surface 去重阴影 */
+:deep(.workbench-surface-card) {
+  box-shadow: var(--dp-shadow-sm);
+}
+:deep(.workbench-surface-card .workbench-surface-card) {
+  box-shadow: none;
+}
+:deep(.workbench-surface-card .workbench-surface-card .workbench-surface-card__head) {
+  padding: 8px 12px;
+}
+:deep(.workbench-surface-card .workbench-surface-card .workbench-surface-card__body:not(.workbench-surface-card__body--flush)) {
+  padding: 12px;
 }
 </style>

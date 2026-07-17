@@ -3,16 +3,20 @@ import type { PortfolioSchoolPortraitCockpitVO } from '@/apis/portfolio/analysis
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { PortfolioComplianceScopeTypeCode } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import { PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
@@ -29,11 +33,30 @@ function readRouteStringParam(value: unknown): string {
 
 const route = useRoute()
 const router = useRouter()
+const { loadTree, treeRoots } = usePortfolioOrgTree()
 const loading = ref(false)
 const loadError = ref(false)
 const requestToken = ref(0)
+const campusOrgId = ref('')
 const cockpit = ref<PortfolioSchoolPortraitCockpitVO | null>(null)
 const deepLinkTaskId = computed(() => readRouteStringParam(route.query.taskId))
+
+const campusOptions = computed(() => {
+  const options: { value: string, label: string }[] = [{ value: '', label: '全校（合并计算）' }]
+  const walk = (nodes: typeof treeRoots.value, prefix = '') => {
+    for (const node of nodes) {
+      const label = prefix ? `${prefix} / ${node.name}` : node.name
+      if (node.nodeType === PortfolioOrgUnitTypeCode.CAMPUS && node.portfolioOrgId) {
+        options.push({ value: node.portfolioOrgId, label })
+      }
+      if (node.children?.length) {
+        walk(node.children, label)
+      }
+    }
+  }
+  walk(treeRoots.value)
+  return options
+})
 
 const signals = computed<SignalMetric[]>(() => {
   if (!cockpit.value?.summary) {
@@ -58,6 +81,17 @@ const signals = computed<SignalMetric[]>(() => {
       tone: 'blue',
     },
   ]
+  if ((summary.crossCampusAppointmentTeacherCount ?? 0) > 0) {
+    items.push({
+      key: 'crossCampus',
+      label: '跨校区兼课',
+      value: summary.crossCampusAppointmentTeacherCount ?? 0,
+      tone: 'purple',
+      helper: summary.campusName
+        ? `当前校区「${summary.campusName}」内兼课教师`
+        : '绑定两个及以上校区身份的教师',
+    })
+  }
   if ((summary.courseArchiveFrameworkSlotTotal ?? 0) > 0) {
     items.push({
       key: 'courseArchive',
@@ -159,7 +193,9 @@ async function loadCockpit() {
   loadError.value = false
   cockpit.value = null
   try {
-    const result = await portfolioAnalysisApi.getSchoolPortraitCockpit()
+    const result = await portfolioAnalysisApi.getSchoolPortraitCockpit(
+      campusOrgId.value ? { campusOrgId: campusOrgId.value } : {},
+    )
     if (requestToken.value !== currentToken) return
     cockpit.value = result
   } catch (error) {
@@ -172,8 +208,18 @@ async function loadCockpit() {
   }
 }
 
-onMounted(() => {
+watch(campusOrgId, () => {
   void loadCockpit()
+})
+
+onMounted(async () => {
+  await loadTree()
+  const queryCampus = readRouteStringParam(route.query.campusOrgId)
+  if (queryCampus && campusOptions.value.some((item) => item.value === queryCampus)) {
+    campusOrgId.value = queryCampus
+  } else {
+    void loadCockpit()
+  }
 })
 </script>
 
@@ -184,11 +230,22 @@ onMounted(() => {
         layout="workbench"
         show-title
         title="学校驾驶舱"
-        subtitle="全校师资与结构合规概览"
+        :subtitle="campusOrgId
+          ? `校区筛选 · 兼课教师按校区分别采集后合并计算`
+          : '全校师资与结构合规概览 · 跨校区兼课按身份分校区采集'"
       >
+        <template #toolbar>
+          <UiSelect
+            v-model="campusOrgId"
+            :options="campusOptions"
+            placeholder="按校区筛选"
+            allow-clear
+            style="min-width: 220px"
+          />
+        </template>
         <template #actions>
-          <UiButton @click="goTeacherAnalytics"> 师资分析看板 </UiButton>
-          <UiButton :loading="loading" @click="loadCockpit">刷新</UiButton>
+          <UiButton size="sm" @click="goTeacherAnalytics"> 师资分析看板 </UiButton>
+          <UiButton size="sm" :loading="loading" @click="loadCockpit">刷新</UiButton>
         </template>
       </ContextBar>
     </template>
@@ -200,8 +257,9 @@ onMounted(() => {
         @metric-click="handleSignalMetricClick"
       />
     </template>
-    <a-spin :spinning="loading">
+    <UiSpin :spinning="loading">
       <UiEmpty
+        size="sm"
         v-if="!loading && !cockpit"
         :description="loadError ? '学校驾驶舱加载失败，请重试' : '暂无学校驾驶舱数据'"
       />
@@ -244,7 +302,7 @@ onMounted(() => {
           :initial-task-id="deepLinkTaskId || undefined"
         />
       </template>
-    </a-spin>
+    </UiSpin>
   </StageWorkbenchShell>
 </template>
 
@@ -262,7 +320,7 @@ onMounted(() => {
 .school-cockpit__alert-item + .school-cockpit__alert-item {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--dp-border, #f0f0f0);
+  border-top: 1px solid var(--dp-border);
 }
 
 .school-cockpit__alert-head {
@@ -283,6 +341,6 @@ onMounted(() => {
 .school-cockpit__alert-meta {
   margin: 4px 0 0;
   font-size: 13px;
-  color: var(--dp-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 </style>

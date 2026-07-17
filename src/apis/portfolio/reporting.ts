@@ -37,7 +37,7 @@ export interface PortfolioReportingTaskVO {
   departmentId?: string
   maskMode: boolean
   taskStatus: PortfolioReportingTaskStatusCode
-  previewJson?: string
+  previewReady?: boolean
   artifactFileNodeId?: string
   artifactFileName?: string
   approveUser?: string

@@ -11,10 +11,13 @@
     </template>
 
     <template #signal>
-      <SignalBand variant="tiles" compact :metrics="spotCheckSignalMetrics" />
+      <SignalBand compact :metrics="spotCheckSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请从考试工作台进入阅卷抽检" />
+    <ExamSelectGateStrip
+      v-if="!selectedExamId"
+      body="请从考试列表进入工作台后再进行阅卷抽检"
+    />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -89,63 +92,69 @@
       @ok="submitConclusion"
     >
       <template #footer>
-        <UiButton variant="outline" @click="modalOpen = false">取消</UiButton>
-        <UiButton :loading="submitting" :disabled="!valid" @click="submitConclusion">
+        <UiButton size="sm" variant="outline" @click="modalOpen = false">取消</UiButton>
+        <UiButton size="sm" :loading="submitting" :disabled="!valid" @click="submitConclusion">
           提交结论
         </UiButton>
       </template>
-      <a-descriptions
+      <UiDescriptions
         v-if="targetItem"
         :column="2"
         size="small"
         bordered
         class="spot-check-page__target-desc"
       >
-        <a-descriptions-item label="考试">
+        <UiDescriptionsItem label="考试">
           {{ targetItem.examName }}（{{ targetItem.examNo }}）
-        </a-descriptions-item>
-        <a-descriptions-item label="题组">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="题组">
           {{ targetItem.groupName }}
-        </a-descriptions-item>
-        <a-descriptions-item label="题目">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="题目">
           第 {{ targetItem.questionNo }} 题 · {{ targetItem.questionTypeMessage }}
-        </a-descriptions-item>
-        <a-descriptions-item label="答卷">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="答卷">
           {{ targetItem.paperDisplay.primaryText }}
           <div class="spot-check-page__sub">{{ targetItem.paperDisplay.secondaryText }}</div>
-        </a-descriptions-item>
-        <a-descriptions-item label="抽检前教师复核评分">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="抽检前教师复核评分">
           {{ formatScore(targetItem.originalScore) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="分派时间">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="分派时间">
           {{ formatDateTime(targetItem.createTime) }}
-        </a-descriptions-item>
-      </a-descriptions>
+        </UiDescriptionsItem>
+      </UiDescriptions>
 
-      <a-form layout="vertical" class="spot-check-page__form">
-        <a-form-item label="处理结论" required>
-          <a-radio-group v-model:value="form.conclusion">
-            <a-radio-button :value="SpotCheckConclusionCode.PASSED">一致通过</a-radio-button>
-            <a-radio-button :value="SpotCheckConclusionCode.ABNORMAL">判分异常</a-radio-button>
-          </a-radio-group>
-        </a-form-item>
+      <UiForm layout="vertical" class="spot-check-page__form">
+        <UiFormItem label="处理结论" required>
+          <UiRadioGroup
+            v-model="form.conclusion"
+            size="sm"
+            :options="[
+              { label: '一致通过', value: SpotCheckConclusionCode.PASSED },
+              { label: '判分异常', value: SpotCheckConclusionCode.ABNORMAL },
+            ]"
+          />
+        </UiFormItem>
 
-        <a-form-item
+        <UiFormItem
           v-if="form.conclusion === SpotCheckConclusionCode.ABNORMAL"
           label="抽检评分（可选）"
         >
-          <a-input-number
-            v-model:value="form.reviewScore"
+          <UiInputNumber
+            size="sm"
+            v-model="form.reviewScore"
             :min="0"
             :step="0.5"
             class="spot-check-page__field-full"
             placeholder="如认为该题需要调整，填写抽检评分"
           />
-        </a-form-item>
+        </UiFormItem>
 
-        <a-form-item label="处理说明">
-          <a-textarea
-            v-model:value="form.handleNote"
+        <UiFormItem label="处理说明">
+          <UiTextarea
+            size="sm"
+            v-model="form.handleNote"
             :rows="4"
             :placeholder="
               form.conclusion === SpotCheckConclusionCode.ABNORMAL
@@ -153,10 +162,10 @@
                 : '可选：填写一致通过的简要说明'
             "
             :maxlength="500"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDialog>
   </StageWorkbenchShell>
 </template>
@@ -180,12 +189,19 @@ import {
   SpotCheckStatusDescription,
 } from '@/apis/mark/marking-quality'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -330,6 +346,7 @@ function openHandleModal(item: MyPendingSpotCheckItemResponse): void {
 
 async function submitConclusion(): Promise<void> {
   if (!valid.value || !targetItem.value) return
+  if (submitting.value) return
   submitting.value = true
   try {
     await handleSpotCheck({
@@ -383,12 +400,12 @@ onActivated(() => {
 
   &__exam-cell {
     font-weight: 500;
-    color: var(--ant-color-text, rgba(0, 0, 0, 0.85));
+    color: var(--dp-text);
   }
 
   &__sub {
     font-size: 12px;
-    color: var(--ant-color-text-tertiary, rgba(0, 0, 0, 0.45));
+    color: var(--dp-text-tertiary);
   }
 
   &__score {

@@ -1,7 +1,6 @@
 <template>
   <div class="archive-supervision-panel">
     <SignalBand
-      variant="tiles"
       :metrics="panelSignalMetrics"
       compact
       class="archive-supervision-panel__top-signal"
@@ -35,15 +34,15 @@
         <template #toolbar>
           <div class="archive-supervision-panel__volume-actions">
             <div class="archive-supervision-panel__problem-filters">
-              <a-checkbox v-model:checked="volumeFilterForm.integrityFailedOnly">
+              <UiCheckbox v-model="volumeFilterForm.integrityFailedOnly">
                 缺必交项
-              </a-checkbox>
-              <a-checkbox v-model:checked="volumeFilterForm.archiveOverdueOnly">
+              </UiCheckbox>
+              <UiCheckbox v-model="volumeFilterForm.archiveOverdueOnly">
                 归档逾期
-              </a-checkbox>
-              <a-checkbox v-model:checked="volumeFilterForm.delaySubmissionOverdueOnly">
+              </UiCheckbox>
+              <UiCheckbox v-model="volumeFilterForm.delaySubmissionOverdueOnly">
                 补交逾期
-              </a-checkbox>
+              </UiCheckbox>
             </div>
             <UiFilterBar
               v-model="volumeFilter"
@@ -123,21 +122,24 @@
         <template #head>就绪矩阵</template>
         <template #toolbar>
           <div class="archive-supervision-panel__stats-actions">
-            <a-select
-              v-model:value="statsFilter.academicYearStartYear"
+            <UiSelect
+              size="sm"
+              v-model="statsFilter.academicYearStartYear"
               :options="academicYearStartOptions"
               placeholder="学年起始年"
               allow-clear
               style="width: 140px"
             />
-            <a-input
+            <UiInput
+              size="sm"
               :value="statsFilter.academicYearEndYear"
               placeholder="结束年"
               disabled
               style="width: 100px"
             />
-            <a-select
-              v-model:value="statsFilter.semester"
+            <UiSelect
+              size="sm"
+              v-model="statsFilter.semester"
               :options="SemesterOptions"
               placeholder="学期"
               allow-clear
@@ -149,13 +151,12 @@
           </div>
         </template>
         <UiSkeletonState v-if="statsLoading" variant="card" compact />
-        <UiEmpty v-else-if="statsLoadFailed" description="就绪矩阵加载失败">
+        <UiEmpty size="sm" v-else-if="statsLoadFailed" description="就绪矩阵加载失败">
           <UiButton size="sm" variant="outline" @click="loadReadinessPreview">重新加载</UiButton>
         </UiEmpty>
         <template v-else>
           <SignalBand
             v-if="matrixPreviewRows.length"
-            variant="tiles"
             :metrics="statsMetrics"
             compact
             class="archive-supervision-panel__signal"
@@ -199,10 +200,25 @@
             </template>
           </UiDataTable>
           <UiEmpty
+            size="sm"
             v-else-if="statsFilter.academicYearStartYear != null && statsFilter.semester"
             description="当前学期暂无就绪度数据"
           />
-          <UiEmpty v-else description="请选择学年学期后查询" />
+          <UiAlertStrip
+            v-else
+            tone="info"
+            size="sm"
+            dense
+            inline
+            :show-icon="false"
+          >
+            <template #default>
+              <span style="display:inline-flex;align-items:center;gap:8px">
+                <UiTag tone="blue" size="sm">未选择学期</UiTag>
+                <span>请选择学年学期后查询就绪度</span>
+              </span>
+            </template>
+          </UiAlertStrip>
         </template>
       </WorkbenchSurfaceCard>
     </section>
@@ -261,8 +277,9 @@
       <WorkbenchSurfaceCard flush>
         <template #toolbar>
           <div class="archive-supervision-panel__campaign-actions">
-            <a-select
-              v-model:value="exportCampaignId"
+            <UiSelect
+              size="sm"
+              v-model="exportCampaignId"
               :loading="campaignLoading"
               :options="campaignSelectOptions"
               allow-clear
@@ -335,17 +352,17 @@
         <div class="detail-head__title">{{ detail.volume.archiveTitle }}</div>
         <div class="detail-head__sub">{{ detail.volume.archiveNo }}</div>
       </div>
-      <a-descriptions bordered size="small" :column="1" class="detail-desc">
-        <a-descriptions-item label="卷状态">
+      <UiDescriptions bordered size="small" :column="1" class="detail-desc">
+        <UiDescriptionsItem label="卷状态">
           {{ volumeStatusLabel(detail.volume.volumeStatus) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="完整性">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="完整性">
           {{ integrityStatusLabel(detail.volume.integrityStatus) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="来源">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="来源">
           {{ sourceTypeLabel(detail.volume.sourceType) }}
-        </a-descriptions-item>
-      </a-descriptions>
+        </UiDescriptionsItem>
+      </UiDescriptions>
       <h4 class="section-title">材料清单</h4>
       <UiDataTable
         v-model:current="detailMaterialPagination.pageNum"
@@ -389,25 +406,27 @@
     @close="markProblemOpen = false"
     @confirm="submitMarkProblem"
   >
-    <a-form layout="vertical">
-      <a-form-item label="问题描述" required>
-        <a-textarea
-          v-model:value="markProblemDescription"
+    <UiForm layout="vertical">
+      <UiFormItem label="问题描述" required>
+        <UiTextarea
+          size="sm"
+          v-model="markProblemDescription"
           :rows="4"
           :maxlength="2000"
-          show-count
+          :show-count="true"
           placeholder="描述督导发现的问题"
         />
-      </a-form-item>
-      <a-form-item label="评估批次">
-        <a-select
-          v-model:value="markProblemCampaignId"
+      </UiFormItem>
+      <UiFormItem label="评估批次">
+        <UiSelect
+          size="sm"
+          v-model="markProblemCampaignId"
           allow-clear
           placeholder="可选，关联评估批次"
           :options="campaignSelectOptions"
         />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
   </UiDrawer>
   <ArchiveEvaluationExportTaskModal />
 </template>
@@ -460,11 +479,19 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -754,7 +781,7 @@ function goReadinessMatrix() {
 }
 
 async function handleExportManifest() {
-  if (!exportCampaignId.value) return
+  if (!exportCampaignId.value || exportingManifest.value) return
   exportingManifest.value = true
   try {
     await runArchiveEvaluationExportFlow({
@@ -772,7 +799,7 @@ async function handleExportManifest() {
 }
 
 async function handleExportArchive() {
-  if (!exportCampaignId.value) return
+  if (!exportCampaignId.value || exportingArchive.value) return
   exportingArchive.value = true
   try {
     await runArchiveEvaluationExportFlow({
@@ -1020,6 +1047,7 @@ function handleSupervisionVolumeRowAction(key: string, volumeId: string) {
 }
 
 async function submitMarkProblem() {
+  if (markProblemSubmitting.value) return
   const description = markProblemDescription.value.trim()
   if (!description) {
     showFormValidationMessage('请填写问题描述')

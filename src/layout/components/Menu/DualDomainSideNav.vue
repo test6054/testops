@@ -1,5 +1,5 @@
 <template>
-  <a-menu
+  <UiMenu
     class="dual-domain-side-nav"
     :class="{ 'dual-domain-side-nav--collapsed': collapsed }"
     mode="inline"
@@ -9,7 +9,7 @@
     @click="onMenuClick"
     @open-change="onOpenChange"
   >
-    <a-sub-menu key="domain-marking">
+    <UiSubMenu key="domain-marking">
       <template #title>
         <span>考试阅卷</span>
       </template>
@@ -18,7 +18,7 @@
           <MenuIcon icon="audit" />
         </MenuCollapsedTooltip>
       </template>
-      <a-menu-item
+      <UiMenuItem
         v-for="item in primaryGroupItems(markingGrouped.ungrouped)"
         :key="item.path"
         :disabled="item.meta?.disabled"
@@ -29,24 +29,24 @@
           </MenuCollapsedTooltip>
         </template>
         <span>{{ item.meta?.title }}</span>
-      </a-menu-item>
-      <a-sub-menu
+      </UiMenuItem>
+      <UiSubMenu
         v-if="secondaryGroupItems(markingGrouped.ungrouped).length > 0"
         :key="moreMenuKey(MARKING_DOMAIN_KEY)"
       >
         <template #title>
           <span>{{ moreMenuLabel('marking', markingGrouped.ungrouped) }}</span>
         </template>
-        <a-menu-item
+        <UiMenuItem
           v-for="item in secondaryGroupItems(markingGrouped.ungrouped)"
           :key="item.path"
           :disabled="item.meta?.disabled"
         >
           <span>{{ item.meta?.title }}</span>
-        </a-menu-item>
-      </a-sub-menu>
+        </UiMenuItem>
+      </UiSubMenu>
       <template v-for="group in markingGrouped.groups" :key="group.key">
-        <a-menu-item
+        <UiMenuItem
           v-if="isFlattenedMenuGroup(group)"
           :key="flattenedMenuGroupItem(group).path"
           :disabled="flattenedMenuGroupItem(group).meta?.disabled"
@@ -57,8 +57,8 @@
             </MenuCollapsedTooltip>
           </template>
           <span>{{ group.title }}</span>
-        </a-menu-item>
-        <a-sub-menu v-else :key="group.key">
+        </UiMenuItem>
+        <UiSubMenu v-else :key="group.key">
           <template #title>
             <span>{{ group.title }}</span>
           </template>
@@ -67,7 +67,7 @@
               <MenuIcon :icon="group.icon" />
             </MenuCollapsedTooltip>
           </template>
-          <a-menu-item
+          <UiMenuItem
             v-for="item in primaryGroupItems(group.items)"
             :key="item.path"
             :disabled="item.meta?.disabled"
@@ -78,27 +78,27 @@
               </MenuCollapsedTooltip>
             </template>
             <span>{{ item.meta?.title }}</span>
-          </a-menu-item>
-          <a-sub-menu
+          </UiMenuItem>
+          <UiSubMenu
             v-if="secondaryGroupItems(group.items).length > 0"
             :key="moreMenuKey(group.key)"
           >
             <template #title>
               <span>{{ moreMenuLabel('group', group.items, group.title) }}</span>
             </template>
-            <a-menu-item
+            <UiMenuItem
               v-for="item in secondaryGroupItems(group.items)"
               :key="item.path"
               :disabled="item.meta?.disabled"
             >
               <span>{{ item.meta?.title }}</span>
-            </a-menu-item>
-          </a-sub-menu>
-        </a-sub-menu>
+            </UiMenuItem>
+          </UiSubMenu>
+        </UiSubMenu>
       </template>
-    </a-sub-menu>
+    </UiSubMenu>
 
-    <a-sub-menu key="domain-quality">
+    <UiSubMenu key="domain-quality">
       <template #title>
         <span>质量评价</span>
       </template>
@@ -107,7 +107,7 @@
           <MenuIcon icon="reconciliation" />
         </MenuCollapsedTooltip>
       </template>
-      <a-menu-item
+      <UiMenuItem
         v-for="item in primaryGroupItems(qualityGrouped.ungrouped)"
         :key="item.path"
       >
@@ -117,23 +117,23 @@
           </MenuCollapsedTooltip>
         </template>
         <span>{{ menuRouteLabel(item) }}</span>
-      </a-menu-item>
-      <a-sub-menu
+      </UiMenuItem>
+      <UiSubMenu
         v-if="secondaryGroupItems(qualityGrouped.ungrouped).length > 0"
         :key="moreMenuKey(QUALITY_DOMAIN_KEY)"
       >
         <template #title>
           <span>{{ moreMenuLabel('quality', qualityGrouped.ungrouped) }}</span>
         </template>
-        <a-menu-item
+        <UiMenuItem
           v-for="item in secondaryGroupItems(qualityGrouped.ungrouped)"
           :key="item.path"
         >
           <span>{{ menuRouteLabel(item) }}</span>
-        </a-menu-item>
-      </a-sub-menu>
+        </UiMenuItem>
+      </UiSubMenu>
       <template v-for="group in qualityGrouped.groups" :key="group.key">
-        <a-menu-item
+        <UiMenuItem
           v-if="isFlattenedMenuGroup(group)"
           :key="flattenedMenuGroupItem(group).path"
         >
@@ -143,8 +143,8 @@
             </MenuCollapsedTooltip>
           </template>
           <span>{{ group.title }}</span>
-        </a-menu-item>
-        <a-sub-menu v-else :key="group.key">
+        </UiMenuItem>
+        <UiSubMenu v-else :key="group.key">
           <template #title>
             <span>{{ group.title }}</span>
           </template>
@@ -153,7 +153,7 @@
               <MenuIcon :icon="group.icon" />
             </MenuCollapsedTooltip>
           </template>
-          <a-menu-item
+          <UiMenuItem
             v-for="item in primaryGroupItems(group.items)"
             :key="item.path"
           >
@@ -163,26 +163,26 @@
               </MenuCollapsedTooltip>
             </template>
             <span>{{ menuRouteLabel(item) }}</span>
-          </a-menu-item>
-          <a-sub-menu
+          </UiMenuItem>
+          <UiSubMenu
             v-if="secondaryGroupItems(group.items).length > 0"
             :key="moreMenuKey(group.key)"
           >
             <template #title>
               <span>{{ moreMenuLabel('group', group.items, group.title) }}</span>
             </template>
-            <a-menu-item
+            <UiMenuItem
               v-for="item in secondaryGroupItems(group.items)"
               :key="item.path"
             >
               <span>{{ menuRouteLabel(item) }}</span>
-            </a-menu-item>
-          </a-sub-menu>
-        </a-sub-menu>
+            </UiMenuItem>
+          </UiSubMenu>
+        </UiSubMenu>
       </template>
-    </a-sub-menu>
+    </UiSubMenu>
 
-    <a-sub-menu key="domain-portfolio">
+    <UiSubMenu key="domain-portfolio">
       <template #title>
         <span>教学档案袋</span>
       </template>
@@ -191,7 +191,7 @@
           <MenuIcon icon="folder" />
         </MenuCollapsedTooltip>
       </template>
-      <a-menu-item
+      <UiMenuItem
         v-for="item in primaryGroupItems(portfolioGrouped.ungrouped)"
         :key="item.path"
         :disabled="item.meta?.disabled"
@@ -202,24 +202,24 @@
           </MenuCollapsedTooltip>
         </template>
         <span>{{ item.meta?.title }}</span>
-      </a-menu-item>
-      <a-sub-menu
+      </UiMenuItem>
+      <UiSubMenu
         v-if="secondaryGroupItems(portfolioGrouped.ungrouped).length > 0"
         :key="moreMenuKey(PORTFOLIO_DOMAIN_KEY)"
       >
         <template #title>
           <span>{{ moreMenuLabel('portfolio', portfolioGrouped.ungrouped) }}</span>
         </template>
-        <a-menu-item
+        <UiMenuItem
           v-for="item in secondaryGroupItems(portfolioGrouped.ungrouped)"
           :key="item.path"
           :disabled="item.meta?.disabled"
         >
           <span>{{ item.meta?.title }}</span>
-        </a-menu-item>
-      </a-sub-menu>
+        </UiMenuItem>
+      </UiSubMenu>
       <template v-for="group in portfolioGrouped.groups" :key="group.key">
-        <a-menu-item
+        <UiMenuItem
           v-if="isFlattenedMenuGroup(group)"
           :key="flattenedMenuGroupItem(group).path"
           :disabled="flattenedMenuGroupItem(group).meta?.disabled"
@@ -230,8 +230,8 @@
             </MenuCollapsedTooltip>
           </template>
           <span>{{ group.title }}</span>
-        </a-menu-item>
-        <a-sub-menu v-else :key="group.key">
+        </UiMenuItem>
+        <UiSubMenu v-else :key="group.key">
           <template #title>
             <span>{{ group.title }}</span>
           </template>
@@ -240,7 +240,7 @@
               <MenuIcon :icon="group.icon" />
             </MenuCollapsedTooltip>
           </template>
-          <a-menu-item
+          <UiMenuItem
             v-for="item in primaryGroupItems(group.items)"
             :key="item.path"
             :disabled="item.meta?.disabled"
@@ -251,27 +251,27 @@
               </MenuCollapsedTooltip>
             </template>
             <span>{{ item.meta?.title }}</span>
-          </a-menu-item>
-          <a-sub-menu
+          </UiMenuItem>
+          <UiSubMenu
             v-if="secondaryGroupItems(group.items).length > 0"
             :key="moreMenuKey(group.key)"
           >
             <template #title>
               <span>{{ moreMenuLabel('group', group.items, group.title) }}</span>
             </template>
-            <a-menu-item
+            <UiMenuItem
               v-for="item in secondaryGroupItems(group.items)"
               :key="item.path"
               :disabled="item.meta?.disabled"
             >
               <span>{{ item.meta?.title }}</span>
-            </a-menu-item>
-          </a-sub-menu>
-        </a-sub-menu>
+            </UiMenuItem>
+          </UiSubMenu>
+        </UiSubMenu>
       </template>
-    </a-sub-menu>
+    </UiSubMenu>
 
-    <a-sub-menu v-if="platformMenuItems.length > 0" key="domain-platform">
+    <UiSubMenu v-if="platformMenuItems.length > 0" key="domain-platform">
       <template #title>
         <span>系统管理</span>
       </template>
@@ -280,7 +280,7 @@
           <MenuIcon icon="setting" />
         </MenuCollapsedTooltip>
       </template>
-      <a-menu-item
+      <UiMenuItem
         v-for="item in primaryGroupItems(platformMenuItems)"
         :key="item.path"
         :disabled="item.meta?.disabled"
@@ -291,24 +291,24 @@
           </MenuCollapsedTooltip>
         </template>
         <span>{{ item.meta?.title }}</span>
-      </a-menu-item>
-      <a-sub-menu
+      </UiMenuItem>
+      <UiSubMenu
         v-if="secondaryGroupItems(platformMenuItems).length > 0"
         :key="moreMenuKey(PLATFORM_DOMAIN_KEY)"
       >
         <template #title>
           <span>{{ moreMenuLabel('platform', platformMenuItems) }}</span>
         </template>
-        <a-menu-item
+        <UiMenuItem
           v-for="item in secondaryGroupItems(platformMenuItems)"
           :key="item.path"
           :disabled="item.meta?.disabled"
         >
           <span>{{ item.meta?.title }}</span>
-        </a-menu-item>
-      </a-sub-menu>
-    </a-sub-menu>
-  </a-menu>
+        </UiMenuItem>
+      </UiSubMenu>
+    </UiSubMenu>
+  </UiMenu>
 </template>
 
 <script lang="ts" setup>
@@ -317,6 +317,9 @@ import type { RouteRecordRaw } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import UiMenu from '@/components/ui-guide/ui/UiMenu.vue'
+import UiMenuItem from '@/components/ui-guide/ui/UiMenuItem.vue'
+import UiSubMenu from '@/components/ui-guide/ui/UiSubMenu.vue'
 import { useQualityStore } from '@/stores/modules/quality'
 import { isPortfolioRoute, QUALITY_ADMIN_MENU_GROUP } from '@/utils/portfolio-route'
 import {
@@ -401,13 +404,29 @@ function menuRouteLabel(item: RouteRecordRaw): string {
   return title
 }
 
-/** primary 入口 + 当前激活的 secondary（避免选中项不可见） */
+/**
+ * 主任务一级化：secondary ≤4 时全部提升到主列表（消「更多」藏主路径）；
+ * 仅更长配置尾部保留语义折叠入口，禁止裸「更多」。
+ */
+const SECONDARY_PROMOTE_MAX = 4
+
+function shouldPromoteSecondary(items: RouteRecordRaw[]): boolean {
+  return secondarySideMenuRoutes(items).length <= SECONDARY_PROMOTE_MAX
+}
+
+/** primary 入口；短 secondary 全量提升到一级 */
 function primaryGroupItems(items: RouteRecordRaw[]): RouteRecordRaw[] {
+  if (shouldPromoteSecondary(items)) {
+    return items
+  }
   return visiblePrimarySideMenuRoutes(items, route.path)
 }
 
-/** 低频 secondary 收进语义化「更多入口」，避免仅显示「更多」导致需靠记忆找路径 */
+/** 低频 secondary 收进语义折叠；已提升时返回空 */
 function secondaryGroupItems(items: RouteRecordRaw[]): RouteRecordRaw[] {
+  if (shouldPromoteSecondary(items)) {
+    return []
+  }
   return visibleSecondarySideMenuRoutes(items, route.path)
 }
 
@@ -428,7 +447,7 @@ function moreMenuLabel(
     case 'platform':
       return `平台管理入口${suffix}`
     case 'group':
-      return `${groupTitle ?? '本组'}·更多入口${suffix}`
+      return `${groupTitle ?? '本组'}·配置入口${suffix}`
   }
 }
 
@@ -693,7 +712,7 @@ function onMenuClick({ key }: { key: Key }) {
     padding-left: 44px;
     font-size: 12px;
     font-weight: 600;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-tertiary);
   }
 
   :deep(.ant-menu-sub.ant-menu-inline) {

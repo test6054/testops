@@ -1,7 +1,7 @@
 <template>
   <div class="portfolio-category-tree-picker">
-    <a-spin :spinning="loading">
-      <a-tree-select
+    <UiSpin :spinning="loading">
+      <UiTreeSelect
         v-if="treeData.length"
         :value="modelValue || undefined"
         :tree-data="treeData"
@@ -14,8 +14,8 @@
         tree-node-filter-prop="title"
         @update:value="handleChange"
       />
-      <UiEmpty v-else-if="!loading" description="暂无可用档案分类" />
-    </a-spin>
+      <UiEmpty size="sm" v-else-if="!loading" description="暂无可用档案分类" />
+    </UiSpin>
   </div>
 </template>
 
@@ -25,6 +25,8 @@ import { ref, watch } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { PortfolioArchiveCategoryStatusCode } from '@/apis/portfolio/enums'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiTreeSelect from '@/components/ui-guide/ui/UiTreeSelect.vue'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'PortfolioCategoryTreePicker' })

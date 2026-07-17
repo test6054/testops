@@ -10,6 +10,7 @@
     <section v-if="activeScopeTab === 'PLATFORM'" class="archive-template-sets-panel__section">
       <WorkbenchSurfaceCard flush>
         <UiEmpty
+          size="sm"
           v-if="templateSetsLoadFailed"
           description="归档模板套加载失败"
           action-label="重新加载"
@@ -55,13 +56,14 @@
         <div v-if="!templateSetsLoadFailed" class="archive-template-sets-panel__copy-bar">
           <div class="archive-template-sets-panel__copy-all">
             <span class="archive-template-sets-panel__copy-all-label">目标前缀</span>
-            <a-input
-              v-model:value="copyAllPrefix"
+            <UiInput
+              size="sm"
+              v-model="copyAllPrefix"
               placeholder="如 DEFAULT_"
               style="width: 160px"
               :disabled="copyAllLoading"
             />
-            <a-checkbox v-model:checked="copyAllOverride">覆盖已存在</a-checkbox>
+            <UiCheckbox v-model="copyAllOverride">覆盖已存在</UiCheckbox>
           </div>
           <UiButton size="sm" variant="primary" :loading="copyAllLoading" @click="submitCopyAll">
             一键复制全部模板
@@ -73,6 +75,7 @@
     <section v-else class="archive-template-sets-panel__section">
       <WorkbenchSurfaceCard flush>
         <UiEmpty
+          size="sm"
           v-if="templateSetsLoadFailed"
           description="归档模板套加载失败"
           action-label="重新加载"
@@ -139,31 +142,40 @@
         <div class="archive-template-editor__meta">
           <label class="archive-template-editor__field">
             <span>套编码</span>
-            <a-input :value="selectedSetCode" disabled />
+            <UiInput
+              size="sm" :value="selectedSetCode" disabled
+            />
           </label>
           <label class="archive-template-editor__field">
             <span>名称</span>
-            <a-input v-model:value="editorMeta.templateSetName" />
+            <UiInput
+              size="sm" v-model="editorMeta.templateSetName"
+            />
           </label>
           <label class="archive-template-editor__field">
             <span>考核形式</span>
-            <a-input :value="examFormLabel(editorMeta.examForm)" disabled />
+            <UiInput
+              size="sm" :value="examFormLabel(editorMeta.examForm)" disabled
+            />
           </label>
           <label class="archive-template-editor__field">
             <span>来源模板</span>
-            <a-input :value="editorMeta.forkSourceSetCode || '—'" disabled />
+            <UiInput
+              size="sm" :value="editorMeta.forkSourceSetCode || '—'" disabled
+            />
           </label>
           <label class="archive-template-editor__field">
             <span>保管期限</span>
             <div class="archive-template-editor__retention">
-              <a-input-number
-                v-model:value="editorMeta.defaultRetentionYears"
+              <UiInputNumber
+                size="sm"
+                v-model="editorMeta.defaultRetentionYears"
                 :min="1"
                 :max="100"
                 :disabled="editorMeta.defaultPermanentRetention"
               />
               <span>年</span>
-              <a-checkbox v-model:checked="editorMeta.defaultPermanentRetention">永久</a-checkbox>
+              <UiCheckbox v-model="editorMeta.defaultPermanentRetention">永久</UiCheckbox>
             </div>
           </label>
         </div>
@@ -189,17 +201,21 @@
       @close="copyOpen = false"
       @confirm="submitCopy"
     >
-      <a-form layout="vertical">
-        <a-form-item label="平台模板套">
-          <a-input :value="copySource?.templateSetName" disabled />
-        </a-form-item>
-        <a-form-item label="目标租户套编码" required>
-          <a-input v-model:value="copyTargetSetCode" placeholder="如 PAPER_TYUT_2025" />
-        </a-form-item>
-        <a-form-item>
-          <a-checkbox v-model:checked="copyOverride">覆盖已存在的同名套</a-checkbox>
-        </a-form-item>
-      </a-form>
+      <UiForm layout="vertical">
+        <UiFormItem label="平台模板套">
+          <UiInput
+            size="sm" :value="copySource?.templateSetName" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="目标租户套编码" required>
+          <UiInput
+            size="sm" v-model="copyTargetSetCode" placeholder="如 PAPER_TYUT_2025"
+          />
+        </UiFormItem>
+        <UiFormItem>
+          <UiCheckbox v-model="copyOverride">覆盖已存在的同名套</UiCheckbox>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -217,17 +233,21 @@
         dense
         class="archive-template-sets-panel__resync-alert"
       />
-      <a-form layout="vertical" class="archive-template-sets-panel__resync-form">
-        <a-form-item label="模板集编码">
-          <a-input :value="resyncTarget?.templateSetCode" disabled />
-        </a-form-item>
-        <a-form-item label="二次确认：请输入模板集编码" required>
-          <a-input v-model:value="resyncConfirmCode" placeholder="输入上方编码以确认" />
-        </a-form-item>
-      </a-form>
+      <UiForm layout="vertical" class="archive-template-sets-panel__resync-form">
+        <UiFormItem label="模板集编码">
+          <UiInput
+            size="sm" :value="resyncTarget?.templateSetCode" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="二次确认：请输入模板集编码" required>
+          <UiInput
+            size="sm" v-model="resyncConfirmCode" placeholder="输入上方编码以确认"
+          />
+        </UiFormItem>
+      </UiForm>
       <template #footer>
-        <UiButton variant="outline" @click="resyncOpen = false">取消</UiButton>
-        <UiButton :loading="resyncLoading" :disabled="!canSubmitResync" @click="submitResync">
+        <UiButton size="sm" variant="outline" @click="resyncOpen = false">取消</UiButton>
+        <UiButton size="sm" :loading="resyncLoading" :disabled="!canSubmitResync" @click="submitResync">
           确认同步
         </UiButton>
       </template>
@@ -245,6 +265,7 @@
         模板套：{{ auditTarget.templateSetName || auditTarget.templateSetCode }}
       </p>
       <UiEmpty
+        size="sm"
         v-if="auditLoadFailed"
         description="模板版本历史加载失败"
         action-label="重新加载"
@@ -322,14 +343,20 @@ import {
 import { ArchiveExamFormDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import { archiveTenantTemplateOperationTypeLabel } from '@/types/enums/archive-tenant-template-operation-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -470,6 +497,7 @@ function toPreviewResponseFromTenantDetail(
       catalogName: item.catalogName,
       requiredFlag: item.requiredFlag,
       sortOrder: item.sortOrder,
+      deliveryMode: item.deliveryMode,
     })),
     selfCheckItems: (detail.selfCheckItems ?? []).map((item) => ({
       itemText: item.itemText,
@@ -604,6 +632,7 @@ async function loadTenantSetDetail(templateSetCode: string) {
       requiredFlag: item.requiredFlag ?? false,
       delayAllowedFlag: item.delayAllowedFlag ?? false,
       sortOrder: item.sortOrder ?? index + 1,
+      deliveryMode: item.deliveryMode ?? ArchiveMaterialDeliveryModeCode.PHYSICAL_SCAN,
     }))
     selfCheckRows.value = (detail.selfCheckItems ?? []).map((item, index) => ({
       rowKey: item.selfCheckItemId ?? `self-check-${index}`,
@@ -654,6 +683,9 @@ function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSe
 }
 
 async function submitCopy() {
+  if (copyLoading.value) {
+    return
+  }
   if (templateSetsLoadFailed.value) {
     showFormValidationMessage('请先重新加载归档模板套')
     return
@@ -683,6 +715,9 @@ async function submitCopy() {
 }
 
 async function submitCopyAll() {
+  if (copyAllLoading.value) {
+    return
+  }
   if (templateSetsLoadFailed.value) {
     showFormValidationMessage('请先重新加载归档模板套')
     return
@@ -788,6 +823,9 @@ function handleAuditPageChange(page: { current: number, pageSize: number }): voi
 }
 
 async function submitRestoreFromAudit(auditId: string): Promise<void> {
+  if (restoringAuditId.value || auditLoading.value) {
+    return
+  }
   if (!auditTarget.value || auditLoadFailed.value || templateSetsLoadFailed.value) {
     return
   }
@@ -814,6 +852,9 @@ async function submitRestoreFromAudit(auditId: string): Promise<void> {
 }
 
 async function submitResync() {
+  if (resyncLoading.value) {
+    return
+  }
   if (!resyncTarget.value || !canSubmitResync.value || templateSetsLoadFailed.value) return
   resyncLoading.value = true
   try {
@@ -833,6 +874,9 @@ async function submitResync() {
 }
 
 async function saveTenantSet() {
+  if (saving.value) {
+    return
+  }
   if (!selectedSetCode.value || templateSetsLoadFailed.value) return
   if (!editorMeta.examForm) {
     showFormValidationMessage('模板集缺少考核形式，无法保存')
@@ -895,6 +939,7 @@ async function saveTenantSet() {
         requiredFlag: item.requiredFlag,
         delayAllowedFlag: item.delayAllowedFlag,
         sortOrder: item.sortOrder,
+        deliveryMode: item.deliveryMode ?? ArchiveMaterialDeliveryModeCode.PHYSICAL_SCAN,
       })),
       selfCheckItems: selfCheckRows.value.map((item) => ({
         itemText: item.itemText.trim(),
@@ -934,7 +979,7 @@ onMounted(() => {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: var(--dp-space-3);
-  padding: var(--dp-space-4) var(--dp-space-5);
+  padding: var(--dp-space-3) var(--dp-space-4);
   border-top: 1px solid var(--dp-border);
   background: var(--dp-surface-subtle);
 }

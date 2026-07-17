@@ -162,21 +162,21 @@ function buildActions(item: ExamCandidateRosterWorkbenchItemResponse): UiTableRo
 
   &__name {
     font-weight: 500;
-    color: var(--ant-color-text);
+    color: var(--dp-text-primary);
   }
 
   &__no {
     font-size: 12px;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
   }
 
   &__mono {
     font-variant-numeric: tabular-nums;
-    color: var(--ant-color-text);
+    color: var(--dp-text-primary);
   }
 
   &__muted {
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
   }
 
   &__paper {

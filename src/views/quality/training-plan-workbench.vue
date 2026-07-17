@@ -88,11 +88,20 @@ import ProfessionAlgorithmProfileSelector from '@/components/quality/selectors/P
 import ProgramSelector from '@/components/quality/selectors/ProgramSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import MatrixWorkbench from '@/components/workbench/MatrixWorkbench.vue'
@@ -160,17 +169,18 @@ const planGateReason = computed(() => {
 const planGateStrip = computed(() => {
   if (planGateReason.value === QUALITY_PLAN_GATE_REASON_NO_PLAN) {
     return {
-      tone: 'warning' as const,
-      title: '达成度 / 质量报告入口需要先选择培养方案',
-      description: '请在页头范围中选择培养方案，完成体系维护后点击「提交确认」，再返回达成度或报告页。',
+      tone: 'info' as const,
+      tag: '未选择',
+      title: '未选择培养方案',
+      description: '请在上方范围中选择培养方案后再维护目标与毕业要求',
     }
   }
   if (planGateReason.value === QUALITY_PLAN_GATE_REASON_UNCONFIRMED) {
     return {
       tone: 'warning' as const,
-      title: '培养方案尚未确认，达成度与正式质量报告暂不可进入',
-      description:
-        '工程教育认证链路中，未确认方案不得作为达成度计算与正式报告底座。请核对目标 / 毕业要求 / 观测点后点击「提交确认」。',
+      tag: '待确认',
+      title: '培养方案待确认',
+      description: '未确认前不可作为达成度与正式报告底座；请核对体系后提交确认',
     }
   }
   return null
@@ -1695,20 +1705,47 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
     <UiAlertStrip
       v-if="planGateStrip"
       :tone="planGateStrip.tone"
-      :title="planGateStrip.title"
-      :description="planGateStrip.description"
       dense
+      inline
+      :show-icon="false"
       class="tpw__scope-hint"
-    />
+    >
+      <template #default>
+        <span class="tpw__gate-row">
+          <UiTag :tone="planGateStrip.tone === 'warning' ? 'orange' : 'blue'" size="sm">
+            {{ planGateStrip.tag }}
+          </UiTag>
+          <span>{{ planGateStrip.description }}</span>
+        </span>
+      </template>
+    </UiAlertStrip>
 
     <UiAlertStrip
       v-else-if="planStageGuidance"
       :tone="planStageGuidance.tone"
-      :title="planStageGuidance.title"
-      :description="planStageGuidance.description"
       dense
+      inline
+      :show-icon="false"
       class="tpw__scope-hint"
-    />
+    >
+      <template #default>
+        <span class="tpw__gate-row">
+          <UiTag
+            :tone="
+              planStageGuidance.tone === 'success'
+                ? 'green'
+                : planStageGuidance.tone === 'warning'
+                  ? 'orange'
+                  : 'blue'
+            "
+            size="sm"
+          >
+            {{ planStageGuidance.title }}
+          </UiTag>
+          <span>{{ planStageGuidance.description }}</span>
+        </span>
+      </template>
+    </UiAlertStrip>
 
     <div
       class="tpw__body"
@@ -1735,8 +1772,8 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
       <!-- Tab 1: 培养目标 -->
       <div v-if="activeTab === 'objective'" class="tpw__tab-content">
-        <a-row :gutter="12">
-          <a-col :span="9">
+        <UiRow :gutter="12">
+          <UiCol :span="9">
             <UiCard class="tpw__card">
               <template #title>
                 <span>培养目标列表</span>
@@ -1791,18 +1828,31 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 </template>
               </UiDataTable>
             </UiCard>
-          </a-col>
+          </UiCol>
 
-          <a-col :span="15">
+          <UiCol :span="15">
             <UiCard v-if="!selectedObjective" class="tpw__card">
-              <UiEmpty description="请选择" />
+              <UiAlertStrip
+                tone="info"
+                size="sm"
+                dense
+                inline
+                :show-icon="false"
+              >
+                <template #default>
+                  <span style="display:inline-flex;align-items:center;gap:8px">
+                    <UiTag tone="blue" size="sm">未选择</UiTag>
+                    <span>请在左侧选择条目后再编辑</span>
+                  </span>
+                </template>
+              </UiAlertStrip>
             </UiCard>
             <UiCard v-else class="tpw__card">
               <template #title>
                 <span>「{{ selectedObjective.objectiveName }}」支撑毕业要求映射</span>
               </template>
               <template #extra>
-                <a-space>
+                <div class="dp-space" style="--dp-space-gap: 8px">
                   <UiTag :tone="objectiveWeightHealthy ? 'green' : 'red'">
                     权重和：{{ objectiveWeightSum.toFixed(3) }}
                     {{ objectiveWeightHealthy ? '合规' : '需=1' }}
@@ -1810,7 +1860,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   <UiButton variant="primary" size="sm" @click="openObjMappingCreate">
                     新增映射
                   </UiButton>
-                </a-space>
+                </div>
               </template>
               <UiDataTable
                 pagination-mode="server"
@@ -1854,8 +1904,8 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 </template>
               </UiDataTable>
             </UiCard>
-          </a-col>
-        </a-row>
+          </UiCol>
+        </UiRow>
 
         <div class="tpw__matrix-block">
           <MatrixWorkbench
@@ -1875,8 +1925,8 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
       <!-- Tab 2: 毕业要求与观测点 -->
       <div v-else class="tpw__tab-content">
-        <a-row :gutter="12">
-          <a-col :span="9">
+        <UiRow :gutter="12">
+          <UiCol :span="9">
             <UiCard class="tpw__card">
               <template #title>
                 <span>毕业要求列表</span>
@@ -1933,11 +1983,24 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 </template>
               </UiDataTable>
             </UiCard>
-          </a-col>
+          </UiCol>
 
-          <a-col :span="15">
+          <UiCol :span="15">
             <UiCard v-if="!selectedRequirement" class="tpw__card">
-              <UiEmpty description="请选择" />
+              <UiAlertStrip
+                tone="info"
+                size="sm"
+                dense
+                inline
+                :show-icon="false"
+              >
+                <template #default>
+                  <span style="display:inline-flex;align-items:center;gap:8px">
+                    <UiTag tone="blue" size="sm">未选择</UiTag>
+                    <span>请在左侧选择条目后再编辑</span>
+                  </span>
+                </template>
+              </UiAlertStrip>
             </UiCard>
             <template v-else>
               <UiCard class="tpw__card" style="margin-bottom: 12px">
@@ -1945,7 +2008,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                   <span>「{{ selectedRequirement.requirementName }}」观测点</span>
                 </template>
                 <template #extra>
-                  <a-space>
+                  <div class="dp-space" style="--dp-space-gap: 8px">
                     <UiTag
                       :tone="
                         isWeightSumHealthy(indicatorWeightSumByReq(selectedRequirement.id))
@@ -1958,7 +2021,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                     <UiButton variant="primary" size="sm" @click="openIndicatorCreate">
                       新增观测点
                     </UiButton>
-                  </a-space>
+                  </div>
                 </template>
                 <UiDataTable
                   pagination-mode="server"
@@ -1981,12 +2044,12 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                       {{ record.thresholdValue == null ? '-' : record.thresholdValue.toFixed(2) }}
                     </template>
                     <template v-else-if="column.key === 'civicDimensions'">
-                      <a-space size="small" wrap>
+                      <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
                         <UiTag v-for="d in record.civicDimensions ?? []" :key="d" tone="purple">
                           {{ strictEnumLabel(CivicDimensionDescription, d, '课程思政维度') }}
                         </UiTag>
                         <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted">-</span>
-                      </a-space>
+                      </div>
                     </template>
                     <template v-else-if="column.key === 'actions'">
                       <UiTableActions
@@ -2051,8 +2114,8 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 </UiDataTable>
               </UiCard>
             </template>
-          </a-col>
-        </a-row>
+          </UiCol>
+        </UiRow>
       </div>
     </div>
 
@@ -2065,19 +2128,19 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
       ok-text="保存"
       @ok="submitPlan"
     >
-      <a-form layout="vertical" :model="planEditor">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="所属专业大类" required>
+      <UiForm layout="vertical" :model="planEditor">
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="所属专业大类" required>
               <ProgramSelector
                 :value="planEditor.programId || null"
                 placeholder="请选择 edu-user 专业大类"
                 @change="handlePlanProgramChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="专业算法实例">
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="专业算法实例">
               <ProfessionAlgorithmProfileSelector
                 :value="planEditor.accreditationProfileId || null"
                 :program-id="planEditor.programId || null"
@@ -2086,303 +2149,333 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                 placeholder="选定专业后可选；不选则达成度计算回退专业默认实例"
                 @change="handlePlanAccreditationProfileChange"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="方案编码" required>
-              <a-input v-model:value="planEditor.planCode" placeholder="如 CSE-2024-V1" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="方案名称" required>
-              <a-input v-model:value="planEditor.planName" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="入学学年" required>
-              <a-input v-model:value="planEditor.schoolYear" placeholder="如 2024-2025" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="年级">
-              <a-input v-model:value="planEditor.gradeLevel" placeholder="如 2024 级" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="是否启用">
-              <a-switch v-model:checked="planEditor.enabled" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="方案说明">
-          <a-textarea v-model:value="planEditor.description" :rows="4" />
-        </a-form-item>
-        <a-form-item label="方案附件">
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="方案编码" required>
+              <UiInput
+                size="sm" v-model="planEditor.planCode" placeholder="如 CSE-2024-V1"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="方案名称" required>
+              <UiInput
+                size="sm" v-model="planEditor.planName"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="入学学年" required>
+              <UiInput
+                size="sm" v-model="planEditor.schoolYear" placeholder="如 2024-2025"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="年级">
+              <UiInput
+                size="sm" v-model="planEditor.gradeLevel" placeholder="如 2024 级"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="是否启用">
+              <UiSwitch size="sm" v-model="planEditor.enabled" />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="方案说明">
+          <UiTextarea size="sm" v-model="planEditor.description" :rows="4" />
+        </UiFormItem>
+        <UiFormItem label="方案附件">
           <UiPlatformFileField
             v-model:file-node-id="planEditor.storageFileId"
             v-model:file-name="planFileName"
             :scene-key="FileUploadSceneKey.QUALITY_TRAINING_PLAN_FILE"
             button-text="上传方案附件"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <!-- 培养目标编辑 Modal -->
-    <a-modal
+    <UiDialog
       v-model:open="objectiveEditorVisible"
       :title="objectiveEditorMode === 'create' ? '新建培养目标' : '编辑培养目标'"
       :confirm-loading="objectiveSubmitting"
       width="600px"
       @ok="submitObjective"
     >
-      <a-form layout="vertical" :model="objectiveEditor">
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="编码" required>
-              <a-input v-model:value="objectiveEditor.objectiveCode" placeholder="如 PO1" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="16">
-            <a-form-item label="名称" required>
-              <a-input v-model:value="objectiveEditor.objectiveName" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="描述（毕业 5 年职业成就）">
-          <a-textarea v-model:value="objectiveEditor.description" :rows="4" />
-        </a-form-item>
-        <a-form-item label="排序">
-          <a-input-number v-model:value="objectiveEditor.sortOrder" :min="0" style="width: 200px" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+      <UiForm layout="vertical" :model="objectiveEditor">
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="编码" required>
+              <UiInput
+                size="sm" v-model="objectiveEditor.objectiveCode" placeholder="如 PO1"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="16">
+            <UiFormItem label="名称" required>
+              <UiInput
+                size="sm" v-model="objectiveEditor.objectiveName"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="描述（毕业 5 年职业成就）">
+          <UiTextarea size="sm" v-model="objectiveEditor.description" :rows="4" />
+        </UiFormItem>
+        <UiFormItem label="排序">
+          <UiInputNumber
+            size="sm" v-model="objectiveEditor.sortOrder" :min="0" style="width: 200px"
+          />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
     <!-- 目标→要求映射编辑 Modal -->
-    <a-modal
+    <UiDialog
       v-model:open="objMappingEditorVisible"
       :title="objMappingEditorMode === 'create' ? '新增「目标→要求」映射' : '编辑「目标→要求」映射'"
       :confirm-loading="objMappingSubmitting"
       width="540px"
       @ok="submitObjMapping"
     >
-      <a-form layout="vertical" :model="objMappingEditor">
-        <a-form-item label="毕业要求" required>
-          <a-select
-            v-model:value="objMappingEditor.graduationRequirementId"
+      <UiForm layout="vertical" :model="objMappingEditor">
+        <UiFormItem label="毕业要求" required>
+          <UiSelect
+            v-model="objMappingEditor.graduationRequirementId"
             placeholder="请选择毕业要求"
             :disabled="objMappingEditorMode === 'edit'"
-          >
-            <a-select-option v-for="r in requirements" :key="r.id" :value="r.id">
-              <span class="dp-selector-option-code">{{ r.requirementCode }}</span>
-              {{ r.requirementName }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="权重 (0~1)" required>
-              <a-input-number
-                v-model:value="objMappingEditor.weight"
+          
+            size="sm"
+            :options="requirements.map((r) => ({ value: r.id, label: `${r.requirementCode} · ${r.requirementName}` }))"
+          />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="权重 (0~1)" required>
+              <UiInputNumber
+                size="sm"
+                v-model="objMappingEditor.weight"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="排序">
-              <a-input-number
-                v-model:value="objMappingEditor.sortOrder"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="排序">
+              <UiInputNumber
+                size="sm"
+                v-model="objMappingEditor.sortOrder"
                 :min="0"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="objMappingEditor.notes" :rows="3" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="备注">
+          <UiTextarea size="sm" v-model="objMappingEditor.notes" :rows="3" />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
     <!-- 毕业要求编辑 Modal -->
-    <a-modal
+    <UiDialog
       v-model:open="requirementEditorVisible"
       :title="requirementEditorMode === 'create' ? '新建毕业要求' : '编辑毕业要求'"
       :confirm-loading="requirementSubmitting"
       width="700px"
       @ok="submitRequirement"
     >
-      <a-form layout="vertical" :model="requirementEditor">
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="编码" required>
-              <a-input v-model:value="requirementEditor.requirementCode" placeholder="如 GR1" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="18">
-            <a-form-item label="名称" required>
-              <a-input
-                v-model:value="requirementEditor.requirementName"
+      <UiForm layout="vertical" :model="requirementEditor">
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="编码" required>
+              <UiInput
+                size="sm" v-model="requirementEditor.requirementCode" placeholder="如 GR1"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="18">
+            <UiFormItem label="名称" required>
+              <UiInput
+                size="sm"
+                v-model="requirementEditor.requirementName"
                 placeholder="如 工程知识"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="描述">
-          <a-textarea
-            v-model:value="requirementEditor.description"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="描述">
+          <UiTextarea
+            size="sm"
+            v-model="requirementEditor.description"
             :rows="4"
             placeholder="参考工程教育认证 12 条标准（a-l）的官方描述"
           />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="阈值 (0~1)">
-              <a-input-number
-                v-model:value="requirementEditor.thresholdValue"
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="阈值 (0~1)">
+              <UiInputNumber
+                size="sm"
+                v-model="requirementEditor.thresholdValue"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="聚合策略">
-              <a-select
-                v-model:value="requirementEditor.aggregation"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="聚合策略">
+              <UiSelect
+                size="sm"
+                v-model="requirementEditor.aggregation"
                 :options="aggregationOptions"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="排序">
-              <a-input-number
-                v-model:value="requirementEditor.sortOrder"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="排序">
+              <UiInputNumber
+                size="sm"
+                v-model="requirementEditor.sortOrder"
                 :min="0"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="五育维度（多选）">
-          <a-select
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="五育维度（多选）">
+          <UiSelect
+            size="sm"
             mode="multiple"
-            v-model:value="requirementEditor.civicDimensions"
+            v-model="requirementEditor.civicDimensions"
             :options="civicDimensionOptions"
             placeholder="德 智 体 美 劳 维度（如适用）"
             style="width: 100%"
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
     <!-- 观测点编辑 Modal -->
-    <a-modal
+    <UiDialog
       v-model:open="indicatorEditorVisible"
       :title="indicatorEditorMode === 'create' ? '新增观测点' : '编辑观测点'"
       :confirm-loading="indicatorSubmitting"
-      width="640px"
+      :width="640"
       @ok="submitIndicator"
     >
-      <a-form layout="vertical" :model="indicatorEditor">
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="编码" required>
-              <a-input v-model:value="indicatorEditor.indicatorCode" placeholder="如 1.1" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="18">
-            <a-form-item label="名称" required>
-              <a-input v-model:value="indicatorEditor.indicatorName" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="描述">
-          <a-textarea v-model:value="indicatorEditor.description" :rows="3" />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="权重 (0~1)" required>
-              <a-input-number
-                v-model:value="indicatorEditor.requirementWeight"
+      <UiForm layout="vertical" :model="indicatorEditor">
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="编码" required>
+              <UiInput
+                size="sm" v-model="indicatorEditor.indicatorCode" placeholder="如 1.1"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="18">
+            <UiFormItem label="名称" required>
+              <UiInput
+                size="sm" v-model="indicatorEditor.indicatorName"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="描述">
+          <UiTextarea size="sm" v-model="indicatorEditor.description" :rows="3" />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="权重 (0~1)" required>
+              <UiInputNumber
+                size="sm"
+                v-model="indicatorEditor.requirementWeight"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="阈值">
-              <a-input-number
-                v-model:value="indicatorEditor.thresholdValue"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="阈值">
+              <UiInputNumber
+                size="sm"
+                v-model="indicatorEditor.thresholdValue"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="排序">
-              <a-input-number
-                v-model:value="indicatorEditor.sortOrder"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="排序">
+              <UiInputNumber
+                size="sm"
+                v-model="indicatorEditor.sortOrder"
                 :min="0"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="五育维度（多选）">
-          <a-select
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="五育维度（多选）">
+          <UiSelect
+            size="sm"
             mode="multiple"
-            v-model:value="indicatorEditor.civicDimensions"
+            v-model="indicatorEditor.civicDimensions"
             :options="civicDimensionOptions"
             placeholder="可选"
             style="width: 100%"
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
     <!-- 标准条款映射编辑 Modal -->
-    <a-modal
+    <UiDialog
       v-model:open="stdEditorVisible"
       :title="stdEditorMode === 'create' ? '新增标准条款映射' : '编辑标准条款映射'"
       width="600px"
       @ok="submitStdMapping"
     >
-      <a-form layout="vertical" :model="stdEditor">
-        <a-form-item label="标准条目" required>
-          <a-select
-            v-model:value="stdEditor.standardId"
+      <UiForm layout="vertical" :model="stdEditor">
+        <UiFormItem label="标准条目" required>
+          <UiSelect
+            v-model="stdEditor.standardId"
             placeholder="选择已启用的认证标准"
-            show-search
+            allow-search
             :filter-option="false"
             @search="handleStandardOptionSearch"
-          >
-            <a-select-option v-for="s in standardOptions" :key="s.id" :value="s.id">
-              <span class="dp-selector-option-code">{{ s.standardCode }}</span>
-              {{ s.standardName }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="标准条款">
-          <a-input v-model:value="stdEditor.standardClause" placeholder="如 §1.3.a" />
-        </a-form-item>
-        <a-form-item label="覆盖说明">
-          <a-textarea v-model:value="stdEditor.coverageNote" :rows="3" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+          
+            size="sm"
+            :options="standardOptions.map((s) => ({ value: s.id, label: `${s.standardCode} · ${s.standardName}` }))"
+          />
+        </UiFormItem>
+        <UiFormItem label="标准条款">
+          <UiInput
+            size="sm" v-model="stdEditor.standardClause" placeholder="如 §1.3.a"
+          />
+        </UiFormItem>
+        <UiFormItem label="覆盖说明">
+          <UiTextarea size="sm" v-model="stdEditor.coverageNote" :rows="3" />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -2453,7 +2546,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 }
 
 :deep(.tpw-row-selected) td {
-  background-color: var(--ant-color-primary-bg) !important;
+  background-color: var(--dp-color-primary-bg) !important;
 }
 
 .text-xs {
@@ -2461,7 +2554,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 }
 
 .text-gray-500 {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 
 .mr-1 {

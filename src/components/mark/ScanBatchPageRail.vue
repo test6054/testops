@@ -3,14 +3,15 @@
     <div v-if="$slots.header" class="scan-batch-page-rail__header">
       <slot name="header" />
     </div>
-    <a-spin :spinning="loading">
+    <UiSpin :spinning="loading">
       <UiEmpty
+        size="sm"
         v-if="!loading && pageItems.length === 0"
         :description="emptyDescription"
         class="scan-batch-page-rail__empty"
       />
       <div v-else class="scan-batch-page-rail__scroller">
-        <a-list
+        <UiList
           :data-source="pageItems"
           :split="false"
           :virtual="true"
@@ -44,10 +45,10 @@
               </span>
             </button>
           </template>
-        </a-list>
+        </UiList>
       </div>
       <div v-if="loadingMore" class="scan-batch-page-rail__loading-more">加载更多页轨…</div>
-    </a-spin>
+    </UiSpin>
   </div>
 </template>
 
@@ -59,6 +60,8 @@ import {
   ScanBatchWorkbenchRegisterStatusDescription,
 } from '@/apis/mark/exam-scan'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiList from '@/components/ui-guide/ui/UiList.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { ScanBatchWorkbenchBindingStatusCode } from '@/types/enums/scan-batch-workbench-binding-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -224,7 +227,7 @@ watch(
 
 .scan-batch-page-rail__scroller {
   height: calc(100vh - 180px);
-  min-height: 320px;
+  min-height: 240px;
 }
 
 .scan-batch-page-rail__list {
@@ -238,13 +241,13 @@ watch(
   min-height: 72px;
   padding: 0;
   border: none;
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  border-bottom: 1px solid var(--dp-border-subtle);
   background: transparent;
   text-align: left;
   cursor: pointer;
 
   &--active {
-    background: var(--ant-color-primary-bg);
+    background: var(--dp-blue-50);
   }
 
   &--superseded {
@@ -257,23 +260,23 @@ watch(
   width: 4px;
 
   &--pending {
-    background: var(--ant-color-text-quaternary);
+    background: var(--dp-text-muted);
   }
 
   &--registered {
-    background: var(--ant-color-primary);
+    background: var(--dp-color-primary);
   }
 
   &--bound {
-    background: var(--ant-color-success);
+    background: var(--dp-success);
   }
 
   &--exception {
-    background: var(--ant-color-error);
+    background: var(--dp-danger);
   }
 
   &--superseded {
-    background: var(--ant-color-text-quaternary);
+    background: var(--dp-text-muted);
   }
 }
 
@@ -288,13 +291,13 @@ watch(
 }
 
 .scan-batch-page-rail__order {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: 12px;
 }
 
 .scan-batch-page-rail__label {
   overflow: hidden;
-  color: var(--ant-color-text);
+  color: var(--dp-text-primary);
   font-size: 14px;
   font-weight: 500;
   text-overflow: ellipsis;
@@ -303,7 +306,7 @@ watch(
 
 .scan-batch-page-rail__meta {
   overflow: hidden;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -315,20 +318,20 @@ watch(
   margin-right: 12px;
   padding: 0 6px;
   border-radius: 10px;
-  background: var(--ant-color-error-bg);
-  color: var(--ant-color-error);
+  background: var(--dp-error-bg);
+  color: var(--dp-danger);
   font-size: 12px;
   line-height: 20px;
 }
 
 .scan-batch-page-rail__loading-more {
   padding: 8px 12px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-muted);
   font-size: 12px;
   text-align: center;
 }
 
 .scan-batch-page-rail__empty {
-  padding: 24px 12px;
+  padding: var(--dp-space-3, 12px);
 }
 </style>

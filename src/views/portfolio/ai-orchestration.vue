@@ -17,16 +17,22 @@ import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { AiTaskStatusDescription } from '@/types/enums/ai-task-status-enum'
 import { PortfolioAiTaskTypeDescription } from '@/types/enums/portfolio-ai-task-type-enum'
@@ -40,7 +46,8 @@ function readRouteStringParam(value: unknown): string {
 
 const route = useRoute()
 const { targetTeacherId, scopeReady } = usePortfolioPageScope()
-const { canManageTeacherAi } = usePortfolioTeacherAccess()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const { canPickTeachers, canManageTeacherAi } = usePortfolioTeacherAccess()
 
 const activeTab = ref<'ask' | 'policy'>(
   readRouteStringParam(route.query.tab) === 'policy' ? 'policy' : 'ask',
@@ -327,6 +334,10 @@ async function pollAnalysis(taskId: string, taskToken = orchestrationToken.value
 }
 
 async function submitAsk() {
+  if (!(await confirmProxyWrite('提交 AI 问答'))) {
+    return
+  }
+
   if (!canOperate.value) {
     message.error('无权为该教师提交智能问数')
     return
@@ -381,6 +392,10 @@ async function submitAsk() {
 }
 
 async function submitPolicyCheck() {
+  if (!(await confirmProxyWrite('提交政策核验'))) {
+    return
+  }
+
   if (!canOperate.value) {
     message.error('无权为该教师提交政策核验')
     return
@@ -509,221 +524,234 @@ usePortfolioScopedLoader(
       title="智能问数与政策核验"
       description="材料须先登记材料库，再提交智能问数或政策核验编排任务"
     />
-    <UiCard title="材料上下文">
-      <a-select
-        v-model:value="materialType"
-        class="ai-orchestration__field"
-        :disabled="loading || polling"
-        :options="[
-          { value: PortfolioMaterialTypeCode.DOCUMENT, label: '文档' },
-          { value: 'CERTIFICATE', label: '证书' },
-        ]"
-      />
-      <UiPlatformFileField
-        v-model:file-node-id="materialFileNodeId"
-        v-model:file-name="materialFileName"
-        :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
-        label="材料文件"
-        :disabled="loading || polling"
-      />
-      <p v-if="registeredMaterialId" class="ai-orchestration__hint">
-        已绑定材料库记录 #{{ registeredMaterialId }}
-      </p>
-    </UiCard>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+    <template v-else>
+      <UiCard title="材料上下文">
+        <UiSelect
+          size="sm"
+          v-model="materialType"
+          class="ai-orchestration__field"
+          :disabled="loading || polling"
+          :options="[
+            { value: PortfolioMaterialTypeCode.DOCUMENT, label: '文档' },
+            { value: 'CERTIFICATE', label: '证书' },
+          ]"
+        />
+        <UiPlatformFileField
+          v-model:file-node-id="materialFileNodeId"
+          v-model:file-name="materialFileName"
+          :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
+          label="材料文件"
+          :disabled="loading || polling"
+        />
+        <p v-if="registeredMaterialId" class="ai-orchestration__hint">
+          已绑定材料库记录 #{{ registeredMaterialId }}
+        </p>
+      </UiCard>
 
-    <UiCard title="材料智能任务">
-      <div class="ai-orchestration__task-toolbar">
-        <UiButton variant="outline" :loading="materialTaskLoading" @click="loadMaterialTasks">
-          刷新任务
+      <UiCard title="材料智能任务">
+        <div class="ai-orchestration__task-toolbar">
+          <UiButton size="sm" variant="outline" :loading="materialTaskLoading" @click="loadMaterialTasks">
+            刷新任务
+          </UiButton>
+        </div>
+        <UiSpin :spinning="materialTaskLoading">
+          <UiEmpty
+            size="sm"
+            v-if="!materialTaskLoading && materialTaskRows.length === 0"
+            description="暂无材料智能任务"
+          />
+          <ul v-else class="ai-orchestration__task-list">
+            <li v-for="task in materialTaskRows" :key="task.id">
+              <div>
+                <strong>{{ PortfolioAiTaskTypeDescription[task.taskType] }}</strong>
+                <span class="ai-orchestration__meta">
+                  #{{ task.id }} · {{ task.createTime || '时间未记录' }}</span>
+              </div>
+              <UiTag
+                :tone="
+                  task.status === AiTaskStatusCode.SUCCEEDED
+                    ? 'green'
+                    : task.status === AiTaskStatusCode.FAILED
+                      ? 'red'
+                      : 'blue'
+                "
+              >
+                {{ AiTaskStatusDescription[task.status] }}
+              </UiTag>
+              <p v-if="task.failureReason" class="ai-orchestration__task-failure">
+                {{ task.failureReason }}
+              </p>
+            </li>
+          </ul>
+          <UiPagination
+            v-if="materialTaskTotal > materialTaskPageSize"
+            v-model:current="materialTaskPage"
+            v-model:page-size="materialTaskPageSize"
+            :total="materialTaskTotal"
+            :show-size-changer="false"
+            size="small"
+            @change="handleMaterialTaskPageChange"
+          />
+        </UiSpin>
+      </UiCard>
+
+      <UiCard title="任务类型">
+        <div class="ai-orchestration__tabs">
+          <UiButton
+            size="sm"
+            :variant="activeTab === 'ask' ? 'primary' : 'outline'"
+            :disabled="loading || polling"
+            @click="activeTab = 'ask'"
+          >
+            材料智能问数
+          </UiButton>
+          <UiButton
+            size="sm"
+            :variant="activeTab === 'policy' ? 'primary' : 'outline'"
+            :disabled="loading || polling"
+            @click="activeTab = 'policy'"
+          >
+            政策专项核验
+          </UiButton>
+        </div>
+      </UiCard>
+
+      <UiCard v-if="activeTab === 'ask'" title="智能问数">
+        <UiTextarea
+          size="sm"
+          v-model="askForm.userQuestion"
+          class="ai-orchestration__field"
+          :rows="4"
+          :disabled="loading || polling"
+          placeholder="基于材料内容提问，例如：该教师近一年有哪些省级以上荣誉？"
+        />
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="loading || polling"
+          :disabled="!canOperate || loading || polling"
+          @click="() => void submitAsk()"
+        >
+          提交问数
         </UiButton>
-      </div>
-      <a-spin :spinning="materialTaskLoading">
+      </UiCard>
+
+      <UiCard v-else title="政策专项核验">
+        <UiTextarea
+          size="sm"
+          v-model="policyForm.policyClauseText"
+          class="ai-orchestration__field"
+          :rows="4"
+          :disabled="loading || polling"
+          placeholder="粘贴待核验的政策条款全文"
+        />
+        <UiTextarea
+          size="sm"
+          v-model="policyForm.teacherProfileSummary"
+          class="ai-orchestration__field"
+          :rows="2"
+          :disabled="loading || polling"
+          placeholder="教师档案摘要（可选）"
+        />
+        <label class="ai-orchestration__checkbox">
+          <input v-model="policyForm.attachMaterial" type="checkbox" :disabled="loading || polling" />
+          附带材料文件作为佐证
+        </label>
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="loading || polling"
+          :disabled="!canOperate || loading || polling"
+          @click="() => void submitPolicyCheck()"
+        >
+          提交核验
+        </UiButton>
+      </UiCard>
+
+      <UiCard v-if="analysisDetail" title="分析结果">
+        <p class="ai-orchestration__title">
+          {{ analysisDetail.resultTitle }}
+        </p>
+        <p class="ai-orchestration__meta">类型：{{ analysisTypeLabel }}</p>
+
+        <template
+          v-if="
+            supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)
+          "
+        >
+          <p v-if="analysisDetail.reportScene" class="ai-orchestration__meta">
+            用户问题：{{ analysisDetail.reportScene }}
+          </p>
+          <pre class="ai-orchestration__summary">{{ analysisDetail.summary }}</pre>
+          <section v-if="analysisDetail.evidenceItems.length" class="ai-orchestration__section">
+            <h4 class="ai-orchestration__section-title">证据引用</h4>
+            <ul class="ai-orchestration__list">
+              <li v-for="(item, index) in analysisDetail.evidenceItems" :key="`ev-${index}`">
+                <strong>{{ item.evidenceTitle }}</strong>
+                <span v-if="item.evidenceSource">（{{ item.evidenceSource }}）</span>
+                <p>{{ item.evidenceContent }}</p>
+              </li>
+            </ul>
+          </section>
+          <section v-if="analysisDetail.issueItems.length" class="ai-orchestration__section">
+            <h4 class="ai-orchestration__section-title">提示</h4>
+            <ul class="ai-orchestration__list">
+              <li v-for="(item, index) in analysisDetail.issueItems" :key="`issue-${index}`">
+                {{ item.issueTitle }}：{{ item.issueDescription }}
+              </li>
+            </ul>
+          </section>
+        </template>
+
+        <template
+          v-else-if="
+            supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)
+          "
+        >
+          <p v-if="analysisDetail.conclusionCode" class="ai-orchestration__meta">
+            结论：
+            <UiTag :tone="policyConclusionTone">{{ policyConclusionLabel }}</UiTag>
+          </p>
+          <pre class="ai-orchestration__summary">{{ analysisDetail.summary }}</pre>
+          <section v-if="analysisDetail.policyClauseDigest" class="ai-orchestration__section">
+            <h4 class="ai-orchestration__section-title">政策条款摘要</h4>
+            <pre class="ai-orchestration__summary">{{ analysisDetail.policyClauseDigest }}</pre>
+          </section>
+          <section v-if="analysisDetail.issueItems.length" class="ai-orchestration__section">
+            <h4 class="ai-orchestration__section-title">缺口项</h4>
+            <ul class="ai-orchestration__list">
+              <li v-for="(item, index) in analysisDetail.issueItems" :key="`gap-${index}`">
+                {{ item.issueTitle }}：{{ item.issueDescription }}
+              </li>
+            </ul>
+          </section>
+          <section v-if="analysisDetail.suggestionItems.length" class="ai-orchestration__section">
+            <h4 class="ai-orchestration__section-title">补采建议</h4>
+            <ul class="ai-orchestration__list">
+              <li v-for="(item, index) in analysisDetail.suggestionItems" :key="`sug-${index}`">
+                {{ item.suggestionTitle }}：{{ item.suggestionContent }}
+              </li>
+            </ul>
+          </section>
+          <section v-if="analysisDetail.evidenceItems.length" class="ai-orchestration__section">
+            <h4 class="ai-orchestration__section-title">依据引用</h4>
+            <ul class="ai-orchestration__list">
+              <li v-for="(item, index) in analysisDetail.evidenceItems" :key="`pref-${index}`">
+                {{ item.evidenceContent }}
+              </li>
+            </ul>
+          </section>
+        </template>
+
         <UiEmpty
-          v-if="!materialTaskLoading && materialTaskRows.length === 0"
-          description="暂无材料智能任务"
+          v-else
+          size="sm"
+          title="分析结果类型异常"
+          description="当前页面仅支持材料问数与政策核验结果展示"
         />
-        <ul v-else class="ai-orchestration__task-list">
-          <li v-for="task in materialTaskRows" :key="task.id">
-            <div>
-              <strong>{{ PortfolioAiTaskTypeDescription[task.taskType] }}</strong>
-              <span class="ai-orchestration__meta">
-                #{{ task.id }} · {{ task.createTime || '时间未记录' }}</span>
-            </div>
-            <UiTag
-              :tone="
-                task.status === AiTaskStatusCode.SUCCEEDED
-                  ? 'green'
-                  : task.status === AiTaskStatusCode.FAILED
-                    ? 'red'
-                    : 'blue'
-              "
-            >
-              {{ AiTaskStatusDescription[task.status] }}
-            </UiTag>
-            <p v-if="task.failureReason" class="ai-orchestration__task-failure">
-              {{ task.failureReason }}
-            </p>
-          </li>
-        </ul>
-        <a-pagination
-          v-if="materialTaskTotal > materialTaskPageSize"
-          :current="materialTaskPage"
-          :page-size="materialTaskPageSize"
-          :total="materialTaskTotal"
-          size="small"
-          @change="handleMaterialTaskPageChange"
-        />
-      </a-spin>
-    </UiCard>
-
-    <UiCard title="任务类型">
-      <div class="ai-orchestration__tabs">
-        <UiButton
-          :variant="activeTab === 'ask' ? 'primary' : 'outline'"
-          :disabled="loading || polling"
-          @click="activeTab = 'ask'"
-        >
-          材料智能问数
-        </UiButton>
-        <UiButton
-          :variant="activeTab === 'policy' ? 'primary' : 'outline'"
-          :disabled="loading || polling"
-          @click="activeTab = 'policy'"
-        >
-          政策专项核验
-        </UiButton>
-      </div>
-    </UiCard>
-
-    <UiCard v-if="activeTab === 'ask'" title="智能问数">
-      <a-textarea
-        v-model:value="askForm.userQuestion"
-        class="ai-orchestration__field"
-        :rows="4"
-        :disabled="loading || polling"
-        placeholder="基于材料内容提问，例如：该教师近一年有哪些省级以上荣誉？"
-      />
-      <UiButton
-        variant="primary"
-        :loading="loading || polling"
-        :disabled="!canOperate || loading || polling"
-        @click="() => void submitAsk()"
-      >
-        提交问数
-      </UiButton>
-    </UiCard>
-
-    <UiCard v-else title="政策专项核验">
-      <a-textarea
-        v-model:value="policyForm.policyClauseText"
-        class="ai-orchestration__field"
-        :rows="4"
-        :disabled="loading || polling"
-        placeholder="粘贴待核验的政策条款全文"
-      />
-      <a-textarea
-        v-model:value="policyForm.teacherProfileSummary"
-        class="ai-orchestration__field"
-        :rows="2"
-        :disabled="loading || polling"
-        placeholder="教师档案摘要（可选）"
-      />
-      <label class="ai-orchestration__checkbox">
-        <input v-model="policyForm.attachMaterial" type="checkbox" :disabled="loading || polling" />
-        附带材料文件作为佐证
-      </label>
-      <UiButton
-        variant="primary"
-        :loading="loading || polling"
-        :disabled="!canOperate || loading || polling"
-        @click="() => void submitPolicyCheck()"
-      >
-        提交核验
-      </UiButton>
-    </UiCard>
-
-    <UiCard v-if="analysisDetail" title="分析结果">
-      <p class="ai-orchestration__title">
-        {{ analysisDetail.resultTitle }}
-      </p>
-      <p class="ai-orchestration__meta">类型：{{ analysisTypeLabel }}</p>
-
-      <template
-        v-if="
-          supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)
-        "
-      >
-        <p v-if="analysisDetail.reportScene" class="ai-orchestration__meta">
-          用户问题：{{ analysisDetail.reportScene }}
-        </p>
-        <pre class="ai-orchestration__summary">{{ analysisDetail.summary }}</pre>
-        <section v-if="analysisDetail.evidenceItems.length" class="ai-orchestration__section">
-          <h4 class="ai-orchestration__section-title">证据引用</h4>
-          <ul class="ai-orchestration__list">
-            <li v-for="(item, index) in analysisDetail.evidenceItems" :key="`ev-${index}`">
-              <strong>{{ item.evidenceTitle }}</strong>
-              <span v-if="item.evidenceSource">（{{ item.evidenceSource }}）</span>
-              <p>{{ item.evidenceContent }}</p>
-            </li>
-          </ul>
-        </section>
-        <section v-if="analysisDetail.issueItems.length" class="ai-orchestration__section">
-          <h4 class="ai-orchestration__section-title">提示</h4>
-          <ul class="ai-orchestration__list">
-            <li v-for="(item, index) in analysisDetail.issueItems" :key="`issue-${index}`">
-              {{ item.issueTitle }}：{{ item.issueDescription }}
-            </li>
-          </ul>
-        </section>
-      </template>
-
-      <template
-        v-else-if="
-          supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)
-        "
-      >
-        <p v-if="analysisDetail.conclusionCode" class="ai-orchestration__meta">
-          结论：
-          <UiTag :tone="policyConclusionTone">{{ policyConclusionLabel }}</UiTag>
-        </p>
-        <pre class="ai-orchestration__summary">{{ analysisDetail.summary }}</pre>
-        <section v-if="analysisDetail.policyClauseDigest" class="ai-orchestration__section">
-          <h4 class="ai-orchestration__section-title">政策条款摘要</h4>
-          <pre class="ai-orchestration__summary">{{ analysisDetail.policyClauseDigest }}</pre>
-        </section>
-        <section v-if="analysisDetail.issueItems.length" class="ai-orchestration__section">
-          <h4 class="ai-orchestration__section-title">缺口项</h4>
-          <ul class="ai-orchestration__list">
-            <li v-for="(item, index) in analysisDetail.issueItems" :key="`gap-${index}`">
-              {{ item.issueTitle }}：{{ item.issueDescription }}
-            </li>
-          </ul>
-        </section>
-        <section v-if="analysisDetail.suggestionItems.length" class="ai-orchestration__section">
-          <h4 class="ai-orchestration__section-title">补采建议</h4>
-          <ul class="ai-orchestration__list">
-            <li v-for="(item, index) in analysisDetail.suggestionItems" :key="`sug-${index}`">
-              {{ item.suggestionTitle }}：{{ item.suggestionContent }}
-            </li>
-          </ul>
-        </section>
-        <section v-if="analysisDetail.evidenceItems.length" class="ai-orchestration__section">
-          <h4 class="ai-orchestration__section-title">依据引用</h4>
-          <ul class="ai-orchestration__list">
-            <li v-for="(item, index) in analysisDetail.evidenceItems" :key="`pref-${index}`">
-              {{ item.evidenceContent }}
-            </li>
-          </ul>
-        </section>
-      </template>
-
-      <a-result
-        v-else
-        status="error"
-        title="分析结果类型异常"
-        sub-title="当前页面仅支持材料问数与政策核验结果展示"
-      />
-    </UiCard>
+      </UiCard>
+    </template>
   </StageWorkbenchShell>
 </template>
 
@@ -788,7 +816,7 @@ usePortfolioScopedLoader(
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
   border-radius: 4px;
   font-size: 13px;
   line-height: 1.6;

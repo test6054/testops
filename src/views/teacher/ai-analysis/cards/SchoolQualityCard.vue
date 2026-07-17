@@ -477,6 +477,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
+  if (generating.value) return
   const examIds = form.examIds
   if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {
     showFormValidationMessage('请先在上方范围栏选择课程')

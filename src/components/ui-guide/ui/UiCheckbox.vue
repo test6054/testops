@@ -108,7 +108,7 @@ const inGroup = inject(uiCheckboxGroupKey, undefined) === true
   width: 8px;
   height: 2px;
   border-radius: 999px;
-  background-color: #fff;
+  background-color: var(--dp-text-inverse);
 }
 
 .ui-checkbox :deep(.ant-checkbox-disabled + span),

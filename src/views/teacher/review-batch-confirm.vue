@@ -9,7 +9,7 @@
           </UiTag>
         </template>
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goSingleReview"> 单题复核 </UiButton>
+          <UiButton variant="ghost" size="sm" @click="goSingleReview"> 单题复核 </UiButton>
           <UiButton
             size="sm"
             variant="outline"
@@ -20,6 +20,7 @@
           </UiButton>
           <UiButton
             size="sm"
+            variant="primary"
             :disabled="selectedRowKeys.length === 0"
             :loading="submitting"
             @click="openConfirm"
@@ -31,16 +32,17 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand variant="tiles" compact :metrics="batchSignalMetrics" />
+      <SignalBand compact :metrics="batchSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="缺少考试上下文，请从考试列表进入" />
+    <ExamSelectGateStrip v-if="!selectedExamId" body="缺少考试上下文，请从考试列表进入批量确认" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
 
       <WorkbenchSurfaceCard flush>
         <UiEmpty
+          size="sm"
           v-if="!loading && rows.length === 0"
           description="当前暂无待批量确认的复核任务（硬判或智能建议确认后会出现在此）"
           class="batch-confirm__empty"
@@ -84,12 +86,12 @@
               <UiTag v-else tone="gray" size="sm">未派生</UiTag>
             </template>
             <template v-else-if="column.key === 'teacherReviewScore'">
-              <a-input-number
+              <UiInputNumber
                 :value="scoreDraftMap[record.gradeResultId]"
                 :min="0"
                 :max="record.fullScore"
                 :step="0.5"
-                size="small"
+                size="sm"
                 style="width: 88px"
                 @update:value="(v: number | string | null) => updateScore(record.gradeResultId, v)"
               />
@@ -97,24 +99,24 @@
             </template>
           </template>
         </UiDataTable>
-        <a-list
+        <UiList
           v-if="batchFailures.length"
           size="small"
           :data-source="batchFailures"
           class="batch-confirm__failures"
         >
           <template #renderItem="{ item }">
-            <a-list-item>
-              <a-list-item-meta>
+            <UiListItem>
+              <UiListItemMeta>
                 <template #title> 成绩记录 {{ item.gradeResultId }} </template>
                 <template #description>
                   <UiTag tone="red" size="sm">{{ item.code }}</UiTag>
                   {{ item.message }}
                 </template>
-              </a-list-item-meta>
-            </a-list-item>
+              </UiListItemMeta>
+            </UiListItem>
           </template>
-        </a-list>
+        </UiList>
       </WorkbenchSurfaceCard>
     </template>
   </StageWorkbenchShell>
@@ -143,7 +145,12 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiList from '@/components/ui-guide/ui/UiList.vue'
+import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
+import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -313,6 +320,9 @@ function openConfirm(): void {
 
 async function submitBatch(): Promise<void> {
   if (!selectedExamId.value || selectedRowKeys.value.length === 0) return
+  if (submitting.value) {
+    return
+  }
   submitting.value = true
   try {
     const items = selectedRowKeys.value.map((gradeResultId) => ({
@@ -378,7 +388,7 @@ watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
 
 <style lang="scss" scoped>
 .batch-confirm__empty {
-  padding: 40px 0;
+  padding: var(--dp-space-3, 12px) 0;
 }
 
 .batch-confirm__full-score {

@@ -8,8 +8,8 @@
         subtitle="租户级模板母版、档案岗位与密级矩阵（任务级设置在详情「任务设置」）"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="goArchiveList"> 返回归档列表 </UiButton>
-          <UiButton variant="outline" size="sm" @click="goCreateArchiveTask">
+          <UiButton variant="ghost" size="sm" @click="goArchiveList"> 返回归档列表 </UiButton>
+          <UiButton variant="primary" size="sm" @click="goCreateArchiveTask">
             新建归档任务
           </UiButton>
         </template>
@@ -17,7 +17,7 @@
     </template>
 
     <template #signal>
-      <SignalBand variant="tiles" compact :metrics="settingsSignalMetrics" />
+      <SignalBand compact :metrics="settingsSignalMetrics" />
     </template>
 
     <WorkbenchSurfaceCard flush class="archive-volume-settings__surface">
@@ -30,7 +30,7 @@
       </section>
 
       <section v-else-if="settingsTab === 'duty'" class="archive-volume-settings__panel">
-        <UiEmpty v-if="dutyLoadFailed || departmentLoadFailed" description="职责授权配置加载失败">
+        <UiEmpty size="sm" v-if="dutyLoadFailed || departmentLoadFailed" description="职责授权配置加载失败">
           <template #action>
             <UiButton
               size="sm"
@@ -96,12 +96,12 @@
                   />
                 </template>
                 <template v-else-if="column.key === 'tenantWide'">
-                  <a-checkbox
-                    v-model:checked="dutyRows[index].tenantWide"
+                  <UiCheckbox
+                    v-model="dutyRows[index].tenantWide"
                     @change="handleTenantWideChange(index)"
                   >
                     全校
-                  </a-checkbox>
+                  </UiCheckbox>
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
@@ -117,7 +117,7 @@
       </section>
 
       <section v-else-if="settingsTab === 'security'" class="archive-volume-settings__panel">
-        <UiEmpty v-if="policyLoadFailed" description="密级策略加载失败">
+        <UiEmpty size="sm" v-if="policyLoadFailed" description="密级策略加载失败">
           <template #action>
             <UiButton size="sm" variant="outline" @click="loadPolicy">重新加载</UiButton>
           </template>
@@ -158,15 +158,17 @@
             >
               <template #bodyCell="{ column, index }">
                 <template v-if="column.key === 'dutyType'">
-                  <a-select
-                    v-model:value="policyRows[index].dutyType"
+                  <UiSelect
+                    size="sm"
+                    v-model="policyRows[index].dutyType"
                     :options="ARCHIVE_DUTY_TYPE_OPTIONS"
                     style="width: 100%"
                   />
                 </template>
                 <template v-else-if="column.key === 'maxSecurityLevel'">
-                  <a-select
-                    v-model:value="policyRows[index].maxSecurityLevel"
+                  <UiSelect
+                    size="sm"
+                    v-model="policyRows[index].maxSecurityLevel"
                     :options="ARCHIVE_SECURITY_LEVEL_OPTIONS"
                     style="width: 100%"
                   />
@@ -185,7 +187,7 @@
       </section>
 
       <section v-else-if="settingsTab === 'collaboration'" class="archive-volume-settings__panel">
-        <UiEmpty v-if="collaborationLoadFailed" description="协作策略加载失败">
+        <UiEmpty size="sm" v-if="collaborationLoadFailed" description="协作策略加载失败">
           <template #action>
             <UiButton size="sm" variant="outline" @click="loadCollaborationPolicy">
               重新加载
@@ -229,18 +231,18 @@
                   :allow-clear="false"
                 />
               </label>
-              <a-checkbox v-model:checked="collaborationForm.autoSeedExamReviewers">
+              <UiCheckbox v-model="collaborationForm.autoSeedExamReviewers">
                 自动加入考试阅卷老师为协作成员
-              </a-checkbox>
-              <a-checkbox v-model:checked="collaborationForm.autoSeedCourseTeachers">
+              </UiCheckbox>
+              <UiCheckbox v-model="collaborationForm.autoSeedCourseTeachers">
                 自动加入课程任课老师为协作成员
-              </a-checkbox>
-              <a-checkbox v-model:checked="collaborationForm.coordinatorImplicitSubmit">
+              </UiCheckbox>
+              <UiCheckbox v-model="collaborationForm.coordinatorImplicitSubmit">
                 学院协调员隐式具备提交权
-              </a-checkbox>
-              <a-checkbox v-model:checked="collaborationForm.scanOperatorMayEditCatalog">
+              </UiCheckbox>
+              <UiCheckbox v-model="collaborationForm.scanOperatorMayEditCatalog">
                 扫描员可编辑编目与自查
-              </a-checkbox>
+              </UiCheckbox>
             </div>
           </WorkbenchSurfaceCard>
         </UiForm>
@@ -248,6 +250,7 @@
 
       <section v-else-if="settingsTab === 'deadline'" class="archive-volume-settings__panel">
         <UiEmpty
+          size="sm"
           v-if="deadlineLoadFailed || departmentLoadFailed"
           description="归档时限策略加载失败"
         >
@@ -323,22 +326,23 @@
                   />
                 </template>
                 <template v-else-if="column.key === 'leadDays'">
-                  <a-input-number
-                    v-model:value="deadlineRows[index].leadDays"
+                  <UiInputNumber
+                    size="sm"
+                    v-model="deadlineRows[index].leadDays"
                     :min="1"
                     :max="90"
                     style="width: 100%"
                   />
                 </template>
                 <template v-else-if="column.key === 'overdueSubmitBlock'">
-                  <a-checkbox v-model:checked="deadlineRows[index].overdueSubmitBlock">
+                  <UiCheckbox v-model="deadlineRows[index].overdueSubmitBlock">
                     逾期硬阻断
-                  </a-checkbox>
+                  </UiCheckbox>
                 </template>
                 <template v-else-if="column.key === 'departmentReviewEnabled'">
-                  <a-checkbox v-model:checked="deadlineRows[index].departmentReviewEnabled">
+                  <UiCheckbox v-model="deadlineRows[index].departmentReviewEnabled">
                     启用院系审核
-                  </a-checkbox>
+                  </UiCheckbox>
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
@@ -393,8 +397,10 @@ import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -706,7 +712,7 @@ async function loadCollaborationPolicy() {
 }
 
 async function saveCollaborationPolicyForm() {
-  if (collaborationLoadFailed.value) return
+  if (collaborationLoadFailed.value || saving.value) return
   saving.value = true
   try {
     await saveArchiveCollaborationPolicy({ ...collaborationForm.value })
@@ -749,7 +755,7 @@ async function loadDeadlinePolicy() {
 }
 
 async function saveDeadlinePolicyRows() {
-  if (deadlineLoadFailed.value || departmentLoadFailed.value) return
+  if (deadlineLoadFailed.value || departmentLoadFailed.value || saving.value) return
   if (!validateDeadlineRows()) return
   saving.value = true
   try {
@@ -810,7 +816,7 @@ async function loadPolicy() {
 }
 
 async function saveDutyGrants() {
-  if (dutyLoadFailed.value || departmentLoadFailed.value) return
+  if (dutyLoadFailed.value || departmentLoadFailed.value || saving.value) return
   if (!validateDutyRows()) return
   saving.value = true
   try {
@@ -832,7 +838,7 @@ async function saveDutyGrants() {
 }
 
 async function saveSecurityPolicyRows() {
-  if (policyLoadFailed.value) return
+  if (policyLoadFailed.value || saving.value) return
   if (policyRows.value.length === 0) {
     showFormValidationMessage('至少保留一条密级策略')
     return

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
 import { computed } from 'vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import {
   templateParamFieldsForRuleType,
   templateParamLabel,
@@ -37,15 +39,16 @@ function patch(key: keyof PortfolioIndicatorTemplateParams, value: string | numb
 
 <template>
   <div class="params-grid">
-    <a-form-item v-for="field in fields" :key="field" :label="templateParamLabel(field)">
-      <a-input-number
+    <UiFormItem v-for="field in fields" :key="field" :label="templateParamLabel(field)">
+      <UiInputNumber
+        size="sm"
         :value="params[field]"
         :step="field === 'targetRatio' || field === 'weight' ? 0.01 : 1"
         :disabled="props.disabled"
         style="width: 100%"
         @update:value="patch(field, $event)"
       />
-    </a-form-item>
+    </UiFormItem>
   </div>
 </template>
 

@@ -35,7 +35,7 @@
       </template>
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'groupName'">
-          <a-typography-text strong>{{ record.groupName }}</a-typography-text>
+          <UiTypographyText strong>{{ record.groupName }}</UiTypographyText>
         </template>
         <template v-else-if="column.key === 'status'">
           <UiTag
@@ -48,14 +48,16 @@
           </UiTag>
         </template>
         <template v-else-if="column.key === 'progress'">
-          <a-progress
+          <UiProgressBar
             :percent="sessionProgressPercent(record.totalTaskCount, record.finalizedTaskCount)"
-            size="small"
-            :stroke-color="
+            size="sm"
+            :color="
               record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0
-                ? 'var(--ant-color-success)'
-                : 'var(--ant-color-primary)'
+                ? 'var(--dp-success)'
+                : 'var(--dp-color-primary)'
             "
+          
+            :show-label="false"
           />
         </template>
         <template v-else-if="column.key === 'calibrationSummary'">
@@ -104,7 +106,9 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEllipsisText from '@/components/ui-guide/ui/UiEllipsisText.vue'
+import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import WorkflowPrerequisiteEmpty from '@/components/workbench/workflow-readiness/WorkflowPrerequisiteEmpty.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -334,6 +338,9 @@ async function submitStart(sessionId: string): Promise<void> {
   if (!guardManageAction()) {
     return
   }
+  if (startingId.value || deletingId.value) {
+    return
+  }
   startingId.value = sessionId
   try {
     await startTrialSession(sessionId)
@@ -348,6 +355,9 @@ async function submitStart(sessionId: string): Promise<void> {
 
 async function submitDelete(sessionId: string): Promise<void> {
   if (!guardManageAction()) {
+    return
+  }
+  if (deletingId.value || startingId.value) {
     return
   }
   deletingId.value = sessionId

@@ -3,7 +3,7 @@
     <!-- 头像部分：复用原 Avatar 组件的完整逻辑 -->
     <div class="avatar-wrapper" :class="{ 'has-trigger': props.trigger }">
       <!-- 有头像URL且未加载失败时显示图片头像 -->
-      <a-avatar
+      <UiAvatar
         v-if="hasImageAvatar && !imageLoadFailed"
         :size="avatarSize"
         :src="imageAvatarSrc"
@@ -11,10 +11,10 @@
         @error="handleAvatarError"
       />
       <!-- 兜底：显示文字头像 -->
-      <a-avatar v-else :size="avatarSize" :style="fallbackAvatarStyle">
+      <UiAvatar v-else :size="avatarSize" :style="fallbackAvatarStyle">
         <span v-if="props.name" class="avatar-text">{{ avatarName }}</span>
         <span v-else class="avatar-text">{{ props.text || '?' }}</span>
-      </a-avatar>
+      </UiAvatar>
       <!-- 触发器覆盖层（用于头像上传场景） -->
       <div v-if="props.trigger" class="avatar-trigger-overlay">
         <slot name="trigger-icon"></slot>
@@ -24,9 +24,9 @@
     <!-- 姓名和副文本部分 -->
     <div v-if="props.showName || props.subText" class="gi-cell-avatar__content">
       <template v-if="props.showName">
-        <a-typography-link v-if="props.isLink" class="gi-cell-avatar__name" @click="emit('click')">
+        <UiTypographyLink v-if="props.isLink" class="gi-cell-avatar__name" @click="emit('click')">
           {{ props.name }}
-        </a-typography-link>
+        </UiTypographyLink>
         <div v-else class="gi-cell-avatar__name">
           {{ props.name }}
         </div>
@@ -40,6 +40,8 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue'
+import UiAvatar from '@/components/ui-guide/ui/UiAvatar.vue'
+import UiTypographyLink from '@/components/ui-guide/ui/UiTypographyLink.vue'
 import { OnlyEn } from '@/utils/regexp'
 import { isAvatarUrl, normalizeAvatarUrl } from './avatarContract'
 
@@ -222,7 +224,7 @@ const hasImageAvatar = computed(() => isAvatarUrl(imageAvatarSrc.value))
  * 确保全站视觉统一
  */
 const avatarColor = computed(() => {
-  return 'color-mix(in srgb, var(--ant-color-primary) 16%, var(--ant-color-bg-container))'
+  return 'color-mix(in srgb, var(--dp-color-primary) 16%, var(--dp-bg-container))'
 })
 
 /**
@@ -250,7 +252,7 @@ const avatarFontSize = computed(() => {
 
 const fallbackAvatarStyle = computed(() => ({
   backgroundColor: avatarColor.value,
-  color: 'var(--ant-color-primary)',
+  color: 'var(--dp-color-primary)',
   fontWeight: '700',
   fontSize: avatarFontSize.value,
   display: 'flex',
@@ -291,7 +293,7 @@ watch(
   &__name {
     font-size: 14px;
     font-weight: 500;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
     line-height: 1.5;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -300,7 +302,7 @@ watch(
 
   &__sub {
     font-size: 12px;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-tertiary);
     line-height: 1.4;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -345,11 +347,11 @@ watch(
       display: flex;
       align-items: center;
       justify-content: center;
-      background: color-mix(in srgb, var(--ant-color-text) 40%, transparent);
+      background: color-mix(in srgb, var(--dp-text) 40%, transparent);
       border-radius: var(--dp-radius-full);
       opacity: 0;
       transition: opacity 0.2s;
-      color: var(--ant-color-bg-container);
+      color: var(--dp-bg-container);
       font-size: 16px;
     }
 

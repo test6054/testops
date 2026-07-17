@@ -12,7 +12,7 @@
     width: 2.5px;
     height: 18px;
     border-radius: 0 2px 2px 0;
-    background: var(--ant-color-primary);
+    background: var(--dp-color-primary);
   }
 
   & + & {
@@ -23,19 +23,19 @@
       top: -2px;
       width: 1.5px;
       height: 8px;
-      background: var(--ant-color-border-secondary);
+      background: var(--dp-border-subtle);
       pointer-events: none;
     }
   }
 
   &--completed + &::after {
-    background: var(--ant-color-success-border);
+    background: var(--dp-success-border);
   }
 }
 
 .exam-journey-sidebar-nav__index--completed {
-  background: var(--ant-color-success);
-  color: #fff;
+  background: var(--dp-success);
+  color: var(--dp-text-inverse);
 }
 
 .exam-sub-sidebar-nav {
@@ -52,7 +52,7 @@
       width: 2.5px;
       height: 18px;
       border-radius: 0 2px 2px 0;
-      background: var(--ant-color-primary);
+      background: var(--dp-color-primary);
     }
   }
 }
@@ -69,13 +69,13 @@
   gap: 8px;
   margin-bottom: 6px;
   font-size: 11px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 
 .exam-sub-sidebar__progress-bar {
   height: 3px;
   border-radius: 2px;
-  background: var(--ant-color-border-secondary);
+  background: var(--dp-border-subtle);
   overflow: hidden;
 }
 
@@ -83,7 +83,7 @@
   width: 100%;
   height: 100%;
   border-radius: 2px;
-  background: var(--ant-color-success);
+  background: var(--dp-success);
   transform-origin: left center;
   transition: transform 0.2s ease;
 }

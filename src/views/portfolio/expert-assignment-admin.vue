@@ -9,13 +9,22 @@ import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -105,7 +114,7 @@ const createForm = reactive({
   evaluationTaskId: '',
   expertUserId: '',
   subjectTeacherIdsText: '',
-  materialScopeJson: '{"categoryCodes":[]}',
+  categoryCodesText: '',
   expireDays: 30,
   maskRequired: true,
 })
@@ -187,26 +196,11 @@ function buildPublicReviewUrl(accessToken: string): string | null {
   return `${window.location.origin}/portfolio/public/expert-review#${params.toString()}`
 }
 
-/** 材料范围 JSON 校验：失败只 toast，不 throw */
-function parseMaterialScopeJson(raw: string): string | null {
-  const trimmed = raw.trim()
-  if (!trimmed) {
-    showFormValidationMessage('请填写材料范围结构化文本（材料分类编码列表）')
-    return null
-  }
-  let materialScope: unknown
-  try {
-    materialScope = JSON.parse(trimmed)
-  }
-  catch {
-    showFormValidationMessage('材料范围结构化文本格式不正确，请检查括号与引号后重试')
-    return null
-  }
-  if (!materialScope || typeof materialScope !== 'object' || Array.isArray(materialScope)) {
-    showFormValidationMessage('材料范围须为结构化文本对象，请按材料分类编码列表填写')
-    return null
-  }
-  return JSON.stringify(materialScope)
+function parseCategoryCodes(text: string): string[] {
+  return text
+    .split(/[,，\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
 }
 
 async function copyCreatedPublicLink() {
@@ -310,7 +304,7 @@ function openCreateModal() {
   createForm.evaluationTaskId = filterForm.evaluationTaskId ?? ''
   createForm.expertUserId = ''
   createForm.subjectTeacherIdsText = ''
-  createForm.materialScopeJson = '{"categoryCodes":[]}'
+  createForm.categoryCodesText = ''
   createForm.expireDays = 30
   createForm.maskRequired = true
   createOpen.value = true
@@ -322,8 +316,9 @@ async function submitCreate() {
     showFormValidationMessage('请填写评价任务、专家用户和至少一名被评教师')
     return
   }
-  const materialScopeJson = parseMaterialScopeJson(createForm.materialScopeJson)
-  if (!materialScopeJson) {
+  const categoryCodes = [...new Set(parseCategoryCodes(createForm.categoryCodesText))]
+  if (categoryCodes.length === 0) {
+    showFormValidationMessage('请至少填写一个材料分类编码')
     return
   }
   const operation = 'assignment:create'
@@ -332,7 +327,7 @@ async function submitCreate() {
     evaluationTaskId: createForm.evaluationTaskId,
     expertUserId: createForm.expertUserId.trim(),
     subjectTeacherIds,
-    materialScopeJson,
+    materialScope: { categoryCodes },
     expireDays: createForm.expireDays,
     maskRequired: createForm.maskRequired,
   }
@@ -399,6 +394,7 @@ onMounted(async () => {
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch">
         <template #actions>
           <UiButton
+            size="sm"
             variant="primary"
             :disabled="operating || taskLoadError"
             @click="openCreateModal"
@@ -441,85 +437,97 @@ onMounted(async () => {
           </template>
         </template>
         <template #empty>
-          <UiEmpty description="暂无外部专家授权" />
+          <WorkbenchContextGateStrip
+            tag="未配置"
+            body="暂无外部专家授权，请先新建授权"
+            cta-label="新建授权"
+            @cta="openCreateModal"
+          />
         </template>
       </UiDataTable>
     </UiCard>
-    <a-modal
+    <UiDialog
       v-model:open="createOpen"
       title="新建外部专家授权"
       :confirm-loading="createLoading"
       :closable="!operating"
       :mask-closable="!operating"
-      :keyboard="!operating"
-      :cancel-button-props="{ disabled: operating }"
       ok-text="创建"
       @ok="submitCreate"
     >
-      <a-form layout="vertical">
-        <a-form-item label="评价任务" required>
-          <a-select
-            v-model:value="createForm.evaluationTaskId"
+      <UiForm layout="vertical">
+        <UiFormItem label="评价任务" required>
+          <UiSelect
+            size="sm"
+            v-model="createForm.evaluationTaskId"
             placeholder="选择评价任务"
             :options="tasks.map((t) => ({ value: t.id, label: t.taskName }))"
             :loading="taskLoading"
             :disabled="operating || taskLoadError"
           />
-        </a-form-item>
-        <a-form-item label="专家用户编号" required>
-          <a-input
-            v-model:value="createForm.expertUserId"
+        </UiFormItem>
+        <UiFormItem label="专家用户编号" required>
+          <UiInput
+            size="sm"
+            v-model="createForm.expertUserId"
             placeholder="外部专家平台用户编号"
             :disabled="operating"
           />
-        </a-form-item>
-        <a-form-item label="被评教师编号" required>
-          <a-textarea
-            v-model:value="createForm.subjectTeacherIdsText"
+        </UiFormItem>
+        <UiFormItem label="被评教师编号" required>
+          <UiTextarea
+            size="sm"
+            v-model="createForm.subjectTeacherIdsText"
             placeholder="多个编号用逗号或空格分隔"
             :rows="3"
             :disabled="operating"
           />
-        </a-form-item>
-        <a-form-item label="材料范围结构化文本" required>
-          <a-textarea
-            v-model:value="createForm.materialScopeJson"
-            placeholder="结构化文本，例如分类编码列表"
+        </UiFormItem>
+        <UiFormItem label="材料分类编码" required>
+          <UiTextarea
+            size="sm"
+            v-model="createForm.categoryCodesText"
+            placeholder="多个分类编码用逗号或空格分隔"
             :rows="3"
             :disabled="operating"
           />
-        </a-form-item>
-        <a-form-item label="有效天数" required>
-          <a-input-number
-            v-model:value="createForm.expireDays"
+        </UiFormItem>
+        <UiFormItem label="有效天数" required>
+          <UiInputNumber
+            size="sm"
+            v-model="createForm.expireDays"
             :min="1"
             style="width: 100%"
             :disabled="operating"
           />
-        </a-form-item>
-        <a-form-item label="强制脱敏">
-          <a-switch v-model:checked="createForm.maskRequired" :disabled="operating" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-    <a-modal
+        </UiFormItem>
+        <UiFormItem label="强制脱敏">
+          <UiSwitch size="sm" v-model="createForm.maskRequired" :disabled="operating" />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
+    <UiDialog
       v-model:open="createdLinkOpen"
       title="一次性免登链接"
-      :footer="null"
+      hide-footer
       :mask-closable="false"
       @after-close="clearCreatedPublicLink"
     >
-      <a-alert
-        type="warning"
-        show-icon
-        message="该链接仅在本次创建后显示，关闭后无法再次获取；如遗失请重新创建授权。"
+      <UiAlertStrip
+        tone="warning"
+        dense
+        :inline="false"
+        title="一次性链接提示"
+        description="该链接仅在本次创建后显示，关闭后无法再次获取；如遗失请重新创建授权。"
         style="margin-bottom: 16px"
       />
-      <a-input :value="createdPublicLink" readonly />
+      <UiInput
+        size="sm" :value="createdPublicLink" readonly
+      />
       <div class="expert-assignment__link-actions">
-        <UiButton variant="primary" @click="copyCreatedPublicLink"> 复制免登链接 </UiButton>
+        <UiButton size="sm" variant="primary" @click="copyCreatedPublicLink"> 复制免登链接 </UiButton>
       </div>
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 

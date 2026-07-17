@@ -10,20 +10,24 @@
     @close="emit('update:open', false)"
     @confirm="handleSubmit"
   >
-    <a-form layout="vertical">
-      <a-row :gutter="12">
-        <a-col :span="12">
-          <a-form-item label="来源系统" required>
-            <a-input v-model:value="form.sourceSystem" placeholder="如 COURSE_PLATFORM" />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item label="幂等键" required>
-            <a-input v-model:value="form.idempotencyKey" placeholder="同键重放须 payload 一致" />
-          </a-form-item>
-        </a-col>
-      </a-row>
-    </a-form>
+    <UiForm layout="vertical">
+      <UiRow :gutter="12">
+        <UiCol :span="12">
+          <UiFormItem label="来源系统" required>
+            <UiInput
+              size="sm" v-model="form.sourceSystem" placeholder="如 COURSE_PLATFORM"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem label="幂等键" required>
+            <UiInput
+              size="sm" v-model="form.idempotencyKey" placeholder="同键重放须 payload 一致"
+            />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+    </UiForm>
     <WorkbenchSurfaceCard flush>
       <template #toolbar>
         <UiButton size="sm" variant="outline" @click="addRow">添加材料行</UiButton>
@@ -42,14 +46,17 @@
       >
         <template #bodyCell="{ column, index }">
           <template v-if="column.key === 'materialType'">
-            <a-select
-              v-model:value="rows[index].materialType"
+            <UiSelect
+              size="sm"
+              v-model="rows[index].materialType"
               :options="ARCHIVE_MATERIAL_TYPE_OPTIONS"
               style="width: 100%"
             />
           </template>
           <template v-else-if="column.key === 'catalogCode'">
-            <a-input v-model:value="rows[index].catalogCode" placeholder="目录编码" />
+            <UiInput
+              size="sm" v-model="rows[index].catalogCode" placeholder="目录编码"
+            />
           </template>
           <template v-else-if="column.key === 'file'">
             <span v-if="rows[index].fileName" class="archive-volume-course-sync__file-name">
@@ -65,7 +72,9 @@
             </UiButton>
           </template>
           <template v-else-if="column.key === 'studentNo'">
-            <a-input v-model:value="rows[index].studentNo" placeholder="可选" />
+            <UiInput
+              size="sm" v-model="rows[index].studentNo" placeholder="可选"
+            />
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
@@ -94,8 +103,14 @@ import {
 } from '@/apis/mark/archive-volume'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
@@ -200,6 +215,7 @@ async function onRowFileChange(event: Event) {
 }
 
 async function handleSubmit() {
+  if (submitting.value) return
   if (!props.volumeId) return
   if (!form.value.sourceSystem.trim()) {
     showFormValidationMessage('请填写来源系统')

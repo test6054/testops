@@ -43,6 +43,7 @@ import { scoreRecordApi } from '@/apis/quality/score-record'
 import {
   ALL_DATA_SOURCE_MODE_CODES,
   ALL_SCORE_BATCH_STATUS_CODES,
+  ConfirmationStatusCode,
   DataSourceModeCode,
   DataSourceModeDescription,
   SCORE_BATCH_STATUS_COLOR,
@@ -52,17 +53,25 @@ import {
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import {
   loadSelectorFirstPage,
   QUALITY_SELECTOR_PAGE_SIZE,
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -515,6 +524,17 @@ async function loadBatchesQuietly(): Promise<void> {
   }
 }
 
+
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
+
 async function handleScopeChange(): Promise<void> {
   await loadCourses()
   await loadBatches()
@@ -935,7 +955,12 @@ function buildScoreBatchActions(record: ScoreBatchVO): UiTableRowActionItem[] {
     actions.push({ key: 'confirm', label: '确认', tone: 'primary' })
   }
   if (canReParse(record.status)) {
-    actions.push({ key: 'reparse', label: '重新解析', tone: 'primary' })
+    // 与确认并存时仅确认保留 primary
+    actions.push(
+      canConfirm(record.status)
+        ? { key: 'reparse', label: '重新解析' }
+        : { key: 'reparse', label: '重新解析', tone: 'primary' },
+    )
   }
   if (canEdit(record.status)) {
     actions.push({ key: 'edit', label: '编辑' })
@@ -1035,9 +1060,9 @@ onMounted(async () => {
       </QualityPageContextBar>
     </template>
 
-    <UiEmpty
-      v-if="!qualityStore.currentTrainingPlanId"
-      description="请选择培养方案"
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
       class="score-batch__empty"
     />
 
@@ -1072,18 +1097,20 @@ onMounted(async () => {
             <strong>预览、校验、确认</strong> 完成闭环。
           </p>
         </header>
-        <a-form layout="inline" :model="uploadForm" class="score-batch__upload-form">
-          <a-form-item label="课程" required>
-            <a-select
-              v-model:value="uploadForm.qualityCourseId"
+        <UiForm layout="inline" :model="uploadForm" class="score-batch__upload-form">
+          <UiFormItem label="课程" required>
+            <UiSelect
+              size="sm"
+              v-model="uploadForm.qualityCourseId"
               placeholder="选择质量评价课程"
               class="score-batch__filter score-batch__filter--lg"
               :options="courseSelectOptions"
             />
-          </a-form-item>
-          <a-form-item label="考核环节" required>
-            <a-select
-              v-model:value="uploadForm.assessmentItemId"
+          </UiFormItem>
+          <UiFormItem label="考核环节" required>
+            <UiSelect
+              size="sm"
+              v-model="uploadForm.assessmentItemId"
               placeholder="选择考核环节"
               class="score-batch__filter score-batch__filter--lg"
               :options="uploadAssessmentItemOptions"
@@ -1091,45 +1118,50 @@ onMounted(async () => {
               :disabled="!uploadForm.qualityCourseId"
               allow-clear
             />
-          </a-form-item>
-          <a-form-item label="批次编码" required>
-            <a-input
-              v-model:value="uploadForm.batchCode"
+          </UiFormItem>
+          <UiFormItem label="批次编码" required>
+            <UiInput
+              size="sm"
+              v-model="uploadForm.batchCode"
               placeholder="输入批次编码"
               class="score-batch__filter"
             />
-          </a-form-item>
-          <a-form-item label="批次名称" required>
-            <a-input
-              v-model:value="uploadForm.batchName"
+          </UiFormItem>
+          <UiFormItem label="批次名称" required>
+            <UiInput
+              size="sm"
+              v-model="uploadForm.batchName"
               placeholder="输入批次名称"
               class="score-batch__filter score-batch__filter--lg"
             />
-          </a-form-item>
-          <a-form-item label="接入模式">
-            <a-input
+          </UiFormItem>
+          <UiFormItem label="接入模式">
+            <UiInput
+              size="sm"
               :value="sourceModeLabel(DataSourceModeCode.EXCEL_IMPORT)"
               disabled
               class="score-batch__filter score-batch__filter--lg"
             />
-          </a-form-item>
-          <a-form-item label="学年">
-            <a-input
-              v-model:value="uploadForm.schoolYear"
+          </UiFormItem>
+          <UiFormItem label="学年">
+            <UiInput
+              size="sm"
+              v-model="uploadForm.schoolYear"
               placeholder="例：2024-2025"
               class="score-batch__filter"
             />
-          </a-form-item>
-          <a-form-item label="学期">
-            <a-select
-              v-model:value="uploadForm.semester"
+          </UiFormItem>
+          <UiFormItem label="学期">
+            <UiSelect
+              size="sm"
+              v-model="uploadForm.semester"
               :options="SemesterOptions"
               placeholder="学期"
               allow-clear
               class="score-batch__filter score-batch__filter--xxs"
             />
-          </a-form-item>
-          <a-form-item label="导入文件">
+          </UiFormItem>
+          <UiFormItem label="导入文件">
             <UiPlatformFileField
               v-model:file-node-id="uploadFileNodeId"
               v-model:file-name="uploadFileName"
@@ -1137,13 +1169,13 @@ onMounted(async () => {
               accept=".xlsx,.xls"
               button-text="选择表格文件"
             />
-          </a-form-item>
-          <a-form-item>
-            <UiButton variant="primary" :loading="uploading" @click="submitScoreImport">
+          </UiFormItem>
+          <UiFormItem>
+            <UiButton size="sm" variant="primary" :loading="uploading" @click="submitScoreImport">
               提交导入
             </UiButton>
-          </a-form-item>
-        </a-form>
+          </UiFormItem>
+        </UiForm>
       </div>
 
       <UiCard class="detail-table-card score-batch__table-card">
@@ -1245,22 +1277,22 @@ onMounted(async () => {
     </template>
 
     <UiDrawer v-model:open="previewVisible" title="批次明细预览" :width="960" :hide-footer="true">
-      <a-descriptions
+      <UiDescriptions
         v-if="previewBatch"
         :column="3"
         size="small"
         bordered
         class="score-batch__preview-descriptions"
       >
-        <a-descriptions-item label="导入批次">
+        <UiDescriptionsItem label="导入批次">
           {{ previewBatch.batchCode }} · {{ previewBatch.batchName }}
-        </a-descriptions-item>
-        <a-descriptions-item label="状态">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="状态">
           <UiTag :tone="statusColor(previewBatch.status)">
             {{ statusLabel(previewBatch.status) }}
           </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="行数（成功/错误/总）">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="行数（成功/错误/总）">
           <template v-if="hasGeneratedRowStatistics(previewSummary)">
             <span class="score-batch__num-success">{{ previewSummary.successRows }}</span>
             /
@@ -1271,8 +1303,8 @@ onMounted(async () => {
             <span>{{ previewSummary.totalRows }}</span>
           </template>
           <span v-else class="score-batch__sub-text">解析失败，未生成行统计</span>
-        </a-descriptions-item>
-      </a-descriptions>
+        </UiDescriptionsItem>
+      </UiDescriptions>
       <p
         v-if="previewSummary.errorSummary"
         class="score-batch__error-msg score-batch__preview-error"
@@ -1302,7 +1334,7 @@ onMounted(async () => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'errorInfo'">
-            <a-space direction="vertical" size="small" style="width: 100%">
+            <div class="dp-space dp-space--vertical dp-space--block" style="width: 100%; --dp-space-gap: 8px">
               <div
                 v-for="(errorMessage, idx) in previewErrorMessages(record)"
                 :key="`${record.id}-message-${idx}`"
@@ -1324,7 +1356,7 @@ onMounted(async () => {
                 该行成绩无法确认，请检查学号、班级、成绩格式和考核环节配置
               </div>
               <span v-if="record.validFlag" class="score-batch__sub-text"> 无错误 </span>
-            </a-space>
+            </div>
           </template>
         </template>
       </UiDataTable>
@@ -1339,53 +1371,63 @@ onMounted(async () => {
       ok-text="保存"
       @ok="submitEditor"
     >
-      <a-form layout="vertical" :model="editor">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="批次编码" required>
-              <a-input v-model:value="editor.batchCode" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="批次名称" required>
-              <a-input v-model:value="editor.batchName" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="考核环节" required>
-              <a-select
-                v-model:value="editor.assessmentItemId"
+      <UiForm layout="vertical" :model="editor">
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="批次编码" required>
+              <UiInput
+                size="sm" v-model="editor.batchCode"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="批次名称" required>
+              <UiInput
+                size="sm" v-model="editor.batchName"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="考核环节" required>
+              <UiSelect
+                size="sm"
+                v-model="editor.assessmentItemId"
                 :options="editorAssessmentItemOptions"
                 placeholder="考核环节"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="接入模式">
-              <a-input :value="sourceModeLabel(editor.sourceMode)" disabled />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="学年">
-              <a-input v-model:value="editor.schoolYear" placeholder="例：2024-2025" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="学期">
-              <a-select
-                v-model:value="editor.semester"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="接入模式">
+              <UiInput
+                size="sm" :value="sourceModeLabel(editor.sourceMode)" disabled
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="学年">
+              <UiInput
+                size="sm" v-model="editor.schoolYear" placeholder="例：2024-2025"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="学期">
+              <UiSelect
+                size="sm"
+                v-model="editor.semester"
                 :options="SemesterOptions"
                 placeholder="学期"
                 allow-clear
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-      </a-form>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+      </UiForm>
     </UiDrawer>
 
     <AuditTimelineDrawer
@@ -1413,7 +1455,7 @@ onMounted(async () => {
   }
 
   &__empty {
-    margin-top: 32px;
+    margin-top: var(--dp-space-3, 12px);
   }
 
   &__stages {
@@ -1425,19 +1467,19 @@ onMounted(async () => {
   }
 
   &__result-panel {
-    margin-bottom: 20px;
+    margin-bottom: var(--dp-space-3, 12px);
   }
 
   &__upload {
-    margin-bottom: 20px;
-    padding: 20px;
+    margin-bottom: var(--dp-space-3, 12px);
+    padding: var(--dp-space-3, 12px);
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
   }
 
   &__upload-header {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-2, 8px);
   }
 
   &__upload-heading {
@@ -1485,15 +1527,15 @@ onMounted(async () => {
   }
 
   &__num-success {
-    color: var(--ant-color-success);
+    color: var(--dp-success);
   }
 
   &__num-error {
-    color: var(--ant-color-error);
+    color: var(--dp-error);
   }
 
   &__error-msg {
-    color: var(--ant-color-error);
+    color: var(--dp-error);
   }
 
   &__preview-descriptions {

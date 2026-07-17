@@ -167,30 +167,32 @@
       @close="delayAllowOpen = false"
       @confirm="submitDelayAllow"
     >
-      <a-form layout="vertical">
-        <a-form-item label="材料类型">
+      <UiForm layout="vertical">
+        <UiFormItem label="材料类型">
           {{ delayAllowTarget ? materialTypeLabel(delayAllowTarget.materialType) : '—' }}
-        </a-form-item>
-        <a-form-item label="补交截止" required>
-          <a-date-picker
-            v-model:value="delayAllowForm.deadline"
-            show-time
+        </UiFormItem>
+        <UiFormItem label="补交截止" required>
+          <UiDatePicker
+            size="sm"
+            v-model="delayAllowForm.deadline"
+            :show-time="true"
             value-format="YYYY-MM-DD HH:mm:ss"
             style="width: 100%"
           />
-        </a-form-item>
-        <a-form-item label="责任人" required>
+        </UiFormItem>
+        <UiFormItem label="责任人" required>
           <ArchiveDutyUserSelect v-model:value="delayAllowForm.responsibleUserId" />
-        </a-form-item>
-        <a-form-item label="缺失说明" required>
-          <a-textarea
-            v-model:value="delayAllowForm.missingReason"
+        </UiFormItem>
+        <UiFormItem label="缺失说明" required>
+          <UiTextarea
+            size="sm"
+            v-model="delayAllowForm.missingReason"
             :maxlength="500"
             :rows="2"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -204,14 +206,14 @@
       @close="waiveMissingOpen = false"
       @confirm="submitWaiveMissing"
     >
-      <a-form layout="vertical">
-        <a-form-item label="材料类型">
+      <UiForm layout="vertical">
+        <UiFormItem label="材料类型">
           {{ waiveMissingTarget ? materialTypeLabel(waiveMissingTarget.materialType) : '—' }}
-        </a-form-item>
-        <a-form-item label="豁免原因" required>
-          <a-textarea v-model:value="waiveMissingReason" :maxlength="500" :rows="3" show-count />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+        <UiFormItem label="豁免原因" required>
+          <UiTextarea size="sm" v-model="waiveMissingReason" :maxlength="500" :rows="3" :show-count="true" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -225,11 +227,11 @@
       @close="waiveIntegrityOpen = false"
       @confirm="submitWaiveIntegrity"
     >
-      <a-form layout="vertical">
-        <a-form-item label="豁免原因" required>
-          <a-textarea v-model:value="waiveIntegrityReason" :maxlength="500" :rows="3" show-count />
-        </a-form-item>
-      </a-form>
+      <UiForm layout="vertical">
+        <UiFormItem label="豁免原因" required>
+          <UiTextarea size="sm" v-model="waiveIntegrityReason" :maxlength="500" :rows="3" :show-count="true" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -243,20 +245,21 @@
       @close="confirmSecurityMarkOpen = false"
       @confirm="submitConfirmSecurityMark"
     >
-      <a-form layout="vertical">
-        <a-form-item label="当前密级">
+      <UiForm layout="vertical">
+        <UiFormItem label="当前密级">
           {{ securityLevelLabel(detail.volume.securityLevel!) }}
-        </a-form-item>
-        <a-form-item label="确认说明" required>
-          <a-textarea
-            v-model:value="confirmSecurityMarkReason"
+        </UiFormItem>
+        <UiFormItem label="确认说明" required>
+          <UiTextarea
+            size="sm"
+            v-model="confirmSecurityMarkReason"
             :maxlength="500"
             :rows="3"
             placeholder="如：教学档案内部定密，卷内材料密级一致"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -270,23 +273,25 @@
       @close="updateSecurityLevelOpen = false"
       @confirm="submitUpdateSecurityLevel"
     >
-      <a-form layout="vertical">
-        <a-form-item label="新密级" required>
-          <a-select
-            v-model:value="updateSecurityLevelForm.securityLevel"
+      <UiForm layout="vertical">
+        <UiFormItem label="新密级" required>
+          <UiSelect
+            size="sm"
+            v-model="updateSecurityLevelForm.securityLevel"
             :options="ARCHIVE_SECURITY_LEVEL_OPTIONS"
             placeholder="选择密级"
           />
-        </a-form-item>
-        <a-form-item label="变更原因" required>
-          <a-textarea
-            v-model:value="updateSecurityLevelForm.reason"
+        </UiFormItem>
+        <UiFormItem label="变更原因" required>
+          <UiTextarea
+            size="sm"
+            v-model="updateSecurityLevelForm.reason"
             :maxlength="500"
             :rows="3"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </WorkbenchSurfaceCard>
 </template>
@@ -317,9 +322,14 @@ import {
 } from '@/apis/mark/archive-volume'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import {

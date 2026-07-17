@@ -62,52 +62,57 @@
         ok-text="提交"
         @confirm="submit"
       >
-        <a-form layout="vertical" :model="form">
-          <a-row :gutter="12">
-            <a-col :span="14">
-              <a-form-item label="复核申请" required>
-                <a-select
-                  v-model:value="form.reviewRequestId"
+        <UiForm layout="vertical" :model="form">
+          <UiRow :gutter="12">
+            <UiCol :span="14">
+              <UiFormItem label="复核申请" required>
+                <UiSelect
+                  size="sm"
+                  v-model="form.reviewRequestId"
                   :loading="reviewRequestLoading"
                   :options="reviewRequestOptions"
                   placeholder="选择已通过的复核申请"
-                  show-search
+                  allow-search
                   :filter-option="false"
                   @search="onReviewRequestSearch"
                   @change="handleReviewRequestChange"
                 />
-              </a-form-item>
-            </a-col>
-            <a-col :span="10">
-              <a-form-item label="更正类型">
-                <a-input :value="selectedReviewRequestScope" disabled />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <a-row :gutter="12">
-            <a-col :span="14">
-              <a-form-item label="更正题目">
-                <a-select
-                  v-model:value="form.layoutQuestionId"
+              </UiFormItem>
+            </UiCol>
+            <UiCol :span="10">
+              <UiFormItem label="更正类型">
+                <UiInput
+                  size="sm" :value="selectedReviewRequestScope" disabled
+                />
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+          <UiRow :gutter="12">
+            <UiCol :span="14">
+              <UiFormItem label="更正题目">
+                <UiSelect
+                  size="sm"
+                  v-model="form.layoutQuestionId"
                   :disabled="selectedReviewQuestionOptions.length === 0"
                   :options="selectedReviewQuestionOptions"
                   placeholder="总分更正无需选择题目"
                   allow-clear
                 />
-              </a-form-item>
-            </a-col>
-            <a-col :span="10">
-              <a-form-item label="更正后分数" required>
-                <a-input-number
-                  v-model:value="form.afterScore"
+              </UiFormItem>
+            </UiCol>
+            <UiCol :span="10">
+              <UiFormItem label="更正后分数" required>
+                <UiInputNumber
+                  size="sm"
+                  v-model="form.afterScore"
                   :min="0"
                   :max="totalCorrectionScoreMax"
                   :precision="2"
                   style="width: 100%"
                 />
-              </a-form-item>
-            </a-col>
-          </a-row>
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
           <UiAlertStrip
             v-if="makeupCap60Hint"
             tone="info"
@@ -120,13 +125,15 @@
             :title="singleQuestionProjectionHint"
             style="margin-bottom: 12px"
           />
-          <a-form-item label="申请学生">
-            <a-input :value="selectedReviewStudentLabel" disabled />
-          </a-form-item>
-          <a-form-item label="更正原因" required>
-            <a-textarea v-model:value="form.reason" :rows="3" :max-length="200" show-count />
-          </a-form-item>
-        </a-form>
+          <UiFormItem label="申请学生">
+            <UiInput
+              size="sm" :value="selectedReviewStudentLabel" disabled
+            />
+          </UiFormItem>
+          <UiFormItem label="更正原因" required>
+            <UiTextarea size="sm" v-model="form.reason" :rows="3" :max-length="200" :show-count="true" />
+          </UiFormItem>
+        </UiForm>
       </UiDrawer>
     </template>
   </WorkbenchSurfaceCard>
@@ -140,7 +147,6 @@ import type {
 } from '@/apis/mark/grade-review'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -153,10 +159,19 @@ import {
 } from '@/apis/mark/grade-review'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
@@ -487,6 +502,9 @@ async function submit(): Promise<void> {
     message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
     return
   }
+  if (submitting.value) {
+    return
+  }
   submitting.value = true
   try {
     const result = await createCorrection({
@@ -513,16 +531,18 @@ async function submit(): Promise<void> {
     await reload()
     emit('created')
     if (result.requiresRepublish) {
-      Modal.confirm({
+      void confirmAsync({
         title: '需重新发布成绩',
         content: '成绩已更正（含撤回后改分），学生端暂不可见最新分数。请前往成绩发布页重新发布。',
         okText: '前往发布',
         cancelText: '稍后处理',
-        onOk: () =>
-          router.push({
+        type: 'warning',
+        onOk: () => {
+          void router.push({
             name: 'TeacherExamWorkspaceScoreRelease',
             params: { examId: props.examId },
-          }),
+          })
+        },
       })
     }
   } catch (e) {
@@ -561,4 +581,3 @@ watch(
   { immediate: true },
 )
 </script>
-

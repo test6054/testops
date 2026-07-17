@@ -44,8 +44,8 @@ withDefaults(
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-4) var(--dp-space-5);
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-3) var(--dp-space-4);
   border-bottom: 1px solid var(--dp-border);
 }
 
@@ -54,14 +54,14 @@ withDefaults(
   align-items: center;
   flex-wrap: wrap;
   gap: var(--dp-space-2);
-  padding: var(--dp-space-3) var(--dp-space-5);
+  padding: var(--dp-space-2) var(--dp-space-4);
   border-bottom: 1px solid var(--dp-border);
-  background: var(--dp-surface-subtle);
+  background: var(--dp-surface);
 }
 
 .workbench-surface-card__body {
   flex: 1;
-  padding: var(--dp-space-5);
+  padding: var(--dp-space-3) var(--dp-space-4);
   min-height: 0;
   min-width: 0;
 }

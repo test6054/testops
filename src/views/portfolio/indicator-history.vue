@@ -21,8 +21,11 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -49,6 +52,10 @@ function impactReportStatusTone(value: PfImpactReportStatusCode) {
 
 const router = useRouter()
 const activeTab = ref('history')
+const indicatorHistoryTabItems = [
+  { key: 'history', label: '快照历史' },
+  { key: 'impact', label: '影响报告' },
+]
 const sceneCode = ref<PfSceneCode>(PfSceneCode.PERFORMANCE)
 const historyLoading = ref(false)
 const impactLoading = ref(false)
@@ -277,98 +284,106 @@ onMounted(loadHistory)
     <template #context>
       <ContextBar show-title layout="workbench" title="规则快照与影响报告">
         <template #actions>
-          <UiButton @click="router.push({ name: 'PortfolioIndicatorOps' })"> 计分与审计 </UiButton>
+          <UiButton size="sm" @click="router.push({ name: 'PortfolioIndicatorOps' })"> 计分与审计 </UiButton>
         </template>
       </ContextBar>
     </template>
     <UiCard>
-      <a-tabs :active-key="activeTab" @change="onTabChange">
-        <a-tab-pane key="history" tab="快照历史">
-          <div class="toolbar">
-            <a-select
-              v-model:value="sceneCode"
-              :options="PF_SCENE_CODE_OPTIONS"
-              style="width: 140px"
-            />
-            <a-input
-              v-model:value="selectedSnapshotId"
-              placeholder="快照编号"
-              style="width: 200px"
-            />
-            <UiButton @click="loadRetroactive"> retroactive 查询 </UiButton>
-            <a-input
-              v-model:value="diffSnapshotIdB"
-              placeholder="对比快照乙编号"
-              style="width: 200px"
-            />
-          </div>
-          <UiEmpty v-if="!loading && rows.length === 0" description="暂无发布历史" />
-          <UiDataTable
-            v-model:current="historyQuery.pageNum"
-            v-model:page-size="historyQuery.pageSize"
-            pagination-mode="server"
-            :columns="columns"
-            :data-source="rows"
-            :loading="loading"
-            :total="historyTotal"
-            row-key="id"
-            @page-change="handleHistoryPageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'modelStatus'">
-                {{ modelStatusLabel(record.modelStatus) }}
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[
-                    { key: 'view', label: '查看' },
-                    { key: 'export-diff', label: '导出差异' },
-                    { key: 'score', label: '计分' },
-                  ]"
-                  split
-                  @action="(key) => handleSnapshotRowAction(key, record.id)"
-                />
-              </template>
+      <UiSectionTabs
+        :model-value="activeTab"
+        :items="indicatorHistoryTabItems"
+        compact
+        divided
+        @change="onTabChange"
+      />
+      <template v-if="activeTab === 'history'">
+        <div class="toolbar">
+          <UiSelect
+            size="sm"
+            v-model="sceneCode"
+            :options="PF_SCENE_CODE_OPTIONS"
+            style="width: 140px"
+          />
+          <UiInput
+            size="sm"
+            v-model="selectedSnapshotId"
+            placeholder="快照编号"
+            style="width: 200px"
+          />
+          <UiButton size="sm" @click="loadRetroactive"> retroactive 查询 </UiButton>
+          <UiInput
+            size="sm"
+            v-model="diffSnapshotIdB"
+            placeholder="对比快照乙编号"
+            style="width: 200px"
+          />
+        </div>
+        <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="暂无发布历史" />
+        <UiDataTable
+          v-model:current="historyQuery.pageNum"
+          v-model:page-size="historyQuery.pageSize"
+          pagination-mode="server"
+          :columns="columns"
+          :data-source="rows"
+          :loading="loading"
+          :total="historyTotal"
+          row-key="id"
+          @page-change="handleHistoryPageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'modelStatus'">
+              {{ modelStatusLabel(record.modelStatus) }}
             </template>
-          </UiDataTable>
-          <pre v-if="retroactive" class="json-block">{{ retroactive.snapshotSummaryJson }}</pre>
-        </a-tab-pane>
-        <a-tab-pane key="impact" tab="影响报告">
-          <UiDataTable
-            v-model:current="impactQuery.pageNum"
-            v-model:page-size="impactQuery.pageSize"
-            pagination-mode="server"
-            :columns="impactColumns"
-            :data-source="impactRows"
-            :loading="loading"
-            :total="impactTotal"
-            row-key="id"
-            @page-change="handleImpactPageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'sceneCode'">
-                {{ sceneCodeLabel(record.sceneCode) }}
-              </template>
-              <template v-else-if="column.key === 'reportStatus'">
-                <UiTag :tone="impactReportStatusTone(record.reportStatus)">
-                  {{ impactReportStatusLabel(record.reportStatus) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[
-                    { key: 'detail', label: '详情' },
-                    { key: 'export', label: '导出' },
-                  ]"
-                  split
-                  @action="(key) => handleImpactRowAction(key, record.id)"
-                />
-              </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[
+                  { key: 'view', label: '查看' },
+                  { key: 'export-diff', label: '导出差异' },
+                  { key: 'score', label: '计分' },
+                ]"
+                split
+                @action="(key) => handleSnapshotRowAction(key, record.id)"
+              />
             </template>
-          </UiDataTable>
-          <pre v-if="impactDetail" class="json-block">{{ impactDetail.indicatorSummaryJson }}</pre>
-        </a-tab-pane>
-      </a-tabs>
+          </template>
+        </UiDataTable>
+        <pre v-if="retroactive?.snapshotSummary" class="json-block">{{ JSON.stringify(retroactive.snapshotSummary, null, 2) }}</pre>
+      </template>
+      <template v-else>
+        <UiDataTable
+          v-model:current="impactQuery.pageNum"
+          v-model:page-size="impactQuery.pageSize"
+          pagination-mode="server"
+          :columns="impactColumns"
+          :data-source="impactRows"
+          :loading="loading"
+          :total="impactTotal"
+          row-key="id"
+          @page-change="handleImpactPageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'sceneCode'">
+              {{ sceneCodeLabel(record.sceneCode) }}
+            </template>
+            <template v-else-if="column.key === 'reportStatus'">
+              <UiTag :tone="impactReportStatusTone(record.reportStatus)">
+                {{ impactReportStatusLabel(record.reportStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[
+                  { key: 'detail', label: '详情' },
+                  { key: 'export', label: '导出' },
+                ]"
+                split
+                @action="(key) => handleImpactRowAction(key, record.id)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+        <pre v-if="impactDetail?.indicatorSummary" class="json-block">{{ JSON.stringify(impactDetail.indicatorSummary, null, 2) }}</pre>
+      </template>
     </UiCard>
   </StageWorkbenchShell>
 </template>

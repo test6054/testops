@@ -4,14 +4,15 @@
       <h3 class="stats-card__title">题目质量分析</h3>
     </template>
     <template v-if="!embedded" #toolbar>
-      <a-space>
-        <a-select
-          v-model:value="selectedLayoutQuestionId"
+      <div class="dp-space" style="--dp-space-gap: 8px">
+        <UiSelect
+          size="sm"
+          v-model="selectedLayoutQuestionId"
           placeholder="选择题目"
           class="stats-card__select stats-card__select--question"
           :options="questionOptions"
           :loading="questionLoading"
-          show-search
+          allow-search
           option-filter-prop="label"
           allow-clear
           @change="reload"
@@ -39,7 +40,7 @@
         <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
           <template #icon><ReloadOutlined /></template>刷新
         </UiButton>
-      </a-space>
+      </div>
     </template>
 
     <template v-if="embedded" #actions>
@@ -48,13 +49,14 @@
 
     <div class="question-analysis-card" :class="{ 'question-analysis-card--embedded': embedded }">
       <div v-if="embedded" class="question-analysis-card__toolbar">
-        <a-select
-          v-model:value="selectedLayoutQuestionId"
+        <UiSelect
+          size="sm"
+          v-model="selectedLayoutQuestionId"
           placeholder="选择题目"
           class="stats-card__select stats-card__select--question"
           :options="questionOptions"
           :loading="questionLoading"
-          show-search
+          allow-search
           option-filter-prop="label"
           allow-clear
           @change="reload"
@@ -147,12 +149,12 @@
           </ul>
         </section>
 
-        <a-typography-paragraph
+        <UiTypographyParagraph
           v-if="generationSummary"
           class="question-analysis-card__generation-summary"
         >
           {{ generationSummary }}
-        </a-typography-paragraph>
+        </UiTypographyParagraph>
 
         <UiDataTable
           :columns="columns"
@@ -170,7 +172,7 @@
           @page-change="handleTablePageChange"
         >
           <template #empty-action>
-            <a-space v-if="tableEmptyKind === 'first-run'">
+            <div class="dp-space" v-if="tableEmptyKind === 'first-run'" style="--dp-space-gap: 8px">
               <UiButton
                 variant="outline"
                 size="sm"
@@ -179,8 +181,8 @@
               >
                 全量生成
               </UiButton>
-            </a-space>
-            <a-space v-else-if="tableEmptyKind === 'no-result'">
+            </div>
+            <div class="dp-space" v-else-if="tableEmptyKind === 'no-result'" style="--dp-space-gap: 8px">
               <UiButton
                 variant="outline"
                 size="sm"
@@ -193,7 +195,7 @@
               <UiButton variant="outline" size="sm" @click="clearQuestionFilter">
                 清除题目筛选
               </UiButton>
-            </a-space>
+            </div>
           </template>
           <template #bodyCell="{ column, record: item }">
             <ExamQuestionIdentityCells
@@ -215,9 +217,9 @@
               {{ fmtNum(item.avgScore) }} / {{ fmtNum(item.fullScore) }}
             </template>
             <template v-else-if="column.key === 'correctRatio'">
-              <a-typography-text :type="getCorrectRatioType(item)">
+              <UiTypographyText :type="getCorrectRatioType(item)">
                 {{ correctRatio(item) }}
-              </a-typography-text>
+              </UiTypographyText>
             </template>
             <template v-else-if="column.key === 'snapshotTime'">
               {{ formatDateTime(item.snapshotTime) }}
@@ -275,7 +277,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
@@ -552,6 +557,7 @@ async function reloadCurrentScope(): Promise<void> {
 }
 
 async function handleGenerateAll(): Promise<void> {
+  if (generating.value) return
   generationSummary.value = ''
   generatingAllMode.value = true
   await runGeneration(
@@ -573,6 +579,7 @@ async function handleGenerateAll(): Promise<void> {
 }
 
 async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
+  if (!layoutQuestionId || generating.value) return
   generationSummary.value = ''
   generatingAllMode.value = false
   generatingId.value = layoutQuestionId
@@ -768,7 +775,7 @@ const scatterChartAriaLabel = computed(() => {
     0,
   )
   if (totalPoints <= 0) {
-    return '难度区分度分布，当前没有可展示的内容'
+    return '难度区分度分布暂无数据'
   }
   return `难度区分度分布，共 ${totalPoints} 道题目`
 })
@@ -776,7 +783,7 @@ const scatterChartAriaLabel = computed(() => {
 const correctRatioChartAriaLabel = computed(() => {
   const count = correctRatioBarItems.value.length
   if (count <= 0) {
-    return '各题正确率，当前没有可展示的内容'
+    return '各题正确率暂无数据'
   }
   return `各题正确率，共 ${count} 道题`
 })

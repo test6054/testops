@@ -123,7 +123,7 @@ const handleMenuClick = (info: { key: string | number }) => {
   font-size: 13px;
   font-weight: 400;
   line-height: 1.4;
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   transition: background 0.1s ease;
 }
 
@@ -147,10 +147,10 @@ const handleMenuClick = (info: { key: string | number }) => {
 
 .ui-dropdown-action-overlay .ant-dropdown-menu-item {
   min-width: 140px;
-  min-height: 36px;
+  min-height: var(--dp-control-height-md, 36px);
   border-radius: var(--dp-radius-control-inner);
   font-size: 13px;
-  line-height: 36px;
+  line-height: var(--dp-control-height-md, 36px);
   color: var(--dp-text-primary);
 }
 

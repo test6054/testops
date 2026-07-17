@@ -29,13 +29,14 @@ import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import { rubricItemApi } from '@/apis/quality/rubric-item'
 import { scoreBatchApi } from '@/apis/quality/score-batch'
 import { scoreRecordApi } from '@/apis/quality/score-record'
-import {
+import { ConfirmationStatusCode,
   SCORE_BATCH_STATUS_COLOR,
   ScoreBatchStatusCode,
   ScoreBatchStatusDescription,
 } from '@/apis/quality/types'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import { ClassSelector, CourseSelector, StudentSelector } from '@/components/quality/selectors'
 import {
   loadBoundedPlanAggregate,
@@ -45,11 +46,22 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
@@ -790,6 +802,17 @@ onMounted(async () => {
   await handleScopeReload()
 })
 
+
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
+
 function handleCourseChange(courseId: string | null) {
   qualityStore.setQualityCourse(courseId || '')
 }
@@ -811,17 +834,28 @@ function handleCourseChange(courseId: string | null) {
       </QualityPageContextBar>
     </template>
 
-    <UiEmpty
-      v-if="!qualityStore.currentTrainingPlanId"
-      description="请选择培养方案"
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
       class="score-record__empty"
     />
 
-    <UiEmpty
+    <UiAlertStrip
       v-else-if="!qualityStore.currentQualityCourseId"
-      description="请选择课程"
+      tone="info"
+      size="sm"
+      dense
+      inline
+      :show-icon="false"
       class="score-record__empty"
-    />
+    >
+      <template #default>
+        <span class="score-record__gate-row">
+          <UiTag tone="blue" size="sm">未选择课程</UiTag>
+          <span>请在上方选择质量评价课程后再录入成绩</span>
+        </span>
+      </template>
+    </UiAlertStrip>
 
     <template v-else>
       <SignalBand :metrics="signals" compact class="score-record__signals" />
@@ -875,7 +909,7 @@ function handleCourseChange(courseId: string | null) {
           </template>
           <template v-else #title>成绩明细</template>
           <template v-if="selectedBatch" #extra>
-            <a-space>
+            <div class="dp-space" style="--dp-space-gap: 8px">
               <UiButton
                 variant="outline"
                 size="sm"
@@ -901,10 +935,25 @@ function handleCourseChange(courseId: string | null) {
               >
                 新增明细
               </UiButton>
-            </a-space>
+            </div>
           </template>
 
-          <UiEmpty v-if="!selectedBatch" description="请选择" class="score-record__empty" />
+          <UiAlertStrip
+            v-if="!selectedBatch"
+            tone="info"
+            size="sm"
+            dense
+            inline
+            :show-icon="false"
+            class="score-record__empty"
+          >
+            <template #default>
+              <span class="score-record__gate-row">
+                <UiTag tone="blue" size="sm">未选择批次</UiTag>
+                <span>请在左侧点击成绩批次后查看与录入明细</span>
+              </span>
+            </template>
+          </UiAlertStrip>
           <template v-else>
             <UiFilterBar
               variant="plain"
@@ -946,14 +995,14 @@ function handleCourseChange(courseId: string | null) {
                   {{ formatScore(record.fullScore, 'fullScore') }}
                 </template>
                 <template v-else-if="column.key === 'recordStatus'">
-                  <a-space size="small">
+                  <div class="dp-space" style="--dp-space-gap: 8px">
                     <UiTag :tone="record.validFlag ? 'green' : 'red'">
                       {{ record.validFlag ? '有效' : '无效' }}
                     </UiTag>
-                    <a-tooltip v-if="record.errorCodes" :title="scoreRecordInvalidReason(record)">
+                    <UiTooltip v-if="record.errorCodes" :title="scoreRecordInvalidReason(record)">
                       <UiTag tone="orange"> 异常 </UiTag>
-                    </a-tooltip>
-                  </a-space>
+                    </UiTooltip>
+                  </div>
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
@@ -980,64 +1029,68 @@ function handleCourseChange(courseId: string | null) {
       ok-text="保存"
       @ok="submitEditor"
     >
-      <a-form layout="vertical" :model="editor">
-        <a-form-item label="考核环节" required>
-          <a-select
-            v-model:value="editor.assessmentItemId"
+      <UiForm layout="vertical" :model="editor">
+        <UiFormItem label="考核环节" required>
+          <UiSelect
+            v-model="editor.assessmentItemId"
+            size="sm"
             placeholder="选择考核环节"
+            :options="assessmentItems.map((a) => ({
+              value: a.id,
+              label: `${a.itemCode} · ${a.itemName}（满分 ${a.fullScore}）`,
+            }))"
             @change="handleEditorAssessmentChange"
-          >
-            <a-select-option v-for="a in assessmentItems" :key="a.id" :value="a.id">
-              <span class="score-record__item-code">{{ a.itemCode }}</span>
-              {{ a.itemName }}（满分 {{ a.fullScore }}）
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="所属班级">
+          />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="所属班级">
               <ClassSelector
                 :value="editor.classId || null"
                 placeholder="选择班级"
                 @change="handleEditorClassChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="学生" required>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="学生" required>
               <StudentSelector
                 :value="editor.studentUserId || null"
                 :class-id="editor.classId || null"
                 placeholder="选择学生"
                 @change="handleEditorStudentChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="学生信息">
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="学生信息">
               <div class="score-record__student-info">
                 <span>{{ editor.studentName }}</span>
                 <span v-if="editor.studentNumber" class="score-record__student-number">
                   {{ editor.studentNumber }}
                 </span>
               </div>
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="得分" required>
-              <a-input-number v-model:value="editor.score" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="满分" required>
-              <a-input-number v-model:value="editor.fullScore" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="评分项拆分">
-          <a-spin :spinning="editorRubricsLoading">
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="得分" required>
+              <UiInputNumber
+                size="sm" v-model="editor.score" :min="0" style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="满分" required>
+              <UiInputNumber
+                size="sm" v-model="editor.fullScore" :min="0" style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="评分项拆分">
+          <UiSpin :spinning="editorRubricsLoading">
             <div v-if="editorRubrics.length" class="score-record__rubrics">
               <div class="score-record__rubrics-head">
                 <span>评分项</span>
@@ -1055,8 +1108,9 @@ function handleCourseChange(courseId: string | null) {
                   <span class="score-record__rubric-name">{{ rubric.rubricName }}</span>
                   <span class="score-record__rubric-full">满分 {{ rubric.fullScore }}</span>
                 </div>
-                <a-input-number
-                  v-model:value="editorRubricScores[index].score"
+                <UiInputNumber
+                  size="sm"
+                  v-model="editorRubricScores[index].score"
                   :min="0"
                   :max="rubric.fullScore"
                   :precision="2"
@@ -1064,22 +1118,24 @@ function handleCourseChange(courseId: string | null) {
                 />
               </div>
             </div>
-            <UiEmpty description="当前没有可展示的内容" class="score-record__rubric-empty" />
-          </a-spin>
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="是否有效">
-              <a-switch v-model:checked="editor.validFlag" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="16">
-            <a-form-item label="无效原因">
-              <a-input v-model:value="editor.invalidReason" :disabled="editor.validFlag" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-      </a-form>
+            <UiEmpty size="sm" description="暂无评分量规条目" class="score-record__rubric-empty" />
+          </UiSpin>
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="是否有效">
+              <UiSwitch size="sm" v-model="editor.validFlag" />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="16">
+            <UiFormItem label="无效原因">
+              <UiInput
+                size="sm" v-model="editor.invalidReason" :disabled="editor.validFlag"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -1090,23 +1146,16 @@ function handleCourseChange(courseId: string | null) {
     >
       <div class="score-record__valid-search">
         <span class="score-record__context-label">考核环节</span>
-        <a-select
-          v-model:value="validByItemId"
+        <UiSelect
+          v-model="validByItemId"
           placeholder="选择考核环节"
           class="score-record__valid-select-wide"
-          show-search
+          allow-search
           option-filter-prop="label"
-        >
-          <a-select-option
-            v-for="a in assessmentItems"
-            :key="a.id"
-            :value="a.id"
-            :label="`${a.itemCode} ${a.itemName}`"
-          >
-            <span class="score-record__item-code">{{ a.itemCode }}</span>
-            {{ a.itemName }}
-          </a-select-option>
-        </a-select>
+        
+          size="sm"
+          :options="assessmentItems.map((a) => ({ value: a.id, label: `${a.itemCode} ${a.itemName}` }))"
+        />
         <UiButton
           variant="primary"
           size="sm"
@@ -1154,7 +1203,7 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__empty {
-    margin-top: 32px;
+    margin-top: var(--dp-space-3, 12px);
   }
 
   &__signals {
@@ -1164,16 +1213,16 @@ function handleCourseChange(courseId: string | null) {
   &__layout {
     display: grid;
     grid-template-columns: minmax(360px, 38%) 1fr;
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
     align-items: stretch;
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
-    min-height: 320px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
+    min-height: 96px;
   }
 
   &__panel-header {
@@ -1185,7 +1234,7 @@ function handleCourseChange(courseId: string | null) {
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1201,7 +1250,7 @@ function handleCourseChange(courseId: string | null) {
     }
 
     :deep(.is-selected) td {
-      background-color: var(--ant-color-primary-bg) !important;
+      background-color: var(--dp-color-primary-bg) !important;
     }
   }
 
@@ -1209,7 +1258,7 @@ function handleCourseChange(courseId: string | null) {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
     margin-bottom: 12px;
     flex-wrap: wrap;
   }
@@ -1322,6 +1371,15 @@ function handleCourseChange(courseId: string | null) {
   &__import-link {
     text-decoration: none;
     color: inherit;
+  }
+
+  &__gate-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--dp-space-2);
+    min-width: 0;
+    font-size: var(--dp-font-size-sm);
+    color: var(--dp-text-secondary);
   }
 }
 

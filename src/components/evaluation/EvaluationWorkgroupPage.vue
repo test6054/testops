@@ -37,8 +37,18 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -627,69 +637,72 @@ onActivated(() => {
       </UiDataTable>
     </UiCard>
 
-    <a-modal
+    <UiDialog
       v-model:open="editorVisible"
       :title="editorMode === 'create' ? '新建工作组' : '编辑工作组'"
       :confirm-loading="submitting"
       :closable="!writing"
       :mask-closable="!writing"
-      :keyboard="!writing"
-      :cancel-button-props="{ disabled: writing }"
-      width="720px"
+      :width="720"
       @ok="submitEditor"
     >
-      <a-form layout="vertical" :model="editor">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="层级" required>
-              <a-select
-                v-model:value="editor.levelCode"
+      <UiForm layout="vertical" :model="editor">
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="层级" required>
+              <UiSelect
+                size="sm"
+                v-model="editor.levelCode"
                 :options="WORKGROUP_LEVEL_OPTIONS"
                 :disabled="editorMode === 'edit' || writing"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="启用状态">
-              <a-switch v-model:checked="editor.enabled" :disabled="writing" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="编码" required>
-          <a-input
-            v-model:value="editor.workgroupCode"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="启用状态">
+              <UiSwitch size="sm" v-model="editor.enabled" :disabled="writing" />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="编码" required>
+          <UiInput
+            size="sm"
+            v-model="editor.workgroupCode"
             :maxlength="64"
             :disabled="editorMode === 'edit' || writing"
             placeholder="租户内唯一编码"
           />
-        </a-form-item>
-        <a-form-item label="名称" required>
-          <a-input v-model:value="editor.workgroupName" :maxlength="128" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="专业大类" required>
+        </UiFormItem>
+        <UiFormItem label="名称" required>
+          <UiInput
+            size="sm" v-model="editor.workgroupName" :maxlength="128" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="专业大类" required>
           <ProgramSelector
             :value="editor.programId || null"
             :disabled="editorMode === 'edit' || writing"
             @change="handleEditorProgramChange"
           />
-        </a-form-item>
-        <a-form-item label="召集人" required>
+        </UiFormItem>
+        <UiFormItem label="召集人" required>
           <TeacherSelector
             :value="getEditorConvenerId()"
             :disabled="writing"
             @change="handleEditorConvenerChange"
           />
-        </a-form-item>
-        <a-form-item label="职责说明">
-          <a-textarea
-            v-model:value="editor.responsibility"
+        </UiFormItem>
+        <UiFormItem label="职责说明">
+          <UiTextarea
+            size="sm"
+            v-model="editor.responsibility"
             :maxlength="1000"
             :rows="3"
-            show-count
+            :show-count="true"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="成员清单">
+        </UiFormItem>
+        <UiFormItem label="成员清单">
           <div class="ewg__member-editor">
             <div class="ewg__member-editor-header">
               <p class="ewg__member-editor-tip">支持逐行录入，也可在保存后通过 Excel 覆盖导入。</p>
@@ -702,40 +715,44 @@ onActivated(() => {
               :key="`${editorMode}-${index}`"
               class="ewg__member-row"
             >
-              <a-row :gutter="12">
-                <a-col :span="5">
-                  <a-input
-                    v-model:value="member.userCode"
+              <UiRow :gutter="12">
+                <UiCol :span="5">
+                  <UiInput
+                    size="sm"
+                    v-model="member.userCode"
                     :maxlength="64"
                     placeholder="工号"
                     :disabled="writing"
                   />
-                </a-col>
-                <a-col :span="5">
-                  <a-input
-                    v-model:value="member.userName"
+                </UiCol>
+                <UiCol :span="5">
+                  <UiInput
+                    size="sm"
+                    v-model="member.userName"
                     :maxlength="64"
                     placeholder="姓名"
                     :disabled="writing"
                   />
-                </a-col>
-                <a-col :span="5">
-                  <a-select
-                    v-model:value="member.role"
+                </UiCol>
+                <UiCol :span="5">
+                  <UiSelect
+                    size="sm"
+                    v-model="member.role"
                     :options="WORKGROUP_MEMBER_ROLE_OPTIONS"
                     placeholder="角色"
                     :disabled="writing"
                   />
-                </a-col>
-                <a-col :span="7">
-                  <a-input
-                    v-model:value="member.note"
+                </UiCol>
+                <UiCol :span="7">
+                  <UiInput
+                    size="sm"
+                    v-model="member.note"
                     :maxlength="255"
                     placeholder="备注：单位 / 联系方式 / 组织角色"
                     :disabled="writing"
                   />
-                </a-col>
-                <a-col :span="2" class="ewg__member-row-action">
+                </UiCol>
+                <UiCol :span="2" class="ewg__member-row-action">
                   <UiTextAction
                     tone="danger"
                     :disabled="editor.members.length === 1 || writing"
@@ -743,13 +760,13 @@ onActivated(() => {
                   >
                     删除
                   </UiTextAction>
-                </a-col>
-              </a-row>
+                </UiCol>
+              </UiRow>
             </div>
           </div>
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
     <!-- Excel 批量导入成员 -->
     <UiPlatformExcelImportModal
@@ -765,7 +782,7 @@ onActivated(() => {
     />
 
     <!-- 查看成员清单 -->
-    <a-drawer
+    <UiDrawer
       v-model:open="membersDrawerVisible"
       :title="`成员清单（${membersDrawerTarget?.workgroupName || ''}）`"
       :width="720"
@@ -773,7 +790,7 @@ onActivated(() => {
       :closable="!writing"
       :mask-closable="!writing"
     >
-      <UiEmpty v-if="!membersDrawerRows.length" description="该工作组尚无成员" />
+      <UiEmpty size="sm" v-if="!membersDrawerRows.length" description="该工作组尚无成员" />
       <UiDataTable
         pagination-mode="client"
         v-else
@@ -796,39 +813,39 @@ onActivated(() => {
           </template>
         </template>
       </UiDataTable>
-    </a-drawer>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
 <style scoped lang="scss">
 .ewg {
   &__signals {
-    margin-bottom: 16px;
-    padding: 16px 20px;
+    margin-bottom: var(--dp-space-3, 12px);
+    padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
     background: var(--dp-surface-elevated);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
   }
 
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-2, 8px);
+    margin-bottom: var(--dp-space-2, 8px);
     flex-wrap: wrap;
   }
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
   }

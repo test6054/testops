@@ -6,8 +6,11 @@ import { onMounted, reactive, ref } from 'vue'
 import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -143,7 +146,7 @@ onMounted(() => {
       />
     </template>
     <UiCard>
-      <UiButton class="mask-rule-admin__add" :disabled="saving" @click="editorOpen = true">
+      <UiButton size="sm" class="mask-rule-admin__add" :disabled="saving" @click="editorOpen = true">
         配置规则
       </UiButton>
       <UiDataTable
@@ -176,18 +179,17 @@ onMounted(() => {
         </template>
       </UiDataTable>
     </UiCard>
-    <a-modal
+    <UiDialog
       v-model:open="editorOpen"
       title="配置脱敏规则"
       :confirm-loading="saving"
       :closable="!saving"
       :mask-closable="!saving"
-      :keyboard="!saving"
-      :cancel-button-props="{ disabled: saving }"
       @ok="saveRule"
     >
-      <a-select
-        v-model:value="form.fieldType"
+      <UiSelect
+        size="sm"
+        v-model="form.fieldType"
         class="mask-rule-admin__field"
         :options="
           ALL_PORTFOLIO_MASK_FIELD_TYPE_CODES.map((c) => ({
@@ -197,8 +199,9 @@ onMounted(() => {
         "
         :disabled="saving"
       />
-      <a-select
-        v-model:value="form.exportScope"
+      <UiSelect
+        size="sm"
+        v-model="form.exportScope"
         class="mask-rule-admin__field"
         :options="
           ALL_PORTFOLIO_MASK_EXPORT_SCOPE_CODES.map((c) => ({
@@ -208,8 +211,9 @@ onMounted(() => {
         "
         :disabled="saving"
       />
-      <a-select
-        v-model:value="form.maskStrategy"
+      <UiSelect
+        size="sm"
+        v-model="form.maskStrategy"
         class="mask-rule-admin__field"
         :options="
           ALL_PORTFOLIO_MASK_STRATEGY_CODES.map((c) => ({
@@ -219,13 +223,14 @@ onMounted(() => {
         "
         :disabled="saving"
       />
-      <a-switch
-        v-model:checked="form.enabled"
+      <UiSwitch
+        size="sm"
+        v-model="form.enabled"
         checked-children="启用"
         un-checked-children="停用"
         :disabled="saving"
       />
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 

@@ -18,6 +18,8 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -205,6 +207,9 @@ async function pollAnalysis(taskId: string): Promise<PortfolioAiAnalysisDetailVO
 }
 
 async function submitReport() {
+  if (loading.value) {
+    return
+  }
   if (!form.teacherId) {
     showFormValidationMessage('请选择教师')
     return
@@ -343,28 +348,31 @@ watch(
     </template>
     <UiCard :title="deepLinkedResultView ? '重新生成其他报告' : '生成参数'">
       <div class="toolbar">
-        <a-select
-          v-model:value="form.teacherId"
+        <UiSelect
+          size="sm"
+          v-model="form.teacherId"
           :options="teacherSelectOptions"
           placeholder="选择教师"
           style="width: 180px"
-          show-search
+          allow-search
           :filter-option="false"
           option-label-prop="label"
           @focus="() => loadTeachers()"
           @search="handleTeacherSearch"
         />
-        <a-select
-          v-model:value="form.reportScene"
+        <UiSelect
+          size="sm"
+          v-model="form.reportScene"
           :options="PORTFOLIO_REPORT_SCENE_OPTIONS"
           style="width: 160px"
         />
-        <a-input
-          v-model:value="form.reportPeriodLabel"
+        <UiInput
+          size="sm"
+          v-model="form.reportPeriodLabel"
           placeholder="报告周期"
           style="width: 160px"
         />
-        <UiButton variant="primary" :loading="loading" @click="submitReport">
+        <UiButton size="sm" variant="primary" :loading="loading" @click="submitReport">
           提交智能生成
         </UiButton>
       </div>
@@ -437,7 +445,7 @@ watch(
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
   border-radius: 4px;
   font-size: 13px;
   line-height: 1.6;

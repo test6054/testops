@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { RadioChangeEvent } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   AssessmentGoalWeightSaveRequest,
@@ -79,6 +78,7 @@ import {
 import { workbenchApi } from '@/apis/quality/workbench'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import CourseSelector from '@/components/quality/selectors/CourseSelector.vue'
@@ -88,10 +88,21 @@ import TeacherSelector from '@/components/quality/selectors/TeacherSelector.vue'
 import TrainingPlanSelector from '@/components/quality/selectors/TrainingPlanSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import MatrixWorkbench from '@/components/workbench/MatrixWorkbench.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -1230,13 +1241,6 @@ function handleSupportLevelChange(level: SupportLevelCode) {
   supportEditor.supportWeight = SUPPORT_LEVEL_DEFAULT_FACTOR[level]
 }
 
-function handleSupportLevelRadioChange(event: RadioChangeEvent) {
-  const selected = supportLevelOptions.find((option) => option.value === event.target?.value)
-  if (selected) {
-    handleSupportLevelChange(selected.value)
-  }
-}
-
 function handleSupportCellClick(cellEvent: {
   row: MatrixRow
   col: MatrixCol
@@ -1788,6 +1792,17 @@ async function submitRule() {
 
 const activeTab = ref<'support' | 'assess' | 'goals'>('support')
 
+
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
+
 async function handleScopeChange(): Promise<void> {
   if (!qualityStore.currentQualityCourseId && qualityStore.currentTrainingPlanId) {
     await qualityStore.loadQualityCourseOptions()
@@ -1876,11 +1891,28 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
       </QualityPageContextBar>
     </template>
 
-    <UiEmpty
-      v-if="!qualityStore.currentQualityCourseId"
-      description="请选择课程"
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
       class="qcm__empty"
     />
+
+    <UiAlertStrip
+      v-else-if="!qualityStore.currentQualityCourseId"
+      tone="info"
+      size="sm"
+      dense
+      inline
+      :show-icon="false"
+      class="qcm__empty"
+    >
+      <template #default>
+        <span style="display:inline-flex;align-items:center;gap:8px">
+          <UiTag tone="blue" size="sm">未选择课程</UiTag>
+          <span>请在上方选择质量评价课程后再维护支撑矩阵</span>
+        </span>
+      </template>
+    </UiAlertStrip>
 
     <template v-else>
       <SignalBand :metrics="signals" compact class="qcm__signals" />
@@ -2038,7 +2070,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
                 {{ supportsOfGoal(record.id).length }}
               </template>
               <template v-else-if="column.key === 'flags'">
-                <a-space size="small" wrap>
+                <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
                   <UiTag v-if="record.civicObjectiveFlag" tone="purple"> 思政 </UiTag>
                   <UiTag v-if="record.aiLiteracyFlag" tone="blue"> AI 素养 </UiTag>
                   <UiTag v-if="record.complexEngineeringFlag" tone="orange"> 复杂工程 </UiTag>
@@ -2050,7 +2082,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
                     "
                     class="qcm__muted"
                   >-</span>
-                </a-space>
+                </div>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
@@ -2074,19 +2106,19 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
       ok-text="保存"
       @ok="submitCourse"
     >
-      <a-form layout="vertical" :model="courseEditor">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="所属专业大类" required>
+      <UiForm layout="vertical" :model="courseEditor">
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="所属专业大类" required>
               <ProgramSelector
                 :value="courseEditor.programId || null"
                 placeholder="请选择 edu-user 专业大类"
                 @change="handleProgramChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="培养方案" required>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="培养方案" required>
               <TrainingPlanSelector
                 :value="courseEditor.trainingPlanId || null"
                 :program-id="courseEditor.programId || null"
@@ -2096,12 +2128,12 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
                 placeholder="选定专业后可选培养方案"
                 @change="handleTrainingPlanChange"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="目录课程" required>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="目录课程" required>
               <CatalogCourseSelector
                 :value="courseEditor.courseId || null"
                 :major-category-id="courseEditor.programId || null"
@@ -2109,355 +2141,409 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
                 placeholder="选择 edu-user 已授权课程"
                 @change="handleCatalogCourseChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="编码" required>
-              <a-input v-model:value="courseEditor.courseCode" placeholder="目录课程已自动填入" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="名称" required>
-              <a-input v-model:value="courseEditor.courseName" placeholder="目录课程已自动填入" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="课程类别">
-              <a-input
-                v-model:value="courseEditor.courseCategory"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="编码" required>
+              <UiInput
+                size="sm" v-model="courseEditor.courseCode" placeholder="目录课程已自动填入"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="名称" required>
+              <UiInput
+                size="sm" v-model="courseEditor.courseName" placeholder="目录课程已自动填入"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="课程类别">
+              <UiInput
+                size="sm"
+                v-model="courseEditor.courseCategory"
                 placeholder="如 通识 / 专业核心"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="课程性质">
-              <a-input v-model:value="courseEditor.courseNature" placeholder="如 必修 / 选修" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="学年">
-              <a-input v-model:value="courseEditor.schoolYear" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="学期" required>
-              <a-select
-                v-model:value="courseEditor.semester"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="课程性质">
+              <UiInput
+                size="sm" v-model="courseEditor.courseNature" placeholder="如 必修 / 选修"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="学年">
+              <UiInput
+                size="sm" v-model="courseEditor.schoolYear"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="学期" required>
+              <UiSelect
+                size="sm"
+                v-model="courseEditor.semester"
                 :options="SemesterOptions"
                 placeholder="选择学期"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="学时">
-              <a-input-number
-                v-model:value="courseEditor.creditHours"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="学时">
+              <UiInputNumber
+                size="sm"
+                v-model="courseEditor.creditHours"
                 :min="0"
                 :step="1"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="学分">
-              <a-input-number
-                v-model:value="courseEditor.creditValue"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="学分">
+              <UiInputNumber
+                size="sm"
+                v-model="courseEditor.creditValue"
                 :min="0"
                 :step="0.5"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="授课教师">
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="授课教师">
               <TeacherSelector
                 :value="courseEditor.teacherUserId || null"
                 placeholder="请选择教师"
                 @change="handleTeacherChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="授课班级">
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="授课班级">
               <ClassSelector
                 :value="courseEditor.classId || null"
                 placeholder="请选择班级"
                 @change="handleClassChange"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="思政目标">
-          <a-textarea v-model:value="courseEditor.civicObjective" :rows="3" />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="教学大纲附件">
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="思政目标">
+          <UiTextarea size="sm" v-model="courseEditor.civicObjective" :rows="3" />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="教学大纲附件">
               <UiPlatformFileField
                 v-model:file-node-id="courseEditor.syllabusFileId"
                 v-model:file-name="syllabusFileName"
                 :scene-key="FileUploadSceneKey.QUALITY_COURSE_SYLLABUS"
                 button-text="上传教学大纲附件"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="是否启用">
-              <a-switch v-model:checked="courseEditor.enabled" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-      </a-form>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="是否启用">
+              <UiSwitch size="sm" v-model="courseEditor.enabled" />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+      </UiForm>
     </UiDrawer>
 
     <!-- 课程目标编辑 Modal -->
-    <a-modal
+    <UiDialog
       v-model:open="goalEditorVisible"
       :title="goalEditorMode === 'create' ? '新建课程目标' : '编辑课程目标'"
       :confirm-loading="goalSubmitting"
-      width="640px"
+      :width="640"
       @ok="submitGoal"
     >
-      <a-form layout="vertical" :model="goalEditor">
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="编码" required>
-              <a-input v-model:value="goalEditor.goalCode" placeholder="如 G1" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="18">
-            <a-form-item label="名称" required>
-              <a-input v-model:value="goalEditor.goalName" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="描述">
-          <a-textarea v-model:value="goalEditor.description" :rows="3" />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="阈值">
-              <a-input-number
-                v-model:value="goalEditor.thresholdValue"
+      <UiForm layout="vertical" :model="goalEditor">
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="编码" required>
+              <UiInput
+                size="sm" v-model="goalEditor.goalCode" placeholder="如 G1"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="18">
+            <UiFormItem label="名称" required>
+              <UiInput
+                size="sm" v-model="goalEditor.goalName"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="描述">
+          <UiTextarea size="sm" v-model="goalEditor.description" :rows="3" />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="阈值">
+              <UiInputNumber
+                size="sm"
+                v-model="goalEditor.thresholdValue"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="聚合">
-              <a-select v-model:value="goalEditor.aggregation" :options="aggregationOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="直接评价权重">
-              <a-input-number
-                v-model:value="goalEditor.directWeight"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="聚合">
+              <UiSelect
+                size="sm" v-model="goalEditor.aggregation" :options="aggregationOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="直接评价权重">
+              <UiInputNumber
+                size="sm"
+                v-model="goalEditor.directWeight"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="间接评价权重">
-              <a-input-number
-                v-model:value="goalEditor.indirectWeight"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="间接评价权重">
+              <UiInputNumber
+                size="sm"
+                v-model="goalEditor.indirectWeight"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="思政目标">
-              <a-switch v-model:checked="goalEditor.civicObjectiveFlag" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="AI 素养">
-              <a-switch v-model:checked="goalEditor.aiLiteracyFlag" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="排序">
-          <a-input-number v-model:value="goalEditor.sortOrder" :min="0" style="width: 200px" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="思政目标">
+              <UiSwitch size="sm" v-model="goalEditor.civicObjectiveFlag" />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="AI 素养">
+              <UiSwitch size="sm" v-model="goalEditor.aiLiteracyFlag" />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="排序">
+          <UiInputNumber
+            size="sm" v-model="goalEditor.sortOrder" :min="0" style="width: 200px"
+          />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
     <!-- 支撑映射编辑 Modal -->
-    <a-modal
+    <UiDialog
       v-model:open="supportEditorVisible"
       :title="supportEditorMode === 'create' ? '新增课程目标支撑' : '编辑课程目标支撑'"
       width="540px"
       @ok="submitSupport"
     >
-      <a-form layout="vertical" :model="supportEditor">
-        <a-form-item label="课程目标">
-          <a-input :value="supportEditorDisplay.courseGoalName" disabled />
-        </a-form-item>
-        <a-form-item label="支撑对象">
-          <a-input :value="supportEditorDisplay.supportTargetLabel" disabled />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="支撑度" required>
-              <a-radio-group
-                :value="supportEditor.supportLevel"
-                @change="handleSupportLevelRadioChange"
-              >
-                <a-radio-button
-                  v-for="opt in supportLevelOptions"
-                  :key="opt.value"
-                  :value="opt.value"
-                >
-                  {{ opt.label }}
-                </a-radio-button>
-              </a-radio-group>
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="权重 (0~1]" required>
-              <a-input-number
-                v-model:value="supportEditor.supportWeight"
+      <UiForm layout="vertical" :model="supportEditor">
+        <UiFormItem label="课程目标">
+          <UiInput
+            size="sm" :value="supportEditorDisplay.courseGoalName" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="支撑对象">
+          <UiInput
+            size="sm" :value="supportEditorDisplay.supportTargetLabel" disabled
+          />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="支撑度" required>
+              <UiRadioGroup
+                :model-value="supportEditor.supportLevel"
+                size="sm"
+                :options="supportLevelOptions"
+                @update:model-value="(value) => handleSupportLevelChange(value as SupportLevelCode)"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="权重 (0~1]" required>
+              <UiInputNumber
+                size="sm"
+                v-model="supportEditor.supportWeight"
                 :min="0"
                 :max="1"
                 :step="0.05"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-      </a-form>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+      </UiForm>
       <template #footer>
-        <a-space>
-          <a-button v-if="supportEditorMode === 'edit'" danger @click="handleDeleteSupportClick">
+        <div class="dp-space" style="--dp-space-gap: 8px">
+          <UiButton
+            v-if="supportEditorMode === 'edit'"
+            size="sm"
+            status="danger"
+            variant="outline"
+            @click="handleDeleteSupportClick"
+          >
             删除映射
-          </a-button>
-          <a-button @click="supportEditorVisible = false"> 取消 </a-button>
-          <a-button type="primary" @click="submitSupport"> 保存 </a-button>
-        </a-space>
+          </UiButton>
+          <UiButton size="sm" variant="ghost" @click="supportEditorVisible = false">取消</UiButton>
+          <UiButton size="sm" variant="primary" @click="submitSupport">保存</UiButton>
+        </div>
       </template>
-    </a-modal>
+    </UiDialog>
 
     <!-- 考核环节编辑 Modal -->
-    <a-modal
+    <UiDialog
       v-model:open="itemEditorVisible"
       :title="itemEditorMode === 'create' ? '新建考核环节' : '编辑考核环节'"
       :confirm-loading="itemSubmitting"
-      width="640px"
+      :width="640"
       @ok="submitItem"
     >
-      <a-form layout="vertical" :model="itemEditor">
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="编码" required>
-              <a-input v-model:value="itemEditor.itemCode" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="名称" required>
-              <a-input v-model:value="itemEditor.itemName" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="排序">
-              <a-input-number v-model:value="itemEditor.sortOrder" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="类型" required>
-              <a-select v-model:value="itemEditor.itemType" :options="itemTypeOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="满分" required>
-              <a-input-number v-model:value="itemEditor.fullScore" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="及格分">
-              <a-input-number v-model:value="itemEditor.passScore" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="4">
-            <a-form-item label="过程性">
-              <a-switch v-model:checked="itemEditor.isProcessOriented" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="课程内权重">
-          <a-input-number
-            v-model:value="itemEditor.weightInCourse"
+      <UiForm layout="vertical" :model="itemEditor">
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="编码" required>
+              <UiInput
+                size="sm" v-model="itemEditor.itemCode"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="名称" required>
+              <UiInput
+                size="sm" v-model="itemEditor.itemName"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="排序">
+              <UiInputNumber
+                size="sm" v-model="itemEditor.sortOrder" :min="0" style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="类型" required>
+              <UiSelect
+                size="sm" v-model="itemEditor.itemType" :options="itemTypeOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="满分" required>
+              <UiInputNumber
+                size="sm" v-model="itemEditor.fullScore" :min="0" style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="及格分">
+              <UiInputNumber
+                size="sm" v-model="itemEditor.passScore" :min="0" style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="4">
+            <UiFormItem label="过程性">
+              <UiSwitch size="sm" v-model="itemEditor.isProcessOriented" />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="课程内权重">
+          <UiInputNumber
+            size="sm"
+            v-model="itemEditor.weightInCourse"
             :min="0"
             :max="1"
             :step="0.01"
             style="width: 200px"
             placeholder="可选 - 该考核在课程总评中的权重"
           />
-        </a-form-item>
-        <a-form-item label="说明">
-          <a-textarea v-model:value="itemEditor.description" :rows="3" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+        <UiFormItem label="说明">
+          <UiTextarea size="sm" v-model="itemEditor.description" :rows="3" />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
     <!-- 考核-目标 权重编辑 Modal -->
-    <a-modal
+    <UiDialog
       v-model:open="weightEditorVisible"
       :title="weightEditorMode === 'create' ? '新增「考核 → 目标」权重' : '编辑「考核 → 目标」权重'"
       width="500px"
       @ok="submitWeight"
     >
-      <a-form layout="vertical" :model="weightEditor">
-        <a-form-item label="考核环节">
-          <a-input :value="weightEditorDisplay.assessmentItemName" disabled />
-        </a-form-item>
-        <a-form-item label="课程目标">
-          <a-input :value="weightEditorDisplay.courseGoalName" disabled />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="权重 [0, 1]" required>
-              <a-input-number
-                v-model:value="weightEditor.weight"
+      <UiForm layout="vertical" :model="weightEditor">
+        <UiFormItem label="考核环节">
+          <UiInput
+            size="sm" :value="weightEditorDisplay.assessmentItemName" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="课程目标">
+          <UiInput
+            size="sm" :value="weightEditorDisplay.courseGoalName" disabled
+          />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="权重 [0, 1]" required>
+              <UiInputNumber
+                size="sm"
+                v-model="weightEditor.weight"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="对应满分" required>
-              <a-input-number v-model:value="weightEditor.fullScore" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-      </a-form>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="对应满分" required>
+              <UiInputNumber
+                size="sm" v-model="weightEditor.fullScore" :min="0" style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+      </UiForm>
       <template #footer>
-        <a-space>
-          <a-button v-if="weightEditorMode === 'edit'" danger @click="handleDeleteWeightClick">
+        <div class="dp-space" style="--dp-space-gap: 8px">
+          <UiButton
+            v-if="weightEditorMode === 'edit'"
+            size="sm"
+            status="danger"
+            variant="outline"
+            @click="handleDeleteWeightClick"
+          >
             删除
-          </a-button>
-          <a-button @click="weightEditorVisible = false"> 取消 </a-button>
-          <a-button type="primary" @click="submitWeight"> 保存 </a-button>
-        </a-space>
+          </UiButton>
+          <UiButton size="sm" variant="ghost" @click="weightEditorVisible = false">取消</UiButton>
+          <UiButton size="sm" variant="primary" @click="submitWeight">保存</UiButton>
+        </div>
       </template>
-    </a-modal>
+    </UiDialog>
 
     <!-- Rubric Drawer -->
     <UiDrawer
@@ -2507,146 +2593,159 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
     </UiDrawer>
 
     <!-- Rubric 编辑 Modal -->
-    <a-modal
+    <UiDialog
       v-model:open="rubricEditorVisible"
       :title="rubricEditorMode === 'create' ? '新增 Rubric' : '编辑 Rubric'"
       width="600px"
       @ok="submitRubric"
     >
-      <a-form layout="vertical" :model="rubricEditor">
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="编码">
-              <a-input v-model:value="rubricEditor.rubricCode" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="18">
-            <a-form-item label="维度名称" required>
-              <a-input
-                v-model:value="rubricEditor.rubricName"
+      <UiForm layout="vertical" :model="rubricEditor">
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="编码">
+              <UiInput
+                size="sm" v-model="rubricEditor.rubricCode"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="18">
+            <UiFormItem label="维度名称" required>
+              <UiInput
+                size="sm"
+                v-model="rubricEditor.rubricName"
                 placeholder="如 解题思路 / 创新性 / 工程实现"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="关联课程目标">
-              <a-select
-                v-model:value="rubricEditor.courseGoalId"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="关联课程目标">
+              <UiSelect
+                v-model="rubricEditor.courseGoalId"
                 placeholder="可选 - 关联到某课程目标"
                 allow-clear
-              >
-                <a-select-option v-for="g in courseGoals" :key="g.id" :value="g.id">
-                  <span class="dp-selector-option-code">{{ g.goalCode }}</span>
-                  {{ g.goalName }}
-                </a-select-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="满分" required>
-              <a-input-number v-model:value="rubricEditor.fullScore" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="排序">
-              <a-input-number v-model:value="rubricEditor.sortOrder" :min="0" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="说明">
-          <a-textarea v-model:value="rubricEditor.description" :rows="3" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+              
+                size="sm"
+                :options="courseGoals.map((g) => ({ value: g.id, label: `${g.goalCode} · ${g.goalName}` }))"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="满分" required>
+              <UiInputNumber
+                size="sm" v-model="rubricEditor.fullScore" :min="0" style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="排序">
+              <UiInputNumber
+                size="sm" v-model="rubricEditor.sortOrder" :min="0" style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="说明">
+          <UiTextarea size="sm" v-model="rubricEditor.description" :rows="3" />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
 
     <!-- 计算规则编辑 Modal -->
-    <a-modal
+    <UiDialog
       v-model:open="ruleEditorVisible"
       :title="`课程目标计算规则：${ruleGoal?.goalName || ''}`"
-      width="640px"
+      :width="640"
       @ok="submitRule"
     >
-      <a-form layout="vertical" :model="ruleEditor">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="聚合策略" required>
-              <a-select v-model:value="ruleEditor.aggregation" :options="aggregationOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="阈值" required>
-              <a-input-number
-                v-model:value="ruleEditor.thresholdValue"
+      <UiForm layout="vertical" :model="ruleEditor">
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="聚合策略" required>
+              <UiSelect
+                size="sm" v-model="ruleEditor.aggregation" :options="aggregationOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="阈值" required>
+              <UiInputNumber
+                size="sm"
+                v-model="ruleEditor.thresholdValue"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="直接评价权重">
-              <a-input-number
-                v-model:value="ruleEditor.directWeight"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="直接评价权重">
+              <UiInputNumber
+                size="sm"
+                v-model="ruleEditor.directWeight"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="间接评价权重">
-              <a-input-number
-                v-model:value="ruleEditor.indirectWeight"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="间接评价权重">
+              <UiInputNumber
+                size="sm"
+                v-model="ruleEditor.indirectWeight"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="最小有效样本">
-              <a-input-number
-                v-model:value="ruleEditor.minimumValidSample"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="最小有效样本">
+              <UiInputNumber
+                size="sm"
+                v-model="ruleEditor.minimumValidSample"
                 :min="0"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="间接最小样本">
-              <a-input-number
-                v-model:value="ruleEditor.indirectMinValidSample"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="间接最小样本">
+              <UiInputNumber
+                size="sm"
+                v-model="ruleEditor.indirectMinValidSample"
                 :min="0"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="间接覆盖阈值">
-              <a-input-number
-                v-model:value="ruleEditor.indirectCoverageThreshold"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="间接覆盖阈值">
+              <UiInputNumber
+                size="sm"
+                v-model="ruleEditor.indirectCoverageThreshold"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="ruleEditor.notes" :rows="3" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="备注">
+          <UiTextarea size="sm" v-model="ruleEditor.notes" :rows="3" />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -2658,7 +2757,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
   }
 
   &__empty {
-    margin-top: 32px;
+    margin-top: var(--dp-space-3, 12px);
   }
 
   &__signals {
@@ -2712,7 +2811,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
 }
 
 .text-gray-500 {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 
 .mr-1 {

@@ -18,8 +18,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import ExamPrepInfoPanels from '@/components/workbench/ExamPrepInfoPanels.vue'
 import ExamPrepScenarioPanel from '@/components/workbench/ExamPrepScenarioPanel.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import MaterialLayoutConfigModal from '@/components/workbench/MaterialLayoutConfigModal.vue'
 import PrepStepPipelineRow from '@/components/workbench/PrepStepPipelineRow.vue'
@@ -210,6 +212,9 @@ async function loadExamFullScore(examId: string): Promise<void> {
 }
 
 async function handleSaveLayoutMode(): Promise<void> {
+  if (layoutSaving.value) {
+    return
+  }
   if (!selectedExamId.value || !draftLayoutMode.value) {
     return
   }
@@ -338,11 +343,11 @@ watch(
 </script>
 
 <template>
-  <UiEmpty v-if="!selectedExamId" description="请选择考试" class="exam-prep__empty" />
+  <ExamSelectGateStrip v-if="!selectedExamId" class="exam-prep__empty" />
 
   <StageWorkbenchShell v-else>
     <template v-if="prepSignalMetrics.length > 0" #signal>
-      <SignalBand variant="tiles" compact :metrics="prepSignalMetrics" />
+      <SignalBand compact :metrics="prepSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav />
@@ -351,6 +356,7 @@ watch(
 
     <template v-else>
       <UiEmpty
+        size="sm"
         v-if="!snapshot?.prepSteps?.length"
         description="准备诊断未加载完成，请返回考试列表后重新进入"
       />
@@ -405,7 +411,7 @@ watch(
               <template #icon><EditOutlined /></template>
               {{ enterReviewAction?.label ?? '进入阅卷复核' }}
             </UiButton>
-            <a-tooltip
+            <UiTooltip
               :title="
                 contextPrimaryAction?.tooltip
                   ?? (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
@@ -422,7 +428,7 @@ watch(
                 <template v-if="scanEntryEnabled" #icon><ScanOutlined /></template>
                 {{ contextPrimaryAction.label }}
               </UiButton>
-            </a-tooltip>
+            </UiTooltip>
           </template>
         </PrepStepPipelineRow>
 
@@ -447,7 +453,7 @@ watch(
 <style scoped lang="scss">
 .exam-prep {
   &__empty {
-    margin-top: 32px;
+    margin-top: var(--dp-space-3, 12px);
   }
 
   &__blocking-strip {

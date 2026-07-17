@@ -36,7 +36,7 @@ function dotClass(status: ArchiveVolumeExamArchivePackageTimelineStepVO['stepSta
 </script>
 
 <template>
-  <UiEmpty v-if="timelineSteps.length === 0" description="创建归档包后将展示打包进度" />
+  <UiEmpty size="sm" v-if="timelineSteps.length === 0" description="创建归档包后将展示打包进度" />
   <div v-else class="archive-package-timeline">
     <article
       v-for="(step, index) in timelineSteps"

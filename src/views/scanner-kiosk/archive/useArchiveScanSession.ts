@@ -116,6 +116,9 @@ export function useArchiveScanSession() {
   }
 
   async function startSession() {
+    if (loading.value) {
+      return null
+    }
     if (!volumeId.value || !materialType.value) {
       showUserError(null, '缺少卷或材料类型')
       return null

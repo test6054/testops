@@ -2,6 +2,7 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
 import { computed } from 'vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 
 defineOptions({ name: 'MarkExamSelect' })
 
@@ -39,14 +40,15 @@ const selectValue = computed(() => {
 </script>
 
 <template>
-  <a-select
-    :value="selectValue"
+  <UiSelect
+    size="sm"
+    :model-value="selectValue"
     class="mark-exam-select"
     :class="selectClass"
     :placeholder="placeholder"
     :options="examOptions"
     :loading="loading || searching || resolvingPinned"
-    show-search
+    allow-search
     :filter-option="false"
     option-filter-prop="label"
     :allow-clear="allowClear"
@@ -57,7 +59,7 @@ const selectValue = computed(() => {
     <template v-if="$slots.option" #option="slotProps">
       <slot name="option" v-bind="slotProps" />
     </template>
-  </a-select>
+  </UiSelect>
 </template>
 
 <style scoped lang="scss">

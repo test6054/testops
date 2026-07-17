@@ -13,8 +13,9 @@
     <div class="policy-config-modal__form">
       <label class="policy-config-modal__field">
         <span>一致率阈值</span>
-        <a-input-number
-          v-model:value="consistencyPercent"
+        <UiInputNumber
+          size="sm"
+          v-model="consistencyPercent"
           :min="50"
           :max="100"
           :step="1"
@@ -24,11 +25,15 @@
       </label>
       <label class="policy-config-modal__field">
         <span>签名距离上限</span>
-        <a-input-number v-model:value="form.maxHammingDistance" :min="0" :max="16" />
+        <UiInputNumber
+          size="sm" v-model="form.maxHammingDistance" :min="0" :max="16"
+        />
       </label>
       <label class="policy-config-modal__field">
         <span>经验条目上限</span>
-        <a-input-number v-model:value="form.maxExperienceItems" :min="1" :max="10" />
+        <UiInputNumber
+          size="sm" v-model="form.maxExperienceItems" :min="1" :max="10"
+        />
       </label>
     </div>
   </UiDialog>
@@ -43,6 +48,7 @@ import {
   saveExamGradingExperienceAssistPolicy,
 } from '@/apis/mark/grading-experience-assist'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ExamExperienceAssistPolicyEnableModal' })
@@ -114,7 +120,7 @@ watch(open, (visible) => {
 })
 
 async function handleConfirm(): Promise<void> {
-  if (!props.examId) return
+  if (!props.examId || saving.value) return
   saving.value = true
   const payload = {
     examId: props.examId,

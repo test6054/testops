@@ -52,22 +52,22 @@
         </template>
       </template>
       <template v-if="rows.length > 0" #summary>
-        <a-table-summary-row>
-          <a-table-summary-cell :index="0">合计</a-table-summary-cell>
-          <a-table-summary-cell :index="1">
+        <UiTableSummaryRow>
+          <UiTableSummaryCell :index="0">合计</UiTableSummaryCell>
+          <UiTableSummaryCell :index="1">
             <span class="org-assignment__muted">{{ summaryQuestionCount }} 题</span>
-          </a-table-summary-cell>
-          <a-table-summary-cell :index="2" />
-          <a-table-summary-cell :index="3">
+          </UiTableSummaryCell>
+          <UiTableSummaryCell :index="2" />
+          <UiTableSummaryCell :index="3">
             <strong class="org-assignment__summary-num">{{ summaryTotalScore }}</strong>
-          </a-table-summary-cell>
-          <a-table-summary-cell :index="4" />
-          <a-table-summary-cell :index="5">
+          </UiTableSummaryCell>
+          <UiTableSummaryCell :index="4" />
+          <UiTableSummaryCell :index="5">
             <strong class="org-assignment__summary-num">{{ summaryReviewerCount }}</strong>
-          </a-table-summary-cell>
-          <a-table-summary-cell :index="6" />
-          <a-table-summary-cell :index="7" />
-        </a-table-summary-row>
+          </UiTableSummaryCell>
+          <UiTableSummaryCell :index="6" />
+          <UiTableSummaryCell :index="7" />
+        </UiTableSummaryRow>
       </template>
     </UiDataTable>
 
@@ -96,6 +96,8 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTableSummaryCell from '@/components/ui-guide/ui/UiTableSummaryCell.vue'
+import UiTableSummaryRow from '@/components/ui-guide/ui/UiTableSummaryRow.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
 import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
@@ -146,7 +148,7 @@ const columns: ColumnType<AssignmentRow>[] = [
 ]
 
 const emptyDescription = computed(() =>
-  props.groups.length === 0 ? '暂无题组，创建后可配置题目范围与阅卷教师' : '当前没有可展示的内容',
+  props.groups.length === 0 ? '暂无题组，创建后可配置题目范围与阅卷教师' : '当前筛选条件下无题组',
 )
 
 function resolveGroupPolicy(groupId: string): AllocationPolicyResponse | undefined {

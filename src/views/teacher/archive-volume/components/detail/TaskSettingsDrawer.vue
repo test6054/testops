@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import type { Dayjs } from 'dayjs'
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
-import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
 import {
   ArchiveMaterialSubmissionStatusCode,
@@ -14,6 +12,8 @@ import {
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -35,7 +35,7 @@ const emit = defineEmits<{
 }>()
 
 const saving = ref(false)
-const dueEditValue = ref<Dayjs | undefined>()
+const dueEditValue = ref<string | undefined>()
 const dueReason = ref('')
 
 const volume = computed(() => props.detail.volume)
@@ -76,14 +76,14 @@ watch(
       dueEditValue.value = undefined
       return
     }
-    const parsed = dayjs(dueTime)
-    dueEditValue.value = parsed.isValid() ? parsed : undefined
+    dueEditValue.value = dueTime
   },
   { immediate: true },
 )
 
 async function saveArchiveDueTime(): Promise<void> {
-  if (!dueEditValue.value?.isValid()) {
+  if (saving.value) return
+  if (!dueEditValue.value) {
     showFormValidationMessage('请选择归档截止时刻')
     return
   }
@@ -97,7 +97,7 @@ async function saveArchiveDueTime(): Promise<void> {
     await updateArchiveVolumeTaskSettings({
       volumeId: volume.value.volumeId,
       expectedArchiveDueTime: volume.value.archiveDueTime ?? null,
-      archiveDueTime: dueEditValue.value.format('YYYY-MM-DD HH:mm:ss'),
+      archiveDueTime: dueEditValue.value,
       reason,
     })
     message.success('归档截止已更新')
@@ -164,14 +164,15 @@ async function saveArchiveDueTime(): Promise<void> {
     <section class="task-settings__section">
       <h4 class="task-settings__heading">归档截止</h4>
       <template v-if="canUpdateArchiveDueTime">
-        <a-date-picker
-          v-model:value="dueEditValue"
+        <UiDatePicker
+          v-model="dueEditValue"
           show-time
           format="YYYY-MM-DD HH:mm"
-          style="width: 100%"
+          value-format="YYYY-MM-DD HH:mm:ss"
         />
-        <a-input
-          v-model:value="dueReason"
+        <UiInput
+          size="sm"
+          v-model="dueReason"
           placeholder="覆盖原因（必填，写入审计）"
           :maxlength="200"
         />

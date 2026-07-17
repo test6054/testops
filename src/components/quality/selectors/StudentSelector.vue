@@ -4,11 +4,12 @@
   必传 classId；当 classId 缺失时组件禁用
 -->
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
+import type { UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import { computed, onMounted, ref, watch } from 'vue'
 import { getStudentsByClass } from '@/apis/edu/class'
 import { listExamClassStudents } from '@/apis/mark/exam-scope'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { showUserError } from '@/utils/error-handler'
 
 interface Props {
@@ -96,13 +97,25 @@ function studentDisplayName(opt: UserDto): string {
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const selectOptions = computed<UiSelectOption[]>(() =>
+  options.value.map((opt) => ({
+    value: opt.id,
+    label: studentDisplayName(opt),
+  })),
+)
+
+const controlStyle = computed(() => ({
+  width: typeof props.width === 'number' ? `${props.width}px` : props.width,
+}))
+
 function handleSearch(val: string) {
   searchText.value = val
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => loadOptions(val), 300)
 }
 
-function handleChange(val: SelectValue) {
+function handleChange(val: UiOptionValue | UiOptionValue[] | undefined) {
   const next: string | null = typeof val === 'string' ? val : null
   internalValue.value = next ?? undefined
   const option = options.value.find((o) => String(o.id) === next)
@@ -118,26 +131,28 @@ defineExpose({ reload: loadOptions })
 </script>
 
 <template>
-  <a-select
-    :value="internalValue"
+  <UiSelect
+    v-model="internalValue"
+    class="dp-quality-selector"
+    :style="controlStyle"
+    size="sm"
     :placeholder="effectivePlaceholder"
     :allow-clear="allowClear"
     :disabled="effectiveDisabled"
     :loading="loading"
-    :style="{ width: typeof width === 'number' ? `${width}px` : width }"
-    show-search
+    allow-search
     :filter-option="false"
     @search="handleSearch"
-    @change="handleChange"
+    :options="selectOptions"
+    @update:model-value="handleChange"
   >
-    <a-select-option
-      v-for="opt in options"
-      :key="opt.id"
-      :value="String(opt.id)"
-      :label="studentDisplayName(opt)"
-    >
-      {{ studentDisplayName(opt) }}
-      <span v-if="opt.studentNumber" class="dp-selector-option-meta">({{ opt.studentNumber }})</span>
-    </a-select-option>
-  </a-select>
+    <template #option="{ value: optionValue }">
+      <template v-for="opt in options" :key="opt.id">
+        <template v-if="opt.id === optionValue">
+          {{ studentDisplayName(opt) }}
+          <span v-if="opt.studentNumber" class="dp-selector-option-meta">({{ opt.studentNumber }})</span>
+        </template>
+      </template>
+    </template>
+  </UiSelect>
 </template>

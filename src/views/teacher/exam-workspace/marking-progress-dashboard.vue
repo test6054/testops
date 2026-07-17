@@ -23,12 +23,15 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useExamMarkingProgressSessionList } from '@/composables/useExamMarkingProgressSessionList'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
@@ -36,7 +39,6 @@ import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
   resolveMarkingOrganizationFormalSessionsRoute,
-  resolveMarkingOrganizationIndexRoute,
   resolveMarkingOrganizationTrialSessionsRoute,
 } from '@/utils/marking-organization-navigation'
 import { toneToColor } from '@/utils/score-tone'
@@ -203,10 +205,6 @@ function goTaskPool() {
   })
 }
 
-function goMarkingOrg() {
-  if (!examId.value) return
-  router.push(resolveMarkingOrganizationIndexRoute(examId.value))
-}
 
 function goSessionManage(record: FormalSessionResponse | TrialSessionResponse) {
   if (!examId.value || !record.organizationId) return
@@ -245,12 +243,13 @@ watch(examId, () => loadPanel(), { immediate: true })
     </template>
 
     <template v-if="examId && panel" #signal>
-      <SignalBand variant="tiles" compact :metrics="signalMetrics" />
+      <SignalBand compact :metrics="signalMetrics" />
     </template>
 
-    <UiEmpty v-if="!examId" description="请选择考试" class="marking-progress-dash__empty" />
+    <ExamSelectGateStrip v-if="!examId" class="marking-progress-dash__empty" />
 
     <UiEmpty
+      size="sm"
       v-else-if="loadFailed"
       description="阅卷进度加载失败"
       action-label="重试"
@@ -260,20 +259,19 @@ watch(examId, () => loadPanel(), { immediate: true })
 
     <UiSkeletonState v-else-if="loading && !panel" variant="card" compact />
 
-    <UiEmpty v-else-if="!panel" description="暂无进度数据" class="marking-progress-dash__empty" />
+    <UiEmpty size="sm" v-else-if="!panel" description="暂无进度数据" class="marking-progress-dash__empty" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
 
-      <UiEmpty
+      <WorkbenchContextGateStrip
         v-if="!panel.markingOrgConfigured"
-        description="阅卷组织尚未配置完成"
+        tag="未配置"
+        body="阅卷组织尚未配置完成"
+        cta-label="前往阅卷设置"
+        list-route-name="TeacherExamWorkspaceMarkingOrg"
         class="marking-progress-dash__empty"
-      >
-        <template #extra>
-          <UiButton variant="primary" size="sm" @click="goMarkingOrg">前往阅卷设置</UiButton>
-        </template>
-      </UiEmpty>
+      />
 
       <WorkbenchSurfaceCard v-else flush class="marking-progress-dash__table-card">
         <template #head>
@@ -327,14 +325,16 @@ watch(examId, () => loadPanel(), { immediate: true })
               </UiTag>
             </template>
             <template v-else-if="column.key === 'progress'">
-              <a-progress
+              <UiProgressBar
                 :percent="sessionProgressPercent(record.totalTaskCount, record.finalizedTaskCount)"
-                size="small"
-                :stroke-color="
+                size="sm"
+                :color="
                   record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0
                     ? successColor
                     : primaryColor
                 "
+              
+                :show-label="false"
               />
             </template>
             <template v-else-if="column.key === 'closeTime'">
@@ -374,14 +374,16 @@ watch(examId, () => loadPanel(), { immediate: true })
               </UiTag>
             </template>
             <template v-else-if="column.key === 'progress'">
-              <a-progress
+              <UiProgressBar
                 :percent="sessionProgressPercent(record.totalTaskCount, record.finalizedTaskCount)"
-                size="small"
-                :stroke-color="
+                size="sm"
+                :color="
                   record.finalizedTaskCount >= record.totalTaskCount && record.totalTaskCount > 0
                     ? successColor
                     : primaryColor
                 "
+              
+                :show-label="false"
               />
             </template>
             <template v-else-if="column.key === 'createTime'">
@@ -405,7 +407,7 @@ watch(examId, () => loadPanel(), { immediate: true })
 
 <style scoped>
 .marking-progress-dash__empty {
-  margin-top: 48px;
+  margin-top: var(--dp-space-3, 12px);
 }
 
 .marking-progress-dash__head {

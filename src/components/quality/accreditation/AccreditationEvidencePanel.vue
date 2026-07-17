@@ -22,8 +22,17 @@ import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCheckboxGroup from '@/components/ui-guide/ui/UiCheckboxGroup.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRadio from '@/components/ui-guide/ui/UiRadio.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import {
   canExportExpertPackage,
@@ -388,13 +397,14 @@ defineExpose({ loadEvidences })
     <p v-if="exportPackageHint && !canExportPackage" class="hint">{{ exportPackageHint }}</p>
     <p v-if="evidenceMutationHint" class="hint">{{ evidenceMutationHint }}</p>
     <div class="toolbar">
-      <a-radio-group v-model:value="categoryFilter" button-style="solid" size="small">
-        <a-radio-button v-for="tab in CATEGORY_TABS" :key="tab.key || 'all'" :value="tab.key">
+      <UiRadioGroup v-model="categoryFilter" size="sm">
+        <UiRadio v-for="tab in CATEGORY_TABS" :key="tab.key || 'all'" :value="tab.key">
           {{ tab.label }}
-        </a-radio-button>
-      </a-radio-group>
+        </UiRadio>
+      </UiRadioGroup>
       <div class="toolbar-actions">
         <UiButton
+          size="sm"
           variant="primary"
           :disabled="!trainingPlanId || !canMutateEvidence"
           @click="openEvidenceCreate()"
@@ -402,6 +412,7 @@ defineExpose({ loadEvidences })
           上传登记
         </UiButton>
         <UiButton
+          size="sm"
           variant="outline"
           :disabled="!trainingPlanId || !canMutateEvidence"
           @click="openMarkImport"
@@ -409,6 +420,7 @@ defineExpose({ loadEvidences })
           mark 扫描页同步
         </UiButton>
         <UiButton
+          size="sm"
           variant="outline"
           :loading="exporting"
           :disabled="!trainingPlanId || !canExportPackage"
@@ -460,7 +472,7 @@ defineExpose({ loadEvidences })
         </template>
       </template>
       <template #empty>
-        <UiEmpty description="按类别上传或从 mark 同步，供专家包 manifest 引用 fileId" />
+        <UiEmpty size="sm" description="按类别上传或从 mark 同步，供专家包 manifest 引用 fileId" />
       </template>
     </UiDataTable>
     <UiDrawer
@@ -471,20 +483,15 @@ defineExpose({ loadEvidences })
       ok-text="保存"
       @ok="submitEvidence"
     >
-      <a-form layout="vertical">
-        <a-form-item label="证据类别" required>
-          <a-select v-model:value="evidenceForm.evidenceCategory" :disabled="evidenceEditing">
-            <a-select-option value="EXAM_PAPER">试卷样本</a-select-option>
-            <a-select-option value="HOMEWORK">作业样本</a-select-option>
-            <a-select-option value="LAB_REPORT">实验报告</a-select-option>
-            <a-select-option value="GRADUATION_PROJECT">毕业设计</a-select-option>
-            <a-select-option value="COURSE_MATERIAL">课程材料</a-select-option>
-            <a-select-option value="FACILITY">实验设施</a-select-option>
-            <a-select-option value="MANAGEMENT_DOC">管理文件</a-select-option>
-            <a-select-option value="OTHER">其他</a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="关联课程">
+      <UiForm layout="vertical">
+        <UiFormItem label="证据类别" required>
+          <UiSelect
+            v-model="evidenceForm.evidenceCategory" :disabled="evidenceEditing"
+            size="sm"
+            :options="[{ value: 'EXAM_PAPER', label: '试卷样本' }, { value: 'HOMEWORK', label: '作业样本' }, { value: 'LAB_REPORT', label: '实验报告' }, { value: 'GRADUATION_PROJECT', label: '毕业设计' }, { value: 'COURSE_MATERIAL', label: '课程材料' }, { value: 'FACILITY', label: '实验设施' }, { value: 'MANAGEMENT_DOC', label: '管理文件' }, { value: 'OTHER', label: '其他' }]"
+          />
+        </UiFormItem>
+        <UiFormItem label="关联课程">
           <CourseSelector
             v-model:value="evidenceForm.qualityCourseId"
             :training-plan-id="trainingPlanId"
@@ -492,20 +499,26 @@ defineExpose({ loadEvidences })
             :disabled="evidenceEditing"
             allow-clear
           />
-        </a-form-item>
-        <a-form-item label="证据编码" required>
-          <a-input v-model:value="evidenceForm.evidenceCode" :disabled="evidenceEditing" />
-        </a-form-item>
-        <a-form-item label="证据标题" required>
-          <a-input v-model:value="evidenceForm.evidenceTitle" />
-        </a-form-item>
-        <a-form-item label="学年">
-          <a-input v-model:value="evidenceForm.schoolYear" placeholder="如 2024-2025" />
-        </a-form-item>
-        <a-form-item label="说明">
-          <a-textarea v-model:value="evidenceForm.evidenceDescription" :rows="3" />
-        </a-form-item>
-        <a-form-item
+        </UiFormItem>
+        <UiFormItem label="证据编码" required>
+          <UiInput
+            size="sm" v-model="evidenceForm.evidenceCode" :disabled="evidenceEditing"
+          />
+        </UiFormItem>
+        <UiFormItem label="证据标题" required>
+          <UiInput
+            size="sm" v-model="evidenceForm.evidenceTitle"
+          />
+        </UiFormItem>
+        <UiFormItem label="学年">
+          <UiInput
+            size="sm" v-model="evidenceForm.schoolYear" placeholder="如 2024-2025"
+          />
+        </UiFormItem>
+        <UiFormItem label="说明">
+          <UiTextarea size="sm" v-model="evidenceForm.evidenceDescription" :rows="3" />
+        </UiFormItem>
+        <UiFormItem
           :label="evidenceForm.id ? '证据文件（重新上传可替换）' : '证据文件'"
           :required="!evidenceForm.id"
         >
@@ -518,8 +531,8 @@ defineExpose({ loadEvidences })
           <p v-if="evidenceForm.id && evidenceForm.storageFileId" class="file-hint">
             当前 fileId：{{ evidenceForm.storageFileId }}
           </p>
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
     <UiDrawer
       v-model:open="markImportOpen"
@@ -532,11 +545,11 @@ defineExpose({ loadEvidences })
       <p v-if="linkedExams.length === 0" class="hint">
         培养方案下考核环节未绑定 edu-mark 考试 ID，请先在课程矩阵配置 sourceExamId。
       </p>
-      <a-checkbox-group v-else v-model:value="selectedExamIds" class="exam-list">
-        <a-checkbox v-for="exam in linkedExams" :key="exam.examId" :value="exam.examId">
+      <UiCheckboxGroup v-else v-model="selectedExamIds" class="exam-list" direction="vertical">
+        <UiCheckbox v-for="exam in linkedExams" :key="exam.examId" :value="exam.examId">
           {{ exam.label }}
-        </a-checkbox>
-      </a-checkbox-group>
+        </UiCheckbox>
+      </UiCheckboxGroup>
     </UiDrawer>
   </div>
 </template>
@@ -566,11 +579,11 @@ defineExpose({ loadEvidences })
 }
 .hint {
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--dp-text-tertiary);
 }
 .file-hint {
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
   margin: 8px 0 0;
 }
 </style>

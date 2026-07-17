@@ -8,22 +8,15 @@
           </UiTag>
           <UiTag v-if="isPackaging" tone="blue" size="sm">打包中</UiTag>
         </template>
-        <template #actions>
+        <template v-if="examId" #actions>
           <UiButton
-            v-if="showGateScorePublishAction"
-            variant="outline"
-            size="sm"
-            @click="goScorePublish"
-          >
-            前往成绩发布
-          </UiButton>
-          <UiButton
-            v-if="showGateCloseExamAction"
             variant="primary"
             size="sm"
-            @click="goExamListForClose"
+            :disabled="!canCreatePackage"
+            :loading="packagingActionLoading"
+            @click="createPackage"
           >
-            前往关考
+            创建归档包
           </UiButton>
           <UiButton
             v-if="showRetryPackagingAction"
@@ -34,156 +27,162 @@
           >
             重新打包
           </UiButton>
-          <UiButton
-            variant="primary"
-            size="sm"
-            :disabled="!canCreatePackage"
-            :loading="packagingActionLoading"
-            @click="createPackage"
-          >
-            创建归档包
-          </UiButton>
+          <UiDropdownAction
+            v-if="archiveGateMoreItems.length"
+            trigger-style="button"
+            button-text="更多"
+            :items="archiveGateMoreItems"
+            @select="onArchiveGateMoreAction"
+          />
         </template>
       </ContextBar>
     </template>
 
-    <template v-if="reviewSignals.length > 0" #signal>
-      <SignalBand variant="tiles" compact :metrics="reviewSignals" />
+    <template v-if="examId && reviewSignals.length > 0" #signal>
+      <SignalBand compact :metrics="reviewSignals" />
     </template>
 
-    <ExamWorkspaceJourneySubNav />
-
-    <UiSkeletonState v-if="loading" variant="card" compact />
+    <ExamSelectGateStrip
+      v-if="!examId"
+      body="请从考试列表进入工作台后再查看归档复盘"
+    />
 
     <template v-else>
-      <a-result
-        v-if="loadFailed"
-        status="error"
-        title="加载归档复盘失败"
-        sub-title="归档复盘数据暂时不可用，请重试加载"
-      >
-        <template #extra>
-          <UiButton variant="outline" size="sm" @click="loadReview">重新加载</UiButton>
-        </template>
-      </a-result>
+      <ExamWorkspaceJourneySubNav />
 
-      <template v-else-if="review">
-        <WorkflowReadinessPanel
-          v-if="archiveGateWorkflow"
-          :title="archiveGateWorkflow.panelTitle"
-          :steps="archiveGateWorkflow.steps"
-        />
+      <UiSkeletonState v-if="loading" variant="card" compact />
 
-        <ArchiveLifecyclePipe
-          v-if="lifecycleSteps.length > 0"
-          class="archive-exam-review__lifecycle"
-          title="归档生命周期"
-          :steps="lifecycleSteps"
-        />
-
-        <div v-if="isPackaging" class="archive-exam-review__packaging">
-          <div class="archive-exam-review__packaging-head">
-            <span>{{ packagingProgressLabel }}</span>
-            <span class="archive-exam-review__packaging-percent">{{ packagingProgressPercent }}%</span>
-          </div>
-          <div class="archive-exam-review__packaging-track">
-            <div
-              class="archive-exam-review__packaging-bar"
-              :style="{
-                transform: `scaleX(${Math.max(0, Math.min(1, packagingProgressPercent / 100))})`,
-              }"
-            />
-          </div>
-        </div>
-
-        <div class="archive-exam-review__grid">
-          <WorkbenchSurfaceCard class="archive-exam-review__main">
-            <template #head>归档时间线</template>
-            <ArchivePackageTimeline :steps="packageTimelineSteps" />
-          </WorkbenchSurfaceCard>
-
-          <ArchiveExamExportTasksCard
-            ref="exportTasksRef"
-            :exam-id="examId"
-            :can-create="gateOpen"
-          />
-        </div>
-
-        <a-collapse
-          v-if="showVolumeCollapse"
-          v-model:active-key="volumeCollapseActiveKeys"
-          class="archive-exam-review__volume-collapse"
-          :bordered="false"
+      <template v-else>
+        <UiEmpty
+          v-if="loadFailed"
+          size="sm"
+          title="加载归档复盘失败"
+          description="归档复盘数据暂时不可用，请重试加载"
         >
-          <a-collapse-panel key="volumes" :header="volumeCollapseHeader">
-            <a-alert
-              v-if="volumesLoadFailed"
-              type="error"
-              show-icon
-              message="归档任务列表加载失败"
-              description="当前保留最后一次成功加载的数据，请重试列表查询。"
-              class="archive-exam-review__volume-error"
-            >
-              <template #action>
-                <UiButton variant="outline" size="sm" @click="loadVolumes">重试</UiButton>
-              </template>
-            </a-alert>
-            <UiDataTable
-              v-model:current="volumePagination.pageNum"
-              v-model:page-size="volumePagination.pageSize"
-              pagination-mode="server"
-              :columns="volumeTableColumns"
-              :data-source="healthyVolumes"
-              :loading="volumesLoading"
-              :total="volumePagination.total"
-              flat
-              row-key="volumeId"
-              size="small"
-              @page-change="loadVolumes"
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'integrityStatus'">
-                  <ArchiveDimPill
-                    :tone="integrityStatusDimTone(record.integrityStatus)"
-                    :label="integrityStatusLabel(record.integrityStatus)"
-                  />
-                </template>
-                <template v-else-if="column.key === 'volumeStatus'">
-                  <ArchiveDimPill
-                    :tone="volumeStatusDimTone(record.volumeStatus)"
-                    :label="volumeStatusLabel(record.volumeStatus)"
-                  />
-                </template>
-                <template v-else-if="column.key === 'lifecycleProgress'">
-                  {{ formatVolumeLifecycleProgress(record.volumeId) }}
-                </template>
-                <template v-else-if="column.key === 'action'">
-                  <UiTableActions
-                    :items="[{ key: 'detail', label: '打开详情' }]"
-                    split
-                    @action="() => goDetail(record.volumeId)"
-                  />
-                </template>
-              </template>
-            </UiDataTable>
-            <ArchiveExamAutoCreateStatus
-              v-if="showVolumeAutoCreateStatus"
-              :exam-gate="examGate"
-              :poll-timed-out="pollTimedOut"
-              :has-auto-create-failure="hasAutoCreateFailure"
-              :auto-create-failed-description="autoCreateFailedDescription"
-              :show-retry-auto-create="showRetryAutoCreate"
-              :pending-retry-description="pendingRetryDescription"
-              :show-non-owner-hint="showNonOwnerHint"
-              :auto-create-failed-needs-class-scope="autoCreateFailedNeedsClassScope"
-              :retrying="retrying"
-              :polling="polling"
-              class="archive-exam-review__volume-status"
-              @retry="retryAutoCreate"
-              @go-candidate-roster="goCandidateRoster"
+          <template #action>
+            <UiButton variant="outline" size="sm" @click="loadReview">重新加载</UiButton>
+          </template>
+        </UiEmpty>
+
+        <template v-else-if="review">
+          <WorkflowReadinessPanel
+            v-if="archiveGateWorkflow"
+            :title="archiveGateWorkflow.panelTitle"
+            :steps="archiveGateWorkflow.steps"
+          />
+
+          <ArchiveLifecyclePipe
+            v-if="lifecycleSteps.length > 0"
+            class="archive-exam-review__lifecycle"
+            title="归档生命周期"
+            :steps="lifecycleSteps"
+          />
+
+          <div v-if="isPackaging" class="archive-exam-review__packaging">
+            <div class="archive-exam-review__packaging-head">
+              <span>{{ packagingProgressLabel }}</span>
+              <span class="archive-exam-review__packaging-percent">{{ packagingProgressPercent }}%</span>
+            </div>
+            <div class="archive-exam-review__packaging-track">
+              <div
+                class="archive-exam-review__packaging-bar"
+                :style="{
+                  transform: `scaleX(${Math.max(0, Math.min(1, packagingProgressPercent / 100))})`,
+                }"
+              />
+            </div>
+          </div>
+
+          <div class="archive-exam-review__grid">
+            <WorkbenchSurfaceCard class="archive-exam-review__main">
+              <template #head>归档时间线</template>
+              <ArchivePackageTimeline :steps="packageTimelineSteps" />
+            </WorkbenchSurfaceCard>
+
+            <ArchiveExamExportTasksCard
+              ref="exportTasksRef"
+              :exam-id="examId"
+              :can-create="gateOpen"
             />
-          </a-collapse-panel>
-        </a-collapse>
+          </div>
+
+          <UiCollapse
+            v-if="showVolumeCollapse"
+            v-model:active-key="volumeCollapseActiveKeys"
+            class="archive-exam-review__volume-collapse"
+            :bordered="false"
+          >
+            <UiCollapsePanel key="volumes" :header="volumeCollapseHeader">
+              <UiAlertStrip
+                v-if="volumesLoadFailed"
+                tone="error"
+                dense
+                inline
+                title="归档任务列表加载失败"
+                description="当前保留最后一次成功加载的数据，请重试列表查询。"
+                class="archive-exam-review__volume-error"
+              >
+                <template #actions>
+                  <UiButton variant="outline" size="sm" @click="loadVolumes">重试</UiButton>
+                </template>
+              </UiAlertStrip>
+              <UiDataTable
+                v-model:current="volumePagination.pageNum"
+                v-model:page-size="volumePagination.pageSize"
+                pagination-mode="server"
+                :columns="volumeTableColumns"
+                :data-source="healthyVolumes"
+                :loading="volumesLoading"
+                :total="volumePagination.total"
+                flat
+                row-key="volumeId"
+                size="small"
+                @page-change="loadVolumes"
+              >
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'integrityStatus'">
+                    <ArchiveDimPill
+                      :tone="integrityStatusDimTone(record.integrityStatus)"
+                      :label="integrityStatusLabel(record.integrityStatus)"
+                    />
+                  </template>
+                  <template v-else-if="column.key === 'volumeStatus'">
+                    <ArchiveDimPill
+                      :tone="volumeStatusDimTone(record.volumeStatus)"
+                      :label="volumeStatusLabel(record.volumeStatus)"
+                    />
+                  </template>
+                  <template v-else-if="column.key === 'lifecycleProgress'">
+                    {{ formatVolumeLifecycleProgress(record.volumeId) }}
+                  </template>
+                  <template v-else-if="column.key === 'action'">
+                    <UiTableActions
+                      :items="[{ key: 'detail', label: '打开详情' }]"
+                      split
+                      @action="() => goDetail(record.volumeId)"
+                    />
+                  </template>
+                </template>
+              </UiDataTable>
+              <ArchiveExamAutoCreateStatus
+                v-if="showVolumeAutoCreateStatus"
+                :exam-gate="examGate"
+                :poll-timed-out="pollTimedOut"
+                :has-auto-create-failure="hasAutoCreateFailure"
+                :auto-create-failed-description="autoCreateFailedDescription"
+                :show-retry-auto-create="showRetryAutoCreate"
+                :pending-retry-description="pendingRetryDescription"
+                :show-non-owner-hint="showNonOwnerHint"
+                :auto-create-failed-needs-class-scope="autoCreateFailedNeedsClassScope"
+                :retrying="retrying"
+                :polling="polling"
+                class="archive-exam-review__volume-status"
+                @retry="retryAutoCreate"
+                @go-candidate-roster="goCandidateRoster"
+              />
+            </UiCollapsePanel>
+          </UiCollapse>
+        </template>
       </template>
     </template>
   </StageWorkbenchShell>
@@ -213,11 +212,16 @@ import ArchiveExamExportTasksCard from '@/components/archive-volume/ArchiveExamE
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import ArchivePackageTimeline from '@/components/archive-volume/ArchivePackageTimeline.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCollapse from '@/components/ui-guide/ui/UiCollapse.vue'
+import UiCollapsePanel from '@/components/ui-guide/ui/UiCollapsePanel.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -262,6 +266,28 @@ const showGateCloseExamAction = computed(() => {
   const gate = examGate.value
   return Boolean(gate && !gate.gateOpen && gate.allScoresPublished && !gate.examClosed)
 })
+
+const archiveGateMoreItems = computed(() => {
+  const items: { key: string, label: string }[] = []
+  if (showGateScorePublishAction.value) {
+    items.push({ key: 'scorePublish', label: '前往成绩发布' })
+  }
+  if (showGateCloseExamAction.value) {
+    items.push({ key: 'closeExam', label: '前往关考' })
+  }
+  return items
+})
+
+function onArchiveGateMoreAction(key: string) {
+  if (key === 'scorePublish') {
+    goScorePublish()
+    return
+  }
+  if (key === 'closeExam') {
+    goExamListForClose()
+  }
+}
+
 const examId = computed(() => String(route.params.examId ?? ''))
 
 const loading = ref(true)

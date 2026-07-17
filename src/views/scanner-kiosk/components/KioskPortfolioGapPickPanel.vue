@@ -5,8 +5,10 @@ import { useRouter } from 'vue-router'
 import { createAdhocDispatchTicket, pageKioskPortfolioGapTasks } from '@/apis/mark/scanner-kiosk'
 import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
@@ -133,7 +135,7 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
 </script>
 
 <template>
-  <a-drawer
+  <UiDrawer
     :open="open"
     title="临时扫描 · 档案袋补采待办"
     width="880"
@@ -145,8 +147,8 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
     </p>
     <WorkbenchSurfaceCard flush>
       <template #toolbar>
-        <a-input-search
-          v-model:value="keyword"
+        <UiSearchBox
+          v-model="keyword"
           placeholder="搜索任务标题"
           allow-clear
           class="kiosk-portfolio-pick__search"
@@ -157,7 +159,7 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
             }
           "
         />
-        <UiButton size="sm" variant="outline" :disabled="loading" @click="loadTasks">
+        <UiButton variant="outline" :disabled="loading" @click="loadTasks">
           刷新
         </UiButton>
       </template>
@@ -199,7 +201,7 @@ async function openGapScan(row: PortfolioGapTaskSummaryInternalVO) {
         </template>
       </UiDataTable>
     </WorkbenchSurfaceCard>
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <style scoped>

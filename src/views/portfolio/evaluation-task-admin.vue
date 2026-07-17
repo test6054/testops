@@ -12,6 +12,7 @@ import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
+  PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES,
   PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
   PortfolioEvaluationModeCode,
@@ -28,12 +29,17 @@ import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -55,6 +61,7 @@ const returnReason = ref('')
 const returnDueTime = ref('')
 const returning = ref(false)
 const taskOperationKey = ref('')
+const exporting = ref(false)
 const taskWriting = computed(() => Boolean(taskOperationKey.value))
 
 const categoryColumns = [
@@ -142,6 +149,7 @@ const columns: ColumnsType = [
   { title: '工作组', dataIndex: 'workgroupId', key: 'workgroupId', width: 100 },
   { title: '时间窗', key: 'timeWindow', width: 180 },
   { title: '状态', dataIndex: 'taskStatus', key: 'taskStatus', width: 88 },
+  { title: '四冻结', key: 'freeze', width: 100 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 160 },
   { title: '操作', key: 'actions', width: 140 },
 ]
@@ -171,6 +179,13 @@ function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusCode) {
 }
 
 function canReturnNotice(notice: PortfolioEvaluationTeacherNoticeVO | null): boolean {
+  const taskStatus = preview.value?.taskStatus
+  if (
+    !taskStatus
+    || !PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES.includes(taskStatus)
+  ) {
+    return false
+  }
   return (
     notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.MATERIAL_CONFIRM
     || notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
@@ -448,12 +463,18 @@ async function publishTask(id: string) {
 }
 
 async function exportExcel() {
+  if (exporting.value || taskWriting.value) {
+    return
+  }
+  exporting.value = true
   try {
     const result = await portfolioEvaluationTaskApi.exportExcel()
     await downloadPortfolioExcelExport(result)
     message.success('评价任务已导出')
   } catch (error) {
     showUserError(error, '导出评价任务失败')
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -468,7 +489,7 @@ onMounted(async () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="多元评价任务">
         <template #actions>
-          <UiButton :disabled="taskWriting" @click="exportExcel"> 导出表格文件 </UiButton>
+          <UiButton size="sm" :loading="exporting" :disabled="exporting || taskWriting" @click="exportExcel"> 导出表格文件 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -480,53 +501,52 @@ onMounted(async () => {
           placeholder="任务名称"
           :disabled="taskWriting"
         />
-        <a-select
-          v-model:value="form.evaluationMode"
+        <UiSelect
+          size="sm"
+          v-model="form.evaluationMode"
           placeholder="评价模式"
           style="width: 120px"
           :options="PORTFOLIO_EVALUATION_MODE_OPTIONS"
           :disabled="taskWriting"
         />
-        <a-select
+        <UiSelect
           v-if="form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON"
-          v-model:value="form.targetIndicatorCode"
+          v-model="form.targetIndicatorCode"
           placeholder="选择画像回流指标"
           style="width: 180px"
+          size="sm"
           :disabled="taskWriting"
-        >
-          <a-select-option
-            v-for="indicator in indicatorConfigs"
-            :key="indicator.indicatorCode"
-            :value="indicator.indicatorCode"
-          >
-            {{ indicator.indicatorName || indicator.indicatorCode }}
-          </a-select-option>
-        </a-select>
-        <a-select
-          v-model:value="form.workgroupId"
+          :options="indicatorConfigs.map((indicator) => ({
+            value: indicator.indicatorCode,
+            label: indicator.indicatorName || indicator.indicatorCode,
+          }))"
+        />
+        <UiSelect
+          v-model="form.workgroupId"
           placeholder="评价工作组"
           style="width: 200px"
           :disabled="taskWriting"
-        >
-          <a-select-option v-for="wg in workgroups" :key="wg.id" :value="wg.id">
-            {{ wg.workgroupName }}
-          </a-select-option>
-        </a-select>
-        <a-date-picker
-          v-model:value="form.startTime"
+          size="sm"
+          :options="workgroups.map((wg) => ({ value: wg.id, label: wg.workgroupName }))"
+        />
+        <UiDatePicker
+          size="sm"
+          v-model="form.startTime"
           value-format="YYYY-MM-DD HH:mm:ss"
-          show-time
+          :show-time="true"
           placeholder="开始时间"
           :disabled="taskWriting"
         />
-        <a-date-picker
-          v-model:value="form.endTime"
+        <UiDatePicker
+          size="sm"
+          v-model="form.endTime"
           value-format="YYYY-MM-DD HH:mm:ss"
-          show-time
+          :show-time="true"
           placeholder="结束时间"
           :disabled="taskWriting"
         />
         <UiButton
+          size="sm"
           variant="primary"
           :loading="taskOperationKey === 'create'"
           :disabled="taskWriting"
@@ -536,18 +556,26 @@ onMounted(async () => {
         </UiButton>
       </div>
       <div class="filter-row">
-        <a-select
-          v-model:value="query.taskStatus"
+        <UiSelect
+          size="sm"
+          v-model="query.taskStatus"
           allow-clear
           placeholder="任务状态"
           style="width: 120px"
           :options="PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS"
           @change="search"
         />
-        <UiButton :disabled="taskWriting" @click="search"> 查询 </UiButton>
+        <UiButton size="sm" :disabled="taskWriting" @click="search"> 查询 </UiButton>
       </div>
-      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无评价任务" />
+      <WorkbenchContextGateStrip
+        v-if="!loading && rows.length === 0"
+        tag="无任务"
+        body="当前筛选无评价任务；可在上方填写后创建，或调整筛选条件"
+        cta-label="创建任务"
+        @cta="createTask"
+      />
       <UiDataTable
+        v-else
         v-model:current="pageNum"
         v-model:page-size="pageSize"
         pagination-mode="server"
@@ -566,6 +594,14 @@ onMounted(async () => {
             <UiTag :tone="taskStatusTone(record.taskStatus)">
               {{ taskStatusLabel(record.taskStatus) }}
             </UiTag>
+          </template>
+          <template v-else-if="column.key === 'freeze'">
+            <UiTag :tone="record.freezeCompleted ? 'green' : 'gray'">
+              {{ record.freezeCompleted ? '已冻结' : '未冻结' }}
+            </UiTag>
+            <div v-if="record.freezeTime" class="text-xs text-[var(--dp-text-tertiary)]">
+              {{ record.freezeTime }}
+            </div>
           </template>
           <template v-else-if="column.key === 'workgroupId'">
             {{ workgroupName(record.workgroupId) }}
@@ -597,10 +633,11 @@ onMounted(async () => {
         </template>
       </UiDataTable>
     </UiCard>
-    <a-modal v-model:open="previewOpen" title="评价材料预览" width="720px" :footer="null">
+    <UiDialog v-model:open="previewOpen" title="评价材料预览" :width="720" hide-footer>
       <div class="evaluation-task-admin__preview-bar">
-        <a-select
-          v-model:value="previewTeacherId"
+        <UiSelect
+          size="sm"
+          v-model="previewTeacherId"
           placeholder="选择教师"
           :options="previewTeacherOptions"
           style="width: 240px"
@@ -608,6 +645,7 @@ onMounted(async () => {
           :disabled="returning"
         />
         <UiButton
+          size="sm"
           variant="primary"
           :loading="previewLoading"
           :disabled="returning"
@@ -644,7 +682,7 @@ onMounted(async () => {
             </template>
           </template>
         </UiDataTable>
-        <UiEmpty v-else description="暂无分类明细" />
+        <UiEmpty size="sm" v-else description="暂无分类明细" />
         <div v-if="previewNotice" class="evaluation-task-admin__notice">
           <div class="evaluation-task-admin__notice-meta">
             <span>材料通知</span>
@@ -654,21 +692,24 @@ onMounted(async () => {
             <span>截止：{{ previewNotice.dueTime ?? '—' }}</span>
           </div>
           <template v-if="canReturnNotice(previewNotice)">
-            <a-textarea
-              v-model:value="returnReason"
+            <UiTextarea
+              size="sm"
+              v-model="returnReason"
               :rows="3"
               placeholder="填写需补充的材料与原因"
               :disabled="returning"
             />
             <div class="evaluation-task-admin__return-actions">
-              <a-date-picker
-                v-model:value="returnDueTime"
+              <UiDatePicker
+                size="sm"
+                v-model="returnDueTime"
                 value-format="YYYY-MM-DD HH:mm:ss"
-                show-time
+                :show-time="true"
                 placeholder="补充截止时间"
                 :disabled="returning"
               />
               <UiButton
+                size="sm"
                 variant="outline"
                 status="warning"
                 :loading="returning"
@@ -682,9 +723,9 @@ onMounted(async () => {
             退回原因：{{ previewNotice.returnReason }}
           </p>
         </div>
-        <UiEmpty v-else description="该教师当前没有评价材料通知" />
+        <UiEmpty size="sm" v-else description="该教师当前没有评价材料通知" />
       </template>
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -699,7 +740,7 @@ onMounted(async () => {
 }
 .input {
   padding: 6px 8px;
-  border: 1px solid var(--ant-color-border);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
 }
 .input--wide {
@@ -715,12 +756,12 @@ onMounted(async () => {
 .evaluation-task-admin__preview-meta {
   margin: 0 0 12px;
   font-size: 13px;
-  color: var(--nybc-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 .evaluation-task-admin__notice {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid var(--ant-color-border-secondary);
+  border-top: 1px solid var(--dp-border-subtle);
 }
 .evaluation-task-admin__notice-meta,
 .evaluation-task-admin__return-actions {

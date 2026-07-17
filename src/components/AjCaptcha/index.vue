@@ -13,11 +13,11 @@
       <!-- 标题 -->
       <div class="captcha-header">
         <span class="captcha-title">请完成安全验证</span>
-        <a-button type="text" size="small" @click="refreshCaptcha">
+        <UiButton size="sm" variant="ghost" icon-only @click="refreshCaptcha">
           <template #icon>
             <ReloadOutlined />
           </template>
-        </a-button>
+        </UiButton>
       </div>
 
       <!-- 加载状态 -->
@@ -90,10 +90,10 @@
           <span class="word-list">{{ captchaData.wordList?.join(' ') }}</span>
         </div>
         <div class="click-word-actions">
-          <a-button size="small" @click="clearClickPoints"> 清除 </a-button>
-          <a-button size="small" type="primary" :loading="verifying" @click="verifyClickWord">
+          <UiButton size="sm" variant="outline" @click="clearClickPoints">清除</UiButton>
+          <UiButton size="sm" variant="primary" :loading="verifying" @click="verifyClickWord">
             确认
-          </a-button>
+          </UiButton>
         </div>
       </template>
 
@@ -115,6 +115,7 @@ import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import RightOutlined from '@ant-design/icons-vue/RightOutlined'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { checkCaptcha, getCaptcha } from '@/apis/auth'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { aesEncrypt } from '@/utils/crypto'
 import { getUserErrorMessage } from '@/utils/error-handler'
 

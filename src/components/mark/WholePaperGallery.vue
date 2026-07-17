@@ -16,10 +16,10 @@
         刷新影像
       </UiButton>
     </template>
-    <UiEmpty v-if="!loaded && !loading" description="正在加载扫描页…" />
-    <UiEmpty v-else-if="error" :description="scanPagesErrorText" />
-    <a-spin v-else :spinning="loading" tip="加载扫描页中...">
-      <UiEmpty v-if="loaded && pages.length === 0" description="暂无试卷页影像" />
+    <UiEmpty size="sm" v-if="!loaded && !loading" description="正在加载扫描页…" />
+    <UiEmpty size="sm" v-else-if="error" :description="scanPagesErrorText" />
+    <UiSpin v-else :spinning="loading" tip="加载扫描页中...">
+      <UiEmpty size="sm" v-if="loaded && pages.length === 0" description="暂无试卷页影像" />
       <div
         v-else
         ref="galleryViewportRef"
@@ -61,13 +61,14 @@
               :min-height="480"
               class="whole-paper-gallery__image"
             />
-            <UiEmpty v-else-if="imageErrors[item.page.pageId]" description="暂无试卷页影像" />
+            <UiEmpty size="sm" v-else-if="imageErrors[item.page.pageId]" description="暂无试卷页影像" />
             <div v-else class="whole-paper-gallery__image-placeholder">
-              <a-spin :spinning="Boolean(imageLoading[item.page.pageId])" />
+              <UiSpin :spinning="Boolean(imageLoading[item.page.pageId])" />
               <span>扫描页图片加载中</span>
             </div>
           </div>
-          <a-textarea
+          <UiTextarea
+            size="sm"
             v-if="showPageAnnotations"
             :value="pageAnnotations[item.page.pageId]"
             :rows="3"
@@ -75,7 +76,7 @@
             :disabled="readOnly"
             class="whole-paper-gallery__annotation"
             placeholder="页面级批注，可选"
-            show-count
+            :show-count="true"
             @update:value="
               (value: string) => emit('update:page-annotation', item.page.pageId, value)
             "
@@ -87,7 +88,7 @@
           :style="{ height: `${bottomSpacerHeight}px` }"
         />
       </div>
-    </a-spin>
+    </UiSpin>
   </UiCard>
 </template>
 
@@ -104,6 +105,8 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { buildConfidentialWatermarkLines } from '@/composables/useConfidentialWatermark'
 import { getUserProcessFailureMessage } from '@/utils/error-handler'
 
@@ -190,10 +193,10 @@ watch(
   &__page {
     margin-bottom: 16px;
     padding-bottom: 16px;
-    border-bottom: 1px solid var(--ant-color-border-secondary);
+    border-bottom: 1px solid var(--dp-border-subtle);
 
     &--active {
-      outline: 2px solid var(--ant-color-primary-border);
+      outline: 2px solid var(--dp-color-primary-border);
       outline-offset: 4px;
       border-radius: var(--dp-radius-control-inner);
     }
@@ -221,8 +224,8 @@ watch(
     align-items: center;
     justify-content: center;
     gap: 8px;
-    min-height: 240px;
-    background: var(--ant-color-fill-quaternary);
+    min-height: 200px;
+    background: var(--dp-fill-quaternary);
     border-radius: var(--dp-radius-control-inner);
   }
 

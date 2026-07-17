@@ -57,13 +57,13 @@ defineProps<{
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--dp-space-2, 8px);
   }
 
   &__hint-row {
     display: grid;
     grid-template-columns: 72px minmax(0, 1fr);
-    gap: 12px;
+    gap: var(--dp-space-3, 12px);
     font-size: 13px;
     line-height: 1.5;
 

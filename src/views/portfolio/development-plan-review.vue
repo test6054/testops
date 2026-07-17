@@ -17,7 +17,9 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -88,6 +90,7 @@ const filterFields = computed<FilterField[]>(() => [
 ])
 
 const loading = ref(false)
+const exporting = ref(false)
 const rows = ref<PortfolioDevelopmentPlanVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
@@ -219,10 +222,14 @@ async function confirmReview() {
 }
 
 async function exportPlans() {
+  if (exporting.value) {
+    return
+  }
   if (!filterForm.planYear) {
     showFormValidationMessage('请填写年度')
     return
   }
+  exporting.value = true
   try {
     const result = await portfolioDevelopmentPlanApi.exportExcel({
       planYear: filterForm.planYear,
@@ -231,6 +238,8 @@ async function exportPlans() {
     message.success('规划已导出')
   } catch (error) {
     showUserError(error, '导出发展规划失败')
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -261,7 +270,7 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" title="年度规划审核">
         <template v-if="canPickTeachers" #actions>
-          <UiButton @click="exportPlans"> 导出表格文件 </UiButton>
+          <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportPlans"> 导出表格文件 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -272,7 +281,7 @@ watch(
       @search="handleSearch"
     />
     <UiCard>
-      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无待审规划" />
+      <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="当前筛选无待审规划" />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -313,18 +322,19 @@ watch(
         </template>
       </UiDataTable>
     </UiCard>
-    <a-modal
+    <UiDialog
       v-model:open="reviewModalOpen"
       :title="reviewAction === 'approve' ? '科室审核通过' : '科室审核退回'"
       ok-text="确认"
       cancel-text="取消"
       @ok="confirmReview"
     >
-      <a-textarea
-        v-model:value="auditOpinion"
+      <UiTextarea
+        size="sm"
+        v-model="auditOpinion"
         :placeholder="reviewAction === 'return' ? '请填写退回意见' : '审核意见（可选）'"
         :rows="3"
       />
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>

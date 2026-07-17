@@ -16,20 +16,21 @@
       tone="info"
       :title="`当前目录：${catalogCode}${catalogName ? ` · ${catalogName}` : ''}`"
     />
-    <a-form layout="vertical" class="archive-volume-batch-register__form">
-      <a-form-item label="默认材料类型">
-        <a-select
-          v-model:value="defaultMaterialType"
+    <UiForm layout="vertical" class="archive-volume-batch-register__form">
+      <UiFormItem label="默认材料类型">
+        <UiSelect
+          size="sm"
+          v-model="defaultMaterialType"
           :options="ARCHIVE_MATERIAL_TYPE_OPTIONS"
           allow-clear
           placeholder="可为每行单独设置"
           style="width: 100%"
         />
-      </a-form-item>
-      <a-form-item label="默认自由标签" tooltip="应用于各行；可在表格中单独调整">
+      </UiFormItem>
+      <UiFormItem label="默认自由标签" tooltip="应用于各行；可在表格中单独调整">
         <ArchiveMaterialTagSelect v-model="defaultTags" :volume-id="volumeId" />
-      </a-form-item>
-      <a-form-item label="待登记文件" required>
+      </UiFormItem>
+      <UiFormItem label="待登记文件" required>
         <UiButton size="sm" variant="outline" @click="openFilePicker">添加文件</UiButton>
         <input
           ref="fileInputRef"
@@ -38,8 +39,8 @@
           class="sr-only"
           @change="handleFilesSelected"
         />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
     <UiDataTable
       v-if="rows.length > 0"
       pagination-mode="none"
@@ -53,8 +54,9 @@
     >
       <template #bodyCell="{ column, record, index }">
         <template v-if="column.key === 'materialType'">
-          <a-select
-            v-model:value="rows[index].materialType"
+          <UiSelect
+            size="sm"
+            v-model="rows[index].materialType"
             :options="ARCHIVE_MATERIAL_TYPE_OPTIONS"
             style="width: 100%"
           />
@@ -94,6 +96,9 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { normalizeMaterialTagsForRegister } from '@/utils/archive-material-tag'
@@ -182,6 +187,7 @@ function removeRow(uid: string) {
 }
 
 async function handleSubmit() {
+  if (submitting.value) return
   if (!props.volumeId) return
   if (rows.value.length === 0) {
     showFormValidationMessage('请添加至少一个文件')

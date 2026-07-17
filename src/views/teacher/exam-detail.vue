@@ -26,7 +26,6 @@
 
     <template v-if="detail && overviewSignalMetrics.length > 0" #signal>
       <SignalBand
-        variant="tiles"
         compact
         :metrics="overviewSignalMetrics"
         @metric-click="handleOverviewMetricClick"
@@ -43,7 +42,8 @@
 
     <UiEmpty
       v-else-if="!detail || !snapshot?.dashboardPanel"
-      description="当前没有可展示的考试概览"
+      size="sm"
+      description="考试概览暂不可用，请刷新或从考试列表重新进入"
       class="exam-overview__empty"
     />
 
@@ -378,6 +378,6 @@ onActivated(() => {
 }
 
 .exam-overview__empty {
-  padding: 48px 0;
+  padding: 20px 0;
 }
 </style>

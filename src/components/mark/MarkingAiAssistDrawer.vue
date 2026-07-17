@@ -1,5 +1,5 @@
 <template>
-  <a-drawer
+  <UiDrawer
     :open="open"
     title="本题 AI 历次执行记录"
     width="720"
@@ -7,10 +7,10 @@
     destroy-on-close
     @update:open="emit('update:open', $event)"
   >
-    <a-spin :spinning="loading" tip="加载 AI 历史...">
-      <UiEmpty v-if="!loading && executions.length === 0" description="暂无 AI 执行记录" />
-      <a-timeline v-else>
-        <a-timeline-item
+    <UiSpin :spinning="loading" tip="加载 AI 历史...">
+      <UiEmpty size="sm" v-if="!loading && executions.length === 0" description="暂无 AI 执行记录" />
+      <UiTimeline v-else>
+        <UiTimelineItem
           v-for="(item, index) in executions"
           :key="`${item.traceId}-${index}`"
           :color="timelineColor(item.status)"
@@ -68,10 +68,10 @@
               <strong>响应摘要：</strong>{{ item.responseSummary }}
             </div>
           </div>
-        </a-timeline-item>
-      </a-timeline>
-    </a-spin>
-  </a-drawer>
+        </UiTimelineItem>
+      </UiTimeline>
+    </UiSpin>
+  </UiDrawer>
 </template>
 
 <script lang="ts" setup>
@@ -89,6 +89,10 @@ import { AiProviderTypeDescription } from '@/apis/mark/exam-grade'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiTimeline from '@/components/ui-guide/ui/UiTimeline.vue'
+import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -209,8 +213,8 @@ watch(
   }
 
   &__item--highlight {
-    background: rgba(124, 58, 237, 0.08);
-    box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.28);
+    background: color-mix(in srgb, var(--dp-purple-500) 10%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--dp-purple-500) 28%, transparent);
     padding: 8px;
     margin: -8px;
   }

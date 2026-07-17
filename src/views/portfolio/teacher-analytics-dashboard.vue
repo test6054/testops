@@ -29,6 +29,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -221,11 +222,12 @@ onMounted(loadAll)
   <StageWorkbenchShell>
     <ContextBar title="师资分析看板" subtitle="院系结构 · 档案完整度 · 五框架 · 双师 · 外聘">
       <template #actions>
-        <UiButton :loading="loading" @click="loadAll">刷新</UiButton>
+        <UiButton size="sm" :loading="loading" @click="loadAll">刷新</UiButton>
       </template>
     </ContextBar>
-    <a-spin :spinning="loading">
+    <UiSpin :spinning="loading">
       <UiEmpty
+        size="sm"
         v-if="!loading && !deptStats && !dualStats && !externalStats && !schoolSummary"
         :description="loadFailed ? '师资分析数据加载失败' : '暂无师资分析数据'"
       />
@@ -420,14 +422,14 @@ onMounted(loadAll)
           />
         </UiCard>
       </div>
-    </a-spin>
+    </UiSpin>
   </StageWorkbenchShell>
 </template>
 
 <style scoped>
 .grid {
   display: grid;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 .analytics-completeness {
@@ -438,14 +440,14 @@ onMounted(loadAll)
 }
 .analytics-completeness__chip {
   padding: 4px 10px;
-  border: 1px solid var(--dp-border, #e8e8e8);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
   background: transparent;
   font-size: 13px;
   cursor: pointer;
 }
 .analytics-completeness__chip:hover {
-  border-color: var(--ant-color-primary);
-  color: var(--ant-color-primary);
+  border-color: var(--dp-color-primary);
+  color: var(--dp-color-primary);
 }
 </style>

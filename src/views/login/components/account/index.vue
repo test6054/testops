@@ -291,7 +291,7 @@ onMounted(() => {
 .account-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .remember-row {
@@ -304,13 +304,13 @@ onMounted(() => {
 
 .forgot-link {
   flex-shrink: 0;
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   font-size: 13px;
   line-height: 1.5;
   text-decoration: none;
 
   &:hover {
-    color: var(--ant-color-primary-hover, var(--ant-color-primary));
+    color: var(--dp-color-primary-hover, var(--dp-color-primary));
   }
 }
 

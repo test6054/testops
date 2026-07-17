@@ -6,6 +6,7 @@ import {
   AccreditationCycleStatusCode,
   ALL_ACCREDITATION_CYCLE_PHASE_CODES,
 } from '@/apis/quality/accreditation'
+import { ConfirmationStatusCode } from '@/apis/quality/types'
 import AccreditationAnnualPanel from '@/components/quality/accreditation/AccreditationAnnualPanel.vue'
 import AccreditationAnnualReportMaterialPanel from '@/components/quality/accreditation/AccreditationAnnualReportMaterialPanel.vue'
 import AccreditationCyclePanel from '@/components/quality/accreditation/AccreditationCyclePanel.vue'
@@ -14,16 +15,19 @@ import AccreditationOnsitePanel from '@/components/quality/accreditation/Accredi
 import AccreditationSupportPanel from '@/components/quality/accreditation/AccreditationSupportPanel.vue'
 import SelfAssessmentReportPanel from '@/components/quality/accreditation/SelfAssessmentReportPanel.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAccreditationWorkbench } from '@/composables/useAccreditationWorkbench'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { useQualityStore } from '@/stores/modules/quality'
 
 const {
   cockpit,
@@ -43,11 +47,35 @@ const {
   goImprovement,
 } = useAccreditationWorkbench()
 
+const qualityStore = useQualityStore()
 const router = useRouter()
+
+/** 认证正式办理要求培养方案已确认；未确认仅钉条 */
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!trainingPlanId.value) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
+
+const workbenchReady = computed(() => !planGateMode.value && hasScope.value)
+
 
 const professionDrawerOpen = ref(false)
 
 const activeTab = ref('cycle')
+const accTabItems = [
+  { key: 'cycle', label: '认证周期' },
+  { key: 'self-assessment', label: '自评报告' },
+  { key: 'annual', label: '年度评价' },
+  { key: 'annual-material', label: '年度报备材料' },
+  { key: 'onsite', label: '现场考查' },
+  { key: 'support', label: '师资与支持' },
+  { key: 'evidence', label: '专家材料证据' },
+]
 const evidenceCount = ref(0)
 
 const cyclePanelRef = ref<InstanceType<typeof AccreditationCyclePanel>>()
@@ -201,6 +229,17 @@ function openProfessionConfig(name: string) {
   void router.push({ name })
 }
 
+
+const accreditationMoreActionItems = computed(() => [
+  { key: 'refresh', label: '刷新', disabled: !workbenchReady.value || cockpitLoading.value },
+])
+
+function onAccreditationMoreAction(key: string) {
+  if (key === 'refresh') {
+    void refreshAll()
+  }
+}
+
 onMounted(refreshAll)
 useQualityScopedLoader(refreshAll, { watchScope: true, immediate: false, reloadOnActivated: false })
 
@@ -216,34 +255,32 @@ onActivated(() => {
     <template #context>
       <QualityPageContextBar show-title title="工程教育认证驾驶舱">
         <template #actions>
-          <UiButton
-            variant="outline"
-            size="sm"
-            :disabled="!hasScope"
-            :loading="cockpitLoading"
-            @click="refreshAll"
-          >
-            刷新
+          <UiButton variant="primary" size="sm" :disabled="!canCreateCycle" @click="onCreateCycle">
+            新建认证周期
           </UiButton>
           <UiButton
             variant="outline"
             size="sm"
-            :disabled="!hasScope"
+            :disabled="!workbenchReady"
             @click="professionDrawerOpen = true"
           >
             专业配置
           </UiButton>
-          <UiButton variant="outline" size="sm" :disabled="!hasScope" @click="goCourseMatrix">
+          <UiButton variant="outline" size="sm" :disabled="!workbenchReady" @click="goCourseMatrix">
             课程矩阵
           </UiButton>
-          <UiButton variant="primary" size="sm" :disabled="!canCreateCycle" @click="onCreateCycle">
-            新建认证周期
-          </UiButton>
+          <UiDropdownAction
+            trigger-style="button"
+            button-text="更多"
+            :disabled="!workbenchReady"
+            :items="accreditationMoreActionItems"
+            @select="onAccreditationMoreAction"
+          />
         </template>
       </QualityPageContextBar>
     </template>
 
-    <template v-if="hasScope" #rail>
+    <template v-if="workbenchReady" #rail>
       <StageRail
         :stages="phaseStages"
         :active-key="activeCycle?.currentPhase"
@@ -252,13 +289,13 @@ onActivated(() => {
       />
     </template>
 
-    <template v-if="hasScope" #signal>
+    <template v-if="workbenchReady" #signal>
       <SignalBand :metrics="signalMetrics" compact />
     </template>
 
-    <UiEmpty v-if="!hasScope" description="请选择专业与培养方案" class="acc-empty" />
+    <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="acc-empty" />
 
-    <template v-else>
+    <template v-else-if="workbenchReady">
       <WorkbenchSurfaceCard v-if="activeCycle" class="acc-standard-check">
         <template #head>
           <div class="acc-standard-check__head">
@@ -271,9 +308,9 @@ onActivated(() => {
                 已覆盖 {{ ceeaaPassedCount }}/{{ ceeaa2024CheckItems.length }}
               </UiTag>
               <UiButton
+                size="sm"
                 v-if="ceeaaPendingItems.length > 0"
                 variant="ghost"
-                size="sm"
                 @click="showAllCeeaaChecks = !showAllCeeaaChecks"
               >
                 {{
@@ -318,76 +355,74 @@ onActivated(() => {
         </div>
       </WorkbenchSurfaceCard>
 
-      <a-tabs v-model:active-key="activeTab" class="acc-tabs">
-        <a-tab-pane key="cycle" tab="认证周期">
-          <AccreditationCyclePanel
-            ref="cyclePanelRef"
-            :program-id="programId"
-            :training-plan-id="trainingPlanId"
-            :cockpit="cockpit"
-            @refresh="refreshAll"
-            @go-ai-report="goAiProgramReport"
-          />
-        </a-tab-pane>
-        <a-tab-pane key="self-assessment" tab="自评报告">
-          <SelfAssessmentReportPanel
-            :cockpit="cockpit"
-            :active-cycle="activeCycle"
-            :program-id="programId"
-            :training-plan-id="trainingPlanId"
-            @go-ai-report="goAiProgramReport"
-            @saved="refreshAll"
-          />
-        </a-tab-pane>
-        <a-tab-pane key="annual" tab="年度评价">
-          <AccreditationAnnualPanel
-            ref="annualPanelRef"
-            :program-id="programId"
-            :training-plan-id="trainingPlanId"
-            :active-cycle-id="activeCycleId"
-            @refresh="refreshAll"
-          />
-        </a-tab-pane>
-        <a-tab-pane key="annual-material" tab="年度报备材料">
-          <AccreditationAnnualReportMaterialPanel
-            ref="annualReportMaterialPanelRef"
-            :program-id="programId"
-            :training-plan-id="trainingPlanId"
-            :active-cycle="activeCycle"
-            :active-cycle-id="activeCycleId"
-            @refresh="refreshAll"
-          />
-        </a-tab-pane>
-        <a-tab-pane key="onsite" tab="现场考查">
-          <AccreditationOnsitePanel
-            ref="onsitePanelRef"
-            :program-id="programId"
-            :training-plan-id="trainingPlanId"
-            :active-cycle="activeCycle"
-            :active-cycle-id="activeCycleId"
-            @refresh="refreshAll"
-          />
-        </a-tab-pane>
-        <a-tab-pane key="support" tab="师资与支持">
-          <AccreditationSupportPanel
-            ref="supportPanelRef"
-            :program-id="programId"
-            :training-plan-id="trainingPlanId"
-            @refresh="refreshAll"
-          />
-        </a-tab-pane>
-        <a-tab-pane key="evidence" tab="专家材料证据">
-          <AccreditationEvidencePanel
-            ref="evidencePanelRef"
-            :program-id="programId"
-            :training-plan-id="trainingPlanId"
-            :active-cycle="activeCycle"
-            :cockpit="cockpit"
-            @count-change="evidenceCount = $event"
-            @exported="goArchive"
-          />
-        </a-tab-pane>
-      </a-tabs>
+      <UiSectionTabs
+        v-model="activeTab"
+        :items="accTabItems"
+        compact
+        divided
+        class="acc-tabs"
+      />
+      <AccreditationCyclePanel
+        v-if="activeTab === 'cycle'"
+        ref="cyclePanelRef"
+        :program-id="programId"
+        :training-plan-id="trainingPlanId"
+        :cockpit="cockpit"
+        @refresh="refreshAll"
+        @go-ai-report="goAiProgramReport"
+      />
+      <SelfAssessmentReportPanel
+        v-else-if="activeTab === 'self-assessment'"
+        :cockpit="cockpit"
+        :active-cycle="activeCycle"
+        :program-id="programId"
+        :training-plan-id="trainingPlanId"
+        @go-ai-report="goAiProgramReport"
+        @saved="refreshAll"
+      />
+      <AccreditationAnnualPanel
+        v-else-if="activeTab === 'annual'"
+        ref="annualPanelRef"
+        :program-id="programId"
+        :training-plan-id="trainingPlanId"
+        :active-cycle-id="activeCycleId"
+        @refresh="refreshAll"
+      />
+      <AccreditationAnnualReportMaterialPanel
+        v-else-if="activeTab === 'annual-material'"
+        ref="annualReportMaterialPanelRef"
+        :program-id="programId"
+        :training-plan-id="trainingPlanId"
+        :active-cycle="activeCycle"
+        :active-cycle-id="activeCycleId"
+        @refresh="refreshAll"
+      />
+      <AccreditationOnsitePanel
+        v-else-if="activeTab === 'onsite'"
+        ref="onsitePanelRef"
+        :program-id="programId"
+        :training-plan-id="trainingPlanId"
+        :active-cycle="activeCycle"
+        :active-cycle-id="activeCycleId"
+        @refresh="refreshAll"
+      />
+      <AccreditationSupportPanel
+        v-else-if="activeTab === 'support'"
+        ref="supportPanelRef"
+        :program-id="programId"
+        :training-plan-id="trainingPlanId"
+        @refresh="refreshAll"
+      />
+      <AccreditationEvidencePanel
+        v-else
+        ref="evidencePanelRef"
+        :program-id="programId"
+        :training-plan-id="trainingPlanId"
+        :active-cycle="activeCycle"
+        :cockpit="cockpit"
+        @count-change="evidenceCount = $event"
+        @exported="goArchive"
+      />
     </template>
 
     <UiDrawer v-model:open="professionDrawerOpen" title="专业配置" :width="420" :hide-footer="true">
@@ -438,7 +473,7 @@ onActivated(() => {
   width: 200px;
 }
 .acc-empty {
-  margin: 48px 0;
+  margin: var(--dp-space-4) 0;
 }
 .acc-standard-check {
   margin-bottom: 12px;
@@ -494,7 +529,7 @@ onActivated(() => {
   transition: border-color 0.2s ease;
 }
 .acc-standard-check__item--actionable:hover {
-  border-color: var(--ant-color-primary-border);
+  border-color: var(--dp-color-primary-border);
 }
 .acc-standard-check__label {
   font-weight: 600;
@@ -508,7 +543,7 @@ onActivated(() => {
   grid-column: 1 / -1;
   font-size: 12px;
   font-weight: 600;
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
 }
 .acc-course-coverage {
   display: flex;
@@ -527,8 +562,8 @@ onActivated(() => {
 .acc-course-coverage__item {
   padding: 2px 8px;
   border-radius: var(--dp-radius-full);
-  background: color-mix(in srgb, var(--ant-color-success) 12%, transparent);
-  color: var(--ant-color-success);
+  background: color-mix(in srgb, var(--dp-success) 12%, transparent);
+  color: var(--dp-success);
 }
 .acc-tabs :deep(.ant-tabs-nav) {
   margin-bottom: 12px;

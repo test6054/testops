@@ -5,8 +5,8 @@ import type {
   PortfolioDualTeacherEligibilityFreezeVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message, Modal } from 'ant-design-vue'
-import { computed, onMounted, ref } from 'vue'
+import { message } from 'ant-design-vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDualTeacherApplicationStatusCode,
@@ -16,7 +16,9 @@ import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -26,7 +28,7 @@ import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess
 import { useQueryTable } from '@/composables/useQueryTable'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -39,6 +41,18 @@ const previewingId = ref('')
 const workflowId = ref('')
 const exporting = ref(false)
 const writing = computed(() => Boolean(previewingId.value || workflowId.value) || exporting.value)
+/** 退回/驳回意见弹窗：负向决策必须填写意见后提交 */
+const opinionModal = reactive({
+  open: false,
+  action: '' as
+  | 'collegeReturn'
+  | 'academicReturn'
+  | 'academicReject'
+  | '',
+  id: '',
+  title: '',
+  opinion: '',
+})
 /** 双师院审：受管教研室负责人或租户全校范围（与后端 assertCanCollegeReviewDualTeacher 一致） */
 const canCollegeReview = computed(() => {
   const scope = accessScope.value
@@ -114,9 +128,12 @@ function canCollegeApprove(record: PortfolioDualTeacherApplicationVO): boolean {
 
 function showEligibilityPreviewModal(preview: PortfolioDualTeacherEligibilityFreezeVO) {
   const gapText = preview.gapItems?.length ? preview.gapItems.join('；') : '无缺口项'
-  Modal.info({
+  void confirmAsync({
     title: preview.eligible ? '认定资格：满足' : '认定资格：未满足',
     content: `${preview.explainText ?? ''}\n缺口：${gapText}`,
+    type: 'info',
+    hideCancel: true,
+    okText: '知道了',
   })
 }
 
@@ -166,10 +183,19 @@ function buildDualTeacherRowActions(
     actions.push({ key: 'academicReturn', label: '教务退回' })
     actions.push({ key: 'academicReject', label: '教务驳回', tone: 'danger' })
   }
-  return actions.map((action) => ({
-    ...action,
-    disabled: action.disabled || writing.value,
-  }))
+  // 行内仅 1 个 primary（院审通过优先于教务通过）
+  let primaryUsed = false
+  return actions.map((action) => {
+    const next = { ...action, disabled: action.disabled || writing.value }
+    if (next.tone === 'primary') {
+      if (primaryUsed) {
+        delete next.tone
+      } else {
+        primaryUsed = true
+      }
+    }
+    return next
+  })
 }
 
 type DualTeacherWorkflowAction
@@ -185,7 +211,57 @@ function handleDualTeacherRowAction(key: string, record: PortfolioDualTeacherApp
     void previewEligibility(record.id)
     return
   }
+  if (key === 'collegeReturn' || key === 'academicReturn' || key === 'academicReject') {
+    openOpinionModal(key, record.id)
+    return
+  }
   void runWorkflow(key as DualTeacherWorkflowAction, record.id)
+}
+
+function openOpinionModal(
+  action: 'collegeReturn' | 'academicReturn' | 'academicReject',
+  id: string,
+) {
+  if (writing.value) {
+    return
+  }
+  opinionModal.open = true
+  opinionModal.action = action
+  opinionModal.id = id
+  opinionModal.opinion = ''
+  if (action === 'collegeReturn') {
+    opinionModal.title = '院审退回'
+  } else if (action === 'academicReturn') {
+    opinionModal.title = '教务退回补正'
+  } else {
+    opinionModal.title = '教务驳回'
+  }
+}
+
+async function confirmOpinionModal() {
+  if (!opinionModal.action || !opinionModal.id) {
+    return Promise.reject(new Error('缺少审核动作或申请 ID'))
+  }
+  if (!opinionModal.opinion.trim()) {
+    showFormValidationMessage('请填写审核意见')
+    return Promise.reject(new Error('审核意见为空'))
+  }
+  const action = opinionModal.action
+  const id = opinionModal.id
+  const auditOpinion = opinionModal.opinion.trim()
+  if (action === 'academicReject') {
+    const confirmed = await confirmAsync({
+      title: '确认驳回双师认定',
+      content: '驳回后本次申请终止，教师须重新发起认定申请。',
+      type: 'warning',
+      okText: '确认驳回',
+    })
+    if (!confirmed || writing.value) {
+      return Promise.reject(new Error('用户取消驳回或写入中'))
+    }
+  }
+  opinionModal.open = false
+  await runWorkflow(action, id, auditOpinion)
 }
 
 async function runWorkflow(
@@ -197,35 +273,25 @@ async function runWorkflow(
     | 'academicReturn'
     | 'academicReject',
   id: string,
+  auditOpinion?: string,
 ) {
   if (writing.value) {
     return
-  }
-  if (action === 'academicReject') {
-    const confirmed = await confirmAsync({
-      title: '确认驳回双师认定',
-      content: '驳回后本次申请终止，教师须重新发起认定申请。',
-      type: 'warning',
-      okText: '确认驳回',
-    })
-    if (!confirmed || writing.value) {
-      return
-    }
   }
   workflowId.value = id
   try {
     if (action === 'submit') {
       await portfolioDualTeacherApi.submit({ id })
     } else if (action === 'collegeApprove') {
-      await portfolioDualTeacherApi.collegeApprove({ id })
+      await portfolioDualTeacherApi.collegeApprove({ id, auditOpinion })
     } else if (action === 'collegeReturn') {
-      await portfolioDualTeacherApi.collegeReturn({ id })
+      await portfolioDualTeacherApi.collegeReturn({ id, auditOpinion })
     } else if (action === 'academicApprove') {
-      await portfolioDualTeacherApi.academicApprove({ id })
+      await portfolioDualTeacherApi.academicApprove({ id, auditOpinion })
     } else if (action === 'academicReturn') {
-      await portfolioDualTeacherApi.academicReturn({ id })
+      await portfolioDualTeacherApi.academicReturn({ id, auditOpinion })
     } else {
-      await portfolioDualTeacherApi.academicReject({ id })
+      await portfolioDualTeacherApi.academicReject({ id, auditOpinion })
     }
     collegeEligibilityById.value = {}
     message.success('操作成功')
@@ -339,5 +405,20 @@ async function handleImportSuccess() {
         </template>
       </UiDataTable>
     </WorkbenchSurfaceCard>
+    <UiDialog
+      v-model:open="opinionModal.open"
+      :title="opinionModal.title"
+      ok-text="确认"
+      cancel-text="取消"
+      :confirm-loading="writing"
+      @ok="confirmOpinionModal"
+    >
+      <UiTextarea
+        size="sm"
+        v-model="opinionModal.opinion"
+        :rows="3"
+        placeholder="请填写审核意见（必填）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>

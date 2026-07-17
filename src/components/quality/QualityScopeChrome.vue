@@ -16,6 +16,7 @@ import {
 } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { useQualityScopeProfile } from '@/composables/useQualityScopeProfile'
 import { useQualityStore } from '@/stores/modules/quality'
 import { parseSemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
@@ -222,26 +223,28 @@ onMounted(() => {
       <UiButton variant="outline" size="sm" @click="goSelectPlan"> 去培养方案工作台 </UiButton>
     </template>
     <template v-else>
-      <a-select
+      <UiSelect
         v-if="showPeriod"
-        :value="qualityStore.currentSchoolYear || undefined"
+        :model-value="qualityStore.currentSchoolYear || undefined"
         placeholder="学年"
         class="quality-scope-chrome__select quality-scope-chrome__select--year"
+        size="sm"
         allow-clear
-        show-search
+        allow-search
         option-filter-prop="label"
         :options="schoolYearOptions"
-        @update:value="handleSchoolYearChange"
+        @update:model-value="handleSchoolYearChange"
       />
-      <a-select
+      <UiSelect
         v-if="showPeriod"
-        :value="qualityStore.currentSemester || undefined"
+        :model-value="qualityStore.currentSemester || undefined"
         placeholder="学期"
         class="quality-scope-chrome__select quality-scope-chrome__select--semester"
+        size="sm"
         allow-clear
         :disabled="!qualityStore.currentSchoolYear.trim()"
         :options="[...SemesterOptions]"
-        @update:value="handleSemesterChange"
+        @update:model-value="handleSemesterChange"
       />
       <CourseSelector
         v-if="showCourse"

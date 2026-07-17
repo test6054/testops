@@ -40,10 +40,10 @@
       </ContextBar>
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="audit-trail__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="audit-trail__empty" />
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand variant="tiles" compact :metrics="auditSignalMetrics" />
+      <SignalBand compact :metrics="auditSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="selectedExamId && isExamWorkspaceRoute" />
@@ -95,17 +95,17 @@
               </span>
             </template>
             <template v-else-if="column.key === 'targetLabel'">
-              <a-tooltip :title="operationLogs[index].targetLabel">
+              <UiTooltip :title="operationLogs[index].targetLabel" popup-mount="body">
                 <span>{{ operationLogs[index].targetLabel }}</span>
-              </a-tooltip>
+              </UiTooltip>
             </template>
             <template v-else-if="column.key === 'createTime'">
               {{ formatDateTimeWithSeconds(operationLogs[index].createTime) }}
             </template>
             <template v-else-if="column.key === 'reason'">
-              <a-tooltip :title="operationLogs[index].reason">
+              <UiTooltip :title="operationLogs[index].reason" popup-mount="body">
                 <span>{{ operationLogs[index].reason }}</span>
-              </a-tooltip>
+              </UiTooltip>
             </template>
           </template>
         </UiDataTable>
@@ -119,12 +119,12 @@
           @search="searchIncidents"
         >
           <template #field-unresolvedOnly="{ update }">
-            <a-checkbox
+            <UiCheckbox
               :checked="Boolean(incidentFilter.unresolvedOnly)"
               @update:checked="(checked: boolean) => update(checked)"
             >
               仅未解决
-            </a-checkbox>
+            </UiCheckbox>
           </template>
         </UiFilterBar>
 
@@ -171,12 +171,12 @@
               {{ formatDateTimeWithSeconds(incidents[index].resolvedTime) }}
             </template>
             <template v-else-if="column.key === 'detail'">
-              <a-typography-paragraph
+              <UiTypographyParagraph
                 v-if="incidents[index].detail"
                 :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
               >
                 {{ incidents[index].detail }}
-              </a-typography-paragraph>
+              </UiTypographyParagraph>
               <span v-else class="muted">-</span>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -234,12 +234,12 @@
               {{ formatDateTimeWithSeconds(record.createTime) }}
             </template>
             <template v-else-if="column.key === 'diagnostic'">
-              <a-typography-paragraph
+              <UiTypographyParagraph
                 v-if="record.diagnostic"
                 :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
               >
                 {{ record.diagnostic }}
-              </a-typography-paragraph>
+              </UiTypographyParagraph>
               <span v-else class="muted">-</span>
             </template>
           </template>
@@ -248,7 +248,7 @@
     </WorkbenchSurfaceCard>
 
     <!-- 解决事件弹窗 -->
-    <a-modal
+    <UiDialog
       v-model:open="resolveModalOpen"
       title="解决重大事件"
       :confirm-loading="resolving"
@@ -257,21 +257,22 @@
       :width="560"
       @ok="submitResolve"
     >
-      <a-form layout="vertical">
-        <a-form-item label="事件摘要">
+      <UiForm layout="vertical">
+        <UiFormItem label="事件摘要">
           <span>{{ resolvingIncident?.summary }}</span>
-        </a-form-item>
-        <a-form-item label="处置说明" required>
-          <a-textarea
-            v-model:value="resolveNote"
+        </UiFormItem>
+        <UiFormItem label="处置说明" required>
+          <UiTextarea
+            size="sm"
+            v-model="resolveNote"
             :rows="4"
             placeholder="请说明事件处置过程与结论（5-500 字）"
             :maxlength="500"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -321,13 +322,20 @@ import {
 } from '@/apis/mark/incident-record'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
+import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -595,7 +603,7 @@ function openResolveModal(incident: ExamIncidentRecord) {
 }
 
 async function submitResolve() {
-  if (!resolvingIncident.value) return
+  if (resolving.value || !resolvingIncident.value) return
   const note = resolveNote.value.trim()
   if (note.length < 5) {
     message.warning('处置说明至少 5 个字')
@@ -785,7 +793,7 @@ onActivated(() => {
   }
 
   &__empty {
-    padding: 48px 0;
+    padding: 20px 0;
   }
 
   &__hint {

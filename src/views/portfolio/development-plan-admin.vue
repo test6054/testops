@@ -20,7 +20,7 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { ReloadOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons-vue'
-import { message, Modal } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
@@ -43,11 +43,23 @@ import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImp
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { useQueryTable } from '@/composables/useQueryTable'
@@ -221,6 +233,9 @@ async function loadHistorySyncConfig() {
 }
 
 async function saveHistorySyncConfig() {
+  if (historyConfigSaving.value) {
+    return
+  }
   if (
     historySyncForm.yearFrom < minimumHistoryYear
     || historySyncForm.yearTo > maximumHistoryYear
@@ -269,6 +284,8 @@ async function saveHistorySyncConfig() {
     message.success('历史规划同步设置已保存')
   } catch (error) {
     showUserError(error, '保存历史规划同步设置失败')
+  } finally {
+    historyConfigSaving.value = false
   }
 }
 
@@ -317,12 +334,12 @@ function handleHistoryBatchAction(
   if (key !== 'rollback' || !canRollbackHistoryBatch(record.batchStatus)) {
     return
   }
-  Modal.confirm({
+  void confirmAsync({
     title: '回滚历史规划导入批次',
     content: `确认回滚批次「${record.batchNo}」？本批次导入的历史规划及明细将被删除。`,
     okText: '确认回滚',
-    okType: 'danger',
     cancelText: '取消',
+    type: 'error',
     async onOk() {
       historyRollbackBatchId.value = record.id
       try {
@@ -354,51 +371,24 @@ const historyBatchDiagnosticColumns: ColumnsType<ExcelImportRowDiagnostic> = [
 ]
 
 const historyBatchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() => {
-  const raw = historyBatchDetail.value?.errorReportJson
-  if (!raw) {
+  const report = historyBatchDetail.value?.errorReport
+  if (!report?.length) {
     return []
   }
-  try {
-    const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed)) {
-      return [{ rowIndex: 1, valid: false, invalidReason: '导入错误报告格式异常' }]
+  const diagnostics: ExcelImportRowDiagnostic[] = []
+  report.forEach((item, index) => {
+    const message = item.message?.trim() || '导入失败'
+    const errorCode = item.conflictAction
+    if (item.rowIndexes?.length) {
+      item.rowIndexes.forEach((rowIndex) => {
+        diagnostics.push({ rowIndex, valid: false, invalidReason: message, errorCode })
+      })
+      return
     }
-    const diagnostics: ExcelImportRowDiagnostic[] = []
-    parsed.forEach((item, index) => {
-      if (typeof item !== 'object' || item === null) {
-        diagnostics.push({
-          rowIndex: index + 1,
-          valid: false,
-          invalidReason: '导入错误报告明细格式异常',
-        })
-        return
-      }
-      const message
-        = 'message' in item && typeof item.message === 'string' ? item.message : '导入失败'
-      const errorCode
-        = 'conflictAction' in item && typeof item.conflictAction === 'string'
-          ? item.conflictAction
-          : undefined
-      const rowIndexes
-        = 'rowIndexes' in item && Array.isArray(item.rowIndexes)
-          ? (item.rowIndexes as unknown[]).filter(
-              (rowIndex: unknown): rowIndex is number => typeof rowIndex === 'number',
-            )
-          : []
-      if (rowIndexes.length) {
-        rowIndexes.forEach((rowIndex: number) => {
-          diagnostics.push({ rowIndex, valid: false, invalidReason: message, errorCode })
-        })
-        return
-      }
-      const rowIndex
-        = 'rowIndex' in item && typeof item.rowIndex === 'number' ? item.rowIndex : -(index + 1)
-      diagnostics.push({ rowIndex, valid: false, invalidReason: message, errorCode })
-    })
-    return diagnostics
-  } catch {
-    return [{ rowIndex: 1, valid: false, invalidReason: '导入错误报告不是合法结构化文本' }]
-  }
+    const rowIndex = typeof item.rowIndex === 'number' ? item.rowIndex : -(index + 1)
+    diagnostics.push({ rowIndex, valid: false, invalidReason: message, errorCode })
+  })
+  return diagnostics
 })
 
 const { loadTree, portfolioOrgOptions } = usePortfolioOrgTree()
@@ -407,7 +397,24 @@ const route = useRoute()
 
 const showAdminStats = computed(() => canPickTeachers.value)
 
+const planTabItems = computed(() => {
+  const items: Array<{ key: string, label: string }> = [
+    { key: 'plans', label: '规划管理' },
+    { key: 'items', label: '规划明细' },
+  ]
+  if (showAdminStats.value) {
+    items.push(
+      { key: 'completion', label: '完成度分析' },
+      { key: 'org-stats', label: '科室统计' },
+      { key: 'history-import', label: '历史规划导入' },
+    )
+  }
+  return items
+})
+
 const activeTab = ref('plans')
+const exporting = ref(false)
+const submitting = ref(false)
 const pageRequestToken = ref(0)
 const yearStats = ref<PortfolioDevelopmentPlanYearStatVO[]>([])
 const orgStats = ref<PortfolioDevelopmentPlanOrgStatVO[]>([])
@@ -749,6 +756,10 @@ function handleDevelopmentPlanAction(key: string, record: PortfolioDevelopmentPl
 }
 
 async function submitPlan(id: string) {
+  if (submitting.value) {
+    return
+  }
+  submitting.value = true
   try {
     const items = await portfolioDevelopmentPlanApi.listItems({ planId: id })
     if (!items.length) {
@@ -760,6 +771,8 @@ async function submitPlan(id: string) {
     await loadPage()
   } catch (error) {
     showUserError(error, '提交规划失败')
+  } finally {
+    submitting.value = false
   }
 }
 
@@ -769,6 +782,10 @@ function orgStatRowKey(record: unknown): string {
 }
 
 async function exportPlans() {
+  if (exporting.value) {
+    return
+  }
+  exporting.value = true
   try {
     const result = await portfolioDevelopmentPlanApi.exportExcel({
       planYear: form.planYear,
@@ -778,6 +795,8 @@ async function exportPlans() {
     message.success('规划已导出')
   } catch (error) {
     showUserError(error, '导出规划失败')
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -858,6 +877,9 @@ function removePlanItemRow(index: number) {
 }
 
 async function savePlanItems() {
+  if (itemSaving.value) {
+    return
+  }
   if (!selectedPlanId.value) {
     showFormValidationMessage('请选择规划')
     return
@@ -891,6 +913,8 @@ async function savePlanItems() {
     await loadPlanItems()
   } catch (error) {
     showUserError(error, '保存规划明细失败')
+  } finally {
+    itemSaving.value = false
   }
 }
 
@@ -974,7 +998,7 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" title="教师年度规划">
         <template v-if="showAdminStats" #actions>
-          <UiButton @click="exportPlans"> 导出表格文件 </UiButton>
+          <UiButton size="sm" variant="ghost" :loading="exporting" :disabled="exporting" @click="exportPlans"> 导出表格文件 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -989,433 +1013,491 @@ watch(
           step="1"
           placeholder="年度"
         />
-        <UiButton @click="loadPage"> 刷新 </UiButton>
+        <UiButton size="sm" variant="outline" @click="loadPage"> 刷新 </UiButton>
         <span v-if="showAdminStats" class="stats">{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span>
       </div>
-      <a-tabs v-model:active-key="activeTab">
-        <a-tab-pane key="plans" tab="规划管理">
-          <UiCard title="新建规划">
-            <div class="form-row">
-              <input v-model="form.planTitle" class="input input--wide" placeholder="规划标题" />
-              <a-select
-                v-model:value="form.portfolioOrgId"
-                placeholder="归属科室"
-                style="width: 220px"
-                :options="portfolioOrgOptions()"
+      <UiSectionTabs
+        v-model="activeTab"
+        :items="planTabItems"
+        compact
+        divided
+      />
+      <template v-if="activeTab === 'plans'">
+        <UiCard title="新建规划">
+          <div class="form-row">
+            <input v-model="form.planTitle" class="input input--wide" placeholder="规划标题" />
+            <UiSelect
+              size="sm"
+              v-model="form.portfolioOrgId"
+              placeholder="归属科室"
+              style="width: 220px"
+              :options="portfolioOrgOptions()"
+            />
+            <UiButton size="sm" variant="primary" @click="createPlan"> 创建 </UiButton>
+          </div>
+        </UiCard>
+        <WorkbenchContextGateStrip
+          v-if="!loading && rows.length === 0"
+          tag="无规划"
+          body="当前筛选无发展规划；可在上方新建规划，或调整筛选"
+          hide-cta
+        />
+        <UiDataTable
+          v-else
+          v-model:current="pageNum"
+          v-model:page-size="pageSize"
+          pagination-mode="server"
+          :total="pageTotal"
+          :columns="columns"
+          :data-source="rows"
+          :loading="loading"
+          row-key="id"
+          :row-class-name="planRowClassName"
+          style="margin-top: 16px"
+          @page-change="handlePageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'planType'">
+              {{ planTypeLabel(record.planType) }}
+            </template>
+            <template v-else-if="column.key === 'planStatus'">
+              <UiTag :tone="planStatusTone(record.planStatus)">
+                {{ planStatusLabel(record.planStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="buildDevelopmentPlanRowActions(record)"
+                split
+                @action="(key) => handleDevelopmentPlanAction(key, record)"
               />
-              <UiButton variant="primary" @click="createPlan"> 创建 </UiButton>
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else-if="activeTab === 'items'">
+        <div class="toolbar">
+          <UiSelect
+            size="sm"
+            v-model="selectedPlanId"
+            placeholder="选择规划"
+            style="width: 320px"
+            :options="planOptions"
+            @change="loadPlanItems"
+          />
+          <UiButton size="sm" variant="outline" :disabled="!selectedPlanId" @click="loadPlanItems"> 刷新明细 </UiButton>
+          <UiButton v-if="planItemEditable" size="sm" variant="outline" @click="addPlanItemRow"> 新增行 </UiButton>
+          <UiButton
+            v-if="planItemEditable"
+            size="sm"
+            variant="primary"
+            :disabled="!selectedPlanId || itemSaving"
+            @click="savePlanItems"
+          >
+            保存明细
+          </UiButton>
+        </div>
+        <UiAlertStrip
+          v-if="!selectedPlanId"
+          tone="info"
+          size="sm"
+          dense
+          inline
+          :show-icon="false"
+        >
+          <template #default>
+            <span style="display:inline-flex;align-items:center;gap:8px">
+              <UiTag tone="blue" size="sm">未选择规划</UiTag>
+              <span>请选择发展规划后再编辑明细项</span>
+            </span>
+          </template>
+        </UiAlertStrip>
+        <UiDataTable
+          v-else
+          pagination-mode="none"
+          :columns="itemColumns"
+          :data-source="planItems"
+          :loading="itemLoading"
+          row-key="rowKey"
+          :show-pagination="false"
+          :sticky-header="false"
+          flat
+          style="margin-top: 16px"
+        >
+          <template #bodyCell="{ column, record, index }">
+            <template v-if="column.key === 'itemTitle'">
+              <input
+                v-if="planItemEditable"
+                v-model="record.itemTitle"
+                class="input input--cell"
+              />
+              <span v-else>{{ record.itemTitle }}</span>
+            </template>
+            <template v-else-if="column.key === 'itemGoal'">
+              <input
+                v-if="planItemEditable"
+                v-model="record.itemGoal"
+                class="input input--cell"
+              />
+              <span v-else>{{ record.itemGoal || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'indicatorCode'">
+              <UiSelect
+                size="sm"
+                v-if="planItemEditable"
+                v-model="record.indicatorCode"
+                style="width: 100%"
+                allow-clear
+                allow-search
+                option-filter-prop="label"
+                :options="indicatorOptions"
+                placeholder="选择指标"
+              />
+              <span v-else>{{ record.indicatorCode || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'achievementCatalog'">
+              <UiSelect
+                size="sm"
+                v-if="planItemEditable"
+                v-model="record.catalogId"
+                style="width: 100%"
+                allow-clear
+                allow-search
+                option-filter-prop="label"
+                :loading="achievementCatalogLoading"
+                :options="achievementCatalogOptions"
+                placeholder="选择成果模板"
+              />
+              <div v-else class="development-plan-admin__achievement-cell">
+                <span>{{ record.catalogName || '未关联' }}</span>
+                <UiTag
+                  v-if="record.achievementLinkStatus"
+                  :tone="record.achievementLinkStatus === 'LOCKED' ? 'green' : 'blue'"
+                >
+                  {{ record.achievementLinkStatus === 'LOCKED' ? '已锁定' : '草稿关联' }}
+                </UiTag>
+                <span v-if="record.achievementCompletionRate != null">完成度 {{ record.achievementCompletionRate }}%</span>
+              </div>
+            </template>
+            <template v-else-if="column.key === 'milestoneText'">
+              <input
+                v-if="planItemEditable"
+                v-model="record.milestoneText"
+                class="input input--cell"
+              />
+              <span v-else>{{ record.milestoneText || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'completionPercent'">
+              <input
+                v-if="planItemEditable"
+                v-model.number="record.completionPercent"
+                type="number"
+                class="input input--cell input--short"
+              />
+              <span v-else>{{ record.completionPercent ?? '0' }}%</span>
+            </template>
+            <template v-else-if="column.key === 'itemStatus'">
+              <UiSelect
+                size="sm"
+                v-if="planItemEditable"
+                v-model="record.itemStatus"
+                style="width: 100%"
+                :options="PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS"
+              />
+              <UiTag v-else tone="blue">
+                {{
+                  strictEnumLabel(
+                    PortfolioDevelopmentPlanItemStatusDescription,
+                    record.itemStatus,
+                    '规划明细状态',
+                  )
+                }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'itemActions'">
+              <div class="development-plan-admin__item-actions">
+                <UiButton
+                  v-if="planItemEditable && record.id && record.catalogId"
+                  size="sm"
+                  :loading="achievementOperationItemId === record.id"
+                  @click="linkAchievement(record)"
+                >
+                  关联
+                </UiButton>
+                <UiButton
+                  v-if="record.id && record.catalogId"
+                  size="sm"
+                  @click="openAchievementGap(record)"
+                >
+                  差距
+                </UiButton>
+                <UiButton v-if="planItemEditable" size="sm" @click="removePlanItemRow(index)">
+                  删除
+                </UiButton>
+              </div>
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else-if="showAdminStats && activeTab === 'completion'">
+        <div v-if="completion" class="completion-grid">
+          <span>规划总数 {{ completion.totalPlanCount }}</span>
+          <span>已通过 {{ completion.approvedPlanCount }}</span>
+          <span>待审 {{ completion.pendingPlanCount }}</span>
+          <span>退回 {{ completion.returnedPlanCount }}</span>
+          <span>审批完成率 {{ completion.completionRatePercent }}%</span>
+          <span>明细项 {{ completion.completedPlanItemCount }}/{{
+            completion.totalPlanItemCount
+          }}</span>
+          <span>明细完成率 {{ completion.planItemCompletionRatePercent }}%</span>
+          <span>平均完成度 {{ completion.averageItemCompletionPercent }}%</span>
+        </div>
+        <UiDataTable
+          pagination-mode="none"
+          :columns="[
+            { title: '成果分类', dataIndex: 'categoryCode', key: 'categoryCode' },
+            { title: '条目数', dataIndex: 'recordCount', key: 'recordCount', width: 88 },
+          ]"
+          :data-source="attainment"
+          :loading="loading"
+          row-key="categoryCode"
+          :show-pagination="false"
+          :sticky-header="false"
+          flat
+          style="margin-top: 16px"
+        />
+      </template>
+      <template v-else-if="showAdminStats && activeTab === 'org-stats'">
+        <UiDataTable
+          pagination-mode="none"
+          :columns="orgColumns"
+          :data-source="orgStats"
+          :loading="loading"
+          :row-key="orgStatRowKey"
+          :show-pagination="false"
+          :sticky-header="false"
+          flat
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'orgName'">
+              {{ record.orgName || '未挂接科室' }}
+            </template>
+            <template v-else-if="column.key === 'planStatus'">
+              <UiTag :tone="planStatusTone(record.planStatus)">
+                {{ planStatusLabel(record.planStatus) }}
+              </UiTag>
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else-if="showAdminStats && activeTab === 'history-import'">
+        <section class="history-settings" aria-labelledby="history-settings-title">
+          <div class="history-section-heading">
+            <div>
+              <h3 id="history-settings-title">同步设置</h3>
+              <p v-if="historySyncConfig?.updateTime">
+                最近更新 {{ historySyncConfig.updateTime }}
+              </p>
             </div>
-          </UiCard>
-          <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无发展规划" />
+            <UiSwitch
+              size="sm"
+              v-model="historySyncForm.enabled"
+              checked-children="启用"
+              un-checked-children="停用"
+              :disabled="historyWriteBusy"
+            />
+          </div>
+          <UiForm layout="vertical" class="history-settings-grid">
+            <UiFormItem label="起始年度" required>
+              <UiInputNumber
+                size="sm"
+                v-model="historySyncForm.yearFrom"
+                :min="minimumHistoryYear"
+                :max="maximumHistoryYear"
+                :disabled="historyWriteBusy"
+                style="width: 100%"
+              />
+            </UiFormItem>
+            <UiFormItem label="结束年度" required>
+              <UiInputNumber
+                size="sm"
+                v-model="historySyncForm.yearTo"
+                :min="minimumHistoryYear"
+                :max="maximumHistoryYear"
+                :disabled="historyWriteBusy"
+                style="width: 100%"
+              />
+            </UiFormItem>
+            <UiFormItem label="组织范围" required>
+              <UiSelect
+                size="sm"
+                v-model="historySyncForm.orgScopeType"
+                :options="historyOrgScopeOptions"
+                :disabled="historyWriteBusy"
+              />
+            </UiFormItem>
+            <UiFormItem
+              v-if="historySyncForm.orgScopeType === PortfolioPlanningSyncOrgScopeCode.ORG_UNIT"
+              label="指定组织"
+              required
+            >
+              <UiSelect
+                size="sm"
+                v-model="historySyncForm.portfolioOrgId"
+                allow-search
+                option-filter-prop="label"
+                :options="portfolioOrgOptions()"
+                :disabled="historyWriteBusy"
+                placeholder="选择档案组织"
+              />
+            </UiFormItem>
+            <UiFormItem label="规划类型" required>
+              <UiSelect
+                size="sm"
+                v-model="historySyncForm.planType"
+                :options="historyPlanTypeOptions"
+                disabled
+              />
+            </UiFormItem>
+            <UiFormItem label="冲突策略" required>
+              <UiSelect
+                size="sm"
+                v-model="historySyncForm.conflictStrategy"
+                :options="historyConflictStrategyOptions"
+                :disabled="historyWriteBusy"
+              />
+            </UiFormItem>
+          </UiForm>
+          <h4>表格文件字段映射</h4>
+          <div class="history-field-grid">
+            <div class="development-plan-admin__addon-field">
+              <span class="development-plan-admin__addon-label">负责人标识</span>
+              <UiInput
+                v-model="historySyncForm.fieldMapping.ownerUserIdColumn"
+                size="sm"
+                :disabled="historyWriteBusy"
+              />
+            </div>
+            <div class="development-plan-admin__addon-field">
+              <span class="development-plan-admin__addon-label">规划年度</span>
+              <UiInput
+                v-model="historySyncForm.fieldMapping.planYearColumn"
+                size="sm"
+                :disabled="historyWriteBusy"
+              />
+            </div>
+            <div class="development-plan-admin__addon-field">
+              <span class="development-plan-admin__addon-label">明细标题</span>
+              <UiInput
+                v-model="historySyncForm.fieldMapping.itemTitleColumn"
+                size="sm"
+                :disabled="historyWriteBusy"
+              />
+            </div>
+            <div class="development-plan-admin__addon-field">
+              <span class="development-plan-admin__addon-label">明细目标</span>
+              <UiInput
+                v-model="historySyncForm.fieldMapping.itemGoalColumn"
+                size="sm"
+                :disabled="historyWriteBusy"
+              />
+            </div>
+            <div class="development-plan-admin__addon-field">
+              <span class="development-plan-admin__addon-label">完成百分比</span>
+              <UiInput
+                v-model="historySyncForm.fieldMapping.completionPercentColumn"
+                size="sm"
+                :disabled="historyWriteBusy"
+              />
+            </div>
+            <div class="development-plan-admin__addon-field">
+              <span class="development-plan-admin__addon-label">明细状态</span>
+              <UiInput
+                v-model="historySyncForm.fieldMapping.itemStatusColumn"
+                size="sm"
+                :disabled="historyWriteBusy"
+              />
+            </div>
+          </div>
+          <div class="history-section-actions">
+            <UiButton
+              size="sm"
+              variant="primary"
+              :loading="historyConfigSaving"
+              :disabled="historyWriteBusy && !historyConfigSaving"
+              @click="saveHistorySyncConfig"
+            >
+              <SaveOutlined />
+              保存设置
+            </UiButton>
+          </div>
+        </section>
+        <section class="history-batches" aria-labelledby="history-batches-title">
+          <div class="history-section-heading">
+            <div>
+              <h3 id="history-batches-title">导入批次</h3>
+              <p>历史规划仅以 HISTORICAL 状态写入档案袋。</p>
+            </div>
+            <div class="history-section-actions">
+              <UiButton
+                size="sm"
+                variant="primary"
+                :disabled="historyWriteBusy || !historyImportAvailable"
+                @click="openHistoryImport"
+              >
+                <UploadOutlined />
+                导入表格文件
+              </UiButton>
+              <UiButton
+                size="sm"
+                :loading="historyBatchLoading"
+                :disabled="historyWriteBusy"
+                @click="loadHistoryImportBatches"
+              >
+                <ReloadOutlined />
+                刷新
+              </UiButton>
+            </div>
+          </div>
           <UiDataTable
-            v-model:current="pageNum"
-            v-model:page-size="pageSize"
+            v-model:current="historyBatchPageNum"
+            v-model:page-size="historyBatchPageSize"
             pagination-mode="server"
-            :total="pageTotal"
-            :columns="columns"
-            :data-source="rows"
-            :loading="loading"
+            :total="historyBatchPageTotal"
+            :columns="historyBatchColumns"
+            :data-source="historyBatchRows"
+            :loading="historyBatchLoading"
             row-key="id"
-            :row-class-name="planRowClassName"
             style="margin-top: 16px"
-            @page-change="handlePageChange"
+            @page-change="handleHistoryBatchPageChange"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'planType'">
-                {{ planTypeLabel(record.planType) }}
-              </template>
-              <template v-else-if="column.key === 'planStatus'">
-                <UiTag :tone="planStatusTone(record.planStatus)">
-                  {{ planStatusLabel(record.planStatus) }}
+              <template v-if="column.key === 'batchStatus'">
+                <UiTag :tone="historyBatchStatusTone(record.batchStatus)">
+                  {{ historyBatchStatusLabel(record.batchStatus) }}
                 </UiTag>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
-                  :items="buildDevelopmentPlanRowActions(record)"
+                  :items="buildHistoryBatchActions(record)"
                   split
-                  @action="(key) => handleDevelopmentPlanAction(key, record)"
+                  @action="(key) => handleHistoryBatchAction(key, record)"
                 />
               </template>
             </template>
           </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane key="items" tab="规划明细">
-          <div class="toolbar">
-            <a-select
-              v-model:value="selectedPlanId"
-              placeholder="选择规划"
-              style="width: 320px"
-              :options="planOptions"
-              @change="loadPlanItems"
-            />
-            <UiButton :disabled="!selectedPlanId" @click="loadPlanItems"> 刷新明细 </UiButton>
-            <UiButton v-if="planItemEditable" @click="addPlanItemRow"> 新增行 </UiButton>
-            <UiButton
-              v-if="planItemEditable"
-              variant="primary"
-              :disabled="!selectedPlanId || itemSaving"
-              @click="savePlanItems"
-            >
-              保存明细
-            </UiButton>
-          </div>
-          <UiEmpty v-if="!selectedPlanId" description="请选择规划后编辑明细项" />
-          <UiDataTable
-            v-else
-            pagination-mode="none"
-            :columns="itemColumns"
-            :data-source="planItems"
-            :loading="itemLoading"
-            row-key="rowKey"
-            :show-pagination="false"
-            :sticky-header="false"
-            flat
-            style="margin-top: 16px"
-          >
-            <template #bodyCell="{ column, record, index }">
-              <template v-if="column.key === 'itemTitle'">
-                <input
-                  v-if="planItemEditable"
-                  v-model="record.itemTitle"
-                  class="input input--cell"
-                />
-                <span v-else>{{ record.itemTitle }}</span>
-              </template>
-              <template v-else-if="column.key === 'itemGoal'">
-                <input
-                  v-if="planItemEditable"
-                  v-model="record.itemGoal"
-                  class="input input--cell"
-                />
-                <span v-else>{{ record.itemGoal || '—' }}</span>
-              </template>
-              <template v-else-if="column.key === 'indicatorCode'">
-                <a-select
-                  v-if="planItemEditable"
-                  v-model:value="record.indicatorCode"
-                  style="width: 100%"
-                  allow-clear
-                  show-search
-                  option-filter-prop="label"
-                  :options="indicatorOptions"
-                  placeholder="选择指标"
-                />
-                <span v-else>{{ record.indicatorCode || '—' }}</span>
-              </template>
-              <template v-else-if="column.key === 'achievementCatalog'">
-                <a-select
-                  v-if="planItemEditable"
-                  v-model:value="record.catalogId"
-                  style="width: 100%"
-                  allow-clear
-                  show-search
-                  option-filter-prop="label"
-                  :loading="achievementCatalogLoading"
-                  :options="achievementCatalogOptions"
-                  placeholder="选择成果模板"
-                />
-                <div v-else class="development-plan-admin__achievement-cell">
-                  <span>{{ record.catalogName || '未关联' }}</span>
-                  <UiTag
-                    v-if="record.achievementLinkStatus"
-                    :tone="record.achievementLinkStatus === 'LOCKED' ? 'green' : 'blue'"
-                  >
-                    {{ record.achievementLinkStatus === 'LOCKED' ? '已锁定' : '草稿关联' }}
-                  </UiTag>
-                  <span v-if="record.achievementCompletionRate != null">完成度 {{ record.achievementCompletionRate }}%</span>
-                </div>
-              </template>
-              <template v-else-if="column.key === 'milestoneText'">
-                <input
-                  v-if="planItemEditable"
-                  v-model="record.milestoneText"
-                  class="input input--cell"
-                />
-                <span v-else>{{ record.milestoneText || '—' }}</span>
-              </template>
-              <template v-else-if="column.key === 'completionPercent'">
-                <input
-                  v-if="planItemEditable"
-                  v-model.number="record.completionPercent"
-                  type="number"
-                  class="input input--cell input--short"
-                />
-                <span v-else>{{ record.completionPercent ?? '0' }}%</span>
-              </template>
-              <template v-else-if="column.key === 'itemStatus'">
-                <a-select
-                  v-if="planItemEditable"
-                  v-model:value="record.itemStatus"
-                  style="width: 100%"
-                  :options="PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS"
-                />
-                <UiTag v-else tone="blue">
-                  {{
-                    strictEnumLabel(
-                      PortfolioDevelopmentPlanItemStatusDescription,
-                      record.itemStatus,
-                      '规划明细状态',
-                    )
-                  }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'itemActions'">
-                <div class="development-plan-admin__item-actions">
-                  <UiButton
-                    v-if="planItemEditable && record.id && record.catalogId"
-                    size="sm"
-                    :loading="achievementOperationItemId === record.id"
-                    @click="linkAchievement(record)"
-                  >
-                    关联
-                  </UiButton>
-                  <UiButton
-                    v-if="record.id && record.catalogId"
-                    size="sm"
-                    @click="openAchievementGap(record)"
-                  >
-                    差距
-                  </UiButton>
-                  <UiButton v-if="planItemEditable" size="sm" @click="removePlanItemRow(index)">
-                    删除
-                  </UiButton>
-                </div>
-              </template>
-            </template>
-          </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane v-if="showAdminStats" key="completion" tab="完成度分析">
-          <div v-if="completion" class="completion-grid">
-            <span>规划总数 {{ completion.totalPlanCount }}</span>
-            <span>已通过 {{ completion.approvedPlanCount }}</span>
-            <span>待审 {{ completion.pendingPlanCount }}</span>
-            <span>退回 {{ completion.returnedPlanCount }}</span>
-            <span>审批完成率 {{ completion.completionRatePercent }}%</span>
-            <span>明细项 {{ completion.completedPlanItemCount }}/{{
-              completion.totalPlanItemCount
-            }}</span>
-            <span>明细完成率 {{ completion.planItemCompletionRatePercent }}%</span>
-            <span>平均完成度 {{ completion.averageItemCompletionPercent }}%</span>
-          </div>
-          <UiDataTable
-            pagination-mode="none"
-            :columns="[
-              { title: '成果分类', dataIndex: 'categoryCode', key: 'categoryCode' },
-              { title: '条目数', dataIndex: 'recordCount', key: 'recordCount', width: 88 },
-            ]"
-            :data-source="attainment"
-            :loading="loading"
-            row-key="categoryCode"
-            :show-pagination="false"
-            :sticky-header="false"
-            flat
-            style="margin-top: 16px"
-          />
-        </a-tab-pane>
-        <a-tab-pane v-if="showAdminStats" key="org-stats" tab="科室统计">
-          <UiDataTable
-            pagination-mode="none"
-            :columns="orgColumns"
-            :data-source="orgStats"
-            :loading="loading"
-            :row-key="orgStatRowKey"
-            :show-pagination="false"
-            :sticky-header="false"
-            flat
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'orgName'">
-                {{ record.orgName || '未挂接科室' }}
-              </template>
-              <template v-else-if="column.key === 'planStatus'">
-                <UiTag :tone="planStatusTone(record.planStatus)">
-                  {{ planStatusLabel(record.planStatus) }}
-                </UiTag>
-              </template>
-            </template>
-          </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane v-if="showAdminStats" key="history-import" tab="历史规划导入">
-          <section class="history-settings" aria-labelledby="history-settings-title">
-            <div class="history-section-heading">
-              <div>
-                <h3 id="history-settings-title">同步设置</h3>
-                <p v-if="historySyncConfig?.updateTime">
-                  最近更新 {{ historySyncConfig.updateTime }}
-                </p>
-              </div>
-              <a-switch
-                v-model:checked="historySyncForm.enabled"
-                checked-children="启用"
-                un-checked-children="停用"
-                :disabled="historyWriteBusy"
-              />
-            </div>
-            <a-form layout="vertical" class="history-settings-grid">
-              <a-form-item label="起始年度" required>
-                <a-input-number
-                  v-model:value="historySyncForm.yearFrom"
-                  :min="minimumHistoryYear"
-                  :max="maximumHistoryYear"
-                  :disabled="historyWriteBusy"
-                  style="width: 100%"
-                />
-              </a-form-item>
-              <a-form-item label="结束年度" required>
-                <a-input-number
-                  v-model:value="historySyncForm.yearTo"
-                  :min="minimumHistoryYear"
-                  :max="maximumHistoryYear"
-                  :disabled="historyWriteBusy"
-                  style="width: 100%"
-                />
-              </a-form-item>
-              <a-form-item label="组织范围" required>
-                <a-select
-                  v-model:value="historySyncForm.orgScopeType"
-                  :options="historyOrgScopeOptions"
-                  :disabled="historyWriteBusy"
-                />
-              </a-form-item>
-              <a-form-item
-                v-if="historySyncForm.orgScopeType === PortfolioPlanningSyncOrgScopeCode.ORG_UNIT"
-                label="指定组织"
-                required
-              >
-                <a-select
-                  v-model:value="historySyncForm.portfolioOrgId"
-                  show-search
-                  option-filter-prop="label"
-                  :options="portfolioOrgOptions()"
-                  :disabled="historyWriteBusy"
-                  placeholder="选择档案组织"
-                />
-              </a-form-item>
-              <a-form-item label="规划类型" required>
-                <a-select
-                  v-model:value="historySyncForm.planType"
-                  :options="historyPlanTypeOptions"
-                  disabled
-                />
-              </a-form-item>
-              <a-form-item label="冲突策略" required>
-                <a-select
-                  v-model:value="historySyncForm.conflictStrategy"
-                  :options="historyConflictStrategyOptions"
-                  :disabled="historyWriteBusy"
-                />
-              </a-form-item>
-            </a-form>
-            <h4>表格文件字段映射</h4>
-            <div class="history-field-grid">
-              <a-input
-                v-model:value="historySyncForm.fieldMapping.ownerUserIdColumn"
-                addon-before="负责人标识"
-                :disabled="historyWriteBusy"
-              />
-              <a-input
-                v-model:value="historySyncForm.fieldMapping.planYearColumn"
-                addon-before="规划年度"
-                :disabled="historyWriteBusy"
-              />
-              <a-input
-                v-model:value="historySyncForm.fieldMapping.itemTitleColumn"
-                addon-before="明细标题"
-                :disabled="historyWriteBusy"
-              />
-              <a-input
-                v-model:value="historySyncForm.fieldMapping.itemGoalColumn"
-                addon-before="明细目标"
-                :disabled="historyWriteBusy"
-              />
-              <a-input
-                v-model:value="historySyncForm.fieldMapping.completionPercentColumn"
-                addon-before="完成百分比"
-                :disabled="historyWriteBusy"
-              />
-              <a-input
-                v-model:value="historySyncForm.fieldMapping.itemStatusColumn"
-                addon-before="明细状态"
-                :disabled="historyWriteBusy"
-              />
-            </div>
-            <div class="history-section-actions">
-              <UiButton
-                variant="primary"
-                :loading="historyConfigSaving"
-                :disabled="historyWriteBusy && !historyConfigSaving"
-                @click="saveHistorySyncConfig"
-              >
-                <SaveOutlined />
-                保存设置
-              </UiButton>
-            </div>
-          </section>
-          <section class="history-batches" aria-labelledby="history-batches-title">
-            <div class="history-section-heading">
-              <div>
-                <h3 id="history-batches-title">导入批次</h3>
-                <p>历史规划仅以 HISTORICAL 状态写入档案袋。</p>
-              </div>
-              <div class="history-section-actions">
-                <UiButton
-                  variant="primary"
-                  :disabled="historyWriteBusy || !historyImportAvailable"
-                  @click="openHistoryImport"
-                >
-                  <UploadOutlined />
-                  导入表格文件
-                </UiButton>
-                <UiButton
-                  :loading="historyBatchLoading"
-                  :disabled="historyWriteBusy"
-                  @click="loadHistoryImportBatches"
-                >
-                  <ReloadOutlined />
-                  刷新
-                </UiButton>
-              </div>
-            </div>
-            <UiDataTable
-              v-model:current="historyBatchPageNum"
-              v-model:page-size="historyBatchPageSize"
-              pagination-mode="server"
-              :total="historyBatchPageTotal"
-              :columns="historyBatchColumns"
-              :data-source="historyBatchRows"
-              :loading="historyBatchLoading"
-              row-key="id"
-              style="margin-top: 16px"
-              @page-change="handleHistoryBatchPageChange"
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'batchStatus'">
-                  <UiTag :tone="historyBatchStatusTone(record.batchStatus)">
-                    {{ historyBatchStatusLabel(record.batchStatus) }}
-                  </UiTag>
-                </template>
-                <template v-else-if="column.key === 'actions'">
-                  <UiTableActions
-                    :items="buildHistoryBatchActions(record)"
-                    split
-                    @action="(key) => handleHistoryBatchAction(key, record)"
-                  />
-                </template>
-              </template>
-            </UiDataTable>
-          </section>
-        </a-tab-pane>
-      </a-tabs>
+        </section>
+      </template>
     </UiCard>
-    <a-drawer v-model:open="gapOpen" title="成果目标差距" width="560">
-      <a-spin :spinning="gapLoading">
+    <UiDrawer v-model:open="gapOpen" title="成果目标差距" :width="560">
+      <UiSpin :spinning="gapLoading">
         <template v-if="gap">
           <p class="development-plan-admin__gap-target">
             {{ gap.catalogName }} · 完成度 {{ gap.completionRate }}%
           </p>
           <p>{{ gap.targetSummary }}</p>
           <UiCard title="当前缺口">
-            <UiEmpty v-if="gap.missingItems.length === 0" description="当前标准要求均已满足" />
+            <UiEmpty size="sm" v-if="gap.missingItems.length === 0" description="当前标准要求均已满足" />
             <div
               v-for="item in gap.missingItems"
               :key="item.requirementCode"
@@ -1426,7 +1508,7 @@ watch(
             </div>
           </UiCard>
           <UiCard title="已满足证据">
-            <UiEmpty v-if="gap.satisfiedItems.length === 0" description="尚无满足项" />
+            <UiEmpty size="sm" v-if="gap.satisfiedItems.length === 0" description="尚无满足项" />
             <div
               v-for="item in gap.satisfiedItems"
               :key="item.requirementCode"
@@ -1437,8 +1519,8 @@ watch(
             </div>
           </UiCard>
         </template>
-      </a-spin>
-    </a-drawer>
+      </UiSpin>
+    </UiDrawer>
     <UiPlatformExcelImportModal
       v-model:open="historyImportModalOpen"
       :scene-key="ExcelImportSceneKey.PORTFOLIO_DEVELOPMENT_PLAN_HISTORY"
@@ -1449,8 +1531,8 @@ watch(
       allow-manual-conflict-commit
       @success="handleHistoryImportSuccess"
     />
-    <a-drawer v-model:open="historyBatchDetailOpen" title="导入批次详情" width="480">
-      <a-spin :spinning="historyBatchDetailLoading">
+    <UiDrawer v-model:open="historyBatchDetailOpen" title="导入批次详情" :width="480">
+      <UiSpin :spinning="historyBatchDetailLoading">
         <template v-if="historyBatchDetail">
           <p>批次号 {{ historyBatchDetail.batchNo }}</p>
           <p>文件 {{ historyBatchDetail.fileName ?? '—' }}</p>
@@ -1473,12 +1555,12 @@ watch(
             :data-source="historyBatchDetailDiagnostics"
             :show-pagination="false"
             row-key="rowIndex"
-            size="small"
+            size="sm"
             flat
           />
         </template>
-      </a-spin>
-    </a-drawer>
+      </UiSpin>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -1493,7 +1575,7 @@ watch(
 .input {
   width: 96px;
   padding: 6px 8px;
-  border: 1px solid var(--ant-color-border);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
 }
 .input--wide {
@@ -1514,7 +1596,7 @@ watch(
 .completion-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   font-size: 14px;
 }
 .history-settings,
@@ -1529,8 +1611,8 @@ watch(
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3, 12px);
 }
 .history-section-heading h3,
 .history-settings h4 {
@@ -1580,6 +1662,6 @@ watch(
   }
 }
 :deep(.development-plan-admin__row-active) {
-  background: var(--ant-color-primary-bg);
+  background: var(--dp-color-primary-bg);
 }
 </style>

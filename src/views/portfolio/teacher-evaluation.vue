@@ -9,7 +9,7 @@ import type {
   PortfolioEvaluationTeacherResultSummaryVO,
 } from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message, Select } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -31,11 +31,16 @@ import {
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -43,6 +48,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -96,6 +102,7 @@ function handleActionTone(action: PortfolioEvaluationObjectionHandleActionCode) 
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const { currentUserId, canPickTeachers } = usePortfolioTeacherAccess()
 
 const loading = ref(false)
@@ -425,6 +432,13 @@ async function loadPreview(noticeId: string) {
 }
 
 async function confirmSelected() {
+  if (confirming.value) {
+    return
+  }
+  if (!(await confirmProxyWrite('确认评价材料'))) {
+    return
+  }
+
   if (!selectedNotice.value) {
     return
   }
@@ -462,6 +476,13 @@ function openObjectionModal(row: PortfolioEvaluationPublicityListItemVO) {
 }
 
 async function submitObjection() {
+  if (submittingObjection.value) {
+    return
+  }
+  if (!(await confirmProxyWrite('提交评价异议'))) {
+    return
+  }
+
   if (!objectionTarget.value) {
     return
   }
@@ -563,7 +584,7 @@ function buildPublicityRowActions(
     },
   ]
   if (canViewerSubmitObjection(record)) {
-    actions.push({ key: 'submitObjection', label: '提交异议', tone: 'primary' })
+    actions.push({ key: 'submitObjection', label: '提交异议' })
   }
   return actions
 }
@@ -646,6 +667,7 @@ watch(
     <ContextBar title="我的评价" description="参评材料确认、完整度预览与结果公示">
       <template #actions>
         <UiButton
+          size="sm"
           variant="ghost"
           :disabled="canPickTeachers && !targetTeacherId"
           @click="goArchive"
@@ -653,6 +675,7 @@ watch(
           查看档案
         </UiButton>
         <UiButton
+          size="sm"
           :loading="loading || publicityLoading"
           :disabled="canPickTeachers && !targetTeacherId"
           @click="
@@ -667,10 +690,7 @@ watch(
       </template>
     </ContextBar>
 
-    <UiEmpty
-      v-if="canPickTeachers && !targetTeacherId"
-      description="请从顶部教师范围选择目标教师"
-    />
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <template v-else>
       <UiCard title="评价待办">
@@ -700,7 +720,7 @@ watch(
             </template>
           </template>
         </UiDataTable>
-        <UiEmpty v-else description="暂无评价待办" />
+        <UiEmpty size="sm" v-else description="暂无评价待办" />
       </UiCard>
 
       <UiCard
@@ -708,7 +728,7 @@ watch(
         title="材料清单预览"
         class="teacher-evaluation__block"
       >
-        <a-spin :spinning="previewLoading">
+        <UiSpin :spinning="previewLoading">
           <template v-if="preview">
             <p class="teacher-evaluation__meta">
               任务：{{ preview.taskName }} · 完整度 {{ preview.completenessPercent }}% · 必填分类
@@ -721,7 +741,7 @@ watch(
             <UiDataTable
               v-if="preview.categories?.length"
               :row-key="evaluationMaterialRowKey"
-              size="small"
+              size="sm"
               pagination-mode="none"
               :columns="categoryColumns"
               :data-source="preview.categories"
@@ -741,9 +761,9 @@ watch(
                 </template>
               </template>
             </UiDataTable>
-            <UiEmpty v-else description="暂无分类明细" />
+            <UiEmpty size="sm" v-else description="暂无分类明细" />
           </template>
-        </a-spin>
+        </UiSpin>
       </UiCard>
 
       <UiCard title="评价公示" class="teacher-evaluation__block">
@@ -788,7 +808,7 @@ watch(
             </template>
           </template>
         </UiDataTable>
-        <UiEmpty v-else description="暂无公示" />
+        <UiEmpty size="sm" v-else description="暂无公示" />
       </UiCard>
 
       <UiCard
@@ -796,7 +816,7 @@ watch(
         title="评价结果与依据"
         class="teacher-evaluation__block"
       >
-        <a-spin :spinning="resultLoading">
+        <UiSpin :spinning="resultLoading">
           <template v-if="resultSummary">
             <p class="teacher-evaluation__meta">
               任务：{{ resultSummary.taskName }} · 条目 {{ resultSummary.entryCount ?? 0 }} 条
@@ -814,7 +834,7 @@ watch(
             <UiDataTable
               v-if="resultSummary.entries?.length"
               row-key="entryId"
-              size="small"
+              size="sm"
               pagination-mode="none"
               :columns="resultColumns"
               :data-source="resultSummary.entries"
@@ -823,7 +843,7 @@ watch(
               flat
               class="teacher-evaluation__result-table"
             />
-            <UiEmpty v-else description="暂无评价依据明细" />
+            <UiEmpty size="sm" v-else description="暂无评价依据明细" />
             <UiDataTable
               v-if="resultSummary.materialCategories?.length"
               :row-key="evaluationMaterialRowKey"
@@ -837,10 +857,10 @@ watch(
               class="teacher-evaluation__category-table"
             />
           </template>
-        </a-spin>
+        </UiSpin>
       </UiCard>
 
-      <a-modal
+      <UiDialog
         v-model:open="objectionModalOpen"
         title="提交公示异议"
         ok-text="提交"
@@ -851,23 +871,26 @@ watch(
         <p v-if="objectionTarget" class="teacher-evaluation__meta">
           {{ objectionTarget.taskName }} · {{ objectionTarget.publicityTitle }}
         </p>
-        <Select
-          v-model:value="objectionForm.objectionType"
+        <UiSelect
+          v-model="objectionForm.objectionType"
+          size="sm"
           class="teacher-evaluation__form-field"
           :options="PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS"
           placeholder="异议类型"
           :disabled="submittingObjection"
         />
-        <Select
+        <UiSelect
           v-if="showObjectionIndicatorSelect"
-          v-model:value="objectionForm.indicatorCode"
+          v-model="objectionForm.indicatorCode"
+          size="sm"
           class="teacher-evaluation__form-field"
           :options="objectionIndicatorOptions"
           placeholder="请选择争议指标"
           :disabled="submittingObjection"
         />
-        <Input.TextArea
-          v-model:value="objectionForm.objectionReason"
+        <UiTextarea
+          v-model="objectionForm.objectionReason"
+          size="sm"
           class="teacher-evaluation__form-field"
           :rows="4"
           placeholder="异议理由"
@@ -882,7 +905,7 @@ watch(
           button-text="上传佐证材料"
           :disabled="submittingObjection"
         />
-      </a-modal>
+      </UiDialog>
     </template>
   </StageWorkbenchShell>
 </template>

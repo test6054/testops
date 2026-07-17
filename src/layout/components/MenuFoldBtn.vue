@@ -1,7 +1,9 @@
 <template>
-  <a-button
+  <UiButton
     class="menu-fold-btn"
-    size="small"
+    size="sm"
+    variant="ghost"
+    icon-only
     :aria-label="appStore.menuCollapse ? '展开菜单' : '收起菜单'"
     @click="onClick"
   >
@@ -9,19 +11,19 @@
       <MenuFoldOutlined v-if="!appStore.menuCollapse" />
       <MenuUnfoldOutlined v-else />
     </template>
-  </a-button>
+  </UiButton>
 
   <div
     :class="{ 'app-menu-dark': appStore.menuDark }"
     :style="appStore.menuDark ? appStore.themeCSSVar : undefined"
     class="drawer"
   >
-    <a-drawer
+    <UiDrawer
       v-model:open="visible"
       :body-style="{
-        'border-right': '1px solid var(--ant-color-border-secondary)',
+        'border-right': '1px solid var(--dp-border-subtle)',
         'box-sizing': 'border-box',
-        'background-color': 'var(--ant-color-bg-container)',
+        'background-color': 'var(--dp-bg-container)',
       }"
       :footer="null"
       :header="false"
@@ -30,7 +32,7 @@
     >
       <Logo :collapsed="false"></Logo>
       <Menu class="menu w-full" @menu-item-click-after="visible = false"></Menu>
-    </a-drawer>
+    </UiDrawer>
   </div>
 </template>
 
@@ -38,6 +40,8 @@
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
 import { ref } from 'vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { useDevice } from '@/hooks'
 import Logo from '@/layout/components/Logo.vue'
 import Menu from '@/layout/components/Menu/index.vue'
@@ -60,16 +64,16 @@ const onClick = () => {
 <style lang="scss" scoped>
 .menu-fold-btn {
   border: 0 !important;
-  background-color: var(--ant-control-item-bg-hover) !important;
+  background-color: var(--dp-fill-secondary) !important;
   flex-shrink: 0;
 
   &:hover {
-    background: var(--ant-control-item-bg-hover) !important;
+    background: var(--dp-fill-secondary) !important;
     border-radius: var(--dp-radius-full);
   }
 
   &:active {
-    background: var(--ant-control-item-bg-active) !important;
+    background: var(--dp-fill-tertiary) !important;
     border-radius: var(--dp-radius-full);
   }
 }

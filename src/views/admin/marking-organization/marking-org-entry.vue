@@ -12,37 +12,36 @@
             {{ examStatusLabel }}
           </UiTag>
         </template>
-        <template v-if="canManageExamOwner && !resolving" #actions>
+        <template v-if="canManageExamOwner && !resolving && selectedExamId" #actions>
           <UiButton variant="primary" size="sm" @click="openCreateDrawer"> 创建阅卷组织 </UiButton>
         </template>
       </ContextBar>
     </template>
 
     <template v-if="selectedExamId && !resolving" #signal>
-      <SignalBand variant="tiles" :metrics="entrySignalMetrics" compact />
+      <SignalBand :metrics="entrySignalMetrics" compact />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="selectedExamId && !resolving" />
 
     <UiSkeletonState v-if="resolving" variant="card" compact />
 
-    <UiEmpty
+    <ExamSelectGateStrip
+      v-else-if="!selectedExamId"
+      body="请从考试列表进入工作台后再创建或查看阅卷组织"
+    />
+
+    <WorkbenchContextGateStrip
       v-else-if="selectedExamId"
-      description="本考试尚未创建阅卷组织"
+      tag="未配置"
+      :body="
+        canManageExamOwner
+          ? '本考试尚未创建阅卷组织；请用顶栏「创建阅卷组织」办理（创建后可编排题组与分配策略）'
+          : '本考试尚未创建阅卷组织；由考试主考老师创建和分配'
+      "
+      hide-cta
       class="org-entry__panel--empty"
-    >
-      <p class="org-entry__empty-desc">
-        阅卷组织是组织教师批改试卷的核心实体；创建后可编排题组、配置分配策略并启动试评 / 正评。
-      </p>
-      <p v-if="!canManageExamOwner" class="org-entry__empty-desc">
-        该考试的阅卷组织由考试主考老师创建和分配。
-      </p>
-      <template v-if="canManageExamOwner" #action>
-        <UiButton variant="primary" size="md" @click="openCreateDrawer">
-          立即创建阅卷组织
-        </UiButton>
-      </template>
-    </UiEmpty>
+    />
 
     <UiDrawer
       :open="createDrawerOpen"
@@ -53,24 +52,27 @@
       @close="createDrawerOpen = false"
       @ok="submitCreate"
     >
-      <a-form ref="createFormRef" :model="createForm" :rules="createRules" layout="vertical">
-        <a-form-item label="关联考试">
-          <a-input :value="examLabel" disabled />
-        </a-form-item>
-        <a-form-item label="是否启用匿名阅卷" name="anonymousMode">
-          <a-switch v-model:checked="createForm.anonymousMode" />
+      <UiForm ref="createFormRef" :model="createForm" :rules="createRules" layout="vertical">
+        <UiFormItem label="关联考试">
+          <UiInput
+            size="sm" :value="examLabel" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="是否启用匿名阅卷" name="anonymousMode">
+          <UiSwitch size="sm" v-model="createForm.anonymousMode" />
           <span class="org-entry__switch-hint">启用后阅卷教师不可见考生身份</span>
-        </a-form-item>
-        <a-form-item label="备注" name="remark">
-          <a-textarea
-            v-model:value="createForm.remark"
+        </UiFormItem>
+        <UiFormItem label="备注" name="remark">
+          <UiTextarea
+            size="sm"
+            v-model="createForm.remark"
             :rows="3"
             :maxlength="200"
             placeholder="可选，记录组织目的 / 范围"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
@@ -84,14 +86,20 @@ import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createOrganization, getOrganization } from '@/apis/mark/marking-organization'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
@@ -202,6 +210,7 @@ function openCreateDrawer(): void {
 }
 
 async function submitCreate(): Promise<void> {
+  if (creating.value) return
   if (!guardExamOwnerAction()) return
   if (!selectedExamId.value || !createFormRef.value) return
   try {
@@ -252,12 +261,12 @@ onActivated(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
 
     &--empty {
       text-align: center;
-      padding: 40px 16px;
+      padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px);
     }
   }
 

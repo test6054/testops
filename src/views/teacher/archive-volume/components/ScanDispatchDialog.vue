@@ -5,7 +5,10 @@ import { message } from 'ant-design-vue'
 import { reactive, ref, watch } from 'vue'
 import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 
@@ -57,6 +60,7 @@ watch(
 )
 
 async function handleSubmit() {
+  if (submitting.value) return
   if (!props.physicalStorageLocation?.trim()) {
     showFormValidationMessage('请先登记归档卷柜位')
     return
@@ -111,17 +115,17 @@ async function handleSubmit() {
     @confirm="handleSubmit"
   >
     <p v-if="archiveTitle" class="scan-dispatch-dialog__hint">卷：{{ archiveTitle }}</p>
-    <a-form layout="vertical">
-      <a-form-item label="当前柜位">
+    <UiForm layout="vertical">
+      <UiFormItem label="当前柜位">
         {{ physicalStorageLocation || '尚未登记' }}
-      </a-form-item>
-      <a-form-item label="材料标签" tooltip="扫描 commit 登记时写入材料，便于后续检索">
+      </UiFormItem>
+      <UiFormItem label="材料标签" tooltip="扫描 commit 登记时写入材料，便于后续检索">
         <ArchiveMaterialTagSelect v-model="form.materialTags" :volume-id="volumeId" />
-      </a-form-item>
-      <a-form-item>
-        <a-checkbox v-model:checked="form.generateTraceLabel">生成追溯标签便携文档</a-checkbox>
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+      <UiFormItem>
+        <UiCheckbox v-model="form.generateTraceLabel">生成追溯标签便携文档</UiCheckbox>
+      </UiFormItem>
+    </UiForm>
     <p class="scan-dispatch-dialog__note">
       工位通过分机链接或二维码进入，不使用同浏览器路由跳转。
     </p>
@@ -131,11 +135,11 @@ async function handleSubmit() {
 <style scoped>
 .scan-dispatch-dialog__hint {
   margin: 0 0 12px;
-  color: var(--nybc-text-secondary, #595959);
+  color: var(--dp-text-secondary);
 }
 .scan-dispatch-dialog__note {
   margin: 0;
   font-size: 12px;
-  color: var(--nybc-text-secondary, #8c8c8c);
+  color: var(--dp-text-secondary);
 }
 </style>

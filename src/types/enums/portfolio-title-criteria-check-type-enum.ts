@@ -70,3 +70,19 @@ export const EVIDENCE_CATEGORY_REQUIRED_PORTFOLIO_TITLE_CRITERIA_CHECK_TYPE_CODE
 export function isEvidenceCategoryRequiredCheckType(checkType: PortfolioTitleCriteriaCheckTypeCode): boolean {
   return EVIDENCE_CATEGORY_REQUIRED_PORTFOLIO_TITLE_CRITERIA_CHECK_TYPE_CODES.includes(checkType)
 }
+
+/** 必须配置正整数阈值的职称核验类型。 */
+export const POSITIVE_EXPECTED_VALUE_PORTFOLIO_TITLE_CRITERIA_CHECK_TYPE_CODES: PortfolioTitleCriteriaCheckTypeCode[] = [
+  PortfolioTitleCriteriaCheckTypeCode.MIN_OFFICIAL_ARCHIVE,
+  PortfolioTitleCriteriaCheckTypeCode.PUBLICATION_COUNT,
+  PortfolioTitleCriteriaCheckTypeCode.PROJECT_COUNT,
+  PortfolioTitleCriteriaCheckTypeCode.SENIORITY,
+  PortfolioTitleCriteriaCheckTypeCode.TEACHING_HOURS,
+  PortfolioTitleCriteriaCheckTypeCode.CONTINUING_EDUCATION,
+]
+
+export function requiresPositiveExpectedValueCheckType(
+  checkType: PortfolioTitleCriteriaCheckTypeCode,
+): boolean {
+  return POSITIVE_EXPECTED_VALUE_PORTFOLIO_TITLE_CRITERIA_CHECK_TYPE_CODES.includes(checkType)
+}

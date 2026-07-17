@@ -10,7 +10,6 @@ import MarkingTaskToolbar from '@/components/mark/MarkingTaskToolbar.vue'
 import RevealAnonymousModal from '@/components/mark/RevealAnonymousModal.vue'
 import WholePaperGallery from '@/components/mark/WholePaperGallery.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useMarkingTaskDetailState } from '@/composables/useMarkingTaskDetailState'
@@ -157,9 +156,12 @@ const {
       </template>
     </UiAlertStrip>
 
-    <UiEmpty
+    <WorkbenchContextGateStrip
       v-if="!taskId"
-      description="缺少阅卷任务，请从任务池进入"
+      tag="缺少上下文"
+      body="缺少阅卷任务，请从任务池进入"
+      cta-label="返回任务池"
+      list-route-name="TeacherExamWorkspaceMarkingTaskPool"
       class="marking-task-detail-page__empty"
     />
 
@@ -171,9 +173,13 @@ const {
       class="marking-task-detail-page__empty"
     />
 
-    <UiEmpty
+    <WorkbenchContextGateStrip
       v-else-if="!loading && !task"
-      description="任务详情不可用，请从任务池重新进入"
+      tag="不可用"
+      body="任务详情不可用，请从任务池重新进入"
+      cta-label="返回任务池"
+      list-route-name="TeacherExamWorkspaceMarkingTaskPool"
+      tone="warning"
       class="marking-task-detail-page__empty"
     />
 
@@ -339,8 +345,8 @@ const {
           <UiButton
             size="sm"
             variant="outline"
-            :disabled="!navigation.nextTaskId.value"
-            @click="navigation.goToTask(navigation.nextTaskId.value)"
+            :disabled="!navigation.nextNavTaskId.value"
+            @click="navigation.goToTask(navigation.nextNavTaskId.value)"
           >
             {{ navigation.navNextLabel.value }}
           </UiButton>
@@ -383,10 +389,10 @@ const {
 .marking-task-detail-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__footer-main {

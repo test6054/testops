@@ -6,7 +6,9 @@ import type { LayoutCanvasToolCode } from '@/components/mark/layout-designer/Lay
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { Image, Layer, Line, Rect, Stage, Text, Transformer } from 'vue-konva'
 import LayoutCanvasToolbar from '@/components/mark/layout-designer/LayoutCanvasToolbar.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { useLayoutPageRaster } from '@/composables/useLayoutPageRaster'
 import { ExamLayoutBlockTypeCode, requireExamLayoutBlockTypeCode } from '@/types/enums/exam-layout-block-type-enum'
 import {
@@ -144,7 +146,7 @@ const safeMarginConfig = computed(() => {
     y: marginY,
     width: stageSize.value.width - marginX * 2,
     height: stageSize.value.height - marginY * 2,
-    stroke: resolveThemeColor('--ant-color-error-hover', ''),
+    stroke: resolveThemeColor('--dp-error-hover', ''),
     dash: [6, 4],
     strokeWidth: 1,
     listening: false,
@@ -177,10 +179,10 @@ const marqueePreviewConfig = computed(() => {
     y: marqueeDraft.value.y,
     width: marqueeDraft.value.width,
     height: marqueeDraft.value.height,
-    stroke: resolveThemeColor('--ant-color-primary', ''),
+    stroke: resolveThemeColor('--dp-color-primary', ''),
     dash: [6, 4],
     strokeWidth: 1.5,
-    fill: 'rgba(22, 119, 255, 0.08)',
+    fill: resolveThemeColor('--dp-color-primary-bg', ''),
     listening: false,
   }
 })
@@ -255,7 +257,7 @@ function blockConfig(block: ExamLayoutBlockDto) {
     width: rect.width,
     height: rect.height,
     fill: resolveBlockFill(block.blockType),
-    stroke: focused ? resolveThemeColor('--ant-color-primary', '') : resolveBlockStroke(block.blockType),
+    stroke: focused ? resolveThemeColor('--dp-color-primary', '') : resolveBlockStroke(block.blockType),
     strokeWidth: focused ? 2 : 1,
     draggable: blockDraggable(),
     listening: canvasTool.value === 'select',
@@ -491,12 +493,23 @@ onMounted(() => {
       :read-only="readOnly"
     />
     <div v-if="rulerLabel" class="layout-canvas__ruler">{{ rulerLabel }}</div>
-    <a-spin :spinning="rasterLoading">
-      <UiEmpty
+    <UiSpin :spinning="rasterLoading">
+      <UiAlertStrip
         v-if="!page"
-        description="当前页尚未配置背景，请生成答题卡或上传整卷源文件"
+        tone="info"
+        size="sm"
+        dense
+        inline
+        :show-icon="false"
         class="layout-canvas__empty"
-      />
+      >
+        <template #default>
+          <span class="layout-canvas__empty-row">
+            <UiTag tone="blue" size="sm">待配置页背景</UiTag>
+            <span class="layout-canvas__empty-text">当前页尚未配置背景，请生成答题卡或上传整卷源文件</span>
+          </span>
+        </template>
+      </UiAlertStrip>
       <div v-else class="layout-canvas__viewport">
         <Stage
           ref="stageRef"
@@ -578,7 +591,7 @@ onMounted(() => {
         </Stage>
       </div>
       <p v-if="rasterError" class="layout-canvas__error">{{ rasterError }}</p>
-    </a-spin>
+    </UiSpin>
   </section>
 </template>
 
@@ -590,13 +603,13 @@ onMounted(() => {
   height: 100%;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--ant-color-bg-container);
+  background: var(--dp-bg-container);
   padding: 12px;
 
   &__viewport {
     overflow: auto;
     max-height: calc(100vh - 280px);
-    min-height: 520px;
+    min-height: 440px;
     background: var(--dp-surface-subtle);
     border-radius: var(--dp-radius-control);
     padding: 12px;
@@ -609,16 +622,26 @@ onMounted(() => {
   }
 
   &__empty {
-    min-height: 420px;
-    display: flex;
+    margin: var(--dp-space-3) 0;
+    max-width: 100%;
+  }
+
+  &__empty-row {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
+    gap: var(--dp-space-2);
+    min-width: 0;
+  }
+
+  &__empty-text {
+    font-size: var(--dp-font-size-sm);
+    color: var(--dp-text-secondary);
   }
 
   &__error {
     margin-top: 8px;
     font-size: 12px;
-    color: var(--ant-color-error);
+    color: var(--dp-error);
   }
 }
 </style>

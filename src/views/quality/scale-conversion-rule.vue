@@ -17,15 +17,25 @@ import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import { ALL_SCALE_TYPE_CODES, ScaleTypeCode, ScaleTypeDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -440,7 +450,13 @@ onActivated(() => {
         @reset="handleReset"
       />
 
-      <UiEmpty v-if="!loading && total === 0" description="无量表换算规则" />
+      <WorkbenchContextGateStrip
+        v-if="!loading && total === 0"
+        tag="未配置"
+        body="暂无量表换算规则"
+        cta-label="新建换算规则"
+        @cta="openCreate"
+      />
       <UiDataTable
         v-else
         v-model:current="query.pageNum"
@@ -479,39 +495,44 @@ onActivated(() => {
       </UiDataTable>
     </UiCard>
 
-    <a-modal
+    <UiDialog
       v-model:open="editorVisible"
       :title="editorMode === 'create' ? '新建量表换算规则' : '编辑量表换算规则'"
       :confirm-loading="submitting"
       width="860px"
       @ok="submitEditor"
     >
-      <a-form layout="vertical" :model="editor">
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="编码" required>
-              <a-input v-model:value="editor.ruleCode" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="量表类型" required>
-              <a-select
-                v-model:value="editor.scaleType"
+      <UiForm layout="vertical" :model="editor">
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="编码" required>
+              <UiInput
+                size="sm" v-model="editor.ruleCode"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="量表类型" required>
+              <UiSelect
+                size="sm"
+                v-model="editor.scaleType"
                 :options="scaleTypeOptions"
                 @change="handleScaleTypeChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="状态">
-              <a-switch v-model:checked="editor.enabled" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="名称" required>
-          <a-input v-model:value="editor.ruleName" />
-        </a-form-item>
-        <a-form-item label="换算条目" required>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="状态">
+              <UiSwitch size="sm" v-model="editor.enabled" />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="名称" required>
+          <UiInput
+            size="sm" v-model="editor.ruleName"
+          />
+        </UiFormItem>
+        <UiFormItem label="换算条目" required>
           <div class="scr__items-header">
             <span class="scr__items-tip">原始值与换算分值按当前业务条目直接维护</span>
             <UiTextAction @click="addItem">新增条目</UiTextAction>
@@ -522,11 +543,14 @@ onActivated(() => {
                 {{ index + 1 }}
               </div>
               <div class="scr__item-cell scr__item-cell--value">
-                <a-input v-model:value="item.sourceValue" placeholder="原始值" />
+                <UiInput
+                  size="sm" v-model="item.sourceValue" placeholder="原始值"
+                />
               </div>
               <div class="scr__item-cell scr__item-cell--score">
-                <a-input-number
-                  v-model:value="item.normalizedScore"
+                <UiInputNumber
+                  size="sm"
+                  v-model="item.normalizedScore"
                   :min="0"
                   :max="1"
                   :step="0.01"
@@ -536,8 +560,9 @@ onActivated(() => {
                 />
               </div>
               <div class="scr__item-cell scr__item-cell--sort">
-                <a-input-number
-                  v-model:value="item.sortOrder"
+                <UiInputNumber
+                  size="sm"
+                  v-model="item.sortOrder"
                   :min="1"
                   :precision="0"
                   class="scr__number"
@@ -550,12 +575,12 @@ onActivated(() => {
             </div>
           </div>
           <div v-else class="scr__empty">当前没有换算条目，请新增后再保存。</div>
-        </a-form-item>
-        <a-form-item label="说明">
-          <a-textarea v-model:value="editor.description" :rows="3" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
+        </UiFormItem>
+        <UiFormItem label="说明">
+          <UiTextarea size="sm" v-model="editor.description" :rows="3" />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -568,8 +593,8 @@ onActivated(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {
@@ -652,9 +677,9 @@ onActivated(() => {
   }
 
   &__empty {
-    padding: 16px;
+    padding: var(--dp-space-3, 12px);
     border: 1px dashed var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     color: var(--dp-text-secondary);
     background: var(--dp-surface-elevated);
   }

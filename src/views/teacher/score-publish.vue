@@ -7,7 +7,7 @@
           <UiTag v-else-if="hasPendingAbsence" tone="orange" size="sm">缺考待确认</UiTag>
         </template>
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goExportTasks"> 导出任务 </UiButton>
+          <UiButton variant="ghost" size="sm" @click="goExportTasks"> 导出任务 </UiButton>
           <UiButton variant="ghost" size="sm" @click="goScoreConfirm"> 返回成绩确认 </UiButton>
           <UiButton
             variant="primary"
@@ -23,10 +23,13 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand variant="tiles" :metrics="publishSignalMetrics" compact />
+      <SignalBand :metrics="publishSignalMetrics" compact />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请从考试工作台进入成绩发布" />
+    <ExamSelectGateStrip
+      v-if="!selectedExamId"
+      body="请从考试列表进入工作台后再发布成绩"
+    />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -51,7 +54,7 @@
         class="score-publish__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="goScoreConfirm"> 前往成绩确认 </UiButton>
+          <UiButton variant="outline" size="sm" @click="goScoreConfirm"> 前往成绩确认 </UiButton>
           <UiButton variant="ghost" size="sm" @click="goDelayedConfirmTasks">
             查看处理任务
           </UiButton>
@@ -68,7 +71,7 @@
         class="score-publish__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
+          <UiButton variant="outline" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
         </template>
       </UiAlertStrip>
 
@@ -104,7 +107,7 @@
         class="score-publish__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="goScoreConfirm">
+          <UiButton variant="outline" size="sm" @click="goScoreConfirm">
             前往成绩确认复核
           </UiButton>
         </template>
@@ -120,7 +123,7 @@
         class="score-publish__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="filterCorrectedOnly"> 仅看已更正 </UiButton>
+          <UiButton variant="outline" size="sm" @click="filterCorrectedOnly"> 仅看已更正 </UiButton>
         </template>
       </UiAlertStrip>
 
@@ -154,7 +157,7 @@
       <WorkbenchSurfaceCard flush class="score-publish__table-section">
         <div class="score-publish__table-shell">
           <h3 class="score-publish__table-title">考生成绩</h3>
-          <a-skeleton v-if="finalScoreOverviewLoading" active :paragraph="{ rows: 1 }" />
+          <UiSkeletonState v-if="finalScoreOverviewLoading" :rows="1" compact />
           <UiSectionTabs
             v-else
             v-model="statusTabKey"
@@ -286,7 +289,7 @@
       @close="detailOpen = false"
     >
       <UiSkeletonState v-if="detailLoading" variant="card" compact />
-      <UiEmpty v-else-if="!paperScore" description="暂无成绩明细" />
+      <UiEmpty size="sm" v-else-if="!paperScore" description="暂无成绩明细" />
       <div v-else>
         <UiAlertStrip
           v-if="detailCandidate?.absenceScoreZero"
@@ -297,34 +300,34 @@
           inline
           style="margin-bottom: 12px"
         />
-        <a-descriptions :column="2" size="small" bordered class="score-publish__detail-summary">
-          <a-descriptions-item label="答卷">
+        <UiDescriptions :column="2" size="small" bordered class="score-publish__detail-summary">
+          <UiDescriptionsItem label="答卷">
             {{ detailCandidate?.paperDisplay.primaryText }}
-          </a-descriptions-item>
-          <a-descriptions-item label="班级">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="班级">
             {{ detailCandidate?.studentClassName }}
-          </a-descriptions-item>
-          <a-descriptions-item v-if="hasDailyScoreConfig" label="考试分">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="hasDailyScoreConfig" label="考试分">
             <span class="score-summary-table__score">{{
               formatScorePoints(paperScore.examScore ?? paperScore.estimatedExamScore)
             }}</span>
-          </a-descriptions-item>
-          <a-descriptions-item v-if="hasDailyScoreConfig" label="日常分">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="hasDailyScoreConfig" label="日常分">
             <span class="score-summary-table__score">{{
               formatScorePoints(paperScore.dailyScore)
             }}</span>
-          </a-descriptions-item>
-          <a-descriptions-item :label="hasDailyScoreConfig ? '总成绩' : '总分'">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem :label="hasDailyScoreConfig ? '总成绩' : '总分'">
             <span class="score-summary-table__score score-summary-table__score--total">
               {{ formatScorePoints(paperScore.totalScore ?? paperScore.estimatedTotalScore) }}
             </span>
-          </a-descriptions-item>
-          <a-descriptions-item label="最终状态" :span="2">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="最终状态" :span="2">
             <UiTag :tone="finalScoreStatusTone(paperScore.finalScoreStatus)" size="sm">
               {{ finalScoreStatusLabel(paperScore.finalScoreStatus) }}
             </UiTag>
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
 
         <UiAlertStrip
           v-if="paperTotalScoreCorrectionNotice"
@@ -378,23 +381,25 @@
       @close="withdrawOpen = false"
       @confirm="handleWithdraw"
     >
-      <a-form layout="vertical">
-        <a-form-item label="考生">
-          <a-input
+      <UiForm layout="vertical">
+        <UiFormItem label="考生">
+          <UiInput
+            size="sm"
             :value="withdrawCandidate ? withdrawCandidate.paperDisplay.primaryText : ''"
             disabled
           />
-        </a-form-item>
-        <a-form-item label="撤回原因" required>
-          <a-textarea
-            v-model:value="withdrawReason"
+        </UiFormItem>
+        <UiFormItem label="撤回原因" required>
+          <UiTextarea
+            size="sm"
+            v-model="withdrawReason"
             placeholder="请输入撤回原因（必填）"
             :rows="3"
             :max-length="200"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <!-- 全场发布 Drawer：后端按考试全场口径筛选并逐卷发布 -->
@@ -421,10 +426,12 @@
         </div>
       </div>
       <div v-if="bulkResult" class="score-publish__bulk-result">
-        <a-progress
+        <UiProgressBar
           :percent="bulkResultPercent"
-          :status="
-            bulkResult.failureCount > 0 || bulkResult.remainingCount > 0 ? 'exception' : 'success'
+          :color="
+            bulkResult.failureCount > 0 || bulkResult.remainingCount > 0
+              ? 'var(--dp-error)'
+              : 'var(--dp-success)'
           "
         />
         <div class="score-publish__bulk-meta">
@@ -432,9 +439,9 @@
           全场已发布 {{ bulkResult.alreadyPublishedCount }} / {{ bulkResult.totalCandidateCount }}
         </div>
       </div>
-      <a-list v-if="bulkResult?.failures.length" size="small" class="score-publish__bulk-list">
-        <a-list-item v-for="(item, index) in bulkResult.failures" :key="item.paperInstanceId">
-          <a-list-item-meta>
+      <UiList v-if="bulkResult?.failures.length" size="small" class="score-publish__bulk-list">
+        <UiListItem v-for="(item, index) in bulkResult.failures" :key="item.paperInstanceId">
+          <UiListItemMeta>
             <template #title> 试卷实例 {{ item.paperInstanceId }} </template>
             <template #description>
               <UiTag tone="red" size="sm" class="score-publish__bulk-error-tag">
@@ -442,10 +449,10 @@
               </UiTag>
               {{ item.message }}
             </template>
-          </a-list-item-meta>
+          </UiListItemMeta>
           <UiTag tone="red" size="sm">失败 {{ index + 1 }}</UiTag>
-        </a-list-item>
-      </a-list>
+        </UiListItem>
+      </UiList>
       <template #footer>
         <UiButton variant="outline" size="md" :disabled="bulkRunning" @click="bulkOpen = false">
           取消
@@ -502,14 +509,25 @@ import ExamArchiveGateBanner from '@/components/archive-volume/ExamArchiveGateBa
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiList from '@/components/ui-guide/ui/UiList.vue'
+import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
+import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
+import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import ScoreAnalyticsStatusFlow from '@/components/workbench/ScoreAnalyticsStatusFlow.vue'
 import ScoreReleaseStepPipeline from '@/components/workbench/ScoreReleaseStepPipeline.vue'
@@ -693,6 +711,7 @@ const columns = computed(() =>
 // ─── 数据加载（服务端分页） ─────────────────────────────
 const candidates = ref<ExamScoreSummaryItemResponse[]>([])
 const loading = ref(false)
+let candidatesRequestSequence = 0
 const finalScoreOverview = ref<FinalScoreRiskOverviewResponse | null>(null)
 const scorePanel = ref<ExamWorkbenchScorePanelResponse | null>(null)
 const finalScoreOverviewLoading = ref(false)
@@ -731,7 +750,7 @@ const missingAbsenceScoreZeroFinalCount = computed(
 const repairingScoreZero = ref(false)
 
 async function handleRepairScoreZero(): Promise<void> {
-  if (!selectedExamId.value) return
+  if (!selectedExamId.value || repairingScoreZero.value) return
   repairingScoreZero.value = true
   try {
     const result = await repairScoreZeroFinalScores({ examId: selectedExamId.value })
@@ -758,6 +777,7 @@ const pagination = reactive<TablePaginationConfig>({
 
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
+  const requestSequence = ++candidatesRequestSequence
   loading.value = true
   try {
     const result = await pageExamScoreSummary({
@@ -770,6 +790,9 @@ async function loadCandidates(): Promise<void> {
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
     })
+    if (requestSequence !== candidatesRequestSequence) {
+      return
+    }
     candidates.value = result.list
     pagination.total = result.total
     if (result.pageNum != null) {
@@ -779,9 +802,14 @@ async function loadCandidates(): Promise<void> {
       pagination.pageSize = result.pageSize
     }
   } catch (error) {
+    if (requestSequence !== candidatesRequestSequence) {
+      return
+    }
     showUserError(error, '成绩发布名单加载失败')
   } finally {
-    loading.value = false
+    if (requestSequence === candidatesRequestSequence) {
+      loading.value = false
+    }
   }
 }
 
@@ -929,6 +957,8 @@ const canBulkPublish = computed(
 const bulkOpen = ref(false)
 const bulkRunning = ref(false)
 const bulkResult = ref<FinalScoreBatchPublishResponse | null>(null)
+/** 单卷发布中的试卷实例 ID，防止列表行重复点击 */
+const publishingPaperId = ref<string | null>(null)
 const bulkResultPercent = computed(() => {
   const result = bulkResult.value
   if (!result || result.totalCandidateCount <= 0) return 0
@@ -1058,11 +1088,15 @@ function handlePublishRowAction(key: string, record: ExamScoreSummaryItemRespons
 }
 
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
+  if (publishingPaperId.value) {
+    return
+  }
   if (!selectedExamId.value || !record.paperInstanceId) return
   const canContinue = await ensureSinglePaperPublishPreconditions()
   if (!canContinue) {
     return
   }
+  publishingPaperId.value = record.paperInstanceId
   try {
     await publishFinalScore({
       examId: selectedExamId.value,
@@ -1077,6 +1111,8 @@ async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void
     }
   } catch (error) {
     showUserError(error, '成绩发布失败')
+  } finally {
+    publishingPaperId.value = null
   }
 }
 
@@ -1093,6 +1129,9 @@ function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
 }
 
 async function handleWithdraw(): Promise<void> {
+  if (withdrawing.value) {
+    return
+  }
   if (!selectedExamId.value || !withdrawCandidate.value?.paperInstanceId) return
   const reason = withdrawReason.value.trim()
   if (!reason) {
@@ -1226,7 +1265,7 @@ watch(
     font: inherit;
     font-size: var(--dp-font-size-sm);
     font-weight: var(--dp-font-weight-emphasis);
-    color: var(--ant-color-primary);
+    color: var(--dp-color-primary);
     cursor: pointer;
   }
 
@@ -1244,7 +1283,7 @@ watch(
   }
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__table-section {
@@ -1255,7 +1294,7 @@ watch(
     display: flex;
     flex-direction: column;
     gap: var(--dp-space-4);
-    padding: var(--dp-space-4) var(--dp-space-5) var(--dp-space-5);
+    padding: var(--dp-space-3) var(--dp-space-4) var(--dp-space-4);
   }
 
   &__table-title {
@@ -1311,7 +1350,7 @@ watch(
 
     &--active {
       border-color: var(--dp-primary);
-      background: color-mix(in srgb, var(--dp-primary) 8%, var(--ant-color-bg-container));
+      background: color-mix(in srgb, var(--dp-primary) 8%, var(--dp-bg-container));
       color: var(--dp-primary);
       font-weight: 600;
     }

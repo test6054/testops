@@ -4,21 +4,21 @@
       <FileImageOutlined />
       <span>阅卷影像</span>
     </template>
-    <UiEmpty v-if="showWholePaperPlaceholder" description="整卷任务请在影像区查看" />
-    <a-spin v-else :spinning="loading" tip="加载题目信息中...">
-      <UiEmpty v-if="!loaded && !loading" description="题目信息尚未加载" />
+    <UiEmpty size="sm" v-if="showWholePaperPlaceholder" description="整卷任务请在影像区查看" />
+    <UiSpin v-else :spinning="loading" tip="加载题目信息中...">
+      <UiEmpty size="sm" v-if="!loaded && !loading" description="题目信息尚未加载" />
       <div v-else-if="questionView" class="question-viewer">
         <div class="question-viewer__header">
           <UiTag tone="blue" size="sm">第 {{ questionView.questionNo }} 题</UiTag>
           <UiTag tone="gray" size="sm">{{ questionView.questionTypeMessage }}</UiTag>
           <UiTag tone="green" size="sm">满分 {{ questionView.fullScore }}</UiTag>
         </div>
-        <a-typography-paragraph
+        <UiTypographyParagraph
           class="question-viewer__stem"
           :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }"
         >
           {{ questionView.questionStem }}
-        </a-typography-paragraph>
+        </UiTypographyParagraph>
         <MarkingScanMaterialPanel
           :slice-file-id="questionView.sliceFileId"
           :source-scan-page="questionView.sourceScanPage"
@@ -28,7 +28,7 @@
           :watermark-lines="watermarkLines"
         />
         <template v-if="questionView.standardAnswer || questionView.aiScore != null">
-          <a-divider />
+          <UiDivider />
           <UiAlertStrip
             v-if="questionView.standardAnswer"
             tone="info"
@@ -70,7 +70,7 @@
           </UiAlertStrip>
         </template>
       </div>
-    </a-spin>
+    </UiSpin>
   </UiCard>
 </template>
 
@@ -82,6 +82,9 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
 
 defineOptions({ name: 'MarkingQuestionViewCard' })
 

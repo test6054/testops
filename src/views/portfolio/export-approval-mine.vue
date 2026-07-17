@@ -9,8 +9,14 @@ import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -33,6 +39,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 const userStore = useUserStore()
 const loading = ref(false)
+/** 列表请求隔离，防翻页/刷新旧响应串写 */
+const pageRequestToken = ref(0)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const downloadLoading = ref(false)
 const applyOpen = ref(false)
@@ -130,6 +138,9 @@ function openRevoke(row: PortfolioExportApprovalVO) {
 }
 
 async function submitRevoke() {
+  if (revokeLoading.value) {
+    return
+  }
   const target = revokeTarget.value
   const reason = revokeReason.value.trim()
   if (!target || !reason) {
@@ -152,9 +163,12 @@ async function submitRevoke() {
 async function loadPage() {
   beginLoad()
   const applicantUserId = userStore.userInfo.userId
+  const currentToken = ++pageRequestToken.value
   if (!applicantUserId) {
     rows.value = []
     total.value = 0
+    loading.value = false
+    okLoad()
     return
   }
   loading.value = true
@@ -164,17 +178,24 @@ async function loadPage() {
       pageSize: query.pageSize,
       applicantUserId,
     })
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
     rows.value = result.list ?? []
     total.value = result.total ?? 0
-
     okLoad()
   } catch (error) {
+    if (currentToken !== pageRequestToken.value) {
+      return
+    }
     failLoad()
     rows.value = []
     total.value = 0
     showUserError(error, '加载失败')
   } finally {
-    loading.value = false
+    if (currentToken === pageRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
@@ -186,6 +207,9 @@ function onTableChange(changeEvent: UiDataTableChangeEvent) {
 }
 
 async function downloadRow(row: PortfolioExportApprovalVO) {
+  if (downloadLoading.value) {
+    return
+  }
   if (!row.fileNodeId) {
     showFormValidationMessage('审批产物尚未生成')
     return
@@ -218,6 +242,9 @@ function openApply() {
 }
 
 async function submitApply() {
+  if (applying.value) {
+    return
+  }
   const applicantUserId = userStore.userInfo.userId
   const academicYear = applyForm.academicYear.trim()
   const exportPurpose = applyForm.exportPurpose.trim()
@@ -237,11 +264,11 @@ async function submitApply() {
   try {
     await portfolioSecurityApi.applyExport({
       exportType: PortfolioExportTypeCode.TEACHER_ARCHIVE,
-      businessRefJson: JSON.stringify({
+      businessRef: {
         teacherId: applicantUserId,
         academicYear: academicYear || undefined,
         semester: applyForm.semester,
-      }),
+      },
       exportPurpose,
     })
     message.success('档案包导出申请已提交')
@@ -270,7 +297,7 @@ onMounted(() => {
         subtitle="审批通过后可在此下载导出文件"
       >
         <template #actions>
-          <UiButton variant="primary" :disabled="downloadLoading || applying" @click="openApply">
+          <UiButton size="sm" variant="primary" :disabled="downloadLoading || applying" @click="openApply">
             申请导出档案包
           </UiButton>
         </template>
@@ -319,69 +346,73 @@ onMounted(() => {
           </template>
         </template>
         <template #emptyText>
-          <UiEmpty description="暂无导出申请" />
+          <UiEmpty size="sm" description="暂无导出申请" />
         </template>
       </UiDataTable>
     </UiCard>
-    <a-modal
+    <UiDialog
       v-model:open="applyOpen"
       title="申请导出本人教学档案包"
       :confirm-loading="applying"
       :closable="!applying"
       :mask-closable="!applying"
-      :cancel-button-props="{ disabled: applying }"
+      ok-text="提交申请"
       @ok="submitApply"
     >
-      <a-form layout="vertical">
-        <a-form-item label="学年筛选">
-          <a-input
-            v-model:value="applyForm.academicYear"
+      <UiForm layout="vertical">
+        <UiFormItem label="学年筛选">
+          <UiInput
+            size="sm"
+            v-model="applyForm.academicYear"
             placeholder="例如 2025-2026；留空导出全部学年"
             :disabled="applying"
           />
-        </a-form-item>
-        <a-form-item label="学期筛选">
-          <a-select
-            v-model:value="applyForm.semester"
+        </UiFormItem>
+        <UiFormItem label="学期筛选">
+          <UiSelect
+            size="sm"
+            v-model="applyForm.semester"
             allow-clear
             placeholder="全部学期"
             :options="SemesterOptions"
             :disabled="applying"
           />
-        </a-form-item>
-        <a-form-item label="导出用途" required>
-          <a-textarea
-            v-model:value="applyForm.exportPurpose"
+        </UiFormItem>
+        <UiFormItem label="导出用途" required>
+          <UiTextarea
+            size="sm"
+            v-model="applyForm.exportPurpose"
             :rows="3"
             placeholder="说明材料使用场景，审批通过后产物将带审批水印"
             :disabled="applying"
           />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-    <a-modal
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
+    <UiDialog
       v-model:open="revokeOpen"
       title="撤销导出产物"
       :confirm-loading="revokeLoading"
       :closable="!revokeLoading"
       :mask-closable="!revokeLoading"
-      :cancel-button-props="{ disabled: revokeLoading }"
+      ok-text="确认撤销"
       @ok="submitRevoke"
     >
-      <a-textarea
-        v-model:value="revokeReason"
+      <UiTextarea
+        size="sm"
+        v-model="revokeReason"
         :maxlength="500"
         :rows="4"
         placeholder="填写撤销原因，撤销后文件将不可继续下载"
         :disabled="revokeLoading"
       />
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
 <style scoped>
 .export-approval-mine__reject-reason {
-  color: var(--nybc-text-secondary, #666);
+  color: var(--dp-text-secondary);
   font-size: 12px;
 }
 </style>

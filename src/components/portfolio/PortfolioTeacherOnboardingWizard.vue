@@ -4,26 +4,51 @@
       v-if="blockedByTemplate"
       tone="error"
       :closable="false"
-      title="本校档案模板尚未发布"
-      :description="readiness?.blockingReason || '请联系管理员发布档案模板后再开始采集。'"
-    />
+      size="sm"
+      dense
+      inline
+      :show-icon="false"
+      class="portfolio-onboarding-wizard__gate"
+    >
+      <template #default>
+        <span class="portfolio-onboarding-wizard__gate-row">
+          <UiTag tone="red" size="sm">未启用</UiTag>
+          <span>
+            {{
+              readiness?.blockingReason
+                || '本校档案模板尚未发布，请联系管理员发布后再启用我的教学档案袋'
+            }}
+          </span>
+        </span>
+      </template>
+    </UiAlertStrip>
     <UiAlertStrip
       v-else-if="blockedByReadiness"
       tone="error"
       :closable="false"
-      title="档案袋就绪状态暂不可用"
-      description="无法确认模板与引导状态，请联系管理员。"
-    />
+      size="sm"
+      dense
+      inline
+      :show-icon="false"
+      class="portfolio-onboarding-wizard__gate"
+    >
+      <template #default>
+        <span class="portfolio-onboarding-wizard__gate-row">
+          <UiTag tone="red" size="sm">状态不可用</UiTag>
+          <span>无法确认模板与引导状态，请联系管理员后再启用我的教学档案袋</span>
+        </span>
+      </template>
+    </UiAlertStrip>
 
     <template v-if="effectiveReadonly">
       <UiCard title="档案分类树" class="portfolio-onboarding-wizard__card">
-        <a-tree
+        <UiTree
           v-if="reviewContent?.categoryTree?.length"
           :tree-data="reviewTreeData"
           default-expand-all
           block-node
         />
-        <UiEmpty v-else description="暂无分类树数据" />
+        <UiEmpty size="sm" v-else description="暂无分类树数据" />
       </UiCard>
       <UiCard title="字段规格摘要" class="portfolio-onboarding-wizard__card">
         <div
@@ -34,14 +59,14 @@
           <strong>{{ item.categoryName }}</strong>
           <span>{{ item.fieldLabels.join('、') }}</span>
         </div>
-        <UiEmpty v-if="!reviewContent?.fieldSpecSummaries?.length" description="暂无字段规格" />
+        <UiEmpty size="sm" v-if="!reviewContent?.fieldSpecSummaries?.length" description="暂无字段规格" />
       </UiCard>
     </template>
 
     <template v-else-if="!blockedByTemplate && !blockedByReadiness">
       <UiCard :title="stepTitle" class="portfolio-onboarding-wizard__card">
         <p v-if="currentStep === 1" class="portfolio-onboarding-wizard__copy">
-          教学档案袋按分类树组织材料与档案记录，经审核后进入画像与发展评价。
+          启用我的教学档案袋：按分类树组织材料与档案记录，经审核后进入画像与发展评价。
         </p>
         <p v-else-if="currentStep === 2" class="portfolio-onboarding-wizard__copy">
           浏览本校档案分类树，了解必填分类与层级结构。
@@ -56,7 +81,7 @@
           引导完成后进入工作台，开始日常材料采集与档案维护。
         </p>
 
-        <a-tree
+        <UiTree
           v-if="currentStep === 2 && categoryTree.length"
           :tree-data="interactiveTreeData"
           default-expand-all
@@ -86,10 +111,12 @@
       </UiCard>
 
       <div class="portfolio-onboarding-wizard__actions">
-        <UiButton variant="ghost" @click="handleDismiss"> 稍后继续 </UiButton>
-        <UiButton v-if="currentStep > 1" variant="outline" @click="prevStep"> 上一步 </UiButton>
-        <UiButton v-if="currentStep < 5" @click="nextStep"> 下一步 </UiButton>
-        <UiButton v-else :loading="completing" @click="handleComplete"> 完成引导 </UiButton>
+        <UiButton size="sm" variant="ghost" @click="handleDismiss"> 稍后继续 </UiButton>
+        <UiButton size="sm" v-if="currentStep > 1" variant="outline" @click="prevStep"> 上一步 </UiButton>
+        <UiButton size="sm" v-if="currentStep < totalSteps" @click="nextStep"> 下一步 </UiButton>
+        <UiButton size="sm" v-else :loading="completing" @click="handleComplete">
+          启用我的教学档案袋
+        </UiButton>
       </div>
     </template>
   </div>
@@ -113,9 +140,12 @@ import PortfolioCategoryTreePicker from '@/components/portfolio/PortfolioCategor
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiTree from '@/components/ui-guide/ui/UiTree.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'PortfolioTeacherOnboardingWizard' })
@@ -132,10 +162,12 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const { targetTeacherId } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 const loading = ref(false)
 const completing = ref(false)
 const currentStep = ref(1)
+const totalSteps = ref(5)
 const templateReady = ref(false)
 const onboardingState = ref<PortfolioTeacherOnboardingStateVO | null>(null)
 const reviewContent = ref<PortfolioTeacherOnboardingReviewContentVO | null>(null)
@@ -204,6 +236,9 @@ async function loadState() {
     }
     onboardingState.value = nextState
     currentStep.value = onboardingState.value.currentStep || 1
+    if (onboardingState.value.totalSteps) {
+      totalSteps.value = onboardingState.value.totalSteps
+    }
     templateReady.value = Boolean(onboardingState.value.templateReady)
     completedReadonly.value = Boolean(onboardingState.value.completed)
     if (completedReadonly.value) {
@@ -310,7 +345,7 @@ async function persistStep(step: number) {
 }
 
 async function nextStep() {
-  const next = Math.min(currentStep.value + 1, 5)
+  const next = Math.min(currentStep.value + 1, totalSteps.value)
   await persistStep(next)
   currentStep.value = next
 }
@@ -322,6 +357,10 @@ async function prevStep() {
 }
 
 async function handleDismiss() {
+  if (!(await confirmProxyWrite('跳过建档引导'))) {
+    return
+  }
+
   try {
     await portfolioOnboardingApi.dismiss(teacherRequest.value)
     message.success('已设置 7 天后再提醒')
@@ -335,6 +374,10 @@ async function handleDismiss() {
 }
 
 async function handleComplete() {
+  if (!(await confirmProxyWrite('完成建档引导'))) {
+    return
+  }
+
   completing.value = true
   try {
     await portfolioOnboardingApi.complete(teacherRequest.value)
@@ -390,6 +433,19 @@ onMounted(() => {
 <style scoped lang="scss">
 .portfolio-onboarding-wizard__card {
   margin: var(--dp-space-4);
+}
+
+.portfolio-onboarding-wizard__gate {
+  margin: var(--dp-space-3) var(--dp-space-4);
+}
+
+.portfolio-onboarding-wizard__gate-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  min-width: 0;
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
 }
 
 .portfolio-onboarding-wizard__copy {

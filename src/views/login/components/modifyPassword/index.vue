@@ -1,5 +1,5 @@
 <template>
-  <a-form
+  <UiForm
     ref="formRef"
     :model="form"
     :rules="rules"
@@ -7,40 +7,43 @@
     size="large"
     @submit="onModify"
   >
-    <a-form-item name="oldPassword" label="当前密码">
-      <a-input-password v-model:value="form.oldPassword" allow-clear placeholder="请输入当前密码" />
-    </a-form-item>
-    <a-form-item name="newPassword" label="新密码">
-      <a-input-password v-model:value="form.newPassword" allow-clear placeholder="请输入新密码" />
-    </a-form-item>
-    <a-form-item name="confirmPassword" label="确认密码">
-      <a-input-password
-        v-model:value="form.confirmPassword"
-        allow-clear
+    <UiFormItem name="oldPassword" label="当前密码">
+      <PasswordInput v-model="form.oldPassword" clearable size="lg" placeholder="请输入当前密码" />
+    </UiFormItem>
+    <UiFormItem name="newPassword" label="新密码">
+      <PasswordInput v-model="form.newPassword" clearable size="lg" placeholder="请输入新密码" />
+    </UiFormItem>
+    <UiFormItem name="confirmPassword" label="确认密码">
+      <PasswordInput
+        v-model="form.confirmPassword"
+        clearable
+        size="lg"
         placeholder="请再次输入新密码"
       />
-    </a-form-item>
-    <a-form-item>
-      <a-space class="w-full" direction="vertical">
-        <a-button
-          :loading="loading"
-          class="btn"
-          html-type="submit"
-          block
-          size="large"
-          type="primary"
-        >
-          立即修改
-        </a-button>
-      </a-space>
-    </a-form-item>
-  </a-form>
+    </UiFormItem>
+    <UiFormItem>
+      <UiButton
+        type="submit"
+        class="btn"
+        size="lg"
+        variant="primary"
+        block
+        :loading="loading"
+      >
+        立即修改
+      </UiButton>
+    </UiFormItem>
+  </UiForm>
 </template>
 
 <script lang="ts" setup>
 import type { FormInstance } from 'ant-design-vue'
 import message from 'ant-design-vue/es/message'
 import { changePassword } from '@/apis/auth'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import PasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 
 interface Form {
   oldPassword: string
@@ -122,22 +125,22 @@ const onModify = async () => {
 }
 
 .ant-input-affix-wrapper-status-error {
-  background-color: var(--ant-color-error-bg);
-  border-color: var(--ant-color-error-border);
+  background-color: var(--dp-error-bg);
+  border-color: var(--dp-error-border);
 }
 
 .ant-input-affix-wrapper-status-error:hover {
-  background-color: var(--ant-color-error-bg);
-  border-color: var(--ant-color-error);
+  background-color: var(--dp-error-bg);
+  border-color: var(--dp-danger);
 }
 
 .ant-input-affix-wrapper .ant-input {
   font-size: 13px;
-  color: var(--ant-color-text);
+  color: var(--dp-text-primary);
 }
 
 .ant-input-affix-wrapper:hover {
-  border-color: var(--ant-color-primary);
+  border-color: var(--dp-color-primary);
 }
 
 .btn {

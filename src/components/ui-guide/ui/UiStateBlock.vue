@@ -12,7 +12,7 @@
     <div class="ui-state-block__icon-shell">
       <slot name="icon">
         <div class="ui-state-block__icon">
-          <a-spin v-if="isLoading" />
+          <UiSpin v-if="isLoading" />
           <component :is="iconComponent" v-else />
         </div>
       </slot>
@@ -55,6 +55,7 @@ import {
   InfoCircleFilled,
 } from '@ant-design/icons-vue'
 import { computed } from 'vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiBadge from './Badge.vue'
 
 defineOptions({
@@ -152,15 +153,15 @@ const containerStyle = computed(() => {
 .ui-state-block {
   --state-border: var(--dp-border);
   --state-surface: var(--dp-surface);
-  --state-icon-bg: #eff6ff;
-  --state-icon-color: #2563eb;
+  --state-icon-bg: var(--dp-blue-50);
+  --state-icon-color: var(--dp-blue-500);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 120px;
-  padding: 16px 14px;
+  gap: var(--dp-space-2, 8px);
+  min-height: 88px;
+  padding: var(--dp-space-3, 12px);
   border: 1px solid var(--state-border);
   border-radius: var(--dp-radius-panel);
   background: var(--state-surface);
@@ -168,48 +169,48 @@ const containerStyle = computed(() => {
 }
 
 .ui-state-block--compact {
-  gap: 8px;
-  min-height: 96px;
-  padding: 12px 12px;
+  gap: var(--dp-space-1, 6px);
+  min-height: 72px;
+  padding: 10px;
 }
 
 .ui-state-block--sm {
-  min-height: 96px;
+  min-height: 72px;
 }
 
 .ui-state-block--lg {
-  min-height: 160px;
-  padding: 20px 16px;
+  min-height: 96px;
+  padding: var(--dp-space-3, 12px) 12px;
 }
 
 .ui-state-block--empty {
-  --state-icon-bg: #f8fafc;
-  --state-icon-color: #64748b;
+  --state-icon-bg: var(--dp-surface-subtle);
+  --state-icon-color: var(--dp-text-muted);
 }
 
 .ui-state-block--loading {
-  --state-icon-bg: #eff6ff;
-  --state-icon-color: #2563eb;
+  --state-icon-bg: var(--dp-blue-50);
+  --state-icon-color: var(--dp-blue-500);
 }
 
 .ui-state-block--success {
-  --state-icon-bg: #ecfdf3;
-  --state-icon-color: #16a34a;
+  --state-icon-bg: var(--dp-green-50);
+  --state-icon-color: var(--dp-green-600);
 }
 
 .ui-state-block--warning {
-  --state-icon-bg: #fff7ed;
-  --state-icon-color: #ea580c;
+  --state-icon-bg: var(--dp-orange-50);
+  --state-icon-color: var(--dp-orange-600);
 }
 
 .ui-state-block--error {
-  --state-icon-bg: #fef2f2;
-  --state-icon-color: #dc2626;
+  --state-icon-bg: var(--dp-red-50);
+  --state-icon-color: var(--dp-red-600);
 }
 
 .ui-state-block--info {
-  --state-icon-bg: #eff6ff;
-  --state-icon-color: #2563eb;
+  --state-icon-bg: var(--dp-blue-50);
+  --state-icon-color: var(--dp-blue-500);
 }
 
 .ui-state-block__icon-shell {
@@ -222,17 +223,17 @@ const containerStyle = computed(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 72px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--dp-radius-panel);
   background: var(--state-icon-bg);
   border: 1px solid var(--dp-border);
   color: var(--state-icon-color);
-  font-size: 30px;
+  font-size: 22px;
 }
 
 .ui-state-block__icon :deep(.ant-spin-dot) {
-  font-size: 28px;
+  font-size: 20px;
 }
 
 .ui-state-block__content {

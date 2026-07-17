@@ -68,13 +68,11 @@
           class="exam-detail-layout__content"
           :class="{ 'exam-detail-layout__content--wide': isLayoutWide }"
         >
-          <UiEmpty
+          <ExamSelectGateStrip
             v-if="!examId"
-            description="缺少考试上下文，请从考试列表进入"
             class="exam-detail-layout__empty"
-          >
-            <UiButton variant="primary" @click="goExamList">返回考试列表</UiButton>
-          </UiEmpty>
+            body="缺少考试上下文，请从考试列表进入本场考试工作台"
+          />
 
           <UiSkeletonState
             v-else-if="loading && !snapshot"
@@ -118,11 +116,12 @@
               :show-signal-band="false"
             />
             <UiEmpty
+              size="sm"
               v-if="isImmersiveWorkspace && !isDesktopMarkingViewport"
               :description="`批阅与复核需在较宽屏幕操作，请使用桌面端（宽度 ≥ ${DESKTOP_MARKING_MIN}px）`"
               class="exam-detail-layout__empty"
             >
-              <UiButton variant="primary" @click="exitImmersiveWorkspace">返回任务列表</UiButton>
+              <UiButton size="sm" variant="primary" @click="exitImmersiveWorkspace">返回任务列表</UiButton>
             </UiEmpty>
             <router-view v-else v-slot="{ Component: ViewComponent, route: childRoute }">
               <ExamWorkspaceChildFrame
@@ -185,6 +184,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamSubSidebar from '@/components/workbench/ExamSubSidebar.vue'
 import ExamSwitcher from '@/components/workbench/ExamSwitcher.vue'
 import ExamWorkflowTaskDock from '@/components/workbench/ExamWorkflowTaskDock.vue'
@@ -593,7 +593,7 @@ watch(isImmersiveWorkspace, (immersive) => {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: var(--ant-color-bg-layout);
+  background: var(--dp-bg-layout);
 
   &__header {
     --sidebar-width: 260px;
@@ -602,8 +602,8 @@ watch(isImmersiveWorkspace, (immersive) => {
     align-items: center;
     height: 56px;
     padding: 0 24px 0 0;
-    background: var(--ant-color-bg-container);
-    border-bottom: 1px solid var(--ant-color-border-secondary);
+    background: var(--dp-bg-container);
+    border-bottom: 1px solid var(--dp-border-subtle);
     flex-shrink: 0;
     overflow: visible;
 
@@ -647,7 +647,7 @@ watch(isImmersiveWorkspace, (immersive) => {
   &__logo-title {
     font-size: 16px;
     font-weight: 600;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -700,13 +700,13 @@ watch(isImmersiveWorkspace, (immersive) => {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    background: var(--ant-color-bg-layout);
+    background: var(--dp-bg-layout);
   }
 
   &__content {
     flex: 1;
     overflow: auto;
-    padding: var(--dp-space-5);
+    padding: var(--dp-space-3);
     background: var(--dp-gray-50);
 
     &--wide {
@@ -736,7 +736,7 @@ watch(isImmersiveWorkspace, (immersive) => {
   }
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   @media (max-width: bp.$layout-mobile-max) {
@@ -784,7 +784,7 @@ watch(isImmersiveWorkspace, (immersive) => {
       position: fixed;
       inset: 56px 0 0;
       z-index: 190;
-      background: rgba(0, 0, 0, 0.35);
+      background: color-mix(in srgb, var(--dp-text-primary) 35%, transparent);
     }
   }
 }

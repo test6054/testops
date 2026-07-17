@@ -136,7 +136,7 @@ export interface PortfolioDualTeacherImportResultVO {
   totalRows: number
   successRows: number
   failedRows: number
-  errorReportJson?: string
+  errorReport?: PortfolioImportErrorItemDto[]
 }
 
 export interface PortfolioDualTeacherPageRequest extends QueryDto {
@@ -275,13 +275,24 @@ export interface PortfolioExternalTeacherSaveRequest {
   dataStatus?: PortfolioExternalTeacherDataStatusCode
 }
 
+export interface PortfolioImportErrorItemDto {
+  rowIndex?: number
+  rowIndexes?: number[]
+  message?: string
+  conflictAction?: string
+  qualityGrade?: string
+  passRate?: number
+  teacherMatchRate?: number
+  fieldUsableRate?: number
+}
+
 export interface PortfolioExternalTeacherImportBatchVO {
   id: string
   fileName?: string
   successRows?: number
   failedRows?: number
   batchStatus: PortfolioExternalTeacherImportBatchStatusCode
-  errorReportJson?: string
+  errorReport?: PortfolioImportErrorItemDto[]
   passRate?: number
   teacherMatchRate?: number
   fieldUsableRate?: number
@@ -418,7 +429,7 @@ export interface PortfolioDevelopmentPlanHistoryImportBatchVO {
   successRows?: number
   failedRows?: number
   batchStatus: PortfolioDevelopmentPlanHistoryImportBatchStatusCode
-  errorReportJson?: string
+  errorReport?: PortfolioImportErrorItemDto[]
   syncConfigId?: string
   importedPlanIds?: string[]
   overwrittenPlanSnapshotsJson?: string
@@ -436,7 +447,7 @@ export interface PortfolioDevelopmentPlanHistoryImportResultVO {
   successRows: number
   failedRows: number
   batchStatus?: PortfolioDevelopmentPlanHistoryImportBatchStatusCode
-  errorReportJson?: string
+  errorReport?: PortfolioImportErrorItemDto[]
 }
 
 export interface PortfolioDevelopmentPlanPageRequest extends QueryDto {
@@ -1095,13 +1106,26 @@ export const portfolioTeacherRecommendationApi = {
     ),
 }
 
+export interface PortfolioPortraitLayoutWidgetDto {
+  widget: string
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+export interface PortfolioPortraitChartConfigEntryDto {
+  widgetIndex: number
+  dimensionCode: string
+}
+
 export interface PortfolioPortraitTemplateVO {
   id: string
   templateName: string
   academicYear?: string
   templateStatus?: PortfolioPortraitTemplateStatusCode
-  layoutJson?: string
-  chartConfigJson?: string
+  layout?: PortfolioPortraitLayoutWidgetDto[]
+  chartConfig?: PortfolioPortraitChartConfigEntryDto[]
   createTime?: string
 }
 
@@ -1109,8 +1133,8 @@ export interface PortfolioPortraitTemplateSaveRequest {
   id?: string
   templateName: string
   academicYear?: string
-  layoutJson: string
-  chartConfigJson?: string
+  layout: PortfolioPortraitLayoutWidgetDto[]
+  chartConfig?: PortfolioPortraitChartConfigEntryDto[]
   templateStatus?: PortfolioPortraitTemplateStatusCode
 }
 
@@ -1177,6 +1201,10 @@ export interface PortfolioEvaluationTaskVO {
   createTime?: string
   pendingObjectionCount?: number
   publicityExpiredAwaitingArchive?: boolean
+  /** 四冻结 SNAP 是否完成（对象/周期/模型/材料） */
+  freezeCompleted?: boolean
+  /** 四冻结完成时间 */
+  freezeTime?: string
 }
 
 export interface PortfolioEvaluationTaskPageRequest extends QueryDto {

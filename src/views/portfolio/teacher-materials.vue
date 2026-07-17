@@ -8,7 +8,7 @@ import type {
   PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -26,12 +26,17 @@ import {
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -40,6 +45,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
   buildPortfolioIntakeReassignQuery,
@@ -48,7 +54,8 @@ import {
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const router = useRouter()
-const { targetTeacherId } = usePortfolioPageScope()
+const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 interface MaterialFilterModel {
   materialType?: PortfolioMaterialTypeCode
@@ -235,6 +242,10 @@ function openEditModal(row: PortfolioMaterialVO) {
 
 async function submitForm() {
   if (writing.value) return
+
+  if (!(await confirmProxyWrite('保存材料'))) {
+    return
+  }
   if (!form.materialTitle.trim()) {
     showFormValidationMessage('请填写材料标题')
     return
@@ -271,6 +282,10 @@ async function submitForm() {
 
 async function deleteMaterial(row: PortfolioMaterialVO) {
   if (writing.value) return
+
+  if (!(await confirmProxyWrite('删除材料'))) {
+    return
+  }
   const scopeTeacherId = targetTeacherId.value
   const scopeToken = requestToken.value
   const operation = `delete:${row.id}`
@@ -462,139 +477,144 @@ watch(
   <StageWorkbenchShell>
     <ContextBar title="材料库" description="教师佐证材料登记、文字识别检索与复用">
       <template #actions>
-        <UiButton variant="primary" :disabled="writing" @click="openCreateModal">
+        <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreateModal">
           登记材料
         </UiButton>
-        <UiButton :loading="loading" :disabled="writing" @click="() => void loadPage()">
+        <UiButton size="sm" :loading="loading" :disabled="writing" @click="() => void loadPage()">
           刷新
         </UiButton>
       </template>
     </ContextBar>
 
-    <UiFilterBar v-model="filterModel" :fields="filterFields" @search="handleSearch">
-      <template #extra>
-        <Input.Search
-          v-model:value="searchKeyword"
-          allow-clear
-          placeholder="文字识别全文检索"
-          @search="handleSearch"
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+
+    <template v-else>
+      <UiFilterBar v-model="filterModel" :fields="filterFields" @search="handleSearch">
+        <template #extra>
+          <UiSearchBox
+            v-model="searchKeyword"
+            placeholder="文字识别全文检索"
+            @search="handleSearch"
+          />
+        </template>
+      </UiFilterBar>
+
+      <UiCard :title="showSearchResults ? '文字识别检索结果' : '材料列表'">
+        <UiDataTable
+          v-if="showSearchResults && (searchRows.length || searchLoading)"
+          v-model:current="searchPageNum"
+          v-model:page-size="searchPageSize"
+          pagination-mode="server"
+          :columns="searchColumns"
+          :data-source="searchRows"
+          :loading="searchLoading"
+          :total="searchPageTotal"
+          row-key="materialId"
+          @page-change="() => void searchOcr()"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'materialType'">
+              {{ materialTypeLabel(record.materialType) }}
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[
+                  { key: 'aiExtract', label: '智能抽取' },
+                  { key: 'aiAsk', label: '智能问数' },
+                  { key: 'aiPolicy', label: '政策核验' },
+                ]"
+                @action="
+                  (key) => {
+                    if (key === 'aiExtract') {
+                      openSearchHitAiExtract(record)
+                      return
+                    }
+                    if (key === 'aiAsk') {
+                      openSearchHitAiOrchestration(record, 'ask')
+                      return
+                    }
+                    openSearchHitAiOrchestration(record, 'policy')
+                  }
+                "
+              />
+            </template>
+          </template>
+        </UiDataTable>
+        <UiDataTable
+          v-else-if="rows.length || loading"
+          v-model:current="pageNum"
+          v-model:page-size="pageSize"
+          pagination-mode="server"
+          :columns="listColumns"
+          :data-source="rows"
+          :loading="loading"
+          :total="pageTotal"
+          row-key="id"
+          @page-change="() => void loadPage()"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'materialType'">
+              {{ materialTypeLabel(record.materialType) }}
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiTag v-if="record.status" :tone="materialStatusTone(record.status)">
+                {{ materialStatusLabel(record.status) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'ocrStatus'">
+              <UiTag v-if="record.ocrStatus" :tone="ocrStatusTone(record.ocrStatus)">
+                {{ ocrStatusLabel(record.ocrStatus) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="buildMaterialRowActions(record)"
+                @action="(key) => handleMaterialRowAction(key, record)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+        <UiEmpty size="sm" v-else :description="showSearchResults ? '未命中文字识别结果' : '暂无材料'" />
+      </UiCard>
+
+      <UiDialog
+        v-model:open="formModalOpen"
+        :title="modalTitle"
+        ok-text="保存"
+        cancel-text="取消"
+        :confirm-loading="saving"
+        :closable="!writing"
+        :mask-closable="!writing"
+        @ok="() => void submitForm()"
+        @cancel="resetFormContext"
+      >
+        <UiInput
+          v-model="form.materialTitle"
+          size="sm"
+          class="teacher-materials__field"
+          placeholder="材料标题"
         />
-      </template>
-    </UiFilterBar>
-
-    <UiCard :title="showSearchResults ? '文字识别检索结果' : '材料列表'">
-      <UiDataTable
-        v-if="showSearchResults && (searchRows.length || searchLoading)"
-        v-model:current="searchPageNum"
-        v-model:page-size="searchPageSize"
-        pagination-mode="server"
-        :columns="searchColumns"
-        :data-source="searchRows"
-        :loading="searchLoading"
-        :total="searchPageTotal"
-        row-key="materialId"
-        @page-change="() => void searchOcr()"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'materialType'">
-            {{ materialTypeLabel(record.materialType) }}
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTableActions
-              :items="[
-                { key: 'aiExtract', label: '智能抽取' },
-                { key: 'aiAsk', label: '智能问数' },
-                { key: 'aiPolicy', label: '政策核验' },
-              ]"
-              @action="
-                (key) => {
-                  if (key === 'aiExtract') {
-                    openSearchHitAiExtract(record)
-                    return
-                  }
-                  if (key === 'aiAsk') {
-                    openSearchHitAiOrchestration(record, 'ask')
-                    return
-                  }
-                  openSearchHitAiOrchestration(record, 'policy')
-                }
-              "
-            />
-          </template>
-        </template>
-      </UiDataTable>
-      <UiDataTable
-        v-else-if="rows.length || loading"
-        v-model:current="pageNum"
-        v-model:page-size="pageSize"
-        pagination-mode="server"
-        :columns="listColumns"
-        :data-source="rows"
-        :loading="loading"
-        :total="pageTotal"
-        row-key="id"
-        @page-change="() => void loadPage()"
-      >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'materialType'">
-            {{ materialTypeLabel(record.materialType) }}
-          </template>
-          <template v-else-if="column.key === 'status'">
-            <UiTag v-if="record.status" :tone="materialStatusTone(record.status)">
-              {{ materialStatusLabel(record.status) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'ocrStatus'">
-            <UiTag v-if="record.ocrStatus" :tone="ocrStatusTone(record.ocrStatus)">
-              {{ ocrStatusLabel(record.ocrStatus) }}
-            </UiTag>
-          </template>
-          <template v-else-if="column.key === 'actions'">
-            <UiTableActions
-              :items="buildMaterialRowActions(record)"
-              @action="(key) => handleMaterialRowAction(key, record)"
-            />
-          </template>
-        </template>
-      </UiDataTable>
-      <UiEmpty v-else :description="showSearchResults ? '未命中文字识别结果' : '暂无材料'" />
-    </UiCard>
-
-    <a-modal
-      v-model:open="formModalOpen"
-      :title="modalTitle"
-      ok-text="保存"
-      cancel-text="取消"
-      :confirm-loading="saving"
-      :closable="!writing"
-      :mask-closable="!writing"
-      :keyboard="!writing"
-      @ok="() => void submitForm()"
-      @cancel="resetFormContext"
-    >
-      <Input
-        v-model:value="form.materialTitle"
-        class="teacher-materials__field"
-        placeholder="材料标题"
-      />
-      <a-select
-        v-model:value="form.materialType"
-        class="teacher-materials__field teacher-materials__select"
-        :options="materialTypeOptions"
-        placeholder="材料类型"
-      />
-      <Input
-        v-model:value="form.categoryCode"
-        class="teacher-materials__field"
-        placeholder="关联分类编码（可选）"
-      />
-      <UiPlatformFileField
-        v-model:file-node-id="form.fileNodeId"
-        v-model:file-name="attachmentFileName"
-        :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
-        label="材料文件"
-      />
-    </a-modal>
+        <UiSelect
+          size="sm"
+          v-model="form.materialType"
+          class="teacher-materials__field teacher-materials__select"
+          :options="materialTypeOptions"
+          placeholder="材料类型"
+        />
+        <UiInput
+          v-model="form.categoryCode"
+          size="sm"
+          class="teacher-materials__field"
+          placeholder="关联分类编码（可选）"
+        />
+        <UiPlatformFileField
+          v-model:file-node-id="form.fileNodeId"
+          v-model:file-name="attachmentFileName"
+          :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
+          label="材料文件"
+        />
+      </UiDialog>
+    </template>
   </StageWorkbenchShell>
 </template>
 

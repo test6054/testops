@@ -1,5 +1,5 @@
 <template>
-  <a-drawer
+  <UiDrawer
     v-model:open="visible"
     :title="props.title"
     width="auto"
@@ -10,7 +10,7 @@
   >
     <div
       class="tree-selector-container"
-      style="height: 100%; display: flex; flex-direction: row; gap: 16px; overflow: hidden"
+      style="height: 100%; display: flex; flex-direction: row; gap: 12px; overflow: hidden"
     >
       <!-- 左侧：课程设计配置 -->
       <div
@@ -39,8 +39,8 @@
       >
         <!-- 搜索框 -->
         <div class="search-box" style="margin-bottom: 16px">
-          <a-input-search
-            v-model:value="searchKey"
+          <UiSearchBox
+            v-model="searchKey"
             placeholder="搜索院系、班级或学生名称/学号"
             :allow-clear="true"
             @search="handleSearch"
@@ -55,8 +55,8 @@
 
         <!-- 树形结构 -->
         <div style="flex: 1; overflow-y: auto; min-height: 0">
-          <a-spin :spinning="loading" style="width: 100%">
-            <a-tree
+          <UiSpin :spinning="loading" style="width: 100%">
+            <UiTree
               v-if="treeData.length > 0"
               :tree-data="processedTreeData"
               :checkable="true"
@@ -144,11 +144,11 @@
                   </template>
                 </div>
               </template>
-            </a-tree>
+            </UiTree>
 
             <!-- 空状态 -->
-            <UiEmpty v-else description="暂无班级和学生数据" />
-          </a-spin>
+            <UiEmpty size="sm" v-else description="暂无班级和学生数据" />
+          </UiSpin>
         </div>
 
         <slot
@@ -161,14 +161,14 @@
     </div>
 
     <template #footer>
-      <a-space>
-        <a-button @click="handleCancel">取消</a-button>
-        <a-button type="primary" :loading="props.confirmLoading" @click="handleConfirm">
+      <div class="dp-space" style="--dp-space-gap: 8px">
+        <UiButton size="sm" variant="ghost" @click="handleCancel">取消</UiButton>
+        <UiButton size="sm" variant="primary" :loading="props.confirmLoading" @click="handleConfirm">
           确定
-        </a-button>
-      </a-space>
+        </UiButton>
+      </div>
     </template>
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <script setup lang="ts">
@@ -182,8 +182,13 @@ import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import { listExamStudentTree } from '@/apis/mark/exam-scope'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiTree from '@/components/ui-guide/ui/UiTree.vue'
 import { ExamClassStudentTreeNodeTypeCode } from '@/types/enums/exam-class-student-tree-node-type-enum'
 import { showUserError } from '@/utils/error-handler'
 
@@ -620,7 +625,7 @@ defineExpose({
 <style lang="scss" scoped>
 .tree-selector-container {
   .selector-left-panel {
-    border-right: 1px solid var(--ant-color-border);
+    border-right: 1px solid var(--dp-border);
     padding-right: 16px;
     overflow-y: auto;
   }
@@ -636,10 +641,10 @@ defineExpose({
   .selection-stats {
     margin-bottom: 12px;
     font-size: 13px;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-tertiary);
 
     .selection-count {
-      color: var(--ant-color-primary);
+      color: var(--dp-color-primary);
       font-weight: 500;
     }
   }
@@ -647,17 +652,17 @@ defineExpose({
   .custom-tree-node {
     .icon-department {
       margin-right: 8px;
-      color: var(--ant-color-primary);
+      color: var(--dp-color-primary);
     }
 
     .icon-class {
       margin-right: 8px;
-      color: var(--ant-color-success);
+      color: var(--dp-success);
     }
 
     .icon-student {
       margin-right: 8px;
-      color: var(--ant-color-text-secondary);
+      color: var(--dp-text-secondary);
     }
     display: flex;
     align-items: center;
@@ -666,10 +671,10 @@ defineExpose({
 
     .node-name {
       font-weight: 500;
-      color: var(--ant-color-text);
+      color: var(--dp-text);
 
       &.disabled-student {
-        color: var(--ant-color-text-tertiary);
+        color: var(--dp-text-tertiary);
         text-decoration: line-through;
       }
     }
@@ -677,14 +682,14 @@ defineExpose({
     .node-stats {
       margin-left: 8px;
       font-size: 12px;
-      color: var(--ant-color-text-tertiary);
+      color: var(--dp-text-tertiary);
     }
   }
 
   :deep(.ant-tree-node-selected) {
     .custom-tree-node {
       .node-name {
-        color: var(--ant-color-primary);
+        color: var(--dp-color-primary);
       }
     }
   }

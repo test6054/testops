@@ -395,6 +395,9 @@ async function cancelTicket(row: ExceptionDashboardRow) {
   if (!canCancelTicket(row) || !row.ticketId) {
     return
   }
+  if (cancellingTicketId.value) {
+    return
+  }
   await confirmAsync({
     title: '取消派单',
     content: '取消后工位将无法再 claim 该派单，确定继续？',
@@ -430,44 +433,35 @@ function canRetryPageRegisterRow(row: ExceptionDashboardRow): boolean {
 }
 
 function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionItem[] {
+  // 行内仅 1 个 primary：绑定 > 重试页登记 > 前往处理/派单 > 忽略并继续
   const actions: UiTableRowActionItem[] = []
   if (row.itemKind === ScannerExceptionItemKindCode.TICKET && row.ticketId) {
-    actions.push({ key: 'view-dispatch', label: '查看派单', tone: 'primary' })
+    actions.push({ key: 'view-dispatch', label: '查看派单' })
   }
   if (canRetryPageRegisterRow(row)) {
     actions.push({
       key: 'retry-register',
       label: '重试页登记',
-      tone: 'primary',
       disabled: pageRegisterRetryingKey.value === row.rowKey,
     })
   }
   if (row.itemKind === ScannerExceptionItemKindCode.BINDING_CONFLICT) {
-    actions.push({
-      key: 'goto-handle',
-      label: '手工绑定',
-      tone: 'primary',
-    })
+    actions.push({ key: 'goto-handle', label: '手工绑定' })
   } else if (
     row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
     || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
     || row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
     || row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL
   ) {
-    actions.push({
-      key: 'goto-handle',
-      label: '前往处理',
-      tone: canRetryPageRegisterRow(row) ? 'default' : 'primary',
-    })
+    actions.push({ key: 'goto-handle', label: '前往处理' })
   }
   if (row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL && row.scanBatchId && row.examId) {
     actions.push({
       key: 'ignore-partial-tail',
       label: '忽略并继续',
-      tone: 'primary',
       disabled: partialTailDismissingKey.value === row.rowKey,
     })
-    actions.push({ key: 'manual-merge', label: '人工合并', tone: 'default' })
+    actions.push({ key: 'manual-merge', label: '人工合并' })
   }
   actions.push({ key: 'logs', label: '处置日志' })
   if (canCancelTicket(row)) {
@@ -481,7 +475,23 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
   if (canForceReleaseTicket(row)) {
     actions.push({ key: 'force-release', label: '强制解锁', tone: 'danger' })
   }
-  return actions
+  const primaryKey
+    = actions.some((item) => item.key === 'goto-handle' && item.label === '手工绑定')
+      ? 'goto-handle'
+      : actions.some((item) => item.key === 'retry-register')
+        ? 'retry-register'
+        : actions.some((item) => item.key === 'goto-handle')
+          ? 'goto-handle'
+          : actions.some((item) => item.key === 'view-dispatch')
+            ? 'view-dispatch'
+            : actions.some((item) => item.key === 'ignore-partial-tail')
+              ? 'ignore-partial-tail'
+              : undefined
+  return actions.map((action) =>
+    action.key === primaryKey && action.tone !== 'danger'
+      ? { ...action, tone: 'primary' as const }
+      : action,
+  )
 }
 
 function handleExceptionRowAction(key: string, row: ExceptionDashboardRow): void {
@@ -595,6 +605,9 @@ async function dismissPartialTail(row: ExceptionDashboardRow) {
   ) {
     return
   }
+  if (partialTailDismissingKey.value) {
+    return
+  }
   await confirmAsync({
     title: '忽略并继续',
     content: '余页将保留在扫描页中，不创建试卷实例。确认后可继续封存批次。',
@@ -624,6 +637,9 @@ async function retryPageRegister(row: ExceptionDashboardRow) {
     || !row.scanBatchId
     || !row.examId
   ) {
+    return
+  }
+  if (pageRegisterRetryingKey.value) {
     return
   }
   pageRegisterRetryingKey.value = row.rowKey

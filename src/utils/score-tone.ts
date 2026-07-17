@@ -60,11 +60,11 @@ export function progressTone(percent: number | null | undefined): BadgeTone {
  */
 const TONE_COLOR_MAP: Record<BadgeTone, string> = {
   gray: 'var(--dp-gray-400)',
-  blue: 'var(--ant-color-primary)',
-  orange: 'var(--ant-color-warning)',
-  green: 'var(--ant-color-success)',
+  blue: 'var(--dp-color-primary)',
+  orange: 'var(--dp-warning)',
+  green: 'var(--dp-success)',
   yellow: 'var(--dp-yellow-600)',
-  red: 'var(--ant-color-error)',
+  red: 'var(--dp-error)',
   purple: 'var(--dp-purple-500)',
 }
 

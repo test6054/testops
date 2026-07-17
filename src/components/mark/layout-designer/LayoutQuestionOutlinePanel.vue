@@ -109,7 +109,7 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
       </li>
     </ul>
     <p v-else class="layout-question-outline__empty">上传整卷源文件后将自动识别题目并生成题单</p>
-    <UiButton v-if="sortedQuestions.length > 0" block size="sm" variant="outline" disabled>
+    <UiButton size="sm" v-if="sortedQuestions.length > 0" block variant="outline" disabled>
       添加题目（整卷模式由预划区生成）
     </UiButton>
   </section>
@@ -121,7 +121,7 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
   padding: 12px;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--ant-color-bg-container);
+  background: var(--dp-bg-container);
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -174,12 +174,12 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
 
     &--active {
       border-color: var(--dp-color-primary);
-      background: var(--ant-color-primary-bg);
+      background: var(--dp-color-primary-bg);
     }
 
     &--warning {
-      border-color: var(--ant-color-warning);
-      background: var(--ant-color-warning-bg);
+      border-color: var(--dp-warning);
+      background: var(--dp-warning-bg);
     }
   }
 

@@ -3,7 +3,7 @@
 /* 标准属性（Firefox 64+, Chrome 121+） */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--ant-color-border-secondary) transparent;
+  scrollbar-color: var(--dp-border-subtle) transparent;
 }
 
 /* WebKit 内核（Chrome, Safari, Edge） */
@@ -13,10 +13,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  border-radius: var(--ant-border-radius);
-  background-color: var(--ant-color-border-secondary);
+  border-radius: var(--dp-radius-control);
+  background-color: var(--dp-border-subtle);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--ant-color-fill);
+  background-color: var(--dp-fill-tertiary);
 }

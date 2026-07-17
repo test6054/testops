@@ -28,6 +28,9 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -216,12 +219,13 @@ onActivated(() => {
         @reset="handleFilterReset"
       >
         <template #field-aiTaskId>
-          <a-select
-            :value="selectedTaskSelectValue"
+          <UiSelect
+            size="sm"
+            :model-value="selectedTaskSelectValue"
             :options="taskOptions"
             :loading="taskLoading"
             allow-clear
-            show-search
+            allow-search
             option-filter-prop="label"
             placeholder="选择 AI 任务"
             class="ai-mask__selector"
@@ -233,47 +237,47 @@ onActivated(() => {
 
       <template v-if="taskVO">
         <h4 class="ai-mask__section-title">AI 任务概览</h4>
-        <a-descriptions :column="2" size="small" bordered class="ai-mask__descriptions">
-          <a-descriptions-item label="能力">
+        <UiDescriptions :column="2" size="small" bordered class="ai-mask__descriptions">
+          <UiDescriptionsItem label="能力">
             {{ aiTaskTypeLabel(taskVO.taskType) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="状态">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="状态">
             <UiTag :tone="aiTaskStatusColor(taskVO.status)">
               {{ aiTaskStatusLabel(taskVO.status) }}
             </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="操作人">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="操作人">
             {{ taskVO.operatorUserName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="业务类型">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="业务类型">
             {{ aiTaskBusinessTypeLabel(taskVO.businessType) }} / {{ taskVO.businessLabel }}
-          </a-descriptions-item>
-          <a-descriptions-item label="脱敏映射">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="脱敏映射">
             {{ taskVO.maskMappingId ? '已完成脱敏处理' : '未完成脱敏处理' }}
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
       </template>
 
       <UiEmpty
         v-if="!loading && selectedAiTaskId && !mappingVO"
-        description="当前没有可展示的内容"
+        description="该任务尚未生成脱敏映射"
         size="sm"
         class="ai-mask__empty"
       />
 
       <template v-else-if="mappingVO">
         <h4 class="ai-mask__section-title">脱敏映射记录</h4>
-        <a-descriptions :column="2" size="small" bordered class="ai-mask__descriptions">
-          <a-descriptions-item label="业务类型">
+        <UiDescriptions :column="2" size="small" bordered class="ai-mask__descriptions">
+          <UiDescriptionsItem label="业务类型">
             {{ aiTaskBusinessTypeLabel(mappingVO.businessType) }} / {{ mappingVO.businessLabel }}
-          </a-descriptions-item>
-          <a-descriptions-item label="创建时间">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="创建时间">
             {{ mappingVO.createTime }}
-          </a-descriptions-item>
-          <a-descriptions-item label="记录说明" :span="2">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="记录说明" :span="2">
             当前页面展示脱敏处理状态与审计时间，敏感内容不在页面侧呈现。
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
       </template>
     </UiCard>
   </StageWorkbenchShell>
@@ -288,11 +292,11 @@ onActivated(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
 
     & + & {
-      margin-top: 16px;
+      margin-top: var(--dp-space-3, 12px);
     }
   }
 

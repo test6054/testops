@@ -15,16 +15,23 @@ import {
 } from '@/apis/portfolio/enums'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import PortfolioArchiveVersionComparePanel from '@/components/portfolio/PortfolioArchiveVersionComparePanel.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -32,6 +39,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -303,6 +311,9 @@ async function handleSaveDraft() {
   if (writeDisabled.value) {
     return
   }
+  if (!(await confirmProxyWrite('保存档案草稿'))) {
+    return
+  }
   const requestToken = scopeRequestToken.value
   saving.value = true
   try {
@@ -332,6 +343,9 @@ async function handleSaveDraft() {
 
 async function handleSubmit() {
   if (writeDisabled.value) {
+    return
+  }
+  if (!(await confirmProxyWrite('提交档案审核'))) {
     return
   }
   const missingRequiredField = editableFields.value.find(
@@ -379,6 +393,26 @@ usePortfolioScopedLoader(
   },
   () => `${targetTeacherId.value}:${categoryId.value}:${queryRecordId.value}`,
 )
+
+const categoryEditMoreActionItems = computed(() => {
+  const items: Array<{ key: string, label: string }> = [
+    { key: 'back', label: '返回档案' },
+  ]
+  if (versionHistory.value.length >= 2) {
+    items.push({ key: 'compare', label: '版本对比' })
+  }
+  return items
+})
+
+function onCategoryEditMoreAction(key: string) {
+  if (key === 'back') {
+    goBack()
+    return
+  }
+  if (key === 'compare') {
+    versionCompareOpen.value = true
+  }
+}
 </script>
 
 <template>
@@ -390,28 +424,37 @@ usePortfolioScopedLoader(
         :title="categoryName ? `${categoryName} · 分类填报` : '分类填报'"
       >
         <template #actions>
-          <UiButton :disabled="writeInProgress" @click="goBack"> 返回档案 </UiButton>
           <UiButton
-            v-if="versionHistory.length >= 2"
-            :disabled="writeInProgress"
-            @click="versionCompareOpen = true"
+            size="sm"
+            variant="primary"
+            :loading="submitting"
+            :disabled="writeDisabled"
+            @click="handleSubmit"
           >
-            版本对比
-          </UiButton>
-          <UiButton :loading="saving" :disabled="writeDisabled" @click="handleSaveDraft">
-            保存草稿
-          </UiButton>
-          <UiButton :loading="submitting" :disabled="writeDisabled" @click="handleSubmit">
             提交审核
           </UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="saving"
+            :disabled="writeDisabled"
+            @click="handleSaveDraft"
+          >
+            保存草稿
+          </UiButton>
+          <UiDropdownAction
+            trigger-style="button"
+            button-text="更多"
+            :disabled="writeInProgress"
+            :items="categoryEditMoreActionItems"
+            @select="onCategoryEditMoreAction"
+          />
         </template>
       </ContextBar>
     </template>
-    <div v-if="canPickTeachers && !targetTeacherId" class="archive-category-edit__hint">
-      <UiEmpty description="请从教师名册选择目标教师" />
-    </div>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
-    <a-spin v-else :spinning="loading">
+    <UiSpin v-else :spinning="loading">
       <p v-if="recordStatus" class="archive-category-edit__status">
         <UiTag
           :tone="strictEnumTone(PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE, recordStatus, '档案记录状态')"
@@ -423,29 +466,31 @@ usePortfolioScopedLoader(
         <span v-if="statusHint" class="archive-category-edit__status-hint">{{ statusHint }}</span>
       </p>
       <UiCard v-if="editableFields.length" title="档案字段">
-        <a-form layout="vertical">
-          <a-form-item
+        <UiForm layout="vertical">
+          <UiFormItem
             v-for="field in editableFields"
             :key="field.fieldCode"
             :label="field.fieldLabel"
             :required="field.required"
           >
-            <a-input
-              v-model:value="fieldValues[field.fieldCode]"
+            <UiInput
+              size="sm"
+              v-model="fieldValues[field.fieldCode]"
               :disabled="!recordEditable || writeInProgress"
               :placeholder="field.required ? '必填' : '选填'"
             />
-            <a-input
-              v-model:value="evidenceRefs[field.fieldCode]"
+            <UiInput
+              size="sm"
+              v-model="evidenceRefs[field.fieldCode]"
               :disabled="!recordEditable || writeInProgress"
               class="archive-category-edit__evidence"
               placeholder="证据引用（可选）"
             />
-          </a-form-item>
-        </a-form>
+          </UiFormItem>
+        </UiForm>
       </UiCard>
-      <UiEmpty v-else description="该分类暂无可手工编辑字段" />
-    </a-spin>
+      <UiEmpty size="sm" v-else description="该分类暂无可手工编辑字段" />
+    </UiSpin>
     <PortfolioArchiveVersionComparePanel
       v-model:open="versionCompareOpen"
       :versions="versionHistory"
@@ -473,6 +518,6 @@ usePortfolioScopedLoader(
 }
 
 .archive-category-edit__hint {
-  padding: var(--dp-space-6) 0;
+  padding: var(--dp-space-3, 12px) 0;
 }
 </style>

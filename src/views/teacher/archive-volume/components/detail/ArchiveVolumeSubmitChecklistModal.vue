@@ -13,9 +13,13 @@ import {
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import { ArchiveVolumeSubmitChecklistDimensionCode } from '@/types/enums/archive-volume-submit-checklist-dimension-enum'
 import { showUserError } from '@/utils/error-handler'
 
 import ArchiveVolumeSubmitTaskList from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSubmitTaskList.vue'
@@ -48,8 +52,11 @@ const signOffState = ref<
 })
 let loadSequence = 0
 
-const blockingItems = computed(
-  () => checklist.value?.blockingItems?.filter((item) => !item.passed) ?? [],
+const baseBlockingItems = computed(
+  () => checklist.value?.blockingItems?.filter(
+    (item) => !item.passed
+      && item.dimension !== ArchiveVolumeSubmitChecklistDimensionCode.DEPARTMENT_REVIEW,
+  ) ?? [],
 )
 
 const formSignOffReady = computed(() => {
@@ -62,10 +69,22 @@ const formSignOffReady = computed(() => {
 
 const canConfirm = computed(() => {
   if (!checklist.value) return false
-  if (checklist.value.baseReady === false) return false
-  if (blockingItems.value.length > 0) return false
+  if (checklist.value.baseReady !== true) return false
   if (!materialCompleteConfirmed.value || !gradingNormConfirmed.value) return false
-  return formSignOffReady.value
+  if (!formSignOffReady.value) return false
+  const scorer = signOffState.value.SCORER.signatoryName.trim()
+  const rechecker = signOffState.value.RECHECKER.signatoryName.trim()
+  if (scorer && rechecker && scorer.localeCompare(rechecker, undefined, { sensitivity: 'accent' }) === 0) {
+    return false
+  }
+  return true
+})
+
+const sameScorerAndRechecker = computed(() => {
+  const scorer = signOffState.value.SCORER.signatoryName.trim()
+  const rechecker = signOffState.value.RECHECKER.signatoryName.trim()
+  if (!scorer || !rechecker) return false
+  return scorer.localeCompare(rechecker, undefined, { sensitivity: 'accent' }) === 0
 })
 
 watch(
@@ -122,6 +141,7 @@ function close() {
 }
 
 async function handleConfirm() {
+  if (submitting.value) return
   if (!canConfirm.value) return
   if (!checklist.value?.checklistVersion) {
     message.error('清单版本缺失，请重新打开')
@@ -164,6 +184,7 @@ async function handleConfirm() {
   >
     <UiSkeletonState v-if="loading" variant="card" compact />
     <UiEmpty
+      size="sm"
       v-else-if="loadFailed"
       title="提交自查清单加载失败"
       description="无法读取最新提交前置，请重新加载后再确认。"
@@ -172,52 +193,59 @@ async function handleConfirm() {
     />
     <template v-else-if="checklist">
       <UiAlertStrip
-        v-if="blockingItems.length"
+        v-if="baseBlockingItems.length"
         tone="warning"
         title="以下项尚未满足提交前置"
         dense
         class="submit-checklist-modal__alert"
       />
       <ArchiveVolumeSubmitTaskList
-        v-if="blockingItems.length"
-        :items="blockingItems"
+        v-if="baseBlockingItems.length"
+        :items="baseBlockingItems"
         readonly
         class="submit-checklist-modal__tasks"
       />
-      <a-checkbox v-model:checked="materialCompleteConfirmed">材料齐全性已核对</a-checkbox>
-      <a-checkbox v-model:checked="gradingNormConfirmed" class="submit-checklist-modal__check">
+      <UiCheckbox v-model="materialCompleteConfirmed">材料齐全性已核对</UiCheckbox>
+      <UiCheckbox v-model="gradingNormConfirmed" class="submit-checklist-modal__check">
         阅卷规范性已核对
-      </a-checkbox>
+      </UiCheckbox>
       <div class="submit-checklist-modal__signoff">
         <div
           v-for="item in checklist.signOffItems"
           :key="item.role"
           class="submit-checklist-modal__signoff-row"
         >
-          <a-checkbox v-model:checked="signOffState[item.role].confirmed">
+          <UiCheckbox v-model="signOffState[item.role].confirmed">
             {{ item.roleLabel }}签字齐全
-          </a-checkbox>
-          <a-input
-            v-model:value="signOffState[item.role].signatoryName"
+          </UiCheckbox>
+          <UiInput
+            v-model="signOffState[item.role].signatoryName"
             placeholder="签字人姓名"
-            size="small"
-            allow-clear
+            size="sm"
+            clearable
             :maxlength="64"
-            show-count
           />
         </div>
       </div>
-      <a-textarea
-        v-model:value="reason"
+      <UiAlertStrip
+        v-if="sameScorerAndRechecker"
+        tone="warning"
+        title="统分人与复核人不得为同一人"
+        dense
+        class="submit-checklist-modal__alert"
+      />
+      <UiTextarea
+        size="sm"
+        v-model="reason"
         placeholder="自查说明（可选）"
         :rows="2"
         :maxlength="500"
-        show-count
+        :show-count="true"
       />
     </template>
     <template #footer>
-      <UiButton variant="outline" @click="close">取消</UiButton>
-      <UiButton :loading="submitting" :disabled="loading || loadFailed || !canConfirm" @click="handleConfirm">
+      <UiButton size="sm" variant="outline" @click="close">取消</UiButton>
+      <UiButton size="sm" :loading="submitting" :disabled="loading || loadFailed || !canConfirm" @click="handleConfirm">
         确认自查
       </UiButton>
     </template>

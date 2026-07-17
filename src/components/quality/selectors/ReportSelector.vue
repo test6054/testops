@@ -3,13 +3,14 @@
   常用过滤：programId / trainingPlanId / qualityCourseId / schoolYear / semester / status / reportType
 -->
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ReportVO } from '@/apis/quality/report'
 import type { ReportStatusCode, ReportTypeCode } from '@/apis/quality/types'
+import type { UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { reportApi } from '@/apis/quality/report'
 import { ReportTypeDescription } from '@/apis/quality/types'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -92,13 +93,25 @@ async function loadOptions(keyword?: string) {
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const selectOptions = computed<UiSelectOption[]>(() =>
+  options.value.map((opt) => ({
+    value: opt.id,
+    label: opt.title,
+  })),
+)
+
+const controlStyle = computed(() => ({
+  width: typeof props.width === 'number' ? `${props.width}px` : props.width,
+}))
+
 function handleSearch(val: string) {
   searchText.value = val
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => loadOptions(val), QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS)
 }
 
-function handleChange(val: SelectValue) {
+function handleChange(val: UiOptionValue | UiOptionValue[] | undefined) {
   const next: string | null = typeof val === 'string' ? val : null
   internalValue.value = next ?? undefined
   const option = options.value.find((o) => o.id === next)
@@ -118,31 +131,38 @@ defineExpose({ reload: loadOptions })
 </script>
 
 <template>
-  <a-select
-    :value="internalValue"
+  <UiSelect
+    v-model="internalValue"
+    class="dp-quality-selector"
+    :style="controlStyle"
+    size="sm"
     :placeholder="placeholder"
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
-    :style="{ width: typeof width === 'number' ? `${width}px` : width }"
-    show-search
+    allow-search
     :filter-option="false"
     @search="handleSearch"
-    @change="handleChange"
+    :options="selectOptions"
+    @update:model-value="handleChange"
   >
-    <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.title">
-      {{ opt.title }}
-      <span v-if="opt.reportType" class="dp-selector-option-meta">· {{ reportTypeLabel(opt.reportType) }}</span>
-      <span v-if="opt.schoolYear" class="dp-selector-option-meta">
-        ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ formatSemester(opt.semester) }}</span>)
-      </span>
-    </a-select-option>
-  </a-select>
+    <template #option="{ value: optionValue }">
+      <template v-for="opt in options" :key="opt.id">
+        <template v-if="opt.id === optionValue">
+          {{ opt.title }}
+          <span v-if="opt.reportType" class="dp-selector-option-meta">· {{ reportTypeLabel(opt.reportType) }}</span>
+          <span v-if="opt.schoolYear" class="dp-selector-option-meta">
+            ({{ opt.schoolYear }}<span v-if="opt.semester">/{{ formatSemester(opt.semester) }}</span>)
+          </span>
+        </template>
+      </template>
+    </template>
+  </UiSelect>
 </template>
 
 <style scoped>
 .text-gray-400 {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 
 .ml-1 {

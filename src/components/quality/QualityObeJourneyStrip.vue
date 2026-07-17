@@ -71,12 +71,12 @@ function goStep(step: ObeJourneyStepVO): void {
 .quality-obe-journey-strip {
   display: flex;
   align-items: center;
-  gap: 16px;
-  min-height: 32px;
-  padding: 0 24px 8px;
+  gap: var(--dp-space-2, 8px);
+  min-height: 28px;
+  padding: 0 var(--dp-space-3, 12px) var(--dp-space-1, 4px);
   overflow-x: auto;
-  background: var(--ant-color-bg-container);
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  background: var(--dp-surface);
+  border-bottom: 1px solid var(--dp-border);
 
   &__btn {
     display: inline-flex;
@@ -97,7 +97,7 @@ function goStep(step: ObeJourneyStepVO): void {
     }
 
     &:not(:disabled):hover {
-      color: var(--ant-color-primary);
+      color: var(--dp-color-primary);
     }
   }
 
@@ -109,11 +109,11 @@ function goStep(step: ObeJourneyStepVO): void {
   }
 
   &__step--completed {
-    color: var(--ant-color-success);
+    color: var(--dp-success);
   }
 
   &__step--active {
-    color: var(--ant-color-primary);
+    color: var(--dp-color-primary);
     font-weight: 500;
   }
 

@@ -74,7 +74,7 @@ const pickerValue = computed<string>({
   },
 })
 
-const resolvedSize = computed<UiComponentSize>(() => {
+const resolvedSize = computed<'sm' | 'md' | 'lg'>(() => {
   const size = props.size
   if (size === 'small' || size === 'sm') return 'sm'
   if (size === 'large' || size === 'lg') return 'lg'
@@ -82,12 +82,9 @@ const resolvedSize = computed<UiComponentSize>(() => {
 })
 
 const antSize = computed<SizeType>(() => {
-  const sizeMap: Record<UiComponentSize, SizeType> = {
-    sm: 'small',
-    md: 'middle',
-    lg: 'large',
-  }
-  return sizeMap[resolvedSize.value]
+  if (resolvedSize.value === 'sm') return 'small'
+  if (resolvedSize.value === 'lg') return 'large'
+  return 'middle'
 })
 
 const handleChange = (value: string | Dayjs | null, dateString: string) => {

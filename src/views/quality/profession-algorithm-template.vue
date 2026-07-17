@@ -34,13 +34,27 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -480,7 +494,13 @@ onActivated(() => {
         @reset="handleReset"
       />
 
-      <UiEmpty v-if="!loading && total === 0" description="无算法模板" />
+      <WorkbenchContextGateStrip
+        v-if="!loading && total === 0"
+        tag="未配置"
+        body="暂无算法模板"
+        cta-label="新建模板"
+        @cta="openCreate"
+      />
       <UiDataTable
         v-else
         v-model:current="query.pageNum"
@@ -522,261 +542,275 @@ onActivated(() => {
       </UiDataTable>
     </UiCard>
 
-    <a-modal
+    <UiDialog
       v-model:open="editorVisible"
       :title="editorMode === 'create' ? '新建模板' : '编辑模板'"
       :confirm-loading="submitting"
       width="860px"
       @ok="submitEditor"
     >
-      <a-form layout="vertical" :model="editor">
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="编码" required>
-              <a-input v-model:value="editor.templateCode" :disabled="editorMode === 'edit'" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="16">
-            <a-form-item label="名称" required>
-              <a-input v-model:value="editor.templateName" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="认证类型" required>
-              <a-select
-                v-model:value="editor.accreditationType"
+      <UiForm layout="vertical" :model="editor">
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="编码" required>
+              <UiInput
+                size="sm" v-model="editor.templateCode" :disabled="editorMode === 'edit'"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="16">
+            <UiFormItem label="名称" required>
+              <UiInput
+                size="sm" v-model="editor.templateName"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="认证类型" required>
+              <UiSelect
+                size="sm"
+                v-model="editor.accreditationType"
                 :options="accreditationOptions"
                 :disabled="editorMode === 'edit'"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="学科分类">
-              <a-input v-model:value="editor.disciplineCategory" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="标准年份">
-              <a-input v-model:value="editor.standardYear" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="关联认证标准">
-          <a-select
-            v-model:value="editor.standardId"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="学科分类">
+              <UiInput
+                size="sm" v-model="editor.disciplineCategory"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="标准年份">
+              <UiInput
+                size="sm" v-model="editor.standardYear"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="关联认证标准">
+          <UiSelect
+            v-model="editor.standardId"
             allow-clear
-            show-search
+            allow-search
             :filter-option="false"
             placeholder="可选"
             @search="handleStandardDictSearch"
-          >
-            <a-select-option
-              v-for="s in standards"
-              :key="s.id"
-              :value="s.id"
-              :label="`${s.standardCode} · ${s.standardName}`"
-            >
-              {{ s.standardCode }} · {{ s.standardName }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="描述">
-          <a-textarea v-model:value="editor.description" :rows="3" />
-        </a-form-item>
+          
+            size="sm"
+            :options="standards.map((s) => ({ value: s.id, label: `${s.standardCode} · ${s.standardName}` }))"
+          />
+        </UiFormItem>
+        <UiFormItem label="描述">
+          <UiTextarea size="sm" v-model="editor.description" :rows="3" />
+        </UiFormItem>
 
-        <a-divider orientation="left">默认聚合策略</a-divider>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="课程目标聚合">
-              <a-select
-                v-model:value="editor.courseGoalAggregation"
+        <UiDivider orientation="left">默认聚合策略</UiDivider>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="课程目标聚合">
+              <UiSelect
+                size="sm"
+                v-model="editor.courseGoalAggregation"
                 :options="aggregationOptions"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="观测点聚合">
-              <a-select v-model:value="editor.indicatorAggregation" :options="aggregationOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="毕业要求聚合">
-              <a-select
-                v-model:value="editor.requirementAggregation"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="观测点聚合">
+              <UiSelect
+                size="sm" v-model="editor.indicatorAggregation" :options="aggregationOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="毕业要求聚合">
+              <UiSelect
+                size="sm"
+                v-model="editor.requirementAggregation"
                 :options="aggregationOptions"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
 
-        <a-divider orientation="left">默认权重 / 样本 / 阈值</a-divider>
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="直接评价权重">
-              <a-input-number
-                v-model:value="editor.directWeightDefault"
+        <UiDivider orientation="left">默认权重 / 样本 / 阈值</UiDivider>
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="直接评价权重">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.directWeightDefault"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="间接评价权重">
-              <a-input-number
-                v-model:value="editor.indirectWeightDefault"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="间接评价权重">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.indirectWeightDefault"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="间接最低样本">
-              <a-input-number
-                v-model:value="editor.indirectMinValidSampleCount"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="间接最低样本">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.indirectMinValidSampleCount"
                 :min="0"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="间接覆盖率阈值">
-              <a-input-number
-                v-model:value="editor.indirectCoverageThreshold"
-                :min="0"
-                :max="1"
-                :step="0.01"
-                style="width: 100%"
-              />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="课程目标默认阈值">
-              <a-input-number
-                v-model:value="editor.courseGoalThresholdDefault"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="间接覆盖率阈值">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.indirectCoverageThreshold"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="观测点默认阈值">
-              <a-input-number
-                v-model:value="editor.indicatorThresholdDefault"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="课程目标默认阈值">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.courseGoalThresholdDefault"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="毕业要求默认阈值">
-              <a-input-number
-                v-model:value="editor.requirementThresholdDefault"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="观测点默认阈值">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.indicatorThresholdDefault"
                 :min="0"
                 :max="1"
                 :step="0.01"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="毕业要求默认阈值">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.requirementThresholdDefault"
+                :min="0"
+                :max="1"
+                :step="0.01"
+                style="width: 100%"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
 
-        <a-space>
-          <a-checkbox v-model:checked="editor.aiLiteracySupported">支持 AI 素养</a-checkbox>
-          <a-checkbox v-model:checked="editor.civicDimensionsSupported">支持五育维度</a-checkbox>
-          <a-checkbox v-model:checked="editor.enabled">启用</a-checkbox>
-        </a-space>
-      </a-form>
-    </a-modal>
+        <div class="dp-space" style="--dp-space-gap: 8px">
+          <UiCheckbox v-model="editor.aiLiteracySupported">支持 AI 素养</UiCheckbox>
+          <UiCheckbox v-model="editor.civicDimensionsSupported">支持五育维度</UiCheckbox>
+          <UiCheckbox v-model="editor.enabled">启用</UiCheckbox>
+        </div>
+      </UiForm>
+    </UiDialog>
 
-    <a-drawer
+    <UiDrawer
       v-model:open="detailVisible"
       title="专业算法模板详情"
       width="760"
       :loading="detailLoading"
     >
       <template v-if="detailRecord">
-        <a-descriptions :column="2" size="small" bordered>
-          <a-descriptions-item label="模板编码">
+        <UiDescriptions :column="2" size="small" bordered>
+          <UiDescriptionsItem label="模板编码">
             {{ detailRecord.templateCode }}
-          </a-descriptions-item>
-          <a-descriptions-item label="模板名称">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="模板名称">
             {{ detailRecord.templateName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="来源">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="来源">
             <UiTag :tone="isSharedTemplate(detailRecord) ? 'blue' : 'green'">
               {{ isSharedTemplate(detailRecord) ? '平台共享' : '租户自定义' }}
             </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="状态">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="状态">
             <UiTag :tone="detailRecord.enabled ? 'green' : 'gray'">
               {{ detailRecord.enabled ? '启用' : '停用' }}
             </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item label="认证类型">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="认证类型">
             {{ accreditationTypeLabel(detailRecord.accreditationType) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="学科分类">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="学科分类">
             {{ detailRecord.disciplineCategory }}
-          </a-descriptions-item>
-          <a-descriptions-item label="标准年份">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="标准年份">
             {{ detailRecord.standardYear }}
-          </a-descriptions-item>
-          <a-descriptions-item label="关联认证标准">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="关联认证标准">
             {{ detailRecord.standardId }}
-          </a-descriptions-item>
-          <a-descriptions-item label="课程目标聚合">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="课程目标聚合">
             {{ aggregationFunctionLabel(detailRecord.courseGoalAggregation) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="观测点聚合">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="观测点聚合">
             {{ aggregationFunctionLabel(detailRecord.indicatorAggregation) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="毕业要求聚合">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="毕业要求聚合">
             {{ aggregationFunctionLabel(detailRecord.requirementAggregation) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="直接 / 间接权重">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="直接 / 间接权重">
             {{ detailRecord.directWeightDefault }} /
             {{ detailRecord.indirectWeightDefault }}
-          </a-descriptions-item>
-          <a-descriptions-item label="间接最低样本">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="间接最低样本">
             {{ detailRecord.indirectMinValidSampleCount }}
-          </a-descriptions-item>
-          <a-descriptions-item label="间接覆盖率阈值">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="间接覆盖率阈值">
             {{ detailRecord.indirectCoverageThreshold }}
-          </a-descriptions-item>
-          <a-descriptions-item label="课程目标 / 观测点 / 毕业要求阈值" :span="2">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="课程目标 / 观测点 / 毕业要求阈值" :span="2">
             {{ detailRecord.courseGoalThresholdDefault }} /
             {{ detailRecord.indicatorThresholdDefault }} /
             {{ detailRecord.requirementThresholdDefault }}
-          </a-descriptions-item>
-          <a-descriptions-item label="能力维度" :span="2">
-            <a-space>
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="能力维度" :span="2">
+            <div class="dp-space" style="--dp-space-gap: 8px">
               <UiTag :tone="detailRecord.aiLiteracySupported ? 'blue' : 'gray'">
                 {{ detailRecord.aiLiteracySupported ? '支持 AI 素养' : '不支持 AI 素养' }}
               </UiTag>
               <UiTag :tone="detailRecord.civicDimensionsSupported ? 'purple' : 'gray'">
                 {{ detailRecord.civicDimensionsSupported ? '支持五育维度' : '不支持五育维度' }}
               </UiTag>
-            </a-space>
-          </a-descriptions-item>
-          <a-descriptions-item label="描述" :span="2">
+            </div>
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="描述" :span="2">
             {{ detailRecord.description }}
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
 
-        <a-divider v-if="isSharedTemplate(detailRecord)">租户继承</a-divider>
-        <a-space v-if="isSharedTemplate(detailRecord)">
+        <UiDivider v-if="isSharedTemplate(detailRecord)">租户继承</UiDivider>
+        <div class="dp-space" v-if="isSharedTemplate(detailRecord)" style="--dp-space-gap: 8px">
           <UiButton
             variant="primary"
             size="sm"
@@ -785,9 +819,9 @@ onActivated(() => {
           >
             复制为租户模板
           </UiButton>
-        </a-space>
+        </div>
       </template>
-    </a-drawer>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -800,8 +834,8 @@ onActivated(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {

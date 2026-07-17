@@ -11,7 +11,7 @@
   >
     <p v-if="questionNo" class="binding-modal__meta">题号 {{ questionNo }}</p>
     <UiSkeletonState v-if="loading" variant="card" :card-count="1" compact />
-    <UiEmpty v-else-if="candidates.length === 0" description="暂无可用定标案例，请先完成有效性评估" />
+    <UiEmpty v-else-if="candidates.length === 0" size="sm" description="暂无可用定标案例，请先完成有效性评估" />
     <div v-else class="binding-modal__list">
       <label
         v-for="item in candidates"
@@ -102,7 +102,7 @@ async function loadCandidates(): Promise<void> {
 }
 
 async function handleSave(): Promise<void> {
-  if (!props.examId || !props.layoutQuestionId) return
+  if (!props.examId || !props.layoutQuestionId || saving.value) return
   const selected = candidates.value.find((item) => item.effectivenessEvalId === selectedEvalId.value)
   if (!selected) {
     message.warning('请选择定标案例')

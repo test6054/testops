@@ -24,10 +24,10 @@
     </div>
     <template #footer>
       <slot name="footer">
-        <UiButton v-if="!props.hideCancel" variant="outline" @click="handleCancel">
+        <UiButton size="sm" v-if="!props.hideCancel" variant="outline" @click="handleCancel">
           {{ props.cancelText }}
         </UiButton>
-        <UiButton :variant="okVariant" :loading="props.confirmLoading" @click="emit('ok')">
+        <UiButton size="sm" :variant="okVariant" :loading="props.confirmLoading" @click="emit('ok')">
           {{ props.okText }}
         </UiButton>
       </slot>
@@ -104,7 +104,7 @@ const handleCancel = () => {
 <style scoped>
 .ui-confirm-dialog {
   display: flex;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   align-items: flex-start;
 }
 
@@ -112,11 +112,11 @@ const handleCancel = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: var(--dp-control-height-md);
+  height: var(--dp-control-height-md, 36px);
   border-radius: 999px;
   flex-shrink: 0;
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .ui-confirm-dialog__icon--warning {

@@ -37,7 +37,7 @@ export const useTenantStore = defineStore(
     const isValidTenant = computed(() => !!tenantId.value && !!tenantInfo.tenantName)
     const tenantDisplayName = computed(() => tenantInfo.tenantName || '系统租户')
     const tenantLogo = computed(() => tenantInfo.logoUrl || '')
-    const primaryColor = computed(() => 'var(--ant-color-primary)')
+    const primaryColor = computed(() => 'var(--dp-color-primary)')
     const platformTitle = computed(() => '智能教学实训平台')
 
     // 基础方法

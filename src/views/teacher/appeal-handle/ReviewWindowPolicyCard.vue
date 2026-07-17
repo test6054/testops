@@ -15,86 +15,98 @@
 
     <UiSkeletonState v-if="loading" variant="card" compact />
     <template v-else>
-      <a-form layout="vertical" :model="form">
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item label="开放时间" required>
-              <a-date-picker
-                v-model:value="form.openTime"
-                show-time
+      <UiForm layout="vertical" :model="form">
+        <UiRow :gutter="16">
+          <UiCol :span="12">
+            <UiFormItem label="开放时间" required>
+              <UiDatePicker
+                size="sm"
+                v-model="form.openTime"
+                :show-time="true"
                 format="YYYY-MM-DD HH:mm"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="关闭时间" required>
-              <a-date-picker
-                v-model:value="form.closeTime"
-                show-time
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="关闭时间" required>
+              <UiDatePicker
+                size="sm"
+                v-model="form.closeTime"
+                :show-time="true"
                 format="YYYY-MM-DD HH:mm"
                 value-format="YYYY-MM-DD HH:mm:ss"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="16">
-          <a-col :span="8">
-            <a-form-item label="最大申请次数">
-              <a-input-number
-                v-model:value="form.maxRequestCount"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="16">
+          <UiCol :span="8">
+            <UiFormItem label="最大申请次数">
+              <UiInputNumber
+                size="sm"
+                v-model="form.maxRequestCount"
                 :min="1"
                 :max="10"
                 style="width: 100%"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="可见材料范围">
-              <a-select v-model:value="form.visibleMaterialScope" :options="scopeOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="允许的原因类型">
-              <a-select
-                v-model:value="form.allowedReasonTypes"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="可见材料范围">
+              <UiSelect
+                size="sm" v-model="form.visibleMaterialScope" :options="scopeOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="允许的原因类型">
+              <UiSelect
+                size="sm"
+                v-model="form.allowedReasonTypes"
                 mode="multiple"
                 allow-clear
                 :options="GRADE_REVIEW_REASON_TYPE_OPTIONS"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-      </a-form>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+      </UiForm>
 
-      <a-space>
-        <a-button type="primary" :loading="saving" @click="handleSave">保存策略</a-button>
-        <a-button
-          type="primary"
-          ghost
+      <div class="dp-space" style="--dp-space-gap: 8px">
+        <UiButton size="sm" variant="primary" :loading="saving" @click="handleSave">
+          保存策略
+        </UiButton>
+        <UiButton
+          size="sm"
+          variant="outline"
           :loading="savingAndActivating"
           @click="handleSaveAndActivate"
         >
           保存并启用
-        </a-button>
-        <a-button
+        </UiButton>
+        <UiButton
+          size="sm"
+          variant="ghost"
           :loading="activating"
           :disabled="!policy || policy.policyStatus === ReviewWindowPolicyStatusCode.ACTIVE"
           @click="handleActivate"
         >
           激活窗口
-        </a-button>
-        <a-button
-          danger
+        </UiButton>
+        <UiButton
+          size="sm"
+          status="danger"
+          variant="outline"
           :loading="closing"
           :disabled="!policy || policy.policyStatus === 'CLOSED'"
           @click="handleClose"
         >
           关闭窗口
-        </a-button>
-      </a-space>
+        </UiButton>
+      </div>
     </template>
   </WorkbenchSurfaceCard>
 </template>
@@ -117,7 +129,15 @@ import {
   VisibleMaterialScopeCode,
   VisibleMaterialScopeDescription,
 } from '@/apis/mark/grade-review'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -214,6 +234,9 @@ async function handleSaveAndActivate(): Promise<void> {
 }
 
 async function persistPolicy(activateImmediately: boolean): Promise<void> {
+  if (saving.value || savingAndActivating.value) {
+    return
+  }
   if (!form.openTime || !form.closeTime) {
     showFormValidationMessage('请选择开放和关闭时间')
     return
@@ -248,6 +271,9 @@ async function persistPolicy(activateImmediately: boolean): Promise<void> {
 }
 
 async function handleActivate(): Promise<void> {
+  if (activating.value || saving.value || savingAndActivating.value || closing.value) {
+    return
+  }
   activating.value = true
   try {
     await activateReviewWindow(props.examId)
@@ -262,6 +288,9 @@ async function handleActivate(): Promise<void> {
 }
 
 async function handleClose(): Promise<void> {
+  if (closing.value || activating.value || saving.value || savingAndActivating.value) {
+    return
+  }
   closing.value = true
   try {
     await closeReviewWindow(props.examId)

@@ -17,11 +17,17 @@ import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
 import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -29,6 +35,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -59,6 +66,7 @@ const columns: ColumnsType = [
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -300,6 +308,10 @@ async function handleSubmit() {
   if (submitting.value || (canPickTeachers.value && !targetTeacherId.value)) {
     return
   }
+  if (!(await confirmProxyWrite('提交纠错申请'))) {
+    return
+  }
+
   if (
     !form.categoryId
     || !form.fieldCode.trim()
@@ -422,6 +434,7 @@ watch(
       <ContextBar show-title layout="workbench" title="我的纠错">
         <template #actions>
           <UiButton
+            size="sm"
             @click="router.push({ path: '/portfolio/teacher/archive', query: archiveReturnQuery })"
           >
             返回档案
@@ -430,47 +443,53 @@ watch(
       </ContextBar>
     </template>
 
-    <div v-if="canPickTeachers && !targetTeacherId" class="correction-page__hint">
-      <UiEmpty description="请从教师名册选择目标教师" />
-    </div>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <template v-else>
       <UiCard title="发起纠错" class="correction-page__form">
-        <a-form layout="vertical">
-          <a-form-item label="档案分类" required>
-            <a-select
-              v-model:value="form.categoryId"
+        <UiForm layout="vertical">
+          <UiFormItem label="档案分类" required>
+            <UiSelect
+              size="sm"
+              v-model="form.categoryId"
               :options="categoryOptions"
               placeholder="选择分类"
               :disabled="submitting"
               @change="onCategoryChange"
             />
-          </a-form-item>
-          <a-form-item label="纠错字段" required>
-            <a-select
-              v-model:value="form.fieldCode"
+          </UiFormItem>
+          <UiFormItem label="纠错字段" required>
+            <UiSelect
+              size="sm"
+              v-model="form.fieldCode"
               :options="fieldOptions"
               placeholder="选择已发布模板字段"
-              show-search
+              allow-search
               option-filter-prop="label"
               :disabled="submitting"
               @change="onFieldChange"
             />
-          </a-form-item>
-          <a-form-item label="当前错误值">
-            <a-input v-model:value="form.wrongValue" :disabled="submitting" />
-          </a-form-item>
-          <a-form-item label="期望正确值" required>
-            <a-input v-model:value="form.expectedValue" :disabled="submitting" />
-          </a-form-item>
-          <a-form-item label="纠错原因" required>
-            <a-textarea v-model:value="form.reason" :rows="3" :disabled="submitting" />
-          </a-form-item>
-          <a-form-item label="佐证引用">
-            <a-input v-model:value="form.evidenceRef" :disabled="submitting" />
-          </a-form-item>
-          <UiButton :loading="submitting" @click="handleSubmit"> 提交纠错 </UiButton>
-        </a-form>
+          </UiFormItem>
+          <UiFormItem label="当前错误值">
+            <UiInput
+              size="sm" v-model="form.wrongValue" :disabled="submitting"
+            />
+          </UiFormItem>
+          <UiFormItem label="期望正确值" required>
+            <UiInput
+              size="sm" v-model="form.expectedValue" :disabled="submitting"
+            />
+          </UiFormItem>
+          <UiFormItem label="纠错原因" required>
+            <UiTextarea size="sm" v-model="form.reason" :rows="3" :disabled="submitting" />
+          </UiFormItem>
+          <UiFormItem label="佐证引用">
+            <UiInput
+              size="sm" v-model="form.evidenceRef" :disabled="submitting"
+            />
+          </UiFormItem>
+          <UiButton size="sm" :loading="submitting" @click="handleSubmit"> 提交纠错 </UiButton>
+        </UiForm>
       </UiCard>
 
       <UiCard title="纠错记录" class="correction-page__list">
@@ -505,7 +524,7 @@ watch(
     </template>
 
     <UiDrawer v-model:open="drawerOpen" title="纠错详情" width="560" @close="resetDetailContext">
-      <a-spin :spinning="detailLoading">
+      <UiSpin :spinning="detailLoading">
         <template v-if="detail">
           <p class="correction-page__detail-line">
             {{ detail.categoryName }} · {{ detail.fieldLabel ?? detail.fieldCode }}
@@ -527,7 +546,7 @@ watch(
             处理意见：{{ detail.handleOpinion }}
           </p>
         </template>
-      </a-spin>
+      </UiSpin>
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
@@ -544,6 +563,6 @@ watch(
 }
 
 .correction-page__hint {
-  padding: var(--dp-space-6) 0;
+  padding: var(--dp-space-3, 12px) 0;
 }
 </style>

@@ -11,7 +11,10 @@ import {
   QUALITY_SELECTOR_PAGE_SIZE,
   QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
 } from '@/components/quality/selectors/page-contract'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiSegmented from '@/components/ui-guide/ui/UiSegmented.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import {
   isPortfolioWorkShellCode,
   usePortfolioReviewAccess,
@@ -33,10 +36,11 @@ const { canPickTeachers, canReviewPortfolio, currentUserId, resolveDefaultTeache
 const { accessScope, ensureLoaded, selectWorkShell } = usePortfolioReviewAccess()
 
 const WORK_SHELL_LABELS: Record<PortfolioWorkShellCode, string> = {
-  TEACHER: '教师办理',
-  DEPARTMENT_REVIEW: '院系审核',
-  SCHOOL_GOVERNANCE: '学校治理',
-  CONFIGURATION: '租户配置',
+  TEACHER: '维护我的档案',
+  DEPARTMENT_REVIEW: '审核本院材料',
+  SCHOOL_GOVERNANCE: '查看全校进度',
+  CONFIGURATION: '系统配置',
+  EXTERNAL_EXPERT: '外部专家评审',
 }
 
 const teacherOptions = ref<PortfolioTeacherSummaryVO[]>([])
@@ -74,8 +78,40 @@ const selfTeacherLabel = computed(() => {
     const teacher = teacherOptions.value.find((item) => item.userId === selectedTeacherId.value)
     return `当前查看教师：${teacher?.nickName || teacher?.teacherNumber || selectedTeacherId.value}`
   }
-  return '当前教师：本人'
+  return '当前：本人'
 })
+
+/** 管理员/可选人是否正在代办他人档案 */
+const isProxyingOtherTeacher = computed(() => {
+  if (!canPickTeachers.value || !selectedTeacherId.value) {
+    return false
+  }
+  return selectedTeacherId.value !== currentUserId.value
+})
+
+const proxyTeacherLabel = computed(() => {
+  if (!selectedTeacherId.value) {
+    return ''
+  }
+  const teacher = teacherOptions.value.find((item) => item.userId === selectedTeacherId.value)
+  return teacher?.nickName || teacher?.teacherNumber || selectedTeacherId.value
+})
+
+function goTeacherDirectory() {
+  void router.push({ path: '/portfolio/teachers' })
+}
+
+function backToSelf() {
+  if (!currentUserId.value) {
+    selectedTeacherId.value = ''
+    return
+  }
+  selectedTeacherId.value = currentUserId.value
+}
+
+function clearTeacherSelection() {
+  selectedTeacherId.value = ''
+}
 
 const canFollowTeacherQuery = computed(() => canPickTeachers.value || canReviewPortfolio.value)
 
@@ -259,33 +295,60 @@ watch(
 <template>
   <div class="portfolio-scope-header">
     <div v-if="workShellOptions.length > 1" class="portfolio-scope-header__field">
-      <span class="portfolio-scope-header__label">工作台</span>
+      <span class="portfolio-scope-header__label">我在做</span>
       <div class="portfolio-scope-header__segmented-wrap">
-        <a-segmented
-          :value="activeWorkShell"
+        <UiSegmented
+          :model-value="activeWorkShell"
           :options="workShellOptions"
           :disabled="switchingWorkShell"
+          size="sm"
           @change="handleWorkShellChange"
         />
       </div>
     </div>
-    <div class="portfolio-scope-header__field">
-      <span class="portfolio-scope-header__label">教师范围</span>
+    <div class="portfolio-scope-header__field portfolio-scope-header__field--grow">
+      <span class="portfolio-scope-header__label">当前教师</span>
       <template v-if="canPickTeachers">
-        <a-select
-          v-model:value="selectedTeacherId"
-          class="portfolio-scope-header__select"
-          show-search
-          allow-clear
-          :loading="loading"
-          placeholder="请选择目标教师"
-          :filter-option="false"
-          :options="portfolioTeacherSelectOptionsFromSummaries(teacherOptions)"
-          @search="handleTeacherSearch"
-          @focus="() => loadTeacherOptions()"
-        />
+        <template v-if="!selectedTeacherId">
+          <UiTag tone="orange" size="sm">未选择</UiTag>
+          <UiButton size="sm" variant="primary" @click="goTeacherDirectory">
+            打开教师名册
+          </UiButton>
+          <UiSelect
+            v-model="selectedTeacherId"
+            class="portfolio-scope-header__select portfolio-scope-header__select--secondary"
+            allow-search
+            allow-clear
+            size="sm"
+            :loading="loading"
+            placeholder="或快速搜索教师"
+            :filter-option="false"
+            :options="portfolioTeacherSelectOptionsFromSummaries(teacherOptions)"
+            @search="handleTeacherSearch"
+            @focus="() => loadTeacherOptions()"
+          />
+        </template>
+        <template v-else>
+          <UiTag v-if="isProxyingOtherTeacher" tone="orange" size="sm">代办</UiTag>
+          <UiTag v-else tone="blue" size="sm">本人</UiTag>
+          <span class="portfolio-scope-header__name">{{ proxyTeacherLabel }}</span>
+          <UiButton
+            v-if="isProxyingOtherTeacher && currentUserId"
+            size="sm"
+            variant="outline"
+            @click="backToSelf"
+          >
+            回本人
+          </UiButton>
+          <UiButton size="sm" variant="ghost" @click="goTeacherDirectory">
+            回名册
+          </UiButton>
+          <UiButton size="sm" variant="ghost" @click="clearTeacherSelection">
+            清除
+          </UiButton>
+        </template>
       </template>
-      <UiTag v-else tone="blue">
+      <UiTag v-else tone="blue" size="sm">
         {{ selfTeacherLabel }}
       </UiTag>
     </div>
@@ -297,7 +360,7 @@ watch(
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: var(--dp-space-3) var(--dp-space-6);
+  gap: var(--dp-space-3) var(--dp-space-4);
 }
 
 .portfolio-scope-header__field {

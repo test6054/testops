@@ -3,6 +3,8 @@ import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
 import { computed, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import {
   PORTRAIT_DIMENSION_OPTIONS,
   PORTRAIT_WIDGET_TYPE_OPTIONS,
@@ -157,28 +159,32 @@ function selectWidget(index: number) {
       </div>
     </div>
     <div v-if="selectedIndex != null && widgets[selectedIndex]" class="layout-props">
-      <a-select
-        :value="widgets[selectedIndex].widget"
+      <UiSelect
+        size="sm"
+        :model-value="widgets[selectedIndex].widget"
         :options="PORTRAIT_WIDGET_TYPE_OPTIONS"
         style="width: 120px"
-        @update:value="updateSelectedWidget(selectedIndex, $event)"
+        @update:model-value="updateSelectedWidget(selectedIndex, $event)"
       />
-      <a-select
-        :value="widgets[selectedIndex].dimensionCode"
+      <UiSelect
+        size="sm"
+        :model-value="widgets[selectedIndex].dimensionCode"
         allow-clear
         placeholder="绑定维度"
         style="width: 160px"
         :options="PORTRAIT_DIMENSION_OPTIONS"
-        @update:value="updateSelectedDimension(selectedIndex, $event)"
+        @update:model-value="updateSelectedDimension(selectedIndex, $event)"
       />
-      <a-input-number
+      <UiInputNumber
+        size="sm"
         :value="widgets[selectedIndex].w"
         :min="1"
         :max="12"
         placeholder="宽"
         @update:value="patch(selectedIndex, { w: Number($event) || 1 })"
       />
-      <a-input-number
+      <UiInputNumber
+        size="sm"
         :value="widgets[selectedIndex].h"
         :min="1"
         :max="8"
@@ -187,7 +193,7 @@ function selectWidget(index: number) {
       />
       <UiButton size="sm" @click="removeWidget(selectedIndex)"> 删除 </UiButton>
     </div>
-    <UiButton @click="addWidget"> 添加组件 </UiButton>
+    <UiButton size="sm" @click="addWidget"> 添加组件 </UiButton>
   </div>
 </template>
 
@@ -207,7 +213,7 @@ function selectWidget(index: number) {
   background: var(--dp-surface-subtle);
 }
 .layout-cell {
-  border: 1px dashed var(--ant-color-border-secondary);
+  border: 1px dashed var(--dp-border-subtle);
   border-radius: var(--dp-radius-control-inner);
   min-height: 28px;
 }
@@ -217,7 +223,7 @@ function selectWidget(index: number) {
   flex-direction: column;
   gap: var(--dp-space-1);
   padding: var(--dp-space-2);
-  border: 1px solid var(--ant-color-primary);
+  border: 1px solid var(--dp-color-primary);
   border-radius: var(--dp-radius-xs);
   background: var(--dp-surface);
   cursor: grab;
@@ -238,7 +244,7 @@ function selectWidget(index: number) {
   flex: 1;
   min-height: 24px;
   border-radius: var(--dp-radius-control-inner);
-  background: var(--ant-color-fill-secondary);
+  background: var(--dp-fill-secondary);
 }
 .layout-props {
   display: flex;

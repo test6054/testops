@@ -19,7 +19,7 @@ import { isAuthRequestFailure, isTransientRequestError } from '@/utils/error-han
 import { message } from '@/utils/feedback'
 import { prefersReducedMotion } from '@/utils/motion-preference'
 import { shouldEnforcePasswordChange } from '@/utils/password-change-enforcement'
-import { isValidRole, RoleEnum } from '@/utils/permission'
+import { isValidRole } from '@/utils/permission'
 import { isPortfolioRoute, isQualityEvaluationRoute } from '@/utils/portfolio-route'
 import {
   ensureQualityPlanConfirmedForNavigation,
@@ -143,11 +143,8 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
   const userRole = authStore.userRole
   const reviewAccessBeforeLoad = readPortfolioReviewAccessProjection()
   let reviewAccessChanged = false
-  if (
-    userRole
-    && isValidRole(userRole)
-    && (isPortfolioRoute(to.path) || userRole === RoleEnum.SCH_TECH)
-  ) {
+  // 仅进入教学档案袋域时拉 access-scope（edu-quality）；阅卷 /teacher、质量 /quality 不依赖该接口
+  if (userRole && isValidRole(userRole) && isPortfolioRoute(to.path)) {
     const reviewAccessScope = await ensurePortfolioReviewAccessLoaded(permissionVersionChanged)
     reviewAccessChanged
       = reviewAccessScope !== null && reviewAccessBeforeLoad !== readPortfolioReviewAccessProjection()

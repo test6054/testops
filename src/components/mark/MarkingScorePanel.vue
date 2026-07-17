@@ -5,7 +5,7 @@
       <span>{{ usesWholePaperWorkspace ? '当前任务负责题目' : '批改提交' }}</span>
     </template>
 
-    <a-form
+    <UiForm
       ref="innerFormRef"
       :model="{ score: scoreModel, annotationNote: annotationNoteModel }"
       :rules="rules"
@@ -13,15 +13,15 @@
       :disabled="!canSubmit"
     >
       <template v-if="usesWholePaperWorkspace">
-        <UiEmpty v-if="wholeQuestions.length === 0" description="当前任务暂无负责题目" />
-        <a-collapse
+        <UiEmpty size="sm" v-if="wholeQuestions.length === 0" description="当前任务暂无负责题目" />
+        <UiCollapse
           v-else
           v-model:active-key="expandedWholeQuestionKeyModel"
           accordion
           class="marking-score-panel__accordion"
           expand-icon-position="end"
         >
-          <a-collapse-panel
+          <UiCollapsePanel
             v-for="(question, questionIndex) in wholeQuestions"
             :key="question.layoutQuestionId"
           >
@@ -48,29 +48,30 @@
                 </UiButton>
               </div>
             </template>
-            <a-typography-paragraph
+            <UiTypographyParagraph
               v-if="question.questionStem"
               class="marking-score-panel__question-stem"
               :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }"
             >
               {{ question.questionStem }}
-            </a-typography-paragraph>
-            <a-typography-paragraph
+            </UiTypographyParagraph>
+            <UiTypographyParagraph
               v-if="question.recognizedAnswer"
               class="marking-score-panel__recognized-answer"
               :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }"
             >
               {{ question.recognizedAnswer }}
-            </a-typography-paragraph>
-            <a-typography-text
+            </UiTypographyParagraph>
+            <UiTypographyText
               v-else
               type="secondary"
               class="marking-score-panel__recognized-answer--empty"
             >
               正式 OCR 未识别出可展示答案
-            </a-typography-text>
-            <a-input-number
-              v-model:value="getWholeQuestionForm(question.layoutQuestionId).score"
+            </UiTypographyText>
+            <UiInputNumber
+              size="sm"
+              v-model="getWholeQuestionForm(question.layoutQuestionId).score"
               :ref="(el: unknown) => emit('set-score-input-ref', el, questionIndex)"
               :min="0"
               :max="question.fullScore"
@@ -97,7 +98,7 @@
                 <strong>{{ question.aiScore }}</strong>
                 <span>/ {{ question.fullScore }}</span>
               </div>
-              <a-space size="small" wrap>
+              <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
                 <UiButton
                   size="sm"
                   variant="outline"
@@ -108,7 +109,7 @@
                 </UiButton>
                 <UiButton
                   size="sm"
-                  variant="primary"
+                  variant="outline"
                   :disabled="isReadOnly || submitting || !canSubmit"
                   @click="emit('accept-ai-score', question, questionIndex)"
                 >
@@ -145,33 +146,34 @@
                     matchModeLabel(question.referenceExperienceAudit.referenceExperienceMatchMode)
                   }}
                 </p>
-              </a-space>
-              <a-typography-paragraph
+              </div>
+              <UiTypographyParagraph
                 v-if="question.aiDiagnostic"
                 class="marking-score-panel__ai-diagnostic"
                 :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }"
               >
                 {{ question.aiDiagnostic }}
-              </a-typography-paragraph>
+              </UiTypographyParagraph>
             </div>
             <div
               v-else-if="isWholeQuestionAiScorePending(question)"
               class="marking-score-panel__ai-pending"
             >
-              <a-typography-text type="secondary">AI 评分加载中...</a-typography-text>
+              <UiTypographyText type="secondary">AI 评分加载中...</UiTypographyText>
             </div>
-            <a-textarea
-              v-model:value="getWholeQuestionForm(question.layoutQuestionId).annotationText"
+            <UiTextarea
+              size="sm"
+              v-model="getWholeQuestionForm(question.layoutQuestionId).annotationText"
               :rows="3"
               :maxlength="1000"
               :disabled="isReadOnly"
               placeholder="题目批注，可选"
-              show-count
+              :show-count="true"
             />
-          </a-collapse-panel>
-        </a-collapse>
+          </UiCollapsePanel>
+        </UiCollapse>
         <p class="marking-score-panel__keyboard-hint">
-          Enter 确认本题并展开下一题 · 0-9 快捷给分 · PageUp/PageDown 翻页 · J/K 切换任务
+          Enter 确认本题并展开下一题 · AI 分须手动填入 · 0-9 快捷 · PageUp/Down 翻页 · J/K 切换
         </p>
       </template>
 
@@ -182,18 +184,22 @@
         :teacher-review-score="scoreModel"
         :full-score="questionView.fullScore"
       />
-      <a-form-item v-if="!usesWholePaperWorkspace" label="教师给分" name="score" required>
-        <a-input-number
-          ref="innerScoreInputRef"
-          v-model:value="scoreModel"
-          :min="0"
-          :max="questionView?.fullScore"
-          :step="0.5"
-          class="marking-score-panel__score-input"
-          placeholder="按题目满分给分"
-          @keydown.enter.prevent="emit('submit')"
-        />
-        <a-space size="small" class="marking-score-panel__quick-actions">
+      <UiFormItem v-if="!usesWholePaperWorkspace" label="教师给分" name="score" required>
+        <div class="marking-score-panel__score-row">
+          <UiInputNumber
+            size="sm"
+            ref="innerScoreInputRef"
+            v-model="scoreModel"
+            :min="0"
+            :max="questionView?.fullScore"
+            :step="0.5"
+            class="marking-score-panel__score-input"
+            placeholder="按题目满分给分"
+            @keydown.enter.prevent="emit('submit')"
+          />
+          <span class="marking-score-panel__step-hint">步长 0.5 · 满分 {{ questionView?.fullScore ?? '—' }}</span>
+        </div>
+        <div class="marking-score-panel__quick-actions dp-space" style="--dp-space-gap: 8px">
           <UiButton
             size="sm"
             variant="outline"
@@ -227,10 +233,14 @@
           >
             填入 AI 分
           </UiButton>
+          <span
+            v-if="questionView?.aiScore != null"
+            class="marking-score-panel__ai-manual-hint"
+          >AI 分不自动写入</span>
           <UiButton
             v-if="questionView?.aiScore != null"
             size="sm"
-            variant="primary"
+            variant="outline"
             :disabled="isReadOnly || submitting || !canSubmit"
             @click="emit('accept-ai-submit')"
           >
@@ -269,7 +279,7 @@
           >
             定标方式：{{ matchModeLabel(experienceAssistMatchMode) }}
           </p>
-        </a-space>
+        </div>
         <div
           v-if="!isReadOnly && canSubmit && questionView?.fullScore != null"
           class="marking-score-panel__quick-digits"
@@ -285,26 +295,34 @@
           </UiButton>
         </div>
         <p class="marking-score-panel__keyboard-hint">
-          J/K 或 ←/→ 切换任务 · 0-9 快捷给分 · Enter 提交
+          Enter 提交并进入下一未阅 · AI 分须点「填入」或「采纳并提交」· J/K 切换 · 0-9 快捷
         </p>
-      </a-form-item>
+      </UiFormItem>
 
-      <a-form-item v-if="!usesWholePaperWorkspace" label="批改批注" name="annotationNote">
-        <a-textarea
-          v-model:value="annotationNoteModel"
+      <UiFormItem v-if="!usesWholePaperWorkspace" label="批改批注" name="annotationNote">
+        <UiTextarea
+          size="sm"
+          v-model="annotationNoteModel"
           :rows="6"
           :maxlength="1000"
           placeholder="可选，记录采分点 / 扣分点 / 反馈意见"
-          show-count
+          :show-count="true"
         />
-      </a-form-item>
+      </UiFormItem>
 
-      <a-form-item v-if="canSubmit">
-        <UiButton block size="md" :loading="submitting" @click="emit('submit')">
-          确认给分并提交（Enter）· 自动切换{{ isWholePaperTask ? '下一份' : '下一题' }}
+      <UiFormItem v-if="canSubmit">
+        <UiButton
+          block
+          size="sm"
+          variant="primary"
+          :loading="submitting"
+          :disabled="isReadOnly || !canSubmit"
+          @click="emit('submit')"
+        >
+          确认给分并提交（Enter）· 进入{{ isWholePaperTask ? '下一未阅份' : '下一未阅' }}
         </UiButton>
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
   </UiCard>
 </template>
 
@@ -324,6 +342,14 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCollapse from '@/components/ui-guide/ui/UiCollapse.vue'
+import UiCollapsePanel from '@/components/ui-guide/ui/UiCollapsePanel.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import { GradingExperienceReferenceMatchModeDescription } from '@/types/enums/grading-experience-reference-match-mode-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -406,7 +432,7 @@ function quickDigitScores(fullScore: number): number[] {
 
 <style lang="scss" scoped>
 .marking-score-panel {
-  margin-bottom: 16px;
+  margin-bottom: var(--dp-space-3, 12px);
 
   &__score-input {
     width: 100%;
@@ -433,7 +459,7 @@ function quickDigitScores(fullScore: number): number[] {
   &__accordion {
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-panel);
-    background: var(--ant-color-bg-container, #fff);
+    background: var(--dp-surface);
     overflow: hidden;
 
     :deep(.ant-collapse-item) {
@@ -468,7 +494,7 @@ function quickDigitScores(fullScore: number): number[] {
     border: 1px solid var(--dp-border-subtle);
     border-radius: var(--dp-radius-panel);
     color: var(--dp-text-primary);
-    background: var(--ant-color-bg-container, #fff);
+    background: var(--dp-surface);
   }
 
   &__recognized-answer {
@@ -499,7 +525,7 @@ function quickDigitScores(fullScore: number): number[] {
     color: var(--dp-text-secondary);
 
     strong {
-      color: var(--ant-color-primary, #1677ff);
+      color: var(--dp-color-primary);
       font-size: 14px;
     }
   }

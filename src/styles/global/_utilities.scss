@@ -18,3 +18,25 @@
   flex-direction: column;
   overflow: hidden;
 }
+
+/* 行内/纵向间距簇：替代 a-space，笔记本 densify */
+.dp-space {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-gap, 8px);
+  min-width: 0;
+}
+
+.dp-space--vertical {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.dp-space--wrap {
+  flex-wrap: wrap;
+}
+
+.dp-space--block {
+  display: flex;
+  width: 100%;
+}

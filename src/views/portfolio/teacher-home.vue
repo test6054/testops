@@ -12,13 +12,17 @@ import {
   PortfolioCompletenessLevelDescription,
   PortfolioPortraitDimensionReadinessCode,
 } from '@/apis/portfolio/enums'
+import { portfolioOnboardingApi } from '@/apis/portfolio/onboarding'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
 import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
 import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -27,6 +31,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
 import { PortfolioTodoTypeCode } from '@/types/enums/portfolio-todo-type-enum'
@@ -36,6 +41,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const router = useRouter()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 const loading = ref(false)
 const portrait = ref<PortfolioTeacherPortraitVO | null>(null)
@@ -62,6 +68,8 @@ function todoCourseScopeLabel(item: PortfolioTodoSummaryVO): string {
   return parts.join(' · ')
 }
 const homeRequestToken = ref(0)
+const showSkipPrompt = ref(false)
+const skipPromptRecording = ref(false)
 
 const completenessPercentText = computed(() => {
   if (!workbenchSummary.value) {
@@ -94,6 +102,47 @@ function resetHomeContext() {
   todos.value = []
   workbenchSummary.value = null
   compareDrawerOpen.value = false
+  showSkipPrompt.value = false
+}
+
+/** US-OB-01：跳过引导后前 3 次进入工作台展示轻量提示并记一次。 */
+async function loadSkipPromptState(requestToken: number) {
+  try {
+    const request = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
+    const state = await portfolioOnboardingApi.getState(request)
+    if (homeRequestToken.value !== requestToken) {
+      return
+    }
+    if (!state.shouldShowSkipPrompt) {
+      showSkipPrompt.value = false
+      return
+    }
+    showSkipPrompt.value = true
+    if (skipPromptRecording.value) {
+      return
+    }
+    skipPromptRecording.value = true
+    try {
+      await portfolioOnboardingApi.recordSkipPrompt(request)
+    } catch (error) {
+      showUserError(error, '记录引导提示失败')
+    } finally {
+      if (homeRequestToken.value === requestToken) {
+        skipPromptRecording.value = false
+      }
+    }
+  } catch {
+    if (homeRequestToken.value === requestToken) {
+      showSkipPrompt.value = false
+    }
+  }
+}
+
+function goOnboarding() {
+  const query = targetTeacherId.value
+    ? { teacherId: targetTeacherId.value }
+    : undefined
+  void router.push({ path: '/portfolio/teacher/onboarding', query })
 }
 
 async function loadDashboard() {
@@ -107,6 +156,7 @@ async function loadDashboard() {
   loading.value = true
   portraitAbsent.value = false
   portrait.value = null
+  void loadSkipPromptState(requestToken)
   const request = targetTeacherId.value ? { teacherId: targetTeacherId.value } : {}
   try {
     const nextPortrait = await portfolioAnalysisApi.getPortrait(request)
@@ -312,6 +362,9 @@ async function acknowledgeRejectedCorrection(item: PortfolioTodoSummaryVO) {
   if (item.todoType !== PortfolioTodoTypeCode.CORRECTION_REJECTED || acknowledgingTodoKey.value) {
     return
   }
+  if (!(await confirmProxyWrite('确认知悉纠错驳回'))) {
+    return
+  }
   const confirmed = await confirmAsync({
     title: '确认已知悉纠错驳回结果',
     content: '确认后该提醒将从待办中移除；纠错工单及驳回意见仍会保留。',
@@ -415,6 +468,74 @@ function handleCockpitMetricClick(key: string, context?: { academicYear?: string
   }
 }
 
+function goMasterpiece() {
+  void router.push({
+    path: '/portfolio/teacher/masterpiece',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
+/** 清北 S2：六模块清单状态来自工作台摘要/画像，点进已有路由，不另造菜单 */
+const moduleChecklist = computed(() => {
+  const summary = workbenchSummary.value
+  const officialCount = portrait.value?.officialRecordCount
+  const honorCount = summary?.honorTotalCount
+  const extensionCount = summary?.extensionActivityTotalCount
+  return [
+    {
+      key: 'resume',
+      label: '教学简历',
+      status: portraitAbsent.value ? '待建档' : '可维护',
+      actionLabel: '维护',
+      run: goProfile,
+    },
+    {
+      key: 'data',
+      label: '教学数据',
+      status: summary
+        ? `覆盖 ${summary.completenessPercent}% · 正式 ${officialCount ?? '—'} 条`
+        : '见上方完整度',
+      actionLabel: '查看',
+      run: goOneTable,
+    },
+    {
+      key: 'philosophy',
+      label: '教学陈述',
+      status: '可修订',
+      actionLabel: '修订',
+      run: goTeachingPhilosophy,
+    },
+    {
+      key: 'process',
+      label: '教学过程记录',
+      status: '课次三段',
+      actionLabel: '记一课',
+      run: goProcessJournal,
+    },
+    {
+      key: 'extension',
+      label: '发展与研究',
+      status: extensionCount == null ? '可选' : `${extensionCount} 条`,
+      actionLabel: '维护',
+      run: goExtensionActivity,
+    },
+    {
+      key: 'honor',
+      label: '成果与奖励',
+      status: honorCount == null ? '可维护' : `${honorCount} 条`,
+      actionLabel: '维护',
+      run: goHonor,
+    },
+  ]
+})
+
+function goProcessJournal() {
+  void router.push({
+    path: '/portfolio/teacher/process-journal',
+    query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
+  })
+}
+
 function goArchive() {
   void router.push({
     path: '/portfolio/teacher/archive',
@@ -450,7 +571,6 @@ function goDualTeacherApply() {
   })
 }
 
-const moreHomeActionsOpen = ref(false)
 
 function goOneTable() {
   void router.push({
@@ -538,21 +658,13 @@ onUnmounted(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="教师首页">
+      <ContextBar show-title layout="workbench" title="我的工作台">
         <template #actions>
           <template v-if="!(canPickTeachers && !targetTeacherId)">
             <UiButton variant="primary" size="sm" @click="goIntake">材料采集</UiButton>
-            <UiButton size="sm" @click="goReviewStatus">审核进度</UiButton>
-            <UiButton size="sm" @click="goArchive">我的档案</UiButton>
-            <UiButton
-              variant="outline"
-              size="sm"
-              @click="moreHomeActionsOpen = !moreHomeActionsOpen"
-            >
-              {{ moreHomeActionsOpen ? '收起入口' : '更多入口' }}
-            </UiButton>
+            <UiButton size="sm" variant="ghost" @click="goReviewStatus">审核进度</UiButton>
+            <UiButton size="sm" variant="ghost" @click="goArchive">我的档案</UiButton>
           </template>
-          <UiButton v-if="!loading" size="sm" @click="reloadHomeData">刷新</UiButton>
         </template>
       </ContextBar>
     </template>
@@ -565,26 +677,96 @@ onUnmounted(() => {
       />
     </template>
 
-    <div v-if="canPickTeachers && !targetTeacherId" class="teacher-home__hint">
-      <UiEmpty description="请从教师名册选择目标教师，或在 URL 携带 teacherId 参数" />
-    </div>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <div v-else class="teacher-home__layout">
-      <div v-if="moreHomeActionsOpen" class="teacher-home__actions">
-        <UiButton size="sm" @click="goDualTeacherApply">资格与认定</UiButton>
-        <UiButton size="sm" @click="goCourseArchive">课程档案</UiButton>
-        <UiButton size="sm" @click="goPromotionScene">职称材料包</UiButton>
-        <UiButton size="sm" @click="goTeachingPhilosophy">教学理念</UiButton>
-        <UiButton size="sm" @click="goHonor">获奖情况</UiButton>
-        <UiButton size="sm" @click="goExtensionActivity">教学拓展</UiButton>
-        <UiButton size="sm" @click="goProfile">个人资料</UiButton>
-        <UiButton size="sm" @click="goPortrait">教师画像</UiButton>
-        <UiButton size="sm" @click="goCorrection">我的纠错</UiButton>
-        <UiButton size="sm" @click="goOneTable">教师一张表</UiButton>
-        <UiButton v-if="canManageOwnPrivacy" size="sm" @click="goPrivacySettings">
-          隐私设置
-        </UiButton>
-      </div>
+      <UiAlertStrip
+        v-if="showSkipPrompt"
+        class="teacher-home__skip-prompt"
+        tone="info"
+        size="sm"
+        dense
+        :closable="true"
+        @close="showSkipPrompt = false"
+      >
+        <template #default>
+          <span class="teacher-home__skip-prompt-row">
+            档案袋首次引导尚未完成，可继续完成分类与材料确认。
+            <UiButton size="sm" variant="ghost" @click="goOnboarding">继续引导</UiButton>
+          </span>
+        </template>
+      </UiAlertStrip>
+      <WorkbenchSurfaceCard class="teacher-home__checklist">
+        <template #head>
+          <div class="teacher-home__panel-head">
+            <h3 class="teacher-home__panel-title">教学档案清单</h3>
+            <span class="teacher-home__meta">对齐六模块 · 点进已有页面维护</span>
+          </div>
+        </template>
+        <ul class="teacher-home__checklist-list">
+          <li v-for="item in moduleChecklist" :key="item.key">
+            <div class="teacher-home__check-main">
+              <span class="teacher-home__check-label">{{ item.label }}</span>
+              <span class="teacher-home__meta">{{ item.status }}</span>
+            </div>
+            <UiButton
+              v-if="item.run"
+              size="sm"
+              :variant="item.key === 'process' ? 'outline' : 'ghost'"
+              @click="item.run()"
+            >
+              {{ item.actionLabel }}
+            </UiButton>
+          </li>
+        </ul>
+        <p class="teacher-home__antipile">
+          材料覆盖完整度反映填报进度，不等于教学代表作质量；出包前请甄选证据。
+          <UiButton size="sm" variant="ghost" @click="goMasterpiece">预览代表作</UiButton>
+        </p>
+      </WorkbenchSurfaceCard>
+      <WorkbenchSurfaceCard v-if="!(canPickTeachers && !targetTeacherId)" class="teacher-home__more" flush>
+        <template #head>
+          <span class="teacher-home__panel-title">更多办理入口</span>
+        </template>
+        <ul class="teacher-home__more-list">
+          <li>
+            <span>课程与材料</span>
+            <div class="teacher-home__more-actions">
+              <UiButton size="sm" variant="ghost" @click="goCourseArchive">课程档案</UiButton>
+              <UiButton size="sm" variant="ghost" @click="goMasterpiece">预览代表作</UiButton>
+              <UiButton size="sm" variant="ghost" @click="goCorrection">我的纠错</UiButton>
+            </div>
+          </li>
+          <li>
+            <span>发展与认定</span>
+            <div class="teacher-home__more-actions">
+              <UiButton size="sm" variant="ghost" @click="goPromotionScene">职称材料包</UiButton>
+              <UiButton size="sm" variant="ghost" @click="goDualTeacherApply">资格与认定</UiButton>
+              <UiButton size="sm" variant="ghost" @click="goOneTable">教师一张表</UiButton>
+            </div>
+          </li>
+          <li>
+            <span>维护</span>
+            <div class="teacher-home__more-actions">
+              <UiButton size="sm" variant="ghost" :loading="loading" @click="reloadHomeData">刷新数据</UiButton>
+            </div>
+          </li>
+          <li>
+            <span>画像与隐私</span>
+            <div class="teacher-home__more-actions">
+              <UiButton size="sm" variant="ghost" @click="goPortrait">教师画像</UiButton>
+              <UiButton
+                v-if="canManageOwnPrivacy"
+                size="sm"
+                variant="ghost"
+                @click="goPrivacySettings"
+              >
+                隐私设置
+              </UiButton>
+            </div>
+          </li>
+        </ul>
+      </WorkbenchSurfaceCard>
 
       <WorkbenchSurfaceCard class="teacher-home__status">
         <template #head>
@@ -606,7 +788,7 @@ onUnmounted(() => {
             </UiButton>
           </div>
         </template>
-        <a-spin :spinning="workbenchSummaryLoading || loading">
+        <UiSpin :spinning="workbenchSummaryLoading || loading">
           <div class="teacher-home__status-grid">
             <section class="teacher-home__status-block">
               <template v-if="workbenchSummary">
@@ -657,7 +839,7 @@ onUnmounted(() => {
                   数据不足，请先完成建档
                 </p>
               </template>
-              <UiEmpty v-else-if="!workbenchSummaryLoading" description="尚未生成档案完整度" />
+              <UiEmpty size="sm" v-else-if="!workbenchSummaryLoading" description="尚未生成档案完整度" />
             </section>
             <section class="teacher-home__status-block">
               <template v-if="portrait">
@@ -675,10 +857,10 @@ onUnmounted(() => {
                   画像数据不足，请先完成建档
                 </p>
               </template>
-              <UiEmpty v-else-if="portraitAbsent && !loading" description="尚未生成画像快照" />
+              <UiEmpty v-else-if="portraitAbsent && !loading" size="sm" description="尚未生成画像快照" />
             </section>
           </div>
-        </a-spin>
+        </UiSpin>
       </WorkbenchSurfaceCard>
 
       <WorkbenchSurfaceCard class="teacher-home__todos">
@@ -690,7 +872,7 @@ onUnmounted(() => {
             </span>
           </div>
         </template>
-        <a-spin :spinning="todoLoading || workbenchSummaryLoading">
+        <UiSpin :spinning="todoLoading || workbenchSummaryLoading">
           <ul v-if="todos.length" class="teacher-home__todo-list">
             <li
               v-for="item in todos"
@@ -723,10 +905,11 @@ onUnmounted(() => {
             </li>
           </ul>
           <UiEmpty
+            size="sm"
             v-else
             description="当前无未完成待办。若刚提交材料请刷新；缺口与退回会出现在此列表，不会被隐藏。"
           />
-        </a-spin>
+        </UiSpin>
       </WorkbenchSurfaceCard>
     </div>
   </StageWorkbenchShell>
@@ -775,7 +958,7 @@ onUnmounted(() => {
 }
 
 .teacher-home__percent {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: var(--dp-font-weight-semibold);
   line-height: 1.2;
   color: var(--dp-text-primary);
@@ -811,7 +994,7 @@ onUnmounted(() => {
 .teacher-home__onboarding {
   margin: var(--dp-space-2) 0 0;
   font-size: 13px;
-  color: var(--ant-color-warning);
+  color: var(--dp-warning);
 }
 
 .teacher-home__todo-count {
@@ -827,12 +1010,12 @@ onUnmounted(() => {
 
 .teacher-home__todo-item {
   padding: var(--dp-space-2) 0;
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  border-bottom: 1px solid var(--dp-border-subtle);
   cursor: pointer;
 }
 
 .teacher-home__todo-item:hover {
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
 }
 
 .teacher-home__todo-title {
@@ -841,12 +1024,63 @@ onUnmounted(() => {
 }
 
 .teacher-home__hint {
-  padding: var(--dp-space-6) 0;
+  padding: var(--dp-space-4, 16px) 0;
 }
 
 @media (max-width: 960px) {
   .teacher-home__status-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.teacher-home__checklist {
+  margin-bottom: var(--dp-space-4);
+}
+.teacher-home__checklist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--dp-space-2);
+}
+.teacher-home__checklist-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+  min-height: 36px;
+  padding: 0 var(--dp-space-1);
+  border-bottom: 1px solid var(--dp-border-secondary);
+  font-size: var(--dp-font-size-sm);
+}
+.teacher-home__check-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.teacher-home__check-label {
+  color: var(--dp-text-primary);
+  font-weight: var(--dp-font-weight-medium);
+}
+.teacher-home__antipile {
+  margin: var(--dp-space-3) 0 0;
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2);
+}
+
+.teacher-home__skip-prompt {
+  margin-bottom: var(--dp-space-3);
+}
+
+.teacher-home__skip-prompt-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
 }
 </style>

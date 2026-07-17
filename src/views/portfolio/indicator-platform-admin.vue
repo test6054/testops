@@ -7,6 +7,7 @@ import type {
   PortfolioIndicatorPlatformSummaryVO,
   PortfolioIndicatorRuleTemplateVO,
   PortfolioIndicatorSourceMappingVO,
+  PortfolioIndustryPackDefDto,
   PortfolioIndustryPackVO,
 } from '@/apis/portfolio/indicator-types'
 import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
@@ -31,10 +32,21 @@ import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/Portfol
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTree from '@/components/ui-guide/ui/UiTree.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -42,14 +54,11 @@ import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
-  buildNewIndustryPackDefJson,
-  mergeIndustryPackDefJson,
-  parseIndustryPackDefJson,
+  buildIndustryPackDefFromForm,
+  toIndustryPackDefForm,
 } from '@/utils/indicator-industry-pack-def'
 import {
   defaultTemplateParams,
-  parseTemplateParamsJson,
-  serializeTemplateParams,
 } from '@/utils/indicator-template-params'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -95,6 +104,14 @@ const requestToken = reactive({
   detail: 0,
 })
 const activeTab = ref('tree')
+const indicatorPlatformTabItems = [
+  { key: 'tree', label: '指标树' },
+  { key: 'table', label: '指标表' },
+  { key: 'template', label: '规则模板' },
+  { key: 'pack', label: '行业包' },
+  { key: 'import', label: '表格文件导入' },
+  { key: 'mapping', label: '来源映射' },
+]
 const summary = ref<PortfolioIndicatorPlatformSummaryVO | null>(null)
 const rows = ref<PortfolioIndicatorDefinitionVO[]>([])
 const definitionTotal = ref(0)
@@ -200,7 +217,7 @@ const packForm = reactive({
   packVersion: '1.0.0',
   status: PfIndicatorStatusCode.ACTIVE,
 })
-const packDefExistingJson = ref('{}')
+const packDefBaseline = ref<PortfolioIndustryPackDefDto | null>(null)
 const packDefForm = reactive<PortfolioIndustryPackDefForm>({
   packId: '',
   packName: '',
@@ -537,8 +554,7 @@ function openTemplateEdit(record?: PortfolioIndicatorRuleTemplateVO) {
     templateForm.templateCode = record.templateCode
     templateForm.templateName = record.templateName
     templateForm.ruleType = record.ruleType
-    templateParams.value
-      = parseTemplateParamsJson(record.paramsJson) ?? defaultTemplateParams(record.ruleType)
+    templateParams.value = record.params ?? defaultTemplateParams(record.ruleType)
     templateForm.description = ''
     templateForm.status = record.status
   } else {
@@ -567,7 +583,7 @@ async function saveTemplateForm() {
     templateCode,
     templateName,
     ruleType: templateForm.ruleType,
-    paramsJson: serializeTemplateParams(templateParams.value),
+    params: templateParams.value,
     description: templateForm.description.trim() || undefined,
     status: templateForm.status,
   }
@@ -590,24 +606,15 @@ function openPackEdit(record?: PortfolioIndustryPackVO) {
     packForm.packCode = record.packCode
     packForm.packName = record.packName
     packForm.packVersion = record.packVersion ?? '1.0.0'
-    packDefExistingJson.value = record.packDefJson ?? '{}'
-    const parsedPackDef = parseIndustryPackDefJson(
-      record.packCode,
-      record.packName,
-      record.packVersion ?? '1.0.0',
-      packDefExistingJson.value,
-    )
-    if (!parsedPackDef) {
-      return
-    }
-    Object.assign(packDefForm, parsedPackDef)
+    packDefBaseline.value = record.packDef
+    Object.assign(packDefForm, toIndustryPackDefForm(record.packDef))
     packForm.status = record.status
   } else {
     packForm.id = ''
     packForm.packCode = ''
     packForm.packName = ''
     packForm.packVersion = '1.0.0'
-    packDefExistingJson.value = '{}'
+    packDefBaseline.value = null
     Object.assign(packDefForm, {
       packId: '',
       packName: '',
@@ -629,18 +636,16 @@ async function savePackForm() {
     showFormValidationMessage('请填写行业包编码、名称和版本')
     return
   }
-  const packDefJson = packForm.id
-    ? mergeIndustryPackDefJson(
-        { ...packDefForm, packId: packCode, packName, version: packVersion },
-        packDefExistingJson.value,
-      )
-    : buildNewIndustryPackDefJson({
-        ...packDefForm,
-        packId: packCode,
-        packName,
-        version: packVersion,
-      })
-  if (!packDefJson) return
+  const packDef = buildIndustryPackDefFromForm(
+    {
+      ...packDefForm,
+      packId: packCode,
+      packName,
+      version: packVersion,
+    },
+    packDefBaseline.value,
+  )
+  if (!packDef) return
   const operation = `save:pack:${packForm.id || packCode}`
   if (!beginOperation(operation)) return
   try {
@@ -649,7 +654,7 @@ async function savePackForm() {
       packCode,
       packName,
       packVersion,
-      packDefJson,
+      packDef,
       status: packForm.status,
     })
     message.success('行业包已保存')
@@ -705,6 +710,7 @@ onMounted(async () => {
       <ContextBar show-title layout="workbench" title="平台指标资产">
         <template #actions>
           <UiButton
+            size="sm"
             variant="primary"
             :loading="seeding"
             :disabled="interactionLocked"
@@ -729,213 +735,224 @@ onMounted(async () => {
       style="margin-bottom: 12px"
     />
     <UiCard>
-      <a-tabs :active-key="activeTab" @change="onTabChange">
-        <a-tab-pane key="tree" tab="指标树">
-          <UiEmpty v-if="loadError.tree" description="指标树加载失败，请重试" />
-          <a-tree
-            v-else
-            :tree-data="treeNodes"
-            :field-names="treeFieldNames"
-            default-expand-all
-            block-node
-          >
-            <template #title="{ nodeTitle, nodeType, defaultDataSource, indicatorCode, status }">
-              <span>{{ nodeTitle }}</span>
-              <span
-                v-if="nodeType === PortfolioIndicatorDefinitionTreeNodeTypeCode.OBSERVATION"
-                class="obs-meta"
-              >
-                {{ indicatorCode }} ·
-                {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} ·
-                {{ status ? indicatorStatusLabel(status) : '—' }}
-                <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)">详情</a>
-              </span>
-            </template>
-          </a-tree>
-          <div class="tree-foot">观测点 {{ observationCount }} 项</div>
-        </a-tab-pane>
-        <a-tab-pane key="table" tab="指标表">
-          <div class="toolbar">
-            <a-input
-              v-model:value="query.indicatorCode"
-              placeholder="指标编码"
-              style="width: 120px"
-              :disabled="writing"
-              @press-enter="loadPage"
-            />
-            <a-input
-              v-model:value="query.indicatorName"
-              placeholder="指标名称"
-              style="width: 160px"
-              :disabled="writing"
-              @press-enter="loadPage"
-            />
-            <UiButton :loading="loadState.definitions" :disabled="writing" @click="loadPage">
-              查询
-            </UiButton>
-            <UiButton variant="outline" :disabled="interactionLocked" @click="openNewIndicator">
-              新建指标
-            </UiButton>
-          </div>
-          <UiEmpty
-            v-if="!loadState.definitions && !loadError.definitions && rows.length === 0"
-            description="当前筛选无平台指标"
+      <UiSectionTabs
+        :model-value="activeTab"
+        :items="indicatorPlatformTabItems"
+        compact
+        divided
+        @change="onTabChange"
+      />
+      <template v-if="activeTab === 'tree'">
+        <UiEmpty size="sm" v-if="loadError.tree" description="指标树加载失败，请重试" />
+        <UiTree
+          v-else
+          :tree-data="treeNodes"
+          :field-names="treeFieldNames"
+          default-expand-all
+          block-node
+        >
+          <template #title="{ nodeTitle, nodeType, defaultDataSource, indicatorCode, status }">
+            <span>{{ nodeTitle }}</span>
+            <span
+              v-if="nodeType === PortfolioIndicatorDefinitionTreeNodeTypeCode.OBSERVATION"
+              class="obs-meta"
+            >
+              {{ indicatorCode }} ·
+              {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} ·
+              {{ status ? indicatorStatusLabel(status) : '—' }}
+              <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)">详情</a>
+            </span>
+          </template>
+        </UiTree>
+        <div class="tree-foot">观测点 {{ observationCount }} 项</div>
+      </template>
+      <template v-else-if="activeTab === 'table'">
+        <div class="toolbar">
+          <UiInput
+            size="sm"
+            v-model="query.indicatorCode"
+            placeholder="指标编码"
+            style="width: 120px"
+            :disabled="writing"
+            @press-enter="loadPage"
           />
-          <UiDataTable
-            v-model:current="query.pageNum"
-            v-model:page-size="query.pageSize"
-            pagination-mode="server"
-            :columns="definitionColumns"
-            :data-source="rows"
-            :loading="loadState.definitions"
-            :load-error="loadError.definitions"
-            :total="definitionTotal"
-            row-key="id"
-            @page-change="handleDefinitionPageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'defaultDataSource'">
-                {{ dataSourceLabel(record.defaultDataSource) }}
-              </template>
-              <template v-else-if="column.key === 'status'">
-                <UiTag :tone="record.status === PfIndicatorStatusCode.ACTIVE ? 'green' : 'gray'">
-                  {{ indicatorStatusLabel(record.status) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[
-                    { key: 'detail', label: '详情', disabled: interactionLocked },
-                    { key: 'edit', label: '编辑', disabled: interactionLocked },
-                  ]"
-                  split
-                  @action="(key) => handleIndicatorRowAction(key, record.indicatorCode)"
-                />
-              </template>
-            </template>
-          </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane key="template" tab="规则模板">
-          <div class="toolbar">
-            <a-input
-              v-model:value="templateQuery.templateCode"
-              placeholder="模板编码"
-              style="width: 120px"
-              :disabled="writing"
-              @press-enter="loadTemplates"
-            />
-            <a-select
-              v-model:value="templateQuery.ruleType"
-              allow-clear
-              placeholder="规则类型"
-              style="width: 140px"
-              :options="PF_SCORE_RULE_TYPE_OPTIONS"
-              :disabled="writing"
-            />
-            <a-select
-              v-model:value="templateQuery.status"
-              allow-clear
-              placeholder="状态"
-              style="width: 100px"
-              :options="PF_INDICATOR_STATUS_OPTIONS"
-              :disabled="writing"
-            />
-            <UiButton :loading="loadState.templates" :disabled="writing" @click="loadTemplates">
-              查询
-            </UiButton>
-            <UiButton variant="outline" :disabled="interactionLocked" @click="openTemplateEdit()">
-              新建模板
-            </UiButton>
-          </div>
-          <UiDataTable
-            v-model:current="templateQuery.pageNum"
-            v-model:page-size="templateQuery.pageSize"
-            pagination-mode="server"
-            :columns="templateColumns"
-            :data-source="templates"
-            :loading="loadState.templates"
-            :load-error="loadError.templates"
-            :total="templateTotal"
-            row-key="id"
-            @page-change="handleTemplatePageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'ruleType'">
-                {{ scoreRuleTypeLabel(record.ruleType) }}
-              </template>
-              <template v-else-if="column.key === 'status'">
-                <UiTag :tone="record.status === PfIndicatorStatusCode.ACTIVE ? 'green' : 'gray'">
-                  {{ indicatorStatusLabel(record.status) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked }]"
-                  split
-                  @action="() => openTemplateEdit(record)"
-                />
-              </template>
-            </template>
-          </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane key="pack" tab="行业包">
-          <div class="toolbar">
-            <UiButton variant="outline" :disabled="interactionLocked" @click="openPackEdit()">
-              新建行业包
-            </UiButton>
-          </div>
-          <UiDataTable
-            :columns="packColumns"
-            :data-source="industryPacks"
-            :loading="loadState.packs"
-            :load-error="loadError.packs"
-            row-key="id"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'status'">
-                <UiTag :tone="record.status === PfIndicatorStatusCode.ACTIVE ? 'green' : 'gray'">
-                  {{ indicatorStatusLabel(record.status) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked }]"
-                  split
-                  @action="() => openPackEdit(record)"
-                />
-              </template>
-            </template>
-          </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane key="import" tab="表格文件导入">
-          <p class="hint">请先下载模板，填写后上传表格文件批量导入指标定义。</p>
-          <UiButton :disabled="interactionLocked" @click="importModalOpen = true">
-            表格文件批量导入
+          <UiInput
+            size="sm"
+            v-model="query.indicatorName"
+            placeholder="指标名称"
+            style="width: 160px"
+            :disabled="writing"
+            @press-enter="loadPage"
+          />
+          <UiButton size="sm" :loading="loadState.definitions" :disabled="writing" @click="loadPage">
+            查询
           </UiButton>
-        </a-tab-pane>
-        <a-tab-pane key="mapping" tab="来源映射">
-          <UiDataTable
-            :columns="mappingColumns"
-            :data-source="sourceMappings"
-            :loading="loadState.mappings"
-            :load-error="loadError.mappings"
-            row-key="indicatorCode"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'autoCollectSupported'">
-                {{ record.autoCollectSupported ? '是' : '否' }}
-              </template>
-              <template v-else-if="column.key === 'outOfScope'">
-                <UiTag :tone="record.outOfScope ? 'gray' : 'green'">
-                  {{ record.outOfScope ? '不实现' : '本域' }}
-                </UiTag>
-              </template>
+          <UiButton size="sm" variant="outline" :disabled="interactionLocked" @click="openNewIndicator">
+            新建指标
+          </UiButton>
+        </div>
+        <UiEmpty
+          size="sm"
+          v-if="!loadState.definitions && !loadError.definitions && rows.length === 0"
+          description="当前筛选无平台指标"
+        />
+        <UiDataTable
+          v-model:current="query.pageNum"
+          v-model:page-size="query.pageSize"
+          pagination-mode="server"
+          :columns="definitionColumns"
+          :data-source="rows"
+          :loading="loadState.definitions"
+          :load-error="loadError.definitions"
+          :total="definitionTotal"
+          row-key="id"
+          @page-change="handleDefinitionPageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'defaultDataSource'">
+              {{ dataSourceLabel(record.defaultDataSource) }}
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-      </a-tabs>
+            <template v-else-if="column.key === 'status'">
+              <UiTag :tone="record.status === PfIndicatorStatusCode.ACTIVE ? 'green' : 'gray'">
+                {{ indicatorStatusLabel(record.status) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[
+                  { key: 'detail', label: '详情', disabled: interactionLocked },
+                  { key: 'edit', label: '编辑', disabled: interactionLocked },
+                ]"
+                split
+                @action="(key) => handleIndicatorRowAction(key, record.indicatorCode)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else-if="activeTab === 'template'">
+        <div class="toolbar">
+          <UiInput
+            size="sm"
+            v-model="templateQuery.templateCode"
+            placeholder="模板编码"
+            style="width: 120px"
+            :disabled="writing"
+            @press-enter="loadTemplates"
+          />
+          <UiSelect
+            size="sm"
+            v-model="templateQuery.ruleType"
+            allow-clear
+            placeholder="规则类型"
+            style="width: 140px"
+            :options="PF_SCORE_RULE_TYPE_OPTIONS"
+            :disabled="writing"
+          />
+          <UiSelect
+            size="sm"
+            v-model="templateQuery.status"
+            allow-clear
+            placeholder="状态"
+            style="width: 100px"
+            :options="PF_INDICATOR_STATUS_OPTIONS"
+            :disabled="writing"
+          />
+          <UiButton size="sm" :loading="loadState.templates" :disabled="writing" @click="loadTemplates">
+            查询
+          </UiButton>
+          <UiButton size="sm" variant="outline" :disabled="interactionLocked" @click="openTemplateEdit()">
+            新建模板
+          </UiButton>
+        </div>
+        <UiDataTable
+          v-model:current="templateQuery.pageNum"
+          v-model:page-size="templateQuery.pageSize"
+          pagination-mode="server"
+          :columns="templateColumns"
+          :data-source="templates"
+          :loading="loadState.templates"
+          :load-error="loadError.templates"
+          :total="templateTotal"
+          row-key="id"
+          @page-change="handleTemplatePageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'ruleType'">
+              {{ scoreRuleTypeLabel(record.ruleType) }}
+            </template>
+            <template v-else-if="column.key === 'status'">
+              <UiTag :tone="record.status === PfIndicatorStatusCode.ACTIVE ? 'green' : 'gray'">
+                {{ indicatorStatusLabel(record.status) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked }]"
+                split
+                @action="() => openTemplateEdit(record)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else-if="activeTab === 'pack'">
+        <div class="toolbar">
+          <UiButton size="sm" variant="outline" :disabled="interactionLocked" @click="openPackEdit()">
+            新建行业包
+          </UiButton>
+        </div>
+        <UiDataTable
+          :columns="packColumns"
+          :data-source="industryPacks"
+          :loading="loadState.packs"
+          :load-error="loadError.packs"
+          row-key="id"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'status'">
+              <UiTag :tone="record.status === PfIndicatorStatusCode.ACTIVE ? 'green' : 'gray'">
+                {{ indicatorStatusLabel(record.status) }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked }]"
+                split
+                @action="() => openPackEdit(record)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else-if="activeTab === 'import'">
+        <p class="hint">请先下载模板，填写后上传表格文件批量导入指标定义。</p>
+        <UiButton size="sm" :disabled="interactionLocked" @click="importModalOpen = true">
+          表格文件批量导入
+        </UiButton>
+      </template>
+      <template v-else>
+        <UiDataTable
+          :columns="mappingColumns"
+          :data-source="sourceMappings"
+          :loading="loadState.mappings"
+          :load-error="loadError.mappings"
+          row-key="indicatorCode"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'autoCollectSupported'">
+              {{ record.autoCollectSupported ? '是' : '否' }}
+            </template>
+            <template v-else-if="column.key === 'outOfScope'">
+              <UiTag :tone="record.outOfScope ? 'gray' : 'green'">
+                {{ record.outOfScope ? '不实现' : '本域' }}
+              </UiTag>
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
     </UiCard>
-    <a-drawer
+    <UiDrawer
       v-model:open="detailOpen"
       title="指标详情"
       width="520"
@@ -943,7 +960,7 @@ onMounted(async () => {
       :mask-closable="!writing"
       @close="resetDetailContext"
     >
-      <a-spin :spinning="detailLoading">
+      <UiSpin :spinning="detailLoading">
         <template v-if="detail && !editMode">
           <p>
             <strong>{{ detail.indicatorCode }}</strong> {{ detail.indicatorName }}
@@ -962,65 +979,80 @@ onMounted(async () => {
           </div>
           <p v-if="detail.applicableTeachers" class="meta">适用：{{ detail.applicableTeachers }}</p>
           <p v-if="detail.policyAlign" class="meta">政策对齐：{{ detail.policyAlign }}</p>
-          <UiButton style="margin-top: 12px" :disabled="writing" @click="startEdit">
+          <UiButton size="sm" style="margin-top: 12px" :disabled="writing" @click="startEdit">
             编辑
           </UiButton>
         </template>
-        <a-form v-else-if="editMode" layout="vertical">
-          <a-form-item label="指标编码">
-            <a-input
-              v-model:value="editForm.indicatorCode"
+        <UiForm v-else-if="editMode" layout="vertical">
+          <UiFormItem label="指标编码">
+            <UiInput
+              size="sm"
+              v-model="editForm.indicatorCode"
               :disabled="Boolean(editForm.id) || writing"
             />
-          </a-form-item>
-          <a-form-item label="指标名称">
-            <a-input v-model:value="editForm.indicatorName" :disabled="writing" />
-          </a-form-item>
-          <a-form-item label="一级维度">
-            <a-input v-model:value="editForm.dimensionL1Name" :disabled="writing" />
-          </a-form-item>
-          <a-form-item label="二级维度">
-            <a-input v-model:value="editForm.dimensionL2Name" :disabled="writing" />
-          </a-form-item>
-          <a-form-item label="定义说明">
-            <a-textarea v-model:value="editForm.definitionText" :rows="3" :disabled="writing" />
-          </a-form-item>
-          <a-form-item label="数据来源">
-            <a-select
-              v-model:value="editForm.defaultDataSource"
+          </UiFormItem>
+          <UiFormItem label="指标名称">
+            <UiInput
+              size="sm" v-model="editForm.indicatorName" :disabled="writing"
+            />
+          </UiFormItem>
+          <UiFormItem label="一级维度">
+            <UiInput
+              size="sm" v-model="editForm.dimensionL1Name" :disabled="writing"
+            />
+          </UiFormItem>
+          <UiFormItem label="二级维度">
+            <UiInput
+              size="sm" v-model="editForm.dimensionL2Name" :disabled="writing"
+            />
+          </UiFormItem>
+          <UiFormItem label="定义说明">
+            <UiTextarea size="sm" v-model="editForm.definitionText" :rows="3" :disabled="writing" />
+          </UiFormItem>
+          <UiFormItem label="数据来源">
+            <UiSelect
+              size="sm"
+              v-model="editForm.defaultDataSource"
               :options="PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS"
               :disabled="writing"
             />
-          </a-form-item>
-          <a-form-item label="规则模板编号">
-            <a-input
-              v-model:value="editForm.defaultRuleTemplateId"
+          </UiFormItem>
+          <UiFormItem label="规则模板编号">
+            <UiInput
+              size="sm"
+              v-model="editForm.defaultRuleTemplateId"
               placeholder="绑定 Score 模板主键"
               :disabled="writing"
             />
-          </a-form-item>
-          <a-form-item label="适用对象">
-            <a-input v-model:value="editForm.applicableTeachers" :disabled="writing" />
-          </a-form-item>
-          <a-form-item label="政策对齐">
-            <a-input v-model:value="editForm.policyAlign" :disabled="writing" />
-          </a-form-item>
-          <a-form-item label="状态">
-            <a-select
-              v-model:value="editForm.status"
+          </UiFormItem>
+          <UiFormItem label="适用对象">
+            <UiInput
+              size="sm" v-model="editForm.applicableTeachers" :disabled="writing"
+            />
+          </UiFormItem>
+          <UiFormItem label="政策对齐">
+            <UiInput
+              size="sm" v-model="editForm.policyAlign" :disabled="writing"
+            />
+          </UiFormItem>
+          <UiFormItem label="状态">
+            <UiSelect
+              size="sm"
+              v-model="editForm.status"
               :options="PF_INDICATOR_STATUS_OPTIONS"
               :disabled="writing"
             />
-          </a-form-item>
-          <a-form-item label="红线指标">
-            <a-switch v-model:checked="editForm.redLineFlag" :disabled="writing" />
-          </a-form-item>
-          <a-form-item label="需审核">
-            <a-switch v-model:checked="editForm.auditRequired" :disabled="writing" />
-          </a-form-item>
+          </UiFormItem>
+          <UiFormItem label="红线指标">
+            <UiSwitch size="sm" v-model="editForm.redLineFlag" :disabled="writing" />
+          </UiFormItem>
+          <UiFormItem label="需审核">
+            <UiSwitch size="sm" v-model="editForm.auditRequired" :disabled="writing" />
+          </UiFormItem>
           <div class="drawer-actions">
-            <UiButton :disabled="writing" @click="editMode = false"> 取消 </UiButton>
+            <UiButton size="sm" :disabled="writing" @click="editMode = false"> 取消 </UiButton>
             <UiButton
+              size="sm"
               variant="primary"
               :loading="operationKey.startsWith('save:definition:')"
               :disabled="writing"
@@ -1029,47 +1061,53 @@ onMounted(async () => {
               保存
             </UiButton>
           </div>
-        </a-form>
-      </a-spin>
-    </a-drawer>
-    <a-drawer
+        </UiForm>
+      </UiSpin>
+    </UiDrawer>
+    <UiDrawer
       v-model:open="templateDrawerOpen"
       title="规则模板"
       width="480"
       :closable="!writing"
       :mask-closable="!writing"
     >
-      <a-form layout="vertical">
-        <a-form-item label="模板编码">
-          <a-input
-            v-model:value="templateForm.templateCode"
+      <UiForm layout="vertical">
+        <UiFormItem label="模板编码">
+          <UiInput
+            size="sm"
+            v-model="templateForm.templateCode"
             :disabled="Boolean(templateForm.id) || writing"
           />
-        </a-form-item>
-        <a-form-item label="模板名称">
-          <a-input v-model:value="templateForm.templateName" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="规则类型">
-          <a-select
-            v-model:value="templateForm.ruleType"
+        </UiFormItem>
+        <UiFormItem label="模板名称">
+          <UiInput
+            size="sm" v-model="templateForm.templateName" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="规则类型">
+          <UiSelect
+            size="sm"
+            v-model="templateForm.ruleType"
             :options="PF_SCORE_RULE_TYPE_OPTIONS"
             :disabled="writing"
           />
-        </a-form-item>
+        </UiFormItem>
         <PortfolioIndicatorTemplateParamsForm
           :rule-type="templateForm.ruleType"
           :params="templateParams"
           :disabled="writing"
           @update:params="templateParams = $event"
         />
-        <a-form-item label="状态">
-          <a-select
-            v-model:value="templateForm.status"
+        <UiFormItem label="状态">
+          <UiSelect
+            size="sm"
+            v-model="templateForm.status"
             :options="PF_INDICATOR_STATUS_OPTIONS"
             :disabled="writing"
           />
-        </a-form-item>
+        </UiFormItem>
         <UiButton
+          size="sm"
           variant="primary"
           :loading="operationKey.startsWith('save:template:')"
           :disabled="writing"
@@ -1077,114 +1115,131 @@ onMounted(async () => {
         >
           保存
         </UiButton>
-      </a-form>
-    </a-drawer>
-    <a-drawer
+      </UiForm>
+    </UiDrawer>
+    <UiDrawer
       v-model:open="packDrawerOpen"
       title="行业包"
       width="480"
       :closable="!writing"
       :mask-closable="!writing"
     >
-      <a-form layout="vertical">
-        <a-form-item label="包编码">
-          <a-input v-model:value="packForm.packCode" :disabled="Boolean(packForm.id) || writing" />
-        </a-form-item>
-        <a-form-item label="包名称">
-          <a-input v-model:value="packForm.packName" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="版本">
-          <a-input v-model:value="packForm.packVersion" :disabled="writing" />
-        </a-form-item>
-        <a-form-item label="适用专业（每行一个）">
-          <a-textarea
-            v-model:value="packDefForm.applicableMajorsText"
+      <UiForm layout="vertical">
+        <UiFormItem label="包编码">
+          <UiInput
+            size="sm" v-model="packForm.packCode" :disabled="Boolean(packForm.id) || writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="包名称">
+          <UiInput
+            size="sm" v-model="packForm.packName" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="版本">
+          <UiInput
+            size="sm" v-model="packForm.packVersion" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="适用专业（每行一个）">
+          <UiTextarea
+            size="sm"
+            v-model="packDefForm.applicableMajorsText"
             :rows="4"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="权重 · 企业实践">
-          <a-input-number
-            v-model:value="packDefForm.weightEnterprisePractice"
+        </UiFormItem>
+        <UiFormItem label="权重 · 企业实践">
+          <UiInputNumber
+            size="sm"
+            v-model="packDefForm.weightEnterprisePractice"
             :min="0"
             :max="1"
             :step="0.01"
             style="width: 100%"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="权重 · 职业资格">
-          <a-input-number
-            v-model:value="packDefForm.weightQualification"
+        </UiFormItem>
+        <UiFormItem label="权重 · 职业资格">
+          <UiInputNumber
+            size="sm"
+            v-model="packDefForm.weightQualification"
             :min="0"
             :max="1"
             :step="0.01"
             style="width: 100%"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="权重 · 行业项目">
-          <a-input-number
-            v-model:value="packDefForm.weightIndustryProject"
+        </UiFormItem>
+        <UiFormItem label="权重 · 行业项目">
+          <UiInputNumber
+            size="sm"
+            v-model="packDefForm.weightIndustryProject"
             :min="0"
             :max="1"
             :step="0.01"
             style="width: 100%"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="权重 · 教学贡献">
-          <a-input-number
-            v-model:value="packDefForm.weightTeachingContribution"
+        </UiFormItem>
+        <UiFormItem label="权重 · 教学贡献">
+          <UiInputNumber
+            size="sm"
+            v-model="packDefForm.weightTeachingContribution"
             :min="0"
             :max="1"
             :step="0.01"
             style="width: 100%"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="权重 · 社会服务">
-          <a-input-number
-            v-model:value="packDefForm.weightSocialService"
+        </UiFormItem>
+        <UiFormItem label="权重 · 社会服务">
+          <UiInputNumber
+            size="sm"
+            v-model="packDefForm.weightSocialService"
             :min="0"
             :max="1"
             :step="0.01"
             style="width: 100%"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="权重 · 培训发展">
-          <a-input-number
-            v-model:value="packDefForm.weightTrainingDevelopment"
+        </UiFormItem>
+        <UiFormItem label="权重 · 培训发展">
+          <UiInputNumber
+            size="sm"
+            v-model="packDefForm.weightTrainingDevelopment"
             :min="0"
             :max="1"
             :step="0.01"
             style="width: 100%"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="必交材料（每行一项）">
-          <a-textarea
-            v-model:value="packDefForm.materialRequiredText"
+        </UiFormItem>
+        <UiFormItem label="必交材料（每行一项）">
+          <UiTextarea
+            size="sm"
+            v-model="packDefForm.materialRequiredText"
             :rows="4"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="选交材料（每行一项）">
-          <a-textarea
-            v-model:value="packDefForm.materialOptionalText"
+        </UiFormItem>
+        <UiFormItem label="选交材料（每行一项）">
+          <UiTextarea
+            size="sm"
+            v-model="packDefForm.materialOptionalText"
             :rows="3"
             :disabled="writing"
           />
-        </a-form-item>
-        <a-form-item label="状态">
-          <a-select
-            v-model:value="packForm.status"
+        </UiFormItem>
+        <UiFormItem label="状态">
+          <UiSelect
+            size="sm"
+            v-model="packForm.status"
             :options="PF_INDICATOR_STATUS_OPTIONS"
             :disabled="writing"
           />
-        </a-form-item>
+        </UiFormItem>
         <UiButton
+          size="sm"
           variant="primary"
           :loading="operationKey.startsWith('save:pack:')"
           :disabled="writing"
@@ -1192,8 +1247,8 @@ onMounted(async () => {
         >
           保存
         </UiButton>
-      </a-form>
-    </a-drawer>
+      </UiForm>
+    </UiDrawer>
   </StageWorkbenchShell>
   <UiPlatformExcelImportModal
     v-model:open="importModalOpen"
@@ -1213,7 +1268,7 @@ onMounted(async () => {
 }
 .obs-meta {
   margin-left: 8px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   font-size: 12px;
 }
 .detail-link {
@@ -1222,11 +1277,11 @@ onMounted(async () => {
 .tree-foot {
   margin-top: 8px;
   font-size: 13px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 .meta {
   font-size: 13px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 .detail-tags {
   display: flex;

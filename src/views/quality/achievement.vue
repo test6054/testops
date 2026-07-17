@@ -35,6 +35,7 @@ import {
   AchievementTargetTypeDescription,
 } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import {
   ClassSelector,
   CourseGoalSelector,
@@ -45,11 +46,16 @@ import {
 import { loadBoundedPlanAggregate } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import AuditTimelineDrawer from '@/components/workbench/AuditTimelineDrawer.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -60,6 +66,7 @@ import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { useQualityStore } from '@/stores/modules/quality'
+import { ConfirmationStatusCode } from '@/types/enums/confirmation-status-enum'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatScore } from '@/utils/format'
@@ -318,6 +325,21 @@ function handleReset() {
 }
 
 const trainingPlanRequired = computed(() => !qualityStore.currentTrainingPlanId)
+const trainingPlanUnconfirmed = computed(() => {
+  if (trainingPlanRequired.value) {
+    return false
+  }
+  return qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
+})
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (trainingPlanRequired.value) {
+    return 'need-plan'
+  }
+  if (trainingPlanUnconfirmed.value) {
+    return 'need-confirm'
+  }
+  return null
+})
 const programRequired = computed(
   () => !qualityStore.currentProgramId && !triggerForm.programId.trim(),
 )
@@ -1079,7 +1101,11 @@ onActivated(async () => {
       </QualityPageContextBar>
     </template>
 
-    <UiEmpty v-if="trainingPlanRequired" description="请选择培养方案" class="achievement__empty" />
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
+      class="achievement__empty"
+    />
 
     <template v-else>
       <StageRail :stages="stages" compact class="achievement__stages" />
@@ -1096,7 +1122,7 @@ onActivated(async () => {
       <UiCard class="detail-table-card achievement__table-card">
         <template #title>达成度结果</template>
         <template #extra>
-          <a-space>
+          <div class="dp-space" style="--dp-space-gap: 8px">
             <UiButton
               variant="outline"
               size="sm"
@@ -1110,7 +1136,7 @@ onActivated(async () => {
             <UiButton size="sm" :disabled="trainingPlanRequired" @click="openTriggerDrawer">
               触发达成度计算
             </UiButton>
-          </a-space>
+          </div>
         </template>
 
         <UiFilterBar
@@ -1230,68 +1256,71 @@ onActivated(async () => {
     </template>
 
     <UiDrawer v-model:open="triggerVisible" title="触发达成度计算" :width="720" :hide-footer="true">
-      <a-form layout="vertical" :model="triggerForm">
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="质量评价课程（课程目标计算需要）">
+      <UiForm layout="vertical" :model="triggerForm">
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="质量评价课程（课程目标计算需要）">
               <CourseSelector
                 :value="triggerForm.qualityCourseId || null"
                 :training-plan-id="qualityStore.currentTrainingPlanId || null"
                 placeholder="选择质量评价课程"
                 @change="handleQualityCourseChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="专业（与上下文不一致时覆盖）">
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="专业（与上下文不一致时覆盖）">
               <ProgramSelector
                 :value="triggerForm.programId || null"
                 placeholder="选择专业覆盖上下文"
                 @change="handleProgramChange"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="学年">
-              <a-input v-model:value="triggerForm.schoolYear" placeholder="例：2024-2025" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="学期">
-              <a-select
-                v-model:value="triggerForm.semester"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="学年">
+              <UiInput
+                size="sm" v-model="triggerForm.schoolYear" placeholder="例：2024-2025"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="学期">
+              <UiSelect
+                size="sm"
+                v-model="triggerForm.semester"
                 :options="SemesterOptions"
                 placeholder="学期"
                 allow-clear
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="课程目标">
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="课程目标">
               <CourseGoalSelector
                 :value="triggerForm.courseGoalId || null"
                 :quality-course-id="triggerForm.qualityCourseId || null"
                 placeholder="选择课程目标"
                 @change="handleCourseGoalChange"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="培养目标">
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="培养目标">
               <TrainingObjectiveSelector
                 :value="triggerForm.trainingObjectiveId || null"
                 :training-plan-id="qualityStore.currentTrainingPlanId || null"
                 placeholder="选择培养目标"
                 @change="handleTrainingObjectiveChange"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-      </a-form>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+      </UiForm>
       <h4 class="achievement__section-title">计算入口（按依赖顺序）</h4>
       <p v-if="readinessLoading" class="achievement__readiness-hint">正在检查计算就绪状态…</p>
       <div class="achievement__trigger-chain">
@@ -1353,7 +1382,7 @@ onActivated(async () => {
 <style scoped lang="scss">
 .achievement {
   &__empty {
-    margin-top: 32px;
+    margin-top: var(--dp-space-3, 12px);
   }
 
   &__stages {
@@ -1371,8 +1400,8 @@ onActivated(async () => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {
@@ -1386,7 +1415,7 @@ onActivated(async () => {
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1452,8 +1481,8 @@ onActivated(async () => {
     background: var(--dp-surface);
 
     &--blocked {
-      border-color: var(--ant-color-warning-border);
-      background: var(--ant-color-warning-bg);
+      border-color: var(--dp-warning-border);
+      background: var(--dp-warning-bg);
     }
   }
 
@@ -1486,22 +1515,22 @@ onActivated(async () => {
   }
 
   &__value--success {
-    color: var(--ant-color-success);
+    color: var(--dp-success);
     font-weight: 600;
   }
 
   &__value--error {
-    color: var(--ant-color-error);
+    color: var(--dp-error);
     font-weight: 600;
   }
 
   &__value--ok {
-    color: var(--ant-color-success);
+    color: var(--dp-success);
     font-weight: 600;
   }
 
   &__value--bad {
-    color: var(--ant-color-error);
+    color: var(--dp-error);
     font-weight: 600;
   }
 

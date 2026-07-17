@@ -4,17 +4,21 @@ import type {
   PortfolioComplianceMetricVO,
   PortfolioComplianceThresholdVO,
 } from '@/apis/portfolio/compliance'
-import { InputNumber, message, Switch } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioComplianceApi } from '@/apis/portfolio/compliance'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import {
@@ -318,16 +322,22 @@ onMounted(() => {
     <template #context>
       <ContextBar layout="workbench" show-title title="结构合规阈值" subtitle="配置 C001–C006">
         <template #actions>
-          <UiButton variant="soft" :loading="recomputing" :disabled="writing" @click="recompute">
+          <UiButton size="sm" variant="soft" :loading="recomputing" :disabled="writing" @click="recompute">
             重算全校
           </UiButton>
-          <UiButton :disabled="writing" @click="openCreate"> 新建阈值 </UiButton>
+          <UiButton size="sm" :disabled="writing" @click="openCreate"> 新建阈值 </UiButton>
         </template>
       </ContextBar>
     </template>
     <UiCard title="学校级阈值">
-      <a-spin :spinning="loading">
-        <UiEmpty v-if="!loading && !rows.length" title="暂无内容" />
+      <UiSpin :spinning="loading">
+        <WorkbenchContextGateStrip
+          v-if="!loading && !rows.length"
+          tag="未配置"
+          body="暂无合规阈值，请先新建阈值"
+          cta-label="新建阈值"
+          @cta="openCreate"
+        />
         <UiDataTable
           :load-error="loadError"
           v-else
@@ -367,13 +377,16 @@ onMounted(() => {
             </template>
           </template>
         </UiDataTable>
-      </a-spin>
+      </UiSpin>
     </UiCard>
     <UiCard title="当前合规结果">
-      <a-spin :spinning="metricLoading">
-        <UiEmpty
-          v-if="!metricLoading && !metricRows.length"
-          description="尚未生成合规结果，请执行重算"
+      <UiSpin :spinning="metricLoading">
+        <WorkbenchContextGateStrip
+          v-if="!metricRows.length"
+          tag="无结果"
+          body="尚未生成合规结果，请执行重算"
+          cta-label="重算全校"
+          @cta="recompute"
         />
         <UiDataTable
           v-else
@@ -411,7 +424,7 @@ onMounted(() => {
             </template>
           </template>
         </UiDataTable>
-      </a-spin>
+      </UiSpin>
     </UiCard>
     <UiDrawer
       v-model:open="editorOpen"
@@ -420,8 +433,9 @@ onMounted(() => {
     >
       <div class="compliance-threshold-form">
         <label>指标</label>
-        <a-select
-          v-model:value="form.metricCode"
+        <UiSelect
+          size="sm"
+          v-model="form.metricCode"
           :options="
             ALL_PORTFOLIO_COMPLIANCE_ALERT_TYPE_CODES.map((code) => ({
               value: code,
@@ -432,32 +446,36 @@ onMounted(() => {
           @change="applyMetricDefaults(form.metricCode)"
         />
         <label>目标值</label>
-        <InputNumber
-          v-model:value="form.targetValue"
+        <UiInputNumber
+          size="sm"
+          v-model="form.targetValue"
           :min="0"
           :max="1"
           :step="0.01"
           class="w-full"
         />
         <label>黄线</label>
-        <InputNumber
-          v-model:value="form.yellowThreshold"
+        <UiInputNumber
+          size="sm"
+          v-model="form.yellowThreshold"
           :min="0"
           :max="1"
           :step="0.01"
           class="w-full"
         />
         <label>红线</label>
-        <InputNumber
-          v-model:value="form.redThreshold"
+        <UiInputNumber
+          size="sm"
+          v-model="form.redThreshold"
           :min="0"
           :max="1"
           :step="0.01"
           class="w-full"
         />
         <label>比较方向</label>
-        <a-select
-          v-model:value="form.compareDirection"
+        <UiSelect
+          size="sm"
+          v-model="form.compareDirection"
           :options="[
             {
               value: PortfolioComplianceCompareDirectionCode.LOWER_IS_WORSE,
@@ -475,8 +493,9 @@ onMounted(() => {
               ? '应配备思政教师数'
               : '折合学籍学生数'
           }}</label>
-          <InputNumber
-            v-model:value="form.denominatorBasisValue"
+          <UiInputNumber
+            size="sm"
+            v-model="form.denominatorBasisValue"
             :min="1"
             :step="1"
             class="w-full"
@@ -484,19 +503,20 @@ onMounted(() => {
         </template>
         <template v-if="form.metricCode === PortfolioComplianceAlertTypeCode.C003">
           <label>辅导员配比标准（1:N）</label>
-          <InputNumber
-            v-model:value="form.counselorRatioStandard"
+          <UiInputNumber
+            size="sm"
+            v-model="form.counselorRatioStandard"
             :min="1"
             :step="1"
             class="w-full"
           />
         </template>
         <label>启用</label>
-        <Switch v-model:checked="form.enabled" />
+        <UiSwitch v-model="form.enabled" size="sm" />
       </div>
       <template #footer>
-        <UiButton variant="soft" @click="editorOpen = false"> 取消 </UiButton>
-        <UiButton :loading="saving" @click="saveRow"> 保存 </UiButton>
+        <UiButton size="sm" variant="soft" @click="editorOpen = false"> 取消 </UiButton>
+        <UiButton size="sm" :loading="saving" @click="saveRow"> 保存 </UiButton>
       </template>
     </UiDrawer>
   </StageWorkbenchShell>
@@ -510,7 +530,7 @@ onMounted(() => {
 }
 .compliance-threshold-form label {
   font-size: 13px;
-  color: var(--color-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 .w-full {
   width: 100%;

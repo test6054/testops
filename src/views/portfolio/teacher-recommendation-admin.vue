@@ -23,7 +23,14 @@ import { AiTaskStatusDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -36,11 +43,16 @@ function readRouteStringParam(value: unknown): string {
 }
 
 const activeTab = ref('execute')
+const recTabItems = [
+  { key: 'execute', label: '执行推荐' },
+  { key: 'runs', label: '执行历史' },
+]
 const rules = ref<PortfolioTeacherRecommendRuleVO[]>([])
 const pkResult = ref<PortfolioTeacherPkCompareVO | null>(null)
 const selectedRuleId = ref('')
 const lastRunId = ref('')
 const loading = ref(false)
+const saving = ref(false)
 const routeRequestToken = ref(0)
 
 const ruleForm = reactive({
@@ -211,10 +223,14 @@ async function loadRules() {
 }
 
 async function saveRule() {
+  if (saving.value) {
+    return
+  }
   if (!ruleForm.ruleName.trim()) {
     showFormValidationMessage('请填写规则名称')
     return
   }
+  saving.value = true
   try {
     await portfolioTeacherRecommendationApi.saveRule({
       ruleName: ruleForm.ruleName.trim(),
@@ -230,6 +246,8 @@ async function saveRule() {
     await loadRules()
   } catch (error) {
     showUserError(error, '保存推荐规则失败')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -350,98 +368,109 @@ watch(
     </template>
     <UiCard title="规则配置">
       <div class="form-row">
-        <a-input v-model:value="ruleForm.ruleName" placeholder="规则名称" style="width: 160px" />
-        <a-input-number v-model:value="ruleForm.minHonorCount" :min="0" placeholder="最低荣誉数" />
-        <a-checkbox v-model:checked="ruleForm.requireDualTeacher"> 要求双师 </a-checkbox>
-        <a-input-number
-          v-model:value="ruleForm.topLimit"
+        <UiInput
+          size="sm" v-model="ruleForm.ruleName" placeholder="规则名称" style="width: 160px"
+        />
+        <UiInputNumber
+          size="sm" v-model="ruleForm.minHonorCount" :min="0" placeholder="最低荣誉数"
+        />
+        <UiCheckbox v-model="ruleForm.requireDualTeacher"> 要求双师 </UiCheckbox>
+        <UiInputNumber
+          size="sm"
+          v-model="ruleForm.topLimit"
           :min="1"
           :max="50"
           placeholder="候选上限"
         />
-        <UiButton variant="primary" @click="saveRule"> 保存规则 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving" @click="saveRule">
+          保存规则
+        </UiButton>
       </div>
-      <a-select
-        v-model:value="selectedRuleId"
+      <UiSelect
+        v-model="selectedRuleId"
         placeholder="选择规则"
         style="width: 240px; margin-top: 8px"
-      >
-        <a-select-option v-for="rule in rules" :key="rule.id" :value="rule.id">
-          {{ rule.ruleName }}（{{ sceneLabel(rule.recommendScene) }}）
-        </a-select-option>
-      </a-select>
+        size="sm"
+        :options="rules.map((rule) => ({ value: rule.id, label: `${rule.ruleName}（${sceneLabel(rule.recommendScene)}）` }))"
+      />
     </UiCard>
-    <a-tabs v-model:active-key="activeTab" style="margin-top: 16px">
-      <a-tab-pane key="execute" tab="执行推荐">
-        <UiCard>
-          <div class="form-row">
-            <UiButton :loading="loading" @click="executeRuleRun"> 规则推荐 </UiButton>
-            <UiButton variant="primary" :loading="loading" @click="executeAiExplain">
-              规则执行 → 智能解释
-            </UiButton>
-            <UiButton @click="loadCandidates"> 刷新候选 </UiButton>
-          </div>
-          <UiEmpty v-if="!loading && candidates.length === 0" description="当前筛选无推荐记录" />
-          <UiDataTable
-            v-model:current="pageNum"
-            v-model:page-size="pageSize"
-            pagination-mode="server"
-            :total="pageTotal"
-            :columns="candidateColumns"
-            :data-source="candidates"
-            :loading="candidatesLoading"
-            row-key="id"
-            style="margin-top: 16px"
-            @page-change="handlePageChange"
-          />
-        </UiCard>
-      </a-tab-pane>
-      <a-tab-pane key="runs" tab="执行历史">
-        <UiCard>
-          <UiButton :loading="runsLoading" @click="loadRuns"> 刷新历史 </UiButton>
-          <UiEmpty v-if="!runsLoading && runs.length === 0" description="当前筛选无推荐记录" />
-          <UiDataTable
-            v-model:current="runsPageNum"
-            v-model:page-size="runsPageSize"
-            pagination-mode="server"
-            :total="runsPageTotal"
-            :columns="runColumns"
-            :data-source="runs"
-            :loading="runsLoading"
-            row-key="id"
-            style="margin-top: 16px"
-            @page-change="handleRunsPageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'runMode'">
-                {{ runModeLabel(record.runMode) }}
-              </template>
-              <template v-else-if="column.key === 'runStatus'">
-                {{ runStatusLabel(record.runStatus) }}
-              </template>
-              <template v-else-if="column.key === 'explainStatus'">
-                <a @click="loadExplainStatus(record.id)">查看</a>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[{ key: 'candidates', label: '查看候选' }]"
-                  split
-                  @action="() => viewRunCandidates(record.id)"
-                />
-              </template>
+    <UiSectionTabs
+      v-model="activeTab"
+      :items="recTabItems"
+      compact
+      divided
+      style="margin-top: 16px"
+    />
+    <template v-if="activeTab === 'execute'">
+      <UiCard>
+        <div class="form-row">
+          <UiButton size="sm" :loading="loading" @click="executeRuleRun"> 规则推荐 </UiButton>
+          <UiButton size="sm" variant="primary" :loading="loading" @click="executeAiExplain">
+            规则执行 → 智能解释
+          </UiButton>
+          <UiButton size="sm" @click="loadCandidates"> 刷新候选 </UiButton>
+        </div>
+        <UiEmpty size="sm" v-if="!loading && candidates.length === 0" description="当前筛选无推荐记录" />
+        <UiDataTable
+          v-model:current="pageNum"
+          v-model:page-size="pageSize"
+          pagination-mode="server"
+          :total="pageTotal"
+          :columns="candidateColumns"
+          :data-source="candidates"
+          :loading="candidatesLoading"
+          row-key="id"
+          style="margin-top: 16px"
+          @page-change="handlePageChange"
+        />
+      </UiCard>
+    </template>
+    <template v-else-if="activeTab === 'runs'">
+      <UiCard>
+        <UiButton size="sm" :loading="runsLoading" @click="loadRuns"> 刷新历史 </UiButton>
+        <UiEmpty size="sm" v-if="!runsLoading && runs.length === 0" description="当前筛选无推荐记录" />
+        <UiDataTable
+          v-model:current="runsPageNum"
+          v-model:page-size="runsPageSize"
+          pagination-mode="server"
+          :total="runsPageTotal"
+          :columns="runColumns"
+          :data-source="runs"
+          :loading="runsLoading"
+          row-key="id"
+          style="margin-top: 16px"
+          @page-change="handleRunsPageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'runMode'">
+              {{ runModeLabel(record.runMode) }}
             </template>
-          </UiDataTable>
-        </UiCard>
-      </a-tab-pane>
-    </a-tabs>
+            <template v-else-if="column.key === 'runStatus'">
+              {{ runStatusLabel(record.runStatus) }}
+            </template>
+            <template v-else-if="column.key === 'explainStatus'">
+              <a @click="loadExplainStatus(record.id)">查看</a>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[{ key: 'candidates', label: '查看候选' }]"
+                split
+                @action="() => viewRunCandidates(record.id)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+      </UiCard>
+    </template>
     <UiCard title="教师多维对比" style="margin-top: 16px">
       <div class="form-row">
-        <a-input
-          v-model:value="pkForm.teacherUserIds"
+        <UiInput
+          size="sm"
+          v-model="pkForm.teacherUserIds"
           placeholder="教师编号，逗号分隔（2至5人）"
           style="width: 360px"
         />
-        <UiButton @click="runPkCompare"> 对比 </UiButton>
+        <UiButton size="sm" @click="runPkCompare"> 对比 </UiButton>
       </div>
       <div v-if="pkResult" class="pk-grid">
         <div v-for="teacher in pkResult.teachers" :key="teacher.teacherUserId" class="pk-col">
@@ -452,8 +481,8 @@ watch(
         </div>
       </div>
     </UiCard>
-    <a-drawer v-model:open="explainDrawerOpen" title="智能解释状态" width="560">
-      <a-spin :spinning="explainLoading">
+    <UiDrawer v-model:open="explainDrawerOpen" title="智能解释状态" width="560">
+      <UiSpin :spinning="explainLoading">
         <template v-if="explainStatus">
           <p>运行编号 {{ explainStatus.runId }}</p>
           <p v-if="explainStatus.explainTaskId">
@@ -471,8 +500,8 @@ watch(
             </li>
           </ul>
         </template>
-      </a-spin>
-    </a-drawer>
+      </UiSpin>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -488,7 +517,7 @@ watch(
   padding: 8px;
   font-size: 13px;
   white-space: pre-wrap;
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-fill-quaternary);
   border-radius: 4px;
 }
 .explain-list {
@@ -501,13 +530,13 @@ watch(
 .pk-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 16px;
+  gap: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3, 12px);
 }
 .pk-col {
   min-width: 200px;
   padding: 8px;
-  border: 1px solid var(--ant-color-border);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
 }
 .pk-title {

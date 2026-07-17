@@ -38,7 +38,7 @@ const toHome = () => {
 .system-logo {
   height: 56px;
   padding: 0 12px;
-  color: var(--ant-color-text);
+  color: var(--dp-text);
   font-size: 20px;
   line-height: 1;
   display: flex;
@@ -62,7 +62,7 @@ const toHome = () => {
   .logo {
     width: 32px;
     height: 32px;
-    border-radius: var(--ant-border-radius);
+    border-radius: var(--dp-radius-control);
     transition: border-radius 0.2s;
     overflow: hidden;
     flex-shrink: 0;
@@ -79,7 +79,7 @@ const toHome = () => {
     align-items: center;
 
     &:hover {
-      color: var(--ant-color-primary) !important;
+      color: var(--dp-color-primary) !important;
       cursor: pointer;
     }
   }

@@ -19,6 +19,7 @@ import {
 } from '@ant-design/icons-vue'
 import { computed, watch } from 'vue'
 import { AgentUpdateStatusCode } from '@/apis/mark/scanner-agent-local'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { getKioskBindingProfile } from '@/utils/kiosk-auth'
 import { useKioskCtx } from '../composables/kioskInjection'
 
@@ -157,7 +158,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
 </script>
 
 <template>
-  <a-drawer
+  <UiDrawer
     v-model:open="open"
     placement="right"
     :width="480"
@@ -465,7 +466,7 @@ const latestClientVersion = computed(() => health.value?.latestClientVersion || 
         </section>
       </div>
     </div>
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <style scoped>

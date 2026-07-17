@@ -2,6 +2,7 @@
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import { onMounted, ref, watch } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { formatAcademicYearSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 
@@ -106,12 +107,13 @@ onMounted(loadExamOptions)
 
 <template>
   <div class="analysis-exam-select">
-    <a-select
-      v-model:value="selectedExamId"
+    <UiSelect
+      size="sm"
+      v-model="selectedExamId"
       :options="examOptions"
       :loading="loading"
       :placeholder="placeholder"
-      show-search
+      allow-search
       option-filter-prop="label"
       :filter-option="false"
       allow-clear

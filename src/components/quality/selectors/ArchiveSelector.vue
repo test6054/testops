@@ -3,12 +3,13 @@
   常用过滤：businessType / archiveCategory / archiveOfficeConfirmed
 -->
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ArchiveVO } from '@/apis/quality/archive'
 import type { ArchiveBusinessTypeCode } from '@/apis/quality/types'
-import { onMounted, ref, watch } from 'vue'
+import type { UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
+import { computed, onMounted, ref, watch } from 'vue'
 import { archiveApi } from '@/apis/quality/archive'
 import { ArchiveBusinessTypeDescription } from '@/apis/quality/types'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { loadSelectorFirstPage, QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS } from './page-contract'
@@ -76,6 +77,18 @@ async function loadOptions(keyword?: string) {
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const selectOptions = computed<UiSelectOption[]>(() =>
+  options.value.map((opt) => ({
+    value: opt.id,
+    label: opt.archiveCode,
+  })),
+)
+
+const controlStyle = computed(() => ({
+  width: typeof props.width === 'number' ? `${props.width}px` : props.width,
+}))
+
 function handleSearch(val: string) {
   searchText.value = val
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -86,7 +99,7 @@ function archiveBusinessTypeLabel(value: ArchiveBusinessTypeCode): string {
   return strictEnumLabel(ArchiveBusinessTypeDescription, value, '归档业务类型')
 }
 
-function handleChange(val: SelectValue) {
+function handleChange(val: UiOptionValue | UiOptionValue[] | undefined) {
   const next: string | null = typeof val === 'string' ? val : null
   internalValue.value = next ?? undefined
   const option = options.value.find((o) => o.id === next)
@@ -102,26 +115,33 @@ defineExpose({ reload: loadOptions })
 </script>
 
 <template>
-  <a-select
-    :value="internalValue"
+  <UiSelect
+    v-model="internalValue"
+    class="dp-quality-selector"
+    :style="controlStyle"
+    size="sm"
     :placeholder="placeholder"
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
-    :style="{ width: typeof width === 'number' ? `${width}px` : width }"
-    show-search
+    allow-search
     :filter-option="false"
     @search="handleSearch"
-    @change="handleChange"
+    :options="selectOptions"
+    @update:model-value="handleChange"
   >
-    <a-select-option v-for="opt in options" :key="opt.id" :value="opt.id" :label="opt.archiveCode">
-      <span class="dp-selector-option-code">{{ opt.archiveCode }}</span>
-      <span v-if="opt.fileName">{{ opt.fileName }}</span>
-      <span v-if="opt.businessType" class="dp-selector-option-meta">
-        · {{ archiveBusinessTypeLabel(opt.businessType) }}
-      </span>
-    </a-select-option>
-  </a-select>
+    <template #option="{ value: optionValue }">
+      <template v-for="opt in options" :key="opt.id">
+        <template v-if="opt.id === optionValue">
+          <span class="dp-selector-option-code">{{ opt.archiveCode }}</span>
+          <span v-if="opt.fileName">{{ opt.fileName }}</span>
+          <span v-if="opt.businessType" class="dp-selector-option-meta">
+            · {{ archiveBusinessTypeLabel(opt.businessType) }}
+          </span>
+        </template>
+      </template>
+    </template>
+  </UiSelect>
 </template>
 
 <style scoped>
@@ -130,11 +150,11 @@ defineExpose({ reload: loadOptions })
 }
 
 .text-gray-500 {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 
 .text-gray-400 {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 
 .mr-1 {

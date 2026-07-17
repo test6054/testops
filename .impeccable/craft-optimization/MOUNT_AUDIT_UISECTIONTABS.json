@@ -1,0 +1,308 @@
+[
+  {
+    "file": "views/admin/audit-trail.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/admin/marking-organization/detail.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/admin/marking-quality-dashboard.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/ai-four-assistants.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/alert-center.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/development-plan-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/development-plan-department-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/evaluation-fill-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/external-teacher-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/indicator-history.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/indicator-ops-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/indicator-platform-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/indicator-tenant-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/integration-dashboard.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/key-teacher-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/major-group-portfolio.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/national-achievement-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/teacher-portrait.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/teacher-profile.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/teacher-recommendation-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/portfolio/title-promotion-admin.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/accreditation-cockpit.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/ai-task.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/archive.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/improvement-workbench.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/quality/quality-ingest-hub-layout.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/ai-analysis-center.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/appeal-handle.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/archive-volume-eval-campaign.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/archive-volume-ledger.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/archive-volume-list.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/archive-volume-settings.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/archive-volume-statistics.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/archive-volume-supervision-panel.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/components/ArchiveTemplateSetEditorDrawer.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/components/ArchiveTemplateSetPreviewDrawer.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/components/ArchiveVolumeTemplateSetsPanel.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/archive-volume/components/detail/ArchiveVolumeMaterialOcrDetailContent.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/exam-list.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/exam-workspace/exam-workspace-question-analysis.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/grading-experience-hub.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/marking-overview.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/review-arbitration.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/scan-batch-detail-workbench.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/scan-batch-workbench.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/scan-live-monitor.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/scan-manual-entry.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/score-finalize.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/score-publish.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/teacher/statistics.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  },
+  {
+    "file": "views/user/message/index.vue",
+    "status": "OK",
+    "notes": [],
+    "focus": "general"
+  }
+]

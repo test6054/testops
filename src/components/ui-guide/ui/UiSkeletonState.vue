@@ -107,29 +107,29 @@ const hasHeader = computed(() => {
 .ui-skeleton-state {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  gap: var(--dp-space-4, 16px);
+  padding: var(--dp-space-4, 16px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
 }
 
 .ui-skeleton-state--compact {
-  gap: 12px;
-  padding: 14px;
+  gap: var(--dp-space-3, 12px);
+  padding: var(--dp-space-3, 12px);
 }
 
 .ui-skeleton-state__list,
 .ui-skeleton-state__cards {
   display: grid;
-  gap: 12px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .ui-skeleton-state__item,
 .ui-skeleton-state__card {
   display: flex;
-  gap: 12px;
-  padding: 14px;
+  gap: var(--dp-space-3, 12px);
+  padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control-inner);
   background: var(--dp-gray-50);
@@ -141,7 +141,7 @@ const hasHeader = computed(() => {
 
 .ui-skeleton-state__content {
   display: grid;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
   flex: 1;
 }
 
@@ -150,7 +150,12 @@ const hasHeader = computed(() => {
   height: 40px;
   flex-shrink: 0;
   border-radius: var(--dp-radius-control-inner);
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+  background: linear-gradient(
+    90deg,
+    var(--dp-gray-100) 25%,
+    var(--dp-border) 37%,
+    var(--dp-gray-100) 63%
+  );
   background-size: 400% 100%;
   animation: ui-skeleton-shimmer 1.6s ease infinite;
 }
@@ -159,8 +164,13 @@ const hasHeader = computed(() => {
   display: block;
   width: 100%;
   height: 12px;
-  border-radius: 4px;
-  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+  border-radius: var(--dp-radius-xs, 4px);
+  background: linear-gradient(
+    90deg,
+    var(--dp-gray-100) 25%,
+    var(--dp-border) 37%,
+    var(--dp-gray-100) 63%
+  );
   background-size: 400% 100%;
   animation: ui-skeleton-shimmer 1.6s ease infinite;
 }

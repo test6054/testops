@@ -160,6 +160,9 @@ export function useSurveyFill() {
 
   async function submitSurvey(): Promise<boolean> {
     if (!survey.value) return false
+    if (submitting.value) {
+      return false
+    }
 
     const unansweredIdx = findFirstUnansweredRequired()
     if (unansweredIdx >= 0) {

@@ -14,59 +14,54 @@
     role="navigation"
     aria-label="阶段进度"
   >
-    <button
-      v-for="(stage, index) in stages"
-      :key="stage.key"
-      type="button"
-      class="stage-rail-panel__item"
-      :class="[
-        panelItemClass(stage),
-        {
-          'stage-rail-panel__item--selected': stage.key === activeKey,
-        },
-      ]"
-      :disabled="!isSelectable(stage)"
-      :aria-current="stage.key === activeKey ? 'step' : undefined"
-      @click="handlePanelSelect(stage)"
-    >
-      <div class="stage-rail-panel__number">
-        <CheckOutlined v-if="stage.status === 'completed'" />
-        <span v-else>{{ index + 1 }}</span>
-      </div>
-      <div class="stage-rail-panel__info">
-        <div class="stage-rail-panel__title">{{ stage.title }}</div>
-        <div v-if="resolveStageMetric(stage)" class="stage-rail-panel__metric">
-          {{ resolveStageMetric(stage) }}
+    <template v-for="(stage, index) in stages" :key="stage.key">
+      <button
+        type="button"
+        class="stage-rail-panel__item"
+        :class="[
+          panelItemClass(stage),
+          {
+            'stage-rail-panel__item--selected': stage.key === activeKey,
+          },
+        ]"
+        :disabled="!isSelectable(stage)"
+        :aria-current="stage.key === activeKey ? 'step' : undefined"
+        @click="handlePanelSelect(stage)"
+      >
+        <div class="stage-rail-panel__number">
+          <CheckOutlined v-if="stage.status === 'completed'" />
+          <span v-else>{{ index + 1 }}</span>
         </div>
-        <div
-          v-if="stage.progress !== undefined && stage.status !== 'pending'"
-          class="stage-rail-panel__progress"
-        >
-          <div
-            class="stage-rail-panel__progress-bar"
-            :style="{
-              transform: `scaleX(${Math.max(0, Math.min(1, (stage.progress ?? 0) / 100))})`,
-            }"
-          />
+        <div class="stage-rail-panel__info">
+          <div class="stage-rail-panel__title">{{ stage.title }}</div>
+          <div class="stage-rail-panel__metric">
+            {{ resolveStageMetric(stage) || '\u00A0' }}
+          </div>
         </div>
-      </div>
-      <div v-if="index < stages.length - 1" class="stage-rail-panel__chevron" aria-hidden="true">
-        <svg width="16" height="24" viewBox="0 0 16 24" fill="none">
+      </button>
+      <div
+        v-if="index < stages.length - 1"
+        class="stage-rail-panel__chevron"
+        :class="`stage-rail-panel__chevron--${stage.status}`"
+        aria-hidden="true"
+      >
+        <svg width="18" height="32" viewBox="0 0 18 32" fill="none">
           <path
-            :fill="chevronFill(stage.status)"
-            d="M0 0L16 12L0 24"
-            stroke="var(--dp-border)"
-            stroke-width="1"
+            d="M3 4L14 16L3 28"
+            stroke="currentColor"
+            stroke-width="2.25"
+            stroke-linecap="round"
+            stroke-linejoin="round"
           />
         </svg>
       </div>
-    </button>
+    </template>
   </div>
 </template>
 
 <script lang="ts" setup>
 import type { UiArrowTimelineStage } from '@/components/ui-guide/ui/types'
-import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
+import type { WorkbenchStage } from '@/types/workbench'
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import { computed } from 'vue'
 import UiArrowTimeline from '@/components/ui-guide/ui/UiArrowTimeline.vue'
@@ -119,11 +114,6 @@ function panelItemClass(stage: WorkbenchStage): string {
   return 'stage-rail-panel__item--pending'
 }
 
-function chevronFill(status: WorkbenchStageStatus): string {
-  if (status === 'completed') return 'var(--dp-green-50)'
-  if (status === 'active' || status === 'warning') return 'var(--dp-blue-50)'
-  return 'var(--dp-gray-50)'
-}
 
 function resolveStageMetric(stage: WorkbenchStage): string {
   if (stage.statusText) return stage.statusText
@@ -156,11 +146,12 @@ function handlePanelSelect(stage: WorkbenchStage) {
 .stage-rail-panel {
   display: flex;
   align-items: stretch;
-  gap: 2px;
-  padding: var(--dp-space-3) var(--dp-space-4);
+  gap: 0;
+  padding: 6px 8px;
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-panel);
+  border-radius: var(--dp-radius-control-inner);
+  box-shadow: none;
   overflow-x: auto;
 }
 
@@ -169,14 +160,17 @@ function handlePanelSelect(stage: WorkbenchStage) {
 }
 
 .stage-rail-panel__item {
-  flex: 1;
-  min-width: 120px;
+  flex: 1 1 0;
+  min-width: 108px;
+  min-height: 52px;
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-3) var(--dp-space-4);
+  align-self: stretch;
+  gap: var(--dp-space-2);
+  padding: 8px 10px;
   border: none;
+  border-radius: var(--dp-radius-control-inner);
   background: transparent;
   font: inherit;
   text-align: left;
@@ -187,12 +181,23 @@ function handlePanelSelect(stage: WorkbenchStage) {
 .stage-rail-panel__item:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--dp-focus-ring);
-  border-radius: var(--dp-radius-control-inner);
 }
 
 .stage-rail-panel__item:hover:not(:disabled) {
-  background: var(--dp-gray-50);
-  border-radius: var(--dp-radius-control-inner);
+  background: var(--dp-surface);
+}
+
+.stage-rail-panel__item--selected,
+.stage-rail-panel__item--active.stage-rail-panel__item--selected {
+  background: color-mix(in srgb, var(--dp-primary) 10%, var(--dp-surface));
+}
+
+.stage-rail-panel__item--active:not(.stage-rail-panel__item--selected) {
+  background: color-mix(in srgb, var(--dp-primary) 5%, transparent);
+}
+
+.stage-rail-panel__item--warning:not(.stage-rail-panel__item--selected) {
+  background: color-mix(in srgb, var(--dp-warning) 8%, transparent);
 }
 
 .stage-rail-panel__item:disabled {
@@ -200,8 +205,8 @@ function handlePanelSelect(stage: WorkbenchStage) {
 }
 
 .stage-rail-panel__number {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--dp-radius-full);
   display: flex;
   align-items: center;
@@ -213,23 +218,23 @@ function handlePanelSelect(stage: WorkbenchStage) {
 
 .stage-rail-panel__item--completed .stage-rail-panel__number {
   background: var(--dp-green-500);
-  color: var(--ant-color-white);
+  color: var(--dp-text-inverse);
   font-size: var(--dp-font-size-xxs);
 }
 
 .stage-rail-panel__item--active .stage-rail-panel__number {
   background: var(--dp-blue-500);
-  color: var(--ant-color-white);
+  color: var(--dp-text-inverse);
 }
 
 .stage-rail-panel__item--warning .stage-rail-panel__number {
   background: var(--dp-orange-500);
-  color: var(--ant-color-white);
+  color: var(--dp-text-inverse);
 }
 
 .stage-rail-panel__item--error .stage-rail-panel__number {
   background: var(--dp-red-500);
-  color: var(--ant-color-white);
+  color: var(--dp-text-inverse);
 }
 
 .stage-rail-panel__item--pending .stage-rail-panel__number {
@@ -240,29 +245,42 @@ function handlePanelSelect(stage: WorkbenchStage) {
 .stage-rail-panel__info {
   min-width: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 34px;
 }
 
 .stage-rail-panel__title {
   font-size: var(--dp-font-size-sm);
+  line-height: 18px;
   font-weight: var(--dp-font-weight-emphasis);
   color: var(--dp-text-primary);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stage-rail-panel__item--pending .stage-rail-panel__title {
   color: var(--dp-text-muted);
 }
 
-.stage-rail-panel__item--active .stage-rail-panel__title {
+.stage-rail-panel__item--active .stage-rail-panel__title,
+.stage-rail-panel__item--selected .stage-rail-panel__title {
   color: var(--dp-blue-700);
   font-weight: var(--dp-font-weight-title);
 }
 
 .stage-rail-panel__metric {
+  min-height: 16px;
   font-size: var(--dp-type-hint-size);
-  line-height: var(--dp-type-hint-line-height);
+  line-height: 16px;
   color: var(--dp-text-muted);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stage-rail-panel__progress {
@@ -271,6 +289,10 @@ function handlePanelSelect(stage: WorkbenchStage) {
   background: var(--dp-gray-200);
   border-radius: var(--dp-radius-full);
   overflow: hidden;
+}
+
+.stage-rail-panel__progress--empty {
+  background: transparent;
 }
 
 .stage-rail-panel__progress-bar {
@@ -286,13 +308,26 @@ function handlePanelSelect(stage: WorkbenchStage) {
   background: var(--dp-green-500);
 }
 
+/* 阶段间箭头引导：独立于 item，保持引导姿态 */
 .stage-rail-panel__chevron {
-  position: absolute;
-  right: calc(-1 * var(--dp-space-2));
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 1;
+  flex: 0 0 20px;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dp-gray-400, var(--dp-gray-300));
   pointer-events: none;
+  align-self: stretch;
+  opacity: 1;
+}
+
+.stage-rail-panel__chevron--active,
+.stage-rail-panel__chevron--warning {
+  color: color-mix(in srgb, var(--dp-primary) 45%, var(--dp-gray-300));
+}
+
+.stage-rail-panel__chevron--completed {
+  color: color-mix(in srgb, var(--dp-success) 40%, var(--dp-gray-300));
 }
 
 @media (max-width: bp.$layout-mobile-max) {
@@ -301,6 +336,7 @@ function handlePanelSelect(stage: WorkbenchStage) {
     overflow-x: visible;
     gap: 0;
     padding: var(--dp-space-2);
+    align-items: stretch;
   }
 
   .stage-rail-panel__item {
@@ -311,7 +347,7 @@ function handlePanelSelect(stage: WorkbenchStage) {
     border-bottom: 1px solid var(--dp-border);
   }
 
-  .stage-rail-panel__item:last-child {
+  .stage-rail-panel__item:last-of-type {
     border-bottom: none;
   }
 

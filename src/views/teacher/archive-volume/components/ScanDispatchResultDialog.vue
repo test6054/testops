@@ -146,6 +146,9 @@ async function downloadTraceLabel() {
   if (!fileId) {
     return
   }
+  if (downloading.value || cancelling.value) {
+    return
+  }
   downloading.value = true
   try {
     await downloadFile({ nodeId: fileId })
@@ -158,6 +161,9 @@ async function downloadTraceLabel() {
 
 async function handleCancel() {
   if (!props.payload?.ticketId) {
+    return
+  }
+  if (cancelling.value || downloading.value) {
     return
   }
   cancelling.value = true
@@ -261,12 +267,12 @@ async function handleCancel() {
 .scan-dispatch-result__hint {
   margin: 0;
   font-size: 14px;
-  color: var(--nybc-text-secondary, #8c8c8c);
+  color: var(--dp-text-secondary);
 }
 .scan-dispatch-result__context {
   margin: 0;
   font-size: 14px;
-  color: var(--nybc-text-primary, #262626);
+  color: var(--dp-text-primary);
 }
 .scan-dispatch-result__status {
   display: flex;

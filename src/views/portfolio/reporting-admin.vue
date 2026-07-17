@@ -15,13 +15,20 @@ import {
 } from '@/apis/portfolio/reporting'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -177,7 +184,7 @@ function canPreview(row: PortfolioReportingTaskVO): boolean {
 }
 
 function canRequestApproval(row: PortfolioReportingTaskVO): boolean {
-  return canPreview(row) && Boolean(row.previewJson)
+  return canPreview(row) && Boolean(row.previewReady)
 }
 
 function canApprove(row: PortfolioReportingTaskVO): boolean {
@@ -418,7 +425,7 @@ onMounted(() => {
         subtitle="正式档案口径清单预览、审批与生成"
       >
         <template #extra>
-          <UiButton variant="primary" :disabled="operating" @click="openCreateModal">
+          <UiButton size="sm" variant="primary" :disabled="operating" @click="openCreateModal">
             新建报送
           </UiButton>
         </template>
@@ -482,72 +489,79 @@ onMounted(() => {
           </template>
         </template>
         <template #emptyText>
-          <UiEmpty description="暂无报送任务" />
+          <WorkbenchContextGateStrip
+            tag="未配置"
+            body="暂无报送任务，请先新建报送"
+            cta-label="新建报送"
+            @cta="openCreateModal"
+          />
         </template>
       </UiDataTable>
     </UiCard>
-    <a-modal
+    <UiDialog
       v-model:open="createOpen"
       title="新建上级报送任务"
       :confirm-loading="createLoading"
       :closable="!operating"
       :mask-closable="!operating"
-      :keyboard="!operating"
-      :cancel-button-props="{ disabled: operating }"
       @ok="submitCreate"
     >
-      <a-form layout="vertical">
-        <a-form-item label="任务标题" required>
-          <a-input v-model:value="createForm.taskTitle" :disabled="operating" />
-        </a-form-item>
-        <a-form-item label="报送用途" required>
-          <a-textarea v-model:value="createForm.reportPurpose" :rows="3" :disabled="operating" />
-        </a-form-item>
-        <a-form-item label="共享字段" required>
-          <a-select
-            v-model:value="createForm.shareFields"
+      <UiForm layout="vertical">
+        <UiFormItem label="任务标题" required>
+          <UiInput
+            size="sm" v-model="createForm.taskTitle" :disabled="operating"
+          />
+        </UiFormItem>
+        <UiFormItem label="报送用途" required>
+          <UiTextarea size="sm" v-model="createForm.reportPurpose" :rows="3" :disabled="operating" />
+        </UiFormItem>
+        <UiFormItem label="共享字段" required>
+          <UiSelect
+            v-model="createForm.shareFields"
             mode="multiple"
+            size="sm"
             placeholder="选择获批共享字段"
             :disabled="operating"
-          >
-            <a-select-option
-              v-for="code in ALL_PORTFOLIO_REPORTING_SHARE_FIELD_CODES"
-              :key="code"
-              :value="code"
-              :disabled="
+            :options="ALL_PORTFOLIO_REPORTING_SHARE_FIELD_CODES.map((code) => ({
+              value: code,
+              label: PortfolioReportingShareFieldDescription[code],
+              disabled:
                 createForm.maskMode
-                  && (code === PortfolioReportingShareFieldCode.TEACHER_USER_ID
-                    || code === PortfolioReportingShareFieldCode.TEACHER_NUMBER)
-              "
-            >
-              {{ PortfolioReportingShareFieldDescription[code] }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item label="范围" required>
-          <a-select v-model:value="createForm.scopeType" style="width: 100%" :disabled="operating">
-            <a-select-option
-              v-for="code in ALL_PORTFOLIO_REPORTING_SCOPE_TYPE_CODES"
-              :key="code"
-              :value="code"
-            >
-              {{ PortfolioReportingScopeTypeDescription[code] }}
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item
+                && (code === PortfolioReportingShareFieldCode.TEACHER_USER_ID
+                  || code === PortfolioReportingShareFieldCode.TEACHER_NUMBER),
+            }))"
+          />
+        </UiFormItem>
+        <UiFormItem label="范围" required>
+          <UiSelect
+            v-model="createForm.scopeType"
+            style="width: 100%"
+            size="sm"
+            :disabled="operating"
+            :options="ALL_PORTFOLIO_REPORTING_SCOPE_TYPE_CODES.map((code) => ({
+              value: code,
+              label: PortfolioReportingScopeTypeDescription[code],
+            }))"
+          />
+        </UiFormItem>
+        <UiFormItem
           v-if="createForm.scopeType === PortfolioReportingScopeTypeCode.DEPARTMENT"
           label="院系编号"
           required
         >
-          <a-input v-model:value="createForm.departmentId" :disabled="operating" />
-        </a-form-item>
-        <a-form-item label="脱敏">
-          <a-switch v-model:checked="createForm.maskMode" :disabled="operating" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-    <a-modal v-model:open="previewOpen" title="报送预览" :footer="null">
+          <UiInput
+            size="sm" v-model="createForm.departmentId" :disabled="operating"
+          />
+        </UiFormItem>
+        <UiFormItem label="脱敏">
+          <UiSwitch size="sm" v-model="createForm.maskMode" :disabled="operating" />
+        </UiFormItem>
+      </UiForm>
+    </UiDialog>
+    <UiDialog
+      v-model:open="previewOpen" title="报送预览"
+      hide-footer
+    >
       <template v-if="preview">
         <p>任务编号：{{ previewTaskId }}</p>
         <p>教师人数：{{ preview.teacherCount }}</p>
@@ -556,23 +570,22 @@ onMounted(() => {
         <p>口径：{{ preview.dataScopeNote }}</p>
         <p>共享字段：{{ preview.shareFields.join('、') }}</p>
       </template>
-    </a-modal>
-    <a-modal
+    </UiDialog>
+    <UiDialog
       v-model:open="rejectOpen"
       title="驳回报送"
       :confirm-loading="actionLoading"
       :closable="!operating"
       :mask-closable="!operating"
-      :keyboard="!operating"
-      :cancel-button-props="{ disabled: operating }"
       @ok="submitReject"
     >
-      <a-textarea
-        v-model:value="rejectReason"
+      <UiTextarea
+        size="sm"
+        v-model="rejectReason"
         placeholder="请填写驳回原因"
         :rows="4"
         :disabled="operating"
       />
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>

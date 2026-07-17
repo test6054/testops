@@ -69,7 +69,7 @@
         ok-text="提交"
         @confirm="submitHandle"
       >
-        <a-form layout="vertical">
+        <UiForm layout="vertical">
           <UiAlertStrip
             :tone="
               conclusionDraft === GradeReviewRequestStatusCode.APPROVED ? 'success' : 'warning'
@@ -81,26 +81,30 @@
                 : '驳回后申请关闭，无法恢复。'
             "
           />
-          <a-form-item label="申请学生">
-            <a-input :value="targetRequest ? formatStudent(targetRequest) : ''" disabled />
-          </a-form-item>
-          <a-form-item label="复核题目">
-            <a-textarea
+          <UiFormItem label="申请学生">
+            <UiInput
+              size="sm" :value="targetRequest ? formatStudent(targetRequest) : ''" disabled
+            />
+          </UiFormItem>
+          <UiFormItem label="复核题目">
+            <UiTextarea
+              size="sm"
               :value="targetRequest ? formatQuestionRefs(targetRequest) : ''"
               :rows="2"
               disabled
             />
-          </a-form-item>
-          <a-form-item label="原因类型">
-            <a-input
+          </UiFormItem>
+          <UiFormItem label="原因类型">
+            <UiInput
+              size="sm"
               :value="targetRequest ? formatReasonType(targetRequest.reasonType) : ''"
               disabled
             />
-          </a-form-item>
-          <a-form-item label="申请原因">
-            <a-textarea :value="targetRequest?.requestReason ?? ''" :rows="3" disabled />
-          </a-form-item>
-          <a-form-item
+          </UiFormItem>
+          <UiFormItem label="申请原因">
+            <UiTextarea size="sm" :value="targetRequest?.requestReason ?? ''" :rows="3" disabled />
+          </UiFormItem>
+          <UiFormItem
             v-if="targetRequest && targetRequest.evidenceFileRefs.length > 0"
             label="佐证材料"
           >
@@ -113,17 +117,18 @@
                 {{ file.fileName }}
               </UiTextAction>
             </div>
-          </a-form-item>
-          <a-form-item label="复核备注">
-            <a-textarea
-              v-model:value="reviewNote"
+          </UiFormItem>
+          <UiFormItem label="复核备注">
+            <UiTextarea
+              size="sm"
+              v-model="reviewNote"
               :rows="3"
               :max-length="200"
-              show-count
+              :show-count="true"
               placeholder="选填，作为审计记录"
             />
-          </a-form-item>
-        </a-form>
+          </UiFormItem>
+        </UiForm>
       </UiDrawer>
     </template>
   </WorkbenchSurfaceCard>
@@ -152,10 +157,14 @@ import {
   REVIEW_REQUEST_STATUS_TONE,
 } from '@/apis/mark/grade-review'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -254,14 +263,15 @@ function canHandleReviewRequest(record: GradeReviewRequestItemResponse): boolean
 }
 
 function buildReviewRequestActions(record: GradeReviewRequestItemResponse): UiTableRowActionItem[] {
+  // 行内仅 1 个 primary：领取 / 通过
   if (canClaimReviewRequest(record.requestStatus)) {
-    return [{ key: 'claim', label: '领取' }]
+    return [{ key: 'claim', label: '领取', tone: 'primary' }]
   }
   if (!canHandleReviewRequest(record)) {
     return []
   }
   return [
-    { key: 'approve', label: '通过' },
+    { key: 'approve', label: '通过', tone: 'primary' },
     { key: 'reject', label: '驳回', tone: 'danger' },
   ]
 }
@@ -374,6 +384,9 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 async function submitHandle(): Promise<void> {
   if (!targetRequest.value?.id) {
     message.warning('未选中申请')
+    return
+  }
+  if (handling.value) {
     return
   }
   if (!canHandleReviewRequest(targetRequest.value)) {

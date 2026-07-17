@@ -4,7 +4,7 @@
     class="dp-btn"
     :class="[
       `dp-btn--${computedVariant}`,
-      `dp-btn--${size}`,
+      `dp-btn--${computedSize}`,
       { 'dp-btn--block': block },
       { 'dp-btn--loading': loading },
       { 'dp-btn--icon-only': iconOnly },
@@ -57,7 +57,7 @@ defineOptions({
 const props = withDefaults(
   defineProps<{
     variant?: UiButtonVariant
-    size?: UiComponentSize
+    size?: UiComponentSize | 'small'
     block?: boolean
     disabled?: boolean
     loading?: boolean
@@ -92,8 +92,14 @@ const computedVariant = computed(() => {
   if (props.status === 'danger') return 'destructive'
   if (props.status === 'success') return 'success'
   if (props.status === 'warning') return 'warning'
+  if (props.variant === 'secondary') {
+    return 'soft'
+  }
   return props.variant
 })
+
+/** small 为历史 Ant Design size 别名，统一映射到设计令牌 sm。 */
+const computedSize = computed(() => (props.size === 'small' ? 'sm' : props.size))
 
 const isDisabled = computed(() => props.disabled || props.loading)
 const resolvedNativeType = computed(() => props.htmlType || props.type)
@@ -166,7 +172,7 @@ const onClick = (evt: MouseEvent) => {
 }
 
 .dp-btn--icon-only.dp-btn--md {
-  width: 36px;
+  width: var(--dp-control-height-md);
 }
 
 .dp-btn--icon-only.dp-btn--lg {
@@ -174,14 +180,14 @@ const onClick = (evt: MouseEvent) => {
 }
 
 .dp-btn--primary {
-  background-color: var(--ant-color-primary);
-  color: var(--ant-color-white);
-  border-color: var(--ant-color-primary);
+  background-color: var(--dp-color-primary);
+  color: var(--dp-text-inverse);
+  border-color: var(--dp-color-primary);
 }
 
 .dp-btn--primary:hover {
-  background-color: var(--ant-color-primary-hover);
-  border-color: var(--ant-color-primary-hover);
+  background-color: var(--dp-color-primary-hover);
+  border-color: var(--dp-color-primary-hover);
 }
 
 .dp-btn--outline {
@@ -220,7 +226,7 @@ const onClick = (evt: MouseEvent) => {
 
 .dp-btn--destructive {
   background-color: var(--dp-red-500);
-  color: #fff;
+  color: var(--dp-text-inverse);
   border-color: var(--dp-red-500);
 }
 
@@ -231,17 +237,17 @@ const onClick = (evt: MouseEvent) => {
 
 .dp-btn--danger-outline {
   background-color: var(--dp-surface);
-  color: var(--ant-color-error);
-  border-color: var(--ant-color-error-border);
+  color: var(--dp-danger);
+  border-color: var(--dp-error-border);
 }
 
 .dp-btn--danger-outline:hover {
-  background-color: var(--ant-color-error-bg);
-  border-color: var(--ant-color-error-border-hover);
+  background-color: var(--dp-error-bg);
+  border-color: var(--dp-error-border-hover);
 }
 
 .dp-btn--danger-outline :deep(svg) {
-  color: var(--ant-color-error);
+  color: var(--dp-danger);
 }
 
 .dp-btn:not(:disabled):active {
@@ -258,22 +264,22 @@ const onClick = (evt: MouseEvent) => {
 }
 
 .dp-btn--primary:disabled {
-  color: var(--ant-color-white);
-  background: var(--ant-color-primary-border);
-  border-color: var(--ant-color-primary-border);
+  color: var(--dp-text-inverse);
+  background: var(--dp-blue-200);
+  border-color: var(--dp-blue-200);
 }
 
 .dp-btn--destructive:disabled {
-  color: #fff;
-  background: #fca5a5;
-  border-color: #fca5a5;
+  color: var(--dp-text-inverse);
+  background: var(--dp-red-200);
+  border-color: var(--dp-red-200);
   box-shadow: none;
 }
 
 /* Success 变体 */
 .dp-btn--success {
   background-color: var(--dp-green-500);
-  color: #fff;
+  color: var(--dp-text-inverse);
   border-color: var(--dp-green-500);
 }
 
@@ -285,7 +291,7 @@ const onClick = (evt: MouseEvent) => {
 /* Warning 变体 */
 .dp-btn--warning {
   background-color: var(--dp-orange-500);
-  color: #fff;
+  color: var(--dp-text-inverse);
   border-color: var(--dp-orange-500);
 }
 

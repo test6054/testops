@@ -83,12 +83,12 @@
 
     &:hover,
     .grading-workspace--dragging & {
-      background: var(--ant-color-primary-border);
+      background: var(--dp-color-primary-border);
     }
 
     &:focus-visible {
       outline: none;
-      background: var(--ant-color-primary-border);
+      background: var(--dp-color-primary-border);
       box-shadow: 0 0 0 3px var(--dp-focus-ring);
     }
   }
@@ -237,7 +237,7 @@
 
 :global(.material-status-icon--ok) {
   background: var(--dp-green-600);
-  color: #fff;
+  color: var(--dp-text-inverse);
 }
 
 :global(.material-status-icon--missing) {
@@ -423,7 +423,7 @@
 }
 
 :global(.score-gate__check--pass) {
-  color: #fff;
+  color: var(--dp-text-inverse);
   background: var(--dp-green-600);
 }
 
@@ -463,7 +463,7 @@
 }
 
 :global(.stat-card__val--primary) {
-  color: var(--ant-color-primary, #1677ff);
+  color: var(--dp-color-primary);
 }
 
 :global(.stat-card__val--warn) {
@@ -521,7 +521,7 @@
 
 :global(.self-check-mark--done) {
   background: var(--dp-green-600);
-  color: #fff;
+  color: var(--dp-text-inverse);
 }
 
 :global(.self-check-mark--pending) {

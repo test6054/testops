@@ -232,18 +232,18 @@ onMounted(async () => {
 }
 
 .login-page {
-  --login-bg: #ffffff;
-  --login-surface: var(--ant-color-bg-container);
+  --login-bg: var(--dp-surface);
+  --login-surface: var(--dp-bg-container);
   --login-text: var(--dp-text-primary);
   --login-muted: var(--dp-text-secondary);
-  --login-accent: var(--ant-color-primary);
+  --login-accent: var(--dp-color-primary);
   box-sizing: border-box;
   position: relative;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   height: auto;
-  padding: 24px 36px 18px;
+  padding: var(--dp-space-4, 16px) var(--dp-space-6, 24px) var(--dp-space-3, 12px);
   overflow: visible;
   background: var(--login-bg);
 }
@@ -263,7 +263,7 @@ onMounted(async () => {
   position: relative;
   display: grid;
   grid-template-rows: auto 1fr;
-  gap: 18px;
+  gap: var(--dp-space-3, 12px);
   flex: 1;
   min-height: auto;
   padding: 8px 6px 0;
@@ -301,9 +301,9 @@ onMounted(async () => {
 }
 
 .login-brand__name {
-  font-size: 28px;
-  line-height: 1;
-  font-weight: 800;
+  font-size: 22px;
+  line-height: 1.1;
+  font-weight: 700;
   color: var(--login-text);
 }
 
@@ -387,10 +387,10 @@ onMounted(async () => {
 
 .login-panel__header {
   margin-bottom: 0;
-  padding: 24px 24px 16px;
+  padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) var(--dp-space-3, 12px);
   border-radius: var(--dp-radius-panel) var(--dp-radius-panel) 0 0;
   background: var(--login-surface);
-  border: 1px solid var(--ant-color-border-secondary);
+  border: 1px solid var(--dp-border-subtle);
   border-bottom: none;
 }
 
@@ -410,27 +410,27 @@ onMounted(async () => {
 }
 
 .login-panel__surface {
-  padding: 20px 24px 24px;
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-4, 16px);
   border-radius: 0 0 var(--dp-radius-panel) var(--dp-radius-panel);
   background: var(--login-surface);
-  border: 1px solid var(--ant-color-border-secondary);
+  border: 1px solid var(--dp-border-subtle);
   border-top: none;
 }
 
 .login-body {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .login-tab-content {
-  margin-top: 24px;
+  margin-top: var(--dp-space-3, 12px);
 
   :deep(.ui-radio-group :where(.ant-radio-group)) {
     gap: 3px;
     padding: 3px;
-    border-color: var(--ant-color-border-secondary);
-    background: var(--ant-color-fill-quaternary);
+    border-color: var(--dp-border-subtle);
+    background: var(--dp-fill-quaternary);
   }
 
   :deep(.ui-radio-group .ant-radio-button-wrapper) {
@@ -443,9 +443,9 @@ onMounted(async () => {
   }
 
   :deep(.ui-radio-group .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled)) {
-    background: var(--ant-color-bg-container);
+    background: var(--dp-bg-container);
     color: var(--dp-text-primary);
-    box-shadow: 0 0 0 1px var(--ant-color-border) inset;
+    box-shadow: 0 0 0 1px var(--dp-border) inset;
   }
 
   :deep(.ui-radio-group .ant-radio-button-wrapper:hover:not(.ant-radio-button-wrapper-disabled)) {
@@ -542,11 +542,11 @@ onMounted(async () => {
 
 @media (max-width: bp.$layout-mobile-max) {
   .login-page {
-    padding: 20px 16px 24px;
+    padding: 16px 12px 16px;
   }
 
   .login-stage {
-    gap: 18px;
+    gap: var(--dp-space-3, 12px);
     min-height: auto;
   }
 
@@ -560,12 +560,12 @@ onMounted(async () => {
   }
 
   .login-brand {
-    gap: 24px;
+    gap: var(--dp-space-4, 16px);
     padding: 12px 4px 8px;
   }
 
   .login-brand__layout {
-    gap: 24px;
+    gap: var(--dp-space-4, 16px);
     padding-top: 8px;
   }
 

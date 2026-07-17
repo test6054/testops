@@ -1,6 +1,6 @@
 <template>
-  <a-drawer :open="open" title="跨学年进度对比" width="560" @close="close">
-    <a-spin :spinning="loading">
+  <UiDrawer :open="open" title="跨学年进度对比" width="560" @close="close">
+    <UiSpin :spinning="loading">
       <p
         v-if="cockpit?.completenessDeltaVsPreviousYear !== undefined"
         class="portfolio-progress-compare__delta"
@@ -36,12 +36,12 @@
               </li>
             </ul>
           </div>
-          <UiEmpty v-else description="本学年暂无缺口分类" />
+          <UiEmpty size="sm" v-else description="本学年暂无缺口分类" />
         </section>
       </div>
-      <UiEmpty v-else-if="!loading" description="暂无进度对比数据" />
-    </a-spin>
-  </a-drawer>
+      <UiEmpty size="sm" v-else-if="!loading" description="暂无进度对比数据" />
+    </UiSpin>
+  </UiDrawer>
 </template>
 
 <script lang="ts" setup>
@@ -49,6 +49,8 @@ import type { PortfolioTeacherProgressCockpitVO } from '@/apis/portfolio/types'
 import { ref, watch } from 'vue'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'PortfolioProgressCompareDrawer' })

@@ -90,6 +90,9 @@ export function useDispatchSession() {
   }
 
   async function claimTicket() {
+    if (actionLoading.value) {
+      return false
+    }
     if (!assertLeaseActive()) {
       return false
     }
@@ -118,6 +121,9 @@ export function useDispatchSession() {
   }
 
   async function confirmOpen() {
+    if (actionLoading.value) {
+      return false
+    }
     if (!assertLeaseActive()) {
       return false
     }
@@ -174,6 +180,9 @@ export function useDispatchSession() {
   }
 
   async function suspendTicket() {
+    if (actionLoading.value) {
+      return false
+    }
     if (!assertLeaseActive()) {
       return
     }
@@ -244,6 +253,9 @@ export function useDispatchSession() {
   }
 
   async function resumeTicket() {
+    if (actionLoading.value) {
+      return false
+    }
     if (!assertLeaseActive()) {
       return
     }

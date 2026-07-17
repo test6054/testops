@@ -34,25 +34,25 @@ export const TEACHER_REVIEW_STATUS_CONFIG: Record<TeacherReviewStatusEnum, Teach
   [TeacherReviewStatusEnum.NOT_STARTED]: {
     code: 'NOT_STARTED',
     description: '未开始',
-    color: 'var(--ant-color-text-tertiary)',
+    color: 'var(--dp-text-tertiary)',
     icon: 'icon-file'
   },
   [TeacherReviewStatusEnum.PENDING]: {
     code: 'PENDING',
     description: '待审核',
-    color: 'var(--ant-color-warning)',
+    color: 'var(--dp-warning)',
     icon: 'icon-clock-circle'
   },
   [TeacherReviewStatusEnum.APPROVED]: {
     code: 'APPROVED',
     description: '已通过',
-    color: 'var(--ant-color-success)',
+    color: 'var(--dp-success)',
     icon: 'icon-check-circle'
   },
   [TeacherReviewStatusEnum.REJECTED]: {
     code: 'REJECTED',
     description: '已打回',
-    color: 'var(--ant-color-error)',
+    color: 'var(--dp-error)',
     icon: 'icon-close-circle'
   }
 }

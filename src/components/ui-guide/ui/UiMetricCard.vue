@@ -72,7 +72,7 @@ const props = withDefaults(
     trendTone: 'default',
     tone: 'blue',
     clickable: false,
-    compact: false,
+    compact: true,
   },
 )
 
@@ -91,18 +91,18 @@ const handleClick = (evt: MouseEvent) => {
 <style lang="scss" scoped>
 @use '@/styles/breakpoints' as bp;
 .ui-metric-card {
-  --metric-border: rgba(148, 163, 184, 0.2);
-  --metric-text: #2563eb;
-  --metric-icon-bg: #eff6ff;
-  --metric-icon-border: rgba(191, 219, 254, 0.9);
+  --metric-border: color-mix(in srgb, var(--dp-text-muted) 20%, transparent);
+  --metric-text: var(--dp-blue-500);
+  --metric-icon-bg: var(--dp-blue-50);
+  --metric-icon-border: color-mix(in srgb, var(--dp-blue-200) 90%, transparent);
   display: flex;
   align-items: flex-start;
-  gap: 14px;
+  gap: var(--dp-space-3, 10px);
   min-width: 0;
-  padding: 16px 18px;
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 14px);
   border: 1px solid var(--metric-border);
-  border-radius: 8px;
-  background: var(--ant-color-fill-quaternary);
+  border-radius: var(--dp-radius-panel, 8px);
+  background: var(--dp-fill-quaternary);
   box-shadow: none;
   transition:
     transform 0.2s ease,
@@ -116,12 +116,12 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-metric-card--clickable:hover {
-  border-color: color-mix(in srgb, var(--metric-text) 20%, #dbe3ef);
+  border-color: color-mix(in srgb, var(--metric-text) 20%, var(--dp-border));
 }
 
 .ui-metric-card--compact {
-  gap: 12px;
-  padding: 14px 16px;
+  gap: var(--dp-space-2, 8px);
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
 }
 
 .ui-metric-card__content {
@@ -129,20 +129,20 @@ const handleClick = (evt: MouseEvent) => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--dp-space-1, 6px);
 }
 
 .ui-metric-card__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .ui-metric-card__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--dp-radius-panel, 8px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -150,12 +150,12 @@ const handleClick = (evt: MouseEvent) => {
   color: var(--metric-text);
   background: var(--metric-icon-bg);
   border: 1px solid var(--metric-icon-border);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dp-surface) 72%, transparent);
 }
 
 .ui-metric-card__icon :deep(.anticon),
 .ui-metric-card__icon :deep(svg) {
-  font-size: 18px;
+  font-size: 15px;
 }
 
 .ui-metric-card__label {
@@ -170,7 +170,7 @@ const handleClick = (evt: MouseEvent) => {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
   flex-shrink: 0;
 }
 
@@ -178,11 +178,11 @@ const handleClick = (evt: MouseEvent) => {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--dp-space-1, 4px);
 }
 
 .ui-metric-card__value {
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1.25;
   font-weight: var(--dp-font-weight-metric);
   color: var(--dp-text-primary);
@@ -200,7 +200,7 @@ const handleClick = (evt: MouseEvent) => {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-3, 12px);
   min-height: 20px;
 }
 
@@ -234,51 +234,51 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-metric-card--gray {
-  --metric-text: #475569;
-  --metric-icon-bg: #f8fafc;
-  --metric-icon-border: rgba(226, 232, 240, 0.9);
+  --metric-text: var(--dp-text-secondary);
+  --metric-icon-bg: var(--dp-surface-subtle);
+  --metric-icon-border: color-mix(in srgb, var(--dp-border) 90%, transparent);
 }
 
 .ui-metric-card--blue {
-  --metric-text: #2563eb;
-  --metric-icon-bg: #eff6ff;
-  --metric-icon-border: rgba(191, 219, 254, 0.9);
+  --metric-text: var(--dp-blue-500);
+  --metric-icon-bg: var(--dp-blue-50);
+  --metric-icon-border: color-mix(in srgb, var(--dp-blue-200) 90%, transparent);
 }
 
 .ui-metric-card--orange {
-  --metric-text: #ea580c;
-  --metric-icon-bg: #fff7ed;
-  --metric-icon-border: rgba(253, 186, 116, 0.82);
+  --metric-text: var(--dp-orange-600);
+  --metric-icon-bg: var(--dp-orange-50);
+  --metric-icon-border: color-mix(in srgb, var(--dp-orange-200) 82%, transparent);
 }
 
 .ui-metric-card--green {
-  --metric-text: #16a34a;
-  --metric-icon-bg: #ecfdf3;
-  --metric-icon-border: rgba(187, 247, 208, 0.9);
+  --metric-text: var(--dp-green-600);
+  --metric-icon-bg: var(--dp-green-50);
+  --metric-icon-border: color-mix(in srgb, var(--dp-green-200) 90%, transparent);
 }
 
 .ui-metric-card--yellow {
-  --metric-text: #ca8a04;
-  --metric-icon-bg: #fefce8;
-  --metric-icon-border: rgba(253, 224, 71, 0.72);
+  --metric-text: var(--dp-orange-600);
+  --metric-icon-bg: var(--dp-warning-bg);
+  --metric-icon-border: color-mix(in srgb, var(--dp-warning) 35%, transparent);
 }
 
 .ui-metric-card--red {
-  --metric-text: #dc2626;
-  --metric-icon-bg: #fef2f2;
-  --metric-icon-border: rgba(254, 202, 202, 0.88);
+  --metric-text: var(--dp-red-600);
+  --metric-icon-bg: var(--dp-red-50);
+  --metric-icon-border: color-mix(in srgb, var(--dp-red-200) 88%, transparent);
 }
 
 .ui-metric-card--purple {
   --metric-text: var(--dp-purple-500);
-  --metric-icon-bg: #f5f3ff;
-  --metric-icon-border: rgba(221, 214, 254, 0.9);
+  --metric-icon-bg: var(--dp-purple-50);
+  --metric-icon-border: color-mix(in srgb, var(--dp-purple-200) 90%, transparent);
 }
 
 .ui-metric-card--compact .ui-metric-card__icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--dp-radius-control, 8px);
 }
 
 .ui-metric-card--compact .ui-metric-card__icon :deep(.anticon),
@@ -287,7 +287,7 @@ const handleClick = (evt: MouseEvent) => {
 }
 
 .ui-metric-card--compact .ui-metric-card__value {
-  font-size: 22px;
+  font-size: 18px;
 }
 
 .ui-metric-card--compact .ui-metric-card__unit {
@@ -300,7 +300,7 @@ const handleClick = (evt: MouseEvent) => {
 
 @media (max-width: bp.$layout-mobile-max) {
   .ui-metric-card {
-    padding: 14px 16px;
+    padding: var(--dp-space-3, 14px) var(--dp-space-4, 16px);
   }
 }
 </style>

@@ -21,6 +21,9 @@ const TEACHER_WORK_SHELLS: PortfolioWorkShellCode[] = ['TEACHER']
 const DEPARTMENT_REVIEW_WORK_SHELLS: PortfolioWorkShellCode[] = ['DEPARTMENT_REVIEW']
 const SCHOOL_GOVERNANCE_WORK_SHELLS: PortfolioWorkShellCode[] = ['SCHOOL_GOVERNANCE']
 const CONFIGURATION_WORK_SHELLS: PortfolioWorkShellCode[] = ['CONFIGURATION']
+const EXTERNAL_EXPERT_WORK_SHELLS: PortfolioWorkShellCode[] = ['EXTERNAL_EXPERT']
+/** 专家深链审阅/填报：专家壳 + 学校治理（授权管理预览） */
+const EXPERT_REVIEW_WORK_SHELLS: PortfolioWorkShellCode[] = ['EXTERNAL_EXPERT', 'SCHOOL_GOVERNANCE']
 
 const portfolioTeacherMenuMeta = {
   menuGroup: PORTFOLIO_TEACHER_MENU_GROUP,
@@ -155,9 +158,35 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherHome',
         component: () => import('@/views/portfolio/teacher-home.vue'),
         meta: {
-          title: '教师首页',
+          title: '我的工作台',
           roles: ALL_ROLES,
           icon: 'home',
+          hideInMenu: false,
+          keepAlive: true,
+          ...portfolioTeacherMenuMeta,
+        },
+      },
+      {
+        path: 'teacher/masterpiece',
+        name: 'PortfolioTeacherMasterpiece',
+        component: () => import('@/views/portfolio/teacher-masterpiece.vue'),
+        meta: {
+          title: '教学代表作',
+          roles: ALL_ROLES,
+          icon: 'file-text',
+          hideInMenu: false,
+          keepAlive: true,
+          ...portfolioTeacherMenuMeta,
+        },
+      },
+      {
+        path: 'teacher/process-journal',
+        name: 'PortfolioTeacherProcessJournal',
+        component: () => import('@/views/portfolio/teacher-process-journal.vue'),
+        meta: {
+          title: '过程记录',
+          roles: ALL_ROLES,
+          icon: 'form',
           hideInMenu: false,
           keepAlive: true,
           ...portfolioTeacherMenuMeta,
@@ -587,9 +616,23 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         name: 'PortfolioTeacherDirectory',
         component: () => import('@/views/portfolio/teacher-directory.vue'),
         meta: {
-          title: '档案袋教师名册',
+          title: '教师名册',
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'team',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioOrgMenuMeta,
+        },
+      },
+      {
+        path: 'teacher-lifecycle',
+        name: 'PortfolioTeacherLifecycleAdmin',
+        component: () => import('@/views/portfolio/teacher-lifecycle-admin.vue'),
+        meta: {
+          title: '教师生命周期',
+          ...PORTFOLIO_ADMIN_ROUTE_META,
+          icon: 'swap',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
@@ -860,6 +903,19 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'expert/workbench',
+        name: 'PortfolioExpertWorkbench',
+        component: () => import('@/views/portfolio/expert-workbench.vue'),
+        meta: {
+          title: '专家评审工作台',
+          roles: ALL_ROLES,
+          icon: 'audit',
+          hideInMenu: false,
+          keepAlive: true,
+          portfolioWorkShells: EXTERNAL_EXPERT_WORK_SHELLS,
+        },
+      },
+      {
         path: 'expert/review',
         name: 'PortfolioExpertReview',
         component: () => import('@/views/portfolio/expert-review.vue'),
@@ -868,6 +924,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           roles: ALL_ROLES,
           hideInMenu: true,
           keepAlive: false,
+          portfolioWorkShells: EXPERT_REVIEW_WORK_SHELLS,
         },
       },
       {
@@ -879,6 +936,7 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           roles: ALL_ROLES,
           hideInMenu: true,
           keepAlive: false,
+          portfolioWorkShells: EXPERT_REVIEW_WORK_SHELLS,
         },
       },
       {

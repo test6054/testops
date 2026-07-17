@@ -7,7 +7,7 @@
       </div>
     </template>
 
-    <UiEmpty v-if="groups.length === 0" description="暂无题组" />
+    <UiEmpty size="sm" v-if="groups.length === 0" description="暂无题组" />
 
     <ul v-else class="org-group-progress__list">
       <li v-for="group in groups" :key="group.id" class="org-group-progress__item">
@@ -162,7 +162,7 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
 
   &__meta {
     display: flex;
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
     margin-bottom: 8px;
     font-size: 12px;
     color: var(--dp-text-secondary);

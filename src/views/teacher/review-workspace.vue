@@ -1,7 +1,7 @@
 <template>
   <ReviewTaskHub v-if="!taskId" />
   <div v-else class="review-workspace grading-immersion-page grading-workspace-page">
-    <UiEmpty v-if="!examId" description="缺少考试上下文" class="review-workspace__empty" />
+    <ExamSelectGateStrip v-if="!examId" class="review-workspace__empty" body="缺少考试上下文，请从考试列表进入复核工作台" />
 
     <UiSkeletonState
       v-else-if="loading && !detail"
@@ -12,6 +12,7 @@
     />
 
     <UiEmpty
+      size="sm"
       v-else-if="!loading && !detail"
       description="复核任务加载失败或不存在"
       class="review-workspace__empty"
@@ -89,19 +90,19 @@
               </span>
               <span class="review-workspace__keyboard-hint">J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span>
             </div>
-            <a-progress
+            <UiProgressBar
               :percent="queueProgressPercent"
-              :show-info="true"
-              size="small"
-              :status="queueProgressPercent >= 100 ? 'success' : 'active'"
+              :show-label="true"
+              size="sm"
+              :color="queueProgressPercent >= 100 ? 'var(--dp-success)' : 'var(--dp-color-primary)'"
             />
-            <a-space class="review-workspace__queue-jump" size="small">
+            <div class="review-workspace__queue-jump dp-space" style="--dp-space-gap: 8px">
               <span class="review-workspace__jump-label">跳转到第</span>
-              <a-input-number
+              <UiInputNumber
                 :value="jumpTarget ?? undefined"
                 :min="1"
                 :max="queueTotal"
-                size="small"
+                size="sm"
                 style="width: 80px"
                 @update:value="
                   (value: number | string | null) => {
@@ -112,7 +113,7 @@
               />
               <span class="review-workspace__jump-label">份</span>
               <UiButton size="sm" :disabled="!jumpTarget" @click="handleQueueJump">跳转</UiButton>
-            </a-space>
+            </div>
           </div>
         </template>
 
@@ -122,14 +123,15 @@
             :title="`题目题干 · 第 ${detail.questionNo} 题 · 满分 ${detail.fullScore}`"
           >
             <template #icon><FileTextOutlined /></template>
-            <a-typography-paragraph :ellipsis="{ rows: 4, expandable: true, symbol: '展开' }">
+            <UiTypographyParagraph :ellipsis="{ rows: 4, expandable: true, symbol: '展开' }">
               {{ detail.questionStem }}
-            </a-typography-paragraph>
+            </UiTypographyParagraph>
           </GradingImmersionSection>
 
           <GradingImmersionSection title="阅卷影像">
             <template #icon><FileImageOutlined /></template>
             <UiEmpty
+              size="sm"
               v-if="
                 !detail?.sliceFileId && !detail?.sourceScanPage && !detail?.layoutPaperPage?.fileId
               "
@@ -148,7 +150,7 @@
 
           <GradingImmersionSection title="识别答案">
             <template #icon><FileTextOutlined /></template>
-            <UiEmpty v-if="!detail?.recognizedAnswer" description="本题暂无文字识别答案" />
+            <UiEmpty size="sm" v-if="!detail?.recognizedAnswer" description="本题暂无文字识别答案" />
             <div v-else class="review-workspace__text-block">{{ detail.recognizedAnswer }}</div>
           </GradingImmersionSection>
 
@@ -208,6 +210,7 @@
               </UiButton>
             </template>
             <UiEmpty
+              size="sm"
               v-if="!detail?.aiDiagnostic"
               :description="
                 isHardJudgeSource
@@ -251,7 +254,7 @@
         <template #aside>
           <GradingImmersionSection title="教师给分">
             <template #icon><EditOutlined /></template>
-            <a-form
+            <UiForm
               ref="gradeFormRef"
               :model="gradeForm"
               :rules="gradeFormRules"
@@ -264,9 +267,10 @@
                 :teacher-review-score="gradeForm.teacherReviewScore"
                 :full-score="detail?.fullScore"
               />
-              <a-form-item label="教师复核评分" name="teacherReviewScore" required>
-                <a-input-number
-                  v-model:value="gradeForm.teacherReviewScore"
+              <UiFormItem label="教师复核评分" name="teacherReviewScore" required>
+                <UiInputNumber
+                  size="sm"
+                  v-model="gradeForm.teacherReviewScore"
                   :min="0"
                   :max="detail.fullScore"
                   :step="0.5"
@@ -274,7 +278,7 @@
                 />
                 <div class="review-workspace__hint">满分 {{ detail.fullScore }} 分</div>
                 <!-- FIX-10: 快捷给分按钮 -->
-                <a-space size="small" class="review-workspace__quick-scores">
+                <div class="review-workspace__quick-scores dp-space" style="--dp-space-gap: 8px">
                   <UiButton
                     size="sm"
                     variant="outline"
@@ -308,56 +312,59 @@
                   >
                     {{ isHardJudgeSource ? '填入硬判分' : '填入智能分' }}
                   </UiButton>
-                </a-space>
-              </a-form-item>
-              <a-form-item label="评语（面向学生）" name="commentText">
-                <a-textarea
-                  v-model:value="gradeForm.commentText"
+                </div>
+              </UiFormItem>
+              <UiFormItem label="评语（面向学生）" name="commentText">
+                <UiTextarea
+                  size="sm"
+                  v-model="gradeForm.commentText"
                   placeholder="给学生的反馈评语（可选）"
                   :rows="3"
                   :maxlength="1000"
-                  show-count
+                  :show-count="true"
                 />
-              </a-form-item>
-              <a-form-item label="批注（内部教研）" name="annotationText">
-                <a-textarea
-                  v-model:value="gradeForm.annotationText"
+              </UiFormItem>
+              <UiFormItem label="批注（内部教研）" name="annotationText">
+                <UiTextarea
+                  size="sm"
+                  v-model="gradeForm.annotationText"
                   placeholder="可记录采分点、疑点，内部可见（可选）"
                   :rows="3"
                   :maxlength="1000"
-                  show-count
+                  :show-count="true"
                 />
-              </a-form-item>
-            </a-form>
+              </UiFormItem>
+            </UiForm>
           </GradingImmersionSection>
 
           <GradingImmersionSection title="批注历史">
             <template #icon><CommentOutlined /></template>
             <UiSkeletonState v-if="annotationsLoading" variant="card" compact />
-            <UiEmpty v-else-if="annotations.length === 0" description="暂无批注历史" />
+            <UiEmpty size="sm" v-else-if="annotations.length === 0" description="暂无批注历史" />
             <template v-else>
-              <a-list :data-source="annotations" size="small">
+              <UiList :data-source="annotations" size="small">
                 <template #renderItem="{ item }">
-                  <a-list-item>
-                    <a-list-item-meta>
+                  <UiListItem>
+                    <UiListItemMeta>
                       <template #title>
-                        <a-typography-text :content="item.annotationText || '（无批注正文）'" />
+                        <UiTypographyText :content="item.annotationText || '（无批注正文）'" />
                       </template>
                       <template #description>
                         <span class="review-workspace__hint">{{
                           formatDateTime(item.createTime)
                         }}</span>
                       </template>
-                    </a-list-item-meta>
-                  </a-list-item>
+                    </UiListItemMeta>
+                  </UiListItem>
                 </template>
-              </a-list>
-              <a-pagination
+              </UiList>
+              <UiPagination
                 v-if="annotationPagination.total > annotationPagination.pageSize"
                 v-model:current="annotationPagination.pageNum"
                 v-model:page-size="annotationPagination.pageSize"
                 class="review-workspace__annotation-pagination"
                 :total="annotationPagination.total"
+                :show-size-changer="false"
                 size="small"
                 @change="loadAnnotations"
               />
@@ -472,9 +479,21 @@ import MarkingScanMaterialPanel from '@/components/mark/MarkingScanMaterialPanel
 import MarkScoreTriple from '@/components/mark/MarkScoreTriple.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiList from '@/components/ui-guide/ui/UiList.vue'
+import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
+import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
+import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import { isExamConfidentialFlag, useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
@@ -999,6 +1018,7 @@ function openRescoreConfirm(): void {
 
 /** 实际发起调用，成功后由 loadTask 重拉全量详情以同步重写后的 AI 评分和诊断 */
 async function doRescoreByAi(): Promise<void> {
+  if (rescoring.value) return
   if (!canRescoreByAi.value || !examId.value || !detail.value) return
   rescoring.value = true
   try {
@@ -1210,6 +1230,9 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
 /** 提交核心：仅提交教师复核给分，成功返回 true；失败已提示并返回 false */
 async function submitGrade(): Promise<boolean> {
   if (!examId.value || !detail.value) return false
+  if (submitting.value || rejecting.value) {
+    return false
+  }
   const ownerOverrideReason = await resolveOwnerOverrideReason()
   if (ownerOverrideReason === null) {
     return false
@@ -1274,6 +1297,9 @@ function openRejectConfirm(): void {
 
 async function handleReject(): Promise<void> {
   if (!examId.value || !detail.value?.gradeResultId) return
+  if (rejecting.value || submitting.value) {
+    return
+  }
   const ownerOverrideReason = await resolveOwnerOverrideReason()
   if (ownerOverrideReason === null) {
     return
@@ -1403,22 +1429,22 @@ onBeforeUnmount(() => {
 .review-workspace {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   min-width: 0;
 
   &__section--standard {
-    border-color: var(--ant-color-success-border, #b7eb8f);
+    border-color: var(--dp-success-border);
   }
 
   &__queue-progress {
     margin-bottom: 12px;
-    padding: 12px 16px;
+    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--dp-space-2, 8px);
   }
 
   &__invalidated-banner {
@@ -1429,7 +1455,7 @@ onBeforeUnmount(() => {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 8px 16px;
+    gap: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
   }
 
   &__keyboard-hint {
@@ -1449,17 +1475,17 @@ onBeforeUnmount(() => {
   }
 
   &__row {
-    row-gap: 16px;
+    row-gap: var(--dp-space-3, 12px);
   }
 
   &__slice-viewer {
-    min-height: 300px;
+    min-height: 140px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: var(--dp-surface-soft);
     border-radius: var(--dp-radius-panel);
-    padding: 16px;
+    padding: var(--dp-space-3, 12px);
   }
 
   &__slice-image {
@@ -1501,7 +1527,7 @@ onBeforeUnmount(() => {
   }
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__sticky-left {

@@ -17,7 +17,8 @@ defineProps<{
 <template>
   <UiEmpty
     v-if="empty"
-    :description="emptyDescription || '请先选择培养方案'"
+    size="sm"
+    :description="emptyDescription || '当前列表暂无数据'"
     class="iwb-panel__empty"
   />
   <UiCard v-else class="iwb-panel__card">
@@ -32,7 +33,7 @@ defineProps<{
 <style lang="scss" scoped>
 .iwb-panel {
   &__empty {
-    padding: 32px 0;
+    padding: 12px 0;
   }
 
   &__card {

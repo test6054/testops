@@ -9,12 +9,12 @@
         {{ taskStatusLabel(task.taskStatus) }}
       </UiTag>
       <template v-if="task?.anonymousToken && !revealedIdentity">
-        <a-tooltip
+        <UiTooltip
           v-if="!isExamOwner"
           title="当前为匿名阅卷模式，仅考试主考老师可解匿名查看学生身份"
         >
           <UiTag tone="blue" size="sm">匿名保护中</UiTag>
-        </a-tooltip>
+        </UiTooltip>
         <UiTag v-else tone="blue" size="sm">匿名保护中</UiTag>
       </template>
       <UiPopoverPanel
@@ -149,6 +149,7 @@ import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiPopoverPanel from '@/components/ui-guide/ui/UiPopoverPanel.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 
 defineOptions({ name: 'MarkingTaskToolbar' })
 
@@ -176,7 +177,7 @@ const emit = defineEmits<{
 }>()
 const batchProgress = computed(() => props.navigation.batchProgress.value)
 const prevTaskId = computed(() => props.navigation.prevTaskId.value)
-const nextTaskId = computed(() => props.navigation.nextTaskId.value)
+const nextTaskId = computed(() => props.navigation.nextNavTaskId.value || props.navigation.nextTaskId.value)
 const navPrevLabel = computed(() => props.navigation.navPrevLabel.value)
 const navNextLabel = computed(() => props.navigation.navNextLabel.value)
 </script>
@@ -189,9 +190,9 @@ const navNextLabel = computed(() => props.navigation.navNextLabel.value)
   justify-content: space-between;
   gap: 12px;
   padding: 12px 16px;
-  border: 1px solid var(--ant-color-border-secondary);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--ant-color-bg-container);
+  background: var(--dp-bg-container);
 
   &__main,
   &__actions {

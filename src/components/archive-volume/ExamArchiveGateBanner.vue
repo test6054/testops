@@ -1,6 +1,6 @@
 <template>
   <div v-if="examId" class="exam-archive-gate-banner">
-    <a-skeleton v-if="loading" active :paragraph="{ rows: compact ? 1 : 2 }" />
+    <UiSkeletonState v-if="loading" :rows="compact ? 1 : 2" compact />
     <UiAlertStrip
       v-else-if="loadFailed"
       tone="error"
@@ -53,6 +53,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import {
   buildCloseExamReadyContent,
   useExamArchiveGateHint,

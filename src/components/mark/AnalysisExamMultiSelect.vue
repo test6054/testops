@@ -3,6 +3,7 @@ import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import { onMounted, ref, watch } from 'vue'
 import { pageExams } from '@/apis/mark/exam'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import {
   CROSS_EXAM_TREND_MIN_AUTO_SELECT_COUNT,
@@ -284,21 +285,24 @@ onMounted(() => {
 <template>
   <div class="analysis-exam-select">
     <UiTooltip v-if="disabled" :title="disabledTitle">
-      <a-select
+      <UiSelect
         mode="multiple"
         disabled
+        size="sm"
         :placeholder="placeholder"
-        :value="[]"
+        :model-value="[]"
+        :options="[]"
       />
     </UiTooltip>
-    <a-select
+    <UiSelect
+      size="sm"
       v-else
-      v-model:value="selectedExamIds"
+      v-model="selectedExamIds"
       mode="multiple"
       :options="examOptions"
       :loading="loading"
       :placeholder="placeholder"
-      show-search
+      allow-search
       option-filter-prop="label"
       :filter-option="false"
       allow-clear

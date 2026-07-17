@@ -82,7 +82,7 @@ onBeforeUnmount(stopTimer)
   width: 10px;
   height: 10px;
   border-radius: var(--dp-radius-full);
-  background: var(--ant-color-primary, #1677ff);
+  background: var(--dp-color-primary);
   animation: ai-generation-pulse 1.4s ease-out infinite;
 }
 

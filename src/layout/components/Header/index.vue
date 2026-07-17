@@ -1,20 +1,22 @@
 <template>
-  <a-layout-header class="header">
+  <UiLayoutHeader class="header">
     <section v-if="isMobile" class="fold-btn-wrapper">
       <MenuFoldBtn></MenuFoldBtn>
     </section>
-    <a-flex align="center" class="h-full header-right">
+    <UiFlex align="center" class="h-full header-right">
       <div class="header-breadcrumb">
         <Breadcrumb></Breadcrumb>
       </div>
       <div class="header-right-bar-wrapper">
         <HeaderRightBar></HeaderRightBar>
       </div>
-    </a-flex>
-  </a-layout-header>
+    </UiFlex>
+  </UiLayoutHeader>
 </template>
 
 <script lang="ts" setup>
+import UiFlex from '@/components/ui-guide/ui/UiFlex.vue'
+import UiLayoutHeader from '@/components/ui-guide/ui/UiLayoutHeader.vue'
 import { useDevice } from '@/hooks'
 import Breadcrumb from '../Breadcrumb/index.vue'
 import HeaderRightBar from '../HeaderRightBar/index.vue'
@@ -33,7 +35,7 @@ const { isMobile } = useDevice()
   .header-right {
     flex: 1;
     overflow: hidden;
-    margin-left: var(--ant-padding);
+    margin-left: var(--dp-space-4);
   }
 
   .header-breadcrumb {
@@ -51,10 +53,10 @@ const { isMobile } = useDevice()
 }
 
 .ant-layout-header {
-  padding: 0 var(--ant-padding);
+  padding: 0 var(--dp-space-4);
   height: 56px;
-  background: var(--ant-color-bg-container);
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  background: var(--dp-surface);
+  border-bottom: 1px solid var(--dp-border-subtle);
 
   // 移动端适配
   @media (max-width: bp.$layout-mobile-max) {

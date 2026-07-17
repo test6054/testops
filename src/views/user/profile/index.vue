@@ -7,11 +7,15 @@
           <UiTag v-if="tenantName" tone="gray" size="sm">{{ tenantName }}</UiTag>
         </template>
         <template #actions>
+          <UiButton variant="ghost" size="sm" @click="goMessage">
+            消息中心
+            <UiBadge v-if="unreadTotal > 0" tone="red">{{ unreadTotal }}</UiBadge>
+          </UiButton>
           <UiButton variant="outline" size="sm" :loading="refreshing" @click="refresh">
             <template #icon><ReloadOutlined /></template>
             刷新
           </UiButton>
-          <UiButton size="sm" status="danger" @click="handleLogout">
+          <UiButton size="sm" variant="outline" status="danger" @click="handleLogout">
             <template #icon><LogoutOutlined /></template>
             退出登录
           </UiButton>
@@ -19,9 +23,9 @@
       </ContextBar>
     </template>
 
-    <a-row :gutter="16">
+    <div class="profile-page__layout">
       <!-- 基础信息 -->
-      <a-col :xs="24" :lg="14">
+      <section class="profile-page__section">
         <UiCard class="profile-page__info-card">
           <template #title>
             <UserOutlined />
@@ -93,10 +97,10 @@
             </div>
           </div>
         </UiCard>
-      </a-col>
+      </section>
 
-      <!-- 安全设置 + 入口 -->
-      <a-col :xs="24" :lg="10">
+      <!-- 安全设置 -->
+      <section class="profile-page__section">
         <UiCard class="profile-page__security-card">
           <template #title>
             <SafetyOutlined />
@@ -133,34 +137,12 @@
             </article>
           </div>
         </UiCard>
-
-        <UiCard class="profile-page__shortcuts-card">
-          <template #title>
-            <AppstoreOutlined />
-            <span>常用入口</span>
-          </template>
-
-          <div class="shortcut-list">
-            <button type="button" class="shortcut-btn" @click="goMessage">
-              <BellOutlined />
-              <span>消息中心</span>
-              <UiBadge v-if="unreadTotal > 0" tone="red">{{ unreadTotal }}</UiBadge>
-            </button>
-            <button type="button" class="shortcut-btn" @click="goHome">
-              <HomeOutlined />
-              <span>返回首页</span>
-            </button>
-          </div>
-        </UiCard>
-      </a-col>
-    </a-row>
+      </section>
+    </div>
   </StageWorkbenchShell>
 </template>
 
 <script lang="ts" setup>
-import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
-import BellOutlined from '@ant-design/icons-vue/BellOutlined'
-import HomeOutlined from '@ant-design/icons-vue/HomeOutlined'
 import LogoutOutlined from '@ant-design/icons-vue/LogoutOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import SafetyOutlined from '@ant-design/icons-vue/SafetyOutlined'
@@ -226,10 +208,6 @@ function goMessage() {
   router.push({ name: 'Messages' })
 }
 
-function goHome() {
-  router.push({ path: '/' })
-}
-
 function handleLogout() {
   void confirmAsync({
     title: '确认退出登录',
@@ -261,41 +239,24 @@ onActivated(() => {
 </script>
 
 <style lang="scss" scoped>
-.profile-page {
-  &__title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--ant-color-text);
-  }
-
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 8px 10px;
-}
-
 .profile-page__info-card,
 .profile-page__security-card,
 .profile-page__shortcuts-card {
-  height: 100%;
-}
-
-.profile-page__shortcuts-card {
-  margin-top: 16px;
+  margin-top: 0;
 }
 
 .info-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 4px 24px;
+  gap: var(--dp-space-1, 4px) var(--dp-space-4, 16px);
 
   &__row {
     display: grid;
     grid-template-columns: 110px 1fr;
     align-items: center;
-    gap: 12px;
-    padding: 8px 0;
-    border-bottom: 1px dashed var(--ant-color-border-secondary);
+    gap: var(--dp-space-3, 12px);
+    padding: var(--dp-space-2, 8px) 0;
+    border-bottom: 1px dashed var(--dp-border-subtle);
     font-size: 13px;
 
     &:last-child {
@@ -304,32 +265,30 @@ onActivated(() => {
   }
 
   &__label {
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-tertiary);
   }
 
   &__value {
     display: flex;
     align-items: center;
-    gap: 8px;
-    color: var(--ant-color-text);
+    gap: var(--dp-space-2, 8px);
+    color: var(--dp-text);
     font-weight: 500;
   }
 }
 
-.security-list,
-.shortcut-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.security-list {
+  display: grid;
+  gap: var(--dp-space-3, 12px);
 }
 
 .security-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--ant-color-border-secondary);
+  gap: var(--dp-space-3, 12px);
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 14px);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
 
   &__main {
@@ -341,39 +300,23 @@ onActivated(() => {
     margin: 0 0 4px;
     font-size: 14px;
     font-weight: 600;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
   }
 
   &__desc {
     margin: 0;
     font-size: 12px;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
   }
 }
 
-.shortcut-btn {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  background: var(--ant-color-fill-quaternary);
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: var(--dp-radius-panel);
-  cursor: pointer;
-  text-align: left;
-  font-size: 14px;
-  color: var(--ant-color-text);
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease;
 
-  &:hover {
-    border-color: var(--ant-color-primary-border);
-    background: var(--dp-blue-50);
-  }
-
-  span {
-    flex: 1;
-  }
+.profile-page__layout {
+  display: grid;
+  gap: var(--dp-space-4);
+  max-width: 880px;
+}
+.profile-page__section {
+  min-width: 0;
 }
 </style>

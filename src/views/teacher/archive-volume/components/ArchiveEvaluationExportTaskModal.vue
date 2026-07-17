@@ -60,6 +60,7 @@ async function handleCancel(): Promise<void> {
     </p>
     <template #footer>
       <UiButton
+        size="sm"
         v-if="canCancel"
         variant="outline"
         :loading="taskView?.cancelling"

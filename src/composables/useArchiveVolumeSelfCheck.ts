@@ -49,6 +49,7 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
   async function toggleItem(item: ArchiveVolumeSelfCheckItemVO, checked: boolean) {
     const id = volumeId()
     if (!id) return
+    if (checking.value || exporting.value) return
     if (loadFailed.value) {
       message.error('自查清单状态已失效，请重新加载后再操作')
       return
@@ -73,6 +74,7 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
   async function exportSelfCheck() {
     const id = volumeId()
     if (!id) return
+    if (exporting.value || checking.value) return
     exporting.value = true
     try {
       const result = await exportArchiveVolumeSelfCheck(id)

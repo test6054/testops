@@ -22,7 +22,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -34,6 +37,12 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const { loadTree, portfolioOrgOptions } = usePortfolioOrgTree()
 const activeTab = ref('plans')
+const exporting = ref(false)
+const submitting = ref(false)
+const planTabItems = [
+  { key: 'plans', label: '规划管理' },
+  { key: 'items', label: '规划明细' },
+]
 const selectedPlanId = ref('')
 const itemLoading = ref(false)
 const itemSaving = ref(false)
@@ -183,16 +192,26 @@ async function createPlan() {
 }
 
 async function submitPlan(id: string) {
+  if (submitting.value) {
+    return
+  }
+  submitting.value = true
   try {
     await portfolioDevelopmentPlanApi.submit({ id })
     message.success('已提交')
     await loadPage()
   } catch (error) {
     showUserError(error, '提交规划失败')
+  } finally {
+    submitting.value = false
   }
 }
 
 async function exportPlans() {
+  if (exporting.value) {
+    return
+  }
+  exporting.value = true
   try {
     const result = await portfolioDevelopmentPlanApi.exportExcel({
       planYear: form.planYear,
@@ -202,6 +221,8 @@ async function exportPlans() {
     message.success('规划已导出')
   } catch (error) {
     showUserError(error, '导出规划失败')
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -279,6 +300,9 @@ function removePlanItemRow(index: number) {
 }
 
 async function savePlanItems() {
+  if (itemSaving.value) {
+    return
+  }
   if (!selectedPlanId.value) {
     showFormValidationMessage('请选择规划')
     return
@@ -326,7 +350,7 @@ onMounted(async () => {
   <StageWorkbenchShell>
     <ContextBar title="部门年度规划" subtitle="科室编制 · 提交审核 · 年度唯一">
       <template #actions>
-        <UiButton @click="exportPlans"> 导出表格文件 </UiButton>
+        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportPlans"> 导出表格文件 </UiButton>
       </template>
     </ContextBar>
     <UiCard>
@@ -340,167 +364,190 @@ onMounted(async () => {
           step="1"
           placeholder="年度"
         />
-        <UiButton @click="loadPage"> 刷新 </UiButton>
+        <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
       </div>
-      <a-tabs v-model:active-key="activeTab">
-        <a-tab-pane key="plans" tab="规划管理">
-          <UiCard title="新建部门规划">
-            <div class="form-row">
-              <input v-model="form.planTitle" class="input input--wide" placeholder="规划标题" />
-              <a-select
-                v-model:value="form.portfolioOrgId"
-                placeholder="归属科室"
-                style="width: 220px"
-                :options="portfolioOrgOptions()"
-              />
-              <UiButton variant="primary" @click="createPlan"> 创建 </UiButton>
-            </div>
-          </UiCard>
-          <UiEmpty v-if="!loading && rows.length === 0" description="当前年度暂无部门规划" />
-          <UiDataTable
-            v-model:current="pageNum"
-            v-model:page-size="pageSize"
-            pagination-mode="server"
-            :total="pageTotal"
-            :columns="columns"
-            :data-source="rows"
-            :loading="loading"
-            row-key="id"
-            style="margin-top: 16px"
-            @page-change="handlePageChange"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'planStatus'">
-                <UiTag :tone="planStatusTone(record.planStatus)">
-                  {{ planStatusLabel(record.planStatus) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'actions'">
-                <UiTableActions
-                  :items="[
-                    {
-                      key: 'submit',
-                      label: '提交',
-                      hidden:
-                        record.planStatus !== PortfolioDevelopmentPlanStatusCode.DRAFT
-                        && record.planStatus
-                          !== PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED,
-                    },
-                    { key: 'items', label: '明细' },
-                  ]"
-                  split
-                  @action="(key) => handleDepartmentPlanRowAction(key, record.id)"
-                />
-              </template>
-            </template>
-          </UiDataTable>
-        </a-tab-pane>
-        <a-tab-pane key="items" tab="规划明细">
-          <div class="toolbar">
-            <a-select
-              v-model:value="selectedPlanId"
-              placeholder="选择规划"
-              style="width: 320px"
-              :options="planOptions"
-              @change="loadPlanItems"
+      <UiSectionTabs
+        v-model="activeTab"
+        :items="planTabItems"
+        compact
+        divided
+      />
+      <template v-if="activeTab === 'plans'">
+        <UiCard title="新建部门规划">
+          <div class="form-row">
+            <input v-model="form.planTitle" class="input input--wide" placeholder="规划标题" />
+            <UiSelect
+              size="sm"
+              v-model="form.portfolioOrgId"
+              placeholder="归属科室"
+              style="width: 220px"
+              :options="portfolioOrgOptions()"
             />
-            <UiButton :disabled="!selectedPlanId" @click="loadPlanItems"> 刷新明细 </UiButton>
-            <UiButton v-if="planItemEditable" @click="addPlanItemRow"> 新增行 </UiButton>
-            <UiButton
-              v-if="planItemEditable"
-              variant="primary"
-              :disabled="!selectedPlanId || itemSaving"
-              @click="savePlanItems"
-            >
-              保存明细
-            </UiButton>
+            <UiButton size="sm" variant="primary" @click="createPlan"> 创建 </UiButton>
           </div>
-          <UiEmpty v-if="!selectedPlanId" description="请选择规划后编辑明细项" />
-          <UiDataTable
-            v-else
-            pagination-mode="none"
-            :columns="itemColumns"
-            :data-source="planItems"
-            :loading="itemLoading"
-            row-key="rowKey"
-            :show-pagination="false"
-            :sticky-header="false"
-            flat
-            style="margin-top: 16px"
-          >
-            <template #bodyCell="{ column, record, index }">
-              <template v-if="column.key === 'itemTitle'">
-                <input
-                  v-if="planItemEditable"
-                  v-model="record.itemTitle"
-                  class="input input--cell"
-                />
-                <span v-else>{{ record.itemTitle }}</span>
-              </template>
-              <template v-else-if="column.key === 'itemGoal'">
-                <input
-                  v-if="planItemEditable"
-                  v-model="record.itemGoal"
-                  class="input input--cell"
-                />
-                <span v-else>{{ record.itemGoal || '—' }}</span>
-              </template>
-              <template v-else-if="column.key === 'indicatorCode'">
-                <a-select
-                  v-if="planItemEditable"
-                  v-model:value="record.indicatorCode"
-                  style="width: 100%"
-                  allow-clear
-                  show-search
-                  option-filter-prop="label"
-                  :options="indicatorOptions"
-                  placeholder="选择指标"
-                />
-                <span v-else>{{ record.indicatorCode || '—' }}</span>
-              </template>
-              <template v-else-if="column.key === 'milestoneText'">
-                <input
-                  v-if="planItemEditable"
-                  v-model="record.milestoneText"
-                  class="input input--cell"
-                />
-                <span v-else>{{ record.milestoneText || '—' }}</span>
-              </template>
-              <template v-else-if="column.key === 'completionPercent'">
-                <input
-                  v-if="planItemEditable"
-                  v-model.number="record.completionPercent"
-                  type="number"
-                  class="input input--cell input--short"
-                />
-                <span v-else>{{ record.completionPercent ?? '0' }}%</span>
-              </template>
-              <template v-else-if="column.key === 'itemStatus'">
-                <a-select
-                  v-if="planItemEditable"
-                  v-model:value="record.itemStatus"
-                  style="width: 100%"
-                  :options="PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS"
-                />
-                <UiTag v-else tone="blue">
-                  {{
-                    strictEnumLabel(
-                      PortfolioDevelopmentPlanItemStatusDescription,
-                      record.itemStatus,
-                      '规划明细状态',
-                    )
-                  }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'itemActions'">
-                <UiButton v-if="planItemEditable" size="sm" @click="removePlanItemRow(index)">
-                  删除
-                </UiButton>
-              </template>
+        </UiCard>
+        <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="当前年度暂无部门规划" />
+        <UiDataTable
+          v-model:current="pageNum"
+          v-model:page-size="pageSize"
+          pagination-mode="server"
+          :total="pageTotal"
+          :columns="columns"
+          :data-source="rows"
+          :loading="loading"
+          row-key="id"
+          style="margin-top: 16px"
+          @page-change="handlePageChange"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'planStatus'">
+              <UiTag :tone="planStatusTone(record.planStatus)">
+                {{ planStatusLabel(record.planStatus) }}
+              </UiTag>
             </template>
-          </UiDataTable>
-        </a-tab-pane>
-      </a-tabs>
+            <template v-else-if="column.key === 'actions'">
+              <UiTableActions
+                :items="[
+                  {
+                    key: 'submit',
+                    label: '提交',
+                    hidden:
+                      record.planStatus !== PortfolioDevelopmentPlanStatusCode.DRAFT
+                      && record.planStatus
+                        !== PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED,
+                  },
+                  { key: 'items', label: '明细' },
+                ]"
+                split
+                @action="(key) => handleDepartmentPlanRowAction(key, record.id)"
+              />
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
+      <template v-else-if="activeTab === 'items'">
+        <div class="toolbar">
+          <UiSelect
+            size="sm"
+            v-model="selectedPlanId"
+            placeholder="选择规划"
+            style="width: 320px"
+            :options="planOptions"
+            @change="loadPlanItems"
+          />
+          <UiButton size="sm" :disabled="!selectedPlanId" @click="loadPlanItems"> 刷新明细 </UiButton>
+          <UiButton size="sm" v-if="planItemEditable" @click="addPlanItemRow"> 新增行 </UiButton>
+          <UiButton
+            size="sm"
+            v-if="planItemEditable"
+            variant="primary"
+            :disabled="!selectedPlanId || itemSaving"
+            @click="savePlanItems"
+          >
+            保存明细
+          </UiButton>
+        </div>
+        <UiAlertStrip
+          v-if="!selectedPlanId"
+          tone="info"
+          size="sm"
+          dense
+          inline
+          :show-icon="false"
+        >
+          <template #default>
+            <span style="display:inline-flex;align-items:center;gap:8px">
+              <UiTag tone="blue" size="sm">未选择规划</UiTag>
+              <span>请选择发展规划后再编辑明细项</span>
+            </span>
+          </template>
+        </UiAlertStrip>
+        <UiDataTable
+          v-else
+          pagination-mode="none"
+          :columns="itemColumns"
+          :data-source="planItems"
+          :loading="itemLoading"
+          row-key="rowKey"
+          :show-pagination="false"
+          :sticky-header="false"
+          flat
+          style="margin-top: 16px"
+        >
+          <template #bodyCell="{ column, record, index }">
+            <template v-if="column.key === 'itemTitle'">
+              <input
+                v-if="planItemEditable"
+                v-model="record.itemTitle"
+                class="input input--cell"
+              />
+              <span v-else>{{ record.itemTitle }}</span>
+            </template>
+            <template v-else-if="column.key === 'itemGoal'">
+              <input
+                v-if="planItemEditable"
+                v-model="record.itemGoal"
+                class="input input--cell"
+              />
+              <span v-else>{{ record.itemGoal || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'indicatorCode'">
+              <UiSelect
+                size="sm"
+                v-if="planItemEditable"
+                v-model="record.indicatorCode"
+                style="width: 100%"
+                allow-clear
+                allow-search
+                option-filter-prop="label"
+                :options="indicatorOptions"
+                placeholder="选择指标"
+              />
+              <span v-else>{{ record.indicatorCode || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'milestoneText'">
+              <input
+                v-if="planItemEditable"
+                v-model="record.milestoneText"
+                class="input input--cell"
+              />
+              <span v-else>{{ record.milestoneText || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'completionPercent'">
+              <input
+                v-if="planItemEditable"
+                v-model.number="record.completionPercent"
+                type="number"
+                class="input input--cell input--short"
+              />
+              <span v-else>{{ record.completionPercent ?? '0' }}%</span>
+            </template>
+            <template v-else-if="column.key === 'itemStatus'">
+              <UiSelect
+                size="sm"
+                v-if="planItemEditable"
+                v-model="record.itemStatus"
+                style="width: 100%"
+                :options="PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS"
+              />
+              <UiTag v-else tone="blue">
+                {{
+                  strictEnumLabel(
+                    PortfolioDevelopmentPlanItemStatusDescription,
+                    record.itemStatus,
+                    '规划明细状态',
+                  )
+                }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'itemActions'">
+              <UiButton v-if="planItemEditable" size="sm" @click="removePlanItemRow(index)">
+                删除
+              </UiButton>
+            </template>
+          </template>
+        </UiDataTable>
+      </template>
     </UiCard>
   </StageWorkbenchShell>
 </template>

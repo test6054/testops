@@ -11,6 +11,17 @@
       dense
       class="archive-volume-transfer-panel__alert"
     />
+    <UiAlertStrip
+      v-if="
+        detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
+          && detail.hasOpenRemediationTask === true
+      "
+      tone="warning"
+      title="存在未关闭整改"
+      description="请先完成整改或退回移交后再验收；验收通过将被后端拒绝"
+      dense
+      class="archive-volume-transfer-panel__alert"
+    />
     <template #head>
       <div class="archive-volume-transfer-panel__head">
         <h3 class="archive-volume-transfer-panel__title">移交流程</h3>
@@ -32,7 +43,7 @@
         <UiButton
           size="sm"
           :loading="approvingTransfer"
-          :disabled="rejectingTransfer"
+          :disabled="rejectingTransfer || detail.hasOpenRemediationTask === true"
           @click="handleApproveTransfer"
         >
           验收通过
@@ -54,7 +65,7 @@
       <span>移交记录加载失败</span>
       <UiButton size="sm" variant="outline" @click="loadTransferRecords">重试</UiButton>
     </div>
-    <UiEmpty v-else-if="transferRecords.length === 0" description="暂无移交流程记录" />
+    <UiEmpty size="sm" v-else-if="transferRecords.length === 0" description="暂无移交流程记录" />
     <div v-else class="archive-volume-transfer-panel__list">
       <article
         v-for="record in transferRecords"
@@ -98,11 +109,11 @@
       @close="rejectTransferOpen = false"
       @confirm="submitRejectTransfer"
     >
-      <a-form layout="vertical">
-        <a-form-item label="退回原因" required>
-          <a-textarea v-model:value="rejectTransferReason" :rows="3" :maxlength="500" show-count />
-        </a-form-item>
-      </a-form>
+      <UiForm layout="vertical">
+        <UiFormItem label="退回原因" required>
+          <UiTextarea size="sm" v-model="rejectTransferReason" :rows="3" :maxlength="500" :show-count="true" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </WorkbenchSurfaceCard>
 </template>
@@ -128,8 +139,11 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -223,6 +237,11 @@ async function downloadTransferPackage() {
 }
 
 async function handleApproveTransfer() {
+  if (approvingTransfer.value || rejectingTransfer.value) return
+  if (props.detail.hasOpenRemediationTask === true) {
+    showFormValidationMessage('存在未关闭整改，请先完成整改或退回移交')
+    return
+  }
   approvingTransfer.value = true
   try {
     await approveArchiveVolumeTransfer({ volumeId: props.volumeId })
@@ -242,6 +261,7 @@ function openRejectTransfer() {
 }
 
 async function submitRejectTransfer() {
+  if (approvingTransfer.value || rejectingTransfer.value) return
   if (!rejectTransferReason.value.trim()) {
     showFormValidationMessage('请填写退回原因')
     return

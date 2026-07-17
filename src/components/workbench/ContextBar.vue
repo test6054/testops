@@ -2,8 +2,9 @@
 import { computed } from 'vue'
 
 /**
- * 工作台上下文条：页标题 + #status 标签 + 操作/筛选区。
- * 默认只展示 title；subtitle 仅用于少量动态范围（学年学期、当前考试名等），禁止功能罗列说明。
+ * 工作台上下文条：页标题 + #status 状态标签 + #toolbar 范围筛选 + #actions 操作。
+ * 范围筛选禁止塞进 #status（status 在标题下竖排，配合 UiSelect 100% 宽会变成三层大下拉）。
+ * 默认只展示 title；subtitle 仅用于动态范围摘要，禁止功能罗列说明。
  */
 defineOptions({ name: 'ContextBar' })
 
@@ -53,11 +54,16 @@ const isCompactToolbar = computed(
         <slot name="info" />
       </div>
     </div>
-    <div v-if="$slots.toolbar" class="context-bar__toolbar">
-      <slot name="toolbar" />
-    </div>
-    <div v-else-if="$slots.actions" class="context-bar__actions">
-      <slot name="actions" />
+    <div
+      v-if="$slots.toolbar || $slots.actions"
+      class="context-bar__end"
+    >
+      <div v-if="$slots.toolbar" class="context-bar__toolbar">
+        <slot name="toolbar" />
+      </div>
+      <div v-if="$slots.actions" class="context-bar__actions">
+        <slot name="actions" />
+      </div>
     </div>
   </div>
 </template>
@@ -75,7 +81,8 @@ const isCompactToolbar = computed(
   &--workbench {
     align-items: center;
     flex-wrap: nowrap;
-    margin-bottom: var(--dp-space-5);
+    margin-bottom: var(--dp-space-3);
+    min-height: var(--dp-control-height-sm, 28px);
   }
 
   &--compact-toolbar {
@@ -97,16 +104,22 @@ const isCompactToolbar = computed(
 
   &--workbench &__info {
     flex: 0 1 auto;
-    min-width: 200px;
+    min-width: 0;
+    justify-content: center;
   }
 
   &__title {
     margin: 0;
     font-size: var(--dp-type-h1-size);
-    line-height: var(--dp-type-h1-lh);
+    line-height: var(--dp-type-h1-line-height, var(--dp-type-h1-lh));
     font-weight: var(--dp-type-h1-weight);
     color: var(--dp-text-primary);
     letter-spacing: -0.01em;
+  }
+
+  &--workbench &__title {
+    font-size: 16px;
+    line-height: 24px;
   }
 
   &__subtitle {
@@ -128,6 +141,22 @@ const isCompactToolbar = computed(
     margin-top: var(--dp-space-1);
   }
 
+  &__end {
+    display: flex;
+    align-items: center;
+    gap: var(--dp-space-3);
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+
+  &--workbench &__end {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
   &__actions,
   &__toolbar {
     display: flex;
@@ -135,11 +164,13 @@ const isCompactToolbar = computed(
     gap: var(--dp-space-2);
     flex-wrap: wrap;
     flex-shrink: 0;
+    min-width: 0;
+    /* 调用方约束：1 主动作 + ≤2 次动作；范围筛选放 toolbar，身份/KPI 不进本栏 */
   }
 
   &--workbench &__toolbar {
-    flex: 1 1 auto;
     justify-content: flex-end;
+    flex-wrap: nowrap;
     min-width: 0;
   }
 }
@@ -149,9 +180,9 @@ const isCompactToolbar = computed(
     flex-wrap: wrap;
   }
 
-  .context-bar--workbench .context-bar__toolbar {
+  .context-bar--workbench .context-bar__end {
     width: 100%;
-    justify-content: stretch;
+    justify-content: flex-start;
   }
 }
 </style>

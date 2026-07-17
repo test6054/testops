@@ -5,6 +5,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PortfolioMaterialIntakePanel from '@/components/portfolio/PortfolioMaterialIntakePanel.vue'
 import PortfolioTeacherJourneyRail from '@/components/portfolio/PortfolioTeacherJourneyRail.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -16,7 +17,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
-const { targetTeacherId } = usePortfolioPageScope()
+const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 
 const journeyStages = computed((): WorkbenchStage[] =>
   PORTFOLIO_TEACHER_JOURNEY_STEPS.map((step) => ({
@@ -85,6 +86,7 @@ function openArchiveCategory() {
         @select="navigateJourney"
       />
     </template>
-    <PortfolioMaterialIntakePanel @submitted="handleSubmitted" />
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+    <PortfolioMaterialIntakePanel v-else @submitted="handleSubmitted" />
   </StageWorkbenchShell>
 </template>

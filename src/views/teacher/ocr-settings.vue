@@ -41,14 +41,28 @@ import {
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import PasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
@@ -386,6 +400,9 @@ function openPlatformProviderEditor(record: MarkOcrPlatformProviderResponse): vo
 }
 
 async function handlePlatformProviderSave(): Promise<void> {
+  if (platformProviderSubmitting.value) {
+    return
+  }
   platformProviderSubmitting.value = true
   try {
     await saveMarkOcrPlatformProvider(buildPlatformProviderSavePayload())
@@ -673,12 +690,13 @@ onBeforeUnmount(() => {
     </template>
 
     <template v-if="selectedExamId && currentConfig" #signal>
-      <SignalBand variant="tiles" compact :metrics="ocrSignalMetrics" />
+      <SignalBand compact :metrics="ocrSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" />
+    <ExamSelectGateStrip v-if="!selectedExamId" body="请先选择考试后再配置 OCR 与识别策略" />
 
     <UiEmpty
+      size="sm"
       v-else-if="loadFailed"
       description="文字识别配置加载失败"
       action-label="重试"
@@ -698,7 +716,12 @@ onBeforeUnmount(() => {
               <span>当前文字识别渠道</span>
             </h3>
           </template>
-          <UiEmpty v-if="!currentConfig.providerType" description="租户尚未配置文字识别渠道" />
+          <WorkbenchContextGateStrip
+            v-if="!currentConfig.providerType"
+            tag="未配置"
+            body="租户尚未配置文字识别渠道，请在下方选择并保存渠道"
+            hide-cta
+          />
           <template v-else>
             <div class="ocr-channel__hero">
               <span class="ocr-channel__name">{{ currentProviderLabel }}</span>
@@ -706,14 +729,14 @@ onBeforeUnmount(() => {
             </div>
             <p class="ocr-channel__desc">{{ providerDescription }}</p>
             <p class="ocr-channel__capability">{{ paperCutCapability }}</p>
-            <a-descriptions :column="1" size="small" bordered class="ocr-channel__meta">
-              <a-descriptions-item label="当前渠道">
+            <UiDescriptions :column="1" size="small" bordered class="ocr-channel__meta">
+              <UiDescriptionsItem label="当前渠道">
                 {{ currentProviderLabel }}
-              </a-descriptions-item>
-              <a-descriptions-item v-if="currentConfig.lastHealthMessage" label="最近诊断">
+              </UiDescriptionsItem>
+              <UiDescriptionsItem v-if="currentConfig.lastHealthMessage" label="最近诊断">
                 {{ ocrHealthMessageText(currentConfig.lastHealthMessage) }}
-              </a-descriptions-item>
-            </a-descriptions>
+              </UiDescriptionsItem>
+            </UiDescriptions>
           </template>
         </WorkbenchSurfaceCard>
 
@@ -724,18 +747,18 @@ onBeforeUnmount(() => {
               <span>运行状态</span>
             </h3>
           </template>
-          <a-descriptions :column="1" size="small" bordered>
-            <a-descriptions-item label="已保存渠道">{{ currentProviderLabel }}</a-descriptions-item>
-            <a-descriptions-item label="启用状态">
+          <UiDescriptions :column="1" size="small" bordered>
+            <UiDescriptionsItem label="已保存渠道">{{ currentProviderLabel }}</UiDescriptionsItem>
+            <UiDescriptionsItem label="启用状态">
               {{ currentConfig?.enabled ? '启用' : '关闭' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="健康状态">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="健康状态">
               <UiTag :tone="healthColor">{{ healthLabel }}</UiTag>
-            </a-descriptions-item>
-            <a-descriptions-item label="最近检查">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="最近检查">
               {{ currentConfig?.lastHealthCheckTime || '未检查' }}
-            </a-descriptions-item>
-          </a-descriptions>
+            </UiDescriptionsItem>
+          </UiDescriptions>
         </WorkbenchSurfaceCard>
       </div>
 
@@ -873,7 +896,7 @@ onBeforeUnmount(() => {
               {{ record.updateTime || '未配置' }}
             </template>
             <template v-else-if="column.key === 'actions'">
-              <a-space size="small">
+              <div class="dp-space" style="--dp-space-gap: 8px">
                 <UiButton size="sm" variant="outline" @click="openPlatformProviderEditor(record)">
                   编辑
                 </UiButton>
@@ -885,7 +908,7 @@ onBeforeUnmount(() => {
                 >
                   健康检查
                 </UiButton>
-              </a-space>
+              </div>
             </template>
           </template>
         </UiDataTable>
@@ -898,22 +921,23 @@ onBeforeUnmount(() => {
             <span>同步调试</span>
           </h3>
         </template>
-        <a-form
+        <UiForm
           ref="debugFormRef"
           :model="debugForm"
           :rules="debugRules"
           layout="vertical"
           class="debug-form"
         >
-          <a-row :gutter="16">
-            <a-col :xs="24" :md="12">
-              <a-form-item :label="paperInstanceFieldLabel" name="paperInstanceId" required>
-                <a-select
-                  v-model:value="debugForm.paperInstanceId"
+          <UiRow :gutter="16">
+            <UiCol :xs="24" :md="12">
+              <UiFormItem :label="paperInstanceFieldLabel" name="paperInstanceId" required>
+                <UiSelect
+                  size="sm"
+                  v-model="debugForm.paperInstanceId"
                   :options="paperCandidateOptions"
                   :loading="paperCandidatesLoading || examDetailLoading"
                   :disabled="!debugForm.examId || !ocrDebugReady"
-                  show-search
+                  allow-search
                   :filter-option="false"
                   allow-clear
                   :placeholder="`请选择${paperInstanceFieldLabel}`"
@@ -922,102 +946,118 @@ onBeforeUnmount(() => {
                   @dropdown-visible-change="handlePaperCandidateDropdownVisibleChange"
                   @change="handlePaperCandidateChange"
                 />
-              </a-form-item>
-            </a-col>
-            <a-col :xs="24" :md="12">
-              <a-form-item label="题目" name="responseSliceId" required>
-                <a-select
-                  v-model:value="debugForm.responseSliceId"
+              </UiFormItem>
+            </UiCol>
+            <UiCol :xs="24" :md="12">
+              <UiFormItem label="题目" name="responseSliceId" required>
+                <UiSelect
+                  size="sm"
+                  v-model="debugForm.responseSliceId"
                   :options="paperSliceOptions"
                   :loading="paperSlicesLoading || examDetailLoading"
                   :disabled="!debugForm.examId || !debugForm.paperInstanceId || !ocrDebugReady"
-                  show-search
+                  allow-search
                   option-filter-prop="label"
                   placeholder="请选择当前卷面的正式作答切片"
                   :not-found-content="paperSlicesLoading ? undefined : '当前卷面暂无正式作答切片'"
                 />
-              </a-form-item>
-            </a-col>
-          </a-row>
-          <UiButton :disabled="!canRecognize" :loading="recognizing" @click="handleRecognize">
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+          <UiButton size="sm" :disabled="!canRecognize" :loading="recognizing" @click="handleRecognize">
             <template #icon><ExperimentOutlined /></template>
             执行识别
           </UiButton>
-        </a-form>
+        </UiForm>
 
         <template v-if="recognizeResult">
-          <a-divider />
-          <a-descriptions title="识别结果" :column="1" size="small" bordered>
-            <a-descriptions-item label="使用渠道">
+          <UiDivider />
+          <UiDescriptions title="识别结果" :column="1" size="small" bordered>
+            <UiDescriptionsItem label="使用渠道">
               {{ providerLabel(recognizeResult.providerType) }}
-            </a-descriptions-item>
-            <a-descriptions-item label="识别处理说明">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="识别处理说明">
               {{ ocrDiagnosticText(recognizeResult.diagnostic) }}
-            </a-descriptions-item>
-          </a-descriptions>
+            </UiDescriptionsItem>
+          </UiDescriptions>
           <div class="result-text-block">
             <div class="result-text-label">识别文本</div>
             <div class="result-text-content">{{ recognizeResult.recognizedText }}</div>
           </div>
         </template>
-        <UiEmpty v-else-if="!recognizing" description="当前没有可展示的内容" />
+        <UiEmpty size="sm" v-else-if="!recognizing" description="上传样张并识别后，将在此展示识别文本" />
       </WorkbenchSurfaceCard>
 
-      <a-modal
+      <UiDialog
         v-model:open="platformProviderEditorVisible"
         :title="`编辑 ${providerLabel(platformProviderEditor.providerType)} 平台配置`"
-        width="720px"
+        :width="720"
         :confirm-loading="platformProviderSubmitting"
         @ok="handlePlatformProviderSave"
       >
-        <a-form layout="vertical">
-          <a-form-item label="供应商类型">
-            <a-input :value="providerLabel(platformProviderEditor.providerType)" disabled />
-          </a-form-item>
-          <a-form-item label="启用状态">
-            <a-switch v-model:checked="platformProviderEditor.enabled" />
-          </a-form-item>
+        <UiForm layout="vertical">
+          <UiFormItem label="供应商类型">
+            <UiInput
+              size="sm" :value="providerLabel(platformProviderEditor.providerType)" disabled
+            />
+          </UiFormItem>
+          <UiFormItem label="启用状态">
+            <UiSwitch size="sm" v-model="platformProviderEditor.enabled" />
+          </UiFormItem>
           <template v-if="platformProviderEditorIsBaidu">
-            <a-form-item label="应用编号">
-              <a-input
-                v-model:value="platformProviderEditor.appId"
+            <UiFormItem label="应用编号">
+              <UiInput
+                size="sm"
+                v-model="platformProviderEditor.appId"
                 placeholder="留空表示不修改 / 不配置"
               />
-            </a-form-item>
-            <a-form-item label="接口密钥">
-              <a-input-password
-                v-model:value="platformProviderEditor.apiKey"
+            </UiFormItem>
+            <UiFormItem label="接口密钥">
+              <PasswordInput
+                v-model="platformProviderEditor.apiKey"
+                size="sm"
                 placeholder="留空表示保留原值"
               />
-            </a-form-item>
-            <a-form-item label="密钥">
-              <a-input-password
-                v-model:value="platformProviderEditor.secretKey"
+            </UiFormItem>
+            <UiFormItem label="密钥">
+              <PasswordInput
+                v-model="platformProviderEditor.secretKey"
+                size="sm"
                 placeholder="留空表示保留原值"
               />
-            </a-form-item>
-            <a-form-item label="令牌接口地址">
-              <a-input v-model:value="platformProviderEditor.tokenEndpoint" />
-            </a-form-item>
-            <a-form-item label="高精度文字识别接口地址">
-              <a-input v-model:value="platformProviderEditor.ocrEndpoint" />
-            </a-form-item>
-            <a-form-item label="手写文字识别接口地址">
-              <a-input v-model:value="platformProviderEditor.handwritingEndpoint" />
-            </a-form-item>
-            <a-form-item label="文档分析接口地址">
-              <a-input v-model:value="platformProviderEditor.docAnalysisEndpoint" />
-            </a-form-item>
-            <a-form-item label="手写作文提交接口地址">
-              <a-input
-                v-model:value="platformProviderEditor.handwritingCompositionCreateTaskEndpoint"
+            </UiFormItem>
+            <UiFormItem label="令牌接口地址">
+              <UiInput
+                size="sm" v-model="platformProviderEditor.tokenEndpoint"
               />
-            </a-form-item>
-            <a-form-item label="手写作文结果查询接口地址">
-              <a-input
-                v-model:value="platformProviderEditor.handwritingCompositionGetResultEndpoint"
+            </UiFormItem>
+            <UiFormItem label="高精度文字识别接口地址">
+              <UiInput
+                size="sm" v-model="platformProviderEditor.ocrEndpoint"
               />
-            </a-form-item>
+            </UiFormItem>
+            <UiFormItem label="手写文字识别接口地址">
+              <UiInput
+                size="sm" v-model="platformProviderEditor.handwritingEndpoint"
+              />
+            </UiFormItem>
+            <UiFormItem label="文档分析接口地址">
+              <UiInput
+                size="sm" v-model="platformProviderEditor.docAnalysisEndpoint"
+              />
+            </UiFormItem>
+            <UiFormItem label="手写作文提交接口地址">
+              <UiInput
+                size="sm"
+                v-model="platformProviderEditor.handwritingCompositionCreateTaskEndpoint"
+              />
+            </UiFormItem>
+            <UiFormItem label="手写作文结果查询接口地址">
+              <UiInput
+                size="sm"
+                v-model="platformProviderEditor.handwritingCompositionGetResultEndpoint"
+              />
+            </UiFormItem>
           </template>
           <UiAlertStrip
             v-else-if="platformProviderEditorIsPaddle"
@@ -1026,8 +1066,8 @@ onBeforeUnmount(() => {
             description="该平台配置页只控制是否允许租户选择本地集群通道。实例地址、设备规格与运行健康由本地文字识别实例注册链单独维护，不在这里录入百度类凭证与接口地址。"
             :inline="false"
           />
-        </a-form>
-      </a-modal>
+        </UiForm>
+      </UiDialog>
     </template>
   </StageWorkbenchShell>
 </template>
@@ -1075,7 +1115,7 @@ onBeforeUnmount(() => {
 .ocr-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 @media (max-width: bp.$layout-mobile-max) {
@@ -1139,12 +1179,12 @@ onBeforeUnmount(() => {
 .result-text-label {
   font-weight: 600;
   margin-bottom: 4px;
-  color: var(--color-text-2);
+  color: var(--dp-text-secondary);
 }
 
 .result-text-content {
-  background: var(--color-fill-2, #f5f5f5);
-  border: 1px solid var(--color-border, #e5e5e5);
+  background: var(--color-fill-2);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   padding: 12px;
   white-space: pre-wrap;
@@ -1166,22 +1206,22 @@ onBeforeUnmount(() => {
   gap: 4px;
   align-items: center;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--dp-text-tertiary);
 }
 
 .paddle-instance__sep {
-  color: rgba(0, 0, 0, 0.25);
+  color: var(--dp-text-muted);
 }
 
 .paddle-instance__failed {
-  color: var(--ant-color-error);
+  color: var(--dp-error);
   font-weight: 600;
 }
 
 .paddle-instance__msg {
   margin-top: 4px;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--dp-text-secondary);
   white-space: pre-wrap;
   word-break: break-all;
 }

@@ -3,14 +3,13 @@
     <template #signal>
       <SignalBand
         v-if="selectedExamId"
-        variant="tiles"
         compact
         :metrics="summaryMetrics"
         @metric-click="handleMetricClick"
       />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="scan-batch-workbench__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="scan-batch-workbench__empty" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -84,14 +83,12 @@
             @reset="handleReset"
           >
             <template #field-scanWindow>
-              <a-range-picker
-                v-model:value="filterForm.scanWindow"
+              <UiRangePicker
+                v-model="filterForm.scanWindow"
                 show-time
                 format="YYYY-MM-DD HH:mm"
                 value-format="YYYY-MM-DD HH:mm:ss"
-                style="width: 100%"
                 :placeholder="['扫描开始', '扫描结束']"
-                allow-clear
               />
             </template>
           </UiFilterBar>
@@ -115,17 +112,18 @@
         >
           <template #empty>
             <UiEmpty
+              size="sm"
               v-if="batchListLoadFailed"
               description="扫描批次列表加载失败"
               action-label="重试"
               @action="() => loadBatches()"
             />
-            <UiEmpty v-else description="暂无扫描批次" />
+            <UiEmpty size="sm" v-else description="暂无扫描批次" />
           </template>
 
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'batchNo'">
-              <a-typography-text strong :content="record.batchNo" />
+              <UiTypographyText strong :content="record.batchNo" />
               <div v-if="record.batchExternalNo" class="muted">{{ record.batchExternalNo }}</div>
             </template>
             <template v-else-if="column.key === 'status'">
@@ -213,11 +211,14 @@ import ScanOrphanRecoveryAlert from '@/components/mark/ScanOrphanRecoveryAlert.v
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiRangePicker from '@/components/ui-guide/ui/RangePicker.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -474,20 +475,27 @@ function canRetryBatchPageRegister(batch: ExamScannerBatchResponse): boolean {
 }
 
 function batchRowActions(batch: ExamScannerBatchResponse): UiTableRowActionItem[] {
-  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情', tone: 'primary' }]
+  // 可重试时「重试登记」为唯一 primary；否则「详情」
+  const actions: UiTableRowActionItem[] = []
   if (canRetryBatchPageRegister(batch)) {
-    actions.unshift({
+    actions.push({
       key: 'retry-register',
       label: '重试登记',
       tone: 'primary',
       disabled: pageRegisterRetryingBatchId.value === batch.scanBatchId,
     })
+    actions.push({ key: 'detail', label: '详情' })
+  } else {
+    actions.push({ key: 'detail', label: '详情', tone: 'primary' })
   }
   return actions
 }
 
 async function retryBatchPageRegister(batch: ExamScannerBatchResponse): Promise<void> {
   if (!selectedExamId.value || !batch.scanBatchId) {
+    return
+  }
+  if (pageRegisterRetryingBatchId.value) {
     return
   }
   pageRegisterRetryingBatchId.value = batch.scanBatchId
@@ -805,7 +813,7 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .scan-batch-workbench__empty {
-  padding: 48px 0;
+  padding: 20px 0;
 }
 
 .scan-batch-workbench__attention-alert,
@@ -819,11 +827,11 @@ onBeforeUnmount(() => {
 }
 
 .scan-batch-workbench__warn {
-  color: var(--ant-color-warning);
+  color: var(--dp-warning);
 }
 
 .muted {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
   font-size: 12px;
 }
 </style>

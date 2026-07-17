@@ -4,10 +4,10 @@
       <span v-if="label" class="ui-progress-bar__label">{{ label }}</span>
       <span class="ui-progress-bar__percent">{{ displayValue }}</span>
     </div>
-    <div class="ui-progress-bar__track" :style="{ backgroundColor: trackColor }">
+    <div class="ui-progress-bar__track" :style="trackStyle">
       <div
         class="ui-progress-bar__fill"
-        :style="{ width: `${Math.min(percent, 100)}%`, backgroundColor: fillColor }"
+        :style="fillStyle"
       />
     </div>
     <div v-if="showLabel && labelPosition === 'right'" class="ui-progress-bar__right">
@@ -39,19 +39,39 @@ const props = withDefaults(
     percent: 0,
     size: 'md',
     variant: 'default',
-    color: '#3b82f6',
-    trackColor: '#e2e8f0',
+    color: '',
+    trackColor: '',
     label: '',
     showLabel: true,
     labelPosition: 'top',
   },
 )
 
-const fillColor = computed(() => {
-  if (props.variant === 'gradient') {
-    return `linear-gradient(90deg, ${props.color}, ${lightenColor(props.color, 20)})`
+const trackStyle = computed(() => {
+  if (props.trackColor) {
+    return { backgroundColor: props.trackColor }
   }
-  return props.color
+  return undefined
+})
+
+const fillStyle = computed(() => {
+  const width = `${Math.min(props.percent, 100)}%`
+  if (props.variant === 'gradient') {
+    if (props.color.startsWith('#')) {
+      return {
+        width,
+        background: `linear-gradient(90deg, ${props.color}, ${lightenColor(props.color, 20)})`,
+      }
+    }
+    return {
+      width,
+      background: 'linear-gradient(90deg, var(--dp-blue-500), var(--dp-blue-200))',
+    }
+  }
+  if (props.color) {
+    return { width, backgroundColor: props.color }
+  }
+  return { width, backgroundColor: 'var(--dp-color-primary)' }
 })
 
 const displayValue = computed(() => {
@@ -96,7 +116,7 @@ function lightenColor(hex: string, percent: number): string {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
+  margin-bottom: var(--dp-space-1, 4px);
 }
 
 .ui-progress-bar__label {
@@ -115,12 +135,14 @@ function lightenColor(hex: string, percent: number): string {
   width: 100%;
   border-radius: 999px;
   overflow: hidden;
+  background-color: var(--dp-gray-200);
 }
 
 .ui-progress-bar__fill {
   height: 100%;
   border-radius: 999px;
   transition: width 0.4s ease;
+  background-color: var(--dp-color-primary);
 }
 
 .ui-progress-bar--striped .ui-progress-bar__fill {
@@ -155,7 +177,7 @@ function lightenColor(hex: string, percent: number): string {
 .ui-progress-bar:has(.ui-progress-bar__right) {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .ui-progress-bar:has(.ui-progress-bar__right) .ui-progress-bar__track {

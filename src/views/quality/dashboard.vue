@@ -37,10 +37,10 @@ import {
 } from '@/apis/quality/types'
 import { workbenchApi } from '@/apis/quality/workbench'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import QualityWorkbenchCharts from '@/components/quality/QualityWorkbenchCharts.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -541,13 +541,22 @@ function handleTodoAction(key: string) {
       </QualityPageContextBar>
     </template>
 
-    <template v-if="trainingPlanId" #rail>
+    <template v-if="trainingPlanId && planConfirmationStatus === ConfirmationStatusCode.CONFIRMED" #rail>
       <StageRail :stages="stages" @select="handleStageSelect" />
     </template>
 
-    <UiEmpty v-if="!trainingPlanId" description="请选择培养方案" class="quality-dashboard__empty" />
+    <QualityPlanGateStrip
+      v-if="!trainingPlanId"
+      mode="need-plan"
+      class="quality-dashboard__empty"
+    />
+    <QualityPlanGateStrip
+      v-else-if="planConfirmationStatus !== ConfirmationStatusCode.CONFIRMED"
+      mode="need-confirm"
+      class="quality-dashboard__empty"
+    />
 
-    <template v-else>
+    <template v-if="trainingPlanId && planConfirmationStatus === ConfirmationStatusCode.CONFIRMED">
       <UiCard v-if="dashboardTodos.length" class="quality-dashboard__todo-card" title="待办事项">
         <ul class="quality-dashboard__todo-list">
           <li v-for="item in dashboardTodos" :key="item.key" class="quality-dashboard__todo-item">
@@ -734,14 +743,14 @@ function handleTodoAction(key: string) {
   }
 
   &__signals {
-    margin-bottom: 24px;
+    margin-bottom: var(--dp-space-3, 12px);
   }
 
   &__lists {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: var(--dp-space-3, 12px);
+    margin-bottom: var(--dp-space-3, 12px);
 
     @media (min-width: bp.$shell-laptop-max) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -753,15 +762,15 @@ function handleTodoAction(key: string) {
   }
 
   &__value--ok {
-    color: var(--ant-color-success);
+    color: var(--dp-success);
   }
 
   &__value--bad {
-    color: var(--ant-color-error);
+    color: var(--dp-error);
   }
 
   &__value--error {
-    color: var(--ant-color-error);
+    color: var(--dp-error);
   }
 
   &__threshold {

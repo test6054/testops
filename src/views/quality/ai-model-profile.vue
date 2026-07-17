@@ -31,14 +31,25 @@ import {
 } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import PasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -314,7 +325,6 @@ function buildAiModelProfileActions(record: AiModelProfileVO): UiTableRowActionI
   actions.push({
     key: 'health-check',
     label: '健康检查',
-    tone: 'primary',
     disabled: healthLoading.value === record.id,
   })
   actions.push({ key: 'edit', label: '编辑' })
@@ -474,9 +484,19 @@ onActivated(() => {
     <UiCard class="detail-table-card ai-model__active-card">
       <template #title>当前启用模型</template>
 
-      <UiEmpty v-if="activeProfiles.length === 0" description="当前没有可展示的内容" size="sm" />
-      <a-space v-else direction="vertical" :size="12" class="ai-model__active-list">
-        <a-descriptions
+      <WorkbenchContextGateStrip
+        v-if="activeProfiles.length === 0"
+        tag="未启用"
+        body="尚未启用文本模型，请新建配置后设为启用"
+        cta-label="新建模型配置"
+        @cta="openCreate"
+      />
+      <div
+        v-else
+        class="ai-model__active-list dp-space dp-space--vertical dp-space--block"
+        style="--dp-space-gap: 12px"
+      >
+        <UiDescriptions
           v-for="profile in activeProfiles"
           :key="profile.id"
           :column="3"
@@ -484,12 +504,12 @@ onActivated(() => {
           bordered
         >
           <template #title>
-            <a-space>
+            <div class="dp-space" style="--dp-space-gap: 8px">
               <span>{{ providerTypeLabel(profile.providerType) }}</span>
               <UiTag :tone="healthColor(profile.healthStatus)" size="sm">
                 {{ healthLabel(profile.healthStatus) }}
               </UiTag>
-            </a-space>
+            </div>
           </template>
           <template #extra>
             <UiButton
@@ -501,26 +521,26 @@ onActivated(() => {
               重新检测
             </UiButton>
           </template>
-          <a-descriptions-item label="配置名称">
+          <UiDescriptionsItem label="配置名称">
             {{ profile.profileName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="模型">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="模型">
             {{ profile.modelName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="密钥">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="密钥">
             {{ apiKeyDisplayText(profile) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="模型服务地址" :span="3">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="模型服务地址" :span="3">
             {{ profile.apiHost }}
-          </a-descriptions-item>
-          <a-descriptions-item label="上次检测时间">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="上次检测时间">
             {{ profile.lastHealthCheckTime || '尚未检测' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="最近检测说明" :span="2">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="最近检测说明" :span="2">
             {{ aiModelHealthMessageText(profile.lastHealthMessage) }}
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-space>
+          </UiDescriptionsItem>
+        </UiDescriptions>
+      </div>
     </UiCard>
 
     <UiCard class="detail-table-card ai-model__table-card">
@@ -537,7 +557,7 @@ onActivated(() => {
         @reset="handleReset"
       >
         <template #field-enabledOnly>
-          <a-checkbox v-model:checked="filterForm.enabledOnly">仅看启用</a-checkbox>
+          <UiCheckbox v-model="filterForm.enabledOnly">仅看启用</UiCheckbox>
         </template>
       </UiFilterBar>
 
@@ -556,10 +576,10 @@ onActivated(() => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'profileName'">
-            <a-space>
+            <div class="dp-space" style="--dp-space-gap: 8px">
               <span>{{ record.profileName }}</span>
               <UiTag v-if="record.enabled" tone="green" size="sm"> 启用 </UiTag>
-            </a-space>
+            </div>
           </template>
           <template v-else-if="column.key === 'providerType'">
             {{ providerTypeLabel(record.providerType) }}
@@ -600,95 +620,108 @@ onActivated(() => {
       ok-text="保存"
       @ok="submitEditor"
     >
-      <a-form layout="vertical" :model="editor">
-        <a-form-item label="配置名称" required>
-          <a-input v-model:value="editor.profileName" placeholder="例如：DeepSeek-V3 主跳" />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="模型服务商">
-              <a-select v-model:value="editor.providerType" :disabled="editorMode === 'edit'">
-                <a-select-option value="DEEPSEEK"> DeepSeek </a-select-option>
-                <a-select-option value="QWEN"> 通义千问 </a-select-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="模型名" required>
-              <a-input v-model:value="editor.modelName" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="模型服务地址" required>
-          <a-input v-model:value="editor.apiHost" placeholder="https://api.deepseek.com" />
-        </a-form-item>
-        <a-form-item
+      <UiForm layout="vertical" :model="editor">
+        <UiFormItem label="配置名称" required>
+          <UiInput
+            size="sm" v-model="editor.profileName" placeholder="例如：DeepSeek-V3 主跳"
+          />
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="模型服务商">
+              <UiSelect
+                v-model="editor.providerType" :disabled="editorMode === 'edit'"
+                size="sm"
+                :options="[{ value: 'DEEPSEEK', label: 'DeepSeek' }, { value: 'QWEN', label: '通义千问' }]"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="模型名" required>
+              <UiInput
+                size="sm" v-model="editor.modelName"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="模型服务地址" required>
+          <UiInput
+            size="sm" v-model="editor.apiHost" placeholder="https://api.deepseek.com"
+          />
+        </UiFormItem>
+        <UiFormItem
           :label="
             editorMode === 'create' ? '模型访问密钥（必填）' : '模型访问密钥（留空表示保留原密钥）'
           "
         >
-          <a-input-password
-            v-model:value="editor.apiKey"
+          <PasswordInput
+            v-model="editor.apiKey"
+            size="sm"
             :placeholder="editorMode === 'create' ? 'sk-...' : '不修改则留空'"
           />
-        </a-form-item>
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="温度">
-              <a-input-number
-                v-model:value="editor.temperature"
+        </UiFormItem>
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="温度">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.temperature"
                 :min="0"
                 :max="1"
                 :step="0.1"
                 class="ai-model__number-full"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="最大输出量">
-              <a-input-number
-                v-model:value="editor.maxTokens"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="最大输出量">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.maxTokens"
                 :min="64"
                 :max="32768"
                 :step="64"
                 class="ai-model__number-full"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="最大输入字符" required>
-              <a-input-number
-                v-model:value="editor.maxInputChars"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="最大输入字符" required>
+              <UiInputNumber
+                size="sm"
+                v-model="editor.maxInputChars"
                 :min="1"
                 :step="1000"
                 class="ai-model__number-full"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="连接超时 (s)">
-              <a-input-number
-                v-model:value="editor.connectTimeoutSecs"
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="连接超时 (s)">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.connectTimeoutSecs"
                 :min="1"
                 :max="120"
                 class="ai-model__number-full"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="读取超时 (s)">
-              <a-input-number
-                v-model:value="editor.readTimeoutSecs"
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="读取超时 (s)">
+              <UiInputNumber
+                size="sm"
+                v-model="editor.readTimeoutSecs"
                 :min="30"
                 :max="1800"
                 class="ai-model__number-full"
               />
-            </a-form-item>
-          </a-col>
-        </a-row>
-      </a-form>
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+      </UiForm>
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
@@ -702,11 +735,11 @@ onActivated(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
 
     & + & {
-      margin-top: 16px;
+      margin-top: var(--dp-space-3, 12px);
     }
   }
 

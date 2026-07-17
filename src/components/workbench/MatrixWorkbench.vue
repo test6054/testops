@@ -11,10 +11,10 @@
     </div>
 
     <div v-if="loading" class="matrix-workbench__placeholder">
-      <a-spin />
+      <UiSpin />
     </div>
     <div v-else-if="rows.length === 0 || cols.length === 0" class="matrix-workbench__placeholder">
-      <UiEmpty :description="emptyText" />
+      <UiEmpty size="sm" :description="emptyText" />
     </div>
     <div v-else class="matrix-workbench__scroll">
       <table class="matrix-workbench__table">
@@ -153,6 +153,7 @@ import type { MatrixCell, MatrixCol, MatrixRow } from './matrix-types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 
 defineOptions({
   name: 'MatrixWorkbench',
@@ -261,8 +262,8 @@ function handleRowClick(row: MatrixRow) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: var(--dp-space-2, 8px);
+  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
   border-bottom: 1px solid var(--dp-border);
   background: var(--dp-surface-elevated);
 }
@@ -295,7 +296,7 @@ function handleRowClick(row: MatrixRow) {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 48px 16px;
+  padding: var(--dp-space-3, 12px);
 }
 
 .matrix-workbench__scroll {
@@ -479,7 +480,7 @@ function handleRowClick(row: MatrixRow) {
   height: 14px;
   border-radius: 50%;
   background: var(--dp-color-danger);
-  color: var(--ant-color-white);
+  color: var(--dp-text-inverse);
   font-size: 11px;
   font-weight: 700;
   line-height: 14px;
@@ -487,69 +488,69 @@ function handleRowClick(row: MatrixRow) {
 }
 
 .matrix-workbench__row--warning .matrix-workbench__th--row {
-  background: rgba(220, 38, 38, 0.08);
+  background: color-mix(in srgb, var(--dp-danger) 8%, transparent);
 }
 
 .matrix-workbench__cell--gray {
-  background: rgba(148, 163, 184, 0.08);
+  background: color-mix(in srgb, var(--dp-text-muted) 8%, transparent);
 }
 
 .matrix-workbench__cell--blue {
-  background: rgba(59, 130, 246, 0.12);
+  background: color-mix(in srgb, var(--dp-color-primary) 12%, transparent);
 }
 
 .matrix-workbench__cell--green {
-  background: rgba(34, 197, 94, 0.14);
+  background: color-mix(in srgb, var(--dp-success) 14%, transparent);
 }
 
 .matrix-workbench__cell--orange {
-  background: rgba(249, 115, 22, 0.14);
+  background: color-mix(in srgb, var(--dp-warning) 14%, transparent);
 }
 
 .matrix-workbench__cell--yellow {
-  background: rgba(234, 179, 8, 0.14);
+  background: color-mix(in srgb, var(--dp-warning) 14%, transparent);
 }
 
 .matrix-workbench__cell--red {
-  background: rgba(220, 38, 38, 0.14);
+  background: color-mix(in srgb, var(--dp-danger) 14%, transparent);
 }
 
 .matrix-workbench__cell--purple {
-  background: rgba(168, 85, 247, 0.12);
+  background: color-mix(in srgb, var(--dp-purple-500) 12%, transparent);
 }
 
 .matrix-workbench__tone--gray {
-  background: rgba(148, 163, 184, 0.16);
+  background: color-mix(in srgb, var(--dp-text-muted) 16%, transparent);
   color: var(--dp-text-primary);
 }
 
 .matrix-workbench__tone--blue {
-  background: rgba(59, 130, 246, 0.16);
-  color: var(--ant-color-primary-active);
+  background: color-mix(in srgb, var(--dp-color-primary) 16%, transparent);
+  color: var(--dp-color-primary-active);
 }
 
 .matrix-workbench__tone--green {
-  background: rgba(34, 197, 94, 0.18);
+  background: color-mix(in srgb, var(--dp-success) 18%, transparent);
   color: var(--dp-green-700);
 }
 
 .matrix-workbench__tone--orange {
-  background: rgba(249, 115, 22, 0.18);
+  background: color-mix(in srgb, var(--dp-warning) 18%, transparent);
   color: var(--dp-orange-700);
 }
 
 .matrix-workbench__tone--yellow {
-  background: rgba(234, 179, 8, 0.2);
+  background: color-mix(in srgb, var(--dp-warning) 20%, transparent);
   color: var(--dp-yellow-700);
 }
 
 .matrix-workbench__tone--red {
-  background: rgba(220, 38, 38, 0.18);
+  background: color-mix(in srgb, var(--dp-danger) 18%, transparent);
   color: var(--dp-red-700);
 }
 
 .matrix-workbench__tone--purple {
-  background: rgba(168, 85, 247, 0.16);
+  background: color-mix(in srgb, var(--dp-purple-500) 16%, transparent);
   color: var(--dp-purple-700);
 }
 </style>

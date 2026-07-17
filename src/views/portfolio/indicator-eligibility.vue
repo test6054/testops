@@ -11,13 +11,12 @@ import {
 import PortfolioEligibilityTreeEditor from '@/components/portfolio/PortfolioEligibilityTreeEditor.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import {
-  parseEligibilityTreeJson,
-  serializeEligibilityTree,
-  validateEligibilityTree,
-} from '@/utils/eligibility-tree'
+import { validateEligibilityTree } from '@/utils/eligibility-tree'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const sceneCode = ref<PfSceneCode>(PfSceneCode.DUAL_TEACHER)
@@ -26,6 +25,8 @@ const eligibilityName = ref('双师认定申请')
 const treeRoot = ref<PfEligibilityRuleTreeNodeDto>({ nodeType: 'AND', children: [] })
 const loading = ref(false)
 const saving = ref(false)
+/** 规则加载 token，切换预置编码时丢弃旧规则回写 */
+const ruleRequestToken = ref(0)
 
 const presetOptions = PF_ELIGIBILITY_PRESET_OPTIONS.map((item) => ({
   value: item.value,
@@ -41,22 +42,36 @@ function onPresetChange(code: string) {
 }
 
 async function loadRule() {
+  const requestCode = eligibilityCode.value
+  const currentToken = ++ruleRequestToken.value
   loading.value = true
   try {
     const rule = await portfolioIndicatorTenantApi.getEligibilityRule({
-      eligibilityCode: eligibilityCode.value,
+      eligibilityCode: requestCode,
     })
+    if (currentToken !== ruleRequestToken.value || eligibilityCode.value !== requestCode) {
+      return
+    }
     eligibilityName.value = rule.eligibilityName
     sceneCode.value = rule.sceneCode
-    treeRoot.value = parseEligibilityTreeJson(rule.ruleTreeJson)
+    treeRoot.value = rule.ruleTree ?? { nodeType: 'AND', children: [] }
   } catch (error) {
+    if (currentToken !== ruleRequestToken.value || eligibilityCode.value !== requestCode) {
+      return
+    }
+    treeRoot.value = { nodeType: 'AND', children: [] }
     showUserError(error, '加载资格规则失败')
   } finally {
-    loading.value = false
+    if (currentToken === ruleRequestToken.value) {
+      loading.value = false
+    }
   }
 }
 
 async function saveRule() {
+  if (saving.value || loading.value) {
+    return
+  }
   if (!eligibilityName.value.trim()) {
     showFormValidationMessage('请填写资格规则名称')
     return
@@ -66,17 +81,26 @@ async function saveRule() {
     showFormValidationMessage(validationError)
     return
   }
+  const requestCode = eligibilityCode.value
+  const requestName = eligibilityName.value
+  const requestScene = sceneCode.value
+  const requestTree = treeRoot.value
   saving.value = true
   try {
     await portfolioIndicatorTenantApi.saveEligibilityRule({
-      eligibilityCode: eligibilityCode.value,
-      eligibilityName: eligibilityName.value,
-      sceneCode: sceneCode.value,
-      ruleTreeJson: serializeEligibilityTree(treeRoot.value),
+      eligibilityCode: requestCode,
+      eligibilityName: requestName,
+      sceneCode: requestScene,
+      ruleTree: requestTree,
     })
+    if (eligibilityCode.value !== requestCode) {
+      return
+    }
     message.success('资格规则已保存')
   } catch (error) {
-    showUserError(error, '保存资格规则失败')
+    if (eligibilityCode.value === requestCode) {
+      showUserError(error, '保存资格规则失败')
+    }
   } finally {
     saving.value = false
   }
@@ -84,7 +108,7 @@ async function saveRule() {
 
 function onPresetPick() {
   onPresetChange(eligibilityCode.value)
-  loadRule()
+  void loadRule()
 }
 
 onMounted(loadRule)
@@ -97,23 +121,28 @@ onMounted(loadRule)
     </template>
     <UiCard>
       <div class="toolbar">
-        <a-select
-          v-model:value="eligibilityCode"
+        <UiSelect
+          size="sm"
+          v-model="eligibilityCode"
           :options="presetOptions"
           style="width: 200px"
           @change="onPresetPick"
         />
-        <a-select v-model:value="sceneCode" :options="PF_SCENE_CODE_OPTIONS" style="width: 140px" />
-        <a-input v-model:value="eligibilityName" placeholder="规则名称" style="width: 200px" />
-        <UiButton @click="loadRule"> 加载 </UiButton>
-        <UiButton variant="primary" :loading="saving" @click="saveRule"> 保存 </UiButton>
+        <UiSelect
+          size="sm" v-model="sceneCode" :options="PF_SCENE_CODE_OPTIONS" style="width: 140px"
+        />
+        <UiInput
+          size="sm" v-model="eligibilityName" placeholder="规则名称" style="width: 200px"
+        />
+        <UiButton size="sm" @click="loadRule"> 加载 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="saving" :disabled="loading || saving" @click="saveRule"> 保存 </UiButton>
       </div>
       <p class="hint">
         节点类型：叶子条件、与、或、非、审核门禁；通过下方表单编辑，无需手写结构化规则文本。
       </p>
-      <a-spin :spinning="loading">
+      <UiSpin :spinning="loading">
         <PortfolioEligibilityTreeEditor v-model:node="treeRoot" />
-      </a-spin>
+      </UiSpin>
     </UiCard>
   </StageWorkbenchShell>
 </template>

@@ -10,7 +10,7 @@
     </template>
 
     <template v-if="signalMetrics.length > 0" #signal>
-      <SignalBand variant="tiles" :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" compact />
     </template>
 
     <WorkbenchSurfaceCard flush>
@@ -24,8 +24,9 @@
               </UiButton>
             </template>
             <template v-else>
-              <a-select
-                v-model:value="selectedProfileId"
+              <UiSelect
+                size="sm"
+                v-model="selectedProfileId"
                 allow-clear
                 class="archive-search-toolbar__profile-select"
                 :loading="profilesLoading"
@@ -64,36 +65,40 @@
           <div class="archive-search-primary">
             <div class="archive-search-primary__field archive-search-primary__field--keyword">
               <label class="archive-search-primary__label">文字识别关键词</label>
-              <a-input
-                v-model:value="filterForm.keyword"
-                allow-clear
+              <UiInput
+                size="sm"
+                v-model="filterForm.keyword"
+                clearable
                 placeholder="搜索材料文字识别全文..."
                 @press-enter="handleSearch"
               />
             </div>
             <div class="archive-search-primary__field">
               <label class="archive-search-primary__label">学号</label>
-              <a-input
-                v-model:value="filterForm.studentNo"
-                allow-clear
+              <UiInput
+                size="sm"
+                v-model="filterForm.studentNo"
+                clearable
                 placeholder="精确匹配"
                 @press-enter="handleSearch"
               />
             </div>
             <div class="archive-search-primary__field">
               <label class="archive-search-primary__label">姓名</label>
-              <a-input
-                v-model:value="filterForm.studentNameKeyword"
-                allow-clear
+              <UiInput
+                size="sm"
+                v-model="filterForm.studentNameKeyword"
+                clearable
                 placeholder="模糊匹配"
                 @press-enter="handleSearch"
               />
             </div>
             <div class="archive-search-primary__field archive-search-primary__field--archive">
               <label class="archive-search-primary__label">档案号/标题</label>
-              <a-input
-                v-model:value="filterForm.archiveKeyword"
-                allow-clear
+              <UiInput
+                size="sm"
+                v-model="filterForm.archiveKeyword"
+                clearable
                 placeholder="模糊匹配"
                 @press-enter="handleSearch"
               />
@@ -116,8 +121,9 @@
           <div v-show="advancedFiltersOpen" class="archive-search-advanced">
             <div class="archive-search-advanced__field">
               <label class="archive-search-primary__label">学年</label>
-              <a-select
-                v-model:value="filterForm.academicYearStartYear"
+              <UiSelect
+                size="sm"
+                v-model="filterForm.academicYearStartYear"
                 allow-clear
                 class="archive-search-advanced__select"
                 :options="academicYearStartOptions"
@@ -126,8 +132,9 @@
             </div>
             <div class="archive-search-advanced__field">
               <label class="archive-search-primary__label">学期</label>
-              <a-select
-                v-model:value="filterForm.semester"
+              <UiSelect
+                size="sm"
+                v-model="filterForm.semester"
                 allow-clear
                 class="archive-search-advanced__select"
                 :options="semesterOptions"
@@ -136,8 +143,9 @@
             </div>
             <div class="archive-search-advanced__field">
               <label class="archive-search-primary__label">学院</label>
-              <a-select
-                v-model:value="filterForm.departmentId"
+              <UiSelect
+                size="sm"
+                v-model="filterForm.departmentId"
                 allow-clear
                 class="archive-search-advanced__select"
                 :options="departmentOptions"
@@ -159,8 +167,9 @@
             </div>
             <div class="archive-search-advanced__field">
               <label class="archive-search-primary__label">课程</label>
-              <a-select
-                v-model:value="filterForm.courseId"
+              <UiSelect
+                size="sm"
+                v-model="filterForm.courseId"
                 allow-clear
                 class="archive-search-advanced__select"
                 :options="courseOptions"
@@ -169,8 +178,9 @@
             </div>
             <div class="archive-search-advanced__field">
               <label class="archive-search-primary__label">材料类型</label>
-              <a-select
-                v-model:value="filterForm.materialType"
+              <UiSelect
+                size="sm"
+                v-model="filterForm.materialType"
                 allow-clear
                 class="archive-search-advanced__select"
                 :options="ARCHIVE_MATERIAL_TYPE_OPTIONS"
@@ -179,8 +189,9 @@
             </div>
             <div class="archive-search-advanced__field">
               <label class="archive-search-primary__label">文字识别状态</label>
-              <a-select
-                v-model:value="filterForm.ocrStatus"
+              <UiSelect
+                size="sm"
+                v-model="filterForm.ocrStatus"
                 allow-clear
                 class="archive-search-advanced__select"
                 :options="ocrStatusOptions"
@@ -189,18 +200,20 @@
             </div>
             <div class="archive-search-advanced__field">
               <label class="archive-search-primary__label">目录编码</label>
-              <a-input
-                v-model:value="filterForm.catalogCode"
-                allow-clear
+              <UiInput
+                size="sm"
+                v-model="filterForm.catalogCode"
+                clearable
                 placeholder="精确匹配"
                 @press-enter="handleSearch"
               />
             </div>
             <div class="archive-search-advanced__field">
               <label class="archive-search-primary__label">目录名称</label>
-              <a-input
-                v-model:value="filterForm.catalogNameKeyword"
-                allow-clear
+              <UiInput
+                size="sm"
+                v-model="filterForm.catalogNameKeyword"
+                clearable
                 placeholder="模糊匹配"
                 @press-enter="handleSearch"
               />
@@ -216,18 +229,20 @@
             </div>
             <div class="archive-search-advanced__field">
               <label class="archive-search-primary__label">班级</label>
-              <a-input
-                v-model:value="filterForm.classNameKeyword"
-                allow-clear
+              <UiInput
+                size="sm"
+                v-model="filterForm.classNameKeyword"
+                clearable
                 placeholder="模糊匹配"
                 @press-enter="handleSearch"
               />
             </div>
             <div class="archive-search-advanced__field">
               <label class="archive-search-primary__label">文件名</label>
-              <a-input
-                v-model:value="filterForm.fileNameKeyword"
-                allow-clear
+              <UiInput
+                size="sm"
+                v-model="filterForm.fileNameKeyword"
+                clearable
                 placeholder="模糊匹配"
                 @press-enter="handleSearch"
               />
@@ -365,18 +380,19 @@
       :confirm-loading="saveProfileLoading"
       @ok="handleSaveProfile"
     >
-      <a-form layout="vertical">
-        <a-form-item label="方案名称" required>
-          <a-input
-            v-model:value="saveProfileForm.profileName"
+      <UiForm layout="vertical">
+        <UiFormItem label="方案名称" required>
+          <UiInput
+            size="sm"
+            v-model="saveProfileForm.profileName"
             :maxlength="128"
             placeholder="如：2024 秋季期末卷检索"
           />
-        </a-form-item>
-        <a-form-item>
-          <a-checkbox v-model:checked="saveProfileForm.sharedFlag">租户内共享</a-checkbox>
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+        <UiFormItem>
+          <UiCheckbox v-model="saveProfileForm.sharedFlag">租户内共享</UiCheckbox>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
@@ -397,7 +413,7 @@ import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import type { AcademicYearSemesterTripleFilterState } from '@/utils/academic-year-semester-triple-filter'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
-import { message, Modal } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -419,9 +435,14 @@ import { ExamStatusCode, getExamDetail, pageExams } from '@/apis/mark/exam'
 import { courseCatalogApi, departmentCatalogApi } from '@/apis/quality/user-catalog'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -476,6 +497,7 @@ const profilesLoadFailed = ref(false)
 const searchLoadFailed = ref(false)
 const retryingOcrMaterialIds = reactive(new Set<string>())
 const saveProfileLoading = ref(false)
+const deletingProfile = ref(false)
 const saveProfileModalOpen = ref(false)
 const saveProfileMode = ref<'update' | 'saveAs'>('saveAs')
 const ocrDetailOpen = ref(false)
@@ -872,12 +894,13 @@ function highlightSnippet(snippet: string): string {
 }
 
 function buildArchiveSearchRowActions(record: ArchiveVolumeSearchResponse): UiTableRowActionItem[] {
+  // 行内仅 1 个 primary：查看卷为主路径
   const actions: UiTableRowActionItem[] = [
     { key: 'detail', label: '查看卷', tone: 'primary' },
-    { key: 'ocr-tab', label: '跳转检索页签', tone: 'primary' },
+    { key: 'ocr-tab', label: '跳转检索页签' },
   ]
   if (record.canMaintainMaterial) {
-    actions.push({ key: 'edit-tags', label: '编辑标签', tone: 'primary' })
+    actions.push({ key: 'edit-tags', label: '编辑标签' })
     if (
       record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
       || record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
@@ -885,7 +908,6 @@ function buildArchiveSearchRowActions(record: ArchiveVolumeSearchResponse): UiTa
       actions.push({
         key: 'retry-ocr',
         label: retryingOcrMaterialIds.has(record.materialId) ? '提交中' : '重跑文字识别',
-        tone: 'primary',
         disabled: retryingOcrMaterialIds.has(record.materialId),
       })
     }
@@ -894,9 +916,8 @@ function buildArchiveSearchRowActions(record: ArchiveVolumeSearchResponse): UiTa
     actions.push({
       key: 'preview',
       label: record.matchPageNo ? `预览第 ${record.matchPageNo} 页` : '预览原文',
-      tone: 'primary',
     })
-    actions.push({ key: 'ocr', label: '查看文字识别', tone: 'primary' })
+    actions.push({ key: 'ocr', label: '查看文字识别' })
   }
   return actions
 }
@@ -1005,7 +1026,7 @@ function openSaveProfileModal(mode: 'update' | 'saveAs') {
 }
 
 async function handleSaveProfile() {
-  if (profilesLoadFailed.value) return
+  if (profilesLoadFailed.value || saveProfileLoading.value) return
   const profileName = saveProfileForm.profileName.trim()
   if (!profileName) {
     showFormValidationMessage('请填写方案名称')
@@ -1046,14 +1067,16 @@ function applySelectedProfile() {
 }
 
 function handleDeleteProfile() {
-  if (!selectedProfileId.value || !selectedOwnedProfile.value) return
-  Modal.confirm({
+  if (!selectedProfileId.value || !selectedOwnedProfile.value || deletingProfile.value) return
+  void confirmAsync({
     title: '删除检索方案',
     content: '删除后不可恢复，确认删除当前方案？',
     okText: '删除',
-    okType: 'danger',
     cancelText: '取消',
+    type: 'error',
     onOk: async () => {
+      if (deletingProfile.value) return
+      deletingProfile.value = true
       try {
         await deleteArchiveVolumeSearchProfile(selectedProfileId.value!)
         message.success('检索方案已删除')
@@ -1061,6 +1084,8 @@ function handleDeleteProfile() {
         await loadSearchProfiles()
       } catch (error) {
         showUserError(error, '删除检索方案失败')
+      } finally {
+        deletingProfile.value = false
       }
     },
   })
@@ -1258,7 +1283,7 @@ onMounted(async () => {
 .archive-search-ocr-panel__file {
   flex: 1;
   min-width: 0;
-  color: var(--text-secondary, #8c8c8c);
+  color: var(--text-secondary);
   font-size: 13px;
 }
 </style>

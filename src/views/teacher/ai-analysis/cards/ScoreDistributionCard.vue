@@ -4,9 +4,10 @@
       <h3 class="stats-card__title">成绩分数分布</h3>
     </template>
     <template #toolbar>
-      <a-space>
-        <a-select
-          :value="props.classId"
+      <div class="dp-space" style="--dp-space-gap: 8px">
+        <UiSelect
+          size="sm"
+          :model-value="props.classId"
           placeholder="全场考生"
           allow-clear
           class="stats-card__select stats-card__select--class"
@@ -18,7 +19,7 @@
           <template #icon><ReloadOutlined /></template>
           刷新
         </UiButton>
-      </a-space>
+      </div>
     </template>
 
     <UiSkeletonState v-if="loading" variant="card" compact />
@@ -50,6 +51,7 @@ import { computed, ref, watch } from 'vue'
 import { getExamScoreDistribution } from '@/apis/mark/exam-score'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -108,7 +110,7 @@ const { chartOption: histogramChartOption } = useChartOption(() =>
 const histogramChartAriaLabel = computed(() => {
   const count = histogramBarItems.value.length
   if (count <= 0) {
-    return '五级分数分布，当前没有可展示的内容'
+    return '五级分数分布暂无数据'
   }
   return `五级分数分布，共 ${count} 个分数段`
 })

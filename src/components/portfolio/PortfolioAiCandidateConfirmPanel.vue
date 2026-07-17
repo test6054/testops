@@ -42,8 +42,9 @@
                   && record.confirmStatus !== PortfolioCandidateConfirmStatusCode.CONFIRMED
               "
             >
-              <a-input
-                v-model:value="correctedValues[record.id]"
+              <UiInput
+                size="sm"
+                v-model="correctedValues[record.id]"
                 :disabled="readonly || confirming"
                 placeholder="补全真实值（不可含 [姓名] 等占位符）"
               />
@@ -83,6 +84,7 @@
         </template>
       </UiDataTable>
       <UiEmpty
+        size="sm"
         v-if="!loading && taskStatus === AiTaskStatusCode.SUCCEEDED && candidateRows.length === 0"
         description="暂无候选字段"
       />
@@ -106,6 +108,7 @@ import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'

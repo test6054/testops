@@ -15,9 +15,9 @@ export enum TenantStatusEnum {
 
 /** 租户状态配置 - 用于前端UI展示 */
 export const TENANT_STATUS_CONFIG: Record<TenantStatusEnum, { label: string, color: string }> = {
-  [TenantStatusEnum.TRIAL]: { label: '试用', color: 'var(--ant-color-primary)' },
-  [TenantStatusEnum.ACTIVE]: { label: '活跃', color: 'var(--ant-color-success)' },
-  [TenantStatusEnum.SUSPENDED]: { label: '已暂停', color: 'var(--ant-color-error)' },
+  [TenantStatusEnum.TRIAL]: { label: '试用', color: 'var(--dp-color-primary)' },
+  [TenantStatusEnum.ACTIVE]: { label: '活跃', color: 'var(--dp-success)' },
+  [TenantStatusEnum.SUSPENDED]: { label: '已暂停', color: 'var(--dp-error)' },
 }
 
 /** 获取租户状态标签 */

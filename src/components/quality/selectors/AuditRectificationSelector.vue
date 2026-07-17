@@ -3,11 +3,10 @@
   常用过滤：auditIssueId / ownerUserId / status
 -->
 <script setup lang="ts">
-import type { SelectValue } from 'ant-design-vue/es/select'
 import type { AuditRectificationVO } from '@/apis/quality/audit-rectification'
 import type { AuditRectificationStatusCode } from '@/apis/quality/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { onMounted, ref, watch } from 'vue'
+import type { BadgeTone, UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
+import { computed, onMounted, ref, watch } from 'vue'
 import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
   AUDIT_RECTIFICATION_STATUS_COLOR,
@@ -79,6 +78,18 @@ async function loadOptions(keyword?: string) {
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const selectOptions = computed<UiSelectOption[]>(() =>
+  options.value.map((opt) => ({
+    value: opt.id,
+    label: `${opt.rectificationCode} · ${opt.rectificationTitle}`,
+  })),
+)
+
+const controlStyle = computed(() => ({
+  width: typeof props.width === 'number' ? `${props.width}px` : props.width,
+}))
+
 function handleSearch(val: string) {
   searchText.value = val
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -93,7 +104,7 @@ function auditRectificationStatusColor(value: AuditRectificationStatusCode): Bad
   return strictEnumTone(AUDIT_RECTIFICATION_STATUS_COLOR, value, '审核评估整改状态')
 }
 
-function handleChange(val: SelectValue) {
+function handleChange(val: UiOptionValue | UiOptionValue[] | undefined) {
   const next: string | null = typeof val === 'string' ? val : null
   internalValue.value = next ?? undefined
   const option = options.value.find((o) => o.id === next)
@@ -109,31 +120,33 @@ defineExpose({ reload: loadOptions })
 </script>
 
 <template>
-  <a-select
-    :value="internalValue"
+  <UiSelect
+    v-model="internalValue"
+    class="dp-quality-selector"
+    :style="controlStyle"
+    size="sm"
     :placeholder="placeholder"
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
-    :style="{ width: typeof width === 'number' ? `${width}px` : width }"
-    show-search
+    allow-search
     :filter-option="false"
     @search="handleSearch"
-    @change="handleChange"
+    :options="selectOptions"
+    @update:model-value="handleChange"
   >
-    <a-select-option
-      v-for="opt in options"
-      :key="opt.id"
-      :value="opt.id"
-      :label="`${opt.rectificationCode} · ${opt.rectificationTitle}`"
-    >
-      <span class="dp-selector-option-code">{{ opt.rectificationCode }}</span>
-      {{ opt.rectificationTitle }}
-      <UiTag :tone="auditRectificationStatusColor(opt.status)" class="dp-selector-option-tag-gap">
-        {{ auditRectificationStatusLabel(opt.status) }}
-      </UiTag>
-    </a-select-option>
-  </a-select>
+    <template #option="{ value: optionValue }">
+      <template v-for="opt in options" :key="opt.id">
+        <template v-if="opt.id === optionValue">
+          <span class="dp-selector-option-code">{{ opt.rectificationCode }}</span>
+          {{ opt.rectificationTitle }}
+          <UiTag :tone="auditRectificationStatusColor(opt.status)" class="dp-selector-option-tag-gap">
+            {{ auditRectificationStatusLabel(opt.status) }}
+          </UiTag>
+        </template>
+      </template>
+    </template>
+  </UiSelect>
 </template>
 
 <style scoped>
@@ -142,7 +155,7 @@ defineExpose({ reload: loadOptions })
 }
 
 .text-gray-500 {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 
 .mr-1 {

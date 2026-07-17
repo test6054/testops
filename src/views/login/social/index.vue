@@ -1,7 +1,7 @@
 <template>
-  <a-spin :spinning="loading" :tip="isLogin() ? '绑定中...' : '登录中...'">
+  <UiSpin :spinning="loading" :tip="isLogin() ? '绑定中...' : '登录中...'">
     <div></div>
-  </a-spin>
+  </UiSpin>
 </template>
 
 <script lang="ts" setup>
@@ -9,6 +9,7 @@ import message from 'ant-design-vue/es/message'
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { bindWechatAccount } from '@/apis/auth'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { useAuthStore, useUserStore } from '@/stores'
 import { isLogin } from '@/utils/auth'
 import { getSafeRedirect } from '@/utils/redirect-validator'

@@ -14,10 +14,14 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand variant="tiles" compact :metrics="rosterSignalMetrics" />
+      <SignalBand compact :metrics="rosterSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择需要维护的考试" class="roster-page__empty" />
+    <ExamSelectGateStrip
+      v-if="!selectedExamId"
+      body="请选择需要维护考生名册的考试"
+      class="roster-page__empty"
+    />
 
     <UiSkeletonState
       v-else-if="contextLoading"
@@ -70,7 +74,7 @@
               {{ item.className }}
             </UiTag>
           </div>
-          <UiEmpty v-else description="尚未配置参考班级" class="exam-scope-classes__empty" />
+          <UiEmpty v-else size="sm" description="尚未配置参考班级" class="exam-scope-classes__empty" />
         </div>
       </WorkbenchSurfaceCard>
 
@@ -105,7 +109,7 @@
       <WorkbenchSurfaceCard class="roster-page__table-card" flush>
         <template v-if="candidateRosterWriteAllowed" #toolbar>
           <div class="roster-page__filter-stack">
-            <a-space v-if="allowsManualCandidateEdit" class="roster-page__actions-row">
+            <div v-if="allowsManualCandidateEdit" class="roster-page__actions-row dp-space" style="--dp-space-gap: 8px">
               <UiButton
                 size="sm"
                 variant="outline"
@@ -132,7 +136,7 @@
               >
                 全量保存名册
               </UiButton>
-            </a-space>
+            </div>
             <UiFilterBar
               variant="plain"
               :model-value="rosterFilterForm"
@@ -226,18 +230,19 @@
       :confirm-loading="singleAddSubmitting"
       @ok="handleSingleAddSubmit"
     >
-      <a-form layout="vertical">
-        <a-form-item label="班级" required>
-          <a-select
-            v-model:value="singleAddClassId"
+      <UiForm layout="vertical">
+        <UiFormItem label="班级" required>
+          <UiSelect
+            size="sm"
+            v-model="singleAddClassId"
             placeholder="请选择班级"
             :options="classSelectOptions"
-            show-search
+            allow-search
             option-filter-prop="label"
             style="width: 100%"
           />
-        </a-form-item>
-        <a-form-item label="学生" required>
+        </UiFormItem>
+        <UiFormItem label="学生" required>
           <StudentSelector
             v-model:value="singleAddStudentUserId"
             :class-id="singleAddClassId"
@@ -245,8 +250,8 @@
             width="100%"
             @change="handleSingleStudentChange"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -258,23 +263,24 @@
       :confirm-loading="addClassSubmitting"
       @ok="handleAddClassSubmit"
     >
-      <a-form layout="vertical">
-        <a-form-item label="参考院系">
+      <UiForm layout="vertical">
+        <UiFormItem label="参考院系">
           <span class="exam-scope-meta__value">{{ referenceDepartmentName || '—' }}</span>
-        </a-form-item>
-        <a-form-item label="班级" required>
-          <a-select
-            v-model:value="pendingAddClassIds"
+        </UiFormItem>
+        <UiFormItem label="班级" required>
+          <UiSelect
+            size="sm"
+            v-model="pendingAddClassIds"
             mode="multiple"
             placeholder="选择要新增的班级"
             :options="addableClassOptions"
             :loading="classOptionsLoading"
-            show-search
+            allow-search
             option-filter-prop="label"
             style="width: 100%"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <ExamCandidatePaperImagesDrawer
@@ -328,8 +334,12 @@ import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -927,6 +937,9 @@ async function confirmSaveFullScope(): Promise<void> {
     showFormValidationMessage('请先选择班级范围')
     return
   }
+  if (fullScopeSaving.value) {
+    return
+  }
   const confirmed = await confirmAsync({
     title: '全量保存考生名册？',
     content: '将当前班级范围与库内全部考生一次性写入后端，覆盖增量编辑结果。扫描已开始后可能失败。',
@@ -956,6 +969,9 @@ async function confirmSaveFullScope(): Promise<void> {
 
 async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload): Promise<void> {
   if (!selectedExamId.value) {
+    return
+  }
+  if (contextLoading.value) {
     return
   }
   const mergeRequest = buildExamCandidateMergeRequests(
@@ -991,6 +1007,9 @@ function handleSingleStudentChange(_userId: string | null, option?: UserDto): vo
 
 async function handleSingleAddSubmit(): Promise<void> {
   if (!selectedExamId.value) {
+    return
+  }
+  if (singleAddSubmitting.value) {
     return
   }
   if (!singleAddClassId.value) {
@@ -1076,6 +1095,9 @@ function handleWorkbenchAction(
 
 async function removeCandidate(studentUserId: string): Promise<void> {
   if (!selectedExamId.value) {
+    return
+  }
+  if (removingStudentUserId.value) {
     return
   }
   removingStudentUserId.value = studentUserId
@@ -1182,7 +1204,7 @@ watch(
   }
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__table-card {
@@ -1211,17 +1233,17 @@ watch(
     align-items: center;
     gap: 6px;
     padding: 2px 10px;
-    border: 1px solid var(--ant-color-border);
+    border: 1px solid var(--dp-border);
     border-radius: 4px;
-    background: var(--ant-color-bg-container);
+    background: var(--dp-bg-container);
     font-size: 12px;
     line-height: 1.5;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
     cursor: pointer;
 
     &--active {
-      border-color: var(--ant-color-primary);
-      color: var(--ant-color-primary);
+      border-color: var(--dp-color-primary);
+      color: var(--dp-color-primary);
       font-weight: 600;
     }
   }
@@ -1233,7 +1255,7 @@ watch(
 
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   padding: 8px 10px;
 }
 
@@ -1262,9 +1284,9 @@ watch(
 .exam-scope-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   padding-bottom: 16px;
-  border-bottom: 1px solid var(--ant-color-border-secondary);
+  border-bottom: 1px solid var(--dp-border-subtle);
 
   &__item {
     display: flex;
@@ -1276,14 +1298,14 @@ watch(
   &__label {
     font-size: 12px;
     line-height: 1.5;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
   }
 
   &__value {
     font-size: 14px;
     line-height: 1.5;
     font-weight: 500;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
   }
 }
 
@@ -1300,12 +1322,12 @@ watch(
   &__title {
     font-size: 14px;
     font-weight: 500;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
   }
 
   &__count {
     font-size: 12px;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
   }
 
   &__tags {
@@ -1313,24 +1335,24 @@ watch(
     flex-wrap: wrap;
     gap: 8px;
     padding: 12px;
-    background: var(--ant-color-fill-quaternary);
+    background: var(--dp-fill-quaternary);
     border-radius: 6px;
   }
 
   &__empty {
-    padding: 16px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 }
 
 .roster-table {
   :deep(.ant-table-thead > tr > th) {
-    background: var(--ant-color-fill-quaternary);
+    background: var(--dp-fill-quaternary);
     font-weight: 600;
   }
 }
 
 .roster-cell--muted {
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .roster-student {
@@ -1340,12 +1362,12 @@ watch(
 
   &__name {
     font-weight: 500;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
   }
 
   &__no {
     font-size: 12px;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
   }
 }
 </style>

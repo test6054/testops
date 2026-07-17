@@ -30,13 +30,14 @@
             {{ resolveRowContext(todo) }}
           </div>
         </div>
-        <button
-          type="button"
-          class="todo-feed__action-link"
+        <UiButton
+          variant="outline"
+          size="sm"
+          class="todo-feed__action"
           @click="emit('navigate', todo.workspacePath, todo.examId)"
         >
           {{ resolveTodoActionLabel(todo) }}
-        </button>
+        </UiButton>
       </li>
     </ul>
   </div>
@@ -120,9 +121,9 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--dp-space-6) var(--dp-space-4);
+  padding: var(--dp-space-3) var(--dp-space-4);
   background: var(--dp-surface);
-  min-height: 200px;
+  min-height: 120px;
 }
 
 .todo-feed {
@@ -135,7 +136,7 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
   display: grid;
   grid-template-columns: 8px minmax(0, 1fr) auto;
   column-gap: var(--dp-space-2);
-  align-items: start;
+  align-items: center;
   padding: var(--dp-space-3) var(--dp-space-4);
   border-bottom: 1px solid var(--dp-border);
   transition: background var(--dp-duration-fast) ease;
@@ -146,16 +147,17 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
 }
 
 .todo-feed__row:hover {
-  background: var(--dp-gray-50);
+  background: var(--dp-surface);
 }
 
 .todo-feed__dot {
   width: 8px;
   height: 8px;
-  margin-top: 7px;
+  margin-top: 0;
   border-radius: var(--dp-radius-full);
   grid-column: 1;
   grid-row: 1;
+  align-self: center;
 }
 
 .todo-feed__dot--urgent {
@@ -171,7 +173,7 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
 }
 
 .todo-feed__dot--info {
-  background: var(--ant-color-primary);
+  background: var(--dp-color-primary);
 }
 
 .todo-feed__body {
@@ -214,30 +216,10 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
   white-space: nowrap;
 }
 
-.todo-feed__action-link {
-  grid-column: 3;
-  grid-row: 1;
-  align-self: start;
-  margin-top: 1px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.5;
-  color: var(--dp-blue-600);
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color var(--dp-duration-fast) ease;
-}
-
-.todo-feed__action-link:hover {
-  color: var(--dp-blue-600);
-}
-
-.todo-feed__action-link:focus-visible {
-  outline: 2px solid var(--dp-focus-ring);
-  outline-offset: 2px;
-  border-radius: var(--dp-radius-control);
+.todo-feed__action {
+  flex-shrink: 0;
+  align-self: center;
+  min-width: 72px;
+  justify-content: center;
 }
 </style>

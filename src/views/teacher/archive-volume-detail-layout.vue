@@ -51,13 +51,14 @@
 
       <main class="archive-volume-detail-layout__main">
         <div class="archive-volume-detail-layout__content">
-          <UiEmpty
+          <WorkbenchContextGateStrip
             v-if="!volumeId"
-            description="缺少归档任务上下文，请从归档列表进入"
+            tag="缺少上下文"
+            body="缺少归档任务上下文，请从归档列表进入"
+            cta-label="返回归档列表"
+            list-route-name="TeacherArchiveVolumeList"
             class="archive-volume-detail-layout__empty"
-          >
-            <UiButton variant="primary" @click="goArchiveList">返回归档列表</UiButton>
-          </UiEmpty>
+          />
 
           <router-view v-else v-slot="{ Component: ViewComponent, route: childRoute }">
             <keep-alive v-if="ViewComponent && shouldCacheDetailRoute(childRoute)">
@@ -83,7 +84,6 @@ import {
   ArchiveTransferStatusDescription,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ArchiveVolumeSubSidebar from '@/components/workbench/ArchiveVolumeSubSidebar.vue'
 import { provideArchiveVolumeWorkbenchContext } from '@/composables/useArchiveVolumeWorkbenchContext'
@@ -242,7 +242,7 @@ watch(volumeId, () => {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: var(--ant-color-bg-layout);
+  background: var(--dp-bg-layout);
 
   &__header {
     --sidebar-width: 260px;
@@ -251,8 +251,8 @@ watch(volumeId, () => {
     align-items: center;
     height: 56px;
     padding: 0 24px 0 0;
-    background: var(--ant-color-bg-container);
-    border-bottom: 1px solid var(--ant-color-border-secondary);
+    background: var(--dp-bg-container);
+    border-bottom: 1px solid var(--dp-border-subtle);
     flex-shrink: 0;
 
     &--collapsed {
@@ -285,7 +285,7 @@ watch(volumeId, () => {
   &__logo-title {
     font-size: 16px;
     font-weight: 600;
-    color: var(--ant-color-text);
+    color: var(--dp-text);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -342,13 +342,13 @@ watch(volumeId, () => {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    background: var(--ant-color-bg-layout);
+    background: var(--dp-bg-layout);
   }
 
   &__content {
     flex: 1;
     overflow: auto;
-    padding: var(--dp-space-5);
+    padding: var(--dp-space-3);
     background: var(--dp-gray-50);
 
     :deep(> *) {
@@ -358,7 +358,7 @@ watch(volumeId, () => {
   }
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   @media (max-width: bp.$layout-mobile-max) {

@@ -12,8 +12,13 @@ import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -515,7 +520,7 @@ onMounted(() => {
     <UiCard>
       <div class="policy-admin__toolbar">
         <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
-        <UiButton :disabled="writing" @click="openCreate"> 新建政策 </UiButton>
+        <UiButton size="sm" :disabled="writing" @click="openCreate"> 新建政策 </UiButton>
       </div>
       <UiDataTable
         v-model:current="query.pageNum"
@@ -565,30 +570,31 @@ onMounted(() => {
         </template>
       </UiDataTable>
     </UiCard>
-    <a-modal
+    <UiDialog
       v-model:open="editorOpen"
       title="政策文件草稿"
       :confirm-loading="operationKey.startsWith('document:save:')"
       :closable="!writing"
       :mask-closable="!writing"
-      :keyboard="!writing"
-      :cancel-button-props="{ disabled: writing }"
       @ok="saveDraft"
     >
-      <a-input
-        v-model:value="form.documentCode"
+      <UiInput
+        size="sm"
+        v-model="form.documentCode"
         placeholder="文号"
         class="policy-admin__field"
         :disabled="writing"
       />
-      <a-input
-        v-model:value="form.documentTitle"
+      <UiInput
+        size="sm"
+        v-model="form.documentTitle"
         placeholder="标题"
         class="policy-admin__field"
         :disabled="writing"
       />
-      <a-select
-        v-model:value="form.policyLevel"
+      <UiSelect
+        size="sm"
+        v-model="form.policyLevel"
         class="policy-admin__field"
         :options="
           ALL_PORTFOLIO_POLICY_LEVEL_CODES.map((c) => ({
@@ -598,44 +604,51 @@ onMounted(() => {
         "
         :disabled="writing"
       />
-      <a-input
-        v-model:value="form.topicCategory"
+      <UiInput
+        size="sm"
+        v-model="form.topicCategory"
         placeholder="主题分类"
         class="policy-admin__field"
         :disabled="writing"
       />
-      <a-input
-        v-model:value="form.publishOrg"
+      <UiInput
+        size="sm"
+        v-model="form.publishOrg"
         placeholder="发布机构（可选）"
         class="policy-admin__field"
         :disabled="writing"
       />
-      <a-input
-        v-model:value="form.publishDate"
+      <UiInput
+        size="sm"
+        v-model="form.publishDate"
         placeholder="发布日期，年-月-日例如 2026-07-16"
         class="policy-admin__field"
         :disabled="writing"
       />
-      <a-textarea
-        v-model:value="form.fullTextContent"
+      <UiTextarea
+        size="sm"
+        v-model="form.fullTextContent"
         placeholder="全文内容"
         :rows="6"
         :disabled="writing"
       />
-    </a-modal>
-    <a-modal v-model:open="previewOpen" title="政策预览" :footer="null">
+    </UiDialog>
+    <UiDialog
+      v-model:open="previewOpen" title="政策预览"
+      hide-footer
+    >
       <pre class="policy-admin__preview">{{ previewText }}</pre>
-    </a-modal>
-    <a-modal
+    </UiDialog>
+    <UiDialog
       v-model:open="detailOpen"
       title="政策详情"
       width="760px"
-      :footer="null"
+      hide-footer
       :closable="!writing"
       :mask-closable="!writing"
       @cancel="resetDetailContext"
     >
-      <a-spin :spinning="detailLoading">
+      <UiSpin :spinning="detailLoading">
         <template v-if="detail">
           <dl class="policy-admin__detail-meta">
             <div>
@@ -657,11 +670,18 @@ onMounted(() => {
           </dl>
           <h4 class="policy-admin__section-title">指标映射</h4>
           <div v-for="(row, index) in mappingRows" :key="index" class="policy-admin__mapping-row">
-            <a-input v-model:value="row.clauseCode" placeholder="条款编码" :disabled="writing" />
-            <a-input v-model:value="row.clauseTitle" placeholder="条款标题" :disabled="writing" />
-            <a-input v-model:value="row.indicatorCode" placeholder="指标编码" :disabled="writing" />
-            <a-input
-              v-model:value="row.materialRequirement"
+            <UiInput
+              size="sm" v-model="row.clauseCode" placeholder="条款编码" :disabled="writing"
+            />
+            <UiInput
+              size="sm" v-model="row.clauseTitle" placeholder="条款标题" :disabled="writing"
+            />
+            <UiInput
+              size="sm" v-model="row.indicatorCode" placeholder="指标编码" :disabled="writing"
+            />
+            <UiInput
+              size="sm"
+              v-model="row.materialRequirement"
               placeholder="材料要求"
               :disabled="writing"
             />
@@ -676,15 +696,16 @@ onMounted(() => {
             </UiButton>
           </div>
           <div class="policy-admin__mapping-actions">
-            <UiButton :disabled="writing" @click="addMappingRow">新增映射</UiButton>
-            <UiButton :loading="mappingSaving" :disabled="writing" @click="saveMappings">
+            <UiButton size="sm" :disabled="writing" @click="addMappingRow">新增映射</UiButton>
+            <UiButton size="sm" :loading="mappingSaving" :disabled="writing" @click="saveMappings">
               保存映射
             </UiButton>
           </div>
           <h4 v-if="detail.versionHistory.length" class="policy-admin__section-title">版本历史</h4>
           <div v-if="detail.versionHistory.length > 1" class="policy-admin__compare-bar">
-            <a-select
-              v-model:value="compareLeftId"
+            <UiSelect
+              size="sm"
+              v-model="compareLeftId"
               :options="
                 detail.versionHistory.map((item) => ({
                   value: item.id,
@@ -694,8 +715,9 @@ onMounted(() => {
               :disabled="compareLoading"
             />
             <span>对比</span>
-            <a-select
-              v-model:value="compareRightId"
+            <UiSelect
+              size="sm"
+              v-model="compareRightId"
               :options="
                 detail.versionHistory.map((item) => ({
                   value: item.id,
@@ -715,9 +737,12 @@ onMounted(() => {
             </li>
           </ul>
         </template>
-      </a-spin>
-    </a-modal>
-    <a-modal v-model:open="compareOpen" title="政策版本差异" width="900px" :footer="null">
+      </UiSpin>
+    </UiDialog>
+    <UiDialog
+      v-model:open="compareOpen" title="政策版本差异" :width="900"
+      hide-footer
+    >
       <template v-if="compareResult">
         <p class="policy-admin__compare-summary">
           v{{ compareResult.leftDocument.versionNo }} → v{{
@@ -736,31 +761,32 @@ onMounted(() => {
           </li>
         </ol>
       </template>
-    </a-modal>
-    <a-modal
+    </UiDialog>
+    <UiDialog
       v-model:open="supersedeOpen"
       title="创建政策修订版"
       :confirm-loading="operationKey.startsWith('document:supersede:')"
       :closable="!writing"
       :mask-closable="!writing"
-      :keyboard="!writing"
-      :cancel-button-props="{ disabled: writing }"
       @ok="submitSupersede"
     >
-      <a-input
-        v-model:value="supersedeForm.documentCode"
+      <UiInput
+        size="sm"
+        v-model="supersedeForm.documentCode"
         placeholder="文号"
         class="policy-admin__field"
         :disabled="writing"
       />
-      <a-input
-        v-model:value="supersedeForm.documentTitle"
+      <UiInput
+        size="sm"
+        v-model="supersedeForm.documentTitle"
         placeholder="标题"
         class="policy-admin__field"
         :disabled="writing"
       />
-      <a-select
-        v-model:value="supersedeForm.policyLevel"
+      <UiSelect
+        size="sm"
+        v-model="supersedeForm.policyLevel"
         class="policy-admin__field"
         :options="
           ALL_PORTFOLIO_POLICY_LEVEL_CODES.map((c) => ({
@@ -770,31 +796,35 @@ onMounted(() => {
         "
         :disabled="writing"
       />
-      <a-input
-        v-model:value="supersedeForm.topicCategory"
+      <UiInput
+        size="sm"
+        v-model="supersedeForm.topicCategory"
         placeholder="主题分类"
         class="policy-admin__field"
         :disabled="writing"
       />
-      <a-input
-        v-model:value="supersedeForm.publishOrg"
+      <UiInput
+        size="sm"
+        v-model="supersedeForm.publishOrg"
         placeholder="发布机构（可选）"
         class="policy-admin__field"
         :disabled="writing"
       />
-      <a-input
-        v-model:value="supersedeForm.publishDate"
+      <UiInput
+        size="sm"
+        v-model="supersedeForm.publishDate"
         placeholder="发布日期，年-月-日例如 2026-07-16"
         class="policy-admin__field"
         :disabled="writing"
       />
-      <a-textarea
-        v-model:value="supersedeForm.fullTextContent"
+      <UiTextarea
+        size="sm"
+        v-model="supersedeForm.fullTextContent"
         placeholder="修订全文"
         :rows="6"
         :disabled="writing"
       />
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -826,7 +856,7 @@ onMounted(() => {
 .policy-admin__detail-meta dt {
   margin: 0;
   font-size: 12px;
-  color: var(--dp-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 .policy-admin__detail-meta dd {
   margin: 4px 0 0;
@@ -861,7 +891,7 @@ onMounted(() => {
 }
 .policy-admin__compare-summary {
   margin: 0 0 10px;
-  color: var(--dp-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 .policy-admin__diff {
   max-height: 560px;
@@ -875,17 +905,17 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 44px 44px minmax(0, 1fr);
   min-height: 28px;
-  border-bottom: 1px solid var(--dp-border, #f0f0f0);
+  border-bottom: 1px solid var(--dp-border);
 }
 .policy-admin__diff li > * {
   padding: 5px 8px;
   overflow-wrap: anywhere;
 }
 .policy-admin__diff--insert {
-  background: #f0f9f2;
+  background: var(--dp-green-50, var(--dp-success-bg));
 }
 .policy-admin__diff--delete {
-  background: #fff2f0;
+  background: var(--dp-red-50, var(--dp-error-bg));
 }
 @media (max-width: 720px) {
   .policy-admin__compare-bar {

@@ -59,13 +59,13 @@ function handleChange(value: SwitchProps['checked']) {
 
 <style lang="scss" scoped>
 .ui-switch.ant-switch {
-  background: #cbd5e1;
+  background: var(--dp-border-strong);
   border: 1px solid transparent;
   box-shadow: none;
 }
 
 .ui-switch.ant-switch:hover:not(.ant-switch-disabled) {
-  background: #94a3b8;
+  background: var(--dp-text-muted);
 }
 
 .ui-switch.ant-switch.ant-switch-checked {
@@ -83,7 +83,7 @@ function handleChange(value: SwitchProps['checked']) {
 
 .ui-switch.ant-switch :deep(.ant-switch-handle::before) {
   border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.16);
+  box-shadow: var(--dp-shadow-sm);
 }
 
 .ui-switch--sm.ant-switch {

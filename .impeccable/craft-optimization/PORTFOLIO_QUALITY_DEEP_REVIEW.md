@@ -49,7 +49,7 @@ Reading this as: **regulated university teaching-portfolio + OBE quality product
 - **F-FLOW-REVIEW**：department-* 队列 ≠ 代办  
 - **F-FLOW-AI**：四助手任务轨；草稿须本人确认  
 - **F-FLOW-ADMIN**：`*-admin` 配置台账  
-- **F-FLOW-QUALITY**：`QualityScopeChrome` 门禁 + dashboard/achievement/improvement/accreditation  
+- **F-FLOW-QUALITY（纠偏）**：菜单分页入口（quality.ts）；Scope 仅页内；见 QUALITY_ENTRY_IA.md。旧「学期任务链/治理旅程」作废  
 
 ## 硬边界
 

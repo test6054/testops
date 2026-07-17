@@ -2,6 +2,9 @@
 import { ref, watch } from 'vue'
 import { rejectArchiveVolumeCollection } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const props = defineProps<{
@@ -25,6 +28,7 @@ watch(
 )
 
 async function submit() {
+  if (submitting.value) return
   const trimmed = reason.value.trim()
   if (!trimmed) {
     showFormValidationMessage('请填写驳回原因')
@@ -44,7 +48,7 @@ async function submit() {
 </script>
 
 <template>
-  <a-modal
+  <UiDialog
     :open="open"
     title="驳回收材"
     ok-text="确认驳回"
@@ -57,15 +61,16 @@ async function submit() {
     <p class="archive-collection-reject__hint">
       驳回后卷将回到收集中，协作组成员会收到站内信通知并需补扫补交后重新提交。
     </p>
-    <a-form-item label="驳回原因" required>
-      <a-textarea
-        v-model:value="reason"
+    <UiFormItem label="驳回原因" required>
+      <UiTextarea
+        size="sm"
+        v-model="reason"
         :rows="4"
         :maxlength="500"
-        show-count
+        :show-count="true"
         placeholder="例如：缺页、扫描模糊、材料类型不符"
       />
-    </a-form-item>
+    </UiFormItem>
     <template #footer>
       <UiButton
         size="sm"
@@ -79,7 +84,7 @@ async function submit() {
         确认驳回
       </UiButton>
     </template>
-  </a-modal>
+  </UiDialog>
 </template>
 
 <style scoped>
@@ -87,6 +92,6 @@ async function submit() {
   margin: 0 0 12px;
   font-size: 14px;
   line-height: 1.5;
-  color: var(--nybc-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 </style>

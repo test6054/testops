@@ -5,6 +5,8 @@ import type {
   ArchivePlatformTemplatePreviewResponse,
 } from '@/apis/mark/archive-platform-template'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import type {
+  ArchiveMaterialDeliveryModeCode} from '@/types/enums/archive-material-delivery-mode-enum';
 import type { SignalMetric } from '@/types/workbench'
 import { computed, ref, watch } from 'vue'
 import {
@@ -18,9 +20,13 @@ import {
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import {
+  ArchiveMaterialDeliveryModeDescription,
+} from '@/types/enums/archive-material-delivery-mode-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveTemplateSetPreviewDrawer' })
@@ -81,6 +87,15 @@ function resolveGroupName(item: ArchivePlatformMaterialItemResponse): string {
 
 function materialTypeLabel(code: ArchiveMaterialTypeCode) {
   return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
+}
+
+function deliveryModeLabel(code?: ArchiveMaterialDeliveryModeCode | string) {
+  if (!code) return '纸质扫描'
+  return strictEnumLabel(
+    ArchiveMaterialDeliveryModeDescription,
+    code as ArchiveMaterialDeliveryModeCode,
+    'deliveryMode',
+  )
 }
 
 function examFormLabel(code?: ArchivePlatformTemplatePreviewResponse['templateSet']['examForm']) {
@@ -181,6 +196,7 @@ const materialColumns: ColumnsType<MaterialPreviewRow> = [
   { title: '材料类型', key: 'materialType', width: 120 },
   { title: '目录编码', dataIndex: 'catalogCode', key: 'catalogCode', width: 120 },
   { title: '目录名称', dataIndex: 'catalogName', key: 'catalogName', ellipsis: true },
+  { title: '交付', key: 'deliveryMode', width: 100 },
   { title: '必交', key: 'requiredFlag', width: 88, align: 'center' },
 ]
 
@@ -193,6 +209,17 @@ const selfCheckColumns: ColumnsType<SelfCheckPreviewRow> = [
 function materialGroupTabLabel(group: MaterialGroupTab) {
   return `${group.groupName}（${group.items.length}）`
 }
+const previewTabItems = computed(() => {
+  const items = groupedMaterialTabs.value.map((group) => ({
+    key: group.tabKey,
+    label: materialGroupTabLabel(group),
+  }))
+  items.push({
+    key: 'self-check',
+    label: `自查项（${selfCheckPreviewRows.value.length}）`,
+  })
+  return items
+})
 
 function resolveDefaultTab() {
   if (groupedMaterialTabs.value.length > 0) {
@@ -234,7 +261,6 @@ watch(
     <UiSkeletonState v-if="loading" variant="card" compact />
     <template v-else-if="preview">
       <SignalBand
-        variant="tiles"
         compact
         class="archive-template-preview__signal"
         :metrics="previewSignalMetrics"
@@ -282,62 +308,70 @@ watch(
         v-if="groupedMaterialTabs.length > 0 || selfCheckPreviewRows.length > 0"
         class="archive-template-preview__tabs-wrap"
       >
-        <a-tabs v-model:active-key="previewActiveTab" class="archive-template-preview__tabs">
-          <a-tab-pane
-            v-for="group in groupedMaterialTabs"
-            :key="group.tabKey"
-            :tab="materialGroupTabLabel(group)"
-          >
-            <WorkbenchSurfaceCard flush>
-              <UiDataTable
-                pagination-mode="none"
-                :columns="materialColumns"
-                :data-source="group.items"
-                :show-pagination="false"
-                flat
-                row-key="rowKey"
-                size="small"
-                empty-description="该分组暂无材料项"
-                :sticky-header="false"
-              >
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'materialType'">
-                    {{ materialTypeLabel(record.materialType) }}
-                  </template>
-                  <template v-else-if="column.key === 'catalogCode'">
-                    {{ record.catalogCode?.trim() || '—' }}
-                  </template>
-                  <template v-else-if="column.key === 'requiredFlag'">
-                    <UiTag v-if="record.requiredFlag" tone="orange" size="sm">建议必交</UiTag>
-                    <span v-else class="archive-template-preview__muted">—</span>
-                  </template>
+        <UiSectionTabs
+          v-model="previewActiveTab"
+          :items="previewTabItems"
+          compact
+          divided
+          class="archive-template-preview__tabs"
+        />
+        <div
+          v-for="group in groupedMaterialTabs"
+          v-show="previewActiveTab === group.tabKey"
+          :key="group.tabKey"
+        >
+          <WorkbenchSurfaceCard flush>
+            <UiDataTable
+              pagination-mode="none"
+              :columns="materialColumns"
+              :data-source="group.items"
+              :show-pagination="false"
+              flat
+              row-key="rowKey"
+              size="small"
+              empty-description="该分组暂无材料项"
+              :sticky-header="false"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'materialType'">
+                  {{ materialTypeLabel(record.materialType) }}
                 </template>
-              </UiDataTable>
-            </WorkbenchSurfaceCard>
-          </a-tab-pane>
-          <a-tab-pane key="self-check" :tab="`自查项（${selfCheckPreviewRows.length}）`">
-            <WorkbenchSurfaceCard flush>
-              <UiDataTable
-                pagination-mode="none"
-                :columns="selfCheckColumns"
-                :data-source="selfCheckPreviewRows"
-                :show-pagination="false"
-                flat
-                row-key="rowKey"
-                size="small"
-                empty-description="暂无自查项"
-                :sticky-header="false"
-              >
-                <template #bodyCell="{ column, record }">
-                  <template v-if="column.key === 'requiredFlag'">
-                    <UiTag v-if="record.requiredFlag" tone="orange" size="sm">必查</UiTag>
-                    <span v-else class="archive-template-preview__muted">—</span>
-                  </template>
+                <template v-else-if="column.key === 'catalogCode'">
+                  {{ record.catalogCode?.trim() || '—' }}
                 </template>
-              </UiDataTable>
-            </WorkbenchSurfaceCard>
-          </a-tab-pane>
-        </a-tabs>
+                <template v-else-if="column.key === 'deliveryMode'">
+                  {{ deliveryModeLabel(record.deliveryMode) }}
+                </template>
+                <template v-else-if="column.key === 'requiredFlag'">
+                  <UiTag v-if="record.requiredFlag" tone="orange" size="sm">建议必交</UiTag>
+                  <span v-else class="archive-template-preview__muted">—</span>
+                </template>
+              </template>
+            </UiDataTable>
+          </WorkbenchSurfaceCard>
+        </div>
+        <div v-show="previewActiveTab === 'self-check'">
+          <WorkbenchSurfaceCard flush>
+            <UiDataTable
+              pagination-mode="none"
+              :columns="selfCheckColumns"
+              :data-source="selfCheckPreviewRows"
+              :show-pagination="false"
+              flat
+              row-key="rowKey"
+              size="small"
+              empty-description="暂无自查项"
+              :sticky-header="false"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'requiredFlag'">
+                  <UiTag v-if="record.requiredFlag" tone="orange" size="sm">必查</UiTag>
+                  <span v-else class="archive-template-preview__muted">—</span>
+                </template>
+              </template>
+            </UiDataTable>
+          </WorkbenchSurfaceCard>
+        </div>
       </div>
       <p v-else class="archive-template-preview__empty">该模板套暂无材料目录与自查项</p>
     </template>

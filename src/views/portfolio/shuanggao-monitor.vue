@@ -335,7 +335,7 @@ watch(
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
     </UiCard>
     <UiCard v-if="loading" title="加载中" />
-    <UiEmpty v-else-if="!monitor" description="暂无监测数据" />
+    <UiEmpty size="sm" v-else-if="!monitor" description="暂无监测数据" />
     <template v-else>
       <UiCard title="建设指数概览">
         <p class="shuanggao-monitor__meta">

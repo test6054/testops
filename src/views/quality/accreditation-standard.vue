@@ -24,13 +24,22 @@ import {
 } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -357,7 +366,13 @@ onActivated(() => {
         @reset="handleResetSearch"
       />
 
-      <UiEmpty v-if="!loading && total === 0" description="尚未配置认证标准条目" />
+      <WorkbenchContextGateStrip
+        v-if="!loading && total === 0"
+        tag="未配置"
+        body="尚未配置认证标准条目"
+        cta-label="新建认证标准"
+        @cta="openCreate"
+      />
       <UiDataTable
         v-else
         v-model:current="query.pageNum"
@@ -392,62 +407,75 @@ onActivated(() => {
       </UiDataTable>
     </UiCard>
 
-    <a-modal
+    <UiDialog
       v-model:open="editorVisible"
       :title="editorMode === 'create' ? '新建认证标准' : '编辑认证标准'"
       :confirm-loading="submitting"
-      width="720px"
+      :width="720"
       @ok="submitEditor"
     >
-      <a-form layout="vertical" :model="editor">
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="编码" required>
-              <a-input v-model:value="editor.standardCode" :disabled="editorMode === 'edit'" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="16">
-            <a-form-item label="名称" required>
-              <a-input v-model:value="editor.standardName" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="认证类型" required>
-              <a-select
-                v-model:value="editor.accreditationType"
+      <UiForm layout="vertical" :model="editor">
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="编码" required>
+              <UiInput
+                size="sm" v-model="editor.standardCode" :disabled="editorMode === 'edit'"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="16">
+            <UiFormItem label="名称" required>
+              <UiInput
+                size="sm" v-model="editor.standardName"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="认证类型" required>
+              <UiSelect
+                size="sm"
+                v-model="editor.accreditationType"
                 :options="accreditationOptions"
                 :disabled="editorMode === 'edit'"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="标准年份">
-              <a-input v-model:value="editor.standardYear" placeholder="如 2024" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="6">
-            <a-form-item label="级别 / 文号">
-              <a-input v-model:value="editor.documentNumber" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="颁发机构">
-          <a-input v-model:value="editor.issuingAuthority" />
-        </a-form-item>
-        <a-form-item label="来源链接">
-          <a-input v-model:value="editor.sourceUrl" />
-        </a-form-item>
-        <a-form-item label="摘要">
-          <a-textarea v-model:value="editor.summary" :rows="4" />
-        </a-form-item>
-        <a-space>
-          <a-checkbox v-model:checked="editor.enabled">启用</a-checkbox>
-          <a-checkbox v-model:checked="editor.isPilotOnly">仅试点适用</a-checkbox>
-        </a-space>
-      </a-form>
-    </a-modal>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="标准年份">
+              <UiInput
+                size="sm" v-model="editor.standardYear" placeholder="如 2024"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="6">
+            <UiFormItem label="级别 / 文号">
+              <UiInput
+                size="sm" v-model="editor.documentNumber"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="颁发机构">
+          <UiInput
+            size="sm" v-model="editor.issuingAuthority"
+          />
+        </UiFormItem>
+        <UiFormItem label="来源链接">
+          <UiInput
+            size="sm" v-model="editor.sourceUrl"
+          />
+        </UiFormItem>
+        <UiFormItem label="摘要">
+          <UiTextarea size="sm" v-model="editor.summary" :rows="4" />
+        </UiFormItem>
+        <div class="dp-space" style="--dp-space-gap: 8px">
+          <UiCheckbox v-model="editor.enabled">启用</UiCheckbox>
+          <UiCheckbox v-model="editor.isPilotOnly">仅试点适用</UiCheckbox>
+        </div>
+      </UiForm>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -460,8 +488,8 @@ onActivated(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {
@@ -475,7 +503,7 @@ onActivated(() => {
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
   }

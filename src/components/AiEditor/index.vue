@@ -137,7 +137,7 @@ defineExpose({
   box-sizing: border-box;
 
   :deep(.aie-container) {
-    border: 1px solid var(--ant-color-border-secondary) !important;
+    border: 1px solid var(--dp-border-subtle) !important;
     border-radius: var(--dp-radius-xs);
     height: 100%;
     display: flex;
@@ -145,14 +145,14 @@ defineExpose({
   }
 
   :deep(.aie-container-header) {
-    border-bottom: 1px solid var(--ant-color-border-secondary);
-    background: var(--ant-color-fill-quaternary);
+    border-bottom: 1px solid var(--dp-border-subtle);
+    background: var(--dp-fill-quaternary);
   }
 
   :deep(.aie-container-main) {
     flex: 1;
     overflow: auto;
-    padding: 16px;
+    padding: var(--dp-space-3, 12px);
   }
 }
 </style>

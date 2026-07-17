@@ -94,7 +94,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__header {
-  padding: 12px 16px 0;
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) 0;
 }
 
 .task-result-panel__title {
@@ -105,7 +105,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__empty {
-  padding: 32px 16px;
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
   text-align: center;
 }
 
@@ -117,7 +117,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 .task-result-panel__list {
   list-style: none;
   margin: 0;
-  padding: 8px 0;
+  padding: var(--dp-space-2, 8px) 0;
 }
 
 .task-result-panel__item {
@@ -128,7 +128,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
   display: block;
   width: 100%;
   margin: 0;
-  padding: 10px 16px;
+  padding: 10px var(--dp-space-4, 16px);
   border: none;
   background: transparent;
   font: inherit;
@@ -153,7 +153,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 .task-result-panel__item-main {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .task-result-panel__item-title {
@@ -168,7 +168,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 
 .task-result-panel__item-badge {
   flex-shrink: 0;
-  padding: 1px 8px;
+  padding: 1px var(--dp-space-2, 8px);
   font-size: 11px;
   font-weight: 500;
   border-radius: 10px;
@@ -181,8 +181,8 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__item-badge--blue {
-  color: var(--ant-color-primary-active);
-  background: var(--ant-color-primary-bg);
+  color: var(--dp-color-primary-active);
+  background: var(--dp-blue-50);
 }
 
 .task-result-panel__item-badge--orange {
@@ -191,13 +191,13 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__item-badge--red {
-  color: var(--ant-color-error);
-  background: var(--ant-color-error-bg);
+  color: var(--dp-danger);
+  background: var(--dp-error-bg);
 }
 
 .task-result-panel__item-badge--gray {
   color: var(--dp-text-secondary);
-  background: var(--ant-color-fill-quaternary);
+  background: var(--dp-surface-subtle);
 }
 
 .task-result-panel__item-badge--yellow {
@@ -219,7 +219,7 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 
 .task-result-panel__item-meta {
   display: flex;
-  gap: 12px;
+  gap: var(--dp-space-2, 8px);
   margin-top: 4px;
 }
 
@@ -231,18 +231,18 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 
 .task-result-panel__item-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--dp-space-2, 8px);
   margin-top: 0;
-  padding: 0 16px 10px;
+  padding: 0 var(--dp-space-3, 12px) 10px;
 }
 
 .task-result-panel__action {
   padding: 2px 10px;
   font-size: 12px;
   font-weight: 500;
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   background: transparent;
-  border: 1px solid var(--ant-color-primary);
+  border: 1px solid var(--dp-color-primary);
   border-radius: var(--dp-radius-control-inner);
   cursor: pointer;
   transition: all 0.15s ease;
@@ -254,8 +254,8 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__action:hover:not(:disabled) {
-  background: var(--ant-color-primary);
-  color: var(--ant-color-white);
+  background: var(--dp-color-primary);
+  color: var(--dp-text-inverse);
 }
 
 .task-result-panel__action:disabled {
@@ -264,12 +264,12 @@ function handleAction(item: TaskResultItem, action: TaskResultAction) {
 }
 
 .task-result-panel__action--danger {
-  color: var(--ant-color-error);
-  border-color: var(--ant-color-error);
+  color: var(--dp-danger);
+  border-color: var(--dp-danger);
 }
 
 .task-result-panel__action--danger:hover:not(:disabled) {
-  background: var(--ant-color-error);
-  color: var(--ant-color-white);
+  background: var(--dp-danger);
+  color: var(--dp-text-inverse);
 }
 </style>

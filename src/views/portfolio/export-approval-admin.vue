@@ -9,7 +9,9 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -281,33 +283,32 @@ onMounted(() => {
           </template>
         </template>
         <template #emptyText>
-          <UiEmpty description="暂无导出审批记录" />
+          <UiEmpty size="sm" description="暂无导出审批记录" />
         </template>
       </UiDataTable>
     </UiCard>
-    <a-modal
+    <UiDialog
       v-model:open="rejectModalOpen"
       title="驳回导出申请"
       :confirm-loading="approveLoading"
       :closable="!writing"
       :mask-closable="!writing"
-      :keyboard="!writing"
-      :cancel-button-props="{ disabled: writing }"
       @ok="submitReject"
     >
-      <a-textarea
-        v-model:value="rejectReason"
+      <UiTextarea
+        size="sm"
+        v-model="rejectReason"
         placeholder="请填写驳回原因"
         :rows="4"
         :disabled="writing"
       />
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
 <style scoped>
 .export-approval-admin__reject-reason {
-  color: var(--nybc-text-secondary, #666);
+  color: var(--dp-text-secondary);
   font-size: 12px;
 }
 </style>

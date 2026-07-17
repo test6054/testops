@@ -7,8 +7,11 @@ import { computed, reactive, ref } from 'vue'
 import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -93,6 +96,10 @@ function resetForm() {
 
 function editBorrow(row: (typeof rows.value)[number]) {
   if (operating.value) return
+  if (row.returnTime) {
+    showFormValidationMessage('已归还记录不可编辑')
+    return
+  }
   Object.assign(form, {
     id: row.id,
     teacherUserId: row.teacherUserId,
@@ -144,6 +151,10 @@ async function saveBorrow() {
 }
 
 async function returnBorrow(row: (typeof rows.value)[number]) {
+  if (row.returnTime) {
+    showFormValidationMessage('该记录已归还，不可重复登记')
+    return
+  }
   if (!row.borrowTime || !row.dueTime) {
     showFormValidationMessage('该记录缺少借阅或应还时间，请先编辑补齐')
     return
@@ -215,9 +226,10 @@ void loadStats()
       <div v-else-if="statsLoadError" class="stats stats--error">借阅统计加载失败</div>
       <div v-else-if="statsLoading" class="stats">借阅统计加载中</div>
       <div class="form-row">
-        <a-select
-          v-model:value="form.teacherUserId"
-          show-search
+        <UiSelect
+          size="sm"
+          v-model="form.teacherUserId"
+          allow-search
           allow-clear
           placeholder="搜索教师姓名或工号"
           style="width: 220px"
@@ -226,33 +238,38 @@ void loadStats()
           :disabled="operating"
           @search="searchTeachers"
         />
-        <a-input
-          v-model:value="form.bookTitle"
+        <UiInput
+          size="sm"
+          v-model="form.bookTitle"
           placeholder="书名"
           style="width: 200px"
           :disabled="operating"
         />
-        <a-input
-          v-model:value="form.bookIsbn"
+        <UiInput
+          size="sm"
+          v-model="form.bookIsbn"
           placeholder="书号"
           style="width: 140px"
           :disabled="operating"
         />
-        <a-date-picker
-          v-model:value="form.borrowTime"
-          show-time
+        <UiDatePicker
+          size="sm"
+          v-model="form.borrowTime"
+          :show-time="true"
           value-format="YYYY-MM-DD HH:mm:ss"
           placeholder="借阅时间"
           :disabled="operating"
         />
-        <a-date-picker
-          v-model:value="form.dueTime"
-          show-time
+        <UiDatePicker
+          size="sm"
+          v-model="form.dueTime"
+          :show-time="true"
           value-format="YYYY-MM-DD HH:mm:ss"
           placeholder="应还时间"
           :disabled="operating"
         />
         <UiButton
+          size="sm"
           variant="primary"
           :loading="operationKey.startsWith('borrow:save:')"
           :disabled="operating"
@@ -260,8 +277,9 @@ void loadStats()
         >
           {{ form.id ? '保存修改' : '登记借阅' }}
         </UiButton>
-        <UiButton v-if="form.id" :disabled="operating" @click="resetForm"> 取消编辑 </UiButton>
+        <UiButton size="sm" v-if="form.id" :disabled="operating" @click="resetForm"> 取消编辑 </UiButton>
         <UiButton
+          size="sm"
           :loading="operationKey === 'borrow:export'"
           :disabled="operating"
           @click="exportCsv"
@@ -269,7 +287,7 @@ void loadStats()
           导出
         </UiButton>
       </div>
-      <UiEmpty v-if="!loading && !loadError && rows.length === 0" description="暂无图书借阅记录" />
+      <UiEmpty size="sm" v-if="!loading && !loadError && rows.length === 0" description="暂无图书借阅记录" />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -290,9 +308,11 @@ void loadStats()
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               :items="[
-                { key: 'edit', label: '编辑', disabled: operating },
                 ...(!record.returnTime
-                  ? [{ key: 'return', label: '归还', disabled: operating }]
+                  ? [
+                    { key: 'edit', label: '编辑', disabled: operating },
+                    { key: 'return', label: '归还', disabled: operating },
+                  ]
                   : []),
               ]"
               split
@@ -318,6 +338,6 @@ void loadStats()
   color: var(--text-secondary);
 }
 .stats--error {
-  color: var(--ant-color-error);
+  color: var(--dp-error);
 }
 </style>

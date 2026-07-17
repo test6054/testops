@@ -15,6 +15,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -37,6 +38,9 @@ type RecordType = (typeof RECORD_TAB_KEYS)[number]
 
 const activeType = ref<RecordType>(PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT)
 const importModalOpen = ref(false)
+const saving = ref(false)
+const removingId = ref('')
+const exporting = ref(false)
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
 const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange }
@@ -101,6 +105,9 @@ function resetForm() {
 }
 
 async function saveRecord() {
+  if (saving.value) {
+    return
+  }
   if (!form.recordTitle.trim()) {
     showFormValidationMessage('请填写标题')
     return
@@ -109,6 +116,7 @@ async function saveRecord() {
     showFormValidationMessage('成果条目须选择所属教师')
     return
   }
+  saving.value = true
   try {
     await portfolioDevelopmentRecordApi.save({
       recordType: activeType.value,
@@ -121,26 +129,40 @@ async function saveRecord() {
     await loadPage()
   } catch (error) {
     showUserError(error, '保存发展记录失败')
+  } finally {
+    saving.value = false
   }
 }
 
 async function removeRecord(id: string) {
+  if (removingId.value || saving.value) {
+    return
+  }
+  removingId.value = id
   try {
     await portfolioDevelopmentRecordApi.delete({ id })
     message.success('已删除')
     await loadPage()
   } catch (error) {
     showUserError(error, '删除发展记录失败')
+  } finally {
+    removingId.value = ''
   }
 }
 
 async function exportExcel() {
+  if (exporting.value) {
+    return
+  }
+  exporting.value = true
   try {
     const result = await portfolioDevelopmentRecordApi.exportExcel({ recordType: activeType.value })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出发展记录失败')
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -158,6 +180,7 @@ function switchTab(type: RecordType) {
     </template>
     <div class="tabs">
       <UiButton
+        size="sm"
         v-for="tab in RECORD_TABS"
         :key="tab.key"
         :variant="activeType === tab.key ? 'primary' : 'outline'"
@@ -169,10 +192,11 @@ function switchTab(type: RecordType) {
     <UiCard title="新增条目">
       <div class="form-row">
         <input v-model="form.recordTitle" class="input input--wide" placeholder="标题" />
-        <a-select
+        <UiSelect
+          size="sm"
           v-if="requiresTeacher"
-          v-model:value="form.teacherUserId"
-          show-search
+          v-model="form.teacherUserId"
+          allow-search
           allow-clear
           placeholder="搜索教师姓名或工号"
           class="input input--teacher"
@@ -180,16 +204,16 @@ function switchTab(type: RecordType) {
           :options="teacherOptions"
           @search="searchTeachers"
         />
-        <UiButton variant="primary" @click="saveRecord"> 保存 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving" @click="saveRecord"> 保存 </UiButton>
       </div>
     </UiCard>
     <UiCard>
       <div class="toolbar">
-        <UiButton @click="loadPage"> 刷新 </UiButton>
-        <UiButton @click="importModalOpen = true"> 批量导入 </UiButton>
-        <UiButton @click="exportExcel"> 导出表格文件 </UiButton>
+        <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
+        <UiButton size="sm" @click="importModalOpen = true"> 批量导入 </UiButton>
+        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportExcel"> 导出表格文件 </UiButton>
       </div>
-      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无发展记录" />
+      <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="当前筛选无发展记录" />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -243,7 +267,7 @@ function switchTab(type: RecordType) {
 }
 .input {
   padding: 6px 8px;
-  border: 1px solid var(--ant-color-border);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
 }
 .input--wide {

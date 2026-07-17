@@ -13,6 +13,10 @@ export function useAiAnalysisGenerationFeedback() {
       onFailure?: () => void
     },
   ): Promise<void> {
+    // MVR-097：双点 / 键盘连触防重入
+    if (generating.value) {
+      return
+    }
     generating.value = true
     try {
       const result = await task()

@@ -72,7 +72,7 @@
         </ul>
       </div>
     </template>
-    <UiEmpty v-else description="选择任务与路径后可预览评审流程" />
+    <UiEmpty size="sm" v-else description="选择任务与路径后可预览评审流程" />
   </UiCard>
 </template>
 
@@ -148,13 +148,13 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
   font-size: 13px;
 }
 .title-promotion-flow-panel__path-lane--active {
-  border-color: var(--ant-color-primary);
+  border-color: var(--dp-color-primary);
   color: var(--dp-text);
-  box-shadow: inset 0 0 0 1px var(--ant-color-primary);
+  box-shadow: inset 0 0 0 1px var(--dp-color-primary);
 }
 .title-promotion-flow-panel__path-lane--exception.title-promotion-flow-panel__path-lane--active {
-  border-color: var(--ant-color-warning);
-  box-shadow: inset 0 0 0 1px var(--ant-color-warning);
+  border-color: var(--dp-warning);
+  box-shadow: inset 0 0 0 1px var(--dp-warning);
 }
 .title-promotion-flow-panel__path-merge {
   display: flex;
@@ -191,8 +191,8 @@ const stageRailItems = computed<WorkbenchStage[]>(() => {
   font-size: 13px;
 }
 .title-promotion-flow-panel__stage-note--emphasis {
-  border-color: var(--ant-color-warning);
-  background: var(--ant-color-warning-bg);
+  border-color: var(--dp-warning);
+  background: var(--dp-warning-bg);
 }
 .title-promotion-flow-panel__criteria {
   margin-top: 12px;

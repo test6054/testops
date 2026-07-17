@@ -3,6 +3,7 @@ import type { ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import { LayoutDesignPhaseCode } from '@/types/enums/layout-design-phase-enum'
 import { validateLayoutDocumentForSave } from '@/utils/exam-layout-designer'
 
@@ -52,6 +53,7 @@ function resolveNavigatePhase(reason: string): LayoutDesignPhaseCode | null {
       <h2 class="layout-design-review-phase__title">校验清单</h2>
       <div class="layout-design-review-phase__actions">
         <UiButton
+          size="sm"
           variant="outline"
           :loading="previewing"
           :disabled="previewDisabled"
@@ -59,8 +61,9 @@ function resolveNavigatePhase(reason: string): LayoutDesignPhaseCode | null {
         >
           预览 PDF
         </UiButton>
-        <a-tooltip :title="saveTooltip">
+        <UiTooltip :title="saveTooltip">
           <UiButton
+            size="sm"
             variant="primary"
             :loading="saving"
             :disabled="saveDisabled"
@@ -68,7 +71,7 @@ function resolveNavigatePhase(reason: string): LayoutDesignPhaseCode | null {
           >
             保存设计
           </UiButton>
-        </a-tooltip>
+        </UiTooltip>
       </div>
     </div>
     <ul class="layout-design-review-phase__list">
@@ -94,17 +97,17 @@ function resolveNavigatePhase(reason: string): LayoutDesignPhaseCode | null {
 
 <style scoped lang="scss">
 .layout-design-review-phase {
-  padding: 16px;
+  padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--ant-color-bg-container);
+  background: var(--dp-surface, var(--dp-bg-container));
 
   &__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-2, 8px);
+    margin-bottom: var(--dp-space-2, 8px);
   }
 
   &__title {

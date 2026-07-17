@@ -3,6 +3,8 @@ import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import theme from 'ant-design-vue/es/theme'
 import { onBeforeUnmount, watch } from 'vue'
 import GlobalPromptInputDialog from '@/components/quality/GlobalPromptInputDialog.vue'
+import UiConfigProvider from '@/components/ui-guide/ui/UiConfigProvider.vue'
+import UiWatermark from '@/components/ui-guide/ui/UiWatermark.vue'
 import UiErrorBoundary from '@/components/UiErrorBoundary.vue'
 import GlobalConfirmDialog from '@/components/workbench/GlobalConfirmDialog.vue'
 import { useAppStore, useUserStore } from '@/stores'
@@ -64,8 +66,8 @@ appStore?.initSiteConfig?.()
 </script>
 
 <template>
-  <a-config-provider :theme="THEME_CONFIG" :locale="zhCN">
-    <a-watermark
+  <UiConfigProvider :theme="THEME_CONFIG" :locale="zhCN">
+    <UiWatermark
       v-if="appStore.watermarkEnabled"
       :content="getWatermarkContent()"
       :zindex="9999"
@@ -74,13 +76,13 @@ appStore?.initSiteConfig?.()
       <UiErrorBoundary>
         <router-view />
       </UiErrorBoundary>
-    </a-watermark>
+    </UiWatermark>
     <UiErrorBoundary v-else>
       <router-view />
     </UiErrorBoundary>
     <GlobalConfirmDialog />
     <GlobalPromptInputDialog />
-  </a-config-provider>
+  </UiConfigProvider>
 </template>
 
 <style lang="scss" scoped>

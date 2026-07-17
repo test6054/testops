@@ -4,13 +4,19 @@ import type {
   PortfolioTeachingPhilosophySaveRequest,
   PortfolioTeachingPhilosophyVO,
 } from '@/apis/portfolio/teaching-philosophy'
-import { Form, Input, message } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -18,9 +24,11 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -102,6 +110,10 @@ function openModal(row?: PortfolioTeachingPhilosophyVO) {
 }
 
 async function save() {
+  if (!(await confirmProxyWrite('保存教学理念'))) {
+    return
+  }
+
   saving.value = true
   try {
     await portfolioTeachingPhilosophyApi.save({
@@ -124,6 +136,10 @@ async function remove(row: PortfolioTeachingPhilosophyVO) {
   if (readonlyMode.value || deletingId.value) {
     return
   }
+  if (!(await confirmProxyWrite('删除教学理念'))) {
+    return
+  }
+
   const teacherId = scopeTeacherId()
   const operationToken = requestToken.value
   const confirmed = await confirmAsync({
@@ -169,23 +185,26 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
       <ContextBar layout="workbench" show-title title="教学理念" subtitle="按学年记录与修订" />
     </template>
 
-    <UiCard v-if="loadFailed" title="加载失败">
-      <UiEmpty description="教学理念加载失败">
-        <UiButton @click="loadList">重试</UiButton>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+
+    <UiCard v-else-if="loadFailed" title="加载失败">
+      <UiEmpty size="sm" description="教学理念加载失败">
+        <UiButton size="sm" @click="loadList">重试</UiButton>
       </UiEmpty>
     </UiCard>
 
     <UiCard v-else title="按年教学理念" :loading="loading">
       <template #extra>
-        <UiButton v-if="!readonlyMode" @click="openModal()">新增学年</UiButton>
+        <UiButton size="sm" v-if="!readonlyMode" @click="openModal()">新增学年</UiButton>
       </template>
       <UiDataTable :columns="columns" :data-source="rows" row-key="id" :pagination="false">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'actions'">
-            <UiButton variant="ghost" @click="openModal(record)">
+            <UiButton size="sm" variant="ghost" @click="openModal(record)">
               {{ readonlyMode ? '查看' : '编辑' }}
             </UiButton>
             <UiButton
+              size="sm"
               v-if="!readonlyMode"
               variant="ghost"
               danger
@@ -201,30 +220,31 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
     </UiCard>
   </StageWorkbenchShell>
 
-  <a-modal
+  <UiDialog
     v-model:open="modalOpen"
     :title="editing ? '修订教学理念' : '新增学年教学理念'"
     :confirm-loading="saving"
-    :ok-button-props="{ disabled: readonlyMode }"
     @ok="save"
     @cancel="resetEditorContext"
   >
-    <Form layout="vertical">
-      <Form.Item label="学年" required>
-        <Input
-          v-model:value="form.academicYear"
+    <UiForm layout="vertical">
+      <UiFormItem label="学年" required compact>
+        <UiInput
+          v-model="form.academicYear"
+          size="sm"
           :disabled="readonlyMode"
           placeholder="如 2025-2026"
         />
-      </Form.Item>
-      <Form.Item label="教学理念" required>
-        <Input.TextArea
-          v-model:value="form.philosophyText"
+      </UiFormItem>
+      <UiFormItem label="教学理念" required compact>
+        <UiTextarea
+          v-model="form.philosophyText"
+          size="sm"
           :disabled="readonlyMode"
           :rows="8"
           placeholder="记录本学年教学理念、反思与成长轨迹"
         />
-      </Form.Item>
-    </Form>
-  </a-modal>
+      </UiFormItem>
+    </UiForm>
+  </UiDialog>
 </template>

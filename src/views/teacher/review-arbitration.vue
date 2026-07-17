@@ -12,14 +12,13 @@
 
     <template v-if="selectedExamId" #signal>
       <SignalBand
-        variant="tiles"
         compact
         :metrics="signalMetrics"
         @metric-click="handleSignalClick"
       />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="arbitration-page__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="arbitration-page__empty" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -194,13 +193,13 @@ import {
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -622,7 +621,7 @@ function goReviewDetail(record: ReviewTaskItemResponse): void {
 <style lang="scss" scoped>
 .arbitration-page {
   &__empty {
-    padding: 48px 0;
+    padding: 20px 0;
   }
 }
 
@@ -656,7 +655,7 @@ function goReviewDetail(record: ReviewTaskItemResponse): void {
   }
 
   &__muted {
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-tertiary);
   }
 }
 </style>

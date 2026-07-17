@@ -1,6 +1,6 @@
 <template>
   <StageWorkbenchShell class="exam-question-analysis">
-    <UiEmpty v-if="!currentExamId" description="缺少考试上下文" />
+    <ExamSelectGateStrip v-if="!currentExamId" body="缺少考试上下文，请先进入考试工作台" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -56,8 +56,8 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'

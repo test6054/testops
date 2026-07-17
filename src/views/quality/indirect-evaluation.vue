@@ -18,10 +18,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { workbenchApi } from '@/apis/quality/workbench'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
+import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
+import { ConfirmationStatusCode } from '@/types/enums/confirmation-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import IndirectResponseReviewPanel from './components/indirect-evaluation/IndirectResponseReviewPanel.vue'
 import IndirectSurveyTemplatePanel from './components/indirect-evaluation/IndirectSurveyTemplatePanel.vue'
@@ -167,6 +169,16 @@ const signals = computed<SignalMetric[]>(() => {
   return metrics
 })
 
+const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
+  if (!qualityStore.currentTrainingPlanId) {
+    return 'need-plan'
+  }
+  if (qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
+    return 'need-confirm'
+  }
+  return null
+})
+
 async function handleScopeChange(): Promise<void> {
   await reloadIndirectWorkbench()
 }
@@ -271,39 +283,47 @@ onActivated(async () => {
       </QualityPageContextBar>
     </template>
 
-    <SignalBand
-      :metrics="signals"
-      compact
-      class="ie__signals"
-      @metric-click="handleSignalMetricClick"
+    <QualityPlanGateStrip
+      v-if="planGateMode"
+      :mode="planGateMode"
+      class="ie__empty"
     />
 
-    <IndirectSurveyTemplatePanel
-      ref="surveyPanelRef"
-      v-model:selected-form="selectedForm"
-      v-model:selected-item="selectedItem"
-      @publish="taskPanelRef?.openPublishDrawer"
-      @close="taskPanelRef?.handleCloseForm"
-      @progress="taskPanelRef?.openProgressDrawer"
-      @statistics="taskPanelRef?.openStatisticsDrawer"
-      @copy-link="taskPanelRef?.copySurveyLink"
-    >
-      <template #after-forms>
-        <IndirectTaskDispatchPanel
-          ref="taskPanelRef"
-          :selected-form="selectedForm"
-          @forms-reloaded="onFormsReloaded"
-        />
-      </template>
-      <template #response>
-        <IndirectResponseReviewPanel
-          ref="responsePanelRef"
-          :selected-form="selectedForm"
-          :selected-item="selectedItem"
-          @import-done="onImportDone"
-        />
-      </template>
-    </IndirectSurveyTemplatePanel>
+    <template v-else>
+      <SignalBand
+        :metrics="signals"
+        compact
+        class="ie__signals"
+        @metric-click="handleSignalMetricClick"
+      />
+
+      <IndirectSurveyTemplatePanel
+        ref="surveyPanelRef"
+        v-model:selected-form="selectedForm"
+        v-model:selected-item="selectedItem"
+        @publish="taskPanelRef?.openPublishDrawer"
+        @close="taskPanelRef?.handleCloseForm"
+        @progress="taskPanelRef?.openProgressDrawer"
+        @statistics="taskPanelRef?.openStatisticsDrawer"
+        @copy-link="taskPanelRef?.copySurveyLink"
+      >
+        <template #after-forms>
+          <IndirectTaskDispatchPanel
+            ref="taskPanelRef"
+            :selected-form="selectedForm"
+            @forms-reloaded="onFormsReloaded"
+          />
+        </template>
+        <template #response>
+          <IndirectResponseReviewPanel
+            ref="responsePanelRef"
+            :selected-form="selectedForm"
+            :selected-item="selectedItem"
+            @import-done="onImportDone"
+          />
+        </template>
+      </IndirectSurveyTemplatePanel>
+    </template>
   </QualityIngestPageShell>
 </template>
 

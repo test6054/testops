@@ -29,8 +29,8 @@
           </UiButton>
           <UiButton
             v-if="unconfirmedQuestionGradeCount > 0"
-            variant="outline"
             size="sm"
+            variant="outline"
             @click="goQuestionReviewBatch"
           >
             题目分待确认 {{ unconfirmedQuestionGradeCount }}
@@ -49,10 +49,13 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand variant="tiles" :metrics="statMetrics" compact />
+      <SignalBand :metrics="statMetrics" compact />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请从考试工作台进入成绩确认" />
+    <ExamSelectGateStrip
+      v-if="!selectedExamId"
+      body="请从考试列表进入工作台后再确认成绩"
+    />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -85,16 +88,13 @@
         v-if="unconfirmedQuestionGradeCount > 0"
         tone="warning"
         title="题目成绩待教师确认"
-        :description="`有 ${unconfirmedQuestionGradeCount} 份答卷仍存在未确认题目分（含客观题硬判或智能建议）。须在复核台确认或正评提交后，才可进入卷级最终成绩确认与发布。`"
+        :description="`有 ${unconfirmedQuestionGradeCount} 份答卷仍存在未确认题目分（含客观题硬判或智能建议）。请用顶栏「题目分待确认」进入批量确认；亦可单题复核。`"
         dense
         inline
         class="score-finalize__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="goQuestionReviewBatch">
-            去批量确认题目分
-          </UiButton>
-          <UiButton variant="outline" size="sm" @click="goQuestionReviewSingle">
+          <UiButton variant="ghost" size="sm" @click="goQuestionReviewSingle">
             去单题复核
           </UiButton>
         </template>
@@ -117,7 +117,7 @@
           >
             一键补齐计零终分
           </UiButton>
-          <UiButton variant="outline" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
+          <UiButton variant="ghost" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
         </template>
       </UiAlertStrip>
       <UiAlertStrip
@@ -132,13 +132,13 @@
         <template #actions>
           <UiButton
             v-if="unconfirmedQuestionGradeCount > 0"
-            variant="primary"
             size="sm"
+            variant="outline"
             @click="goQuestionReviewBatch"
           >
             去题目复核
           </UiButton>
-          <UiButton variant="outline" size="sm" @click="openRiskReviewDrawer">
+          <UiButton variant="ghost" size="sm" @click="openRiskReviewDrawer">
             集中复核风险
           </UiButton>
         </template>
@@ -180,22 +180,16 @@
         v-else-if="effectiveRiskOverview?.readyToPublish"
         tone="success"
         title="全场成绩已具备发布条件"
-        description="确认环节已完成，可进入成绩发布页面向学生侧下发。"
+        description="确认环节已完成，请用顶栏「前往成绩发布」面向学生侧下发。"
         dense
         inline
         class="score-finalize__alert"
-      >
-        <template #actions>
-          <UiButton variant="primary" size="sm" @click="handleGoScorePublish">
-            前往成绩发布
-          </UiButton>
-        </template>
-      </UiAlertStrip>
+      />
 
       <WorkbenchSurfaceCard flush class="score-finalize__table-section">
         <div class="score-finalize__table-shell">
           <h3 class="score-finalize__table-title">考生成绩</h3>
-          <a-skeleton v-if="riskOverviewLoading" active :paragraph="{ rows: 1 }" />
+          <UiSkeletonState v-if="riskOverviewLoading" :rows="1" compact />
           <UiSectionTabs
             v-else
             v-model="statusTabKey"
@@ -206,9 +200,9 @@
           />
           <div class="score-finalize__table-toolbar">
             <UiButton
+              size="sm"
               v-if="blockingRiskReasons.length > 0"
               variant="outline"
-              size="sm"
               @click="openRiskReviewDrawer"
             >
               集中复核异常成绩
@@ -350,7 +344,7 @@
       @close="detailOpen = false"
     >
       <UiSkeletonState v-if="detailLoading" variant="card" compact />
-      <UiEmpty v-else-if="!paperScore" description="暂无成绩明细" />
+      <UiEmpty size="sm" v-else-if="!paperScore" description="暂无成绩明细" />
       <div v-else>
         <UiAlertStrip
           v-if="detailCandidate?.absenceScoreZero"
@@ -362,41 +356,41 @@
           class="score-finalize__detail-absence-alert"
           style="margin-bottom: 12px"
         />
-        <a-descriptions :column="2" size="small" bordered class="score-finalize__detail-summary">
-          <a-descriptions-item label="答卷">
+        <UiDescriptions :column="2" size="small" bordered class="score-finalize__detail-summary">
+          <UiDescriptionsItem label="答卷">
             {{ detailCandidate?.paperDisplay.primaryText }}
-          </a-descriptions-item>
-          <a-descriptions-item label="班级">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="班级">
             {{ detailCandidate?.studentClassName }}
-          </a-descriptions-item>
-          <a-descriptions-item v-if="hasDailyScoreConfig" label="考试分">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="hasDailyScoreConfig" label="考试分">
             <span class="score-summary-table__score">{{
               formatScorePoints(paperScore.examScore ?? paperScore.estimatedExamScore)
             }}</span>
-          </a-descriptions-item>
-          <a-descriptions-item v-if="hasDailyScoreConfig" label="日常分">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem v-if="hasDailyScoreConfig" label="日常分">
             <span class="score-summary-table__score">{{
               formatScorePoints(paperScore.dailyScore)
             }}</span>
-          </a-descriptions-item>
-          <a-descriptions-item :label="hasDailyScoreConfig ? '总成绩' : '总分'">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem :label="hasDailyScoreConfig ? '总成绩' : '总分'">
             <span class="score-summary-table__score score-summary-table__score--total">
               {{ formatScorePoints(paperScore.totalScore ?? paperScore.estimatedTotalScore) }}
             </span>
-          </a-descriptions-item>
-          <a-descriptions-item label="最终状态" :span="2">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="最终状态" :span="2">
             <UiTag :tone="finalScoreStatusTone(paperScore.finalScoreStatus)" size="sm">
               {{ finalScoreStatusLabel(paperScore.finalScoreStatus) }}
             </UiTag>
-          </a-descriptions-item>
-          <a-descriptions-item
+          </UiDescriptionsItem>
+          <UiDescriptionsItem
             v-if="paperScore.finalScoreStatus === FinalScoreStatusCode.CALCULATED"
             label="预估说明"
             :span="2"
           >
             当前为智能预估分（非正式），须题目全部教师确认或正评提交后，方可确认最终成绩。
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
 
         <UiAlertStrip
           v-if="paperTotalScoreCorrectionNotice"
@@ -474,7 +468,7 @@
           :total="auditPagination.total"
           @change="handleAuditPageChange"
         />
-        <UiEmpty v-else-if="!auditLoading" description="暂无操作记录" />
+        <UiEmpty size="sm" v-else-if="!auditLoading" description="暂无操作记录" />
       </div>
     </UiDrawer>
 
@@ -489,21 +483,23 @@
       @close="confirmOpen = false"
       @confirm="handleConfirm"
     >
-      <a-form layout="vertical">
-        <a-form-item label="考生">
-          <a-input
+      <UiForm layout="vertical">
+        <UiFormItem label="考生">
+          <UiInput
+            size="sm"
             :value="confirmCandidate ? confirmCandidate.paperDisplay.primaryText : ''"
             disabled
           />
-        </a-form-item>
-        <a-form-item
+        </UiFormItem>
+        <UiFormItem
           :label="
             hasDailyScoreConfig
               ? '考试分（各题教师复核评分之和）'
               : '考试分（仅各题教师复核评分之和）'
           "
         >
-          <a-input
+          <UiInput
+            size="sm"
             :value="
               confirmComputedExamScore != null
                 ? `${confirmComputedExamScore} 分`
@@ -511,10 +507,11 @@
             "
             disabled
           />
-        </a-form-item>
-        <a-form-item v-if="hasDailyScoreConfig" label="日常成绩" :required="true">
-          <a-input-number
-            v-model:value="confirmDailyScore"
+        </UiFormItem>
+        <UiFormItem v-if="hasDailyScoreConfig" label="日常成绩" :required="true">
+          <UiInputNumber
+            size="sm"
+            v-model="confirmDailyScore"
             :min="0"
             :max="dailyScoreFull ?? undefined"
             :precision="2"
@@ -524,16 +521,18 @@
           <div v-if="dailyScoreFull != null" class="score-finalize__hint">
             日常满分 {{ dailyScoreFull }} 分
           </div>
-        </a-form-item>
-        <a-form-item v-if="hasDailyScoreConfig" label="总成绩预览">
-          <a-input :value="formatScorePoints(confirmTotalScorePreview)" disabled />
-        </a-form-item>
-        <a-form-item>
-          <a-checkbox v-model:checked="confirmAndPublish" :disabled="hasUnreviewedBlockingRisks">
+        </UiFormItem>
+        <UiFormItem v-if="hasDailyScoreConfig" label="总成绩预览">
+          <UiInput
+            size="sm" :value="formatScorePoints(confirmTotalScorePreview)" disabled
+          />
+        </UiFormItem>
+        <UiFormItem>
+          <UiCheckbox v-model="confirmAndPublish" :disabled="hasUnreviewedBlockingRisks">
             确认后立即发布并通知学生
-          </a-checkbox>
-        </a-form-item>
-      </a-form>
+          </UiCheckbox>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -544,7 +543,7 @@
       @update:open="(v: boolean) => (riskReviewDrawerOpen = v)"
       @close="riskReviewDrawerOpen = false"
     >
-      <UiEmpty v-if="blockingRiskReasons.length === 0" description="当前无发布阻断风险" />
+      <UiEmpty size="sm" v-if="blockingRiskReasons.length === 0" description="当前无发布阻断风险" />
       <div v-else class="score-finalize__risk-review-list">
         <div
           v-for="reason in blockingRiskReasons"
@@ -631,23 +630,25 @@
       @close="withdrawOpen = false"
       @confirm="handleWithdraw"
     >
-      <a-form layout="vertical">
-        <a-form-item label="考生">
-          <a-input
+      <UiForm layout="vertical">
+        <UiFormItem label="考生">
+          <UiInput
+            size="sm"
             :value="withdrawCandidate ? withdrawCandidate.paperDisplay.primaryText : ''"
             disabled
           />
-        </a-form-item>
-        <a-form-item label="撤回原因" required>
-          <a-textarea
-            v-model:value="withdrawReason"
+        </UiFormItem>
+        <UiFormItem label="撤回原因" required>
+          <UiTextarea
+            size="sm"
+            v-model="withdrawReason"
             placeholder="请输入撤回原因（必填）"
             :rows="3"
             :max-length="200"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <!-- D-3 下一步动作：确认成功后引导继续核对或跳转成绩发布 -->
@@ -665,9 +666,9 @@
       @close="closeNextStep"
     >
       <div class="score-finalize__next-step">
-        <a-typography-paragraph class="score-finalize__next-step-desc">
+        <UiTypographyParagraph class="score-finalize__next-step-desc">
           {{ nextStep.description }}
-        </a-typography-paragraph>
+        </UiTypographyParagraph>
         <div class="score-finalize__next-step-actions">
           <UiButton
             v-if="nextStep.kind === 'all-confirmed'"
@@ -754,16 +755,26 @@ import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiActivityTimeline from '@/components/ui-guide/ui/UiActivityTimeline.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import ScoreAnalyticsStatusFlow from '@/components/workbench/ScoreAnalyticsStatusFlow.vue'
 import ScoreReleaseStepPipeline from '@/components/workbench/ScoreReleaseStepPipeline.vue'
@@ -865,6 +876,7 @@ async function loadExamDetail(): Promise<void> {
 // ─── 考生名单（服务端分页） ─────────────────────────────
 const candidates = ref<ExamScoreSummaryItemResponse[]>([])
 const loading = ref(false)
+let candidatesRequestSequence = 0
 const riskOverview = ref<FinalScoreRiskOverviewResponse | null>(null)
 const scorePanel = ref<ExamWorkbenchScorePanelResponse | null>(null)
 const riskOverviewLoading = ref(false)
@@ -932,6 +944,7 @@ const dailyScoreFull = computed(() => examDetail.value?.dailyScoreFull ?? null)
 
 async function loadCandidates(): Promise<void> {
   if (!selectedExamId.value) return
+  const requestSequence = ++candidatesRequestSequence
   loading.value = true
   try {
     const result = await pageExamScoreSummary({
@@ -942,6 +955,9 @@ async function loadCandidates(): Promise<void> {
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
     })
+    if (requestSequence !== candidatesRequestSequence) {
+      return
+    }
     candidates.value = result.list
     pagination.total = result.total
     if (result.pageNum != null) {
@@ -951,9 +967,14 @@ async function loadCandidates(): Promise<void> {
       pagination.pageSize = result.pageSize
     }
   } catch (error) {
+    if (requestSequence !== candidatesRequestSequence) {
+      return
+    }
     showUserError(error, '成绩确认名单加载失败')
   } finally {
-    loading.value = false
+    if (requestSequence === candidatesRequestSequence) {
+      loading.value = false
+    }
   }
 }
 
@@ -1249,7 +1270,7 @@ const missingAbsenceScoreZeroFinalCount = computed(
 const repairingScoreZero = ref(false)
 
 async function handleRepairScoreZero(): Promise<void> {
-  if (!selectedExamId.value) return
+  if (!selectedExamId.value || repairingScoreZero.value) return
   repairingScoreZero.value = true
   try {
     const result = await repairScoreZeroFinalScores({ examId: selectedExamId.value })
@@ -1304,6 +1325,9 @@ const hasFieldWideSafeBatchBlockers = computed(() => {
 })
 
 async function handleBatchConfirmSafe(): Promise<void> {
+  if (batchConfirming.value) {
+    return
+  }
   if (!selectedExamId.value || !effectiveRiskOverview.value) return
   if (warnFieldWideSafeBatchBlockers()) return
   const canContinue = await ensureScoreConfirmPreconditions()
@@ -1452,6 +1476,9 @@ function biasLevelTone(level: ScoreBiasLevelCode): BadgeTone {
 }
 
 function buildFinalizeActions(record: ExamScoreSummaryItemResponse): UiTableRowActionItem[] {
+  // 行内仅 1 个 primary：可确认优先于可发布
+  const confirmable = canConfirm(record)
+  const publishable = canPublish(record)
   return [
     {
       key: 'detail',
@@ -1461,12 +1488,14 @@ function buildFinalizeActions(record: ExamScoreSummaryItemResponse): UiTableRowA
     {
       key: 'confirm',
       label: confirmButtonLabel(record),
-      disabled: !canConfirm(record),
+      tone: confirmable ? 'primary' : undefined,
+      disabled: !confirmable,
     },
     {
       key: 'publish',
       label: publishButtonLabel(record),
-      disabled: !canPublish(record),
+      tone: !confirmable && publishable ? 'primary' : undefined,
+      disabled: !publishable,
     },
     { key: 'withdraw', label: '撤回', disabled: !canWithdraw(record) },
   ]
@@ -1764,6 +1793,8 @@ async function openDetailDrawer(record: ExamScoreSummaryItemResponse): Promise<v
 // ─── 确认成绩 Modal ─────────────────────────────
 const confirmOpen = ref(false)
 const confirming = ref(false)
+/** 单卷发布中的试卷实例 ID，防止列表行重复点击 */
+const publishingPaperId = ref<string | null>(null)
 const confirmCandidate = ref<ExamScoreSummaryItemResponse | null>(null)
 const confirmComputedExamScore = ref<number | null>(null)
 const confirmDailyScore = ref<number | undefined>(undefined)
@@ -1962,6 +1993,9 @@ async function handleGoScorePublish(): Promise<void> {
 }
 
 async function handleConfirm(): Promise<void> {
+  if (confirming.value) {
+    return
+  }
   if (!selectedExamId.value || !confirmCandidate.value?.paperInstanceId) return
   // 单卷确认仅场级缺考硬阻断；软风险（绑定异常等）不阻止确认，发布时再集中复核。
   if (hasHardBlockingRisks.value) {
@@ -2019,12 +2053,16 @@ async function handleConfirm(): Promise<void> {
 
 // ─── 发布成绩 ─────────────────────────────
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
+  if (publishingPaperId.value) {
+    return
+  }
   if (!selectedExamId.value || !record.paperInstanceId) return
   if (warnUnreviewedBlockingRisks()) return
   const canContinue = await ensureSinglePaperPublishPreconditions()
   if (!canContinue) {
     return
   }
+  publishingPaperId.value = record.paperInstanceId
   try {
     await publishFinalScore({
       examId: selectedExamId.value,
@@ -2034,6 +2072,8 @@ async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void
     await refreshAfterScoreWrite()
   } catch (error) {
     showUserError(error, '成绩发布失败')
+  } finally {
+    publishingPaperId.value = null
   }
 }
 
@@ -2050,6 +2090,9 @@ function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
 }
 
 async function handleWithdraw(): Promise<void> {
+  if (withdrawing.value) {
+    return
+  }
   if (!selectedExamId.value || !withdrawCandidate.value?.paperInstanceId) return
   const reason = withdrawReason.value.trim()
   if (!reason) {
@@ -2119,7 +2162,7 @@ watch(
   }
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__table-section {
@@ -2130,7 +2173,7 @@ watch(
     display: flex;
     flex-direction: column;
     gap: var(--dp-space-4);
-    padding: var(--dp-space-4) var(--dp-space-5) var(--dp-space-5);
+    padding: var(--dp-space-3) var(--dp-space-4) var(--dp-space-4);
   }
 
   &__status-tabs {
@@ -2194,8 +2237,8 @@ watch(
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding: 12px;
+    gap: var(--dp-space-3, 12px);
+    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);
@@ -2251,7 +2294,7 @@ watch(
   &__next-step {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
   }
 
   &__next-step-desc {
@@ -2261,7 +2304,7 @@ watch(
 
   &__next-step-actions {
     display: flex;
-    gap: 12px;
+    gap: var(--dp-space-2, 8px);
     justify-content: flex-end;
   }
 }

@@ -28,3 +28,8 @@ export const PortfolioHonorLevelOptions = ALL_PORTFOLIO_HONOR_LEVEL_CODES.map((v
   value,
   label: strictEnumLabel(PortfolioHonorLevelDescription, value, '荣誉等级'),
 }))
+
+/** 校验职称条件中的荣誉级别编码，拒绝未知文本阈值。 */
+export function isPortfolioHonorLevelCode(value: string): value is PortfolioHonorLevelCode {
+  return ALL_PORTFOLIO_HONOR_LEVEL_CODES.map(String).includes(value)
+}

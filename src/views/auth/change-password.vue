@@ -15,7 +15,7 @@
       <div class="change-pwd-body">
         <!-- 左侧：表单 -->
         <UiCard class="form-card">
-          <a-form
+          <UiForm
             ref="passwordFormRef"
             :model="passwordForm"
             :rules="passwordRules"
@@ -23,33 +23,33 @@
             @finish="handleChangePassword"
           >
             <UiFormSection title="当前密码">
-              <a-form-item name="currentPassword" label="当前密码">
-                <a-input-password
-                  v-model:value="passwordForm.currentPassword"
+              <UiFormItem name="currentPassword" label="当前密码">
+                <PasswordInput
+                  v-model="passwordForm.currentPassword"
                   placeholder="请输入当前密码"
-                  size="large"
+                  size="lg"
                   autocomplete="current-password"
                 />
-              </a-form-item>
+              </UiFormItem>
             </UiFormSection>
 
             <UiFormSection title="新密码" divided>
-              <a-form-item name="newPassword" label="新密码">
-                <a-input-password
-                  v-model:value="passwordForm.newPassword"
+              <UiFormItem name="newPassword" label="新密码">
+                <PasswordInput
+                  v-model="passwordForm.newPassword"
                   placeholder="请输入新密码"
-                  size="large"
+                  size="lg"
                   autocomplete="new-password"
                 />
-              </a-form-item>
-              <a-form-item name="confirmPassword" label="确认新密码">
-                <a-input-password
-                  v-model:value="passwordForm.confirmPassword"
+              </UiFormItem>
+              <UiFormItem name="confirmPassword" label="确认新密码">
+                <PasswordInput
+                  v-model="passwordForm.confirmPassword"
                   placeholder="请再次输入新密码"
-                  size="large"
+                  size="lg"
                   autocomplete="new-password"
                 />
-              </a-form-item>
+              </UiFormItem>
             </UiFormSection>
 
             <div class="password-strength">
@@ -67,12 +67,14 @@
             </div>
 
             <div class="form-actions">
-              <a-button v-if="!isForceMode" size="large" @click="handleCancel">取消</a-button>
-              <a-button :loading="loading" html-type="submit" size="large" type="primary">
+              <UiButton v-if="!isForceMode" size="lg" variant="outline" @click="handleCancel">
+                取消
+              </UiButton>
+              <UiButton type="submit" size="lg" variant="primary" :loading="loading">
                 修改密码
-              </a-button>
+              </UiButton>
             </div>
-          </a-form>
+          </UiForm>
         </UiCard>
 
         <!-- 右侧：强度参考 -->
@@ -112,10 +114,10 @@
         <template #title>
           <div class="history-title">
             <span>密码修改记录</span>
-            <a-button size="small" type="text" @click="fetchPasswordHistory">
+            <UiButton size="sm" variant="ghost" @click="fetchPasswordHistory">
               <template #icon><ReloadOutlined /></template>
               刷新
-            </a-button>
+            </UiButton>
           </div>
         </template>
 
@@ -154,15 +156,18 @@ import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import MinusCircleOutlined from '@ant-design/icons-vue/MinusCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
 import dayjs from 'dayjs'
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { changePassword } from '@/apis/auth'
 import { getPasswordHistory } from '@/apis/edu/user-management'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import PasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiFormSection from '@/components/ui-guide/ui/UiFormSection.vue'
 import UiPageHeader from '@/components/ui-guide/ui/UiPageHeader.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -279,12 +284,14 @@ const handleChangePassword = async () => {
     // 清除强制修改密码标记
     userStore.userInfo.forcePasswordChange = false
 
-    Modal.success({
+    void confirmAsync({
       title: '密码修改成功',
       content: isForceMode.value
         ? '您的密码已成功修改，请使用新密码重新登录。'
         : '您的密码已成功修改，请使用新密码重新登录。',
       okText: '重新登录',
+      type: 'success',
+      hideCancel: true,
       onOk: async () => {
         // 清除登录状态并跳转到登录页
         await authStore.logout()
@@ -356,8 +363,8 @@ onActivated(() => {
 @use '@/styles/breakpoints' as bp;
 .change-pwd-page {
   min-height: 100vh;
-  padding: 32px 16px;
-  background: var(--ant-color-fill-secondary);
+  padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px);
+  background: var(--dp-fill-secondary);
 }
 
 .change-pwd-container {
@@ -367,25 +374,25 @@ onActivated(() => {
 
 .change-pwd-body {
   display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
+  gap: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3, 12px);
 }
 
 .form-card {
   flex: 1;
 
   :deep(.ant-form-item) {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-3, 12px);
   }
 
   :deep(.ant-input-affix-wrapper) {
     height: 42px;
-    border-radius: var(--ant-border-radius);
+    border-radius: var(--dp-radius-control);
   }
 
   :deep(.ant-btn) {
     height: 42px;
-    border-radius: var(--ant-border-radius);
+    border-radius: var(--dp-radius-control);
     font-weight: 500;
   }
 }
@@ -403,14 +410,14 @@ onActivated(() => {
 
 .strength-label {
   font-size: 13px;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
   white-space: nowrap;
 }
 
 .strength-bar {
   flex: 1;
   height: 4px;
-  background: var(--ant-color-fill-secondary);
+  background: var(--dp-fill-secondary);
   border-radius: var(--dp-radius-full);
   overflow: hidden;
 }
@@ -425,28 +432,28 @@ onActivated(() => {
     background-color 0.3s;
 
   &.strength-0 {
-    background: var(--ant-color-fill-secondary);
+    background: var(--dp-fill-secondary);
   }
   &.strength-1 {
-    background: var(--ant-color-error);
+    background: var(--dp-danger);
   }
   &.strength-2 {
-    background: var(--ant-color-warning);
+    background: var(--dp-warning);
   }
   &.strength-3 {
-    background: var(--ant-color-warning);
+    background: var(--dp-warning);
   }
   &.strength-4 {
-    background: var(--ant-color-success);
+    background: var(--dp-success);
   }
   &.strength-5 {
-    background: var(--ant-color-success);
+    background: var(--dp-success);
   }
 }
 
 .strength-text {
   font-size: 12px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-muted);
   min-width: 30px;
   font-weight: 500;
 }
@@ -473,7 +480,7 @@ onActivated(() => {
   align-items: center;
   gap: 10px;
   font-size: 13px;
-  color: var(--ant-color-text-quaternary);
+  color: var(--dp-text-muted);
   transition: color 0.2s;
 
   .anticon {
@@ -482,10 +489,10 @@ onActivated(() => {
   }
 
   &.fulfilled {
-    color: var(--ant-color-success);
+    color: var(--dp-success);
 
     span {
-      color: var(--ant-color-text);
+      color: var(--dp-text-primary);
     }
   }
 }
@@ -502,9 +509,9 @@ onActivated(() => {
 }
 
 .ip-address {
-  font-family: var(--ant-font-family-code);
+  font-family: var(--dp-font-family-code);
   font-size: 12px;
-  background: var(--ant-color-fill-tertiary);
+  background: var(--dp-fill-tertiary);
   padding: 2px 6px;
   border-radius: var(--dp-radius-xs);
 }

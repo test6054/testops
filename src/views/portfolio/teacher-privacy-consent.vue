@@ -16,10 +16,12 @@ import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showUserError } from '@/utils/error-handler'
 
 const route = useRoute()
 const router = useRouter()
+const { currentUserId } = usePortfolioTeacherAccess()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -37,6 +39,16 @@ const manageMode = computed(() => route.query.mode === 'manage')
 const actionDisabled = computed(
   () => loading.value || loadError.value || !notice.value || !state.value,
 )
+
+/** 隐私授权仅本人可签；代办不可代签同意/撤回 */
+const isProxyPrivacyTarget = computed(() => {
+  if (!teacherId.value || !currentUserId.value) {
+    return false
+  }
+  return teacherId.value !== currentUserId.value
+})
+
+const privacyWriteBlocked = computed(() => isProxyPrivacyTarget.value)
 
 async function load() {
   const currentToken = requestToken.value + 1
@@ -73,6 +85,11 @@ async function load() {
 }
 
 async function grant() {
+  if (privacyWriteBlocked.value) {
+    message.warning('不可代他人签署个人信息处理同意')
+    return
+  }
+
   submitting.value = true
   try {
     state.value = await portfolioPrivacyConsentApi.grant(
@@ -88,6 +105,11 @@ async function grant() {
 }
 
 async function decline() {
+  if (privacyWriteBlocked.value) {
+    message.warning('不可代他人暂不授权')
+    return
+  }
+
   submitting.value = true
   try {
     state.value = await portfolioPrivacyConsentApi.decline(
@@ -102,6 +124,11 @@ async function decline() {
 }
 
 async function withdraw() {
+  if (privacyWriteBlocked.value) {
+    message.warning('不可代他人撤回个人信息处理同意')
+    return
+  }
+
   const confirmed = await confirmAsync({
     title: '确认撤回个人信息处理同意？',
     content: '撤回后将立即停止新增材料采集和档案写入；已依法形成的正式档案仍按制度保留。',
@@ -142,6 +169,16 @@ watch(
 <template>
   <StageWorkbenchShell>
     <ContextBar title="个人信息处理同意" subtitle="管理教师数据采集与使用授权" />
+    <div
+      v-if="isProxyPrivacyTarget"
+      class="privacy-consent__proxy-gate"
+      role="status"
+    >
+      <span class="privacy-consent__proxy-text">
+        当前为目标教师范围：隐私授权仅本人可签，管理员不可代签同意或撤回。
+      </span>
+      <UiButton size="sm" variant="outline" @click="goHome">返回工作台</UiButton>
+    </div>
     <UiCard title="教师数据采集与使用说明" style="margin-top: 16px">
       <p v-if="errorMode" class="privacy-consent__warn">
         同意状态暂不可用，请刷新后重试。在确认同意前不能进入档案采集。
@@ -160,33 +197,35 @@ watch(
       <p v-else-if="loadError" class="privacy-consent__warn">
         告知文本或同意状态加载失败，不能执行授权操作。
       </p>
-      <div class="privacy-consent__actions">
+      <div v-if="!privacyWriteBlocked" class="privacy-consent__actions">
         <template v-if="state?.collectionAllowed">
           <UiButton
+            size="sm"
             variant="outline"
             status="danger"
             :loading="submitting"
-            :disabled="actionDisabled"
+            :disabled="actionDisabled || privacyWriteBlocked"
             @click="withdraw"
           >
             撤回同意
           </UiButton>
-          <UiButton variant="outline" :disabled="submitting" @click="goHome">返回首页</UiButton>
+          <UiButton size="sm" variant="outline" :disabled="submitting" @click="goHome">返回首页</UiButton>
         </template>
         <template v-else>
           <UiButton
+            size="sm"
             variant="primary"
             :loading="submitting"
-            :disabled="actionDisabled"
+            :disabled="actionDisabled || privacyWriteBlocked"
             @click="grant"
           >
             同意并继续
           </UiButton>
-          <UiButton :loading="submitting" :disabled="actionDisabled" @click="decline">
+          <UiButton size="sm" :loading="submitting" :disabled="actionDisabled || privacyWriteBlocked" @click="decline">
             暂不授权
           </UiButton>
         </template>
-        <UiButton v-if="loadError" variant="outline" :loading="loading" @click="() => load()">
+        <UiButton size="sm" v-if="loadError" variant="outline" :loading="loading" @click="() => load()">
           重试
         </UiButton>
       </div>
@@ -195,9 +234,27 @@ watch(
 </template>
 
 <style scoped lang="scss">
+.privacy-consent__proxy-gate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+  min-height: 40px;
+  max-height: 48px;
+  margin-top: var(--dp-space-3);
+  padding: 0 var(--dp-space-3);
+  border: 1px solid var(--dp-border-secondary);
+  border-radius: var(--dp-radius-md);
+  background: var(--dp-bg-secondary);
+  font-size: var(--dp-font-size-sm);
+}
+.privacy-consent__proxy-text {
+  color: var(--dp-text-secondary);
+  min-width: 0;
+}
 .privacy-consent__warn {
   margin: 0 0 var(--dp-space-3);
-  color: var(--dp-warning-text, #ad6800);
+  color: var(--dp-warning-text);
   font-size: 14px;
   line-height: 1.5;
 }

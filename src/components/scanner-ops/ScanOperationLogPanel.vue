@@ -77,7 +77,7 @@ const columns: ColumnsType<ScanOperationLogItemVO> = [
     key: 'operatorUserId',
     width: 88,
   },
-  { title: '详情', dataIndex: 'detailJson', key: 'detailJson', minWidth: 280, ellipsis: true },
+  { title: '详情', dataIndex: 'detailSummary', key: 'detailSummary', minWidth: 280, ellipsis: true },
 ]
 
 function actionLabel(action?: ScanOperationActionCode) {
@@ -87,8 +87,8 @@ function actionLabel(action?: ScanOperationActionCode) {
   return strictEnumLabel(ScanOperationActionDescription, action, 'scanOperationAction')
 }
 
-/** 将后端 detailJson 规范为单行可读摘要，便于表格 ellipsis 展示。 */
-function formatDetailJson(raw?: string): string {
+/** 将后端 detailJson 规范为单行可读摘要，便于表格 ellipsis 展示；解析失败不回落展示原始 JSON。 */
+function formatDetailSummary(raw?: string): string {
   if (!raw?.trim()) {
     return '—'
   }
@@ -97,7 +97,7 @@ function formatDetailJson(raw?: string): string {
     const pairs = Object.entries(parsed).map(([key, value]) => `${key}=${String(value)}`)
     return pairs.length > 0 ? pairs.join(' · ') : '—'
   } catch {
-    return raw
+    return '详情格式异常'
   }
 }
 
@@ -231,11 +231,10 @@ onMounted(() => {
           <template v-else-if="column.key === 'operatorUserId'">
             {{ cellText(record.operatorUserId) }}
           </template>
-          <template v-else-if="column.key === 'detailJson'">
+          <template v-else-if="column.key === 'detailSummary'">
             <UiEllipsisText
-              :text="formatDetailJson(record.detailJson)"
-              :title="formatDetailJson(record.detailJson)"
-              tone="mono"
+              :text="formatDetailSummary(record.detailJson)"
+              :title="formatDetailSummary(record.detailJson)"
             />
           </template>
         </template>

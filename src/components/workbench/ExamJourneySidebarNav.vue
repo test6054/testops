@@ -4,11 +4,10 @@
     :class="{ 'exam-journey-sidebar-nav--collapsed': collapsed }"
     aria-label="考试旅程"
   >
-    <a-skeleton
+    <UiSkeletonState
       v-if="loading && journeyStages.length === 0"
-      active
-      :title="false"
-      :paragraph="{ rows: 4, width: ['100%', '90%', '85%', '80%'] }"
+      :rows="4"
+      compact
       class="exam-journey-sidebar-nav__skeleton"
     />
 
@@ -66,6 +65,7 @@ import type { WorkbenchStage, WorkbenchStageStatus } from '@/types/workbench'
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import DashboardOutlined from '@ant-design/icons-vue/DashboardOutlined'
 import { computed } from 'vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { isExamWorkspaceJourneyKey, resolveJourneyKeyByStage } from '@/constants/exam-journey'
 import { shouldShowJourneySuggestion } from '@/constants/mark-workspace-nav'
 
@@ -148,7 +148,7 @@ function statusClass(status: WorkbenchStageStatus): string {
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.02em;
-    color: var(--ant-color-text-quaternary);
+    color: var(--dp-text-muted);
     text-transform: uppercase;
   }
 
@@ -163,24 +163,24 @@ function statusClass(status: WorkbenchStageStatus): string {
     background: transparent;
     cursor: pointer;
     text-align: left;
-    color: var(--ant-color-text);
+    color: var(--dp-text-primary);
     transition: background 0.2s ease;
 
     &:hover {
-      background: var(--ant-color-fill-tertiary);
+      background: var(--dp-fill-tertiary);
     }
 
     &--active {
-      background: var(--ant-color-primary-bg);
+      background: var(--dp-blue-50);
 
       .exam-journey-sidebar-nav__title {
-        color: var(--ant-color-primary);
+        color: var(--dp-color-primary);
         font-weight: 600;
       }
     }
 
     &--suggested:not(&--active) {
-      box-shadow: inset 2px 0 0 var(--ant-color-warning);
+      box-shadow: inset 2px 0 0 var(--dp-warning);
     }
 
     &--overview {
@@ -194,7 +194,7 @@ function statusClass(status: WorkbenchStageStatus): string {
 
   &__icon {
     font-size: 16px;
-    color: var(--ant-color-text-secondary);
+    color: var(--dp-text-secondary);
     flex-shrink: 0;
     margin-top: 1px;
   }
@@ -209,33 +209,33 @@ function statusClass(status: WorkbenchStageStatus): string {
     border-radius: 50%;
     font-size: 12px;
     font-weight: 600;
-    background: var(--ant-color-fill-quaternary);
-    color: var(--ant-color-text-secondary);
+    background: var(--dp-surface-subtle);
+    color: var(--dp-text-secondary);
 
     &--pending {
-      background: var(--ant-color-fill-quaternary);
-      color: var(--ant-color-text-tertiary);
+      background: var(--dp-surface-subtle);
+      color: var(--dp-text-muted);
     }
 
     &--active {
-      background: var(--ant-color-primary-bg);
-      color: var(--ant-color-primary);
+      background: var(--dp-blue-50);
+      color: var(--dp-color-primary);
     }
 
     &--completed {
-      background: var(--ant-color-success-bg);
-      color: var(--ant-color-success);
+      background: var(--dp-success-bg);
+      color: var(--dp-success);
     }
 
     &--warning {
-      background: var(--ant-color-warning-bg);
-      color: var(--ant-color-warning);
+      background: var(--dp-warning-bg);
+      color: var(--dp-warning);
     }
 
     &--error,
     &--blocked {
-      background: var(--ant-color-error-bg);
-      color: var(--ant-color-error);
+      background: var(--dp-error-bg);
+      color: var(--dp-danger);
     }
   }
 
@@ -244,7 +244,7 @@ function statusClass(status: WorkbenchStageStatus): string {
     min-width: 0;
     font-size: 13px;
     line-height: 1.4;
-    color: var(--ant-color-text);
+    color: var(--dp-text-primary);
   }
 
   &__badge {
@@ -253,8 +253,8 @@ function statusClass(status: WorkbenchStageStatus): string {
     line-height: 18px;
     padding: 0 6px;
     border-radius: 9px;
-    background: var(--ant-color-warning-bg);
-    color: var(--ant-color-warning);
+    background: var(--dp-warning-bg);
+    color: var(--dp-warning);
     font-weight: 600;
   }
 

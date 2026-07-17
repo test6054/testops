@@ -13,8 +13,10 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -36,6 +38,10 @@ const latestTask = ref<PortfolioAnalysisAnnualReportVO | null>(null)
 const reportHistory = ref<PortfolioAnalysisAnnualReportVO[]>([])
 const historyTotal = ref(0)
 const pollTimer = ref<ReturnType<typeof setInterval> | null>(null)
+/** 历史列表请求隔离，防止教师/年度快速切换时旧响应串写 */
+const historyRequestToken = ref(0)
+/** 轮询请求隔离，切换任务后丢弃旧轮询结果 */
+const pollRequestToken = ref(0)
 const historyQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 const form = reactive({
   teacherId: '',
@@ -75,36 +81,56 @@ function startPollingIfRunning() {
 }
 
 async function refreshLatestTask() {
-  if (!latestTask.value?.id) {
+  const taskId = latestTask.value?.id
+  if (!taskId) {
     return
   }
+  const currentToken = ++pollRequestToken.value
   try {
-    const row = await portfolioAnalysisApi.getAnnualReport({ id: latestTask.value.id })
+    const row = await portfolioAnalysisApi.getAnnualReport({ id: taskId })
+    if (currentToken !== pollRequestToken.value || latestTask.value?.id !== taskId) {
+      return
+    }
     latestTask.value = row
     if (row.taskStatus !== PortfolioAnnualReportTaskStatusCode.RUNNING) {
       stopPolling()
       await loadReportHistory()
     }
   } catch {
-    // 轮询失败不打断用户操作
+    // 轮询失败不打断用户操作；过期 token 静默丢弃
   }
 }
 
 async function loadReportHistory() {
+  const currentToken = ++historyRequestToken.value
+  const requestTeacherId = form.teacherId || undefined
+  const requestReportYear = reportYearFilter.value
+  const requestPageNum = historyQuery.pageNum
+  const requestPageSize = historyQuery.pageSize
   historyLoading.value = true
   try {
     const page = await portfolioAnalysisApi.pageAnnualReports({
-      pageNum: historyQuery.pageNum,
-      pageSize: historyQuery.pageSize,
-      teacherId: form.teacherId || undefined,
-      reportYear: reportYearFilter.value,
+      pageNum: requestPageNum,
+      pageSize: requestPageSize,
+      teacherId: requestTeacherId,
+      reportYear: requestReportYear,
     })
+    if (currentToken !== historyRequestToken.value) {
+      return
+    }
     reportHistory.value = page.list ?? []
     historyTotal.value = page.total ?? 0
   } catch (error) {
+    if (currentToken !== historyRequestToken.value) {
+      return
+    }
+    reportHistory.value = []
+    historyTotal.value = 0
     showUserError(error, '加载报告历史失败')
   } finally {
-    historyLoading.value = false
+    if (currentToken === historyRequestToken.value) {
+      historyLoading.value = false
+    }
   }
 }
 
@@ -205,17 +231,32 @@ async function generateReport() {
     showUserError(null, '报告年度须在 2000 年至当前自然年之间')
     return
   }
+  if (loading.value) {
+    return
+  }
+  const requestTeacherId = form.teacherId
+  const requestReportYear = reportYearFilter.value
   loading.value = true
+  stopPolling()
+  pollRequestToken.value += 1
   try {
-    latestTask.value = await portfolioAnalysisApi.generateAnnualReport({
-      teacherId: form.teacherId,
-      reportYear: reportYearFilter.value,
+    const row = await portfolioAnalysisApi.generateAnnualReport({
+      teacherId: requestTeacherId,
+      reportYear: requestReportYear,
     })
+    // 生成返回时筛选已变：不覆盖当前上下文，仅刷新历史
+    if (form.teacherId !== requestTeacherId || reportYearFilter.value !== requestReportYear) {
+      await loadReportHistory()
+      return
+    }
+    latestTask.value = row
     historyQuery.pageNum = 1
     await loadReportHistory()
     startPollingIfRunning()
   } catch (error) {
-    showUserError(error, '年度报告生成失败')
+    if (form.teacherId === requestTeacherId && reportYearFilter.value === requestReportYear) {
+      showUserError(error, '年度报告生成失败')
+    }
   } finally {
     loading.value = false
   }
@@ -241,6 +282,14 @@ watch(
       form.reportYear = normalizedYear
       return
     }
+    // Scope 变化：作废在途读/轮询，清空旧任务与历史，再按新筛选加载
+    historyRequestToken.value += 1
+    pollRequestToken.value += 1
+    stopPolling()
+    latestTask.value = null
+    reportHistory.value = []
+    historyTotal.value = 0
+    historyLoading.value = false
     historyQuery.pageNum = 1
     void loadReportHistory()
   },
@@ -259,24 +308,26 @@ watch(
     </template>
     <UiCard title="生成任务">
       <div class="annual-report__form">
-        <a-select
-          v-model:value="form.teacherId"
+        <UiSelect
+          size="sm"
+          v-model="form.teacherId"
           placeholder="选择教师"
           :options="teacherOptions"
           class="annual-report__field"
-          show-search
+          allow-search
           :filter-option="false"
           option-label-prop="label"
           @focus="() => loadTeachers()"
           @search="handleTeacherSearch"
         />
-        <a-input
-          v-model:value="form.reportYear"
+        <UiInput
+          size="sm"
+          v-model="form.reportYear"
           placeholder="报告年度"
           class="annual-report__field annual-report__field--year"
           :maxlength="4"
         />
-        <UiButton variant="primary" :loading="loading" @click="generateReport"> 提交生成 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="loading" @click="generateReport"> 提交生成 </UiButton>
       </div>
     </UiCard>
     <UiCard v-if="latestTask" title="最近任务" class="annual-report__result">
@@ -395,7 +446,7 @@ watch(
 .annual-report__meta dt {
   margin: 0;
   font-size: 13px;
-  color: var(--dp-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 
 .annual-report__meta dd {

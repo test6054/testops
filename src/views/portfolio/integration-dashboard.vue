@@ -6,12 +6,15 @@ import type {
   PortfolioCourseCodeMapVO,
   PortfolioIdentityUnmatchedVO,
   PortfolioIntegrationCleanLogVO,
+  PortfolioIntegrationConnectionConfigDto,
   PortfolioIntegrationDatasourceVO,
   PortfolioIntegrationDictEntryVO,
   PortfolioIntegrationFieldMappingVO,
   PortfolioIntegrationHealthDashboardVO,
   PortfolioIntegrationMessageInboxVO,
+  PortfolioIntegrationPayloadFieldDto,
   PortfolioIntegrationSyncTaskVO,
+  PortfolioNationalReportIssueVO,
 } from '@/apis/portfolio/integration'
 import type {
   PortfolioArchiveCategoryTreeNodeVO,
@@ -30,14 +33,22 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import {
+  ALL_PORTFOLIO_SCIENTIFIC_RESEARCH_FACT_KIND_CODES,
+  PortfolioScientificResearchFactKindDescription,
+} from '@/types/enums/portfolio-scientific-research-fact-kind-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { portfolioTeacherSelectOptionsFromSummaries } from '@/utils/portfolio-teacher-display'
 
@@ -51,7 +62,7 @@ const tabItems = [
   { key: 'dictionary', label: '字段字典' },
   { key: 'sync', label: '同步日志' },
   { key: 'clean-log', label: '清洗日志' },
-  { key: 'queue', label: '待匹配/冲突' },
+  { key: 'queue', label: '待匹配/冲突/上报' },
   { key: 'failed-message', label: '异常消息' },
   { key: 'health', label: '渠道健康' },
 ]
@@ -64,6 +75,7 @@ const loadState = reactive({
   syncTasks: false,
   unmatched: false,
   conflicts: false,
+  nationalIssues: false,
   failedMessages: false,
   cleanLogs: false,
   courseCodeMaps: false,
@@ -76,6 +88,7 @@ const loadError = reactive({
   syncTasks: '',
   unmatched: '',
   conflicts: '',
+  nationalIssues: '',
   failedMessages: '',
   cleanLogs: '',
   courseCodeMaps: '',
@@ -91,6 +104,7 @@ const requestToken = reactive({
   syncTasks: 0,
   unmatched: 0,
   conflicts: 0,
+  nationalIssues: 0,
   failedMessages: 0,
   cleanLogs: 0,
   courseCodeMaps: 0,
@@ -104,6 +118,7 @@ const archiveFields = ref<PortfolioTargetFieldDefinition[]>([])
 const syncTasks = ref<PortfolioIntegrationSyncTaskVO[]>([])
 const unmatched = ref<PortfolioIdentityUnmatchedVO[]>([])
 const conflicts = ref<PortfolioConflictTicketVO[]>([])
+const nationalIssues = ref<PortfolioNationalReportIssueVO[]>([])
 const failedMessages = ref<PortfolioIntegrationMessageInboxVO[]>([])
 const cleanLogs = ref<PortfolioIntegrationCleanLogVO[]>([])
 const courseCodeMaps = ref<PortfolioCourseCodeMapVO[]>([])
@@ -112,6 +127,7 @@ const health = ref<PortfolioIntegrationHealthDashboardVO | null>(null)
 const datasourceTotal = ref(0)
 const syncTaskTotal = ref(0)
 const unmatchedTotal = ref(0)
+const nationalIssueTotal = ref(0)
 const conflictTotal = ref(0)
 const failedMessageTotal = ref(0)
 const cleanLogTotal = ref(0)
@@ -122,6 +138,7 @@ const selectedDatasourceId = ref('')
 const datasourceQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 const syncTaskQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 const unmatchedQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
+const nationalIssueQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, status: 'OPEN' })
 const conflictQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 const failedMessageQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 const cleanLogQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
@@ -156,7 +173,13 @@ const dsForm = reactive({
   readTimeoutSeconds: 60 as number | undefined,
   excelImportSceneKey: 'PORTFOLIO_DEVELOPMENT_RECORD',
   sourceFileNodeId: '',
-  importContextJson: '',
+  importContextFileName: '',
+  importContextDefaultRecordType: '',
+  importContextDefaultCategoryCode: '',
+  importContextDefaultLevelCode: '',
+  importContextCommit: true,
+  importContextConfirmManualConflicts: false,
+  importContextExpectedConfigUpdateToken: '',
   batchSize: 100 as number | undefined,
   syncDirection: 'OUTBOUND' as 'OUTBOUND' | 'INBOUND',
   inboundRecords: [] as Array<{
@@ -177,6 +200,10 @@ const isJdbcPathway = computed(() => dsForm.pathwayCode === 'JDBC')
 const isSoapPathway = computed(() => dsForm.pathwayCode === 'SOAP')
 const isExcelPathway = computed(() => dsForm.pathwayCode === 'EXCEL_IMPORT')
 const isMessagePathway = computed(() => dsForm.pathwayCode === 'MESSAGE_PUSH')
+const isScientificResearchChannel = computed(() => dsForm.channelCode === 'SCIENTIFIC_RESEARCH')
+const scientificResearchFactKindHint = ALL_PORTFOLIO_SCIENTIFIC_RESEARCH_FACT_KIND_CODES
+  .map(code => `${code}=${PortfolioScientificResearchFactKindDescription[code]}`)
+  .join('；')
 const editingDatasource = computed(() => Boolean(dsForm.id))
 
 const datasourceChannelOptions = [
@@ -222,7 +249,13 @@ function resetDatasourceForm() {
   dsForm.readTimeoutSeconds = 60
   dsForm.excelImportSceneKey = 'PORTFOLIO_DEVELOPMENT_RECORD'
   dsForm.sourceFileNodeId = ''
-  dsForm.importContextJson = ''
+  dsForm.importContextFileName = ''
+  dsForm.importContextDefaultRecordType = ''
+  dsForm.importContextDefaultCategoryCode = ''
+  dsForm.importContextDefaultLevelCode = ''
+  dsForm.importContextCommit = true
+  dsForm.importContextConfirmManualConflicts = false
+  dsForm.importContextExpectedConfigUpdateToken = ''
   dsForm.batchSize = 100
   dsForm.syncDirection = 'OUTBOUND'
   dsForm.inboundRecords = []
@@ -243,7 +276,13 @@ function clearPathwayConfigFields() {
   dsForm.readTimeoutSeconds = 60
   dsForm.excelImportSceneKey = 'PORTFOLIO_DEVELOPMENT_RECORD'
   dsForm.sourceFileNodeId = ''
-  dsForm.importContextJson = ''
+  dsForm.importContextFileName = ''
+  dsForm.importContextDefaultRecordType = ''
+  dsForm.importContextDefaultCategoryCode = ''
+  dsForm.importContextDefaultLevelCode = ''
+  dsForm.importContextCommit = true
+  dsForm.importContextConfirmManualConflicts = false
+  dsForm.importContextExpectedConfigUpdateToken = ''
   dsForm.batchSize = 100
   dsForm.syncDirection = 'OUTBOUND'
   dsForm.inboundRecords = []
@@ -260,6 +299,9 @@ function changeDatasourceChannel(value: SelectValue) {
 function changeDatasourcePathway(value: SelectValue) {
   dsForm.pathwayCode = typeof value === 'string' ? value : String(value ?? '')
   clearPathwayConfigFields()
+  if (dsForm.channelCode === 'SCIENTIFIC_RESEARCH' && dsForm.pathwayCode === 'EXCEL_IMPORT') {
+    dsForm.excelImportSceneKey = 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT'
+  }
 }
 
 function applyNationalTeacherPreset(direction: 'OUTBOUND' | 'INBOUND') {
@@ -299,15 +341,15 @@ function removeInboundRecord(index: number) {
   dsForm.inboundRecords.splice(index, 1)
 }
 
-function buildConnectionConfigJson(): string | undefined {
+function buildConnectionConfig(): PortfolioIntegrationConnectionConfigDto | undefined {
   if (isHrOpenApi.value) {
     return undefined
   }
   if (isNationalTeacherOpenApi.value) {
     if (dsForm.syncDirection === 'OUTBOUND') {
-      return JSON.stringify({ syncDirection: 'OUTBOUND' })
+      return { syncDirection: 'OUTBOUND' }
     }
-    return JSON.stringify({
+    return {
       syncDirection: 'INBOUND',
       inboundRecords: dsForm.inboundRecords
         .filter(item => item.teacherNumber.trim())
@@ -317,40 +359,57 @@ function buildConnectionConfigJson(): string | undefined {
           title: item.title.trim() || undefined,
           employmentStatus: item.employmentStatus.trim() || undefined,
         })),
-    })
+    }
   }
   if (isJdbcPathway.value) {
     const password = dsForm.password.trim()
-    return JSON.stringify({
+    return {
       jdbcUrl: dsForm.jdbcUrl.trim(),
       username: dsForm.username.trim(),
       password: password || (dsForm.passwordConfigured ? PORTFOLIO_INTEGRATION_PASSWORD_MASK : ''),
       querySql: dsForm.querySql.trim(),
       incremental: dsForm.incremental,
       initialWatermark: dsForm.initialWatermark.trim() || undefined,
-    })
+    }
   }
   if (isSoapPathway.value) {
-    return JSON.stringify({
+    return {
       endpointUrl: dsForm.endpointUrl.trim(),
       soapAction: dsForm.soapAction.trim() || undefined,
       requestEnvelope: dsForm.requestEnvelope.trim(),
       recordElementLocalName: dsForm.recordElementLocalName.trim() || 'Record',
       readTimeoutSeconds: dsForm.readTimeoutSeconds || undefined,
-    })
+    }
   }
   if (isExcelPathway.value) {
-    const nodeId = Number(dsForm.sourceFileNodeId.trim())
-    return JSON.stringify({
+    const importContext = {
+      fileName: dsForm.importContextFileName.trim() || undefined,
+      defaultRecordType: dsForm.importContextDefaultRecordType.trim() || undefined,
+      defaultCategoryCode: dsForm.importContextDefaultCategoryCode.trim() || undefined,
+      defaultLevelCode: dsForm.importContextDefaultLevelCode.trim() || undefined,
+      commit: dsForm.importContextCommit,
+      confirmManualConflicts: dsForm.importContextConfirmManualConflicts || undefined,
+      expectedConfigUpdateToken: dsForm.importContextExpectedConfigUpdateToken.trim() || undefined,
+    }
+    const hasImportContext = Boolean(
+      importContext.fileName
+      || importContext.defaultRecordType
+      || importContext.defaultCategoryCode
+      || importContext.defaultLevelCode
+      || importContext.confirmManualConflicts
+      || importContext.expectedConfigUpdateToken
+      || importContext.commit === false,
+    )
+    return {
       excelImportSceneKey: dsForm.excelImportSceneKey,
-      sourceFileNodeId: Number.isFinite(nodeId) ? nodeId : undefined,
-      importContextJson: dsForm.importContextJson.trim() || undefined,
-    })
+      sourceFileNodeId: dsForm.sourceFileNodeId.trim() || undefined,
+      importContext: hasImportContext ? importContext : undefined,
+    }
   }
   if (isMessagePathway.value) {
-    return JSON.stringify({
+    return {
       batchSize: dsForm.batchSize && dsForm.batchSize > 0 ? dsForm.batchSize : 100,
-    })
+    }
   }
   return undefined
 }
@@ -363,59 +422,55 @@ function fillDatasourceForm(row: PortfolioIntegrationDatasourceVO) {
   dsForm.datasourceName = row.datasourceName
   dsForm.enabled = row.enabled
   dsForm.passwordConfigured = Boolean(row.passwordConfigured)
-  const raw = row.connectionConfigJson?.trim()
-  if (!raw) {
-    return
-  }
-  let parsed: Record<string, unknown>
-  try {
-    parsed = JSON.parse(raw) as Record<string, unknown>
-  }
-  catch {
-    showFormValidationMessage('该数据源连接配置不是合法 JSON，请修正后保存')
+  const config = row.connectionConfig
+  if (!config) {
     return
   }
   if (row.pathwayCode === 'JDBC') {
-    dsForm.jdbcUrl = String(parsed.jdbcUrl ?? '')
-    dsForm.username = String(parsed.username ?? '')
-    dsForm.password = String(parsed.password ?? PORTFOLIO_INTEGRATION_PASSWORD_MASK)
-    dsForm.querySql = String(parsed.querySql ?? '')
-    dsForm.incremental = Boolean(parsed.incremental)
-    dsForm.initialWatermark = String(parsed.initialWatermark ?? '')
+    dsForm.jdbcUrl = config.jdbcUrl ?? ''
+    dsForm.username = config.username ?? ''
+    dsForm.password = config.password ?? PORTFOLIO_INTEGRATION_PASSWORD_MASK
+    dsForm.querySql = config.querySql ?? ''
+    dsForm.incremental = Boolean(config.incremental)
+    dsForm.initialWatermark = config.initialWatermark ?? ''
     return
   }
   if (row.pathwayCode === 'SOAP') {
-    dsForm.endpointUrl = String(parsed.endpointUrl ?? '')
-    dsForm.soapAction = String(parsed.soapAction ?? '')
-    dsForm.requestEnvelope = String(parsed.requestEnvelope ?? '')
-    dsForm.recordElementLocalName = String(parsed.recordElementLocalName ?? 'Record')
-    dsForm.readTimeoutSeconds = typeof parsed.readTimeoutSeconds === 'number'
-      ? parsed.readTimeoutSeconds
-      : 60
+    dsForm.endpointUrl = config.endpointUrl ?? ''
+    dsForm.soapAction = config.soapAction ?? ''
+    dsForm.requestEnvelope = config.requestEnvelope ?? ''
+    dsForm.recordElementLocalName = config.recordElementLocalName ?? 'Record'
+    dsForm.readTimeoutSeconds = config.readTimeoutSeconds ?? 60
     return
   }
   if (row.pathwayCode === 'EXCEL_IMPORT') {
-    dsForm.excelImportSceneKey = String(parsed.excelImportSceneKey ?? 'PORTFOLIO_DEVELOPMENT_RECORD')
-    dsForm.sourceFileNodeId = parsed.sourceFileNodeId == null ? '' : String(parsed.sourceFileNodeId)
-    dsForm.importContextJson = String(parsed.importContextJson ?? '')
+    dsForm.excelImportSceneKey = config.excelImportSceneKey
+      ?? (row.channelCode === 'SCIENTIFIC_RESEARCH'
+        ? 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT'
+        : 'PORTFOLIO_DEVELOPMENT_RECORD')
+    dsForm.sourceFileNodeId = config.sourceFileNodeId ?? ''
+    const importContext = config.importContext
+    dsForm.importContextFileName = importContext?.fileName ?? ''
+    dsForm.importContextDefaultRecordType = importContext?.defaultRecordType ?? ''
+    dsForm.importContextDefaultCategoryCode = importContext?.defaultCategoryCode ?? ''
+    dsForm.importContextDefaultLevelCode = importContext?.defaultLevelCode ?? ''
+    dsForm.importContextCommit = importContext?.commit !== false
+    dsForm.importContextConfirmManualConflicts = Boolean(importContext?.confirmManualConflicts)
+    dsForm.importContextExpectedConfigUpdateToken = importContext?.expectedConfigUpdateToken ?? ''
     return
   }
   if (row.pathwayCode === 'MESSAGE_PUSH') {
-    dsForm.batchSize = typeof parsed.batchSize === 'number' ? parsed.batchSize : 100
+    dsForm.batchSize = config.batchSize ?? 100
     return
   }
   if (row.channelCode === 'NATIONAL_TEACHER_SYSTEM') {
-    dsForm.syncDirection = parsed.syncDirection === 'INBOUND' ? 'INBOUND' : 'OUTBOUND'
-    const records = Array.isArray(parsed.inboundRecords) ? parsed.inboundRecords : []
-    dsForm.inboundRecords = records.map((item) => {
-      const rowItem = item as Record<string, unknown>
-      return {
-        teacherNumber: String(rowItem.teacherNumber ?? ''),
-        teacherName: String(rowItem.teacherName ?? ''),
-        title: String(rowItem.title ?? ''),
-        employmentStatus: String(rowItem.employmentStatus ?? ''),
-      }
-    })
+    dsForm.syncDirection = config.syncDirection === 'INBOUND' ? 'INBOUND' : 'OUTBOUND'
+    dsForm.inboundRecords = (config.inboundRecords ?? []).map((item) => ({
+      teacherNumber: item.teacherNumber ?? '',
+      teacherName: item.teacherName ?? '',
+      title: item.title ?? '',
+      employmentStatus: item.employmentStatus ?? '',
+    }))
   }
 }
 const mappingForm = reactive({
@@ -463,12 +518,15 @@ const failedMessageDatasourceId = ref('')
 const cleanLogDatasourceId = ref('')
 const failedMessageDrawerOpen = ref(false)
 const selectedFailedMessage = ref<PortfolioIntegrationMessageInboxVO | null>(null)
-const payloadFieldEdits = ref<Array<{ fieldCode: string, fieldValue: string }>>([])
+const payloadFieldEdits = ref<PortfolioIntegrationPayloadFieldDto[]>([])
 const requeueMessage = ref('管理员修正字段后重入队')
 const messageEnqueueForm = reactive({
   datasourceConfigId: '',
   messageKey: '',
-  payloadJson: '{\n  "teacher_number": "",\n  "teacher_name": ""\n}',
+  payloadFields: [
+    { fieldCode: 'teacher_number', fieldValue: '' },
+    { fieldCode: 'teacher_name', fieldValue: '' },
+  ] as PortfolioIntegrationPayloadFieldDto[],
 })
 
 const datasourceOptions = computed(() =>
@@ -578,6 +636,16 @@ const dictEntryColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 140, fixed: 'right' },
 ]
 
+const nationalIssueColumns: ColumnsType = [
+  { title: '工号', dataIndex: 'teacherNumber', key: 'teacherNumber', width: 120 },
+  { title: '姓名', dataIndex: 'teacherName', key: 'teacherName', width: 120 },
+  { title: '问题编码', dataIndex: 'issueCodes', key: 'issueCodes', width: 200 },
+  { title: '明细', key: 'issueDetails', ellipsis: true },
+  { title: '状态', dataIndex: 'statusLabel', key: 'statusLabel', width: 100 },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
+  { title: '操作', key: 'actions', width: 220, fixed: 'right' },
+]
+
 const identityResolveTeacherId = ref('')
 const identityResolveTeacherNumber = ref('')
 const identityResolveRowId = ref('')
@@ -602,7 +670,7 @@ function endOperation(key: string) {
 }
 
 function needsTeacherNumber(row: PortfolioIdentityUnmatchedVO): boolean {
-  return Boolean(row.matchHintsJson?.includes(IDENTITY_HINT_MISSING_TEACHER_NUMBER))
+  return Boolean(row.matchHints?.includes(IDENTITY_HINT_MISSING_TEACHER_NUMBER))
 }
 
 function mergeTeacherOptions(rows: PortfolioTeacherSummaryVO[]) {
@@ -826,6 +894,127 @@ async function loadConflicts() {
   }
 }
 
+
+async function loadNationalIssues() {
+  const currentToken = ++requestToken.nationalIssues
+  const request = {
+    pageNum: nationalIssueQuery.pageNum,
+    pageSize: nationalIssueQuery.pageSize,
+    status: nationalIssueQuery.status || undefined,
+  }
+  loadState.nationalIssues = true
+  loadError.nationalIssues = ''
+  try {
+    const res = await portfolioIntegrationApi.pageNationalReportIssues(request)
+    if (requestToken.nationalIssues !== currentToken) return
+    nationalIssues.value = res.list ?? []
+    nationalIssueTotal.value = res.total ?? 0
+  } catch (error) {
+    if (requestToken.nationalIssues !== currentToken) return
+    nationalIssues.value = []
+    nationalIssueTotal.value = 0
+    loadError.nationalIssues = '全国上报待修正加载失败，请重试'
+    showUserError(error, '加载全国上报待修正失败')
+  } finally {
+    if (requestToken.nationalIssues === currentToken) {
+      loadState.nationalIssues = false
+    }
+  }
+}
+
+async function fixNationalReportIssue(row: PortfolioNationalReportIssueVO) {
+  const operation = `national-issue:${row.id}`
+  if (!beginOperation(operation)) return
+  if (!(await confirmAsync({
+    title: '确认已修正并关闭？',
+    content: '将复检教师名册必填项；仍失败则刷新明细并拒绝关闭。请先在人事主数据补齐工号/姓名/职称/院系/出生日期/学历/性别。',
+    type: 'warning',
+  }))) {
+    endOperation(operation)
+    return
+  }
+  try {
+    await portfolioIntegrationApi.fixNationalReportIssue({
+      issueId: row.id,
+      fixRemark: '管理端确认已修正',
+    })
+    message.success('上报待修正已关闭')
+    await loadNationalIssues()
+  } catch (error) {
+    showUserError(error, '关闭上报待修正失败')
+    await loadNationalIssues()
+  } finally {
+    endOperation(operation)
+  }
+}
+
+function onNationalIssuePageChange(page: { current: number, pageSize: number }) {
+  nationalIssueQuery.pageNum = page.current
+  nationalIssueQuery.pageSize = page.pageSize
+  void loadNationalIssues()
+}
+
+function searchNationalIssues() {
+  nationalIssueQuery.pageNum = 1
+  void loadNationalIssues()
+}
+
+async function exportNationalReportForIssue(row: PortfolioNationalReportIssueVO) {
+  if (!row.syncTaskId) {
+    showFormValidationMessage('该待修正未关联同步任务，无法导出批次包')
+    return
+  }
+  const operation = `national-export:${row.syncTaskId}`
+  if (!beginOperation(operation)) return
+  try {
+    const res = await portfolioIntegrationApi.exportNationalReportPackage({
+      syncTaskId: String(row.syncTaskId),
+      maskMode: true,
+    })
+    message.success(`上报包已导出：${res.fileName || res.fileNodeId}`)
+  } catch (error) {
+    showUserError(error, '导出全国上报包失败（须批次存在校验通过记录）')
+  } finally {
+    endOperation(operation)
+  }
+}
+
+async function retransmitNationalReportIssues() {
+  const nationalDatasource = datasources.value.find(
+    (item) => item.channelCode === 'NATIONAL_TEACHER_SYSTEM' && item.pathwayCode === 'OPENAPI',
+  )
+  if (!nationalDatasource) {
+    showFormValidationMessage('请先配置并启用全国教师系统 OPENAPI 数据源')
+    return
+  }
+  const operation = 'national-retransmit'
+  if (!beginOperation(operation)) return
+  if (!(await confirmAsync({
+    title: '确认重传全部待修正？',
+    content: '将复检当前 OPEN 待修正教师；通过的自动关闭并生成新批次包，仍失败则刷新明细。',
+    type: 'warning',
+  }))) {
+    endOperation(operation)
+    return
+  }
+  try {
+    const batch = await portfolioIntegrationApi.retransmitNationalReportIssues({
+      datasourceConfigId: nationalDatasource.id,
+    })
+    message.success(
+      `重传完成：成功 ${batch.successCount ?? 0}，失败 ${batch.failedCount ?? 0}`,
+    )
+    await Promise.all([loadNationalIssues(), loadSyncTasks()])
+  } catch (error) {
+    showUserError(error, '重传全国上报失败记录失败')
+    await loadNationalIssues()
+  } finally {
+    endOperation(operation)
+  }
+}
+
+
+
 async function loadHealth() {
   const currentToken = ++requestToken.health
   loadState.health = true
@@ -885,7 +1074,12 @@ async function loadFailedMessages() {
 async function enqueueInboundMessage() {
   const datasourceConfigId = messageEnqueueForm.datasourceConfigId.trim()
   const messageKey = messageEnqueueForm.messageKey.trim()
-  const payloadJson = messageEnqueueForm.payloadJson.trim()
+  const payloadFields = messageEnqueueForm.payloadFields
+    .map((item) => ({
+      fieldCode: item.fieldCode.trim(),
+      fieldValue: item.fieldValue.trim(),
+    }))
+    .filter((item) => item.fieldCode && item.fieldValue)
   if (!datasourceConfigId) {
     showFormValidationMessage('请选择消息推送数据源')
     return
@@ -894,14 +1088,12 @@ async function enqueueInboundMessage() {
     showFormValidationMessage('请填写消息幂等键')
     return
   }
-  if (!payloadJson) {
-    showFormValidationMessage('请填写消息载荷 JSON')
+  if (!payloadFields.length) {
+    showFormValidationMessage('请至少填写一个有效消息字段')
     return
   }
-  try {
-    JSON.parse(payloadJson)
-  } catch {
-    showFormValidationMessage('消息载荷须为合法 JSON 对象')
+  if (!payloadFields.some((item) => item.fieldCode === 'teacher_number' || item.fieldCode === 'teacher_code')) {
+    showFormValidationMessage('消息字段须包含教师工号 teacher_number 或 teacher_code')
     return
   }
   const operation = 'message:enqueue'
@@ -910,7 +1102,7 @@ async function enqueueInboundMessage() {
     const inboxId = await portfolioIntegrationApi.enqueueMessage({
       datasourceConfigId,
       messageKey,
-      payloadJson,
+      payloadFields,
     })
     message.success(`消息已入站，收件箱 ID：${inboxId}`)
     if (!failedMessageDatasourceId.value) {
@@ -924,6 +1116,18 @@ async function enqueueInboundMessage() {
   } finally {
     endOperation(operation)
   }
+}
+
+function addEnqueuePayloadField() {
+  messageEnqueueForm.payloadFields.push({ fieldCode: '', fieldValue: '' })
+}
+
+function removeEnqueuePayloadField(index: number) {
+  if (messageEnqueueForm.payloadFields.length <= 1) {
+    showFormValidationMessage('至少保留一个消息字段')
+    return
+  }
+  messageEnqueueForm.payloadFields.splice(index, 1)
 }
 
 async function loadCleanLogs() {
@@ -1050,7 +1254,7 @@ async function saveDatasource() {
     pathwayCode: dsForm.pathwayCode,
     datasourceName: dsForm.datasourceName.trim(),
     enabled: dsForm.enabled,
-    connectionConfigJson: buildConnectionConfigJson(),
+    connectionConfig: buildConnectionConfig(),
   }
   try {
     await portfolioIntegrationApi.saveDatasource(request)
@@ -1115,6 +1319,7 @@ async function triggerSync(row: PortfolioIntegrationDatasourceVO) {
       loadHealth(),
       loadUnmatched(),
       loadConflicts(),
+      loadNationalIssues(),
     ])
   } catch (error) {
     showUserError(error, '触发同步失败')
@@ -1210,33 +1415,18 @@ async function resolveIdentityUnmatched(
 
 function openFailedMessageFix(row: PortfolioIntegrationMessageInboxVO) {
   selectedFailedMessage.value = row
-  payloadFieldEdits.value = parsePayloadFields(row.payloadJson)
+  const fields = (row.payloadFields ?? []).map((item) => ({
+    fieldCode: item.fieldCode,
+    fieldValue: item.fieldValue ?? '',
+  }))
+  if (!fields.some((item) => item.fieldCode === 'teacher_number' || item.fieldCode === 'teacher_code')) {
+    fields.unshift({ fieldCode: 'teacher_number', fieldValue: '' })
+  }
+  payloadFieldEdits.value = fields.length
+    ? fields
+    : [{ fieldCode: 'teacher_number', fieldValue: '' }]
   requeueMessage.value = '管理员修正字段后重入队'
   failedMessageDrawerOpen.value = true
-}
-
-/** 将协议层载荷拆成可编辑字段行；解析失败时仅暴露教师工号字段。 */
-function parsePayloadFields(payloadJson: string): Array<{ fieldCode: string, fieldValue: string }> {
-  try {
-    const parsed: unknown = JSON.parse(payloadJson)
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      return [
-        { fieldCode: 'teacher_number', fieldValue: '' },
-      ]
-    }
-    const record = parsed as Record<string, unknown>
-    const fields = Object.keys(record).map((fieldCode) => ({
-      fieldCode,
-      fieldValue: record[fieldCode] == null ? '' : String(record[fieldCode]),
-    }))
-    if (!fields.some((item) => item.fieldCode === 'teacher_number' || item.fieldCode === 'teacher_code')) {
-      fields.unshift({ fieldCode: 'teacher_number', fieldValue: '' })
-    }
-    return fields
-  }
-  catch {
-    return [{ fieldCode: 'teacher_number', fieldValue: '' }]
-  }
 }
 
 async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, corrected = false) {
@@ -1280,7 +1470,7 @@ async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, cor
     failedMessageDrawerOpen.value = false
     selectedFailedMessage.value = null
     payloadFieldEdits.value = []
-    const reloads = [loadSyncTasks(), loadHealth(), loadUnmatched(), loadConflicts()]
+    const reloads = [loadSyncTasks(), loadHealth(), loadUnmatched(), loadConflicts(), loadNationalIssues()]
     if (failedMessageDatasourceId.value === datasourceConfigId) reloads.push(loadFailedMessages())
     await Promise.all(reloads)
   } catch (error) {
@@ -1528,6 +1718,7 @@ onMounted(async () => {
     loadSyncTasks(),
     loadUnmatched(),
     loadConflicts(),
+    loadNationalIssues(),
     loadHealth(),
     loadCleanLogs(),
     loadCourseCodeMaps(),
@@ -1556,15 +1747,17 @@ onMounted(async () => {
       </div>
       <div class="integration-dashboard__form">
         <label>渠道</label>
-        <a-select
-          v-model:value="dsForm.channelCode"
+        <UiSelect
+          size="sm"
+          v-model="dsForm.channelCode"
           :options="datasourceChannelOptions"
           :disabled="writing || editingDatasource"
           @change="changeDatasourceChannel"
         />
         <label>通路</label>
-        <a-select
-          v-model:value="dsForm.pathwayCode"
+        <UiSelect
+          size="sm"
+          v-model="dsForm.pathwayCode"
           :options="datasourcePathwayOptions"
           :disabled="writing || editingDatasource"
           @change="changeDatasourcePathway"
@@ -1585,11 +1778,18 @@ onMounted(async () => {
       <p v-if="isHrOpenApi" class="integration-dashboard__hint">
         人事开放接口读取本租户 edu-user 教师名册，无需填写连接配置。
       </p>
+      <p v-if="isScientificResearchChannel" class="integration-dashboard__hint">
+        科研系统专用域必须提供 fact_kind（{{ scientificResearchFactKindHint }}）。
+        荣誉写入发展记录 HONOR；论文/项目写入 ACHIEVEMENT。
+        论文/项目落库外源键自动规范为 PUBLICATION:原始ID / PROJECT:原始ID，同渠道同号互不覆盖。
+        category_code 须为租户启用档案分类，供职称 PUBLICATION_COUNT / PROJECT_COUNT 自动核验。
+      </p>
 
-      <div v-else-if="isNationalTeacherOpenApi" class="integration-dashboard__config-panel">
+      <div v-if="isNationalTeacherOpenApi" class="integration-dashboard__config-panel">
         <label>同步方向</label>
-        <a-select
-          v-model:value="dsForm.syncDirection"
+        <UiSelect
+          size="sm"
+          v-model="dsForm.syncDirection"
           :options="[
             { value: 'OUTBOUND', label: '上报校验' },
             { value: 'INBOUND', label: '回流比对' },
@@ -1669,20 +1869,30 @@ onMounted(async () => {
 
       <div v-else-if="isExcelPathway" class="integration-dashboard__config-panel">
         <label>导入 Scene</label>
-        <a-select
-          v-model:value="dsForm.excelImportSceneKey"
-          :options="[...PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS]"
-          :disabled="writing"
+        <UiSelect
+          size="sm"
+          v-model="dsForm.excelImportSceneKey"
+          :options="isScientificResearchChannel
+            ? PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS.filter(item => item.value === 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT')
+            : PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS.filter(item => item.value !== 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT')"
+          :disabled="writing || isScientificResearchChannel"
         />
         <label>文件节点 ID</label>
         <input v-model="dsForm.sourceFileNodeId" class="integration-dashboard__input" :disabled="writing" placeholder="平台存储 fileNodeId">
-        <label>导入上下文</label>
-        <input
-          v-model="dsForm.importContextJson"
-          class="integration-dashboard__input integration-dashboard__input--wide"
-          :disabled="writing"
-          placeholder="可选 JSON，如 {&quot;fileName&quot;:&quot;demo.xlsx&quot;}"
-        >
+        <label>导入文件名</label>
+        <input v-model="dsForm.importContextFileName" class="integration-dashboard__input integration-dashboard__input--wide" :disabled="writing" placeholder="可选">
+        <label>默认记录类型</label>
+        <input v-model="dsForm.importContextDefaultRecordType" class="integration-dashboard__input" :disabled="writing" placeholder="发展记录导入">
+        <label>默认类目编码</label>
+        <input v-model="dsForm.importContextDefaultCategoryCode" class="integration-dashboard__input" :disabled="writing">
+        <label>默认层级编码</label>
+        <input v-model="dsForm.importContextDefaultLevelCode" class="integration-dashboard__input" :disabled="writing">
+        <label>立即提交</label>
+        <UiSwitch size="sm" v-model="dsForm.importContextCommit" :disabled="writing" />
+        <label>确认人工冲突</label>
+        <UiSwitch size="sm" v-model="dsForm.importContextConfirmManualConflicts" :disabled="writing" />
+        <label>配置更新令牌</label>
+        <input v-model="dsForm.importContextExpectedConfigUpdateToken" class="integration-dashboard__input integration-dashboard__input--wide" :disabled="writing" placeholder="发展计划历史导入可选">
       </div>
 
       <div v-else-if="isMessagePathway" class="integration-dashboard__config-panel">
@@ -1692,6 +1902,7 @@ onMounted(async () => {
 
       <div class="integration-dashboard__form-actions">
         <UiButton
+          size="sm"
           tone="primary"
           :loading="operationKey === 'datasource:save'"
           :disabled="writing"
@@ -1760,8 +1971,9 @@ onMounted(async () => {
           :disabled="writing"
         />
         <label>分类</label>
-        <a-select
-          :value="mappingForm.targetCategoryCode || undefined"
+        <UiSelect
+          size="sm"
+          :model-value="mappingForm.targetCategoryCode || undefined"
           allow-clear
           :options="archiveCategoryOptions"
           :disabled="writing"
@@ -1769,9 +1981,10 @@ onMounted(async () => {
           @change="changeMappingCategory"
         />
         <label>目标字段</label>
-        <a-select
+        <UiSelect
+          size="sm"
           v-if="mappingForm.targetCategoryCode"
-          v-model:value="mappingForm.targetFieldCode"
+          v-model="mappingForm.targetFieldCode"
           :options="archiveFieldOptions"
           :disabled="writing"
           placeholder="选择已发布字段"
@@ -1789,19 +2002,22 @@ onMounted(async () => {
           :disabled="writing"
         />
         <label>转换</label>
-        <a-select
-          v-model:value="mappingForm.transformType"
+        <UiSelect
+          size="sm"
+          v-model="mappingForm.transformType"
           :options="mappingTransformOptions"
           :disabled="writing"
         />
         <label v-if="mappingTransformExprPlaceholder">转换参数</label>
-        <a-input
+        <UiInput
+          size="sm"
           v-if="mappingTransformExprPlaceholder"
-          v-model:value="mappingForm.transformExpr"
+          v-model="mappingForm.transformExpr"
           :placeholder="mappingTransformExprPlaceholder"
           :disabled="writing"
         />
         <UiButton
+          size="sm"
           tone="primary"
           :loading="operationKey.startsWith('mapping:save:')"
           :disabled="writing"
@@ -1828,16 +2044,18 @@ onMounted(async () => {
 
     <UiCard v-else-if="activeTab === 'course-map'" title="课程编码对照" style="margin-top: 16px">
       <div class="integration-dashboard__filter-bar">
-        <a-input
-          v-model:value="courseCodeMapQuery.sourceSystemCode"
+        <UiInput
+          size="sm"
+          v-model="courseCodeMapQuery.sourceSystemCode"
           placeholder="来源系统编码"
-          allow-clear
+          clearable
           :disabled="writing"
         />
-        <a-input
-          v-model:value="courseCodeMapQuery.keyword"
+        <UiInput
+          size="sm"
+          v-model="courseCodeMapQuery.keyword"
           placeholder="课程编码或名称"
-          allow-clear
+          clearable
           :disabled="writing"
         />
         <UiButton
@@ -1850,43 +2068,51 @@ onMounted(async () => {
         </UiButton>
       </div>
       <div class="integration-dashboard__config-grid">
-        <a-input
-          v-model:value="courseCodeMapForm.sourceSystemCode"
+        <UiInput
+          size="sm"
+          v-model="courseCodeMapForm.sourceSystemCode"
           placeholder="来源系统编码"
           :disabled="writing"
         />
-        <a-input
-          v-model:value="courseCodeMapForm.sourceCourseCode"
+        <UiInput
+          size="sm"
+          v-model="courseCodeMapForm.sourceCourseCode"
           placeholder="源课程编码"
           :disabled="writing"
         />
-        <a-input
-          v-model:value="courseCodeMapForm.sourceCourseName"
+        <UiInput
+          size="sm"
+          v-model="courseCodeMapForm.sourceCourseName"
           placeholder="源课程名称（可选）"
           :disabled="writing"
         />
-        <a-input
-          v-model:value="courseCodeMapForm.canonicalCourseCode"
+        <UiInput
+          size="sm"
+          v-model="courseCodeMapForm.canonicalCourseCode"
           placeholder="校内规范课程编码"
           :disabled="writing"
         />
-        <a-input
-          v-model:value="courseCodeMapForm.canonicalCourseName"
+        <UiInput
+          size="sm"
+          v-model="courseCodeMapForm.canonicalCourseName"
           placeholder="校内规范课程名称"
           :disabled="writing"
         />
-        <a-input
-          v-model:value="courseCodeMapForm.remark"
+        <UiInput
+          size="sm"
+          v-model="courseCodeMapForm.remark"
           placeholder="备注（可选）"
           :disabled="writing"
         />
-        <a-switch
-          v-model:checked="courseCodeMapForm.enabled"
+        <UiSwitch
+          size="sm"
+          v-model="courseCodeMapForm.enabled"
           checked-children="启用"
           un-checked-children="停用"
           :disabled="writing"
         />
         <UiButton
+          size="sm"
           variant="primary"
           :loading="operationKey.startsWith('course-code-map:save:')"
           :disabled="writing"
@@ -1895,6 +2121,7 @@ onMounted(async () => {
           {{ courseCodeMapForm.id ? '保存修改' : '新增对照' }}
         </UiButton>
         <UiButton
+          size="sm"
           v-if="courseCodeMapForm.id"
           variant="ghost"
           :disabled="writing"
@@ -1951,10 +2178,11 @@ onMounted(async () => {
 
     <UiCard v-else-if="activeTab === 'dictionary'" title="字段转换字典" style="margin-top: 16px">
       <div class="integration-dashboard__filter-bar">
-        <a-input
-          v-model:value="dictEntryQuery.dictionaryCode"
+        <UiInput
+          size="sm"
+          v-model="dictEntryQuery.dictionaryCode"
           placeholder="字典编码"
-          allow-clear
+          clearable
           :disabled="writing"
         />
         <UiButton
@@ -1967,33 +2195,39 @@ onMounted(async () => {
         </UiButton>
       </div>
       <div class="integration-dashboard__config-grid">
-        <a-input
-          v-model:value="dictEntryForm.dictionaryCode"
+        <UiInput
+          size="sm"
+          v-model="dictEntryForm.dictionaryCode"
           placeholder="字典编码"
           :disabled="writing"
         />
-        <a-input
-          v-model:value="dictEntryForm.sourceValue"
+        <UiInput
+          size="sm"
+          v-model="dictEntryForm.sourceValue"
           placeholder="源系统原始值"
           :disabled="writing"
         />
-        <a-input
-          v-model:value="dictEntryForm.targetValue"
+        <UiInput
+          size="sm"
+          v-model="dictEntryForm.targetValue"
           placeholder="规范目标值"
           :disabled="writing"
         />
-        <a-input
-          v-model:value="dictEntryForm.remark"
+        <UiInput
+          size="sm"
+          v-model="dictEntryForm.remark"
           placeholder="备注（可选）"
           :disabled="writing"
         />
-        <a-switch
-          v-model:checked="dictEntryForm.enabled"
+        <UiSwitch
+          size="sm"
+          v-model="dictEntryForm.enabled"
           checked-children="启用"
           un-checked-children="停用"
           :disabled="writing"
         />
         <UiButton
+          size="sm"
           variant="primary"
           :loading="operationKey.startsWith('dict-entry:save:')"
           :disabled="writing"
@@ -2002,6 +2236,7 @@ onMounted(async () => {
           {{ dictEntryForm.id ? '保存修改' : '新增字典项' }}
         </UiButton>
         <UiButton
+          size="sm"
           v-if="dictEntryForm.id"
           variant="ghost"
           :disabled="writing"
@@ -2062,8 +2297,9 @@ onMounted(async () => {
 
     <UiCard v-else-if="activeTab === 'clean-log'" title="字段清洗日志" style="margin-top: 16px">
       <div class="integration-dashboard__filter-bar">
-        <a-select
-          v-model:value="cleanLogDatasourceId"
+        <UiSelect
+          size="sm"
+          v-model="cleanLogDatasourceId"
           allow-clear
           placeholder="全部数据源"
           :options="datasourceOptions"
@@ -2092,7 +2328,7 @@ onMounted(async () => {
       />
     </UiCard>
 
-    <UiCard v-else-if="activeTab === 'queue'" title="待匹配与冲突" style="margin-top: 16px">
+    <UiCard v-else-if="activeTab === 'queue'" title="待匹配、冲突与全国上报" style="margin-top: 16px">
       <h4 class="integration-dashboard__sub-title">身份待匹配</h4>
       <UiDataTable
         v-model:current="unmatchedQuery.pageNum"
@@ -2109,12 +2345,13 @@ onMounted(async () => {
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'actions' && record.status === 'PENDING'">
             <template v-if="identityResolveRowId === record.id">
-              <a-select
-                v-model:value="identityResolveTeacherId"
+              <UiSelect
+                size="sm"
+                v-model="identityResolveTeacherId"
                 class="integration-dashboard__teacher-select"
                 placeholder="选择本地教师"
                 :options="teacherOptions"
-                show-search
+                allow-search
                 :filter-option="false"
                 option-label-prop="label"
                 :disabled="writing"
@@ -2160,6 +2397,76 @@ onMounted(async () => {
               @click="resolveIdentityUnmatched(record, 'IGNORED')"
             >
               忽略
+            </UiButton>
+          </template>
+        </template>
+      </UiDataTable>
+      <h4 class="integration-dashboard__sub-title">全国教师上报待修正</h4>
+      <div class="integration-dashboard__filter-bar">
+        <UiSelect
+          size="sm"
+          v-model="nationalIssueQuery.status"
+          allow-clear
+          placeholder="全部状态"
+          :options="[
+            { label: '待修正', value: 'OPEN' },
+            { label: '已修正', value: 'FIXED' },
+          ]"
+          :disabled="writing"
+        />
+        <UiButton
+          size="sm"
+          :loading="loadState.nationalIssues"
+          :disabled="writing"
+          @click="searchNationalIssues"
+        >
+          查询
+        </UiButton>
+        <UiButton
+          size="sm"
+          tone="primary"
+          :loading="operationKey === 'national-retransmit'"
+          :disabled="writing"
+          @click="retransmitNationalReportIssues"
+        >
+          重传待修正
+        </UiButton>
+      </div>
+      <UiDataTable
+        v-model:current="nationalIssueQuery.pageNum"
+        v-model:page-size="nationalIssueQuery.pageSize"
+        row-key="id"
+        :columns="nationalIssueColumns"
+        :data-source="nationalIssues"
+        :loading="loadState.nationalIssues"
+        :load-error="Boolean(loadError.nationalIssues)"
+        pagination-mode="server"
+        :total="nationalIssueTotal"
+        @page-change="onNationalIssuePageChange"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'issueDetails'">
+            {{ (record.issueDetails || []).join('；') }}
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiButton
+              v-if="record.status === 'OPEN'"
+              size="sm"
+              :loading="operationKey === `national-issue:${record.id}`"
+              :disabled="writing"
+              @click="fixNationalReportIssue(record)"
+            >
+              确认已修正
+            </UiButton>
+            <UiButton
+              v-if="record.syncTaskId"
+              size="sm"
+              variant="ghost"
+              :loading="operationKey === `national-export:${record.syncTaskId}`"
+              :disabled="writing"
+              @click="exportNationalReportForIssue(record)"
+            >
+              导出批次包
             </UiButton>
           </template>
         </template>
@@ -2216,24 +2523,57 @@ onMounted(async () => {
     >
       <div class="integration-dashboard__form integration-dashboard__message-enqueue">
         <label>入站数据源</label>
-        <a-select
-          v-model:value="messageEnqueueForm.datasourceConfigId"
+        <UiSelect
+          size="sm"
+          v-model="messageEnqueueForm.datasourceConfigId"
           placeholder="选择 MESSAGE_PUSH 数据源"
           :options="messageDatasourceOptions"
           :disabled="writing"
         />
         <label>消息幂等键</label>
-        <a-input
-          v-model:value="messageEnqueueForm.messageKey"
+        <UiInput
+          size="sm"
+          v-model="messageEnqueueForm.messageKey"
           placeholder="外部系统消息唯一键，重复投递返回同一收件箱"
           :disabled="writing"
         />
-        <label>消息载荷 JSON</label>
-        <a-textarea
-          v-model:value="messageEnqueueForm.payloadJson"
-          :rows="6"
-          :disabled="writing"
-        />
+        <label>消息字段</label>
+        <div class="integration-dashboard__payload-editor">
+          <div
+            v-for="(item, index) in messageEnqueueForm.payloadFields"
+            :key="`enqueue-field-${index}`"
+            class="integration-dashboard__payload-field"
+          >
+            <UiInput
+              size="sm"
+              v-model="item.fieldCode"
+              placeholder="字段编码"
+              :disabled="writing"
+            />
+            <UiInput
+              size="sm"
+              v-model="item.fieldValue"
+              placeholder="字段值"
+              :disabled="writing"
+            />
+            <UiButton
+              size="sm"
+              variant="ghost"
+              :disabled="writing"
+              @click="removeEnqueuePayloadField(index)"
+            >
+              删除
+            </UiButton>
+          </div>
+          <UiButton
+            size="sm"
+            variant="ghost"
+            :disabled="writing"
+            @click="addEnqueuePayloadField"
+          >
+            添加字段
+          </UiButton>
+        </div>
         <UiButton
           variant="primary"
           size="sm"
@@ -2245,8 +2585,9 @@ onMounted(async () => {
         </UiButton>
       </div>
       <div class="integration-dashboard__filter-bar" style="margin-top: 16px">
-        <a-select
-          v-model:value="failedMessageDatasourceId"
+        <UiSelect
+          size="sm"
+          v-model="failedMessageDatasourceId"
           placeholder="选择消息推送数据源"
           :options="messageDatasourceOptions"
           :disabled="writing"
@@ -2295,11 +2636,13 @@ onMounted(async () => {
           </template>
         </template>
         <template #empty>
-          <UiEmpty
-            :description="
-              failedMessageDatasourceId ? '当前数据源没有异常消息' : '请先选择消息推送数据源'
-            "
+          <WorkbenchContextGateStrip
+            v-if="!failedMessageDatasourceId"
+            tag="未选择"
+            body="请先选择消息推送数据源后再查看异常重放"
+            hide-cta
           />
+          <UiEmpty v-else size="sm" description="当前数据源没有异常消息" />
         </template>
       </UiDataTable>
     </UiCard>
@@ -2313,8 +2656,8 @@ onMounted(async () => {
       <p v-if="health?.computedTime" class="integration-dashboard__hint">
         计算时间 {{ health.computedTime }}
       </p>
-      <UiEmpty v-if="loadError.health" :description="loadError.health" />
-      <UiEmpty v-else-if="!health?.channels.length" description="暂无渠道健康数据" />
+      <UiEmpty size="sm" v-if="loadError.health" :description="loadError.health" />
+      <UiEmpty size="sm" v-else-if="!health?.channels.length" description="暂无渠道健康数据" />
       <ul v-else class="integration-dashboard__health-list">
         <li v-for="item in health.channels" :key="`${item.channelCode}-${item.pathwayCode}`">
           <strong>{{ item.channelCode }}</strong> / {{ item.pathwayCode }}
@@ -2343,8 +2686,9 @@ onMounted(async () => {
       <strong>{{ selectedFailedMessage.messageKey }}</strong>
       <span>{{ selectedFailedMessage.processMessage }}</span>
       <label>修正说明</label>
-      <a-input
-        v-model:value="requeueMessage"
+      <UiInput
+        size="sm"
+        v-model="requeueMessage"
         placeholder="说明修正内容与重放依据"
         :disabled="writing"
       />
@@ -2355,7 +2699,9 @@ onMounted(async () => {
         class="integration-dashboard__payload-field"
       >
         <span>{{ item.fieldCode }}</span>
-        <a-input v-model:value="item.fieldValue" :disabled="writing" />
+        <UiInput
+          size="sm" v-model="item.fieldValue" :disabled="writing"
+        />
       </div>
     </div>
   </UiDrawer>
@@ -2379,8 +2725,13 @@ onMounted(async () => {
 }
 .integration-dashboard__message-enqueue .ant-input,
 .integration-dashboard__message-enqueue .ant-select,
-.integration-dashboard__message-enqueue textarea {
+.integration-dashboard__message-enqueue .integration-dashboard__payload-editor {
   grid-column: 2;
+}
+.integration-dashboard__payload-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .integration-dashboard__input--wide {
   min-width: 280px;
@@ -2403,7 +2754,7 @@ onMounted(async () => {
 .integration-dashboard__textarea {
   min-height: 96px;
   padding: 8px;
-  border: 1px solid var(--nybc-border);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
   font-family: inherit;
   resize: vertical;
@@ -2446,7 +2797,7 @@ onMounted(async () => {
 }
 .integration-dashboard__preset-label {
   font-size: 13px;
-  color: var(--nybc-text-secondary);
+  color: var(--dp-text-secondary);
 }
 .integration-dashboard__form--mapping {
   grid-template-columns: 64px 1fr 80px 1fr 64px 1fr 64px 1fr auto;
@@ -2485,15 +2836,18 @@ onMounted(async () => {
 }
 .integration-dashboard__payload-field {
   display: grid;
-  grid-template-columns: 160px 1fr;
+  grid-template-columns: minmax(140px, 180px) 1fr auto;
   gap: 8px;
   align-items: center;
+}
+.integration-dashboard__failed-message-editor .integration-dashboard__payload-field {
+  grid-template-columns: 160px 1fr;
 }
 .integration-dashboard__input,
 .integration-dashboard__select {
   height: 32px;
   padding: 0 8px;
-  border: 1px solid var(--nybc-border);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
 }
 .integration-dashboard__select {
@@ -2505,7 +2859,7 @@ onMounted(async () => {
 }
 .integration-dashboard__hint {
   margin: 0 0 12px;
-  color: var(--nybc-text-secondary);
+  color: var(--dp-text-secondary);
   font-size: 13px;
 }
 .integration-dashboard__sub-title {
@@ -2523,7 +2877,7 @@ onMounted(async () => {
   gap: 8px;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid var(--nybc-border);
+  border-bottom: 1px solid var(--dp-border);
 }
 @media (max-width: 960px) {
   .integration-dashboard__filter-bar,

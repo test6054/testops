@@ -22,10 +22,10 @@
     </template>
 
     <template v-if="currentExamId" #signal>
-      <SignalBand variant="tiles" compact :metrics="appealSignalMetrics" />
+      <SignalBand compact :metrics="appealSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!currentExamId" description="请选择考试" class="appeal-page__empty" />
+    <ExamSelectGateStrip v-if="!currentExamId" class="appeal-page__empty" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -85,10 +85,10 @@ import {
   REVIEW_WINDOW_STATUS_TONE,
   ReviewWindowPolicyStatusDescription,
 } from '@/apis/mark/grade-review'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import ScorePublishRelatedLinksCard from '@/components/workbench/ScorePublishRelatedLinksCard.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -265,7 +265,7 @@ watch(
 <style lang="scss" scoped>
 .appeal-page {
   &__empty {
-    margin-top: 32px;
+    margin-top: var(--dp-space-3, 12px);
   }
 
   &__tabs {

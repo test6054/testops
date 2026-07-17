@@ -119,7 +119,7 @@ watch(
   padding: 8px 10px;
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
-  background: var(--ant-color-bg-container);
+  background: var(--dp-bg-container);
 
   &__header {
     display: flex;
@@ -163,7 +163,7 @@ watch(
     padding: 6px;
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
-    background: var(--ant-color-bg-container);
+    background: var(--dp-bg-container);
     cursor: pointer;
     text-align: left;
 

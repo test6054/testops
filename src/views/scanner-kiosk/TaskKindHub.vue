@@ -5,7 +5,9 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { loadScanDispatchQueueSummary } from '@/apis/mark/scanner-dispatch'
 import { getKioskArchiveCollaborationPolicy } from '@/apis/mark/scanner-kiosk'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { ArchiveKioskHubListModeCode } from '@/types/enums/archive-kiosk-hub-list-mode-enum'
 import { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
@@ -558,19 +560,19 @@ onUnmounted(() => {
           class="hub-shell__failed-alert"
         />
 
-        <a-result
+        <UiEmpty
           v-if="hubErrorMessage"
-          status="error"
+          size="sm"
           title="工位状态读取失败"
-          :sub-title="hubErrorMessage"
+          :description="hubErrorMessage"
         >
-          <template #extra>
+          <template #action>
             <button type="button" class="hub-shell__cta" @click="loadHubState">重试</button>
           </template>
-        </a-result>
+        </UiEmpty>
 
         <div v-else-if="hubLoading || deviceActivation.loading.value" class="hub-shell__state">
-          <a-skeleton active :paragraph="{ rows: 5 }" />
+          <UiSkeletonState :rows="5" compact />
         </div>
 
         <KioskDeviceActivationPanel

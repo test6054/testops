@@ -1,14 +1,16 @@
 <template>
   <nav class="exam-sub-sidebar-nav">
-    <a-menu
+    <UiMenu
       :selected-keys="[activeMenuKey]"
+      :open-keys="openKeys"
       :inline-collapsed="collapsed"
       mode="inline"
       @click="onMenuClick"
+      @open-change="onOpenChange"
     >
       <template v-for="group in menuGroups" :key="group.key">
-        <a-menu-item-group v-if="!collapsed" :title="group.title">
-          <a-menu-item v-for="item in group.items" :key="item.key">
+        <UiMenuItemGroup v-if="!collapsed" :title="group.title">
+          <UiMenuItem v-for="item in primaryItems(group)" :key="item.key">
             <template #icon>
               <ExamSubSidebarMenuIcon
                 :icon="menuIconMap[item.key]"
@@ -23,10 +25,33 @@
             >
               {{ experienceAssistPendingCount }}
             </span>
-          </a-menu-item>
-        </a-menu-item-group>
+          </UiMenuItem>
+          <UiSubMenu
+            v-if="secondaryItems(group).length"
+            :key="`${group.key}__tools`"
+            class="exam-sub-sidebar-nav__tools"
+          >
+            <template #title>次要工具（{{ secondaryItems(group).length }}）</template>
+            <UiMenuItem v-for="item in secondaryItems(group)" :key="item.key">
+              <template #icon>
+                <ExamSubSidebarMenuIcon
+                  :icon="menuIconMap[item.key]"
+                  :label="item.label"
+                  :collapsed="collapsed"
+                />
+              </template>
+              {{ item.label }}
+              <span
+                v-if="item.key === EXPERIENCE_ASSIST_MENU_KEY && experienceAssistPendingCount > 0"
+                class="exam-sub-sidebar-nav__badge"
+              >
+                {{ experienceAssistPendingCount }}
+              </span>
+            </UiMenuItem>
+          </UiSubMenu>
+        </UiMenuItemGroup>
         <template v-else>
-          <a-menu-item v-for="item in group.items" :key="item.key">
+          <UiMenuItem v-for="item in group.items" :key="item.key">
             <template #icon>
               <ExamSubSidebarMenuIcon
                 :icon="menuIconMap[item.key]"
@@ -34,10 +59,10 @@
                 :collapsed="collapsed"
               />
             </template>
-          </a-menu-item>
+          </UiMenuItem>
         </template>
       </template>
-    </a-menu>
+    </UiMenu>
   </nav>
 </template>
 
@@ -45,12 +70,16 @@
 import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { Component } from 'vue'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
-import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
-import { computed, inject } from 'vue'
+import type { ExamWorkspaceMenuGroup, ExamWorkspaceMenuItem, ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
+import { computed, inject, ref, watch } from 'vue'
+import UiMenu from '@/components/ui-guide/ui/UiMenu.vue'
+import UiMenuItem from '@/components/ui-guide/ui/UiMenuItem.vue'
+import UiMenuItemGroup from '@/components/ui-guide/ui/UiMenuItemGroup.vue'
+import UiSubMenu from '@/components/ui-guide/ui/UiSubMenu.vue'
 import ExamSubSidebarMenuIcon from '@/components/workbench/ExamSubSidebarMenuIcon.vue'
 import { useExperienceAssistTrialPendingCount } from '@/composables/useExperienceAssistTrialPendingCount'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
-import { getMenuGroupsForJourney } from '@/constants/exam-workspace-menu'
+import { getMenuGroupsForJourney, isPrimaryMenuItem } from '@/constants/exam-workspace-menu'
 
 defineOptions({
   name: 'ExamSubSidebarNav',
@@ -81,6 +110,35 @@ const menuGroups = computed(() =>
 )
 const { pendingCount: experienceAssistPendingCount } = useExperienceAssistTrialPendingCount()
 
+const openKeys = ref<string[]>([])
+
+function primaryItems(group: ExamWorkspaceMenuGroup): ExamWorkspaceMenuItem[] {
+  return group.items.filter((item) => isPrimaryMenuItem(item))
+}
+
+function secondaryItems(group: ExamWorkspaceMenuGroup): ExamWorkspaceMenuItem[] {
+  return group.items.filter((item) => !isPrimaryMenuItem(item))
+}
+
+function onOpenChange(keys: (string | number)[]): void {
+  openKeys.value = keys.map(String)
+}
+
+watch(
+  () => [props.activeJourneyKey, props.activeMenuKey, menuGroups.value] as const,
+  () => {
+    const next: string[] = []
+    for (const group of menuGroups.value) {
+      const secondary = secondaryItems(group)
+      if (secondary.some((item) => item.key === props.activeMenuKey)) {
+        next.push(`${group.key}__tools`)
+      }
+    }
+    openKeys.value = next
+  },
+  { immediate: true },
+)
+
 function onMenuClick(info: MenuInfo): void {
   emit('menu-click', String(info.key))
 }
@@ -95,7 +153,7 @@ function onMenuClick(info: MenuInfo): void {
   :deep(.ant-menu-item-group-title) {
     font-size: 12px;
     font-weight: 600;
-    color: var(--ant-color-text-tertiary);
+    color: var(--dp-text-tertiary);
     padding-left: 12px;
   }
 
@@ -107,7 +165,7 @@ function onMenuClick(info: MenuInfo): void {
   }
 
   :deep(.ant-menu-item-selected) {
-    background: var(--ant-color-primary-bg);
+    background: var(--dp-color-primary-bg);
   }
 
   :deep(.ant-menu-inline-collapsed) {
@@ -123,8 +181,8 @@ function onMenuClick(info: MenuInfo): void {
     min-width: 18px;
     padding: 0 6px;
     border-radius: 9px;
-    background: var(--ant-color-warning-bg);
-    color: var(--ant-color-warning);
+    background: var(--dp-warning-bg);
+    color: var(--dp-warning);
     font-size: 11px;
     font-weight: 600;
     line-height: 18px;

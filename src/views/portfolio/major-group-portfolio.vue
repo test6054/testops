@@ -15,9 +15,15 @@ import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -366,37 +372,54 @@ watch(
     </template>
     <UiCard title="专业群范围">
       <div class="major-group-portfolio__toolbar">
-        <a-select
-          v-model:value="portfolioOrgId"
+        <UiSelect
+          size="sm"
+          v-model="portfolioOrgId"
           class="major-group-portfolio__field"
           placeholder="选择专业群"
           :options="majorGroupOptions"
           :disabled="exportLoading"
         />
-        <UiButton v-if="portfolioOrgId" :loading="exportLoading" @click="openExportModal">
+        <UiButton size="sm" v-if="portfolioOrgId" :loading="exportLoading" @click="openExportModal">
           申请导出
         </UiButton>
       </div>
     </UiCard>
-    <a-spin :spinning="loading">
-      <UiEmpty v-if="!loading && !portfolioOrgId" description="请选择专业群" />
-      <UiEmpty v-else-if="!loading && !portfolio" description="当前专业群暂无档案袋数据" />
+    <UiSpin :spinning="loading">
+      <UiAlertStrip
+        v-if="!loading && !portfolioOrgId"
+        tone="info"
+        size="sm"
+        dense
+        inline
+        :show-icon="false"
+      >
+        <template #default>
+          <span class="major-group-portfolio__gate-row">
+            <UiTag tone="blue" size="sm">未选择专业群</UiTag>
+            <span>请在上方选择专业群后查看群像</span>
+          </span>
+        </template>
+      </UiAlertStrip>
+      <UiEmpty size="sm" v-else-if="!loading && !portfolio" description="当前专业群暂无档案袋数据" />
       <template v-else-if="portfolio">
-        <UiStatPanel title="群像指标" :items="summaryStats" />
+        <UiStatPanel title="群像指标" :items="summaryStats" compact />
         <UiCard title="建设周期对比" class="major-group-portfolio__compare">
           <div class="major-group-portfolio__compare-bar">
-            <a-input
-              v-model:value="periodForm.baselinePeriodYear"
+            <UiInput
+              size="sm"
+              v-model="periodForm.baselinePeriodYear"
               placeholder="基线年度"
               class="major-group-portfolio__year"
             />
             <span>对比</span>
-            <a-input
-              v-model:value="periodForm.comparePeriodYear"
+            <UiInput
+              size="sm"
+              v-model="periodForm.comparePeriodYear"
               placeholder="对比年度"
               class="major-group-portfolio__year"
             />
-            <UiButton :loading="compareLoading" @click="comparePeriods">对比</UiButton>
+            <UiButton size="sm" :loading="compareLoading" @click="comparePeriods">对比</UiButton>
           </div>
           <dl v-if="periodCompare" class="major-group-portfolio__compare-result">
             <div>
@@ -466,19 +489,20 @@ watch(
           />
         </UiCard>
       </template>
-    </a-spin>
-    <a-modal
+    </UiSpin>
+    <UiDialog
       v-model:open="exportModalOpen"
       title="专业群档案袋导出审批"
       :confirm-loading="exportLoading"
       @ok="submitExport"
     >
-      <a-textarea
-        v-model:value="exportPurpose"
+      <UiTextarea
+        size="sm"
+        v-model="exportPurpose"
         placeholder="请说明导出用途，提交后由租户管理员审批"
         :rows="4"
       />
-    </a-modal>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -514,7 +538,7 @@ watch(
 .major-group-portfolio__compare-result dt {
   margin: 0;
   font-size: 13px;
-  color: var(--nybc-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 .major-group-portfolio__compare-result dd {
   margin: 4px 0 0;
@@ -527,7 +551,7 @@ watch(
 .major-group-portfolio__alert-item + .major-group-portfolio__alert-item {
   margin-top: 12px;
   padding-top: 12px;
-  border-top: 1px solid var(--nybc-border-subtle, #f0f0f0);
+  border-top: 1px solid var(--dp-border-subtle);
 }
 .major-group-portfolio__alert-head {
   display: flex;
@@ -544,6 +568,15 @@ watch(
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  border-bottom: 1px solid var(--nybc-border-subtle, #f0f0f0);
+  border-bottom: 1px solid var(--dp-border-subtle);
+}
+
+.major-group-portfolio__gate-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  min-width: 0;
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
 }
 </style>

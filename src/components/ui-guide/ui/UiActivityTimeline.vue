@@ -8,7 +8,7 @@
     v-bind="$attrs"
   >
     <div v-if="!props.groups.length" class="ui-activity-timeline__empty">
-      <UiEmpty :title="props.emptyTitle" :description="props.emptyDescription" />
+      <UiEmpty size="sm" :title="props.emptyTitle" :description="props.emptyDescription" />
     </div>
 
     <div v-else class="ui-activity-timeline__groups">
@@ -184,37 +184,37 @@ const resolveTagVariant = (tag: TimelineTag) => {
 .ui-activity-timeline {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--dp-space-4, 16px);
   container-type: inline-size;
 }
 
 .ui-activity-timeline--bordered {
-  padding: 18px;
+  padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
 }
 
 .ui-activity-timeline--compact {
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .ui-activity-timeline__groups {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--dp-space-4, 16px);
 }
 
 .ui-activity-timeline__group {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .ui-activity-timeline__group-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--dp-space-2, 8px);
 }
 
 .ui-activity-timeline__group-badge {
@@ -271,8 +271,8 @@ const resolveTagVariant = (tag: TimelineTag) => {
   height: 14px;
   border-radius: 999px;
   margin-top: 14px;
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+  border: 3px solid var(--dp-surface);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--dp-text-primary) 8%, transparent);
 }
 
 .ui-activity-timeline__dot--gray {
@@ -310,14 +310,14 @@ const resolveTagVariant = (tag: TimelineTag) => {
   left: 50%;
   width: 1px;
   transform: translateX(-50%);
-  background: #dbe3ef;
+  background: var(--dp-border);
 }
 
 .ui-activity-timeline__card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 2px 0 18px;
+  gap: var(--dp-space-2, 8px);
+  padding: 2px 0 var(--dp-space-4, 18px);
   background: transparent;
   border: none;
   border-radius: 0;
@@ -325,7 +325,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 }
 
 .ui-activity-timeline__item:not(:last-child) .ui-activity-timeline__card {
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid var(--dp-border);
 }
 
 .ui-activity-timeline__card-head,
@@ -337,7 +337,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: var(--dp-space-3, 10px);
 }
 
 .ui-activity-timeline__title {
@@ -383,7 +383,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   gap: 0;
   padding: 10px 12px;
   background: var(--dp-gray-50);
-  border: 1px solid #eef2f7;
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control-inner);
 }
 
@@ -396,7 +396,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 }
 
 .ui-activity-timeline__file-row:not(:last-child) {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  border-bottom: 1px solid var(--dp-border-subtle);
 }
 
 .ui-activity-timeline__file-row.is-deleted {

@@ -14,7 +14,7 @@
         <p>待审批查阅申请加载失败</p>
         <UiButton size="sm" variant="outline" @click="loadRecords">重试</UiButton>
       </div>
-      <UiEmpty v-else-if="records.length === 0" description="暂无待审批查阅申请" />
+      <UiEmpty size="sm" v-else-if="records.length === 0" description="暂无待审批查阅申请" />
       <div v-else class="archive-access-pending__list">
         <article
           v-for="record in records"
@@ -45,13 +45,14 @@
           <p v-if="record.accessReason" class="approval-card__reason">{{ record.accessReason }}</p>
           <div v-if="canApprove(record)" class="approval-card__actions">
             <template v-if="rejectingId === record.accessRecordId">
-              <a-textarea
-                v-model:value="rejectComment"
+              <UiTextarea
+                size="sm"
+                v-model="rejectComment"
                 :maxlength="500"
                 :rows="2"
                 placeholder="填写驳回原因"
                 class="approval-card__reject-input"
-                show-count
+                :show-count="true"
               />
               <div class="approval-card__action-row">
                 <UiButton size="sm" variant="outline" :loading="submitting" @click="cancelReject">
@@ -68,13 +69,14 @@
               </div>
             </template>
             <template v-else-if="approvingId === record.accessRecordId">
-              <a-textarea
-                v-model:value="approveComment"
+              <UiTextarea
+                size="sm"
+                v-model="approveComment"
                 :maxlength="500"
                 :rows="2"
                 placeholder="可选审批意见"
                 class="approval-card__reject-input"
-                show-count
+                :show-count="true"
               />
               <div class="approval-card__action-row">
                 <UiButton size="sm" variant="outline" @click="cancelApprove">取消</UiButton>
@@ -116,6 +118,7 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -198,6 +201,7 @@ function cancelReject(): void {
 }
 
 async function submitApprove(accessRecordId: string): Promise<void> {
+  if (submitting.value) return
   submitting.value = true
   try {
     await approveArchiveVolumeAccess({
@@ -219,6 +223,7 @@ async function submitReject(accessRecordId: string): Promise<void> {
     showFormValidationMessage('请填写驳回原因')
     return
   }
+  if (submitting.value) return
   submitting.value = true
   try {
     await rejectArchiveVolumeAccess({

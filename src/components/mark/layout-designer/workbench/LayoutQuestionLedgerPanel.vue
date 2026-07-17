@@ -6,8 +6,8 @@ import { MarkOcrSceneDescription } from '@/apis/mark/ocr-scene'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import LayoutQuestionPropertyPanel from '@/components/mark/layout-designer/LayoutQuestionPropertyPanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { isLayoutQuestionRoiReady } from '@/utils/exam-layout-designer'
 import { ROI_NOT_CONFIGURED_LABEL } from '@/utils/format-exam-layout-question-summary'
@@ -86,7 +86,22 @@ function handleRowClick(record: QuestionRow): void {
         <h2 class="layout-question-ledger__title">题目台账</h2>
         <span class="layout-question-ledger__count">{{ rows.length }} 题</span>
       </div>
-      <UiEmpty v-if="rows.length === 0" description="请先完成资料入口：整卷识别或生成答题卡" />
+      <UiAlertStrip
+        v-if="rows.length === 0"
+        tone="info"
+        size="sm"
+        dense
+        inline
+        :show-icon="false"
+        class="layout-question-ledger__gate"
+      >
+        <template #default>
+          <span class="layout-question-ledger__gate-row">
+            <UiTag tone="blue" size="sm">待完成资料入口</UiTag>
+            <span class="layout-question-ledger__gate-text">请先完成资料入口：整卷识别或生成答题卡</span>
+          </span>
+        </template>
+      </UiAlertStrip>
       <UiDataTable
         v-else
         pagination-mode="none"
@@ -146,7 +161,7 @@ function handleRowClick(record: QuestionRow): void {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 12px;
-  min-height: 420px;
+  min-height: 240px;
 
   &__header {
     display: flex;
@@ -171,8 +186,25 @@ function handleRowClick(record: QuestionRow): void {
     min-height: 0;
   }
 
+  &__gate {
+    margin: var(--dp-space-2) 0;
+    max-width: 100%;
+  }
+
+  &__gate-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--dp-space-2);
+    min-width: 0;
+  }
+
+  &__gate-text {
+    font-size: var(--dp-font-size-sm);
+    color: var(--dp-text-secondary);
+  }
+
   :deep(.layout-question-ledger__row--active td) {
-    background: rgba(22, 119, 255, 0.06);
+    background: color-mix(in srgb, var(--dp-color-primary) 6%, transparent);
   }
 
   @media (max-width: 1100px) {

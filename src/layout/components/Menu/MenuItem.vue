@@ -1,15 +1,15 @@
 <template>
   <template v-if="isRenderableMenuNode">
-    <a-menu-item v-if="shouldShowAsMenuItem" :key="menuItemKey">
+    <UiMenuItem v-if="shouldShowAsMenuItem" :key="menuItemKey">
       <template #icon>
         <MenuCollapsedTooltip :collapsed="menuCollapsed" :label="menuItemTitle ?? ''">
           <MenuIcon :icon="menuItemIcon" />
         </MenuCollapsedTooltip>
       </template>
       <span>{{ menuItemTitle }}</span>
-    </a-menu-item>
+    </UiMenuItem>
 
-    <a-sub-menu v-else :key="item.path">
+    <UiSubMenu v-else :key="item.path">
       <template #title>{{ item?.meta?.title }}</template>
       <template #icon>
         <MenuCollapsedTooltip :collapsed="menuCollapsed" :label="String(item?.meta?.title ?? '')">
@@ -17,13 +17,15 @@
         </MenuCollapsedTooltip>
       </template>
       <MenuItem v-for="child in visibleChildren" :key="child.path" :item="child" />
-    </a-sub-menu>
+    </UiSubMenu>
   </template>
 </template>
 
 <script lang="ts" setup>
 import type { RouteRecordRaw } from 'vue-router'
 import { computed } from 'vue'
+import UiMenuItem from '@/components/ui-guide/ui/UiMenuItem.vue'
+import UiSubMenu from '@/components/ui-guide/ui/UiSubMenu.vue'
 import { useDevice } from '@/hooks'
 import { useAppStore } from '@/stores'
 import MenuCollapsedTooltip from './MenuCollapsedTooltip.vue'

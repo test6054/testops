@@ -1,5 +1,8 @@
 <script lang="ts" setup>
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import {
   handlePromptInputCancel,
   handlePromptInputOk,
@@ -32,17 +35,17 @@ function mapOkType(type?: 'primary' | 'danger') {
     @ok="handlePromptInputOk"
     @cancel="handlePromptInputCancel"
   >
-    <a-form layout="vertical">
-      <a-form-item
+    <UiForm layout="vertical">
+      <UiFormItem
         :validate-status="state.error ? 'error' : undefined"
         :help="state.error || undefined"
       >
-        <a-textarea
-          v-model:value="state.value"
+        <UiTextarea
+          v-model="state.value"
           :placeholder="state.options.placeholder || ''"
           :auto-size="{ minRows: state.options.rows ?? 3, maxRows: (state.options.rows ?? 3) + 2 }"
         />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
   </UiConfirmModal>
 </template>

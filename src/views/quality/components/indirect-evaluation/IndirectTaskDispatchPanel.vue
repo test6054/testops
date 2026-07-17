@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { Dayjs } from 'dayjs'
 import type {
   IndirectEvaluationFormPublishRequest,
   IndirectEvaluationFormVO,
@@ -16,9 +15,17 @@ import { indirectFormApi } from '@/apis/quality/indirect-form'
 import { IndirectFormAccessModeCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiRangePicker from '@/components/ui-guide/ui/RangePicker.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useUserStore } from '@/stores'
 import { showUserError } from '@/utils/error-handler'
@@ -47,7 +54,7 @@ const userStore = useUserStore()
 const publishDrawerVisible = ref(false)
 const publishSubmitting = ref(false)
 const publishTargetForm = ref<IndirectEvaluationFormVO | null>(null)
-const publishTimeRange = ref<[Dayjs, Dayjs] | undefined>(undefined)
+const publishTimeRange = ref<[string, string] | undefined>(undefined)
 const publishEditor = reactive<IndirectEvaluationFormPublishRequest>({
   id: '',
   startTime: '',
@@ -122,7 +129,10 @@ function openPublishDrawer(record: IndirectEvaluationFormVO) {
   publishResultUrl.value = ''
   const start = dayjs()
   const end = dayjs().add(14, 'day')
-  publishTimeRange.value = [start, end]
+  publishTimeRange.value = [
+    start.format('YYYY-MM-DD HH:mm:ss'),
+    end.format('YYYY-MM-DD HH:mm:ss'),
+  ]
   Object.assign(publishEditor, {
     id: record.id,
     startTime: start.format('YYYY-MM-DD HH:mm:ss'),
@@ -144,8 +154,8 @@ async function submitPublish() {
     message.error('请设置问卷填写时间窗口')
     return
   }
-  publishEditor.startTime = publishTimeRange.value[0].format('YYYY-MM-DD HH:mm:ss')
-  publishEditor.endTime = publishTimeRange.value[1].format('YYYY-MM-DD HH:mm:ss')
+  publishEditor.startTime = publishTimeRange.value[0]
+  publishEditor.endTime = publishTimeRange.value[1]
   if (!publishEditor.allowAnonymous && !publishEditor.requireIdentityFields?.length) {
     message.error('非匿名问卷必须配置身份字段')
     return
@@ -404,42 +414,45 @@ defineExpose({
     :confirm-loading="publishSubmitting"
     @ok="submitPublish"
   >
-    <a-form layout="vertical">
-      <a-form-item label="填写时间窗口" required>
-        <a-range-picker
-          v-model:value="publishTimeRange"
+    <UiForm layout="vertical">
+      <UiFormItem label="填写时间窗口" required>
+        <UiRangePicker
+          v-model="publishTimeRange"
           show-time
           format="YYYY-MM-DD HH:mm:ss"
-          style="width: 100%"
+          value-format="YYYY-MM-DD HH:mm:ss"
         />
-      </a-form-item>
-      <a-form-item label="访问模式" required>
-        <a-select v-model:value="publishEditor.accessMode" :options="accessModeOptions" />
-      </a-form-item>
-      <a-form-item label="允许匿名">
-        <a-switch v-model:checked="publishEditor.allowAnonymous" />
-      </a-form-item>
-      <a-form-item label="每人最大提交次数" required>
-        <a-input-number
-          v-model:value="publishEditor.maxSubmissionsPerRespondent"
+      </UiFormItem>
+      <UiFormItem label="访问模式" required>
+        <UiSelect
+          size="sm" v-model="publishEditor.accessMode" :options="accessModeOptions"
+        />
+      </UiFormItem>
+      <UiFormItem label="允许匿名">
+        <UiSwitch size="sm" v-model="publishEditor.allowAnonymous" />
+      </UiFormItem>
+      <UiFormItem label="每人最大提交次数" required>
+        <UiInputNumber
+          size="sm"
+          v-model="publishEditor.maxSubmissionsPerRespondent"
           :min="1"
           style="width: 100%"
         />
-      </a-form-item>
-      <a-form-item label="欢迎语">
-        <a-textarea v-model:value="publishEditor.welcomeMessage" :rows="2" />
-      </a-form-item>
-      <a-form-item label="感谢语">
-        <a-textarea v-model:value="publishEditor.thankYouMessage" :rows="2" />
-      </a-form-item>
+      </UiFormItem>
+      <UiFormItem label="欢迎语">
+        <UiTextarea size="sm" v-model="publishEditor.welcomeMessage" :rows="2" />
+      </UiFormItem>
+      <UiFormItem label="感谢语">
+        <UiTextarea size="sm" v-model="publishEditor.thankYouMessage" :rows="2" />
+      </UiFormItem>
       <p v-if="publishResultUrl" class="indirect-evaluation__publish-url">
         填答链接：{{ publishResultUrl }}
       </p>
-    </a-form>
+    </UiForm>
   </UiDrawer>
 
   <UiDrawer v-model:open="progressDrawerVisible" title="问卷填写进度" width="480" hide-footer>
-    <a-spin :spinning="progressLoading">
+    <UiSpin :spinning="progressLoading">
       <template v-if="progressData">
         <p>问卷：{{ progressData.formName }}</p>
         <p>状态：{{ formStatusLabel(progressData.status) }}</p>
@@ -481,11 +494,11 @@ defineExpose({
           </span>
         </p>
       </template>
-    </a-spin>
+    </UiSpin>
   </UiDrawer>
 
   <UiDrawer v-model:open="statisticsDrawerVisible" title="问卷统计分析" width="720" hide-footer>
-    <a-spin :spinning="statisticsLoading">
+    <UiSpin :spinning="statisticsLoading">
       <template v-if="statisticsData">
         <div class="ie__stats-actions">
           <UiButton
@@ -646,7 +659,7 @@ defineExpose({
           </template>
         </UiDataTable>
       </template>
-    </a-spin>
+    </UiSpin>
   </UiDrawer>
 </template>
 
@@ -710,7 +723,7 @@ defineExpose({
     padding: 10px 12px;
     border: 1px solid var(--dp-border);
     border-radius: 6px;
-    background: var(--dp-surface-muted, #fafafa);
+    background: var(--dp-surface-muted);
   }
 
   &__target-score-head {

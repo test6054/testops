@@ -24,10 +24,16 @@ import {
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import {
   canDeleteCycle,
@@ -527,7 +533,7 @@ defineExpose({ openCreate, loadCycles })
         </template>
       </template>
       <template #empty>
-        <UiEmpty description="暂无认证周期" />
+        <UiEmpty size="sm" description="暂无认证周期" />
       </template>
     </UiDataTable>
     <UiDrawer
@@ -538,10 +544,11 @@ defineExpose({ openCreate, loadCycles })
       ok-text="保存"
       @ok="submitCycle"
     >
-      <a-form layout="vertical">
-        <a-form-item v-if="!form.id" label="绑定认证标准" required>
-          <a-select
-            v-model:value="form.accreditationStandardId"
+      <UiForm layout="vertical">
+        <UiFormItem v-if="!form.id" label="绑定认证标准" required>
+          <UiSelect
+            size="sm"
+            v-model="form.accreditationStandardId"
             placeholder="请选择已启用的认证标准"
             :options="
               standards.map((item) => ({
@@ -550,40 +557,47 @@ defineExpose({ openCreate, loadCycles })
               }))
             "
           />
-        </a-form-item>
-        <a-form-item v-else-if="form.accreditationStandardId" label="绑定认证标准">
-          <a-input
+        </UiFormItem>
+        <UiFormItem v-else-if="form.accreditationStandardId" label="绑定认证标准">
+          <UiInput
+            size="sm"
             :value="
               standards.find((item) => item.id === form.accreditationStandardId)?.standardName
                 || form.accreditationStandardId
             "
             disabled
           />
-        </a-form-item>
-        <a-form-item label="周期编码" required>
-          <a-input v-model:value="form.cycleCode" :disabled="!!form.id" />
-        </a-form-item>
-        <a-form-item label="周期名称" required>
-          <a-input v-model:value="form.cycleName" />
-        </a-form-item>
-        <a-form-item label="现场考查开始">
-          <a-date-picker
-            v-model:value="form.onsiteVisitStart"
+        </UiFormItem>
+        <UiFormItem label="周期编码" required>
+          <UiInput
+            size="sm" v-model="form.cycleCode" :disabled="!!form.id"
+          />
+        </UiFormItem>
+        <UiFormItem label="周期名称" required>
+          <UiInput
+            size="sm" v-model="form.cycleName"
+          />
+        </UiFormItem>
+        <UiFormItem label="现场考查开始">
+          <UiDatePicker
+            size="sm"
+            v-model="form.onsiteVisitStart"
             value-format="YYYY-MM-DD"
             class="w-full"
           />
-        </a-form-item>
-        <a-form-item label="现场考查结束">
-          <a-date-picker
-            v-model:value="form.onsiteVisitEnd"
+        </UiFormItem>
+        <UiFormItem label="现场考查结束">
+          <UiDatePicker
+            size="sm"
+            v-model="form.onsiteVisitEnd"
             value-format="YYYY-MM-DD"
             class="w-full"
           />
-        </a-form-item>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="form.remark" :rows="3" />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+        <UiFormItem label="备注">
+          <UiTextarea size="sm" v-model="form.remark" :rows="3" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
     <UiDrawer v-model:open="detailOpen" title="认证周期详情" width="520" hide-footer>
       <dl v-if="detailRecord" class="detail-dl">
@@ -633,29 +647,30 @@ defineExpose({ openCreate, loadCycles })
       ok-text="提交决议"
       @ok="submitReview"
     >
-      <a-form layout="vertical">
-        <a-form-item label="决议" required>
-          <a-select v-model:value="reviewForm.reviewDecision">
-            <a-select-option value="ACCEPTED">受理（进入现场考查）</a-select-option>
-            <a-select-option value="SUPPLEMENT_REQUIRED">需补正</a-select-option>
-            <a-select-option value="REJECTED">不通过（关闭周期）</a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item
+      <UiForm layout="vertical">
+        <UiFormItem label="决议" required>
+          <UiSelect
+            v-model="reviewForm.reviewDecision"
+            size="sm"
+            :options="[{ value: 'ACCEPTED', label: '受理（进入现场考查）' }, { value: 'SUPPLEMENT_REQUIRED', label: '需补正' }, { value: 'REJECTED', label: '不通过（关闭周期）' }]"
+          />
+        </UiFormItem>
+        <UiFormItem
           v-if="reviewForm.reviewDecision === 'SUPPLEMENT_REQUIRED'"
           label="补正截止"
           required
         >
-          <a-date-picker
-            v-model:value="reviewForm.supplementDeadline"
+          <UiDatePicker
+            size="sm"
+            v-model="reviewForm.supplementDeadline"
             value-format="YYYY-MM-DD"
             class="w-full"
           />
-        </a-form-item>
-        <a-form-item label="审阅意见">
-          <a-textarea v-model:value="reviewForm.reviewRemark" :rows="4" />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+        <UiFormItem label="审阅意见">
+          <UiTextarea size="sm" v-model="reviewForm.reviewRemark" :rows="4" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
     <UiDrawer
       v-model:open="conclusionOpen"
@@ -665,43 +680,46 @@ defineExpose({ openCreate, loadCycles })
       ok-text="登记结论"
       @ok="submitConclusion"
     >
-      <a-form layout="vertical">
-        <a-form-item label="结论类型" required>
-          <a-select v-model:value="conclusionForm.conclusionType">
-            <a-select-option value="FULL_6Y">通过（6 年）</a-select-option>
-            <a-select-option value="CONDITIONAL_6Y">有条件通过（第 3 年改进到期）</a-select-option>
-            <a-select-option value="NOT_PASS">不通过</a-select-option>
-          </a-select>
-        </a-form-item>
-        <a-form-item v-if="conclusionForm.conclusionType !== 'NOT_PASS'" label="有效期起" required>
-          <a-date-picker
-            v-model:value="conclusionForm.validFrom"
+      <UiForm layout="vertical">
+        <UiFormItem label="结论类型" required>
+          <UiSelect
+            v-model="conclusionForm.conclusionType"
+            size="sm"
+            :options="[{ value: 'FULL_6Y', label: '通过（6 年）' }, { value: 'CONDITIONAL_6Y', label: '有条件通过（第 3 年改进到期）' }, { value: 'NOT_PASS', label: '不通过' }]"
+          />
+        </UiFormItem>
+        <UiFormItem v-if="conclusionForm.conclusionType !== 'NOT_PASS'" label="有效期起" required>
+          <UiDatePicker
+            size="sm"
+            v-model="conclusionForm.validFrom"
             value-format="YYYY-MM-DD"
             class="w-full"
           />
-        </a-form-item>
-        <a-form-item v-if="conclusionForm.conclusionType !== 'NOT_PASS'" label="有效期止">
-          <a-date-picker
-            v-model:value="conclusionForm.validUntil"
+        </UiFormItem>
+        <UiFormItem v-if="conclusionForm.conclusionType !== 'NOT_PASS'" label="有效期止">
+          <UiDatePicker
+            size="sm"
+            v-model="conclusionForm.validUntil"
             value-format="YYYY-MM-DD"
             class="w-full"
           />
-        </a-form-item>
-        <a-form-item
+        </UiFormItem>
+        <UiFormItem
           v-if="conclusionForm.conclusionType === 'CONDITIONAL_6Y'"
           label="改进材料截止"
           required
         >
-          <a-date-picker
-            v-model:value="conclusionForm.conditionalDueDate"
+          <UiDatePicker
+            size="sm"
+            v-model="conclusionForm.conditionalDueDate"
             value-format="YYYY-MM-DD"
             class="w-full"
           />
-        </a-form-item>
-        <a-form-item label="说明">
-          <a-textarea v-model:value="conclusionForm.conclusionRemark" :rows="3" />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+        <UiFormItem label="说明">
+          <UiTextarea size="sm" v-model="conclusionForm.conclusionRemark" :rows="3" />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </div>
 </template>
@@ -724,8 +742,8 @@ defineExpose({ openCreate, loadCycles })
 }
 .readiness-panel {
   padding: 14px 16px;
-  background: var(--ant-color-warning-bg);
-  border: 1px solid var(--ant-color-warning-border);
+  background: var(--dp-warning-bg);
+  border: 1px solid var(--dp-warning-border);
   border-radius: 4px;
 }
 .readiness-header {
@@ -745,17 +763,17 @@ defineExpose({ openCreate, loadCycles })
   gap: 8px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(52, 95, 74, 0.16);
+  border: 1px solid color-mix(in srgb, var(--dp-success) 16%, transparent);
   border-radius: 4px;
 }
 .readiness-item.is-blocked {
-  border-color: var(--ant-color-warning-border);
+  border-color: var(--dp-warning-border);
   background: var(--dp-orange-50);
 }
 .readiness-item p {
   margin: 4px 0 0;
   font-size: 12px;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--dp-text-tertiary);
   line-height: 1.5;
 }
 .banner-actions {
@@ -769,10 +787,10 @@ defineExpose({ openCreate, loadCycles })
 .meta {
   margin-left: 12px;
   font-size: 13px;
-  color: rgba(0, 0, 0, 0.55);
+  color: var(--dp-text-tertiary);
 }
 .muted {
-  color: rgba(0, 0, 0, 0.35);
+  color: var(--dp-text-muted);
 }
 .w-full {
   width: 100%;
@@ -784,6 +802,6 @@ defineExpose({ openCreate, loadCycles })
   font-size: 14px;
 }
 .detail-dl dt {
-  color: rgba(0, 0, 0, 0.45);
+  color: var(--dp-text-tertiary);
 }
 </style>

@@ -14,6 +14,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import {
   PORTFOLIO_ARCHIVE_FIELD_DIFF_CHANGE_TYPE_TONE,
@@ -128,7 +129,7 @@ function changeTypeTone(code: string): BadgeTone {
           {{ item.label }}
         </option>
       </select>
-      <UiButton :loading="loading" @click="runCompare">对比</UiButton>
+      <UiButton size="sm" :loading="loading" @click="runCompare">对比</UiButton>
       <label class="version-compare__filter">
         <input v-model="onlyChanged" type="checkbox" />
         仅看差异
@@ -178,11 +179,11 @@ function changeTypeTone(code: string): BadgeTone {
         </UiTag>
       </template>
     </p>
-    <a-spin :spinning="loading">
+    <UiSpin :spinning="loading">
       <UiDataTable
         v-if="displayDiffs.length"
         row-key="fieldCode"
-        size="small"
+        size="sm"
         pagination-mode="none"
         :columns="columns"
         :data-source="displayDiffs"
@@ -210,9 +211,9 @@ function changeTypeTone(code: string): BadgeTone {
           </template>
         </template>
       </UiDataTable>
-      <UiEmpty v-else-if="!loading && compareResult" title="暂无内容" />
-      <UiEmpty v-else-if="!loading" title="暂无内容" />
-    </a-spin>
+      <UiEmpty size="sm" v-else-if="!loading && compareResult" title="暂无内容" />
+      <UiEmpty size="sm" v-else-if="!loading" title="暂无内容" />
+    </UiSpin>
   </UiDrawer>
 </template>
 
@@ -230,13 +231,13 @@ function changeTypeTone(code: string): BadgeTone {
   max-width: 320px;
   height: 32px;
   padding: 0 8px;
-  border: 1px solid var(--dp-border, #d9d9d9);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
-  background: var(--dp-surface, #fff);
+  background: var(--dp-surface);
 }
 
 .version-compare__arrow {
-  color: var(--dp-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 
 .version-compare__filter {
@@ -244,19 +245,19 @@ function changeTypeTone(code: string): BadgeTone {
   gap: 4px;
   align-items: center;
   font-size: 13px;
-  color: var(--dp-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 
 .version-compare__summary {
   margin: 0 0 12px;
   font-size: 13px;
-  color: var(--dp-text-secondary, #666);
+  color: var(--dp-text-secondary);
 }
 
 .version-compare__evidence {
   display: block;
   margin-top: 4px;
   font-size: 12px;
-  color: var(--dp-text-tertiary, #999);
+  color: var(--dp-text-tertiary);
 }
 </style>

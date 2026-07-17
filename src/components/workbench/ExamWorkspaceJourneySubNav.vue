@@ -111,8 +111,8 @@ function navigate(item: ExamWorkspaceMenuItem): void {
     min-width: 18px;
     padding: 0 6px;
     border-radius: 9px;
-    background: var(--ant-color-warning-bg);
-    color: var(--ant-color-warning);
+    background: var(--dp-warning-bg);
+    color: var(--dp-warning);
     font-size: 11px;
     font-weight: 600;
     line-height: 18px;

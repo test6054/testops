@@ -5,6 +5,7 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PortfolioTeacherJourneyRail from '@/components/portfolio/PortfolioTeacherJourneyRail.vue'
 import PortfolioTeacherOnboardingWizard from '@/components/portfolio/PortfolioTeacherOnboardingWizard.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
@@ -15,11 +16,12 @@ import {
 
 const route = useRoute()
 const router = useRouter()
-const { targetTeacherId } = usePortfolioPageScope()
+const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 
 const blockedByTemplate = computed(() => route.query.blocked === 'template')
 const blockedByReadiness = computed(() => route.query.blocked === 'readiness')
 const readonlyMode = computed(() => route.query.mode === 'readonly' || route.query.readonly === '1')
+const needsTeacherPick = computed(() => canPickTeachers.value && !targetTeacherId.value)
 
 const journeyStages = computed((): WorkbenchStage[] =>
   PORTFOLIO_TEACHER_JOURNEY_STEPS.map((step) => ({
@@ -40,16 +42,18 @@ function navigateJourney(journeyKey: PortfolioTeacherJourneyKey) {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="认识档案" />
+      <ContextBar show-title layout="workbench" title="启用我的教学档案袋" />
     </template>
-    <template #rail>
+    <template v-if="!needsTeacherPick" #rail>
       <PortfolioTeacherJourneyRail
         :stages="journeyStages"
         active-key="learn"
         @select="navigateJourney"
       />
     </template>
+    <PortfolioTeacherPickGate v-if="needsTeacherPick" />
     <PortfolioTeacherOnboardingWizard
+      v-else
       :blocked-by-template="blockedByTemplate"
       :blocked-by-readiness="blockedByReadiness"
       :readonly-mode="readonlyMode"

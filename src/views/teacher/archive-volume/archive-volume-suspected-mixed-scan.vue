@@ -15,15 +15,20 @@
 
     <WorkbenchSurfaceCard flush>
       <UiSkeletonState v-if="grantsLoading" variant="card" compact />
-      <UiEmpty
+      <WorkbenchContextGateStrip
         v-else-if="!canViewArchiveDepartmentQueue"
-        description="当前账号缺少院系归档职责，无法查看混扫复核待办"
+        tag="无权限"
+        body="当前账号缺少院系归档职责，无法查看混扫复核待办"
+        cta-label="返回归档工作台"
+        list-route-name="TeacherArchiveVolumeList"
+        tone="warning"
       />
       <template v-else>
         <div v-if="showDepartmentFilter" class="archive-suspected-mixed-scan__filter">
           <span class="archive-suspected-mixed-scan__filter-label">院系</span>
-          <a-select
-            v-model:value="filterDepartmentId"
+          <UiSelect
+            size="sm"
+            v-model="filterDepartmentId"
             allow-clear
             placeholder="全部可见院系"
             style="width: 220px"
@@ -83,12 +88,13 @@ import { useRouter } from 'vue-router'
 import { pageSuspectedMixedScanBatches } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'

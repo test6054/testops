@@ -93,7 +93,7 @@ const copyright = computed(() => appStore.getCopyright())
   display: flex;
   min-height: 100vh;
   position: relative;
-  background: var(--ant-color-bg-container);
+  background: var(--dp-surface);
 }
 
 .auth-brand {
@@ -125,9 +125,9 @@ const copyright = computed(() => appStore.getCopyright())
 }
 
 .auth-brand__product {
-  font-size: 23px;
-  line-height: 1;
-  font-weight: 800;
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 700;
   color: var(--dp-text-primary);
 }
 
@@ -162,7 +162,7 @@ const copyright = computed(() => appStore.getCopyright())
 .auth-brand__capability {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
+  min-height: var(--dp-control-height-md, 36px);
   padding: 0 14px;
   border-radius: var(--dp-radius-full);
   font-size: 12px;
@@ -219,10 +219,10 @@ const copyright = computed(() => appStore.getCopyright())
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 72px 40px 132px;
+  padding: 40px 32px 48px;
   position: relative;
   overflow-y: auto;
-  background: var(--ant-color-bg-container);
+  background: var(--dp-surface);
 
   .auth-layout--wide & {
     min-width: 100%;
@@ -280,8 +280,8 @@ const copyright = computed(() => appStore.getCopyright())
     align-items: center;
     gap: 10px;
     padding: 14px 20px;
-    background: var(--ant-color-primary);
-    color: var(--ant-color-white);
+    background: var(--dp-color-primary);
+    color: var(--dp-text-inverse);
   }
 
   .auth-mobile-bar__logo {
@@ -298,7 +298,7 @@ const copyright = computed(() => appStore.getCopyright())
   .auth-main {
     flex: 1;
     min-width: auto;
-    padding: 88px 24px 132px;
+    padding: 32px 20px 40px;
     justify-content: flex-start;
   }
 
@@ -328,7 +328,7 @@ const copyright = computed(() => appStore.getCopyright())
   .auth-footer {
     position: relative;
     bottom: auto;
-    margin-top: 32px;
+    margin-top: var(--dp-space-3, 12px);
   }
 }
 </style>

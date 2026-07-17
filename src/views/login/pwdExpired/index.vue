@@ -6,18 +6,15 @@
       <span>{{ title }}</span>
     </h3>
 
-    <a-flex align="stretch" class="login-box">
+    <UiFlex align="stretch" class="login-box">
       <div class="login-right">
-        <a-tabs class="login-right__form">
-          <template #rightExtra>
-            <span style="color: red">密码已过期，请修改密码</span>
-          </template>
-          <a-tab-pane key="1" tab="密码修改">
-            <ModifyPassword />
-          </a-tab-pane>
-        </a-tabs>
+        <div class="login-right__form">
+          <p class="login-right__expired-tip">密码已过期，请修改密码</p>
+          <h4 class="login-right__form-title">密码修改</h4>
+          <ModifyPassword />
+        </div>
       </div>
-    </a-flex>
+    </UiFlex>
 
     <div v-if="isDesktop" class="footer">
       <div class="icp-info">
@@ -43,14 +40,11 @@
     </div>
     <div class="login-box">
       <div class="login-right">
-        <a-tabs class="login-right__form">
-          <template #rightExtra>
-            <span style="color: red">密码已过期，请修改密码</span>
-          </template>
-          <a-tab-pane key="1" tab="密码修改">
-            <ModifyPassword />
-          </a-tab-pane>
-        </a-tabs>
+        <div class="login-right__form">
+          <p class="login-right__expired-tip">密码已过期，请修改密码</p>
+          <h4 class="login-right__form-title">密码修改</h4>
+          <ModifyPassword />
+        </div>
       </div>
     </div>
   </div>
@@ -58,6 +52,7 @@
 
 <script lang="ts" setup>
 import { computed } from 'vue'
+import UiFlex from '@/components/ui-guide/ui/UiFlex.vue'
 import { useDevice } from '@/hooks'
 import { useAppStore } from '@/stores'
 import Background from '../components/background/index.vue'
@@ -76,7 +71,7 @@ const logo = computed(() => appStore.getLogo())
 @media screen and (max-width: 570px) {
   .pc {
     display: none !important;
-    background-color: white !important;
+    background-color: var(--dp-surface) !important;
   }
 
   .login {
@@ -85,8 +80,8 @@ const logo = computed(() => appStore.getLogo())
     flex-direction: column;
     justify-content: start;
     align-items: center;
-    background-color: var(--ant-color-fill-secondary);
-    color: var(--ant-color-text);
+    background-color: var(--dp-fill-secondary);
+    color: var(--dp-text-primary);
 
     &-logo {
       width: 100%;
@@ -99,8 +94,8 @@ const logo = computed(() => appStore.getLogo())
       align-items: center;
       justify-content: start;
       // background-image: url('@/assets/images/login_h5.jpg');
-      background-color: var(--ant-color-primary); // 采用纯色背景替代原有的占位图
-      color: var(--ant-color-bg-container);
+      background-color: var(--dp-color-primary); // 采用纯色背景替代原有的占位图
+      color: var(--dp-surface);
       background-size: 100% 100%;
       box-sizing: border-box;
 
@@ -127,7 +122,7 @@ const logo = computed(() => appStore.getLogo())
     box-sizing: border-box;
 
     &__title {
-      color: var(--ant-color-text);
+      color: var(--dp-text-primary);
       font-weight: 500;
       font-size: 20px;
       line-height: 32px;
@@ -142,7 +137,7 @@ const logo = computed(() => appStore.getLogo())
       }
 
       :deep(.ant-tabs-tab) {
-        color: var(--ant-color-text-secondary);
+        color: var(--dp-text-secondary);
         margin: 0 20px 0 0;
       }
 
@@ -158,7 +153,7 @@ const logo = computed(() => appStore.getLogo())
 
       :deep(.ant-tabs-tab-active),
       :deep(.ant-tabs-tab-btn:hover) {
-        color: var(--ant-color-primary);
+        color: var(--dp-color-primary);
       }
 
       :deep(.ant-tabs-nav::before) {
@@ -218,14 +213,14 @@ const logo = computed(() => appStore.getLogo())
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background-color: var(--ant-color-fill-secondary);
+    background-color: var(--dp-fill-secondary);
 
     &-logo {
       position: fixed;
       top: 20px;
       left: 30px;
       z-index: calc(var(--dp-z-modal) + 20);
-      color: var(--ant-color-text);
+      color: var(--dp-text-primary);
       font-weight: 500;
       font-size: 20px;
       line-height: 32px;
@@ -256,14 +251,14 @@ const logo = computed(() => appStore.getLogo())
     flex: 11;
     min-width: 0;
     height: 100%;
-    background: var(--ant-color-bg-container);
+    background: var(--dp-surface);
     display: flex;
     flex-direction: column;
     padding: 30px 30px 0;
     box-sizing: border-box;
 
     &__title {
-      color: var(--ant-color-text);
+      color: var(--dp-text-primary);
       font-weight: 500;
       font-size: 20px;
       line-height: 32px;
@@ -278,7 +273,7 @@ const logo = computed(() => appStore.getLogo())
       }
 
       :deep(.ant-tabs-tab) {
-        color: var(--ant-color-text-secondary);
+        color: var(--dp-text-secondary);
       }
 
       :deep(.ant-tabs-tab-btn) {
@@ -293,7 +288,7 @@ const logo = computed(() => appStore.getLogo())
 
       :deep(.ant-tabs-tab-active),
       :deep(.ant-tabs-tab-btn:hover) {
-        color: var(--ant-color-primary);
+        color: var(--dp-color-primary);
       }
 
       :deep(.ant-tabs-nav::before) {
@@ -310,7 +305,7 @@ const logo = computed(() => appStore.getLogo())
       margin-bottom: 20px;
 
       :deep(.ant-divider-inner-text) {
-        color: var(--ant-color-text-quaternary);
+        color: var(--dp-text-muted);
         font-size: 12px;
         font-weight: 400;
         line-height: 20px;
@@ -327,13 +322,13 @@ const logo = computed(() => appStore.getLogo())
         }
 
         .mode {
-          color: var(--ant-color-text-secondary);
+          color: var(--dp-text-secondary);
           font-size: 12px;
           font-weight: 400;
           line-height: 20px;
           padding: 6px 10px;
           align-items: center;
-          border: 1px solid var(--ant-color-split);
+          border: 1px solid var(--dp-border-subtle);
           border-radius: var(--dp-radius-full);
           box-sizing: border-box;
           display: flex;
@@ -354,9 +349,9 @@ const logo = computed(() => appStore.getLogo())
 
         .mode:hover,
         .mode svg:hover {
-          background: var(--ant-color-primary-bg);
-          border: 1px solid var(--ant-color-primary-border);
-          color: var(--ant-color-primary);
+          background: var(--dp-blue-50);
+          border: 1px solid var(--dp-blue-200);
+          color: var(--dp-color-primary);
         }
       }
     }

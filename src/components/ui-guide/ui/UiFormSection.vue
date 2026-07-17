@@ -30,17 +30,17 @@ withDefaults(defineProps<{
 .ui-form-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .ui-form-section__header {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--dp-space-1, 4px);
 }
 
 .ui-form-section__title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--dp-text-primary);
 }
@@ -53,7 +53,7 @@ withDefaults(defineProps<{
 .ui-form-section__body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .ui-form-section--divided {
@@ -61,8 +61,8 @@ withDefaults(defineProps<{
 }
 
 .ui-form-section--divided + .ui-form-section--divided {
-  margin-top: 24px;
-  padding-top: 24px;
+  margin-top: var(--dp-space-4, 16px);
+  padding-top: var(--dp-space-4, 16px);
   border-top: 1px solid var(--dp-border);
 }
 </style>

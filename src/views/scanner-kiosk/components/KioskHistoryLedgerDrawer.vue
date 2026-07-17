@@ -18,6 +18,7 @@ import {
 } from '@ant-design/icons-vue'
 import { computed } from 'vue'
 import { ScannerKioskScanModeCode } from '@/apis/mark/scanner-kiosk'
+import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import { ExamScannerPageRegistrationStatusCode } from '@/types/enums/exam-scanner-page-registration-status-enum'
 import { ScanBatchStatusCode } from '@/types/enums/scan-batch-status-enum'
 import { useKioskCtx } from '../composables/kioskInjection'
@@ -89,7 +90,7 @@ function pageRowTone(
 </script>
 
 <template>
-  <a-drawer
+  <UiDrawer
     v-model:open="open"
     placement="right"
     :width="600"
@@ -241,7 +242,7 @@ function pageRowTone(
         </section>
       </div>
     </div>
-  </a-drawer>
+  </UiDrawer>
 </template>
 
 <style scoped>

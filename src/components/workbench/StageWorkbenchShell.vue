@@ -5,14 +5,14 @@
       <slot name="context" />
     </header>
 
+    <!-- SignalBand 区域：KPI 指标带（运营控制台：摘要先于旅程轨） -->
+    <section v-if="$slots.signal" class="stage-workbench-shell__signal">
+      <slot name="signal" />
+    </section>
+
     <!-- StageRail 区域：阶段箭头轨 -->
     <section v-if="$slots.rail" class="stage-workbench-shell__rail">
       <slot name="rail" />
-    </section>
-
-    <!-- SignalBand 区域：KPI 指标带 -->
-    <section v-if="$slots.signal" class="stage-workbench-shell__signal">
-      <slot name="signal" />
     </section>
 
     <!-- WorkSurface 区域：主工作面 -->
@@ -32,21 +32,21 @@ defineOptions({
 .stage-workbench-shell {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-5);
+  gap: var(--dp-space-3, 12px);
   width: 100%;
   padding: 0;
   background: transparent;
 }
 
 .stage-workbench-shell__context {
-  padding: 0 0 4px;
+  padding: 0 0 var(--dp-space-1, 4px);
   border: none;
   border-radius: 0;
   background: transparent;
 }
 
 .stage-workbench-shell__rail {
-  padding: 0 0 8px;
+  padding: 0 0 var(--dp-space-2, 8px);
   border: none;
   border-radius: 0;
   background: transparent;
@@ -57,7 +57,7 @@ defineOptions({
 }
 
 .stage-workbench-shell__signal {
-  padding: 0 0 8px;
+  padding: 0 0 var(--dp-space-2, 8px);
   border: none;
   border-radius: 0;
   background: transparent;

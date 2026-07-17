@@ -383,7 +383,7 @@ onUnmounted(() => {
 .forgot-brand-steps {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .brand-step {
@@ -417,13 +417,13 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.7);
 
   .brand-step--active & {
-    background: var(--ant-color-white);
-    color: var(--ant-color-primary);
+    background: var(--dp-text-inverse);
+    color: var(--dp-color-primary);
   }
 
   .brand-step--done & {
     background: rgba(255, 255, 255, 0.2);
-    color: var(--ant-color-white);
+    color: var(--dp-text-inverse);
   }
 }
 
@@ -432,17 +432,17 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.7);
 
   .brand-step--active & {
-    color: var(--ant-color-white);
+    color: var(--dp-text-inverse);
     font-weight: 600;
   }
 }
 
 // ─── 右侧面板 ───
 .forgot-header {
-  margin-bottom: 24px;
+  margin-bottom: var(--dp-space-4, 16px);
 
   h2 {
-    font-size: 24px;
+    font-size: 20px;
     font-weight: 700;
     color: var(--dp-text-primary);
     margin: 0 0 6px;
@@ -459,8 +459,8 @@ onUnmounted(() => {
 .step-indicators {
   display: flex;
   justify-content: center;
-  gap: 20px;
-  margin-bottom: 24px;
+  gap: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-4, 16px);
 }
 
 .step-dot {
@@ -492,7 +492,7 @@ onUnmounted(() => {
 
 .step-dot--active .step-dot__num {
   background: var(--dp-blue-600);
-  color: var(--ant-color-white);
+  color: var(--dp-text-inverse);
 }
 
 .step-dot--active .step-dot__label {
@@ -513,8 +513,8 @@ onUnmounted(() => {
 .step-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3, 12px);
 }
 
 .step-buttons {
@@ -594,19 +594,19 @@ onUnmounted(() => {
     background-color 0.3s;
 
   &.strength-1 {
-    background: var(--ant-color-error);
+    background: var(--dp-error);
   }
   &.strength-2 {
-    background: var(--ant-color-warning);
+    background: var(--dp-warning);
   }
   &.strength-3 {
     background: var(--dp-yellow-500);
   }
   &.strength-4 {
-    background: var(--ant-color-success);
+    background: var(--dp-success);
   }
   &.strength-5 {
-    background: var(--ant-color-primary);
+    background: var(--dp-color-primary);
   }
 }
 
@@ -619,7 +619,7 @@ onUnmounted(() => {
 // ─── 成功状态 ───
 .success-block {
   text-align: center;
-  padding: 16px 0;
+  padding: var(--dp-space-3, 12px) 0;
   color: var(--dp-green-600);
 
   h3 {

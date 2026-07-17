@@ -148,12 +148,12 @@ function handleSelect(step: ScoreReleaseStep): void {
     .score-release-pipeline__step--active &,
     .score-release-pipeline__step--current & {
       background: var(--dp-blue-600);
-      color: var(--ant-color-white);
+      color: var(--dp-text-inverse);
     }
 
     .score-release-pipeline__step--done & {
       background: var(--dp-green-600);
-      color: var(--ant-color-white);
+      color: var(--dp-text-inverse);
     }
   }
 

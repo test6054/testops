@@ -38,8 +38,17 @@ import {
 } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -582,168 +591,181 @@ defineExpose({
     </UiDataTable>
   </ImprovementWorkbenchPanel>
 
-  <a-modal
+  <UiDialog
     v-model:open="supEditorVisible"
     :title="supEditorMode === 'create' ? '新建督导记录' : '编辑督导记录'"
     :confirm-loading="supEditorSubmitting"
     width="1040px"
     @ok="submitSupEditor"
   >
-    <a-form layout="vertical" :model="supEditor">
-      <a-row :gutter="12">
-        <a-col :span="6">
-          <a-form-item label="编码" required>
-            <a-input
-              v-model:value="supEditor.supervisionCode"
+    <UiForm layout="vertical" :model="supEditor">
+      <UiRow :gutter="12">
+        <UiCol :span="6">
+          <UiFormItem label="编码" required>
+            <UiInput
+              size="sm"
+              v-model="supEditor.supervisionCode"
               :disabled="supEditorMode === 'edit'"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="6">
-          <a-form-item label="督导类型" required>
-            <a-select
-              v-model:value="supEditor.supervisionType"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="6">
+          <UiFormItem label="督导类型" required>
+            <UiSelect
+              size="sm"
+              v-model="supEditor.supervisionType"
               :options="supervisionTypeOptions"
               :disabled="supEditorMode === 'edit'"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="6">
-          <a-form-item label="范围">
-            <a-select
-              v-model:value="supEditor.supervisionScope"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="6">
+          <UiFormItem label="范围">
+            <UiSelect
+              size="sm"
+              v-model="supEditor.supervisionScope"
               :options="AUDIT_SUPERVISION_SCOPE_OPTIONS"
               :disabled="supEditorMode === 'edit'"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="6">
-          <a-form-item label="督导时间">
-            <a-input v-model:value="supEditor.supervisedTime" placeholder="yyyy-MM-dd HH:mm:ss" />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-form-item label="标题" required>
-        <a-input v-model:value="supEditor.supervisionTitle" />
-      </a-form-item>
-      <a-form-item label="督导人">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="6">
+          <UiFormItem label="督导时间">
+            <UiInput
+              size="sm" v-model="supEditor.supervisedTime" placeholder="yyyy-MM-dd HH:mm:ss"
+            />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiFormItem label="标题" required>
+        <UiInput
+          size="sm" v-model="supEditor.supervisionTitle"
+        />
+      </UiFormItem>
+      <UiFormItem label="督导人">
         <TeacherSelector
           :value="supEditor.supervisorUserId || null"
           @change="handleSupSupervisorChange"
         />
-      </a-form-item>
-      <a-form-item label="督导摘要">
-        <a-textarea v-model:value="supEditor.summary" :rows="3" />
-      </a-form-item>
-      <a-divider orientation="left">发现明细</a-divider>
+      </UiFormItem>
+      <UiFormItem label="督导摘要">
+        <UiTextarea size="sm" v-model="supEditor.summary" :rows="3" />
+      </UiFormItem>
+      <UiDivider orientation="left">发现明细</UiDivider>
       <div class="iwb-tab__detail-toolbar">
-        <a-button type="primary" @click="addSupervisionFindingItem">新增发现</a-button>
+        <UiButton size="sm" variant="primary" @click="addSupervisionFindingItem">新增发现</UiButton>
       </div>
       <div v-for="(item, index) in supEditor.findingItems" :key="index" class="iwb-tab__detail-row">
         <div class="iwb-tab__detail-row-head">
           <span class="iwb-tab__detail-row-title">发现 {{ index + 1 }}</span>
-          <a-button danger size="small" @click="removeSupervisionFindingItem(index)">
-            删除
-          </a-button>
+          <UiButton size="sm" status="danger" variant="ghost" @click="removeSupervisionFindingItem(index)">删除</UiButton>
         </div>
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="类型">
-              <a-select v-model:value="item.findingType" :options="supFindingTypeOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="10">
-            <a-form-item label="标题" required>
-              <a-input v-model:value="item.findingTitle" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="4">
-            <a-form-item label="严重程度">
-              <a-select v-model:value="item.severity" :options="supFindingSeverityOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="4">
-            <a-form-item label="责任单位">
-              <a-input v-model:value="item.responsibleUnit" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="12">
-            <a-form-item label="问题描述">
-              <a-textarea v-model:value="item.findingDescription" :rows="2" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="改进措施">
-              <a-textarea v-model:value="item.improvementSuggestion" :rows="2" />
-            </a-form-item>
-          </a-col>
-        </a-row>
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="类型">
+              <UiSelect
+                size="sm" v-model="item.findingType" :options="supFindingTypeOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="10">
+            <UiFormItem label="标题" required>
+              <UiInput
+                size="sm" v-model="item.findingTitle"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="4">
+            <UiFormItem label="严重程度">
+              <UiSelect
+                size="sm" v-model="item.severity" :options="supFindingSeverityOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="4">
+            <UiFormItem label="责任单位">
+              <UiInput
+                size="sm" v-model="item.responsibleUnit"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="12">
+            <UiFormItem label="问题描述">
+              <UiTextarea size="sm" v-model="item.findingDescription" :rows="2" />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="改进措施">
+              <UiTextarea size="sm" v-model="item.improvementSuggestion" :rows="2" />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
       </div>
-      <a-row :gutter="12">
-        <a-col :span="12">
-          <a-form-item label="结论">
-            <a-select v-model:value="supEditor.conclusion" allow-clear>
-              <a-select-option v-for="c in AUDIT_SUPERVISION_CONCLUSION_OPTIONS" :key="c.value" :value="c.value">
-                {{ c.label }}
-              </a-select-option>
-            </a-select>
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item label="关联归档">
+      <UiRow :gutter="12">
+        <UiCol :span="12">
+          <UiFormItem label="结论">
+            <UiSelect
+              v-model="supEditor.conclusion" allow-clear
+              size="sm"
+              :options="AUDIT_SUPERVISION_CONCLUSION_OPTIONS"
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem label="关联归档">
             <ArchiveSelector
               :value="supEditor.archiveId || null"
               @change="handleSupArchiveChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-divider orientation="left">关联业务对象（可选）</a-divider>
-      <a-row :gutter="12">
-        <a-col :span="8">
-          <a-form-item label="关联问题">
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiDivider orientation="left">关联业务对象（可选）</UiDivider>
+      <UiRow :gutter="12">
+        <UiCol :span="8">
+          <UiFormItem label="关联问题">
             <AuditIssueSelector
               :value="supEditor.auditIssueId || null"
               :disabled="supEditorMode === 'edit'"
               @change="handleSupAuditIssueChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="关联整改任务">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="关联整改任务">
             <AuditRectificationSelector
               :value="supEditor.rectificationId || null"
               :audit-issue-id="supEditor.auditIssueId || null"
               :disabled="supEditorMode === 'edit'"
               @change="handleSupRectificationChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="8">
-          <a-form-item label="所属专业">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="8">
+          <UiFormItem label="所属专业">
             <ProgramSelector
               :value="supEditor.programId || null"
               :disabled="supEditorMode === 'edit'"
               @change="handleSupProgramChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-row :gutter="12">
-        <a-col :span="12">
-          <a-form-item label="培养方案">
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiRow :gutter="12">
+        <UiCol :span="12">
+          <UiFormItem label="培养方案">
             <TrainingPlanSelector
               :value="supEditor.trainingPlanId || null"
               :program-id="supEditor.programId || null"
               :disabled="supEditorMode === 'edit'"
               @change="handleSupTrainingPlanChange"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :span="12">
-          <a-form-item label="质量评价课程">
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem label="质量评价课程">
             <CourseSelector
               :value="supEditor.qualityCourseId || null"
               :program-id="supEditor.programId || null"
@@ -751,12 +773,12 @@ defineExpose({
               :disabled="supEditorMode === 'edit'"
               @change="handleSupCourseChange"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-divider orientation="left">证据明细</a-divider>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiDivider orientation="left">证据明细</UiDivider>
       <div class="iwb-tab__detail-toolbar">
-        <a-button type="primary" @click="addSupervisionEvidenceItem">新增证据</a-button>
+        <UiButton size="sm" variant="primary" @click="addSupervisionEvidenceItem">新增证据</UiButton>
       </div>
       <div
         v-for="(item, index) in supEditor.evidenceItems"
@@ -765,56 +787,62 @@ defineExpose({
       >
         <div class="iwb-tab__detail-row-head">
           <span class="iwb-tab__detail-row-title">证据 {{ index + 1 }}</span>
-          <a-button danger size="small" @click="removeSupervisionEvidenceItem(index)">
-            删除
-          </a-button>
+          <UiButton size="sm" status="danger" variant="ghost" @click="removeSupervisionEvidenceItem(index)">删除</UiButton>
         </div>
-        <a-row :gutter="12">
-          <a-col :span="6">
-            <a-form-item label="类型">
-              <a-select v-model:value="item.evidenceType" :options="auditEvidenceTypeOptions" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="10">
-            <a-form-item label="标题" required>
-              <a-input v-model:value="item.evidenceTitle" />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="编号">
-              <a-input v-model:value="item.evidenceCode" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="12">
-          <a-col :span="8">
-            <a-form-item label="关联归档">
+        <UiRow :gutter="12">
+          <UiCol :span="6">
+            <UiFormItem label="类型">
+              <UiSelect
+                size="sm" v-model="item.evidenceType" :options="auditEvidenceTypeOptions"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="10">
+            <UiFormItem label="标题" required>
+              <UiInput
+                size="sm" v-model="item.evidenceTitle"
+              />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="编号">
+              <UiInput
+                size="sm" v-model="item.evidenceCode"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiRow :gutter="12">
+          <UiCol :span="8">
+            <UiFormItem label="关联归档">
               <ArchiveSelector
                 :value="item.archiveId || null"
                 @change="createSupEvidenceArchiveChangeHandler(index)"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="关联报告">
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="关联报告">
               <ReportSelector
                 :value="item.reportId || null"
                 @change="createSupEvidenceReportChangeHandler(index)"
               />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
-            <a-form-item label="文件节点 ID">
-              <a-input v-model:value="item.fileNodeId" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="item.remark" :rows="2" />
-        </a-form-item>
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="8">
+            <UiFormItem label="文件节点 ID">
+              <UiInput
+                size="sm" v-model="item.fileNodeId"
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+        <UiFormItem label="备注">
+          <UiTextarea size="sm" v-model="item.remark" :rows="2" />
+        </UiFormItem>
       </div>
-    </a-form>
-  </a-modal>
+    </UiForm>
+  </UiDialog>
 </template>
 
 <style scoped lang="scss">

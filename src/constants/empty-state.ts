@@ -1,5 +1,5 @@
 /** 列表 / 表格 / 面板无业务数据（合法空） */
-export const EMPTY_DATA = '当前没有可展示的内容'
+export const EMPTY_DATA = '暂无数据'
 
 /** 页面未选考试 */
 export const EMPTY_SELECT_EXAM = '请先选择考试'

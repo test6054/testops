@@ -11,9 +11,10 @@
     </template>
 
     <div class="archive-volume-ocr-search__toolbar">
-      <a-input
-        v-model:value="keyword"
-        allow-clear
+      <UiInput
+        size="sm"
+        v-model="keyword"
+        clearable
         placeholder="搜索本卷文字识别全文：答卷内容、标准答案、分析报告..."
         @press-enter="handleSearch"
       />
@@ -36,7 +37,7 @@
 
     <div v-if="searched" class="archive-volume-ocr-search__results">
       <p class="archive-volume-ocr-search__result-meta">{{ hitPageTotal }} 条匹配 · 当前归档任务</p>
-      <UiEmpty v-if="!loading && hits.length === 0 && !hitsLoadFailed" description="本卷无匹配结果">
+      <UiEmpty size="sm" v-if="!loading && hits.length === 0 && !hitsLoadFailed" description="本卷无匹配结果">
         <UiTextAction tone="primary" @click="goGlobalSearch">切换全局检索</UiTextAction>
       </UiEmpty>
       <UiDataTable
@@ -99,7 +100,7 @@
     </div>
 
     <div v-else class="archive-volume-ocr-search__empty">
-      <UiEmpty description="输入关键词搜索本卷所有文字识别文本" />
+      <UiEmpty size="sm" description="输入关键词搜索本卷所有文字识别文本" />
       <UiAlertStrip v-if="materialStatsLoadFailed" tone="warning" title="文字识别统计加载失败">
         <template #actions>
           <UiButton size="sm" variant="outline" @click="loadMaterialStats">重新加载</UiButton>
@@ -108,8 +109,8 @@
       <div class="archive-volume-ocr-search__overview-head">
         <span class="archive-volume-ocr-search__overview-title">材料文字识别状态</span>
         <UiButton
-          v-if="canRegisterMaterial && pendingOcrCount > 0"
           size="sm"
+          v-if="canRegisterMaterial && pendingOcrCount > 0"
           variant="ghost"
           :loading="batchOcrSubmitting"
           @click="handleBatchOcr"
@@ -204,6 +205,7 @@ import {
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'

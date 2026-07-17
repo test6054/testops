@@ -1,12 +1,13 @@
 <template>
   <StageWorkbenchShell class="experience-page">
     <template v-if="selectedExamId" #signal>
-      <SignalBand variant="tiles" compact :metrics="experienceSignalMetrics" />
+      <SignalBand compact :metrics="experienceSignalMetrics" />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="experience-page__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="experience-page__empty" />
 
     <UiEmpty
+      size="sm"
       v-else-if="loadFailed"
       description="阅卷经验库加载失败"
       action-label="重试"
@@ -63,9 +64,9 @@
                 }}</span>
               </template>
               <template v-else-if="column.key === 'questionDigest'">
-                <a-tooltip :title="signatures[index].questionDigest">
+                <UiTooltip :title="signatures[index].questionDigest" popup-mount="body">
                   <span>{{ ellipsis(signatures[index].questionDigest, 60) }}</span>
-                </a-tooltip>
+                </UiTooltip>
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions
@@ -156,9 +157,9 @@
                 {{ experiences[index].reuseCount ?? 0 }}
               </template>
               <template v-else-if="column.key === 'experienceSummary'">
-                <a-tooltip :title="experiences[index].experienceSummary">
+                <UiTooltip :title="experiences[index].experienceSummary" popup-mount="body">
                   <span>{{ ellipsis(experiences[index].experienceSummary, 80) }}</span>
-                </a-tooltip>
+                </UiTooltip>
               </template>
               <template v-else-if="column.key === 'createTime'">
                 {{ formatDateTime(experiences[index].createTime) }}
@@ -211,39 +212,50 @@
             @reset="handleClusterFilterReset"
           />
 
-          <UiEmpty
+          <UiAlertStrip
             v-if="!clusterLoading && !latestCluster"
-            description="请选择题目并查询最新聚类结果"
-          />
+            tone="info"
+            size="sm"
+            dense
+            inline
+            :show-icon="false"
+          >
+            <template #default>
+              <span style="display: inline-flex; align-items: center; gap: 8px">
+                <UiTag tone="blue" size="sm">待查询</UiTag>
+                <span>请选择题目并查询最新聚类结果</span>
+              </span>
+            </template>
+          </UiAlertStrip>
 
           <UiSkeletonState v-else-if="clusterLoading" variant="card" compact />
 
           <template v-else-if="latestCluster">
-            <a-descriptions :column="3" bordered size="small" class="experience-page__cluster-meta">
-              <a-descriptions-item label="分组数">
+            <UiDescriptions :column="3" bordered size="small" class="experience-page__cluster-meta">
+              <UiDescriptionsItem label="分组数">
                 <b>{{ clusterGroupCountText(latestCluster) }}</b>
-              </a-descriptions-item>
-              <a-descriptions-item label="分析状态">
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="分析状态">
                 <UiTag :tone="aiStatusTone(latestCluster.analysisStatus)" size="sm">
                   {{ aiStatusLabel(latestCluster.analysisStatus) }}
                 </UiTag>
-              </a-descriptions-item>
-              <a-descriptions-item label="耗时">
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="耗时">
                 {{ clusterLatencyText(latestCluster) }}
-              </a-descriptions-item>
-              <a-descriptions-item label="AI 处理追踪编号" :span="3">
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="AI 处理追踪编号" :span="3">
                 {{ clusterTraceText(latestCluster) }}
-              </a-descriptions-item>
-              <a-descriptions-item v-if="latestCluster.errorMessage" label="AI 处理说明" :span="3">
+              </UiDescriptionsItem>
+              <UiDescriptionsItem v-if="latestCluster.errorMessage" label="AI 处理说明" :span="3">
                 <span class="error-text">
                   {{ aiClusterFailureMessage(latestCluster.errorMessage) }}
                 </span>
-              </a-descriptions-item>
-              <a-descriptions-item label="聚类总结" :span="3">
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="聚类总结" :span="3">
                 <span>{{ clusterSummaryText(latestCluster) }}</span>
-              </a-descriptions-item>
-            </a-descriptions>
-            <a-list
+              </UiDescriptionsItem>
+            </UiDescriptions>
+            <UiList
               v-if="latestCluster.answerGroups?.length"
               class="answer-groups"
               :data-source="latestCluster.answerGroups"
@@ -251,7 +263,7 @@
               bordered
             >
               <template #renderItem="{ item }">
-                <a-list-item>
+                <UiListItem>
                   <div class="analysis-item__header">
                     <div>
                       <b>{{ item.groupLabel }}</b>
@@ -259,14 +271,14 @@
                         {{ item.groupDescription }}
                       </span>
                     </div>
-                    <a-space size="small">
+                    <div class="dp-space" style="--dp-space-gap: 8px">
                       <UiTag v-if="item.answerCount != null" tone="blue" size="sm">
                         {{ item.answerCount }} 份
                       </UiTag>
                       <UiTag v-if="item.avgScore != null" tone="green" size="sm">
                         均分 {{ item.avgScore }}
                       </UiTag>
-                    </a-space>
+                    </div>
                   </div>
                   <div v-if="item.representativeAnswers?.length" class="answer-samples">
                     <div
@@ -277,15 +289,15 @@
                       {{ answer }}
                     </div>
                   </div>
-                  <a-typography-paragraph v-if="item.suggestedAction" class="analysis-item__text">
+                  <UiTypographyParagraph v-if="item.suggestedAction" class="analysis-item__text">
                     <strong>处理措施：</strong>{{ item.suggestedAction }}
-                  </a-typography-paragraph>
-                  <a-typography-paragraph v-if="item.controversyNote" class="analysis-item__text">
+                  </UiTypographyParagraph>
+                  <UiTypographyParagraph v-if="item.controversyNote" class="analysis-item__text">
                     <strong>争议说明：</strong>{{ item.controversyNote }}
-                  </a-typography-paragraph>
-                </a-list-item>
+                  </UiTypographyParagraph>
+                </UiListItem>
               </template>
-            </a-list>
+            </UiList>
           </template>
         </div>
       </WorkbenchSurfaceCard>
@@ -302,21 +314,21 @@
     @close="similarDrawerOpen = false"
   >
     <UiSkeletonState v-if="similarLoading" variant="card" compact />
-    <UiEmpty v-else-if="similarResults.length === 0" description="暂无相似题" />
-    <a-list v-else :data-source="similarResults" item-layout="vertical">
+    <UiEmpty size="sm" v-else-if="similarResults.length === 0" description="暂无相似题" />
+    <UiList v-else :data-source="similarResults" item-layout="vertical">
       <template #renderItem="{ item }: { item: QuestionSignatureResponse }">
-        <a-list-item>
-          <a-space size="small">
+        <UiListItem>
+          <div class="dp-space" style="--dp-space-gap: 8px">
             <UiTag tone="blue" size="sm">{{ item.examName }} · {{ item.examNo }}</UiTag>
             <UiTag tone="blue" size="sm">
               {{ questionTypeLabel(item.questionType) }}
             </UiTag>
             <UiTag tone="gray" size="sm">题号 {{ item.questionNo }}</UiTag>
-          </a-space>
+          </div>
           <p v-if="item.questionDigest" class="similar-digest">{{ item.questionDigest }}</p>
-        </a-list-item>
+        </UiListItem>
       </template>
-    </a-list>
+    </UiList>
   </UiDrawer>
 
   <!-- 经验案例详情抽屉 -->
@@ -328,50 +340,50 @@
     @update:open="(v: boolean) => (experienceDrawerOpen = v)"
     @close="experienceDrawerOpen = false"
   >
-    <a-descriptions v-if="detailExperience" :column="1" bordered size="small">
-      <a-descriptions-item label="来源考试">
+    <UiDescriptions v-if="detailExperience" :column="1" bordered size="small">
+      <UiDescriptionsItem label="来源考试">
         {{ detailExperience.sourceExamName }} · {{ detailExperience.sourceExamNo }}
-      </a-descriptions-item>
-      <a-descriptions-item label="题目">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="题目">
         题号 {{ detailExperience.questionNo }}
-      </a-descriptions-item>
-      <a-descriptions-item label="状态">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="状态">
         <UiTag :tone="caseStatusTone(detailExperience.caseStatus)" size="sm">
           {{ caseStatusLabel(detailExperience.caseStatus) }}
         </UiTag>
-      </a-descriptions-item>
-      <a-descriptions-item label="AI 状态">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="AI 状态">
         <UiTag :tone="aiStatusTone(detailExperience.analysisStatus)" size="sm">
           {{ aiStatusLabel(detailExperience.analysisStatus) }}
         </UiTag>
-      </a-descriptions-item>
-      <a-descriptions-item label="AI 处理追踪编号">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="AI 处理追踪编号">
         {{ experienceTraceText(detailExperience) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="耗时">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="耗时">
         {{ experienceLatencyText(detailExperience) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="经验总结">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="经验总结">
         <span>{{ experienceSummaryText(detailExperience) }}</span>
-      </a-descriptions-item>
-      <a-descriptions-item label="适用边界">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="适用边界">
         {{ experienceApplicableScopeText(detailExperience) }}
-      </a-descriptions-item>
-      <a-descriptions-item v-if="detailExperience.riskTags?.length" label="风险标签">
-        <a-space wrap>
+      </UiDescriptionsItem>
+      <UiDescriptionsItem v-if="detailExperience.riskTags?.length" label="风险标签">
+        <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
           <UiTag v-for="tag in detailExperience.riskTags" :key="tag" tone="orange" size="sm">
             {{ tag }}
           </UiTag>
-        </a-space>
-      </a-descriptions-item>
-      <a-descriptions-item v-if="detailExperience.errorMessage" label="分析处理说明">
+        </div>
+      </UiDescriptionsItem>
+      <UiDescriptionsItem v-if="detailExperience.errorMessage" label="分析处理说明">
         <span class="error-text">
           {{ gradingExperienceFailureMessage(detailExperience.errorMessage) }}
         </span>
-      </a-descriptions-item>
-    </a-descriptions>
+      </UiDescriptionsItem>
+    </UiDescriptions>
 
-    <a-list
+    <UiList
       v-if="detailExperience?.experienceItems?.length"
       class="experience-items"
       :data-source="detailExperience.experienceItems"
@@ -379,31 +391,32 @@
       bordered
     >
       <template #renderItem="{ item }">
-        <a-list-item>
+        <UiListItem>
           <div class="analysis-item__header">
             <b>{{ item.experienceType || '经验条目' }}</b>
             <UiTag v-if="item.frequency != null" tone="blue" size="sm">
               出现 {{ item.frequency }} 次
             </UiTag>
           </div>
-          <a-typography-paragraph v-if="item.description" class="analysis-item__text">
+          <UiTypographyParagraph v-if="item.description" class="analysis-item__text">
             {{ item.description }}
-          </a-typography-paragraph>
-          <a-typography-paragraph v-if="item.scoringPattern" class="analysis-item__text">
+          </UiTypographyParagraph>
+          <UiTypographyParagraph v-if="item.scoringPattern" class="analysis-item__text">
             <strong>评分模式：</strong>{{ item.scoringPattern }}
-          </a-typography-paragraph>
-          <a-typography-paragraph v-if="item.applicableScenario" class="analysis-item__text">
+          </UiTypographyParagraph>
+          <UiTypographyParagraph v-if="item.applicableScenario" class="analysis-item__text">
             <strong>适用场景：</strong>{{ item.applicableScenario }}
-          </a-typography-paragraph>
-          <a-typography-paragraph v-if="item.riskNote" class="analysis-item__text">
+          </UiTypographyParagraph>
+          <UiTypographyParagraph v-if="item.riskNote" class="analysis-item__text">
             <strong>注意事项：</strong>{{ item.riskNote }}
-          </a-typography-paragraph>
-        </a-list-item>
+          </UiTypographyParagraph>
+        </UiListItem>
       </template>
-    </a-list>
+    </UiList>
     <template #footer>
-      <a-space v-if="canConfirmExperience || canDeprecateExperience">
+      <div class="dp-space" v-if="canConfirmExperience || canDeprecateExperience" style="--dp-space-gap: 8px">
         <UiButton
+          size="sm"
           v-if="canConfirmExperience"
           :loading="confirmingExperience"
           @click="handleConfirmExperience"
@@ -411,6 +424,7 @@
           确认沉淀
         </UiButton>
         <UiButton
+          size="sm"
           v-if="canDeprecateExperience"
           variant="outline"
           status="danger"
@@ -419,7 +433,7 @@
         >
           废弃案例
         </UiButton>
-      </a-space>
+      </div>
     </template>
   </UiDrawer>
 </template>
@@ -442,7 +456,6 @@ import type {
 import type { SignalMetric } from '@/types/workbench'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
-import Modal from 'ant-design-vue/es/modal'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import {
   AI_ANALYSIS_FLOW_HINT,
@@ -472,15 +485,24 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiList from '@/components/ui-guide/ui/UiList.vue'
+import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
+import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useQueryTable } from '@/composables/useQueryTable'
@@ -653,7 +675,7 @@ async function loadSignatures(): Promise<void> {
 }
 
 async function handleGenerateSignatures(): Promise<void> {
-  if (!selectedExamId.value) return
+  if (!selectedExamId.value || generatingSignatures.value) return
   generatingSignatures.value = true
   try {
     const result = await generateSignatures(selectedExamId.value)
@@ -792,7 +814,7 @@ function handleExperienceFilterSearch(): void {
 }
 
 async function handleExtract(): Promise<void> {
-  if (!selectedExamId.value || !experienceFilterForm.layoutQuestionId) return
+  if (!selectedExamId.value || !experienceFilterForm.layoutQuestionId || extracting.value) return
   extracting.value = true
   try {
     await extractExperience({
@@ -832,7 +854,7 @@ const canDeprecateExperience = computed(
 
 async function handleConfirmExperience(): Promise<void> {
   const caseId = detailExperience.value?.id
-  if (!caseId) return
+  if (!caseId || confirmingExperience.value) return
   confirmingExperience.value = true
   try {
     detailExperience.value = await confirmExperienceCase(caseId)
@@ -848,13 +870,14 @@ async function handleConfirmExperience(): Promise<void> {
 function handleDeprecateExperience(): void {
   const caseId = detailExperience.value?.id
   if (!caseId) return
-  Modal.confirm({
+  void confirmAsync({
     title: '确认废弃经验案例',
     content: '废弃后不可再用于有效性评估，历史评估记录仍保留。确认废弃？',
     okText: '废弃',
-    okType: 'danger',
     cancelText: '取消',
+    type: 'error',
     onOk: async () => {
+      if (deprecatingExperience.value) return
       deprecatingExperience.value = true
       try {
         detailExperience.value = await deprecateExperienceCase(caseId)
@@ -903,7 +926,7 @@ async function loadLatestCluster(): Promise<void> {
 }
 
 async function handleGenerateCluster(): Promise<void> {
-  if (!selectedExamId.value || !clusterFilterForm.layoutQuestionId) return
+  if (!selectedExamId.value || !clusterFilterForm.layoutQuestionId || clustering.value) return
   clustering.value = true
   try {
     latestCluster.value = await generateAnswerCluster({
@@ -1086,7 +1109,7 @@ onActivated(() => {
   }
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__tabs-card {
@@ -1136,17 +1159,17 @@ onActivated(() => {
 }
 
 .empty-block {
-  margin-top: 80px;
+  margin-top: var(--dp-space-3, 12px);
 }
 
 .error-text {
-  color: var(--ant-color-error);
+  color: var(--dp-error);
   font-size: 12px;
 }
 
 .similar-digest {
   margin: 6px 0 0;
-  color: rgba(0, 0, 0, 0.65);
+  color: var(--dp-text-secondary);
   font-size: 13px;
 }
 
@@ -1165,7 +1188,7 @@ onActivated(() => {
 
   &__muted {
     margin-left: 8px;
-    color: rgba(0, 0, 0, 0.55);
+    color: var(--dp-text-tertiary);
     font-size: 12px;
   }
 
@@ -1183,7 +1206,7 @@ onActivated(() => {
 .answer-sample {
   padding: 8px 10px;
   background: var(--dp-gray-50);
-  border: 1px solid var(--ant-color-border-secondary);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: 6px;
   color: var(--dp-text-secondary);
   font-size: 13px;

@@ -16,6 +16,14 @@ import { showUserError } from '@/utils/error-handler'
 
 const route = useRoute()
 const router = useRouter()
+
+function goTeacherMasterpiece(teacherUserId?: string) {
+  if (!teacherUserId) return
+  void router.push({
+    path: '/portfolio/teacher/masterpiece',
+    query: { teacherId: teacherUserId },
+  })
+}
 const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const bundle = ref<PortfolioExpertAssignmentReviewBundleVO | null>(null)
@@ -32,12 +40,19 @@ const assignmentId = computed(() => {
   return typeof id === 'string' ? id : undefined
 })
 
-const subjectTeacherColumns = computed<ColumnsType>(() => [
-  { title: '被评教师', dataIndex: 'maskedDisplayName', key: 'maskedDisplayName' },
-  ...(!bundle.value?.maskRequired
-    ? [{ title: '教师编号', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 }]
-    : []),
-])
+const subjectTeacherColumns = computed<ColumnsType>(() => {
+  const cols: ColumnsType = [
+    { title: '被评教师', dataIndex: 'maskedDisplayName', key: 'maskedDisplayName' },
+  ]
+  // 脱敏审阅不暴露 teacherUserId，也不提供读整袋深链
+  if (!bundle.value?.maskRequired) {
+    cols.push(
+      { title: '教师编号', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
+      { title: '操作', key: 'actions', width: 100 },
+    )
+  }
+  return cols
+})
 
 const materialColumns: ColumnsType = [
   { title: '教师', dataIndex: 'maskedTeacherLabel', key: 'maskedTeacherLabel', width: 140 },
@@ -48,6 +63,7 @@ const materialColumns: ColumnsType = [
   { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 100 },
   { title: '主附件', key: 'hasPrimaryFile', width: 90 },
   { title: '支撑材料', dataIndex: 'supportMaterialCount', key: 'supportMaterialCount', width: 100 },
+  { title: 'AI 初审', key: 'aiPreReview', width: 220 },
 ]
 
 async function loadBundle() {
@@ -107,7 +123,7 @@ watch(
   <StageWorkbenchShell>
     <ContextBar title="外部专家脱敏审阅" subtitle="只读审阅正式档案材料；填分请进入评价填报">
       <template #extra>
-        <UiButton v-if="bundle" variant="primary" @click="goEvaluationFill"> 去评价填报 </UiButton>
+        <UiButton size="sm" v-if="bundle" variant="primary" @click="goEvaluationFill"> 去评价填报 </UiButton>
       </template>
     </ContextBar>
     <UiCard :loading="loading">
@@ -129,16 +145,29 @@ watch(
           :data-source="bundle.subjectTeachers"
           :show-pagination="false"
           :total="bundle.subjectTeachers.length"
-          row-key="teacherUserId"
+          :row-key="(record) => record.subjectRef || record.teacherUserId || record.maskedDisplayName"
           size="small"
           flat
           empty-kind="first-run"
           empty-description="当前审阅包无被评教师，请核对指派或令牌。"
-        />
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'actions'">
+              <UiButton
+                size="sm"
+                variant="soft"
+                :disabled="!record.teacherUserId"
+                @click="goTeacherMasterpiece(record.teacherUserId)"
+              >
+                读整袋
+              </UiButton>
+            </template>
+          </template>
+        </UiDataTable>
         <h4 class="expert-review__section-title">授权材料清单</h4>
         <UiDataTable
           :load-error="loadError"
-          row-key="archiveRecordId"
+          :row-key="(record) => record.materialRef || record.archiveRecordId || `${record.maskedTeacherLabel}-${record.categoryCode}-${record.academicYear}`"
           :columns="materialColumns"
           :data-source="bundle.materials"
           :pagination="false"
@@ -147,19 +176,38 @@ watch(
             <template v-if="column.key === 'hasPrimaryFile'">
               {{ record.hasPrimaryFile ? '有' : '无' }}
             </template>
+            <template v-else-if="column.key === 'aiPreReview'">
+              <template v-if="record.hasAiPreReview">
+                <div class="expert-review__ai">
+                  <UiTag tone="blue">有 AI 初审</UiTag>
+                  <span v-if="record.aiPreReviewConclusionCode">结论：{{ record.aiPreReviewConclusionCode }}</span>
+                  <span v-if="record.aiPreReviewResultTitle" class="expert-review__ai-title">
+                    {{ record.aiPreReviewResultTitle }}
+                  </span>
+                  <span v-if="record.aiPreReviewSummary" class="expert-review__ai-summary">
+                    {{ record.aiPreReviewSummary }}
+                  </span>
+                  <span v-else-if="bundle?.maskRequired" class="expert-review__ai-muted">
+                    脱敏模式不展示初审自由文本
+                  </span>
+                </div>
+              </template>
+              <span v-else class="expert-review__ai-muted">无</span>
+            </template>
           </template>
           <template #emptyText>
-            <UiEmpty title="暂无内容" />
+            <UiEmpty size="sm" title="暂无内容" />
           </template>
         </UiDataTable>
       </template>
       <UiEmpty
+        size="sm"
         v-else
         :title="errorMessage ? '无法打开审阅包' : '暂无内容'"
         :description="errorMessage || '当前授权没有可审阅材料。'"
       >
         <template #action>
-          <UiButton :loading="loading" @click="loadBundle">重试</UiButton>
+          <UiButton size="sm" :loading="loading" @click="loadBundle">重试</UiButton>
         </template>
       </UiEmpty>
     </UiCard>

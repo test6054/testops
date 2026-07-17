@@ -10,6 +10,7 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
@@ -149,6 +150,7 @@ function openDetail(tabKey?: string) {
   >
     <UiSkeletonState v-if="loading" variant="card" compact />
     <UiEmpty
+      size="sm"
       v-else-if="loadFailed"
       title="院系审核材料加载失败"
       description="无法读取最新材料摘要与审核权限。"
@@ -195,12 +197,13 @@ function openDetail(tabKey?: string) {
         </UiButton>
       </div>
       <div v-if="canApprove && showRejectForm" class="dept-review-list-drawer__reject">
-        <a-textarea
-          v-model:value="rejectReason"
+        <UiTextarea
+          size="sm"
+          v-model="rejectReason"
           :rows="3"
           placeholder="驳回原因"
           :maxlength="500"
-          show-count
+          :show-count="true"
         />
         <div class="dept-review-list-drawer__reject-actions">
           <UiButton variant="outline" size="sm" :loading="rejecting" @click="handleReject">

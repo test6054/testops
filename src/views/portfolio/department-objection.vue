@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioEvaluationObjectionSummaryVO } from '@/apis/portfolio/types'
+import type {
+  PortfolioEvaluationObjectionPeerScoreItemVO,
+  PortfolioEvaluationObjectionReviewPackageVO,
+  PortfolioEvaluationObjectionScoreBasisItemVO,
+  PortfolioEvaluationObjectionSummaryVO,
+} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { Input, InputNumber, message, Select } from 'ant-design-vue'
+import { message } from 'ant-design-vue'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -22,8 +27,11 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -102,8 +110,21 @@ const reviewTarget = ref<PortfolioEvaluationObjectionSummaryVO | null>(null)
 const reviewForm = reactive({
   action: PortfolioEvaluationObjectionHandleActionCode.CORRECT,
   handleOpinion: '',
-  correctedScore: undefined,
+  correctedScore: undefined as number | undefined,
 })
+const reviewPackage = ref<PortfolioEvaluationObjectionReviewPackageVO | null>(null)
+const reviewPackageLoading = ref(false)
+const scoreBasisColumns: ColumnsType<PortfolioEvaluationObjectionScoreBasisItemVO> = [
+  { title: '匿名专家', dataIndex: 'anonymousExpertLabel', key: 'anonymousExpertLabel', width: 100 },
+  { title: '指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 120 },
+  { title: '得分', dataIndex: 'score', key: 'score', width: 80 },
+  { title: '评分依据', dataIndex: 'commentText', key: 'commentText' },
+]
+const peerScoreColumns: ColumnsType<PortfolioEvaluationObjectionPeerScoreItemVO> = [
+  { title: '匿名专家', dataIndex: 'anonymousExpertLabel', key: 'anonymousExpertLabel', width: 100 },
+  { title: '指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 120 },
+  { title: '得分', dataIndex: 'score', key: 'score', width: 80 },
+]
 
 const evaluationTaskId = ref(
   typeof route.query.evaluationTaskId === 'string' ? route.query.evaluationTaskId : '',
@@ -139,6 +160,8 @@ const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
 function resetReviewContext() {
   reviewDrawerOpen.value = false
   reviewTarget.value = null
+  reviewPackage.value = null
+  reviewPackageLoading.value = false
   reviewForm.action = PortfolioEvaluationObjectionHandleActionCode.CORRECT
   reviewForm.handleOpinion = ''
   reviewForm.correctedScore = undefined
@@ -255,14 +278,35 @@ async function submitReview() {
   }
 }
 
-function openReviewDrawer(row: PortfolioEvaluationObjectionSummaryVO) {
+async function openReviewDrawer(row: PortfolioEvaluationObjectionSummaryVO) {
   reviewTarget.value = row
   reviewForm.action = requiresCorrectedScore(row.objectionType)
     ? PortfolioEvaluationObjectionHandleActionCode.CORRECT
     : PortfolioEvaluationObjectionHandleActionCode.MAINTAIN
   reviewForm.handleOpinion = ''
   reviewForm.correctedScore = undefined
+  reviewPackage.value = null
   reviewDrawerOpen.value = true
+  const contextToken = reviewContextToken.value
+  reviewPackageLoading.value = true
+  try {
+    const pack = await portfolioEvaluationPublicityApi.getObjectionReviewPackage({
+      objectionId: row.objectionId,
+    })
+    if (reviewContextToken.value !== contextToken) {
+      return
+    }
+    reviewPackage.value = pack
+  } catch (error) {
+    if (reviewContextToken.value !== contextToken) {
+      return
+    }
+    showUserError(error, '加载异议复核材料包失败')
+  } finally {
+    if (reviewContextToken.value === contextToken) {
+      reviewPackageLoading.value = false
+    }
+  }
 }
 
 watch(
@@ -319,7 +363,7 @@ function buildObjectionRowActions(
 
 function handleObjectionRowAction(key: string, row: PortfolioEvaluationObjectionSummaryVO): void {
   if (key === 'review') {
-    openReviewDrawer(row)
+    void openReviewDrawer(row)
   }
 }
 
@@ -328,16 +372,17 @@ void loadPage()
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="公示异议" description="院系复核教师评价公示异议">
+    <ContextBar layout="workbench" title="公示异议">
       <template #actions>
-        <Select
-          v-model:value="objectionStatusFilter"
+        <UiSelect
+          v-model="objectionStatusFilter"
+          size="sm"
           class="department-objection__status-filter"
           :options="STATUS_FILTER_OPTIONS"
           :disabled="Boolean(handlingId)"
           @change="onStatusFilterChange"
         />
-        <UiButton :loading="loading" :disabled="Boolean(handlingId)" @click="() => void loadPage()">
+        <UiButton size="sm" :loading="loading" :disabled="Boolean(handlingId)" @click="() => void loadPage()">
           刷新
         </UiButton>
       </template>
@@ -406,6 +451,7 @@ void loadPage()
         </template>
       </UiDataTable>
       <UiEmpty
+        size="sm"
         v-else
         :description="
           objectionStatusFilter === PortfolioEvaluationObjectionStatusCode.SUBMITTED
@@ -415,39 +461,89 @@ void loadPage()
       />
     </UiCard>
 
-    <UiDrawer v-model:open="reviewDrawerOpen" title="异议复核" width="420">
+    <UiDrawer v-model:open="reviewDrawerOpen" title="异议复核" width="640">
       <p v-if="reviewTarget" class="department-objection__meta">
         {{ reviewTarget.teacherName }} · {{ reviewTarget.taskName }}
+        <template v-if="reviewTarget.indicatorCode"> · 指标 {{ reviewTarget.indicatorCode }}</template>
       </p>
-      <Select
-        v-model:value="reviewForm.action"
+      <section class="department-objection__review-section">
+        <h3 class="department-objection__section-title">评分依据与同组分布</h3>
+        <p v-if="reviewPackageLoading" class="department-objection__section-hint">材料包加载中…</p>
+        <template v-else-if="reviewPackage">
+          <p class="department-objection__section-hint">
+            争议条目 {{ reviewPackage.scopedEntryCount ?? 0 }} 条；
+            均分 {{ reviewPackage.scopedAverageScore ?? '—' }}；
+            区间 {{ reviewPackage.peerMinScore ?? '—' }} ~ {{ reviewPackage.peerMaxScore ?? '—' }}；
+            中位 {{ reviewPackage.peerMedianScore ?? '—' }}
+          </p>
+          <UiDataTable
+            class="department-objection__score-basis"
+            size="sm"
+            :columns="scoreBasisColumns"
+            :data-source="reviewPackage.scoreBasis ?? []"
+            :pagination="false"
+            row-key="entryId"
+          />
+          <UiDataTable
+            class="department-objection__peer-scores"
+            size="sm"
+            :columns="peerScoreColumns"
+            :data-source="reviewPackage.peerScoreDistribution ?? []"
+            :pagination="false"
+            :row-key="(row) => `${row.anonymousExpertLabel || ''}-${row.indicatorCode || ''}-${row.score ?? ''}`"
+          />
+          <div class="department-objection__materials">
+            <span class="department-objection__materials-label">材料引用</span>
+            <template v-if="(reviewPackage.materialCategories ?? []).length">
+              <UiTag
+                v-for="item in reviewPackage.materialCategories"
+                :key="String(item.categoryId)"
+                size="sm"
+                :tone="item.completed ? 'success' : 'warning'"
+              >
+                {{ item.categoryName || item.categoryId }}
+              </UiTag>
+            </template>
+            <span v-else class="department-objection__section-hint">暂无档案分类材料引用</span>
+            <p v-if="reviewPackage.teacherEvidenceRef" class="department-objection__section-hint">
+              教师佐证：{{ reviewPackage.teacherEvidenceRef }}
+            </p>
+          </div>
+        </template>
+        <p v-else class="department-objection__section-hint">复核材料包暂不可用，仍可填写复核结论。</p>
+      </section>
+      <UiSelect
+        v-model="reviewForm.action"
+        size="sm"
         class="department-objection__field"
         :options="HANDLE_ACTION_OPTIONS.map((value) => ({ value, label: actionLabel(value) }))"
         :disabled="Boolean(handlingId)"
         placeholder="复核结论"
       />
-      <InputNumber
+      <UiInputNumber
         v-if="showCorrectedScore"
-        v-model:value="reviewForm.correctedScore"
+        v-model="reviewForm.correctedScore"
+        size="sm"
         class="department-objection__field"
         :min="0"
         :max="100"
         :precision="2"
         :disabled="Boolean(handlingId)"
         placeholder="修正得分"
-        style="width: 100%"
       />
-      <Input.TextArea
-        v-model:value="reviewForm.handleOpinion"
+      <UiTextarea
+        v-model="reviewForm.handleOpinion"
+        size="sm"
         :rows="4"
         :disabled="Boolean(handlingId)"
         placeholder="请填写复核意见"
       />
       <template #footer>
-        <UiButton variant="ghost" :disabled="Boolean(handlingId)" @click="reviewDrawerOpen = false">
+        <UiButton size="sm" variant="ghost" :disabled="Boolean(handlingId)" @click="reviewDrawerOpen = false">
           取消
         </UiButton>
         <UiButton
+          size="sm"
           variant="primary"
           :loading="handlingId === reviewTarget?.objectionId"
           @click="() => void submitReview()"
@@ -468,6 +564,38 @@ void loadPage()
 .department-objection__meta {
   margin: 0 0 var(--dp-space-3);
   font-size: 14px;
+  color: var(--dp-text-secondary);
+}
+
+.department-objection__review-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: var(--dp-space-3);
+}
+
+.department-objection__section-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dp-text-primary);
+}
+
+.department-objection__section-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--dp-text-secondary);
+}
+
+.department-objection__materials {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.department-objection__materials-label {
+  font-size: 12px;
   color: var(--dp-text-secondary);
 }
 

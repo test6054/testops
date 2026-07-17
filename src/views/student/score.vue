@@ -19,7 +19,7 @@
       <SignalBand v-if="!pageBootstrapping" :metrics="summarySignalMetrics" compact />
     </template>
 
-    <a-skeleton v-if="pageBootstrapping" active :paragraph="{ rows: 4 }" />
+    <UiSkeletonState v-if="pageBootstrapping" :rows="4" compact />
 
     <template v-else>
       <!-- 最近一场已发布详情卡 -->
@@ -31,7 +31,7 @@
               <span>最近一场已发布成绩</span>
               <UiTag tone="green" size="sm">已发布</UiTag>
             </div>
-            <a-space>
+            <div class="dp-space" style="--dp-space-gap: 8px">
               <UiButton size="sm" @click="goDetail(latestPublished.examId)">查看明细</UiButton>
               <UiButton
                 v-if="canSubmitReview(latestPublished)"
@@ -41,7 +41,7 @@
               >
                 提交复核
               </UiButton>
-            </a-space>
+            </div>
           </div>
         </template>
 
@@ -191,6 +191,7 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -502,7 +503,7 @@ onActivated(reloadPage)
 .latest-grid {
   display: grid;
   grid-template-columns: 220px 1fr;
-  gap: 24px;
+  gap: var(--dp-space-3, 12px);
   align-items: stretch;
 
   &__score {
@@ -510,7 +511,7 @@ onActivated(reloadPage)
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 24px;
+    padding: var(--dp-space-3, 12px);
     /* 与全站其他卡片视觉对齐：用纯色浅绿底 + 1px 边框，去除 135deg 渐变 */
     background: var(--dp-green-50);
     border: 1px solid var(--dp-green-200);
@@ -518,19 +519,19 @@ onActivated(reloadPage)
 
     .score-label {
       font-size: 12px;
-      color: var(--ant-color-text-tertiary);
+      color: var(--dp-text-tertiary);
       margin: 0 0 8px;
     }
 
     .score-value {
       margin: 0;
       font-size: 14px;
-      color: var(--ant-color-text-secondary);
+      color: var(--dp-text-secondary);
 
       strong {
         font-size: 36px;
         font-weight: 600;
-        color: var(--ant-color-success);
+        color: var(--dp-success);
         line-height: 1.2;
       }
 
@@ -542,7 +543,7 @@ onActivated(reloadPage)
     .score-helper {
       margin: 8px 0 0;
       font-size: 12px;
-      color: var(--ant-color-text-tertiary);
+      color: var(--dp-text-tertiary);
     }
   }
 
@@ -559,18 +560,18 @@ onActivated(reloadPage)
       gap: 12px;
       padding: 6px 0;
       font-size: 13px;
-      border-bottom: 1px dashed var(--ant-color-border-secondary);
+      border-bottom: 1px dashed var(--dp-border-subtle);
 
       &:last-child {
         border-bottom: none;
       }
 
       .info-label {
-        color: var(--ant-color-text-tertiary);
+        color: var(--dp-text-tertiary);
       }
 
       .info-value {
-        color: var(--ant-color-text);
+        color: var(--dp-text);
         font-weight: 500;
       }
     }
@@ -580,10 +581,10 @@ onActivated(reloadPage)
 .student-score__exam-no {
   margin-top: 2px;
   font-size: 12px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 
 .student-score__muted {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
 }
 </style>

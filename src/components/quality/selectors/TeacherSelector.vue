@@ -4,10 +4,12 @@
   已选值回显：POST /api/admin/teachers/batch-details
 -->
 <script setup lang="ts">
-import type { LabeledValue, SelectValue } from 'ant-design-vue/es/select'
+import type { LabeledValue } from 'ant-design-vue/es/select'
 import type { TeacherDetailsDto, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { onMounted, ref, watch } from 'vue'
+import type { UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
+import { computed, onMounted, ref, watch } from 'vue'
 import { teacherCatalogApi } from '@/apis/quality/user-catalog'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { showUserError } from '@/utils/error-handler'
 
 interface Props {
@@ -151,8 +153,8 @@ async function loadOptions(keyword?: string) {
   }
 }
 
-/** 将 a-select 的 SelectValue 收敛为本选择器的 string | string[] | null 合同 */
-function selectValueToTeacherIds(val: SelectValue): string | string[] | null {
+/** 将 a-select 的 UiOptionValue | UiOptionValue[] | undefined 收敛为本选择器的 string | string[] | null 合同 */
+function selectValueToTeacherIds(val: UiOptionValue | UiOptionValue[] | undefined): string | string[] | null {
   if (val == null || val === '') {
     return null
   }
@@ -171,6 +173,18 @@ function selectValueToTeacherIds(val: SelectValue): string | string[] | null {
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const selectOptions = computed<UiSelectOption[]>(() =>
+  options.value.map((opt) => ({
+    value: opt.id,
+    label: teacherDisplayName(opt),
+  })),
+)
+
+const controlStyle = computed(() => ({
+  width: typeof props.width === 'number' ? `${props.width}px` : props.width,
+}))
+
 function handleSearch(val: string) {
   searchText.value = val
   if (debounceTimer) clearTimeout(debounceTimer)
@@ -179,7 +193,7 @@ function handleSearch(val: string) {
   }, 300)
 }
 
-function handleChange(val: SelectValue) {
+function handleChange(val: UiOptionValue | UiOptionValue[] | undefined) {
   const next = selectValueToTeacherIds(val)
   internalValue.value = next ?? undefined
   const option = Array.isArray(next)
@@ -205,29 +219,30 @@ defineExpose({ reload: loadOptions, hydrateSelectedByIds })
 </script>
 
 <template>
-  <a-select
-    :value="internalValue"
+  <UiSelect
+    v-model="internalValue"
+    class="dp-quality-selector"
+    :style="controlStyle"
+    size="sm"
     :placeholder="placeholder"
     :allow-clear="allowClear"
     :disabled="disabled"
     :loading="loading"
     :mode="mode"
-    :style="{ width: typeof width === 'number' ? `${width}px` : width }"
-    show-search
+    allow-search
     :filter-option="false"
-    option-label-prop="label"
     @search="handleSearch"
-    @change="handleChange"
+    :options="selectOptions"
+    @update:model-value="handleChange"
   >
-    <a-select-option
-      v-for="opt in options"
-      :key="opt.id"
-      :value="opt.id"
-      :label="teacherDisplayName(opt)"
-    >
-      {{ teacherDisplayName(opt) }}
-      <span v-if="opt.teacherNumber" class="dp-selector-option-meta">({{ opt.teacherNumber }})</span>
-      <span v-if="opt.department" class="dp-selector-option-meta">{{ opt.department }}</span>
-    </a-select-option>
-  </a-select>
+    <template #option="{ value: optionValue }">
+      <template v-for="opt in options" :key="opt.id">
+        <template v-if="opt.id === optionValue">
+          {{ teacherDisplayName(opt) }}
+          <span v-if="opt.teacherNumber" class="dp-selector-option-meta">({{ opt.teacherNumber }})</span>
+          <span v-if="opt.department" class="dp-selector-option-meta">{{ opt.department }}</span>
+        </template>
+      </template>
+    </template>
+  </UiSelect>
 </template>

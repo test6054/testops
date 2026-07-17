@@ -415,6 +415,29 @@ export const PORTFOLIO_EVALUATION_MODE_OPTIONS: Array<{
 }))
 
 /** 多元评价填报可读任务状态（不含草稿/作废/关闭） */
+/** 评价填报可写入状态：已发布独立填报期 + 专家评审阶段 */
+export const PORTFOLIO_EVALUATION_ENTRY_WRITABLE_STATUSES: PortfolioEvaluationTaskStatusCode[]
+  = [
+    PortfolioEvaluationTaskStatusCode.PUBLISHED,
+    PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW,
+    PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW,
+  ]
+
+/** 外部专家填报可写状态：仅专家评审阶段 */
+export const PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES: PortfolioEvaluationTaskStatusCode[]
+  = [
+    PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW,
+  ]
+
+/** 评价材料确认/退回补充可操作任务状态：发布确认期 + 初审/复审/专家评审退回重确认 */
+export const PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES: PortfolioEvaluationTaskStatusCode[]
+  = [
+    PortfolioEvaluationTaskStatusCode.PUBLISHED,
+    PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW,
+    PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW,
+    PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW,
+  ]
+
 export const PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES: PortfolioEvaluationTaskStatusCode[]
   = [
     PortfolioEvaluationTaskStatusCode.PUBLISHED,
@@ -441,6 +464,7 @@ export const PORTFOLIO_EVALUATION_TASK_STATUS_TONE: Record<
   [PortfolioEvaluationTaskStatusCode.PUBLICITY]: 'orange',
   [PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING]: 'orange',
   [PortfolioEvaluationTaskStatusCode.ARCHIVED]: 'green',
+  [PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW]: 'orange',
   [PortfolioEvaluationTaskStatusCode.SUSPENDED]: 'gray',
   [PortfolioEvaluationTaskStatusCode.VOID]: 'red',
   [PortfolioEvaluationTaskStatusCode.CLOSED]: 'blue',

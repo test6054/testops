@@ -70,14 +70,13 @@
 
     <template v-if="selectedExamId && signalMetrics.length > 0" #signal>
       <SignalBand
-        variant="tiles"
         :metrics="signalMetrics"
         compact
         @metric-click="handleOrgSignalClick"
       />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="请选择考试" class="org-index__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="org-index__empty" />
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
@@ -97,16 +96,16 @@
         </div>
       </template>
 
-      <a-descriptions
+      <UiDescriptions
         :column="{ xs: 1, sm: 2, lg: 3 }"
         size="middle"
         bordered
         class="org-index__descriptions"
       >
-        <a-descriptions-item label="主考老师">
+        <UiDescriptionsItem label="主考老师">
           {{ organization.leaderUserName }}（{{ organization.leaderTeacherNo }}）
-        </a-descriptions-item>
-        <a-descriptions-item label="组织状态">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="组织状态">
           <UiTag
             :tone="
               strictEnumTone(
@@ -125,28 +124,28 @@
               )
             }}
           </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="匿名阅卷">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="匿名阅卷">
           <UiTag :tone="organization.anonymousMode ? 'green' : 'gray'" size="sm">
             {{ organization.anonymousMode ? '启用' : '关闭' }}
           </UiTag>
-        </a-descriptions-item>
-        <a-descriptions-item label="题组数量">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="题组数量">
           {{ organization.groups.length }} 组
-        </a-descriptions-item>
-        <a-descriptions-item label="创建时间">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="创建时间">
           {{ formatDateTime(organization.createTime) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="更新时间">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="更新时间">
           {{ formatDateTime(organization.updateTime) }}
-        </a-descriptions-item>
-        <a-descriptions-item label="备注" :span="3">
+        </UiDescriptionsItem>
+        <UiDescriptionsItem label="备注" :span="3">
           <span v-if="organization.remark">
             {{ organization.remark }}
           </span>
           <span v-else class="org-index__hint">-</span>
-        </a-descriptions-item>
-      </a-descriptions>
+        </UiDescriptionsItem>
+      </UiDescriptions>
 
       <div class="org-index__actions">
         <UiButton size="sm" @click="goDetail">
@@ -157,35 +156,32 @@
         </UiButton>
         <UiButton size="sm" variant="outline" @click="goTrialSessions">试评定标</UiButton>
         <UiButton size="sm" variant="outline" @click="goFormalSessions">正评会话</UiButton>
-        <a-popconfirm
+        <UiButton
           v-if="canManageExamOwner"
-          title="确认删除该阅卷组织？"
-          ok-text="删除"
-          cancel-text="取消"
-          :ok-button-props="{ danger: true, loading: deleting }"
-          @confirm="submitDelete"
+          size="sm"
+          variant="outline"
+          status="danger"
+          :loading="deleting"
+          @click="requestDeleteOrganization"
         >
-          <UiButton size="sm" variant="outline" status="danger" :loading="deleting">
-            删除组织
-          </UiButton>
-        </a-popconfirm>
+          删除组织
+        </UiButton>
       </div>
     </WorkbenchSurfaceCard>
 
-    <WorkbenchSurfaceCard v-else class="org-index__panel--empty">
-      <UiEmpty description="本考试尚未创建阅卷组织">
-        <p class="org-index__empty-desc">
-          阅卷组织是组织教师批改试卷的核心实体；创建后可继续编排题组、配置分配策略并启动试评 /
-          正评。
-        </p>
-        <template v-if="canManageExamOwner" #action>
-          <UiButton variant="primary" size="md" @click="openCreateDrawer">
-            立即创建阅卷组织
-          </UiButton>
-        </template>
-        <p v-else class="org-index__empty-desc">该考试的阅卷组织由考试主考老师创建和分配。</p>
-      </UiEmpty>
-    </WorkbenchSurfaceCard>
+    <WorkbenchContextGateStrip
+      v-else
+      tag="未配置"
+      :body="
+        canManageExamOwner
+          ? '本考试尚未创建阅卷组织；创建后可编排题组、配置分配策略并启动试评/正评'
+          : '本考试尚未创建阅卷组织；由考试主考老师创建和分配'
+      "
+      :hide-cta="!canManageExamOwner"
+      cta-label="立即创建阅卷组织"
+      class="org-index__panel--empty"
+      @cta="openCreateDrawer"
+    />
 
     <!-- 新建组织抽屉 -->
     <UiDrawer
@@ -197,24 +193,27 @@
       @close="createDrawerOpen = false"
       @ok="submitCreate"
     >
-      <a-form ref="createFormRef" :model="createForm" :rules="createRules" layout="vertical">
-        <a-form-item label="关联考试">
-          <a-input :value="organizationExamLabel" disabled />
-        </a-form-item>
-        <a-form-item label="是否启用匿名阅卷" name="anonymousMode">
-          <a-switch v-model:checked="createForm.anonymousMode" />
+      <UiForm ref="createFormRef" :model="createForm" :rules="createRules" layout="vertical">
+        <UiFormItem label="关联考试">
+          <UiInput
+            size="sm" :value="organizationExamLabel" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="是否启用匿名阅卷" name="anonymousMode">
+          <UiSwitch size="sm" v-model="createForm.anonymousMode" />
           <span class="org-index__switch-hint">启用后阅卷教师不可见考生身份</span>
-        </a-form-item>
-        <a-form-item label="备注" name="remark">
-          <a-textarea
-            v-model:value="createForm.remark"
+        </UiFormItem>
+        <UiFormItem label="备注" name="remark">
+          <UiTextarea
+            size="sm"
+            v-model="createForm.remark"
             :rows="3"
             :maxlength="200"
             placeholder="可选，记录组织目的 / 范围"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -226,24 +225,27 @@
       @close="editDrawerOpen = false"
       @ok="submitUpdate"
     >
-      <a-form ref="editFormRef" :model="editForm" :rules="editRules" layout="vertical">
-        <a-form-item label="关联考试">
-          <a-input :value="organizationExamLabel" disabled />
-        </a-form-item>
-        <a-form-item label="是否启用匿名阅卷" name="anonymousMode">
-          <a-switch v-model:checked="editForm.anonymousMode" />
+      <UiForm ref="editFormRef" :model="editForm" :rules="editRules" layout="vertical">
+        <UiFormItem label="关联考试">
+          <UiInput
+            size="sm" :value="organizationExamLabel" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="是否启用匿名阅卷" name="anonymousMode">
+          <UiSwitch size="sm" v-model="editForm.anonymousMode" />
           <span class="org-index__switch-hint">启用后阅卷教师不可见考生身份</span>
-        </a-form-item>
-        <a-form-item label="备注" name="remark">
-          <a-textarea
-            v-model:value="editForm.remark"
+        </UiFormItem>
+        <UiFormItem label="备注" name="remark">
+          <UiTextarea
+            size="sm"
+            v-model="editForm.remark"
             :rows="3"
             :maxlength="200"
             placeholder="可选，记录组织目的 / 范围"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
@@ -279,15 +281,24 @@ import {
 } from '@/apis/mark/marking-organization'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
@@ -475,6 +486,7 @@ function openCreateDrawer(): void {
 }
 
 async function submitCreate(): Promise<void> {
+  if (creating.value) return
   if (!guardExamOwnerAction()) return
   if (!selectedExamId.value || !createFormRef.value) return
   try {
@@ -534,9 +546,23 @@ async function submitUpdate(): Promise<void> {
   }
 }
 
+async function requestDeleteOrganization(): Promise<void> {
+  const ok = await confirmAsync({
+    title: '确认删除该阅卷组织？',
+    content: '删除后不可恢复；请确认组织下无进行中的试评/正评会话。',
+    type: 'error',
+    okText: '删除',
+  })
+  if (!ok) {
+    return
+  }
+  await submitDelete()
+}
+
 async function submitDelete(): Promise<void> {
   if (!guardExamOwnerAction()) return
   if (!organization.value) return
+  if (deleting.value) return
   deleting.value = true
   try {
     await deleteOrganization({ organizationId: requireMarkingOrganizationId(organization.value) })
@@ -665,12 +691,12 @@ onActivated(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
 
     &--empty {
       text-align: center;
-      padding: 40px 16px;
+      padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px);
     }
   }
 
@@ -693,7 +719,7 @@ onActivated(() => {
   }
 
   &__empty {
-    padding: 48px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__empty-title {

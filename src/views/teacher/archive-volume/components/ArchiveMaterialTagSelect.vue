@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { loadArchiveMaterialTagOptions } from '@/composables/useArchiveMaterialTagOptions'
 import { showUserError } from '@/utils/error-handler'
 
@@ -63,14 +64,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <a-select
-    v-model:value="model"
+  <UiSelect
+    size="sm"
+    v-model="model"
     :mode="allowCreate ? 'tags' : 'multiple'"
     :options="tagOptions.map((tag) => ({ value: tag, label: tag }))"
     :token-separators="allowCreate ? [',', '，'] : undefined"
     :placeholder="placeholder"
     :max-tag-count="maxTagCount"
-    show-search
+    allow-search
     :filter-option="false"
     :loading="searching"
     @search="handleSearch"

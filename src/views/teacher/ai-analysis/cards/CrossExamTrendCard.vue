@@ -2,10 +2,14 @@
   <AiAnalysisSection title="AI 跨考试趋势分析">
     <template #actions>
       <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
-      <a-radio-group v-model:value="scopeMode" size="small" button-style="solid">
-        <a-radio-button :value="AnalysisScopeTypeCode.COURSE">课程维度</a-radio-button>
-        <a-radio-button :value="AnalysisScopeTypeCode.CLASS">班级维度</a-radio-button>
-      </a-radio-group>
+      <UiRadioGroup
+        v-model="scopeMode"
+        size="sm"
+        :options="[
+          { label: '课程维度', value: AnalysisScopeTypeCode.COURSE },
+          { label: '班级维度', value: AnalysisScopeTypeCode.CLASS },
+        ]"
+      />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
         生成分析
@@ -120,6 +124,7 @@ import AnalysisExamMultiSelect from '@/components/mark/AnalysisExamMultiSelect.v
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
@@ -499,6 +504,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
+  if (generating.value) return
   if (!ensureRequiredAcademicYearSemester(form.academicYear, form.semester)) {
     return
   }

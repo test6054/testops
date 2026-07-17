@@ -317,7 +317,7 @@ watch(
   display: block;
   max-width: 100%;
   max-height: 100%;
-  background: var(--ant-color-bg-container);
+  background: var(--dp-bg-container);
   box-shadow: var(--scan-paper-shadow);
   user-select: none;
   transform-origin: center center;
@@ -336,8 +336,8 @@ watch(
 
 .scan-stage__roi {
   position: absolute;
-  border: 2px dashed var(--ant-color-primary);
-  background: color-mix(in srgb, var(--ant-color-primary) 8%, transparent);
+  border: 2px dashed var(--dp-color-primary);
+  background: color-mix(in srgb, var(--dp-color-primary) 8%, transparent);
   pointer-events: none;
   border-radius: 2px;
 }
@@ -386,7 +386,7 @@ watch(
 }
 .scan-stage__btn:hover:not(:disabled) {
   background: var(--dp-surface-subtle);
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
 }
 .scan-stage__btn:disabled {
   cursor: not-allowed;
@@ -397,8 +397,8 @@ watch(
   box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 .scan-stage__btn--toggle.scan-stage__btn--active {
-  background: var(--ant-color-primary);
-  color: var(--ant-color-white);
+  background: var(--dp-color-primary);
+  color: var(--dp-text-inverse);
 }
 
 .scan-stage__info {

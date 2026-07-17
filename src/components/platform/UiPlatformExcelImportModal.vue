@@ -1,12 +1,11 @@
 <template>
-  <a-modal
+  <UiDialog
     v-model:open="visible"
     :title="modalTitle"
     :width="modalWidth"
     :confirm-loading="submitting"
     :mask-closable="false"
     :ok-text="okText"
-    :ok-button-props="{ disabled: okDisabled }"
     @cancel="handleCancel"
     @ok="handleOk"
     class="platform-excel-import-modal"
@@ -168,7 +167,7 @@
         已提交解析任务，请在列表中预览确认。
       </p>
     </div>
-  </a-modal>
+  </UiDialog>
 </template>
 
 <script setup lang="ts">
@@ -192,6 +191,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import {
   getUserErrorMessage,
   getUserProcessFailureMessage,
@@ -400,6 +400,9 @@ function handleDrop(event: DragEvent) {
 }
 
 async function stageSelectedFile(file: File) {
+  if (submitting.value) {
+    return
+  }
   submitting.value = true
   try {
     const stageScene = resolveFileStageSceneForExcel(props.sceneKey)
@@ -467,6 +470,7 @@ async function handleOk() {
   if (!stagedFileNodeId.value) {
     return
   }
+  if (submitting.value) return
   submitting.value = true
   try {
     if (props.previewBeforeCommit && phase.value === 'preview') {
@@ -560,14 +564,14 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
   &__dropzone {
     border: 1px dashed var(--dp-border-strong);
     border-radius: var(--dp-radius-panel);
-    background: var(--ant-color-bg-container);
-    padding: 24px 16px;
+    background: var(--dp-surface);
+    padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
     text-align: center;
     cursor: pointer;
   }
 
   &__dropzone-icon {
-    font-size: 28px;
+    font-size: 18px;
     color: var(--dp-text-secondary);
     margin-bottom: 8px;
   }
@@ -579,7 +583,7 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
   }
 
   &__dropzone-link {
-    color: var(--ant-color-primary);
+    color: var(--dp-color-primary);
   }
 
   &__dropzone-desc {
@@ -629,15 +633,15 @@ function triggerBrowserDownload(blob: Blob, fileName: string) {
 
   &__summary-stats {
     display: flex;
-    gap: 16px;
+    gap: var(--dp-space-3, 12px);
     font-size: 13px;
 
     .is-success {
-      color: var(--ant-color-success);
+      color: var(--dp-success);
     }
 
     .is-fail {
-      color: var(--ant-color-error);
+      color: var(--dp-danger, var(--dp-error));
     }
   }
 

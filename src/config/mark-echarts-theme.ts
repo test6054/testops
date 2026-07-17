@@ -7,7 +7,7 @@ export const MARK_ECHARTS_THEME = 'mark'
 let registered = false
 
 /**
- * 注册 mark 主题：从 --dp-* / --ant-* 读取色值，供全站 vue-echarts 统一渲染。
+ * 注册 mark 主题：从 --dp-* 读取色值，供全站 vue-echarts 统一渲染。
  * 应用启动时调用一次，重复调用安全。
  */
 export function registerMarkEChartsTheme(): void {
@@ -16,7 +16,7 @@ export function registerMarkEChartsTheme(): void {
   }
   registered = true
 
-  const primary = resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary)
+  const primary = resolveThemeColor('--dp-color-primary', MARK_ECHARTS_PALETTE.primary)
   const text = resolveThemeColor('--dp-text-primary', MARK_ECHARTS_PALETTE.text)
   const textSecondary = resolveThemeColor('--dp-text-secondary', MARK_ECHARTS_PALETTE.axisLabel)
   const border = resolveThemeColor('--dp-border', MARK_ECHARTS_PALETTE.axisLine)
@@ -56,7 +56,7 @@ export function registerMarkEChartsTheme(): void {
       },
     },
     tooltip: {
-      backgroundColor: resolveThemeColor('--ant-color-bg-elevated', surface),
+      backgroundColor: resolveThemeColor('--dp-surface-elevated', surface),
       borderColor: border,
       textStyle: {
         color: text,

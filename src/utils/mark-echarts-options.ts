@@ -38,7 +38,7 @@ interface MarkChartAxisLabelStyle {
 }
 
 export const MARK_ECHARTS_PALETTE: MarkEchartsPalette = {
-  primary: '#2563eb',
+  primary: '#1677ff',
   success: '#16a34a',
   warning: '#f59e0b',
   danger: '#dc2626',
@@ -278,7 +278,7 @@ export function buildEmptyChartShellOption(
   }
 }
 
-export function emptyChartOption(message = '当前没有可展示的内容'): EChartsCoreOption {
+export function emptyChartOption(message = '暂无数据'): EChartsCoreOption {
   return buildEmptyChartShellOption('bar', message)
 }
 
@@ -380,7 +380,7 @@ export function buildTrendLineChartOption(
   const highlightIndex = config.highlightKey
     ? points.findIndex((point) => point.key === config.highlightKey)
     : -1
-  const lineColor = resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary)
+  const lineColor = resolveThemeColor('--dp-color-primary', MARK_ECHARTS_PALETTE.primary)
 
   return finalizeMarkChartOption(
     {
@@ -465,6 +465,98 @@ export function buildTrendLineChartOption(
   )
 }
 
+/** 双序列日趋势：确认题量 + 发布份数等驾驶舱主图 */
+export function buildDualTrendLineChartOption(
+  categories: string[],
+  seriesA: { name: string, values: number[], color?: string },
+  seriesB: { name: string, values: number[], color?: string },
+  config: MarkTrendChartConfig = {},
+): EChartsCoreOption {
+  if (categories.length === 0) {
+    return emptyChartOption(config.emptyText || '暂无趋势数据')
+  }
+  const colorA = seriesA.color || MARK_ECHARTS_PALETTE.primary
+  const colorB = seriesB.color || MARK_ECHARTS_PALETTE.success
+  return finalizeMarkChartOption(
+    {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'line' },
+      },
+      legend: {
+        data: [seriesA.name, seriesB.name],
+        top: 0,
+        right: 8,
+        textStyle: {
+          color: MARK_ECHARTS_PALETTE.axisLabel,
+          fontSize: 11,
+          fontFamily: DP_FONT_FAMILY_SANS,
+        },
+        itemWidth: 12,
+        itemHeight: 8,
+      },
+      grid: baseGrid({ top: 36, bottom: 40 }),
+      xAxis: {
+        type: 'category',
+        data: categories,
+        boundaryGap: false,
+        axisLabel: {
+          ...MARK_CHART_AXIS_LABEL_STYLE,
+          fontSize: 11,
+          interval: categories.length > 10 ? 1 : 0,
+          rotate: categories.length > 8 ? 30 : 0,
+        },
+        axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
+      },
+      yAxis: {
+        type: 'value',
+        name: config.yAxisName || '',
+        minInterval: 1,
+        axisLabel: { ...MARK_CHART_AXIS_LABEL_STYLE },
+        splitLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.splitLine } },
+      },
+      series: [
+        {
+          name: seriesA.name,
+          type: 'line',
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { width: 2, color: colorA },
+          itemStyle: { color: colorA },
+          areaStyle: config.area
+            ? {
+                color: {
+                  type: 'linear',
+                  x: 0,
+                  y: 0,
+                  x2: 0,
+                  y2: 1,
+                  colorStops: [
+                    { offset: 0, color: `${colorA}28` },
+                    { offset: 1, color: `${colorA}05` },
+                  ],
+                },
+              }
+            : undefined,
+          data: seriesA.values,
+        },
+        {
+          name: seriesB.name,
+          type: 'line',
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 6,
+          lineStyle: { width: 2, color: colorB },
+          itemStyle: { color: colorB },
+          data: seriesB.values,
+        },
+      ],
+    },
+    config,
+  )
+}
+
 export interface MarkBarChartConfig extends MarkChartToolboxConfig {
   orientation?: 'vertical' | 'horizontal'
   maxValue?: number
@@ -485,7 +577,7 @@ export function buildCategoryBarChartOption(
   config: MarkBarChartConfig = {},
 ): EChartsCoreOption {
   if (items.length === 0) {
-    return emptyChartOption(config.emptyText || '当前没有可展示的内容')
+    return emptyChartOption(config.emptyText || '暂无数据')
   }
   const orientation = config.orientation || 'vertical'
   const maxValue
@@ -866,7 +958,7 @@ export function buildGaugeChartOption(
 ): EChartsCoreOption {
   const safePercent = Math.max(0, Math.min(100, Math.round(percent)))
   const color
-    = config.color || resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary)
+    = config.color || resolveThemeColor('--dp-color-primary', MARK_ECHARTS_PALETTE.primary)
   const sizeKey = config.size || 'md'
   const sizeSpec = GAUGE_SIZE_MAP[sizeKey]
   const animate = config.reduceMotion === false ? true : !prefersReducedMotion()
@@ -1010,7 +1102,7 @@ export function buildHeatmapChartOption(
   config: MarkHeatmapChartConfig = {},
 ): EChartsCoreOption {
   if (cells.length === 0) {
-    return emptyChartOption(config.emptyText || '当前没有可展示的内容')
+    return emptyChartOption(config.emptyText || '暂无数据')
   }
   const min = config.min ?? 0
   const max = config.max ?? 100
@@ -1031,7 +1123,7 @@ export function buildHeatmapChartOption(
           return {
             value: entry,
             itemStyle: {
-              borderColor: resolveThemeColor('--ant-color-primary', MARK_ECHARTS_PALETTE.primary),
+              borderColor: resolveThemeColor('--dp-color-primary', MARK_ECHARTS_PALETTE.primary),
               borderWidth: 2,
               shadowBlur: 8,
               shadowColor: 'rgba(22, 119, 255, 0.2)',

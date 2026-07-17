@@ -11,11 +11,11 @@
     @confirm="handleSave"
   >
     <p v-if="fileName" class="archive-material-tag-modal__hint">材料：{{ fileName }}</p>
-    <a-form layout="vertical">
-      <a-form-item label="自由标签" tooltip="回车或逗号分隔；最多 32 个，单个不超过 64 字">
+    <UiForm layout="vertical">
+      <UiFormItem label="自由标签" tooltip="回车或逗号分隔；最多 32 个，单个不超过 64 字">
         <ArchiveMaterialTagSelect v-model="tagValues" :volume-id="volumeId" />
-      </a-form-item>
-    </a-form>
+      </UiFormItem>
+    </UiForm>
   </UiDrawer>
 </template>
 
@@ -24,6 +24,8 @@ import { message } from 'ant-design-vue'
 import { ref, watch } from 'vue'
 import { updateArchiveVolumeMaterialTags } from '@/apis/mark/archive-volume'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import { normalizeMaterialTagsForUpdate } from '@/utils/archive-material-tag'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
@@ -57,6 +59,7 @@ watch(
 )
 
 async function handleSave() {
+  if (saving.value) return
   if (!props.materialId) {
     showFormValidationMessage('材料编号缺失，请关闭后重新打开材料标签')
     return

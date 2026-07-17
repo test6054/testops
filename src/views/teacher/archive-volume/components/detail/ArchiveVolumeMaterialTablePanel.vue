@@ -172,38 +172,45 @@
         tone="info"
         :title="`登记目录：${registerCatalogLabel}`"
       />
-      <a-form layout="vertical">
-        <a-form-item label="材料类型" required>
-          <a-select
-            v-model:value="uploadForm.materialType"
+      <UiForm layout="vertical">
+        <UiFormItem label="材料类型" required>
+          <UiSelect
+            size="sm"
+            v-model="uploadForm.materialType"
             :options="ARCHIVE_MATERIAL_TYPE_OPTIONS"
             placeholder="选择材料类型"
           />
-        </a-form-item>
-        <a-form-item label="学号">
-          <a-input v-model:value="uploadForm.studentNo" placeholder="学生试卷可填学号" />
-        </a-form-item>
-        <a-form-item label="姓名">
-          <a-input v-model:value="uploadForm.studentName" placeholder="学生姓名" />
-        </a-form-item>
-        <a-form-item label="重修/补考">
-          <a-checkbox v-model:checked="uploadForm.retakeFlag">标记为重修或补考答卷</a-checkbox>
-        </a-form-item>
-        <a-form-item v-if="uploadForm.retakeFlag" label="补考轮次">
-          <a-input v-model:value="uploadForm.makeupRound" placeholder="如 补考1" />
-        </a-form-item>
-        <a-form-item label="自由标签" tooltip="回车或逗号分隔；与目录编码并用，便于检索">
+        </UiFormItem>
+        <UiFormItem label="学号">
+          <UiInput
+            size="sm" v-model="uploadForm.studentNo" placeholder="学生试卷可填学号"
+          />
+        </UiFormItem>
+        <UiFormItem label="姓名">
+          <UiInput
+            size="sm" v-model="uploadForm.studentName" placeholder="学生姓名"
+          />
+        </UiFormItem>
+        <UiFormItem label="重修/补考">
+          <UiCheckbox v-model="uploadForm.retakeFlag">标记为重修或补考答卷</UiCheckbox>
+        </UiFormItem>
+        <UiFormItem v-if="uploadForm.retakeFlag" label="补考轮次">
+          <UiInput
+            size="sm" v-model="uploadForm.makeupRound" placeholder="如 补考1"
+          />
+        </UiFormItem>
+        <UiFormItem label="自由标签" tooltip="回车或逗号分隔；与目录编码并用，便于检索">
           <ArchiveMaterialTagSelect v-model="uploadForm.tags" :volume-id="volumeId" />
-        </a-form-item>
-        <a-form-item label="扫描文件" required>
+        </UiFormItem>
+        <UiFormItem label="扫描文件" required>
           <UiPlatformFileField
             v-model:file-node-id="uploadForm.fileNodeId"
             v-model:file-name="uploadForm.fileName"
             :scene-key="FileUploadSceneKey.MARK_ARCHIVE_VOLUME_MATERIAL"
             button-text="选择文件"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -217,27 +224,33 @@
       @close="sharedRefModalOpen = false"
       @confirm="submitSharedRef"
     >
-      <a-form layout="vertical">
-        <a-form-item label="引用类型" required>
-          <a-select
-            v-model:value="sharedRefForm.refType"
+      <UiForm layout="vertical">
+        <UiFormItem label="引用类型" required>
+          <UiSelect
+            size="sm"
+            v-model="sharedRefForm.refType"
             :options="sharedRefTypeOptions"
             placeholder="选择引用类型"
           />
-        </a-form-item>
-        <a-form-item label="目标卷编号" required>
-          <a-input
-            v-model:value="sharedRefForm.targetVolumeId"
+        </UiFormItem>
+        <UiFormItem label="目标卷编号" required>
+          <UiInput
+            size="sm"
+            v-model="sharedRefForm.targetVolumeId"
             placeholder="合用材料所在归档任务编号"
           />
-        </a-form-item>
-        <a-form-item label="目标材料编号" required>
-          <a-input v-model:value="sharedRefForm.targetMaterialId" placeholder="目标材料编号" />
-        </a-form-item>
-        <a-form-item label="目录备注">
-          <a-input v-model:value="sharedRefForm.catalogNote" placeholder="如 合用材料见××班级卷" />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+        <UiFormItem label="目标材料编号" required>
+          <UiInput
+            size="sm" v-model="sharedRefForm.targetMaterialId" placeholder="目标材料编号"
+          />
+        </UiFormItem>
+        <UiFormItem label="目录备注">
+          <UiInput
+            size="sm" v-model="sharedRefForm.catalogNote" placeholder="如 合用材料见××班级卷"
+          />
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <ArchiveVolumeBatchRegisterModal
@@ -326,10 +339,15 @@ import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import FilePreviewDialog from '@/components/FilePreviewDialog.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -566,6 +584,7 @@ const courseObjectiveMappingHint = computed(() => {
 })
 
 async function handleGenerateExamAnalysis(): Promise<void> {
+  if (generatingExamAnalysis.value || generatingCourseObjective.value) return
   generatingExamAnalysis.value = true
   try {
     const expectedMaterialId = props.detail.materials.find(
@@ -582,6 +601,7 @@ async function handleGenerateExamAnalysis(): Promise<void> {
 }
 
 async function handleGenerateCourseObjective(): Promise<void> {
+  if (generatingExamAnalysis.value || generatingCourseObjective.value) return
   if (props.detail.courseObjectiveReportReady === false) {
     showFormValidationMessage(courseObjectiveMappingHint.value ?? '请先完成试题-课程目标映射')
     return

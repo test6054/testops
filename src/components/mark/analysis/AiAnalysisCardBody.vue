@@ -32,6 +32,6 @@ const phase = computed(() =>
     :title="progressTitle"
     :waiting-text="progressWaitingText"
   />
-  <UiEmpty v-else-if="phase === 'empty'" :description="emptyDescription" />
+  <UiEmpty size="sm" v-else-if="phase === 'empty'" :description="emptyDescription" />
   <slot v-else />
 </template>

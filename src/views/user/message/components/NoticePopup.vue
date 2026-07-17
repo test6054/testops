@@ -1,7 +1,7 @@
 <template>
-  <a-modal
+  <UiDialog
     v-model:open="visible"
-    :footer="null"
+    hide-footer
     :mask-closable="true"
     :title="currentNotice?.title"
     :width="800"
@@ -10,29 +10,29 @@
     <div class="detail">
       <div class="detail_content">
         <div class="info">
-          <a-space>
+          <div class="dp-space" style="--dp-space-gap: 8px">
             <span>
               <UserOutlined class="icon" />
               <span class="label">创建者：</span>
               <span>{{ currentNotice?.createUserName }}</span>
             </span>
-            <a-divider type="vertical" />
+            <UiDivider type="vertical" />
             <span>
               <HistoryOutlined class="icon" />
               <span class="label">创建时间：</span>
               <span>{{ currentNotice?.publishTime }}</span>
             </span>
-            <a-divider v-if="currentNotice?.updateTime" type="vertical" />
+            <UiDivider v-if="currentNotice?.updateTime" type="vertical" />
             <span v-if="currentNotice?.updateTime">
               <ScheduleOutlined class="icon" />
               <span>更新时间：</span>
               <span>{{ currentNotice?.updateTime }}</span>
             </span>
-          </a-space>
+          </div>
         </div>
         <div style="flex: 1">
           <div v-if="contentLoading" class="content-loading">
-            <a-spin size="large" />
+            <UiSpin size="lg" />
           </div>
           <!-- 优化：只有在有内容且弹窗可见时才渲染AI编辑器 -->
           <AiEditor
@@ -54,18 +54,25 @@
 
           <!-- 翻页和关闭按钮 -->
           <div class="pagination-controls">
-            <a-space>
-              <a-button v-if="currentIndex > 0" @click="previousNotice"> 上一篇 </a-button>
-              <a-button v-if="currentIndex < unreadNoticeIds.length - 1" @click="nextNotice">
+            <div class="dp-space" style="--dp-space-gap: 8px">
+              <UiButton v-if="currentIndex > 0" size="sm" variant="outline" @click="previousNotice">
+                上一篇
+              </UiButton>
+              <UiButton
+                v-if="currentIndex < unreadNoticeIds.length - 1"
+                size="sm"
+                variant="outline"
+                @click="nextNotice"
+              >
                 下一篇
-              </a-button>
-              <a-button type="primary" @click="onClose"> 关闭 </a-button>
-            </a-space>
+              </UiButton>
+              <UiButton size="sm" variant="primary" @click="onClose">关闭</UiButton>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </a-modal>
+  </UiDialog>
 </template>
 
 <script lang="ts" setup>
@@ -80,6 +87,10 @@ import {
   getPublishedAnnouncementList,
 } from '@/apis/edu/message'
 import AiEditor from '@/components/AiEditor/index.vue'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import { showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
 
@@ -233,7 +244,7 @@ defineExpose({
 
     .info {
       margin-bottom: 12px; // 减小信息区域下边距
-      color: var(--ant-color-text-secondary);
+      color: var(--dp-text-secondary);
       font-size: 14px;
       line-height: 1.5715;
       text-align: center;
@@ -245,9 +256,9 @@ defineExpose({
   }
 
   .notice-footer {
-    margin-top: 24px;
+    margin-top: var(--dp-space-4, 16px);
     padding-top: 16px;
-    border-top: 1px solid var(--ant-color-border-secondary);
+    border-top: 1px solid var(--dp-border-subtle);
 
     .notice-actions {
       display: flex;
@@ -256,7 +267,7 @@ defineExpose({
 
       .pagination-info {
         font-size: 14px;
-        color: var(--ant-color-text-secondary);
+        color: var(--dp-text-secondary);
       }
 
       .pagination-controls {
@@ -280,7 +291,7 @@ defineExpose({
   justify-content: center;
   align-items: center;
   height: 200px;
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
   font-size: 14px;
 }
 
@@ -292,7 +303,7 @@ defineExpose({
     align-items: center;
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 1px solid var(--ant-color-border-secondary);
+    border-bottom: 1px solid var(--dp-border-subtle);
 
     .notice-meta {
       display: flex;
@@ -301,25 +312,25 @@ defineExpose({
 
       .notice-time {
         font-size: 12px;
-        color: var(--ant-color-text-tertiary);
+        color: var(--dp-text-tertiary);
       }
     }
   }
 
   .notice-body {
-    margin-bottom: 24px;
+    margin-bottom: var(--dp-space-4, 16px);
 
     .notice-title {
       font-size: 18px;
       font-weight: 600;
-      color: var(--ant-color-text);
-      margin-bottom: 16px;
+      color: var(--dp-text);
+      margin-bottom: var(--dp-space-3, 12px);
       line-height: 1.4;
     }
 
     .notice-text {
       font-size: 14px;
-      color: var(--ant-color-text-secondary);
+      color: var(--dp-text-secondary);
       line-height: 1.6;
       max-height: 300px;
       overflow-y: auto;

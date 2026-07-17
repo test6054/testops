@@ -27,37 +27,37 @@ export const STUDENT_TASK_STATUS_CONFIG: Record<StudentTaskStatusEnum, TaskStatu
   [StudentTaskStatusEnum.NOT_STARTED]: {
     code: 'NOT_STARTED',
     description: '未开始',
-    color: 'var(--ant-color-text-tertiary)',
+    color: 'var(--dp-text-tertiary)',
     icon: 'icon-clock-circle',
   },
   [StudentTaskStatusEnum.IN_PROGRESS]: {
     code: 'IN_PROGRESS',
     description: '进行中',
-    color: 'var(--ant-color-primary)',
+    color: 'var(--dp-color-primary)',
     icon: 'icon-loading',
   },
   [StudentTaskStatusEnum.PENDING_FIRST_REVIEW]: {
     code: 'PENDING_FIRST_REVIEW',
     description: '待审核',
-    color: 'var(--ant-color-primary-hover)',
+    color: 'var(--dp-color-primary-hover)',
     icon: 'icon-check',
   },
   [StudentTaskStatusEnum.PENDING_RESUBMISSION]: {
     code: 'PENDING_RESUBMISSION',
     description: '待重提交',
-    color: 'var(--ant-color-error)',
+    color: 'var(--dp-error)',
     icon: 'icon-close-circle',
   },
   [StudentTaskStatusEnum.PENDING_RE_REVIEW]: {
     code: 'PENDING_RE_REVIEW',
     description: '待复审',
-    color: 'var(--ant-color-warning)',
+    color: 'var(--dp-warning)',
     icon: 'icon-redo',
   },
   [StudentTaskStatusEnum.COMPLETED]: {
     code: 'COMPLETED',
     description: '已完成',
-    color: 'var(--ant-color-success)',
+    color: 'var(--dp-success)',
     icon: 'icon-check-circle',
   },
 }

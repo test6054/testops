@@ -393,6 +393,7 @@ async function handleGenerate(): Promise<void> {
     showFormValidationMessage('当前范围内考核环节不足 2 场，无法生成达成度分析')
     return
   }
+  if (generating.value) return
   generating.value = true
   try {
     const generated = await generateAchievement({

@@ -32,6 +32,7 @@ import {
 } from '@/apis/portfolio/types'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiAlert from '@/components/ui-guide/ui/Alert.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -39,6 +40,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -46,6 +48,7 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import {
   ALL_PORTFOLIO_PORTRAIT_COHORT_TYPE_CODES,
   PortfolioPortraitCohortTypeCode,
@@ -71,6 +74,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -218,6 +222,10 @@ function registerRecommendedTraining(item: PortfolioAnalysisTrainingRecommendVO)
 }
 
 async function dismissTrainingRecommendation(item: PortfolioAnalysisTrainingRecommendVO) {
+  if (!(await confirmProxyWrite('忽略培训推荐'))) {
+    return
+  }
+
   const recommendationId = item.id
   const requestToken = portraitRequestToken.value
   trainingRecommendationActionId.value = recommendationId
@@ -453,6 +461,7 @@ watch(cohortType, () => {
       <ContextBar show-title layout="workbench" title="教师画像">
         <template #actions>
           <UiButton
+            size="sm"
             :loading="loading"
             :disabled="canPickTeachers && !targetTeacherId"
             @click="loadPortraitBundle"
@@ -462,12 +471,10 @@ watch(cohortType, () => {
         </template>
       </ContextBar>
     </template>
-    <div v-if="canPickTeachers && !targetTeacherId" class="teacher-portrait__hint">
-      <UiEmpty description="请从教师名册选择目标教师，或在 URL 携带 teacherId 参数" />
-    </div>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <template v-else>
-      <a-spin :spinning="loading">
+      <UiSpin :spinning="loading">
         <UiCard v-if="portrait" title="综合画像">
           <SignalBand :metrics="compositeItems" compact />
           <p class="teacher-portrait__meta">加权：核心 30% · 教学 25% · 科研/培训/实践各 15%</p>
@@ -551,8 +558,8 @@ watch(cohortType, () => {
           />
         </UiCard>
 
-        <UiEmpty v-else-if="portraitAbsent && !loading" description="尚未生成画像快照" />
-      </a-spin>
+        <UiEmpty size="sm" v-else-if="portraitAbsent && !loading" description="尚未生成画像快照" />
+      </UiSpin>
 
       <div v-if="portrait" class="teacher-portrait__charts">
         <MarkChartCard title="能力雷达" :loading="loading" chart-min-height="320">
@@ -609,6 +616,7 @@ watch(cohortType, () => {
           数据来源：{{ creditCurve.dataSource }} · 累计 {{ creditCurve.totalCredits }} 学分
         </p>
         <UiEmpty
+          size="sm"
           v-if="!creditCurve.points.length"
           description="暂无正式培训学分记录，完成培训档案审核后将在此展示"
         />
@@ -622,7 +630,7 @@ watch(cohortType, () => {
 
       <div v-if="portrait" class="teacher-portrait__insight">
         <UiCard title="发展建议" class="teacher-portrait__suggestions">
-          <UiEmpty v-if="!suggestions.length" description="暂无发展建议，画像重算后将自动生成" />
+          <UiEmpty size="sm" v-if="!suggestions.length" description="暂无发展建议，画像重算后将自动生成" />
           <ul v-else class="teacher-portrait__insight-list">
             <li v-for="item in suggestions" :key="item.id" class="teacher-portrait__insight-item">
               <div class="teacher-portrait__insight-head">
@@ -642,7 +650,7 @@ watch(cohortType, () => {
           </ul>
         </UiCard>
         <UiCard title="培训推荐" class="teacher-portrait__training">
-          <UiEmpty v-if="!trainingRecommendations.length" description="暂无培训推荐" />
+          <UiEmpty size="sm" v-if="!trainingRecommendations.length" description="暂无培训推荐" />
           <ul v-else class="teacher-portrait__insight-list">
             <li
               v-for="item in trainingRecommendations"
@@ -670,6 +678,7 @@ watch(cohortType, () => {
                 class="teacher-portrait__insight-actions"
               >
                 <UiButton
+                  size="sm"
                   variant="ghost"
                   :disabled="Boolean(trainingRecommendationActionId)"
                   @click="registerRecommendedTraining(item)"
@@ -677,6 +686,7 @@ watch(cohortType, () => {
                   登记培训
                 </UiButton>
                 <UiButton
+                  size="sm"
                   variant="ghost"
                   :loading="trainingRecommendationActionId === item.id"
                   :disabled="Boolean(trainingRecommendationActionId)"
@@ -789,7 +799,7 @@ watch(cohortType, () => {
       width="640"
       hide-footer
     >
-      <a-spin :spinning="detailLoading">
+      <UiSpin :spinning="detailLoading">
         <template v-if="indicatorDetail">
           <dl class="teacher-portrait__detail-meta">
             <div>
@@ -807,6 +817,7 @@ watch(cohortType, () => {
           </dl>
 
           <UiEmpty
+            size="sm"
             v-if="indicatorDetail.evidences.length === 0"
             description="该维度暂无得分依据材料"
           />
@@ -864,6 +875,7 @@ watch(cohortType, () => {
                 <td>{{ item.updateTime || '—' }}</td>
                 <td>
                   <UiButton
+                    size="sm"
                     v-if="item.archiveRecordId"
                     variant="ghost"
                     @click="openArchiveRecord(item.archiveRecordId)"
@@ -875,7 +887,7 @@ watch(cohortType, () => {
             </tbody>
           </table>
         </template>
-      </a-spin>
+      </UiSpin>
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
@@ -986,12 +998,12 @@ watch(cohortType, () => {
 
   &:hover,
   &:focus-visible {
-    background: var(--ant-color-fill-quaternary);
+    background: var(--dp-fill-quaternary);
   }
 }
 
 .teacher-portrait__action {
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   white-space: nowrap;
 }
 
@@ -1020,7 +1032,7 @@ watch(cohortType, () => {
 }
 
 .teacher-portrait__hint {
-  padding: var(--dp-space-6) 0;
+  padding: var(--dp-space-3, 12px) 0;
 }
 
 @media (max-width: 960px) {

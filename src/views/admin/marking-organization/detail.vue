@@ -38,6 +38,9 @@
           <UiTag v-if="organization?.anonymousMode" tone="green" size="sm">匿名阅卷</UiTag>
         </template>
         <template #actions>
+          <UiButton v-if="canManageExamOwner" variant="primary" size="sm" @click="goFormalSessions">
+            正评会话
+          </UiButton>
           <UiButton
             v-if="organization && canManageExamOwner"
             variant="outline"
@@ -46,37 +49,32 @@
           >
             编辑组织
           </UiButton>
-          <a-popconfirm
-            v-if="organization && canManageExamOwner"
-            title="确认删除该阅卷组织？"
-            ok-text="删除"
-            cancel-text="取消"
-            :ok-button-props="{ danger: true, loading: deleting }"
-            @confirm="submitDelete"
-          >
-            <UiButton variant="outline" size="sm" status="danger" :loading="deleting">
-              删除组织
-            </UiButton>
-          </a-popconfirm>
           <UiButton variant="outline" size="sm" @click="goTrialSessions"> 试评定标 </UiButton>
-          <UiButton v-if="canManageExamOwner" variant="primary" size="sm" @click="goFormalSessions">
-            正评会话
-          </UiButton>
+          <UiDropdownAction
+            v-if="organization && canManageExamOwner"
+            trigger-style="button"
+            button-text="更多"
+            :items="orgDetailMoreActionItems"
+            @select="onOrgDetailMoreAction"
+          />
         </template>
       </ContextBar>
     </template>
 
     <template v-if="organization" #signal>
-      <SignalBand variant="tiles" compact :metrics="orgSignalMetrics" />
+      <SignalBand compact :metrics="orgSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
 
     <UiSkeletonState v-if="loading && !organization" variant="card" compact />
 
-    <UiEmpty
+    <WorkbenchContextGateStrip
       v-else-if="!organization"
-      description="未找到阅卷组织，请从阅卷安排重新进入"
+      tag="缺少上下文"
+      body="未找到阅卷组织，请从阅卷安排重新进入"
+      cta-label="返回阅卷安排"
+      list-route-name="TeacherExamWorkspaceMarkingOrg"
       class="org-detail__empty"
     />
 
@@ -219,9 +217,9 @@
             </template>
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'groupName'">
-                <a-typography-text strong>
+                <UiTypographyText strong>
                   {{ record.groupName }}
-                </a-typography-text>
+                </UiTypographyText>
               </template>
               <template v-else-if="column.key === 'questions'">
                 <div class="group-table__stack">
@@ -286,55 +284,60 @@
         </template>
 
         <template v-else-if="activeTab === 'policy'">
-          <a-form
+          <UiForm
             v-if="canManageExamOwner"
             :model="policyForm"
             layout="vertical"
             class="policy-form"
           >
-            <a-row :gutter="16">
-              <a-col :xs="24" :lg="12">
+            <UiRow :gutter="16">
+              <UiCol :xs="24" :lg="12">
                 <h4 class="subsection-title">任务分配策略</h4>
-                <a-form-item label="策略适用范围">
-                  <a-select
-                    v-model:value="policyForm.allocationGroupId"
+                <UiFormItem label="策略适用范围">
+                  <UiSelect
+                    size="sm"
+                    v-model="policyForm.allocationGroupId"
                     placeholder="选择题组（留空表示组织级默认）"
                     :options="groupSelectOptions"
                     allow-clear
                     :disabled="!canManageExamOwner"
                   />
-                </a-form-item>
-                <a-form-item label="分配模式" required>
-                  <a-select
-                    v-model:value="policyForm.allocationMode"
+                </UiFormItem>
+                <UiFormItem label="分配模式" required>
+                  <UiSelect
+                    size="sm"
+                    v-model="policyForm.allocationMode"
                     :options="MARKING_ALLOCATION_MODE_OPTIONS"
                     :disabled="!canManageExamOwner"
                   />
-                </a-form-item>
-                <a-form-item label="批阅任务单元" required>
-                  <a-select
-                    v-model:value="policyForm.allocationUnit"
+                </UiFormItem>
+                <UiFormItem label="批阅任务单元" required>
+                  <UiSelect
+                    size="sm"
+                    v-model="policyForm.allocationUnit"
                     :options="ALLOCATION_UNIT_OPTIONS"
                     :disabled="!canManageExamOwner"
                   />
-                </a-form-item>
-                <a-form-item label="匿名模式" required>
-                  <a-select
-                    v-model:value="policyForm.anonymityMode"
+                </UiFormItem>
+                <UiFormItem label="匿名模式" required>
+                  <UiSelect
+                    size="sm"
+                    v-model="policyForm.anonymityMode"
                     :options="effectiveAnonymityModeOptions"
                     :disabled="true"
                   />
                   <div class="policy-hint">
                     匿名模式由阅卷组织主配置统一裁决，题组策略只继承当前组织模式。
                   </div>
-                </a-form-item>
-                <a-form-item
+                </UiFormItem>
+                <UiFormItem
                   v-if="policyForm.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS"
                   label="随机题目抽样数量"
                   required
                 >
-                  <a-input-number
-                    v-model:value="policyForm.randomQuestionSampleSize"
+                  <UiInputNumber
+                    size="sm"
+                    v-model="policyForm.randomQuestionSampleSize"
                     :min="1"
                     :max="100"
                     style="width: 100%"
@@ -343,34 +346,38 @@
                   <div class="policy-hint">
                     抽样题池来自当前题组题目范围；正评启动后会固化本次随机抽题结果，后续可在正评会话列表审计复盘。
                   </div>
-                </a-form-item>
-                <a-form-item label="每批分配任务数">
-                  <a-input-number
-                    v-model:value="policyForm.batchSize"
+                </UiFormItem>
+                <UiFormItem label="每批分配任务数">
+                  <UiInputNumber
+                    size="sm"
+                    v-model="policyForm.batchSize"
                     :min="1"
                     :max="500"
                     style="width: 100%"
                     :disabled="!canManageExamOwner"
                   />
-                </a-form-item>
-                <a-form-item label="教师最大待处理任务数">
-                  <a-input-number
-                    v-model:value="policyForm.loadLimit"
+                </UiFormItem>
+                <UiFormItem label="教师最大待处理任务数">
+                  <UiInputNumber
+                    size="sm"
+                    v-model="policyForm.loadLimit"
                     :min="1"
                     :max="500"
                     style="width: 100%"
                     :disabled="!canManageExamOwner"
                   />
-                </a-form-item>
-                <a-form-item label="匿名令牌策略">
-                  <a-select
-                    v-model:value="policyForm.anonymousTokenPolicy"
+                </UiFormItem>
+                <UiFormItem label="匿名令牌策略">
+                  <UiSelect
+                    size="sm"
+                    v-model="policyForm.anonymousTokenPolicy"
                     :options="ANONYMOUS_TOKEN_POLICY_OPTIONS"
                     allow-clear
                     :disabled="!canManageExamOwner"
                   />
-                </a-form-item>
+                </UiFormItem>
                 <UiButton
+                  size="sm"
                   v-if="canManageExamOwner"
                   :loading="savingAllocation"
                   @click="submitAllocation"
@@ -378,110 +385,114 @@
                   <template #icon><SaveOutlined /></template>
                   保存分配策略
                 </UiButton>
-              </a-col>
+              </UiCol>
 
-              <a-col :xs="24" :lg="12">
+              <UiCol :xs="24" :lg="12">
                 <h4 class="subsection-title">任务回收策略</h4>
-                <a-form-item label="策略适用范围">
-                  <a-select
-                    v-model:value="policyForm.recycleGroupId"
+                <UiFormItem label="策略适用范围">
+                  <UiSelect
+                    size="sm"
+                    v-model="policyForm.recycleGroupId"
                     placeholder="选择题组（留空表示组织级默认）"
                     :options="groupSelectOptions"
                     allow-clear
                     :disabled="!canManageExamOwner"
                   />
-                </a-form-item>
-                <a-form-item label="超时时间（分钟）">
-                  <a-input-number
-                    v-model:value="policyForm.timeoutMinutes"
+                </UiFormItem>
+                <UiFormItem label="超时时间（分钟）">
+                  <UiInputNumber
+                    size="sm"
+                    v-model="policyForm.timeoutMinutes"
                     :min="1"
                     :max="1440"
                     style="width: 100%"
                     :disabled="!canManageExamOwner"
                   />
-                </a-form-item>
-                <a-form-item label="教师最大待处理任务数">
-                  <a-input-number
-                    v-model:value="policyForm.maxPendingCount"
+                </UiFormItem>
+                <UiFormItem label="教师最大待处理任务数">
+                  <UiInputNumber
+                    size="sm"
+                    v-model="policyForm.maxPendingCount"
                     :min="1"
                     :max="500"
                     style="width: 100%"
                     :disabled="!canManageExamOwner"
                   />
-                </a-form-item>
-                <a-form-item label="再分配模式">
-                  <a-select
-                    v-model:value="policyForm.reassignMode"
+                </UiFormItem>
+                <UiFormItem label="再分配模式">
+                  <UiSelect
+                    size="sm"
+                    v-model="policyForm.reassignMode"
                     :options="MARKING_REASSIGN_MODE_OPTIONS"
                     allow-clear
                     :disabled="!canManageExamOwner"
                   />
-                </a-form-item>
-                <UiButton v-if="canManageExamOwner" :loading="savingRecycle" @click="submitRecycle">
+                </UiFormItem>
+                <UiButton size="sm" v-if="canManageExamOwner" :loading="savingRecycle" @click="submitRecycle">
                   <template #icon><SaveOutlined /></template>
                   保存回收策略
                 </UiButton>
-              </a-col>
-            </a-row>
-          </a-form>
-          <a-row v-else :gutter="16" class="policy-form">
-            <a-col :xs="24" :lg="12">
+              </UiCol>
+            </UiRow>
+          </UiForm>
+          <UiRow v-else :gutter="16" class="policy-form">
+            <UiCol :xs="24" :lg="12">
               <h4 class="subsection-title">任务分配策略</h4>
-              <a-descriptions bordered size="small" :column="1">
-                <a-descriptions-item label="策略适用范围">
+              <UiDescriptions bordered size="small" :column="1">
+                <UiDescriptionsItem label="策略适用范围">
                   {{ policyScopeLabel(policyForm.allocationGroupId) }}
-                </a-descriptions-item>
-                <a-descriptions-item label="分配模式">
+                </UiDescriptionsItem>
+                <UiDescriptionsItem label="分配模式">
                   {{
                     policyOptionLabel(MARKING_ALLOCATION_MODE_OPTIONS, policyForm.allocationMode)
                   }}
-                </a-descriptions-item>
-                <a-descriptions-item label="批阅任务单元">
+                </UiDescriptionsItem>
+                <UiDescriptionsItem label="批阅任务单元">
                   {{ policyOptionLabel(ALLOCATION_UNIT_OPTIONS, policyForm.allocationUnit) }}
-                </a-descriptions-item>
-                <a-descriptions-item label="匿名模式">
+                </UiDescriptionsItem>
+                <UiDescriptionsItem label="匿名模式">
                   {{ policyOptionLabel(ANONYMITY_MODE_OPTIONS, policyForm.anonymityMode) }}
-                </a-descriptions-item>
-                <a-descriptions-item
+                </UiDescriptionsItem>
+                <UiDescriptionsItem
                   v-if="policyForm.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS"
                   label="随机题目抽样数量"
                 >
                   {{ policyForm.randomQuestionSampleSize ?? '—' }}
-                </a-descriptions-item>
-                <a-descriptions-item label="每批分配任务数">
+                </UiDescriptionsItem>
+                <UiDescriptionsItem label="每批分配任务数">
                   {{ policyForm.batchSize }}
-                </a-descriptions-item>
-                <a-descriptions-item label="教师最大待处理任务数">
+                </UiDescriptionsItem>
+                <UiDescriptionsItem label="教师最大待处理任务数">
                   {{ policyForm.loadLimit }}
-                </a-descriptions-item>
-                <a-descriptions-item label="匿名令牌策略">
+                </UiDescriptionsItem>
+                <UiDescriptionsItem label="匿名令牌策略">
                   {{
                     policyOptionLabel(
                       ANONYMOUS_TOKEN_POLICY_OPTIONS,
                       policyForm.anonymousTokenPolicy,
                     )
                   }}
-                </a-descriptions-item>
-              </a-descriptions>
-            </a-col>
-            <a-col :xs="24" :lg="12">
+                </UiDescriptionsItem>
+              </UiDescriptions>
+            </UiCol>
+            <UiCol :xs="24" :lg="12">
               <h4 class="subsection-title">任务回收策略</h4>
-              <a-descriptions bordered size="small" :column="1">
-                <a-descriptions-item label="策略适用范围">
+              <UiDescriptions bordered size="small" :column="1">
+                <UiDescriptionsItem label="策略适用范围">
                   {{ policyScopeLabel(policyForm.recycleGroupId) }}
-                </a-descriptions-item>
-                <a-descriptions-item label="超时时间（分钟）">
+                </UiDescriptionsItem>
+                <UiDescriptionsItem label="超时时间（分钟）">
                   {{ policyForm.timeoutMinutes ?? '—' }}
-                </a-descriptions-item>
-                <a-descriptions-item label="教师最大待处理任务数">
+                </UiDescriptionsItem>
+                <UiDescriptionsItem label="教师最大待处理任务数">
                   {{ policyForm.maxPendingCount ?? '—' }}
-                </a-descriptions-item>
-                <a-descriptions-item label="再分配模式">
+                </UiDescriptionsItem>
+                <UiDescriptionsItem label="再分配模式">
                   {{ policyOptionLabel(MARKING_REASSIGN_MODE_OPTIONS, policyForm.reassignMode) }}
-                </a-descriptions-item>
-              </a-descriptions>
-            </a-col>
-          </a-row>
+                </UiDescriptionsItem>
+              </UiDescriptions>
+            </UiCol>
+          </UiRow>
         </template>
 
         <template v-else-if="activeTab === 'recycled'">
@@ -504,57 +515,61 @@
       @ok="submitGroup"
     >
       <template #footer>
-        <UiButton variant="outline" @click="groupModalOpen = false">取消</UiButton>
-        <UiButton :loading="savingGroup" @click="submitGroup">提交</UiButton>
+        <UiButton size="sm" variant="outline" @click="groupModalOpen = false">取消</UiButton>
+        <UiButton size="sm" :loading="savingGroup" @click="submitGroup">提交</UiButton>
       </template>
-      <a-form ref="groupFormRef" :model="groupForm" :rules="groupRules" layout="vertical">
-        <a-form-item label="题组名称" name="groupName" required>
-          <a-input
-            v-model:value="groupForm.groupName"
+      <UiForm ref="groupFormRef" :model="groupForm" :rules="groupRules" layout="vertical">
+        <UiFormItem label="题组名称" name="groupName" required>
+          <UiInput
+            size="sm"
+            v-model="groupForm.groupName"
             placeholder="例如：第一题组（选择题）"
             :maxlength="50"
           />
-        </a-form-item>
-        <a-form-item label="题组组长" name="leaderUserId" required>
-          <a-select
-            v-model:value="groupForm.leaderUserId"
-            show-search
+        </UiFormItem>
+        <UiFormItem label="题组组长" name="leaderUserId" required>
+          <UiSelect
+            size="sm"
+            v-model="groupForm.leaderUserId"
+            allow-search
             :filter-option="false"
             :options="teacherOptions"
             :loading="teacherLoading"
             placeholder="从教师中选择"
             @search="onTeacherSearch"
           />
-        </a-form-item>
-        <a-form-item
+        </UiFormItem>
+        <UiFormItem
           v-if="!groupForm.wholePaperGroup"
           label="负责题目"
           name="layoutQuestionIds"
           required
         >
-          <a-select
-            v-model:value="groupForm.layoutQuestionIds"
+          <UiSelect
+            size="sm"
+            v-model="groupForm.layoutQuestionIds"
             mode="multiple"
             :options="questionOptions"
             :loading="templateLoading"
             placeholder="选择该题组负责的题目"
             option-filter-prop="label"
-            show-search
+            allow-search
           />
-        </a-form-item>
-        <a-form-item label="阅卷教师" name="reviewerUserIds" required>
-          <a-select
-            v-model:value="groupForm.reviewerUserIds"
+        </UiFormItem>
+        <UiFormItem label="阅卷教师" name="reviewerUserIds" required>
+          <UiSelect
+            size="sm"
+            v-model="groupForm.reviewerUserIds"
             mode="multiple"
             :options="teacherOptions"
             :loading="teacherLoading"
             placeholder="选择阅卷教师（多选）"
-            show-search
+            allow-search
             :filter-option="false"
             @search="onTeacherSearch"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDialog>
 
     <UiDrawer
@@ -566,24 +581,27 @@
       @close="editDrawerOpen = false"
       @ok="submitUpdate"
     >
-      <a-form ref="editFormRef" :model="editForm" :rules="editRules" layout="vertical">
-        <a-form-item label="关联考试">
-          <a-input :value="organizationExamLabel" disabled />
-        </a-form-item>
-        <a-form-item label="是否启用匿名阅卷" name="anonymousMode">
-          <a-switch v-model:checked="editForm.anonymousMode" />
+      <UiForm ref="editFormRef" :model="editForm" :rules="editRules" layout="vertical">
+        <UiFormItem label="关联考试">
+          <UiInput
+            size="sm" :value="organizationExamLabel" disabled
+          />
+        </UiFormItem>
+        <UiFormItem label="是否启用匿名阅卷" name="anonymousMode">
+          <UiSwitch size="sm" v-model="editForm.anonymousMode" />
           <span class="org-detail__switch-hint">启用后阅卷教师不可见考生身份</span>
-        </a-form-item>
-        <a-form-item label="备注" name="remark">
-          <a-textarea
-            v-model:value="editForm.remark"
+        </UiFormItem>
+        <UiFormItem label="备注" name="remark">
+          <UiTextarea
+            size="sm"
+            v-model="editForm.remark"
             :rows="3"
             :maxlength="200"
             placeholder="可选，记录组织目的 / 范围"
-            show-count
+            :show-count="true"
           />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+      </UiForm>
     </UiDrawer>
 
     <UiDrawer
@@ -594,120 +612,132 @@
       @close="policyDrawerOpen = false"
     >
       <template v-if="canManageExamOwner">
-        <a-form :model="policyForm" layout="vertical" class="policy-form">
-          <a-row :gutter="16">
-            <a-col :xs="24" :lg="12">
+        <UiForm :model="policyForm" layout="vertical" class="policy-form">
+          <UiRow :gutter="16">
+            <UiCol :xs="24" :lg="12">
               <h4 class="subsection-title">任务分配策略</h4>
-              <a-form-item label="策略适用范围">
-                <a-select
-                  v-model:value="policyForm.allocationGroupId"
+              <UiFormItem label="策略适用范围">
+                <UiSelect
+                  size="sm"
+                  v-model="policyForm.allocationGroupId"
                   placeholder="选择题组（留空表示组织级默认）"
                   :options="groupSelectOptions"
                   allow-clear
                 />
-              </a-form-item>
-              <a-form-item label="分配模式" required>
-                <a-select
-                  v-model:value="policyForm.allocationMode"
+              </UiFormItem>
+              <UiFormItem label="分配模式" required>
+                <UiSelect
+                  size="sm"
+                  v-model="policyForm.allocationMode"
                   :options="MARKING_ALLOCATION_MODE_OPTIONS"
                 />
-              </a-form-item>
-              <a-form-item label="批阅任务单元" required>
-                <a-select
-                  v-model:value="policyForm.allocationUnit"
+              </UiFormItem>
+              <UiFormItem label="批阅任务单元" required>
+                <UiSelect
+                  size="sm"
+                  v-model="policyForm.allocationUnit"
                   :options="ALLOCATION_UNIT_OPTIONS"
                 />
-              </a-form-item>
-              <a-form-item label="匿名模式" required>
-                <a-select
-                  v-model:value="policyForm.anonymityMode"
+              </UiFormItem>
+              <UiFormItem label="匿名模式" required>
+                <UiSelect
+                  size="sm"
+                  v-model="policyForm.anonymityMode"
                   :options="effectiveAnonymityModeOptions"
                   :disabled="true"
                 />
                 <div class="policy-hint">
                   匿名模式由阅卷组织主配置统一裁决，题组策略只继承当前组织模式。
                 </div>
-              </a-form-item>
-              <a-form-item
+              </UiFormItem>
+              <UiFormItem
                 v-if="policyForm.allocationUnit === AllocationUnitCode.RANDOM_QUESTIONS"
                 label="随机题目抽样数量"
                 required
               >
-                <a-input-number
-                  v-model:value="policyForm.randomQuestionSampleSize"
+                <UiInputNumber
+                  size="sm"
+                  v-model="policyForm.randomQuestionSampleSize"
                   :min="1"
                   :max="100"
                   style="width: 100%"
                 />
-              </a-form-item>
-              <a-form-item label="每批分配任务数">
-                <a-input-number
-                  v-model:value="policyForm.batchSize"
+              </UiFormItem>
+              <UiFormItem label="每批分配任务数">
+                <UiInputNumber
+                  size="sm"
+                  v-model="policyForm.batchSize"
                   :min="1"
                   :max="500"
                   style="width: 100%"
                 />
-              </a-form-item>
-              <a-form-item label="教师最大待处理任务数">
-                <a-input-number
-                  v-model:value="policyForm.loadLimit"
+              </UiFormItem>
+              <UiFormItem label="教师最大待处理任务数">
+                <UiInputNumber
+                  size="sm"
+                  v-model="policyForm.loadLimit"
                   :min="1"
                   :max="500"
                   style="width: 100%"
                 />
-              </a-form-item>
-              <a-form-item label="匿名令牌策略">
-                <a-select
-                  v-model:value="policyForm.anonymousTokenPolicy"
+              </UiFormItem>
+              <UiFormItem label="匿名令牌策略">
+                <UiSelect
+                  size="sm"
+                  v-model="policyForm.anonymousTokenPolicy"
                   :options="ANONYMOUS_TOKEN_POLICY_OPTIONS"
                   allow-clear
                 />
-              </a-form-item>
-              <UiButton :loading="savingAllocation" @click="submitAllocation">
+              </UiFormItem>
+              <UiButton size="sm" :loading="savingAllocation" @click="submitAllocation">
                 <template #icon><SaveOutlined /></template>
                 保存分配策略
               </UiButton>
-            </a-col>
-            <a-col :xs="24" :lg="12">
+            </UiCol>
+            <UiCol :xs="24" :lg="12">
               <h4 class="subsection-title">任务回收策略</h4>
-              <a-form-item label="策略适用范围">
-                <a-select
-                  v-model:value="policyForm.recycleGroupId"
+              <UiFormItem label="策略适用范围">
+                <UiSelect
+                  size="sm"
+                  v-model="policyForm.recycleGroupId"
                   placeholder="选择题组（留空表示组织级默认）"
                   :options="groupSelectOptions"
                   allow-clear
                 />
-              </a-form-item>
-              <a-form-item label="超时时间（分钟）">
-                <a-input-number
-                  v-model:value="policyForm.timeoutMinutes"
+              </UiFormItem>
+              <UiFormItem label="超时时间（分钟）">
+                <UiInputNumber
+                  size="sm"
+                  v-model="policyForm.timeoutMinutes"
                   :min="1"
                   :max="1440"
                   style="width: 100%"
                 />
-              </a-form-item>
-              <a-form-item label="教师最大待处理任务数">
-                <a-input-number
-                  v-model:value="policyForm.maxPendingCount"
+              </UiFormItem>
+              <UiFormItem label="教师最大待处理任务数">
+                <UiInputNumber
+                  size="sm"
+                  v-model="policyForm.maxPendingCount"
                   :min="1"
                   :max="500"
                   style="width: 100%"
                 />
-              </a-form-item>
-              <a-form-item label="再分配模式">
-                <a-select
-                  v-model:value="policyForm.reassignMode"
+              </UiFormItem>
+              <UiFormItem label="再分配模式">
+                <UiSelect
+                  size="sm"
+                  v-model="policyForm.reassignMode"
                   :options="MARKING_REASSIGN_MODE_OPTIONS"
                   allow-clear
                 />
-              </a-form-item>
-              <UiButton :loading="savingRecycle" @click="submitRecycle">
+              </UiFormItem>
+              <UiButton size="sm" :loading="savingRecycle" @click="submitRecycle">
                 <template #icon><SaveOutlined /></template>
                 保存回收策略
               </UiButton>
-            </a-col>
-          </a-row>
-        </a-form>
+            </UiCol>
+          </UiRow>
+        </UiForm>
       </template>
     </UiDrawer>
   </StageWorkbenchShell>
@@ -767,22 +797,35 @@ import {
 } from '@/apis/mark/marking-organization'
 import { listReviewerMetrics } from '@/apis/mark/marking-quality'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
 import UiInfoGridItem from '@/components/ui-guide/ui/InfoGridItem.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useOptionalExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
@@ -1419,6 +1462,9 @@ function openPolicyDrawer(): void {
 }
 
 async function submitGroup(): Promise<void> {
+  if (savingGroup.value) {
+    return
+  }
   if (!guardExamOwnerAction()) return
   if (!organizationId.value || !groupFormRef.value) return
   try {
@@ -1489,6 +1535,9 @@ async function handleGroupRowAction(key: string, record: QuestionMarkingGroupRes
 }
 
 async function submitGroupDelete(record: QuestionMarkingGroupResponse): Promise<void> {
+  if (groupActionLoadingId.value) {
+    return
+  }
   if (!guardExamOwnerAction()) return
   groupActionLoadingId.value = record.id
   try {
@@ -1504,6 +1553,9 @@ async function submitGroupDelete(record: QuestionMarkingGroupResponse): Promise<
 }
 
 async function submitGroupClose(record: QuestionMarkingGroupResponse): Promise<void> {
+  if (groupActionLoadingId.value) {
+    return
+  }
   if (!guardExamOwnerAction()) return
   groupActionLoadingId.value = record.id
   try {
@@ -1528,6 +1580,9 @@ function openEditDrawer(): void {
 }
 
 async function submitUpdate(): Promise<void> {
+  if (updating.value) {
+    return
+  }
   if (!guardExamOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
   try {
@@ -1553,7 +1608,34 @@ async function submitUpdate(): Promise<void> {
   }
 }
 
+
+const orgDetailMoreActionItems = computed(() => [
+  { key: 'delete', label: '删除组织', danger: true, disabled: deleting.value },
+])
+
+function onOrgDetailMoreAction(key: string) {
+  if (key === 'delete') {
+    void requestDeleteOrganization()
+  }
+}
+
+async function requestDeleteOrganization(): Promise<void> {
+  const ok = await confirmAsync({
+    title: '确认删除该阅卷组织？',
+    content: '删除后不可恢复；请确认组织下无进行中的试评/正评会话。',
+    type: 'error',
+    okText: '删除',
+  })
+  if (!ok) {
+    return
+  }
+  await submitDelete()
+}
+
 async function submitDelete(): Promise<void> {
+  if (deleting.value) {
+    return
+  }
   if (!guardExamOwnerAction()) return
   if (!organization.value) return
   deleting.value = true
@@ -1727,6 +1809,9 @@ function policyScopeLabel(groupId?: string): string {
 
 const savingAllocation = ref(false)
 async function submitAllocation(): Promise<void> {
+  if (savingAllocation.value) {
+    return
+  }
   if (!guardExamOwnerAction()) return
   if (!organizationId.value) return
   savingAllocation.value = true
@@ -1756,6 +1841,9 @@ async function submitAllocation(): Promise<void> {
 
 const savingRecycle = ref(false)
 async function submitRecycle(): Promise<void> {
+  if (savingRecycle.value) {
+    return
+  }
   if (!guardExamOwnerAction()) return
   if (!organizationId.value) return
   savingRecycle.value = true
@@ -1839,12 +1927,12 @@ watch(
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__empty {
-    padding: 48px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__switch-hint {
@@ -1856,7 +1944,7 @@ watch(
 
 .detail-tabs {
   :deep(.ant-tabs-nav) {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-3, 12px);
   }
 }
 

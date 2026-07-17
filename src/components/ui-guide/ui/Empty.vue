@@ -72,7 +72,7 @@ const showDescription = computed(() => {
   if (props.description !== undefined) {
     return Boolean(props.description.trim())
   }
-  // 未传 description：仅在无标题时用默认句，避免「加载失败 + 当前没有可展示的内容」
+  // 未传 description：仅在无标题时用默认句，避免「加载失败 + 空话说明」
   return !props.title
 })
 
@@ -91,15 +91,15 @@ const resolvedDescription = computed(() => {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 16px 12px;
+  padding: var(--dp-space-3, 12px) var(--dp-space-2, 8px);
 }
 
 .ui-empty--sm {
-  padding: 12px 8px;
+  padding: var(--dp-space-2, 8px) var(--dp-space-2, 8px);
 }
 
 .ui-empty--md {
-  padding: 20px 12px;
+  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
 }
 
 .ui-empty__icon {
@@ -108,48 +108,48 @@ const resolvedDescription = computed(() => {
   justify-content: center;
   width: 28px;
   height: 28px;
-  margin-bottom: 8px;
+  margin-bottom: var(--dp-space-2, 8px);
 }
 
 .ui-empty__dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--ant-color-border);
+  background: var(--dp-border);
 }
 
 .ui-empty__title {
-  margin-bottom: 4px;
+  margin-bottom: var(--dp-space-1, 4px);
   font-size: 14px;
   font-weight: 600;
-  color: var(--ant-color-text);
+  color: var(--dp-text);
 }
 
 .ui-empty__description {
   max-width: 360px;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--ant-color-text-secondary);
+  color: var(--dp-text-secondary);
 }
 
 .ui-empty__action {
-  margin-top: 10px;
+  margin-top: var(--dp-space-3, 10px);
 }
 
 .ui-empty__action-btn {
   min-height: 28px;
-  padding: 0 12px;
-  border: 1px solid var(--ant-color-border);
+  padding: 0 var(--dp-space-3, 12px);
+  border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control, 6px);
-  background: var(--ant-color-bg-container);
-  color: var(--ant-color-text);
+  background: var(--dp-bg-container);
+  color: var(--dp-text);
   font-size: 13px;
   line-height: 26px;
   cursor: pointer;
 }
 
 .ui-empty__action-btn:hover {
-  border-color: var(--ant-color-primary);
-  color: var(--ant-color-primary);
+  border-color: var(--dp-color-primary);
+  color: var(--dp-color-primary);
 }
 </style>

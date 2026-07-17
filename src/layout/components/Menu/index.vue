@@ -8,7 +8,7 @@
     :portfolio-grouped="portfolioGroupedMenus"
     @menu-item-click-after="emit('menu-item-click-after')"
   />
-  <a-menu
+  <UiMenu
     v-else
     class="app-side-menu"
     :key="`sidebar-menu-${menuKey}`"
@@ -26,7 +26,7 @@
         :key="item.path || item.name"
         :item="item"
       />
-      <a-sub-menu v-for="group in groupedMenus.groups" :key="group.key">
+      <UiSubMenu v-for="group in groupedMenus.groups" :key="group.key">
         <template #title>{{ group.title }}</template>
         <template #icon>
           <MenuCollapsedTooltip
@@ -41,12 +41,12 @@
           :key="item.path || item.name"
           :item="item"
         />
-      </a-sub-menu>
+      </UiSubMenu>
     </template>
     <template v-else>
       <MenuItem v-for="item in stableSidebarRoutes" :key="item.path || item.name" :item="item" />
     </template>
-  </a-menu>
+  </UiMenu>
 </template>
 
 <script lang="ts" setup>
@@ -57,6 +57,8 @@ import { message } from 'ant-design-vue'
 import { debounce } from 'lodash-es'
 import { computed, ref, watch } from 'vue'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
+import UiMenu from '@/components/ui-guide/ui/UiMenu.vue'
+import UiSubMenu from '@/components/ui-guide/ui/UiSubMenu.vue'
 import { useDevice } from '@/hooks'
 import { useAppStore, useAuthStore, useQualityStore, useRouteStore, useUserStore } from '@/stores'
 import { RoleEnum } from '@/utils/permission'

@@ -324,6 +324,9 @@ export function useArchiveTaskCreate() {
   }
 
   async function handleCreateTask(): Promise<ArchiveTaskCreateSectionKey | null> {
+    if (submitting.value) {
+      return null
+    }
     submitErrorMessage.value = ''
     if (templateLoading.value || templateLoadFailed.value) {
       void message.error(

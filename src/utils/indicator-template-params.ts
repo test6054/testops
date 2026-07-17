@@ -1,19 +1,8 @@
-import { showFormValidationMessage } from '@/utils/error-handler'
+import type { PortfolioIndicatorTemplateParamsDto } from '@/apis/portfolio/indicator-types'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-/** 规则模板参数（对应后端 PortfolioIndicatorSeedTemplateParamsDto） */
-export interface PortfolioIndicatorTemplateParams {
-  passValue?: number
-  standardScore?: number
-  minValue?: number
-  maxValue?: number
-  targetRatio?: number
-  cumulativeCap?: number
-  capScore?: number
-  addScore?: number
-  subScore?: number
-  weight?: number
-}
+/** 表单编辑用参数类型，与后端 PortfolioIndicatorSeedTemplateParamsDto 对齐 */
+export type PortfolioIndicatorTemplateParams = PortfolioIndicatorTemplateParamsDto
 
 const PortfolioIndicatorTemplateParamDescription: Record<keyof PortfolioIndicatorTemplateParams, string> = {
   passValue: '达标值',
@@ -27,20 +16,6 @@ const PortfolioIndicatorTemplateParamDescription: Record<keyof PortfolioIndicato
   subScore: '减分',
   weight: '权重',
 }
-
-/** 全部模板参数字段键（显式枚举成员列表，禁止 Object.keys 反射推导） */
-const ALL_TEMPLATE_PARAM_KEYS: readonly (keyof PortfolioIndicatorTemplateParams)[] = [
-  'passValue',
-  'standardScore',
-  'minValue',
-  'maxValue',
-  'targetRatio',
-  'cumulativeCap',
-  'capScore',
-  'addScore',
-  'subScore',
-  'weight',
-]
 
 /** 按规则类型展示可编辑参数字段 */
 export function templateParamFieldsForRuleType(ruleType: string): (keyof PortfolioIndicatorTemplateParams)[] {
@@ -68,41 +43,6 @@ export function templateParamFieldsForRuleType(ruleType: string): (keyof Portfol
 
 export function templateParamLabel(key: keyof PortfolioIndicatorTemplateParams): string {
   return strictEnumLabel(PortfolioIndicatorTemplateParamDescription, key, '指标模板参数')
-}
-
-export function parseTemplateParamsJson(json: string): PortfolioIndicatorTemplateParams | null {
-  if (!json.trim()) {
-    return {}
-  }
-  const raw: unknown = JSON.parse(json)
-  if (typeof raw !== 'object' || raw === null) {
-    showFormValidationMessage('指标模板参数须为结构化文本对象')
-    return null
-  }
-  const params: PortfolioIndicatorTemplateParams = {}
-  for (const key of ALL_TEMPLATE_PARAM_KEYS) {
-    const value = Object.getOwnPropertyDescriptor(raw, key)?.value
-    if (value === null || value === undefined || value === '') {
-      continue
-    }
-    const num = Number(value)
-    if (!Number.isNaN(num)) {
-      params[key] = num
-    }
-  }
-  return params
-}
-
-/** 序列化模板参数；空对象返回 "{}" 以兼容后端契约 */
-export function serializeTemplateParams(params: PortfolioIndicatorTemplateParams): string {
-  const payload: Record<string, number> = {}
-  for (const key of ALL_TEMPLATE_PARAM_KEYS) {
-    const value = params[key]
-    if (value !== undefined && value !== null && !Number.isNaN(value)) {
-      payload[key] = value
-    }
-  }
-  return JSON.stringify(payload)
 }
 
 export function defaultTemplateParams(ruleType: string): PortfolioIndicatorTemplateParams {

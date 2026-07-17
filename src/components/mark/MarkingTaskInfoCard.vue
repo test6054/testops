@@ -3,48 +3,48 @@
     <template #icon>
       <ProfileOutlined />
     </template>
-    <a-descriptions
+    <UiDescriptions
       :column="{ xs: 1, sm: 2 }"
       size="middle"
       bordered
       class="marking-task-info-card__desc"
     >
-      <a-descriptions-item label="任务编号">
-        <a-typography-text copyable>{{ task.id }}</a-typography-text>
-      </a-descriptions-item>
-      <a-descriptions-item label="正评会话编号">
-        <a-typography-text copyable>{{ task.sessionId }}</a-typography-text>
-      </a-descriptions-item>
-      <a-descriptions-item label="题组编号">
-        <a-typography-text v-if="task.groupId" copyable>{{ task.groupId }}</a-typography-text>
+      <UiDescriptionsItem label="任务编号">
+        <UiTypographyText copyable>{{ task.id }}</UiTypographyText>
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="正评会话编号">
+        <UiTypographyText copyable>{{ task.sessionId }}</UiTypographyText>
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="题组编号">
+        <UiTypographyText v-if="task.groupId" copyable>{{ task.groupId }}</UiTypographyText>
         <UiTag v-else tone="gray" size="sm">组织级任务</UiTag>
-      </a-descriptions-item>
-      <a-descriptions-item label="任务单元">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="任务单元">
         {{ allocationUnitLabel(task.taskUnit) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="匿名模式">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="匿名模式">
         {{ anonymityModeLabel(task.anonymityMode) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="任务状态">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="任务状态">
         <UiTag :tone="taskStatusTone(task.taskStatus)" size="sm">
           {{ taskStatusLabel(task.taskStatus) }}
         </UiTag>
-      </a-descriptions-item>
-      <a-descriptions-item label="分配时间">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="分配时间">
         {{ formatDateTime(task.allocatedTime) }}
-      </a-descriptions-item>
-      <a-descriptions-item label="提交时间">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="提交时间">
         {{ formatDateTime(task.submittedTime) }}
-      </a-descriptions-item>
-      <a-descriptions-item v-if="task.score !== undefined && task.score !== null" label="当前给分">
-        <a-typography-text strong>{{ task.score }}</a-typography-text>
-      </a-descriptions-item>
-      <a-descriptions-item v-if="task.annotationNote" label="既有批注" :span="2">
-        <a-typography-paragraph :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }">
+      </UiDescriptionsItem>
+      <UiDescriptionsItem v-if="task.score !== undefined && task.score !== null" label="当前给分">
+        <UiTypographyText strong>{{ task.score }}</UiTypographyText>
+      </UiDescriptionsItem>
+      <UiDescriptionsItem v-if="task.annotationNote" label="既有批注" :span="2">
+        <UiTypographyParagraph :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }">
           {{ task.annotationNote }}
-        </a-typography-paragraph>
-      </a-descriptions-item>
-    </a-descriptions>
+        </UiTypographyParagraph>
+      </UiDescriptionsItem>
+    </UiDescriptions>
   </GradingImmersionSection>
 </template>
 
@@ -59,6 +59,10 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 
 defineOptions({ name: 'MarkingTaskInfoCard' })
 

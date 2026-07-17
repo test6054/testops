@@ -2,27 +2,6 @@ import type { PfEligibilityRuleTreeNodeDto } from '@/apis/portfolio/indicator-ty
 
 const LOGIC_NODE_TYPES = new Set(['AND', 'OR', 'NOT'])
 
-/** 将后端 ruleTreeJson 解析为可视化树根节点 */
-export function parseEligibilityTreeJson(json: string): PfEligibilityRuleTreeNodeDto {
-  if (!json.trim()) {
-    return { nodeType: 'AND', children: [] }
-  }
-  const root: unknown = JSON.parse(json)
-  if (!isEligibilityRuleTreeNode(root)) {
-    throw new Error('资格规则树缺少节点类型')
-  }
-  return root
-}
-
-function isEligibilityRuleTreeNode(value: unknown): value is PfEligibilityRuleTreeNodeDto {
-  return typeof value === 'object' && value !== null && 'nodeType' in value && typeof value.nodeType === 'string'
-}
-
-/** 将可视化树序列化为后端 ruleTreeJson 契约 */
-export function serializeEligibilityTree(root: PfEligibilityRuleTreeNodeDto): string {
-  return JSON.stringify(root)
-}
-
 /** 校验合取树是否具备最小可保存结构 */
 export function validateEligibilityTree(root: PfEligibilityRuleTreeNodeDto): string | null {
   if (!root.nodeType) {

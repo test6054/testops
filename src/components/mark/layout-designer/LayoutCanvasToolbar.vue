@@ -2,6 +2,9 @@
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import { MinusOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 
 export type LayoutCanvasToolCode = 'select' | 'marquee'
 
@@ -52,7 +55,7 @@ function toggleSafeMargin(): void {
   emit('update:show-safe-margin', !props.showSafeMargin)
 }
 
-function onCanvasToolChange(value: string | number): void {
+function onCanvasToolChange(value: string | number | boolean | undefined): void {
   switch (value) {
     case 'select':
     case 'marquee':
@@ -75,14 +78,15 @@ function onSnapChange(value: SelectValue, _option?: DefaultOptionType | DefaultO
 <template>
   <div class="layout-canvas-toolbar">
     <div v-if="!readOnly" class="layout-canvas-toolbar__group">
-      <a-radio-group
-        :value="canvasTool"
-        size="small"
-        @update:value="onCanvasToolChange"
-      >
-        <a-radio-button value="select">选择</a-radio-button>
-        <a-radio-button value="marquee">框选</a-radio-button>
-      </a-radio-group>
+      <UiRadioGroup
+        :model-value="canvasTool"
+        size="sm"
+        :options="[
+          { label: '选择', value: 'select' },
+          { label: '框选', value: 'marquee' },
+        ]"
+        @update:model-value="onCanvasToolChange"
+      />
     </div>
     <div class="layout-canvas-toolbar__group">
       <UiButton size="sm" variant="outline" @click="zoomOut">
@@ -94,11 +98,11 @@ function onSnapChange(value: SelectValue, _option?: DefaultOptionType | DefaultO
       </UiButton>
     </div>
     <div class="layout-canvas-toolbar__group">
-      <a-checkbox :checked="showGrid" @change="toggleGrid">对齐网格</a-checkbox>
-      <a-checkbox :checked="showSafeMargin" @change="toggleSafeMargin">安全边距</a-checkbox>
-      <a-select
+      <UiCheckbox :checked="showGrid" @change="toggleGrid">对齐网格</UiCheckbox>
+      <UiCheckbox :checked="showSafeMargin" @change="toggleSafeMargin">安全边距</UiCheckbox>
+      <UiSelect
         v-if="!readOnly"
-        :value="snapGridMm"
+        :model-value="snapGridMm"
         size="small"
         style="width: 108px"
         :options="[

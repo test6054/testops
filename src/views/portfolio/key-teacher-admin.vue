@@ -12,7 +12,10 @@ import { portfolioKeyTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -30,6 +33,9 @@ const REGISTRY_TABS = PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS.map((item) => 
 const activeType = ref<PortfolioKeyTeacherRegistryTypeCode>(
   PortfolioKeyTeacherRegistryTypeCode.PROGRAM_LEADER,
 )
+const saving = ref(false)
+const revokingId = ref('')
+const exporting = ref(false)
 const form = reactive({
   teacherUserId: '',
   specialtyName: '',
@@ -67,10 +73,14 @@ function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): str
 }
 
 async function saveRegistry() {
+  if (saving.value) {
+    return
+  }
   if (!form.teacherUserId) {
     showFormValidationMessage('请选择教师')
     return
   }
+  saving.value = true
   try {
     await portfolioKeyTeacherApi.save({
       teacherUserId: form.teacherUserId,
@@ -89,26 +99,40 @@ async function saveRegistry() {
     await loadPage()
   } catch (error) {
     showUserError(error, '登记重点教师失败')
+  } finally {
+    saving.value = false
   }
 }
 
 async function revokeRegistry(id: string) {
+  if (revokingId.value || saving.value) {
+    return
+  }
+  revokingId.value = id
   try {
     await portfolioKeyTeacherApi.revoke({ id })
     message.success('已作废')
     await loadPage()
   } catch (error) {
     showUserError(error, '作废重点教师登记失败')
+  } finally {
+    revokingId.value = ''
   }
 }
 
 async function exportRoster() {
+  if (exporting.value) {
+    return
+  }
+  exporting.value = true
   try {
     const result = await portfolioKeyTeacherApi.exportRoster({ registryType: activeType.value })
     await downloadPortfolioExcelExport(result)
     message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出重点教师名册失败')
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -131,13 +155,19 @@ function switchType(key: string | number) {
       <ContextBar layout="workbench" show-title title="骨干/带头人登记" />
     </template>
     <UiCard>
-      <a-tabs :active-key="activeType" @change="switchType">
-        <a-tab-pane v-for="tab in REGISTRY_TABS" :key="tab.key" :tab="tab.label" />
-      </a-tabs>
+      <UiSectionTabs
+        v-model="activeType"
+        :items="REGISTRY_TABS"
+        compact
+        divided
+        class="key-teacher-admin__tabs"
+        @change="switchType"
+      />
       <div class="form-row">
-        <a-select
-          v-model:value="form.teacherUserId"
-          show-search
+        <UiSelect
+          size="sm"
+          v-model="form.teacherUserId"
+          allow-search
           allow-clear
           placeholder="搜索教师姓名或工号"
           style="width: 220px"
@@ -145,14 +175,22 @@ function switchType(key: string | number) {
           :options="teacherOptions"
           @search="searchTeachers"
         />
-        <a-input v-model:value="form.specialtyName" placeholder="专业" style="width: 140px" />
-        <a-input v-model:value="form.majorGroupName" placeholder="专业群" style="width: 140px" />
-        <a-input v-model:value="form.appointYear" placeholder="聘任年份" style="width: 100px" />
-        <a-input v-model:value="form.dutyScope" placeholder="职责范围" style="width: 180px" />
-        <UiButton variant="primary" @click="saveRegistry"> 登记 </UiButton>
-        <UiButton @click="exportRoster"> 导出台账 </UiButton>
+        <UiInput
+          size="sm" v-model="form.specialtyName" placeholder="专业" style="width: 140px"
+        />
+        <UiInput
+          size="sm" v-model="form.majorGroupName" placeholder="专业群" style="width: 140px"
+        />
+        <UiInput
+          size="sm" v-model="form.appointYear" placeholder="聘任年份" style="width: 100px"
+        />
+        <UiInput
+          size="sm" v-model="form.dutyScope" placeholder="职责范围" style="width: 180px"
+        />
+        <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving || !!revokingId" @click="saveRegistry"> 登记 </UiButton>
+        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster"> 导出台账 </UiButton>
       </div>
-      <UiEmpty v-if="!loading && rows.length === 0" description="当前筛选无骨干教师记录" />
+      <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="当前筛选无骨干教师记录" />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"

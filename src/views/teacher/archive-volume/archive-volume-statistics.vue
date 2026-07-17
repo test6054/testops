@@ -15,7 +15,6 @@
 
     <template #signal>
       <SignalBand
-        variant="tiles"
         :metrics="signalMetrics"
         compact
         @metric-click="handleSignalMetricClick"
@@ -120,7 +119,21 @@
           </WorkbenchSurfaceCard>
         </div>
 
-        <UiEmpty v-else description="请选择筛选条件后查询" />
+        <UiAlertStrip
+          v-else
+          tone="info"
+          size="sm"
+          dense
+          inline
+          :show-icon="false"
+        >
+          <template #default>
+            <span style="display:inline-flex;align-items:center;gap:8px">
+              <UiTag tone="blue" size="sm">未筛选</UiTag>
+              <span>请选择筛选条件后查询统计结果</span>
+            </span>
+          </template>
+        </UiAlertStrip>
       </div>
 
       <div v-else class="archive-volume-statistics__pane">
@@ -205,7 +218,6 @@ import {
 } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -670,6 +682,7 @@ async function exportOverviewExcel() {
 }
 
 async function exportDestructionExcel() {
+  if (exportDestructionLoading.value) return
   exportDestructionLoading.value = true
   try {
     const result = await exportDestructionLedgerExcel({

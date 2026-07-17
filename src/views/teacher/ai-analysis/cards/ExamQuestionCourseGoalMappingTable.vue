@@ -13,6 +13,8 @@ import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -242,13 +244,14 @@ function handleFilterReset(): void {
           </UiTag>
         </template>
         <template v-else-if="column.key === 'goal'">
-          <a-select
-            v-model:value="record.qualityCourseGoalId"
+          <UiSelect
+            size="sm"
+            v-model="record.qualityCourseGoalId"
             class="exam-goal-mapping-table__select"
             placeholder="选择课程目标"
             :options="goalOptions"
             allow-clear
-            show-search
+            allow-search
             option-filter-prop="label"
             @change="() => handleGoalChange(record)"
           />
@@ -257,8 +260,9 @@ function handleFilterReset(): void {
           </div>
         </template>
         <template v-else-if="column.key === 'weight'">
-          <a-input-number
-            v-model:value="record.weight"
+          <UiInputNumber
+            size="sm"
+            v-model="record.weight"
             class="exam-goal-mapping-table__weight"
             :min="0.0001"
             :max="999"

@@ -7,6 +7,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { loadScannerOpsDashboard } from '@/apis/mark/scanner-ops'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiRangePicker from '@/components/ui-guide/ui/RangePicker.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -31,6 +32,13 @@ const router = useRouter()
 const loading = ref(false)
 const loadFailed = ref(false)
 const dateRange = ref<[string, string] | null>(null)
+
+const dateRangeModel = computed<[string, string] | undefined>({
+  get: () => dateRange.value ?? undefined,
+  set: (value) => {
+    dateRange.value = value ?? null
+  },
+})
 const dashboard = ref<Awaited<ReturnType<typeof loadScannerOpsDashboard>> | null>(null)
 const archiveMixedPendingTotal = ref<number | null>(null)
 
@@ -220,8 +228,11 @@ async function loadDashboard() {
   }
 }
 
-function handleDateChange(_: unknown, dateStrings: [string, string]) {
-  dateRange.value = dateStrings[0] && dateStrings[1] ? dateStrings : null
+function handleDateChange(
+  value: [string, string] | undefined,
+  _dateString: [string, string] | string,
+): void {
+  dateRange.value = value ?? null
   void loadDashboard()
 }
 
@@ -241,7 +252,13 @@ onMounted(() => {
 <template>
   <div class="scan-ops-panel">
     <div class="scan-ops-panel__toolbar">
-      <a-range-picker value-format="YYYY-MM-DD" @change="handleDateChange" />
+      <UiRangePicker
+        v-model="dateRangeModel"
+        size="sm"
+        value-format="YYYY-MM-DD"
+        format="YYYY-MM-DD"
+        @change="handleDateChange"
+      />
       <UiButton size="sm" variant="outline" :loading="loading" @click="() => loadDashboard()">
         刷新
       </UiButton>

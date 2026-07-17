@@ -55,6 +55,13 @@ export interface MarkTeacherDashboardMarkingProgressSummaryVO {
   confirmedQuestionGradeCount: number
 }
 
+/** 近 N 日进度趋势点：确认题量 / 发布成绩份数 */
+export interface MarkTeacherDashboardDailyTrendItemVO {
+  day: string
+  confirmedGradeCount: number
+  publishedScoreCount: number
+}
+
 export interface MarkTeacherDashboardTodoTypeSummaryItemVO {
   todoType: MarkTeacherDashboardTodoTypeCode
   count: number
@@ -120,6 +127,7 @@ export interface MarkTeacherDashboardOverviewVO {
   filterOptions: MarkTeacherDashboardFilterOptionsVO
   signalMetrics: MarkTeacherDashboardSignalMetricsVO
   markingProgressSummary: MarkTeacherDashboardMarkingProgressSummaryVO
+  dailyProgressTrend: MarkTeacherDashboardDailyTrendItemVO[]
   todoTypeSummary: MarkTeacherDashboardTodoTypeSummaryItemVO[]
   journeyStageSummary: MarkTeacherDashboardJourneyStageSummaryItemVO[]
   ongoingExamPage: PageResult<MarkTeacherDashboardOngoingExamItemVO>
@@ -152,6 +160,7 @@ export interface MarkTeacherDashboardSignalSectionVO {
   filterOptions: MarkTeacherDashboardFilterOptionsVO
   signalMetrics: MarkTeacherDashboardSignalMetricsVO
   markingProgressSummary: MarkTeacherDashboardMarkingProgressSummaryVO
+  dailyProgressTrend?: MarkTeacherDashboardDailyTrendItemVO[]
 }
 
 export interface MarkTeacherDashboardExamsSectionVO {

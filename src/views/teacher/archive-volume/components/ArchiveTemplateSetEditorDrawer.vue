@@ -9,9 +9,17 @@ import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
 import { computed, ref, watch } from 'vue'
 import { ArchiveMaterialTypeDescription } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useArchiveTemplateDragReorder } from '@/composables/useArchiveTemplateDragReorder'
+import {
+  ALL_ARCHIVE_MATERIAL_DELIVERY_MODE_CODES,
+  ArchiveMaterialDeliveryModeDescription,
+} from '@/types/enums/archive-material-delivery-mode-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveTemplateSortableTableShell from '@/views/teacher/archive-volume/components/ArchiveTemplateSortableTableShell.vue'
 
@@ -91,6 +99,7 @@ const materialColumns = computed<ColumnsType<ArchiveTemplateMaterialEditRow>>(()
       { title: '目录编码', key: 'catalogCode', width: 120 },
       { title: '目录名称', key: 'catalogName' },
       { title: '分组', key: 'categoryGroup', width: 120 },
+      { title: '交付', key: 'deliveryMode', width: 120 },
       { title: '必交', key: 'requiredFlag', width: 80, align: 'center' },
     ]
   }
@@ -101,6 +110,7 @@ const materialColumns = computed<ColumnsType<ArchiveTemplateMaterialEditRow>>(()
     { title: '目录编码', key: 'catalogCode', width: 120 },
     { title: '必交', key: 'requiredFlag', width: 72 },
     { title: '延迟', key: 'delayAllowedFlag', width: 72 },
+    { title: '交付', key: 'deliveryMode', width: 120 },
   ]
 })
 
@@ -148,6 +158,22 @@ function resolveMaterialGroupName(item: ArchiveTemplateMaterialEditRow): string 
 function materialGroupTabLabel(group: MaterialGroupTab) {
   return `${group.displayName}（${group.items.length}）`
 }
+const editorTabItems = computed(() => {
+  const items = groupedMaterialTabs.value.map((group) => ({
+    key: group.tabKey,
+    label: materialGroupTabLabel(group),
+  }))
+  items.push({
+    key: EDITOR_TAB_SELF_CHECK,
+    label: `自查项（${selfCheckRowsModel.value.length}）`,
+  })
+  return items
+})
+
+const deliveryModeOptions = ALL_ARCHIVE_MATERIAL_DELIVERY_MODE_CODES.map((code) => ({
+  value: code,
+  label: ArchiveMaterialDeliveryModeDescription[code],
+}))
 
 function materialTypeLabel(code: ArchiveMaterialTypeCode) {
   return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
@@ -236,87 +262,107 @@ defineExpose({
         v-if="groupedMaterialTabs.length > 0 || selfCheckRowsModel.length > 0"
         class="archive-template-editor__tabs-wrap"
       >
-        <a-tabs v-model:active-key="editorActiveTab" class="archive-template-editor__tabs">
-          <a-tab-pane
-            v-for="group in groupedMaterialTabs"
-            :key="group.tabKey"
-            :tab="materialGroupTabLabel(group)"
+        <UiSectionTabs
+          v-model="editorActiveTab"
+          :items="editorTabItems"
+          compact
+          divided
+          class="archive-template-editor__tabs"
+        />
+        <div
+          v-for="group in groupedMaterialTabs"
+          v-show="editorActiveTab === group.tabKey"
+          :key="group.tabKey"
+        >
+          <ArchiveTemplateSortableTableShell
+            v-if="materialGroupLists[group.groupName]"
+            v-model="materialGroupLists[group.groupName]"
+            :columns="materialColumns"
+            row-key="rowKey"
+            :active="editorActiveTab === group.tabKey"
+            @sorted="handleMaterialGroupSorted(group.groupName)"
           >
-            <ArchiveTemplateSortableTableShell
-              v-if="materialGroupLists[group.groupName]"
-              v-model="materialGroupLists[group.groupName]"
-              :columns="materialColumns"
-              row-key="rowKey"
-              :active="editorActiveTab === group.tabKey"
-              @sorted="handleMaterialGroupSorted(group.groupName)"
-            >
-              <template #bodyCell="{ column, record }">
-                <template v-if="column.key === 'drag'">
-                  <span
-                    class="archive-template-editor__drag-handle"
-                    role="button"
-                    tabindex="0"
-                    aria-label="拖拽排序"
-                  >
-                    <MenuOutlined />
-                  </span>
-                </template>
-                <template v-else-if="column.key === 'materialType'">
-                  {{ materialTypeLabel(record.materialType) }}
-                </template>
-                <template v-else-if="column.key === 'catalogCode'">
-                  <a-input v-model:value="record.catalogCode" />
-                </template>
-                <template v-else-if="column.key === 'catalogName'">
-                  <a-input v-model:value="record.catalogName" />
-                </template>
-                <template v-else-if="column.key === 'categoryGroup'">
-                  <a-input
-                    v-model:value="record.categoryGroup"
-                    :placeholder="MATERIAL_GROUP_FALLBACK"
-                  />
-                </template>
-                <template v-else-if="column.key === 'requiredFlag'">
-                  <a-checkbox v-model:checked="record.requiredFlag">必交</a-checkbox>
-                </template>
-                <template v-else-if="column.key === 'delayAllowedFlag'">
-                  <a-checkbox v-model:checked="record.delayAllowedFlag">允许延迟</a-checkbox>
-                </template>
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'drag'">
+                <span
+                  class="archive-template-editor__drag-handle"
+                  role="button"
+                  tabindex="0"
+                  aria-label="拖拽排序"
+                >
+                  <MenuOutlined />
+                </span>
               </template>
-            </ArchiveTemplateSortableTableShell>
-          </a-tab-pane>
-          <a-tab-pane key="self-check" :tab="`自查项（${selfCheckRowsModel.length}）`">
-            <ArchiveTemplateSortableTableShell
-              v-model="selfCheckRowsModel"
-              :columns="selfCheckColumns"
-              row-key="rowKey"
-              empty-description="暂无自查项"
-              :active="editorActiveTab === 'self-check'"
-              @sorted="handleSelfCheckSorted"
-            >
-              <template #bodyCell="{ column, index }">
-                <template v-if="column.key === 'drag'">
-                  <span
-                    class="archive-template-editor__drag-handle"
-                    role="button"
-                    tabindex="0"
-                    aria-label="拖拽排序"
-                  >
-                    <MenuOutlined />
-                  </span>
-                </template>
-                <template v-else-if="column.key === 'itemText'">
-                  <a-input v-model:value="selfCheckRowsModel[index].itemText" />
-                </template>
-                <template v-else-if="column.key === 'requiredFlag'">
-                  <a-checkbox v-model:checked="selfCheckRowsModel[index].requiredFlag">
-                    必查
-                  </a-checkbox>
-                </template>
+              <template v-else-if="column.key === 'materialType'">
+                {{ materialTypeLabel(record.materialType) }}
               </template>
-            </ArchiveTemplateSortableTableShell>
-          </a-tab-pane>
-        </a-tabs>
+              <template v-else-if="column.key === 'catalogCode'">
+                <UiInput
+                  size="sm" v-model="record.catalogCode"
+                />
+              </template>
+              <template v-else-if="column.key === 'catalogName'">
+                <UiInput
+                  size="sm" v-model="record.catalogName"
+                />
+              </template>
+              <template v-else-if="column.key === 'categoryGroup'">
+                <UiInput
+                  size="sm"
+                  v-model="record.categoryGroup"
+                  :placeholder="MATERIAL_GROUP_FALLBACK"
+                />
+              </template>
+              <template v-else-if="column.key === 'requiredFlag'">
+                <UiCheckbox v-model="record.requiredFlag">必交</UiCheckbox>
+              </template>
+              <template v-else-if="column.key === 'delayAllowedFlag'">
+                <UiCheckbox v-model="record.delayAllowedFlag">允许延迟</UiCheckbox>
+              </template>
+              <template v-else-if="column.key === 'deliveryMode'">
+                <UiSelect
+                  size="sm"
+                  v-model="record.deliveryMode"
+                  :options="deliveryModeOptions"
+                  style="width: 100%"
+                />
+              </template>
+            </template>
+          </ArchiveTemplateSortableTableShell>
+        </div>
+        <div v-show="editorActiveTab === EDITOR_TAB_SELF_CHECK">
+          <ArchiveTemplateSortableTableShell
+            v-model="selfCheckRowsModel"
+            :columns="selfCheckColumns"
+            row-key="rowKey"
+            empty-description="暂无自查项"
+            :active="editorActiveTab === 'self-check'"
+            @sorted="handleSelfCheckSorted"
+          >
+            <template #bodyCell="{ column, index }">
+              <template v-if="column.key === 'drag'">
+                <span
+                  class="archive-template-editor__drag-handle"
+                  role="button"
+                  tabindex="0"
+                  aria-label="拖拽排序"
+                >
+                  <MenuOutlined />
+                </span>
+              </template>
+              <template v-else-if="column.key === 'itemText'">
+                <UiInput
+                  size="sm" v-model="selfCheckRowsModel[index].itemText"
+                />
+              </template>
+              <template v-else-if="column.key === 'requiredFlag'">
+                <UiCheckbox v-model="selfCheckRowsModel[index].requiredFlag">
+                  必查
+                </UiCheckbox>
+              </template>
+            </template>
+          </ArchiveTemplateSortableTableShell>
+        </div>
       </div>
       <p v-else class="archive-template-editor__empty">{{ emptyDescription }}</p>
     </template>

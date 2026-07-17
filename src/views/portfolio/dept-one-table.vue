@@ -22,8 +22,14 @@ import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -449,59 +455,75 @@ watch(
   <StageWorkbenchShell>
     <ContextBar title="部门一张表" subtitle="院系师资结构 · 教师明细 · 职称分布">
       <template #actions>
-        <UiButton :loading="exporting" :disabled="!filter.departmentId" @click="exportDeptOneTable">
+        <UiButton size="sm" :loading="exporting" :disabled="!filter.departmentId" @click="exportDeptOneTable">
           导出部门一张表
         </UiButton>
       </template>
     </ContextBar>
     <UiCard>
       <div class="filter-row">
-        <a-select
-          v-model:value="filter.departmentId"
+        <UiSelect
+          size="sm"
+          v-model="filter.departmentId"
           placeholder="选择院系"
           style="width: 240px"
           :options="departmentOptions"
           allow-clear
           :disabled="exporting"
         />
-        <a-input
-          v-model:value="filter.planYear"
+        <UiInput
+          size="sm"
+          v-model="filter.planYear"
           :disabled="exporting"
           placeholder="规划年度（可选）"
           style="width: 140px"
         />
       </div>
-      <a-spin :spinning="loading">
-        <UiEmpty v-if="!filter.departmentId" description="请选择院系查看部门一张表" />
-        <UiEmpty v-else-if="!loading && !summary" description="暂无该院系汇总数据" />
+      <UiSpin :spinning="loading">
+        <UiAlertStrip
+          v-if="!filter.departmentId"
+          tone="info"
+          size="sm"
+          dense
+          inline
+          :show-icon="false"
+        >
+          <template #default>
+            <span class="dept-one-table__gate-row">
+              <UiTag tone="blue" size="sm">未选择院系</UiTag>
+              <span>请选择院系后查看部门一张表</span>
+            </span>
+          </template>
+        </UiAlertStrip>
+        <UiEmpty size="sm" v-else-if="!loading && !summary" description="暂无该院系汇总数据" />
         <template v-else-if="summary">
-          <a-descriptions :column="3" size="small" bordered style="margin-top: 16px">
-            <a-descriptions-item label="院系">
+          <UiDescriptions :column="3" size="small" bordered style="margin-top: 16px">
+            <UiDescriptionsItem label="院系">
               {{ summary.departmentName ?? '—' }}
-            </a-descriptions-item>
-            <a-descriptions-item label="教师人数">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="教师人数">
               {{ summary.teacherCount }}
-            </a-descriptions-item>
-            <a-descriptions-item label="双师通过">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="双师通过">
               {{ summary.dualTeacherCount }}
-            </a-descriptions-item>
-            <a-descriptions-item label="外部师资">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="外部师资">
               {{ summary.externalTeacherCount }}
-            </a-descriptions-item>
-            <a-descriptions-item label="骨干/带头人">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="骨干/带头人">
               {{ summary.keyTeacherCount }}
-            </a-descriptions-item>
-            <a-descriptions-item label="成果总数">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="成果总数">
               {{ summary.achievementTotalCount ?? 0 }}
-            </a-descriptions-item>
-            <a-descriptions-item label="荣誉总数">
+            </UiDescriptionsItem>
+            <UiDescriptionsItem label="荣誉总数">
               {{ summary.honorTotalCount ?? 0 }}
-            </a-descriptions-item>
+            </UiDescriptionsItem>
             <template v-if="summary.currentAcademicYear">
-              <a-descriptions-item label="统计学年">
+              <UiDescriptionsItem label="统计学年">
                 {{ summary.currentAcademicYear }}
-              </a-descriptions-item>
-              <a-descriptions-item label="完整度分布">
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="完整度分布">
                 <span class="completeness-distribution">
                   <button
                     v-for="item in completenessDistributionRows"
@@ -516,8 +538,8 @@ watch(
                     {{ item.label }} {{ distributionCount(item.summaryKey) }}
                   </button>
                 </span>
-              </a-descriptions-item>
-              <a-descriptions-item
+              </UiDescriptionsItem>
+              <UiDescriptionsItem
                 v-if="(summary.courseArchiveFrameworkSlotTotal ?? 0) > 0"
                 label="五框架槽位"
               >
@@ -525,21 +547,21 @@ watch(
                   summary.courseArchiveFrameworkSlotTotal ?? 0
                 }}
                 · 齐备 {{ summary.courseArchiveFullyCompleteCount ?? 0 }} 门
-              </a-descriptions-item>
+              </UiDescriptionsItem>
             </template>
             <template v-if="summary.planYear">
-              <a-descriptions-item label="规划年度">
+              <UiDescriptionsItem label="规划年度">
                 {{ summary.planYear }}
-              </a-descriptions-item>
-              <a-descriptions-item label="年度规划">
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="年度规划">
                 {{ summary.developmentPlanApprovedCount ?? 0 }} /
                 {{ summary.developmentPlanTotalCount ?? 0 }}
-              </a-descriptions-item>
-              <a-descriptions-item label="规划完成率">
+              </UiDescriptionsItem>
+              <UiDescriptionsItem label="规划完成率">
                 {{ summary.developmentPlanCompletionRatePercent ?? 0 }}%
-              </a-descriptions-item>
+              </UiDescriptionsItem>
             </template>
-          </a-descriptions>
+          </UiDescriptions>
           <div v-if="teacherSegments.length" class="teacher-segments" aria-label="教师行动分层">
             <section v-for="segment in teacherSegments" :key="segment.segmentCode">
               <div>
@@ -652,7 +674,7 @@ watch(
             </UiDataTable>
           </UiCard>
         </template>
-      </a-spin>
+      </UiSpin>
     </UiCard>
   </StageWorkbenchShell>
 </template>
@@ -666,8 +688,8 @@ watch(
 .detail-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 16px;
+  gap: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-3, 12px);
 }
 .teacher-segments {
   display: grid;
@@ -678,7 +700,7 @@ watch(
 .teacher-segments section {
   min-width: 0;
   padding: 12px;
-  border: 1px solid var(--dp-border, #e8e8e8);
+  border: 1px solid var(--dp-border);
   border-radius: 6px;
 }
 .teacher-segments section > div:first-child {
@@ -699,7 +721,7 @@ watch(
 .teacher-segments__samples button {
   padding: 0;
   border: 0;
-  color: var(--ant-color-primary);
+  color: var(--dp-color-primary);
   background: transparent;
   cursor: pointer;
 }
@@ -710,20 +732,29 @@ watch(
 }
 .completeness-chip {
   padding: 2px 8px;
-  border: 1px solid var(--dp-border, #e8e8e8);
+  border: 1px solid var(--dp-border);
   border-radius: 4px;
   background: transparent;
   font-size: 13px;
   cursor: pointer;
 }
 .completeness-chip--active {
-  border-color: var(--ant-color-primary);
-  color: var(--ant-color-primary);
-  background: var(--ant-color-primary-bg);
+  border-color: var(--dp-color-primary);
+  color: var(--dp-color-primary);
+  background: var(--dp-color-primary-bg);
 }
 .teacher-filter-hint {
   margin: 0 0 12px;
   font-size: 13px;
+  color: var(--dp-text-secondary);
+}
+
+.dept-one-table__gate-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  min-width: 0;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 @media (max-width: 960px) {

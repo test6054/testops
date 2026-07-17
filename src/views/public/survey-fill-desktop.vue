@@ -373,24 +373,24 @@ async function handleSubmit() {
    PC 端问卷 — 全页展示模式
    ============================================================ */
 .d-survey {
-  --survey-page-bg: var(--ant-color-bg-layout);
-  --survey-border: var(--ant-color-border-secondary);
-  --survey-border-light: var(--ant-color-border-secondary);
-  --survey-surface: var(--ant-color-bg-container);
-  --survey-surface-muted: var(--ant-color-fill-quaternary);
+  --survey-page-bg: var(--dp-bg-layout);
+  --survey-border: var(--dp-border-subtle);
+  --survey-border-light: var(--dp-border-subtle);
+  --survey-surface: var(--dp-bg-container);
+  --survey-surface-muted: var(--dp-fill-quaternary);
   --survey-text: var(--dp-text-primary);
   --survey-text-secondary: var(--dp-text-secondary);
   --survey-text-muted: var(--dp-text-tertiary);
-  --survey-text-placeholder: var(--ant-color-text-quaternary);
-  --survey-warning-bg: var(--ant-color-warning-bg);
-  --survey-warning-text: var(--ant-color-warning);
-  --survey-success-bg: var(--ant-color-success-bg);
-  --survey-success-text: var(--ant-color-success);
-  --survey-danger: var(--ant-color-error);
-  --survey-on-primary: var(--ant-color-text-light-solid);
-  --survey-primary: var(--ant-color-primary);
-  --survey-primary-bg: var(--ant-color-primary-bg);
-  --survey-primary-border: var(--ant-color-primary-border);
+  --survey-text-placeholder: var(--dp-text-quaternary);
+  --survey-warning-bg: var(--dp-warning-bg);
+  --survey-warning-text: var(--dp-warning);
+  --survey-success-bg: var(--dp-success-bg);
+  --survey-success-text: var(--dp-success);
+  --survey-danger: var(--dp-error);
+  --survey-on-primary: var(--dp-text-light-solid);
+  --survey-primary: var(--dp-color-primary);
+  --survey-primary-bg: var(--dp-color-primary-bg);
+  --survey-primary-border: var(--dp-color-primary-border);
 
   min-height: 100vh;
   background: var(--survey-page-bg);
@@ -434,7 +434,7 @@ async function handleSubmit() {
   justify-content: center;
   font-size: 32px;
   font-weight: 700;
-  margin-bottom: 24px;
+  margin-bottom: var(--dp-space-4, 16px);
 }
 
 .d-survey__icon--warn {
@@ -474,7 +474,7 @@ async function handleSubmit() {
 /* --- 横幅 --- */
 .d-survey__banner {
   background: var(--survey-surface);
-  padding: 48px 24px 40px;
+  padding: 28px 20px 24px;
   text-align: center;
   border-bottom: 1px solid var(--survey-border-light);
 }
@@ -522,7 +522,7 @@ async function handleSubmit() {
   border-bottom: 1px solid var(--survey-border-light);
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
@@ -552,7 +552,7 @@ async function handleSubmit() {
 
 /* --- 内容区 --- */
 .d-survey__body {
-  padding: 32px 24px 64px;
+  padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) var(--dp-space-8, 32px);
 }
 
 .d-survey__container {
@@ -562,11 +562,11 @@ async function handleSubmit() {
 
 .d-survey__welcome {
   background: var(--survey-surface);
-  padding: 20px 24px;
-  border-radius: 12px;
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
+  border-radius: var(--dp-radius-panel);
   border: 1px solid var(--survey-primary-border);
   background: color-mix(in srgb, var(--survey-primary) 6%, var(--survey-surface));
-  margin-bottom: 20px;
+  margin-bottom: var(--dp-space-3, 12px);
   font-size: 15px;
   color: var(--survey-text);
   line-height: 1.6;
@@ -580,16 +580,16 @@ async function handleSubmit() {
   gap: 6px;
   font-size: 13px;
   color: var(--survey-text-muted);
-  margin-bottom: 20px;
+  margin-bottom: var(--dp-space-3, 12px);
   padding: 0 4px;
 }
 
 /* --- 身份信息 --- */
 .d-survey__identity {
   background: var(--survey-surface);
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 24px;
+  border-radius: var(--dp-radius-panel);
+  padding: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3, 12px);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
@@ -608,7 +608,7 @@ async function handleSubmit() {
 .d-survey__identity-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
 }
 
 .d-survey__field {
@@ -641,7 +641,7 @@ async function handleSubmit() {
   &:focus {
     border-color: var(--survey-primary);
     background: var(--survey-surface);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.08);
+    box-shadow: 0 0 0 3px var(--dp-focus-ring);
   }
 
   &::placeholder {
@@ -652,11 +652,11 @@ async function handleSubmit() {
 /* --- 题目卡片 --- */
 .d-survey__item {
   display: flex;
-  gap: 16px;
+  gap: var(--dp-space-3, 12px);
   background: var(--survey-surface);
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 16px;
+  border-radius: var(--dp-radius-panel);
+  padding: var(--dp-space-3, 12px);
+  margin-bottom: var(--dp-space-3, 12px);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   transition: all 0.2s;
   border: 1.5px solid transparent;
@@ -714,14 +714,14 @@ async function handleSubmit() {
 }
 
 .d-survey__item-dot--done {
-  border-color: var(--ant-color-success);
-  background: var(--ant-color-success);
+  border-color: var(--dp-success);
+  background: var(--dp-success);
   color: var(--survey-on-primary);
   font-size: 14px;
 }
 
 .d-survey__item-dot--req {
-  border-color: var(--ant-color-error-border);
+  border-color: var(--dp-error-border);
   color: var(--survey-danger);
 }
 
@@ -799,7 +799,7 @@ async function handleSubmit() {
   border-color: var(--survey-primary);
   background: var(--survey-primary);
   color: var(--survey-on-primary);
-  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.25);
+  box-shadow: var(--dp-shadow-sm));
   transform: scale(1.08);
 }
 
@@ -892,7 +892,7 @@ async function handleSubmit() {
   &:focus {
     border-color: var(--survey-primary);
     background: var(--survey-surface);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.08);
+    box-shadow: 0 0 0 3px var(--dp-focus-ring);
   }
 
   &::placeholder {
@@ -910,7 +910,7 @@ async function handleSubmit() {
 /* --- 提交 --- */
 .d-survey__submit {
   text-align: center;
-  padding: 24px 0 32px;
+  padding: var(--dp-space-4, 16px) 0 var(--dp-space-5, 20px);
 }
 
 .d-survey__btn--submit {
@@ -926,12 +926,12 @@ async function handleSubmit() {
   font-weight: 600;
   color: var(--survey-on-primary);
   background: var(--survey-primary);
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  box-shadow: var(--dp-shadow-md));
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: var(--dp-shadow-md));
     transform: translateY(-1px);
   }
 

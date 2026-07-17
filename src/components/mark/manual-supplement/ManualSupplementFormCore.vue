@@ -1,32 +1,34 @@
 <template>
-  <a-form ref="formRef" :model="model" :rules="formRules" layout="vertical">
+  <UiForm ref="formRef" :model="model" :rules="formRules" layout="vertical">
     <template v-if="mode === 'direct'">
-      <a-row :gutter="16">
-        <a-col :xs="24" :md="12">
-          <a-form-item label="网页补录工位" name="deviceKey" required>
-            <a-select
-              v-model:value="directModel.deviceKey"
+      <UiRow :gutter="16">
+        <UiCol :xs="24" :md="12">
+          <UiFormItem label="网页补录工位" name="deviceKey" required>
+            <UiSelect
+              size="sm"
+              v-model="directModel.deviceKey"
               placeholder="选择已启用的网页补录工位"
               :options="deviceOptions"
               :loading="deviceLoading"
-              show-search
+              allow-search
               option-filter-prop="label"
               @change="emit('device-change')"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="24" :md="12">
-          <a-form-item label="起始模板页号" name="startTemplatePageNo">
-            <a-input-number
-              v-model:value="directModel.startTemplatePageNo"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :xs="24" :md="12">
+          <UiFormItem label="起始模板页号" name="startTemplatePageNo">
+            <UiInputNumber
+              size="sm"
+              v-model="directModel.startTemplatePageNo"
               :min="1"
               placeholder="默认从第 1 页起"
               style="width: 100%"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
-      <a-form-item label="扫描来源文件（便携文档或多页图片）" name="sourceFileId" required>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+      <UiFormItem label="扫描来源文件（便携文档或多页图片）" name="sourceFileId" required>
         <UiPlatformFileField
           v-model:file-node-id="directModel.sourceFileId"
           v-model:file-name="directModel.sourceFileName"
@@ -34,64 +36,68 @@
           accept=".pdf,.png,.jpg,.jpeg,.tif,.tiff"
           button-text="选择文件"
         />
-      </a-form-item>
+      </UiFormItem>
     </template>
 
     <template v-else>
-      <a-row :gutter="16">
-        <a-col v-if="showPaperSelect" :xs="24" :md="12">
-          <a-form-item label="补扫试卷" name="paperInstanceId" required>
-            <a-select
-              v-model:value="supplementModel.paperInstanceId"
+      <UiRow :gutter="16">
+        <UiCol v-if="showPaperSelect" :xs="24" :md="12">
+          <UiFormItem label="补扫试卷" name="paperInstanceId" required>
+            <UiSelect
+              size="sm"
+              v-model="supplementModel.paperInstanceId"
               placeholder="选择本设备已绑定试卷"
               :options="boundPaperOptions"
               :loading="prepareLoading"
               :disabled="prepareLoading || paperSelectDisabled"
-              show-search
+              allow-search
               option-filter-prop="label"
               allow-clear
             />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="24" :md="showPaperSelect ? 6 : 8">
-          <a-form-item label="补扫目标页" name="targetPageNo" required>
-            <a-select
+          </UiFormItem>
+        </UiCol>
+        <UiCol :xs="24" :md="showPaperSelect ? 6 : 8">
+          <UiFormItem label="补扫目标页" name="targetPageNo" required>
+            <UiSelect
+              size="sm"
               v-if="targetPageOptions.length > 0"
-              v-model:value="supplementModel.targetPageNo"
+              v-model="supplementModel.targetPageNo"
               placeholder="选择模板页号"
               :options="targetPageOptions"
               :disabled="targetPageDisabled"
-              show-search
+              allow-search
               option-filter-prop="label"
             />
-            <a-input-number
+            <UiInputNumber
+              size="sm"
               v-else
-              v-model:value="supplementModel.targetPageNo"
+              v-model="supplementModel.targetPageNo"
               :min="1"
               placeholder="模板页号"
               style="width: 100%"
               :disabled="targetPageDisabled"
             />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="24" :md="showPaperSelect ? 6 : 16">
-          <a-form-item label="补扫原因" name="supplementReason" required>
-            <a-input
-              v-model:value="supplementModel.supplementReason"
+          </UiFormItem>
+        </UiCol>
+        <UiCol :xs="24" :md="showPaperSelect ? 6 : 16">
+          <UiFormItem label="补扫原因" name="supplementReason" required>
+            <UiInput
+              size="sm"
+              v-model="supplementModel.supplementReason"
               placeholder="说明补扫原因"
               :maxlength="255"
             />
-          </a-form-item>
-        </a-col>
-      </a-row>
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
 
-      <a-form-item v-if="showReplaceCheckbox" name="replaceTargetPage">
-        <a-checkbox v-model:checked="supplementModel.replaceTargetPage" :disabled="replaceForced">
+      <UiFormItem v-if="showReplaceCheckbox" name="replaceTargetPage">
+        <UiCheckbox v-model="supplementModel.replaceTargetPage" :disabled="replaceForced">
           替换目标页（勾选后旧页标记为 SUPERSEDED）
-        </a-checkbox>
-      </a-form-item>
+        </UiCheckbox>
+      </UiFormItem>
 
-      <a-form-item label="补扫文件（单张图片）" name="sourceFileId" required>
+      <UiFormItem label="补扫文件（单张图片）" name="sourceFileId" required>
         <UiPlatformFileField
           v-model:file-node-id="supplementModel.sourceFileId"
           v-model:file-name="supplementModel.sourceFileName"
@@ -99,7 +105,7 @@
           accept=".png,.jpg,.jpeg,.tif,.tiff"
           button-text="选择文件"
         />
-      </a-form-item>
+      </UiFormItem>
     </template>
 
     <p v-if="prepareBlockDescription" class="manual-supplement-form-core__warn muted">
@@ -108,7 +114,7 @@
     <p v-if="classScopeWarning" class="manual-supplement-form-core__warn muted">
       {{ classScopeWarning }}
     </p>
-  </a-form>
+  </UiForm>
 </template>
 
 <script lang="ts" setup>
@@ -116,6 +122,14 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import { computed, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 
 defineOptions({ name: 'ManualSupplementFormCore' })
 
@@ -221,7 +235,7 @@ defineExpose({ validate })
 }
 
 .muted {
-  color: var(--ant-color-text-tertiary);
+  color: var(--dp-text-tertiary);
   font-size: 13px;
 }
 </style>

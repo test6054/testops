@@ -12,6 +12,7 @@ import {
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
 import { ScannerKioskBlockReasonCode } from '@/types/enums/scanner-kiosk-block-reason-enum'
@@ -376,8 +377,7 @@ onMounted(() => {
         </div>
 
         <div v-if="showRegisterStateSkeleton" class="setup-signal setup-signal--skeleton">
-          <a-skeleton-button active block size="large" />
-          <a-skeleton-input active block size="small" style="margin-top: 8px" />
+          <UiSkeletonState :rows="2" compact />
           <p class="setup-signal__hint">登记状态计算中…</p>
         </div>
         <UiAlertStrip
@@ -434,7 +434,7 @@ onMounted(() => {
 
         <div class="scan-cta-row">
           <template v-if="showRegisterStateSkeleton">
-            <a-skeleton-button active block size="large" class="scan-cta-skeleton" />
+            <UiSkeletonState :rows="1" compact class="scan-cta-skeleton" />
             <button
               type="button"
               class="scan-cta scan-cta--supplement"
@@ -857,19 +857,19 @@ onMounted(() => {
 .scan-cta--direct {
   background: var(--kiosk-primary);
   border: none;
-  color: var(--ant-color-white);
+  color: var(--dp-text-inverse);
 }
 
 .scan-cta--warning {
   background: var(--kiosk-warning);
   border: none;
-  color: var(--ant-color-white);
+  color: var(--dp-text-inverse);
 }
 
 .scan-cta--fatal {
   background: var(--kiosk-danger);
   border: none;
-  color: var(--ant-color-white);
+  color: var(--dp-text-inverse);
 }
 
 .scan-cta--supplement {
@@ -955,13 +955,13 @@ onMounted(() => {
 }
 
 .setup-signal--warning :deep(.ui-alert-strip) {
-  background: var(--ant-color-warning-bg);
-  border-color: var(--ant-color-warning-border);
+  background: var(--dp-warning-bg);
+  border-color: var(--dp-warning-border);
 }
 
 .setup-signal--fatal :deep(.ui-alert-strip) {
-  background: var(--ant-color-error-bg);
-  border-color: var(--ant-color-error-border);
+  background: var(--dp-error-bg);
+  border-color: var(--dp-error-border);
 }
 
 .setup-signal {
@@ -1015,8 +1015,8 @@ onMounted(() => {
   margin-left: var(--kiosk-space-2);
   padding: 0 var(--kiosk-space-2);
   border-radius: var(--kiosk-radius-sm);
-  background: var(--ant-color-primary-bg);
-  color: var(--ant-color-primary-active);
+  background: var(--dp-color-primary-bg);
+  color: var(--dp-color-primary-active);
   font-size: 10px;
 }
 

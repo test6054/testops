@@ -11,20 +11,24 @@
     @ok="handleSubmit"
     @cancel="handleCancel"
   >
-    <a-form layout="vertical">
-      <a-row :gutter="16">
-        <a-col :xs="24" :md="12">
-          <a-form-item label="扫描批次">
-            <a-input :value="batchLabel" disabled />
-          </a-form-item>
-        </a-col>
-        <a-col :xs="24" :md="12">
-          <a-form-item label="扫描设备">
-            <a-input :value="deviceLabel" disabled />
-          </a-form-item>
-        </a-col>
-      </a-row>
-    </a-form>
+    <UiForm layout="vertical">
+      <UiRow :gutter="16">
+        <UiCol :xs="24" :md="12">
+          <UiFormItem label="扫描批次">
+            <UiInput
+              size="sm" :value="batchLabel" disabled
+            />
+          </UiFormItem>
+        </UiCol>
+        <UiCol :xs="24" :md="12">
+          <UiFormItem label="扫描设备">
+            <UiInput
+              size="sm" :value="deviceLabel" disabled
+            />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+    </UiForm>
 
     <ManualSupplementFormCore
       ref="formCoreRef"
@@ -48,6 +52,11 @@ import { getExamDetail } from '@/apis/mark/exam'
 import { prepareTeacherScanSupplement, teacherSupplementScanSource } from '@/apis/mark/scan-source'
 import ManualSupplementFormCore from '@/components/mark/manual-supplement/ManualSupplementFormCore.vue'
 import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
 import { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
 import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
@@ -185,6 +194,9 @@ function handleCancel(): void {
 async function handleSubmit(): Promise<void> {
   if (submitDisabled.value) {
     message.warning(prepareBlockDescription.value || '当前不可提交补扫')
+    return
+  }
+  if (submitting.value) {
     return
   }
   await formCoreRef.value?.validate()

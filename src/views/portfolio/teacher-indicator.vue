@@ -3,10 +3,15 @@ import type { PortfolioEligibilityEvalResultDto } from '@/apis/portfolio/indicat
 import { computed, ref, watch } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
@@ -84,31 +89,32 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" title="我的资格评估" />
     </template>
-    <UiEmpty
-      v-if="canPickTeachers && !scopeReady"
-      description="请从顶部教师范围选择目标教师后再评估"
-    />
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !scopeReady" />
     <UiCard v-else>
-      <a-form layout="vertical">
-        <a-form-item label="评估类型">
-          <a-select
-            v-model:value="eligibilityCode"
+      <UiForm layout="vertical">
+        <UiFormItem label="评估类型">
+          <UiSelect
+            size="sm"
+            v-model="eligibilityCode"
             :options="eligibilityOptions"
             style="width: 240px"
           />
-        </a-form-item>
-        <a-form-item label="双师证书">
-          <a-switch v-model:checked="dualTeacherCert" />
-        </a-form-item>
-        <a-form-item label="师德审核已通过">
-          <a-switch v-model:checked="ethicsApproved" />
-        </a-form-item>
-        <a-form-item label="教龄（年）">
-          <a-input-number v-model:value="teachingYears" :min="0" :max="50" />
-        </a-form-item>
-      </a-form>
+        </UiFormItem>
+        <UiFormItem label="双师证书">
+          <UiSwitch size="sm" v-model="dualTeacherCert" />
+        </UiFormItem>
+        <UiFormItem label="师德审核已通过">
+          <UiSwitch size="sm" v-model="ethicsApproved" />
+        </UiFormItem>
+        <UiFormItem label="教龄（年）">
+          <UiInputNumber
+            size="sm" v-model="teachingYears" :min="0" :max="50"
+          />
+        </UiFormItem>
+      </UiForm>
       <div class="toolbar">
         <UiButton
+          size="sm"
           variant="primary"
           :loading="evaluating"
           :disabled="!targetTeacherId"
@@ -116,7 +122,7 @@ watch(
         >
           开始评估
         </UiButton>
-        <UiButton v-if="result" @click="explainOpen = true"> 查看解释 </UiButton>
+        <UiButton size="sm" v-if="result" @click="explainOpen = true"> 查看解释 </UiButton>
       </div>
       <template v-if="result">
         <UiTag :tone="result.eligible ? 'green' : 'red'" style="margin-bottom: 12px">
@@ -133,7 +139,7 @@ watch(
     <PortfolioIndicatorExplainDrawer
       v-model:open="explainOpen"
       :explain-text="result?.explainText"
-      :explain-struct-json="result?.explainStructJson"
+      :eligibility-explain="result?.explainStruct"
     />
   </StageWorkbenchShell>
 </template>

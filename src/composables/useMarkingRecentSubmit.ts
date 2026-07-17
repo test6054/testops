@@ -34,6 +34,8 @@ export interface MarkingRecentSubmitEntry {
 }
 
 const recentSubmits = ref<MarkingRecentSubmitEntry[]>([])
+/** 进行中的撤回 taskId，防止同一任务双点重复撤回 */
+const withdrawingTaskIds = ref<Set<string>>(new Set())
 
 function pruneExpired(): void {
   const now = Date.now()
@@ -98,27 +100,37 @@ export function useMarkingRecentSubmit() {
       removeEntry(entry.taskId)
       return null
     }
-    let lastError: unknown = null
-    for (let attempt = 0; attempt <= WITHDRAW_LOCK_RETRY_DELAYS_MS.length; attempt += 1) {
-      try {
-        const task = await withdrawMarkingTask({ taskId: entry.taskId })
-        removeEntry(entry.taskId)
-        message.success('已撤销提交，原给分已保留为草稿')
-        onSuccess?.(task)
-        return task
-      } catch (error) {
-        lastError = error
-        const canRetry = isWithdrawScoreConfirmLockConflict(error)
-          && attempt < WITHDRAW_LOCK_RETRY_DELAYS_MS.length
-        if (!canRetry) {
-          break
-        }
-        message.info('成绩确认处理中，正在重试撤回…')
-        await sleep(WITHDRAW_LOCK_RETRY_DELAYS_MS[attempt])
-      }
+    if (withdrawingTaskIds.value.has(entry.taskId)) {
+      return null
     }
-    showUserError(lastError, '撤销提交失败')
-    return null
+    withdrawingTaskIds.value = new Set(withdrawingTaskIds.value).add(entry.taskId)
+    let lastError: unknown = null
+    try {
+      for (let attempt = 0; attempt <= WITHDRAW_LOCK_RETRY_DELAYS_MS.length; attempt += 1) {
+        try {
+          const task = await withdrawMarkingTask({ taskId: entry.taskId })
+          removeEntry(entry.taskId)
+          message.success('已撤销提交，原给分已保留为草稿')
+          onSuccess?.(task)
+          return task
+        } catch (error) {
+          lastError = error
+          const canRetry = isWithdrawScoreConfirmLockConflict(error)
+            && attempt < WITHDRAW_LOCK_RETRY_DELAYS_MS.length
+          if (!canRetry) {
+            break
+          }
+          message.info('成绩确认处理中，正在重试撤回…')
+          await sleep(WITHDRAW_LOCK_RETRY_DELAYS_MS[attempt])
+        }
+      }
+      showUserError(lastError, '撤销提交失败')
+      return null
+    } finally {
+      const next = new Set(withdrawingTaskIds.value)
+      next.delete(entry.taskId)
+      withdrawingTaskIds.value = next
+    }
   }
 
   async function withdrawLatest(

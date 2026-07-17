@@ -68,6 +68,8 @@ export interface SignalMetric {
   clickable?: boolean
   /** 为 true 时高亮当前 KPI 筛选态 */
   active?: boolean
+  /** 可选 spark 序列（仅绑 Live 趋势字段，禁止编造） */
+  sparkValues?: number[]
 }
 
 // ─── 任务结果面板（TaskResultPanel）──────────────────────

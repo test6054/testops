@@ -19,8 +19,8 @@
         </template>
         <template #actions>
           <UiButton
-            v-if="abnormalAttentionCount > 0"
             size="sm"
+            v-if="abnormalAttentionCount > 0"
             variant="primary"
             @click="jumpToAbnormalTab"
           >
@@ -43,7 +43,6 @@
 
     <template v-if="selectedExamId" #signal>
       <SignalBand
-        variant="tiles"
         :metrics="scanMonitorSignalMetrics"
         compact
         class="scan-monitor__stats"
@@ -51,7 +50,7 @@
       />
     </template>
 
-    <UiEmpty v-if="!selectedExamId" description="未进入考试工作台" class="scan-monitor__empty" />
+    <ExamSelectGateStrip v-if="!selectedExamId" class="scan-monitor__empty" body="请先选择考试后再查看扫描运营与异常队列" />
     <template v-else>
       <ExamWorkspaceJourneySubNav />
 
@@ -73,7 +72,7 @@
         class="scan-monitor__signal-band"
       >
         <template v-if="scanMonitorSignalActionLabel" #actions>
-          <UiButton size="sm" variant="primary" @click="handleScanMonitorSignalAction">
+          <UiButton size="sm" variant="outline" @click="handleScanMonitorSignalAction">
             {{ scanMonitorSignalActionLabel }}
           </UiButton>
         </template>
@@ -150,7 +149,7 @@
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'batchNo'">
-                  <a-typography-text strong :content="record.batchNo" />
+                  <UiTypographyText strong :content="record.batchNo" />
                   <div v-if="record.batchExternalNo" class="scan-monitor__hint">
                     {{ record.batchExternalNo }}
                   </div>
@@ -255,7 +254,7 @@
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'diagnostic'">
-                  <a-typography-text
+                  <UiTypographyText
                     :content="scanAttentionDiagnosticText(record.diagnostic)"
                     :ellipsis="{ tooltip: true }"
                   />
@@ -287,7 +286,7 @@
         @close="bindDrawerOpen = false"
         @confirm="handleBind"
       >
-        <a-form ref="bindFormRef" :model="bindForm" :rules="bindFormRules" layout="vertical">
+        <UiForm ref="bindFormRef" :model="bindForm" :rules="bindFormRules" layout="vertical">
           <section class="scan-monitor__identity-evidence">
             <div class="scan-monitor__identity-evidence-header">
               <div>
@@ -317,11 +316,12 @@
                   :watermark-lines="watermarkLines"
                   :min-height="220"
                   caption="手写身份区切片"
-                  empty-text="当前没有可展示的内容"
+                  empty-text="暂无手写身份区切片"
                 />
                 <UiEmpty
+                  size="sm"
                   v-else
-                  description="当前没有可展示的内容"
+                  description="暂无手写身份区切片"
                   class="scan-monitor__identity-empty"
                 />
               </div>
@@ -341,62 +341,71 @@
                   :watermark-lines="watermarkLines"
                   :min-height="220"
                   caption="原始扫描页"
-                  empty-text="当前没有可展示的内容"
+                  empty-text="暂无源页影像"
                 />
                 <UiEmpty
+                  size="sm"
                   v-else
-                  description="当前没有可展示的内容"
+                  description="暂无源页影像"
                   class="scan-monitor__identity-empty"
                 />
               </div>
             </div>
           </section>
-          <a-form-item label="扫描批次">
-            <a-input :value="bindForm.scanBatchDisplayName" disabled />
-          </a-form-item>
-          <a-form-item label="答卷">
-            <a-input :value="bindForm.paperDisplayName" disabled />
-          </a-form-item>
-          <a-form-item label="识别学号（可选，留空表示未能识别）" name="recognizedStudentNo">
-            <a-input
-              v-model:value="bindForm.recognizedStudentNo"
+          <UiFormItem label="扫描批次">
+            <UiInput
+              size="sm" :value="bindForm.scanBatchDisplayName" disabled
+            />
+          </UiFormItem>
+          <UiFormItem label="答卷">
+            <UiInput
+              size="sm" :value="bindForm.paperDisplayName" disabled
+            />
+          </UiFormItem>
+          <UiFormItem label="识别学号（可选，留空表示未能识别）" name="recognizedStudentNo">
+            <UiInput
+              size="sm"
+              v-model="bindForm.recognizedStudentNo"
               placeholder="文字识别或二维码识别到的学号线索，供后续审计使用"
               :maxlength="64"
             />
-          </a-form-item>
-          <a-form-item label="正确考生（从当前考试名册选择）" name="confirmedCandidateRosterId">
-            <a-select
-              v-model:value="bindForm.confirmedCandidateRosterId"
+          </UiFormItem>
+          <UiFormItem label="正确考生（从当前考试名册选择）" name="confirmedCandidateRosterId">
+            <UiSelect
+              size="sm"
+              v-model="bindForm.confirmedCandidateRosterId"
               placeholder="按姓名或学号搜索"
-              show-search
+              allow-search
               :options="candidateOptions"
               :filter-option="false"
               :loading="candidatesLoading"
               allow-clear
               @search="searchBindCandidates"
             />
-          </a-form-item>
-          <a-row :gutter="16">
-            <a-col :span="12">
-              <a-form-item label="答卷状态" name="attemptStatus">
-                <a-select
-                  v-model:value="bindForm.attemptStatus"
+          </UiFormItem>
+          <UiRow :gutter="16">
+            <UiCol :span="12">
+              <UiFormItem label="答卷状态" name="attemptStatus">
+                <UiSelect
+                  size="sm"
+                  v-model="bindForm.attemptStatus"
                   placeholder="选择答卷状态"
                   :options="BINDABLE_ATTEMPT_STATUS_OPTIONS"
                 />
-              </a-form-item>
-            </a-col>
-            <a-col :span="12">
-              <a-form-item label="答卷编号（可选）">
-                <a-input
-                  v-model:value="bindForm.attemptNo"
+              </UiFormItem>
+            </UiCol>
+            <UiCol :span="12">
+              <UiFormItem label="答卷编号（可选）">
+                <UiInput
+                  size="sm"
+                  v-model="bindForm.attemptNo"
                   placeholder="多试卷时区分"
                   :maxlength="32"
                 />
-              </a-form-item>
-            </a-col>
-          </a-row>
-        </a-form>
+              </UiFormItem>
+            </UiCol>
+          </UiRow>
+        </UiForm>
       </UiDrawer>
 
       <!-- 批量身份绑定抽屉 -->
@@ -417,7 +426,7 @@
               :key="item.paperInstanceId"
               class="scan-monitor__batch-failure"
             >
-              <a-typography-text
+              <UiTypographyText
                 strong
                 :content="batchBindRowDisplayNameMap.get(item.paperInstanceId)"
               />
@@ -428,23 +437,25 @@
         <div class="scan-monitor__batch-list">
           <div v-for="row in batchBindRows" :key="row.attentionId" class="scan-monitor__batch-row">
             <div class="scan-monitor__batch-main">
-              <a-typography-text strong :content="row.paperDisplayName" />
+              <UiTypographyText strong :content="row.paperDisplayName" />
               <span class="scan-monitor__hint">{{ row.scanBatchDisplayName }}</span>
               <span v-if="row.diagnostic" class="scan-monitor__batch-diagnostic">
                 {{ scanAttentionDiagnosticText(row.diagnostic) }}
               </span>
             </div>
             <div class="scan-monitor__batch-form">
-              <a-input
-                v-model:value="row.recognizedStudentNo"
+              <UiInput
+                size="sm"
+                v-model="row.recognizedStudentNo"
                 placeholder="识别学号"
                 :maxlength="64"
                 class="scan-monitor__batch-input"
               />
-              <a-select
-                v-model:value="row.confirmedCandidateRosterId"
+              <UiSelect
+                size="sm"
+                v-model="row.confirmedCandidateRosterId"
                 placeholder="选择正确考生"
-                show-search
+                allow-search
                 :options="candidateOptions"
                 :filter-option="false"
                 :loading="candidatesLoading"
@@ -452,14 +463,16 @@
                 allow-clear
                 @search="searchBindCandidates"
               />
-              <a-select
-                v-model:value="row.attemptStatus"
+              <UiSelect
+                size="sm"
+                v-model="row.attemptStatus"
                 placeholder="作答状态"
                 :options="BINDABLE_ATTEMPT_STATUS_OPTIONS"
                 class="scan-monitor__batch-attempt-status"
               />
-              <a-input
-                v-model:value="row.attemptNo"
+              <UiInput
+                size="sm"
+                v-model="row.attemptNo"
                 placeholder="答卷编号（可选）"
                 :maxlength="32"
                 class="scan-monitor__batch-attempt-no"
@@ -478,40 +491,40 @@
         @update:open="(v: boolean) => (detailDrawerOpen = v)"
         @close="detailDrawerOpen = false"
       >
-        <a-descriptions v-if="detailRecord" :column="1" size="small" bordered>
-          <a-descriptions-item label="异常类型">
+        <UiDescriptions v-if="detailRecord" :column="1" size="small" bordered>
+          <UiDescriptionsItem label="异常类型">
             {{ attentionTypeLabel(detailRecord.attentionType) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="状态">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="状态">
             {{ scanAttentionStatusLabel(detailRecord) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="来源">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="来源">
             {{ sourceTypeLabel(detailRecord.sourceType) }}
-          </a-descriptions-item>
-          <a-descriptions-item label="来源说明">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="来源说明">
             {{ detailRecord.sourceDisplayName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="扫描批次">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="扫描批次">
             {{ detailRecord.scanBatchDisplayName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="答题卡">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="答题卡">
             {{ detailRecord.paperDisplay.primaryText }}
-          </a-descriptions-item>
-          <a-descriptions-item label="扫描页">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="扫描页">
             {{ detailRecord.pageDisplayName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="题目">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="题目">
             {{ detailRecord.questionDisplayName }}
-          </a-descriptions-item>
-          <a-descriptions-item label="处理说明">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="处理说明">
             <div class="scan-monitor__diagnostic-text">
               {{ scanAttentionDiagnosticText(detailRecord.diagnostic) }}
             </div>
-          </a-descriptions-item>
-          <a-descriptions-item label="更新时间">
+          </UiDescriptionsItem>
+          <UiDescriptionsItem label="更新时间">
             {{ formatDateTimeWithSeconds(detailRecord.updateTime) }}
-          </a-descriptions-item>
-        </a-descriptions>
+          </UiDescriptionsItem>
+        </UiDescriptions>
       </UiDrawer>
 
       <UiDrawer
@@ -521,25 +534,26 @@
         hide-footer
         @close="closePageDiscardModal"
       >
-        <a-form layout="vertical">
-          <a-form-item
+        <UiForm layout="vertical">
+          <UiFormItem
             label="废弃原因"
             required
             :validate-status="pageDiscardReasonError ? 'error' : undefined"
             :help="pageDiscardReasonError"
           >
-            <a-textarea
-              v-model:value="pageDiscardReason"
+            <UiTextarea
+              size="sm"
+              v-model="pageDiscardReason"
               placeholder="请输入废弃原因（必填，1-255 字）"
               :maxlength="255"
-              show-count
+              :show-count="true"
               :rows="4"
             />
-          </a-form-item>
-        </a-form>
+          </UiFormItem>
+        </UiForm>
         <template #footer>
-          <UiButton variant="outline" @click="closePageDiscardModal">取消</UiButton>
-          <UiButton status="danger" :loading="Boolean(pageDiscarding)" @click="confirmDiscardPage">
+          <UiButton size="sm" variant="outline" @click="closePageDiscardModal">取消</UiButton>
+          <UiButton size="sm" status="danger" :loading="Boolean(pageDiscarding)" @click="confirmDiscardPage">
             废弃
           </UiButton>
         </template>
@@ -610,15 +624,25 @@ import ScanImageStage from '@/components/mark/ScanImageStage.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
+import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -1746,6 +1770,9 @@ async function confirmDiscardPage(): Promise<void> {
     closePageDiscardModal()
     return
   }
+  if (pageDiscarding.value) {
+    return
+  }
   const trimmed = pageDiscardReason.value.trim()
   if (!trimmed) {
     pageDiscardReasonError.value = '废弃原因不能为空'
@@ -1992,6 +2019,9 @@ function openBindDrawer(record: ScanAttentionItemResponse): void {
 async function handleBind(): Promise<void> {
   if (!selectedExamId.value) return
   if (!bindFormRef.value) return
+  if (binding.value) {
+    return
+  }
   if (bindIdentityEvidenceBlockReason.value) {
     message.warning(bindIdentityEvidenceBlockReason.value)
     return
@@ -2070,7 +2100,7 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
       disabled: !record.scanBatchId,
     })
     if (record.paperInstanceId && record.scanBatchId) {
-      actions.push({ key: 'supplement', label: '去补扫', tone: 'primary' })
+      actions.push({ key: 'supplement', label: '去补扫' })
     }
   } else if (record.attentionType === ScanAttentionTypeCode.RECOGNITION_REVIEW) {
     actions.push({ key: 'review', label: '文字识别/智能复核', tone: 'primary' })
@@ -2082,7 +2112,7 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
   ) {
     actions.push({ key: 'dispose', label: '查看处置', tone: 'primary' })
     if (record.paperInstanceId && record.scanBatchId) {
-      actions.push({ key: 'supplement', label: '去补扫', tone: 'primary' })
+      actions.push({ key: 'supplement', label: '去补扫' })
     }
   }
   if (record.sourceType === ScanAttentionSourceTypeCode.SCANNED_PAGE && record.pageId) {
@@ -2227,6 +2257,9 @@ function closeBatchBindDrawer(): void {
 async function submitBatchBind(): Promise<void> {
   if (!selectedExamId.value) {
     message.error('请先选择考试')
+    return
+  }
+  if (batchBinding.value) {
     return
   }
   if (batchBindRows.value.length === 0) {
@@ -2492,7 +2525,7 @@ onBeforeUnmount(() => {
     display: flex;
     flex-direction: column;
     gap: var(--dp-space-4);
-    padding: var(--dp-space-4) var(--dp-space-5) var(--dp-space-5);
+    padding: var(--dp-space-3) var(--dp-space-4) var(--dp-space-4);
   }
 
   &__status-tabs {
@@ -2508,7 +2541,7 @@ onBeforeUnmount(() => {
 
   &__normal-panel,
   &__attention-panel {
-    min-height: 280px;
+    min-height: 120px;
   }
 
   @media (max-width: 900px) {
@@ -2520,8 +2553,8 @@ onBeforeUnmount(() => {
   &__panel {
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: var(--dp-radius-panel);
+    padding: var(--dp-space-3, 12px);
   }
 
   &__panel-header {
@@ -2558,7 +2591,7 @@ onBeforeUnmount(() => {
   }
 
   &__empty {
-    padding: 60px 0;
+    padding: var(--dp-space-3, 12px) 0;
   }
 
   &__source-cell {
@@ -2583,11 +2616,11 @@ onBeforeUnmount(() => {
   &__identity-evidence {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-bottom: 16px;
-    padding: 16px;
+    gap: var(--dp-space-2, 8px);
+    margin-bottom: var(--dp-space-3, 12px);
+    padding: var(--dp-space-3, 12px);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     background: var(--dp-surface-subtle);
   }
 
@@ -2639,9 +2672,9 @@ onBeforeUnmount(() => {
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    min-height: 200px;
-    max-height: 360px;
-    padding: 12px;
+    min-height: 120px;
+    max-height: 280px;
+    padding: var(--dp-space-2, 8px);
     border: 1px solid var(--scan-canvas-border);
     border-radius: 6px;
     background: var(--scan-canvas-bg);
@@ -2654,12 +2687,12 @@ onBeforeUnmount(() => {
     height: auto;
     max-height: 336px;
     object-fit: contain;
-    background: var(--ant-color-bg-container);
-    box-shadow: var(--scan-paper-shadow, 0 6px 24px rgba(15, 23, 42, 0.12));
+    background: var(--dp-bg-container);
+    box-shadow: var(--scan-paper-shadow, var(--dp-shadow-md));
   }
 
   &__identity-empty {
-    padding: 16px 0;
+    padding: var(--dp-space-3, 12px) 0;
     background: var(--dp-surface);
     border: 1px dashed var(--dp-border);
     border-radius: 6px;
@@ -2674,10 +2707,10 @@ onBeforeUnmount(() => {
   &__batch-row {
     display: grid;
     grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.4fr);
-    gap: 16px;
-    padding: 12px;
+    gap: var(--dp-space-3, 12px);
+    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);
   }
 

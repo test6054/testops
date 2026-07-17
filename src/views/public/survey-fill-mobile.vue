@@ -423,24 +423,24 @@ async function handleSubmit() {
    参考问卷星移动端设计语言
    ============================================================ */
 .m-survey {
-  --survey-page-bg: var(--ant-color-bg-layout);
-  --survey-border: var(--ant-color-border-secondary);
-  --survey-border-light: var(--ant-color-border-secondary);
-  --survey-surface: var(--ant-color-bg-container);
-  --survey-surface-muted: var(--ant-color-fill-quaternary);
+  --survey-page-bg: var(--dp-bg-layout);
+  --survey-border: var(--dp-border-subtle);
+  --survey-border-light: var(--dp-border-subtle);
+  --survey-surface: var(--dp-bg-container);
+  --survey-surface-muted: var(--dp-fill-quaternary);
   --survey-text: var(--dp-text-primary);
   --survey-text-secondary: var(--dp-text-secondary);
   --survey-text-muted: var(--dp-text-tertiary);
-  --survey-text-placeholder: var(--ant-color-text-quaternary);
-  --survey-warning-bg: var(--ant-color-warning-bg);
-  --survey-warning-text: var(--ant-color-warning);
-  --survey-success-bg: var(--ant-color-success-bg);
-  --survey-success-text: var(--ant-color-success);
-  --survey-danger: var(--ant-color-error);
-  --survey-on-primary: var(--ant-color-text-light-solid);
-  --survey-primary: var(--ant-color-primary);
-  --survey-primary-bg: var(--ant-color-primary-bg);
-  --survey-primary-border: var(--ant-color-primary-border);
+  --survey-text-placeholder: var(--dp-text-quaternary);
+  --survey-warning-bg: var(--dp-warning-bg);
+  --survey-warning-text: var(--dp-warning);
+  --survey-success-bg: var(--dp-success-bg);
+  --survey-success-text: var(--dp-success);
+  --survey-danger: var(--dp-error);
+  --survey-on-primary: var(--dp-text-light-solid);
+  --survey-primary: var(--dp-color-primary);
+  --survey-primary-bg: var(--dp-color-primary-bg);
+  --survey-primary-border: var(--dp-color-primary-border);
 
   min-height: 100vh;
   min-height: 100dvh;
@@ -460,7 +460,7 @@ async function handleSubmit() {
   justify-content: center;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 32px 24px;
+  padding: 24px 20px;
   text-align: center;
 }
 
@@ -488,7 +488,7 @@ async function handleSubmit() {
   justify-content: center;
   font-size: 28px;
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: var(--dp-space-3, 12px);
 }
 
 .m-survey__icon--warn {
@@ -535,7 +535,7 @@ async function handleSubmit() {
 }
 
 .m-survey__cover-header {
-  padding: 48px 24px 0;
+  padding: 28px 20px 0;
   text-align: center;
 }
 
@@ -556,7 +556,7 @@ async function handleSubmit() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 32px 28px;
+  padding: 24px 20px;
   text-align: center;
 }
 
@@ -604,7 +604,7 @@ async function handleSubmit() {
 }
 
 .m-survey__cover-action {
-  padding: 24px 28px 48px;
+  padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) var(--dp-space-8, 32px);
   text-align: center;
 }
 
@@ -619,7 +619,7 @@ async function handleSubmit() {
 
 .m-survey__page-body {
   flex: 1;
-  padding: 24px 20px 100px;
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) 88px;
 }
 
 .m-survey__page-title {
@@ -704,7 +704,7 @@ async function handleSubmit() {
 .m-survey__identity-icon {
   text-align: center;
   color: var(--survey-primary);
-  margin-top: 40px;
+  margin-top: var(--dp-space-5, 20px);
 }
 
 .m-survey__field {
@@ -735,7 +735,7 @@ async function handleSubmit() {
 
   &:focus {
     border-color: var(--survey-primary);
-    box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
+    box-shadow: 0 0 0 3px var(--dp-focus-ring);
   }
 
   &::placeholder {
@@ -834,7 +834,7 @@ async function handleSubmit() {
   border-color: var(--survey-primary);
   background: var(--survey-primary);
   color: var(--survey-on-primary);
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.25);
+  box-shadow: var(--dp-shadow-sm));
   transform: scale(1.05);
 }
 
@@ -918,9 +918,9 @@ async function handleSubmit() {
 
 .m-survey__textarea {
   width: 100%;
-  padding: 16px;
+  padding: var(--dp-space-3, 12px);
   border: 1.5px solid var(--survey-border);
-  border-radius: 12px;
+  border-radius: var(--dp-radius-panel);
   font-size: 16px;
   color: var(--survey-text);
   background: var(--survey-surface);
@@ -933,7 +933,7 @@ async function handleSubmit() {
 
   &:focus {
     border-color: var(--survey-primary);
-    box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.12);
+    box-shadow: 0 0 0 3px var(--dp-focus-ring);
   }
 
   &::placeholder {
@@ -988,13 +988,13 @@ async function handleSubmit() {
 .m-survey__btn--primary {
   background: var(--survey-primary);
   color: var(--survey-on-primary);
-  box-shadow: 0 4px 14px rgba(22, 119, 255, 0.25);
+  box-shadow: var(--dp-shadow-sm));
 }
 
 .m-survey__btn--submit {
-  background: var(--ant-color-success);
+  background: var(--dp-success);
   color: var(--survey-on-primary);
-  box-shadow: 0 4px 14px rgba(82, 196, 26, 0.25);
+  box-shadow: var(--dp-shadow-sm));
 }
 
 .m-survey__btn--ghost {

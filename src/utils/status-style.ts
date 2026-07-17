@@ -13,39 +13,39 @@ export interface StatusStyle {
 
 export const STATUS_VARIANT_STYLES: Record<StatusVariant, StatusStyle> = {
   neutral: {
-    bgColor: 'var(--ant-color-fill-secondary)',
-    textColor: 'var(--ant-color-text-secondary)',
-    borderColor: 'var(--ant-color-border-secondary)',
+    bgColor: 'var(--dp-fill-secondary)',
+    textColor: 'var(--dp-text-secondary)',
+    borderColor: 'var(--dp-border-subtle)',
   },
   info: {
-    bgColor: 'var(--ant-color-primary-bg)',
-    textColor: 'var(--ant-color-primary)',
-    borderColor: 'var(--ant-color-primary-border)',
+    bgColor: 'var(--dp-blue-50)',
+    textColor: 'var(--dp-color-primary)',
+    borderColor: 'var(--dp-blue-200)',
   },
   pending: {
-    bgColor: 'var(--ant-color-warning-bg)',
-    textColor: 'var(--ant-color-warning)',
-    borderColor: 'var(--ant-color-warning-hover)',
+    bgColor: 'var(--dp-warning-bg)',
+    textColor: 'var(--dp-warning)',
+    borderColor: 'var(--dp-warning-hover)',
   },
   success: {
-    bgColor: 'var(--ant-color-success-bg)',
-    textColor: 'var(--ant-color-success)',
-    borderColor: 'var(--ant-color-success-border)',
+    bgColor: 'var(--dp-success-bg)',
+    textColor: 'var(--dp-success)',
+    borderColor: 'var(--dp-green-200)',
   },
   warning: {
-    bgColor: 'var(--ant-color-warning-bg)',
-    textColor: 'var(--ant-color-warning)',
-    borderColor: 'var(--ant-color-warning-hover)',
+    bgColor: 'var(--dp-warning-bg)',
+    textColor: 'var(--dp-warning)',
+    borderColor: 'var(--dp-warning-hover)',
   },
   danger: {
-    bgColor: 'var(--ant-color-error-bg)',
-    textColor: 'var(--ant-color-error)',
-    borderColor: 'var(--ant-color-error-border)',
+    bgColor: 'var(--dp-error-bg)',
+    textColor: 'var(--dp-danger)',
+    borderColor: 'var(--dp-error-border)',
   },
   purple: {
-    bgColor: 'var(--ant-color-primary-bg)',
-    textColor: 'var(--ant-color-primary-hover)',
-    borderColor: 'var(--ant-color-primary-border-hover)',
+    bgColor: 'var(--dp-blue-50)',
+    textColor: 'var(--dp-color-primary-hover)',
+    borderColor: 'var(--dp-border-hover)',
   },
 }
 
