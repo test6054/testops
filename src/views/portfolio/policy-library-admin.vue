@@ -6,7 +6,7 @@ import type {
   PortfolioPolicyDocumentVO,
   PortfolioPolicyIndicatorMappingVO,
 } from '@/apis/portfolio/policy'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -520,7 +520,7 @@ onMounted(() => {
     <UiCard>
       <div class="policy-admin__toolbar">
         <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
-        <UiButton size="sm" :disabled="writing" @click="openCreate"> 新建政策 </UiButton>
+        <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate"> 新建政策 </UiButton>
       </div>
       <UiDataTable
         v-model:current="query.pageNum"
@@ -696,8 +696,8 @@ onMounted(() => {
             </UiButton>
           </div>
           <div class="policy-admin__mapping-actions">
-            <UiButton size="sm" :disabled="writing" @click="addMappingRow">新增映射</UiButton>
-            <UiButton size="sm" :loading="mappingSaving" :disabled="writing" @click="saveMappings">
+            <UiButton variant="primary" size="sm" :disabled="writing" @click="addMappingRow">新增映射</UiButton>
+            <UiButton size="sm" variant="primary" :loading="mappingSaving" :disabled="writing" @click="saveMappings">
               保存映射
             </UiButton>
           </div>

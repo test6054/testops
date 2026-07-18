@@ -58,7 +58,7 @@
     <ExamSelectGateStrip v-if="!selectedExamId" class="quality-dashboard__empty" />
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" variant="panel" compact />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="selectedExamId && isExamWorkspaceRoute" />
@@ -464,6 +464,7 @@
                 查询最新
               </UiButton>
               <UiButton
+                variant="primary"
                 size="sm"
                 :disabled="!scopeValid"
                 :loading="snapshotting"
@@ -580,6 +581,7 @@
           </template>
           <template #toolbar>
             <UiButton
+              variant="primary"
               size="sm"
               :disabled="!scopeValid"
               :loading="refreshing"
@@ -698,6 +700,7 @@
             </UiFormItem>
             <UiFormItem>
               <UiButton
+                variant="primary"
                 size="sm"
                 :loading="creatingSpot"
                 :disabled="!scopeValid || !spotForm.sampleRate"

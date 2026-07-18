@@ -5,7 +5,7 @@ import type {
   PortfolioEthicsReviewLogVO,
   PortfolioEthicsSanctionVO,
 } from '@/apis/portfolio/ethics-sanction'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -394,7 +394,7 @@ onMounted(() => {
         subtitle="登记处分、期满复核；约束结果按有效状态实时生效"
       >
         <template #actions>
-          <UiButton size="sm" @click="openCreate"> 登记处分 </UiButton>
+          <UiButton size="sm" variant="primary" @click="openCreate"> 登记处分 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -471,6 +471,7 @@ onMounted(() => {
               <UiButton
                 v-if="record.sanctionStatus === 'PENDING_REVIEW'"
                 size="sm"
+                variant="primary"
                 @click="openReview(record)"
               >
                 复核
@@ -508,7 +509,7 @@ onMounted(() => {
       </div>
       <template #footer>
         <UiButton size="sm" variant="soft" @click="editorOpen = false"> 取消 </UiButton>
-        <UiButton size="sm" :loading="saving" @click="saveSanction"> 保存 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="saving" @click="saveSanction"> 保存 </UiButton>
       </template>
     </UiDrawer>
 
@@ -530,7 +531,7 @@ onMounted(() => {
       </div>
       <template #footer>
         <UiButton size="sm" variant="soft" @click="reviewOpen = false"> 取消 </UiButton>
-        <UiButton size="sm" :loading="reviewing" @click="submitReview"> 提交结论 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="reviewing" @click="submitReview"> 提交结论 </UiButton>
       </template>
     </UiDrawer>
 

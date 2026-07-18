@@ -29,7 +29,7 @@ import type {
   WorkbenchStage,
 } from '@/types/workbench'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
 import { downloadFile } from '@/apis/edu/file-management'
@@ -1045,7 +1045,7 @@ onMounted(async () => {
 <template>
   <QualityIngestPageShell embedded>
     <template #context>
-      <QualityPageContextBar>
+      <QualityPageContextBar show-title title="成绩 Excel 导入">
         <template #actions>
           <UiButton
             variant="outline"
@@ -1068,7 +1068,7 @@ onMounted(async () => {
 
     <template v-else>
       <StageRail :stages="stages" compact class="score-batch__stages" />
-      <SignalBand :metrics="signals" compact class="score-batch__signals" />
+      <SignalBand :metrics="signals" variant="panel" compact class="score-batch__signals" />
 
       <TaskResultPanel
         v-if="batchResultItems.length > 0"

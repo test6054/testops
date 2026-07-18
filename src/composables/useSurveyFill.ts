@@ -1,5 +1,5 @@
 import type { PublicSurveyItemVO, PublicSurveyVO } from '@/apis/public-survey'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 /**
  * 公开问卷填写共享逻辑。
  * 供移动端（一题一页）和 PC 端（全页展示）共用。

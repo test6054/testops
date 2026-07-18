@@ -330,6 +330,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
   padding: var(--dp-space-2) var(--dp-space-3);
+  box-shadow: var(--dp-shadow-xs);
 }
 
 .dp-filter-bar--plain {

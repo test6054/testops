@@ -49,6 +49,7 @@
     <template #signal>
       <SignalBand
         compact
+        variant="panel"
         :metrics="summarySignalMetrics"
         @metric-click="handleSummaryMetricClick"
       />
@@ -97,10 +98,8 @@
       <UiEmpty
         size="sm"
         v-if="listLoadFailed"
-        description="考试列表加载失败"
-        action-label="重试"
+        title="加载失败"
         class="exam-list-page__empty"
-        @action="() => reloadListAndCounts()"
       />
       <UiEmpty
         size="sm"
@@ -352,7 +351,7 @@
     </UiForm>
     <template #footer>
       <UiButton size="sm" variant="outline" :disabled="saving" @click="formModalOpen = false">取消</UiButton>
-      <UiButton size="sm" :loading="saving" :disabled="editDetailLoading" @click="handleSave">保存</UiButton>
+      <UiButton size="sm" variant="primary" :loading="saving" :disabled="editDetailLoading" @click="handleSave">保存</UiButton>
     </template>
   </UiDrawer>
 </template>
@@ -1565,10 +1564,11 @@ onActivated(() => {
   display: flex;
   align-items: center;
   width: 100%;
+  min-height: 36px;
 }
 
 .exam-list-page__empty {
-  padding: var(--dp-space-4) var(--dp-space-3);
+  padding: var(--dp-space-6) var(--dp-space-4);
 }
 
 .exam-list-page__exam-name-cell {
@@ -1602,7 +1602,13 @@ onActivated(() => {
 }
 
 .exam-list-page__exam-name--link {
-  color: var(--dp-color-primary);
+  color: var(--dp-text-primary);
+  font-weight: 500;
+  transition: color var(--dp-duration-fast) ease;
+
+  &:hover {
+    color: var(--dp-color-primary);
+  }
 }
 
 .exam-list-page__exam-no {

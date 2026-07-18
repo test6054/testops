@@ -113,8 +113,8 @@
       <div class="portfolio-onboarding-wizard__actions">
         <UiButton size="sm" variant="ghost" @click="handleDismiss"> 稍后继续 </UiButton>
         <UiButton size="sm" v-if="currentStep > 1" variant="outline" @click="prevStep"> 上一步 </UiButton>
-        <UiButton size="sm" v-if="currentStep < totalSteps" @click="nextStep"> 下一步 </UiButton>
-        <UiButton size="sm" v-else :loading="completing" @click="handleComplete">
+        <UiButton variant="primary" size="sm" v-if="currentStep < totalSteps" @click="nextStep"> 下一步 </UiButton>
+        <UiButton variant="primary" size="sm" v-else :loading="completing" @click="handleComplete">
           启用我的教学档案袋
         </UiButton>
       </div>
@@ -131,7 +131,7 @@ import type {
   PortfolioTeacherOnboardingReviewContentVO,
   PortfolioTeacherOnboardingStateVO,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'

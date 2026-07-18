@@ -1,14 +1,14 @@
 <template>
   <StageWorkbenchShell class="printer-management-page">
     <template #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="扫描设备">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
           </UiTag>
         </template>
         <template #actions>
-          <UiButton size="sm" @click="handleCreate">
+          <UiButton size="sm" variant="primary" @click="handleCreate">
             <template #icon><PlusOutlined /></template>
             新增设备
           </UiButton>
@@ -17,7 +17,7 @@
     </template>
 
     <template #signal>
-      <SignalBand compact :metrics="deviceSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="deviceSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav />

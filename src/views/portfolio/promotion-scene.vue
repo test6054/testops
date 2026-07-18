@@ -8,7 +8,7 @@ import type {
 } from '@/apis/portfolio/title-promotion'
 import type { PortfolioArchiveCategoryTreeNodeVO, PortfolioArchiveRecordSummaryVO } from '@/apis/portfolio/types'
 import type { PortfolioTitleJobCategoryCode } from '@/types/enums/portfolio-title-job-category-enum'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
@@ -572,7 +572,14 @@ usePortfolioScopedLoader(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar layout="workbench" title="职称申报" :subtitle="selectedTask ? selectedTask.taskName : undefined" />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="职称申报"
+        :subtitle="selectedTask ? selectedTask.taskName : undefined"
+      />
+    </template>
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
     <template v-else>
       <p class="promotion-scene__select-hint">
@@ -580,17 +587,17 @@ usePortfolioScopedLoader(async () => {
         <button type="button" class="promotion-scene__select-link" @click="goMasterpiecePreview">预览代表作</button>
       </p>
 
-      <div class="grid gap-4 lg:grid-cols-2">
+      <div class="promotion-scene__grid promotion-scene__grid--2col">
         <UiCard title="申报配置">
-          <div class="flex flex-col gap-3">
-            <label class="text-sm text-[var(--dp-text-secondary)]">申报任务</label>
+          <div class="promotion-scene__stack">
+            <label class="promotion-scene__label">申报任务</label>
             <UiSelect
               v-model="selectedTaskId"
               size="sm"
               :options="taskOptions"
               placeholder="请选择已发布任务"
             />
-            <label class="text-sm text-[var(--dp-text-secondary)]">申报路径</label>
+            <label class="promotion-scene__label">申报路径</label>
             <UiRadioGroup
               v-model="pathCode"
               size="sm"
@@ -598,7 +605,7 @@ usePortfolioScopedLoader(async () => {
               :options="pathCodeOptions"
             />
             <template v-if="jobRequired">
-              <label class="text-sm text-[var(--dp-text-secondary)]">岗位类型</label>
+              <label class="promotion-scene__label">岗位类型</label>
               <UiSelect
                 v-model="jobCategory"
                 size="sm"
@@ -627,7 +634,7 @@ usePortfolioScopedLoader(async () => {
             >
               申报已进入审核流程，当前展示提交时的核验与证据快照。退回补正后可继续编辑。
             </UiAlertStrip>
-            <div v-else class="flex flex-wrap gap-2">
+            <div v-else class="promotion-scene__actions">
               <UiButton size="sm" variant="outline" :loading="matchLoading" @click="previewMatch">
                 预览核验
               </UiButton>
@@ -650,10 +657,10 @@ usePortfolioScopedLoader(async () => {
         <TitlePromotionFlowPanel :flow="flowView" :loading="flowLoading" />
       </div>
 
-      <div class="mt-4 grid gap-4 lg:grid-cols-2">
+      <div class="promotion-scene__grid promotion-scene__grid--2col promotion-scene__grid--spaced">
         <UiCard title="核验结果">
           <template v-if="matchResult">
-            <div class="mb-3 flex flex-wrap gap-2 text-sm">
+            <div class="promotion-scene__tag-row">
               <UiTag v-if="applicationEditable" :tone="matchResult.canSubmit ? 'green' : 'red'">
                 {{ matchResult.canSubmit ? '可提交' : '不可提交' }}
               </UiTag>
@@ -669,18 +676,18 @@ usePortfolioScopedLoader(async () => {
               <UiTag :tone="matchResult.performancePass ? 'green' : 'orange'">
                 {{ matchResult.performancePass ? '业绩规则通过' : '业绩规则未全部满足' }}
               </UiTag>
-              <span>匹配分 {{ matchResult.matchScore || '-' }}</span>
-              <span>材料 {{ matchResult.materialRate || '-' }}</span>
-              <span>业绩 {{ matchResult.performanceRate || '-' }}</span>
-              <span>硬门槛 {{ matchResult.hardRate || '-' }}</span>
+              <span class="promotion-scene__metric">匹配分 {{ matchResult.matchScore || '-' }}</span>
+              <span class="promotion-scene__metric">材料 {{ matchResult.materialRate || '-' }}</span>
+              <span class="promotion-scene__metric">业绩 {{ matchResult.performanceRate || '-' }}</span>
+              <span class="promotion-scene__metric">硬门槛 {{ matchResult.hardRate || '-' }}</span>
             </div>
-            <div class="flex flex-col gap-2">
+            <div class="promotion-scene__stack">
               <div
                 v-for="item in matchResult.criteriaResults || []"
                 :key="item.taskCriteriaId"
-                class="rounded border border-[var(--dp-border)] p-3"
+                class="promotion-scene__panel"
               >
-                <div class="mb-1 flex flex-wrap items-center gap-2">
+                <div class="promotion-scene__panel-head">
                   <strong>{{ item.criteriaTitle }}</strong>
                   <UiTag>
                     {{ strictEnumLabel(PortfolioTitleCriteriaGateKindDescription, item.gateKind, '门槛类型') }}
@@ -692,7 +699,7 @@ usePortfolioScopedLoader(async () => {
                     阻断提交
                   </UiTag>
                 </div>
-                <div class="text-xs text-[var(--dp-text-secondary)]">
+                <div class="dp-meta">
                   {{ strictEnumLabel(PortfolioTitleCriteriaCheckTypeDescription, item.checkType, '核验类型') }}
                   <span v-if="item.groupCode">
                     · 组 {{ item.groupCode }}
@@ -704,13 +711,13 @@ usePortfolioScopedLoader(async () => {
                     · 至少 {{ item.groupMinimumCount || 'N' }} 项
                   </span>
                 </div>
-                <div v-if="item.criteriaDescription" class="mt-1 text-sm">
+                <div v-if="item.criteriaDescription" class="promotion-scene__panel-desc">
                   {{ item.criteriaDescription }}
                 </div>
-                <div class="mt-1 text-sm">
+                <div class="promotion-scene__panel-body">
                   {{ item.evidenceSummary }}
                 </div>
-                <div v-if="item.gapHint" class="mt-1 text-sm text-[var(--dp-danger)]">
+                <div v-if="item.gapHint" class="promotion-scene__panel-gap">
                   {{ item.gapHint }}
                 </div>
               </div>
@@ -735,29 +742,29 @@ usePortfolioScopedLoader(async () => {
         </UiCard>
       </div>
 
-      <UiCard v-if="applicationEditable" class="mt-4" title="条件与证据绑定">
-        <div v-if="taskCriteria.length" class="flex flex-col gap-3">
+      <UiCard v-if="applicationEditable" class="promotion-scene__evidence-card" title="条件与证据绑定">
+        <div v-if="taskCriteria.length" class="promotion-scene__stack">
           <div
             v-for="criteria in taskCriteria"
             :key="criteria.id"
-            class="rounded border border-[var(--dp-border)] p-3"
+            class="promotion-scene__panel"
           >
-            <div class="mb-2 flex flex-wrap items-center gap-2">
+            <div class="promotion-scene__panel-head promotion-scene__panel-head--spaced">
               <strong>{{ criteria.criteriaTitle }}</strong>
               <UiTag>
                 {{ strictEnumLabel(PortfolioTitleCriteriaGateKindDescription, criteria.gateKind, '门槛类型') }}
               </UiTag>
-              <span class="text-xs text-[var(--dp-text-secondary)]">
+              <span class="dp-meta">
                 {{ strictEnumLabel(PortfolioTitleCriteriaCheckTypeDescription, criteria.checkType, '核验类型') }}
               </span>
               <UiTag v-if="criteria.autoEvaluable" tone="blue">
                 系统自动核验
               </UiTag>
             </div>
-            <div v-if="formatGroupHint(criteria)" class="mb-2 text-xs text-[var(--dp-text-secondary)]">
+            <div v-if="formatGroupHint(criteria)" class="dp-meta promotion-scene__group-hint">
               {{ formatGroupHint(criteria) }}
             </div>
-            <div v-if="criteria.criteriaDescription" class="mb-2 text-sm text-[var(--dp-text-secondary)]">
+            <div v-if="criteria.criteriaDescription" class="promotion-scene__panel-desc">
               {{ criteria.criteriaDescription }}
             </div>
             <UiSelect
@@ -779,7 +786,7 @@ usePortfolioScopedLoader(async () => {
               placeholder="填写人工确认说明（必填）"
               :disabled="!applicationEditable"
             />
-            <div v-else class="text-sm text-[var(--dp-text-secondary)]">
+            <div v-else class="promotion-scene__panel-desc">
               无需绑定档案，预览时将按系统事实自动核验
             </div>
           </div>
@@ -814,5 +821,99 @@ usePortfolioScopedLoader(async () => {
   cursor: pointer;
   padding: 0;
   font: inherit;
+}
+
+.promotion-scene__grid {
+  display: grid;
+  gap: var(--dp-space-4);
+}
+
+.promotion-scene__grid--2col {
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 1024px) {
+  .promotion-scene__grid--2col {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.promotion-scene__grid--spaced {
+  margin-top: var(--dp-space-4);
+}
+
+.promotion-scene__stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-3);
+}
+
+.promotion-scene__label {
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+
+.promotion-scene__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2);
+}
+
+.promotion-scene__tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-3);
+  font-size: var(--dp-font-size-sm);
+}
+
+.promotion-scene__metric {
+  color: var(--dp-text-secondary);
+}
+
+.promotion-scene__panel {
+  padding: var(--dp-space-3);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control);
+}
+
+.promotion-scene__panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-1);
+}
+
+.promotion-scene__panel-head--spaced {
+  margin-bottom: var(--dp-space-2);
+}
+
+.promotion-scene__panel-desc,
+.promotion-scene__panel-body {
+  margin-top: var(--dp-space-1);
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+
+.promotion-scene__panel-gap {
+  margin-top: var(--dp-space-1);
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-danger);
+}
+
+.promotion-scene__group-hint {
+  margin-bottom: var(--dp-space-2);
+}
+
+.promotion-scene__evidence-card {
+  margin-top: var(--dp-space-4);
+}
+
+.promotion-scene__gate-row {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
 }
 </style>

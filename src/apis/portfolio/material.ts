@@ -1,8 +1,10 @@
 import type {
   PortfolioMaterialPageRequest,
+  PortfolioMaterialRefVO,
   PortfolioMaterialSaveRequest,
   PortfolioMaterialSearchRequest,
   PortfolioMaterialSearchResponse,
+  PortfolioMaterialVersionVO,
   PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
@@ -19,4 +21,9 @@ export const portfolioMaterialApi = {
   delete: (id: string) => http.post<void>(`${BASE}/delete`, { id }),
   searchOcr: (data: PortfolioMaterialSearchRequest) =>
     http.post<PageResult<PortfolioMaterialSearchResponse>>(`${BASE}/search-ocr`, data),
+  listVersions: (id: string) =>
+    http.post<PortfolioMaterialVersionVO[]>(`${BASE}/version/list`, { id }),
+  listRefs: (id: string) =>
+    http.post<PortfolioMaterialRefVO[]>(`${BASE}/ref/list`, { id }),
+  voidForFuture: (id: string) => http.post<void>(`${BASE}/void`, { id }),
 }

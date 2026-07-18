@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PfEligibilityRuleTreeNodeDto } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { onMounted, ref } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {

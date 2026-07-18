@@ -1,5 +1,5 @@
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { parseSemesterCode } from '@/types/enums/semester-enum'
 
 /** 与后端 BizException(PARAM_ERROR) 文案一致 */

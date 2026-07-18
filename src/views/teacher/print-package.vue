@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="print-package-page">
     <template v-if="selectedExamId" #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="印刷包">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -10,6 +10,7 @@
         <template #actions>
           <UiTooltip v-if="printPackageApplicable" :title="generateDisabledReason">
             <UiButton
+              variant="primary"
               size="sm"
               :loading="generating"
               :disabled="generateBlocked"
@@ -30,7 +31,7 @@
     />
 
     <template v-if="selectedExamId && printPackageApplicable" #signal>
-      <SignalBand compact :metrics="packageSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="packageSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="print-package-page__empty" />

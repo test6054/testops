@@ -17,7 +17,7 @@
     </template>
 
     <template #signal>
-      <SignalBand compact :metrics="settingsSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="settingsSignalMetrics" />
     </template>
 
     <WorkbenchSurfaceCard flush class="archive-volume-settings__surface">
@@ -376,7 +376,7 @@ import type {
   ArchiveTenantCollaborationPolicySaveRequest,
 } from '@/apis/mark/archive-config'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {

@@ -662,7 +662,7 @@ onBeforeUnmount(() => {
 <template>
   <StageWorkbenchShell class="ocr-settings">
     <template v-if="selectedExamId && currentConfig" #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="文字识别配置">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -690,7 +690,7 @@ onBeforeUnmount(() => {
     </template>
 
     <template v-if="selectedExamId && currentConfig" #signal>
-      <SignalBand compact :metrics="ocrSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="ocrSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" body="请先选择考试后再配置 OCR 与识别策略" />
@@ -964,7 +964,7 @@ onBeforeUnmount(() => {
               </UiFormItem>
             </UiCol>
           </UiRow>
-          <UiButton size="sm" :disabled="!canRecognize" :loading="recognizing" @click="handleRecognize">
+          <UiButton variant="primary" size="sm" :disabled="!canRecognize" :loading="recognizing" @click="handleRecognize">
             <template #icon><ExperimentOutlined /></template>
             执行识别
           </UiButton>

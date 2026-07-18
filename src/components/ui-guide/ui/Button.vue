@@ -54,6 +54,10 @@ defineOptions({
   inheritAttrs: false,
 })
 
+/**
+ * 动作层级：主路径须显式 `variant="primary"`；
+ * 缺省为 outline，避免工具钮隐式抢主 CTA。
+ */
 const props = withDefaults(
   defineProps<{
     variant?: UiButtonVariant
@@ -67,7 +71,7 @@ const props = withDefaults(
     iconOnly?: boolean
   }>(),
   {
-    variant: 'primary',
+    variant: 'outline',
     size: 'md',
     block: false,
     disabled: false,

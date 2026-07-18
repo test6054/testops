@@ -13,7 +13,7 @@ import type {
   QualitySelectorChangeValue,
   WorkbenchSignalRefreshHandler,
 } from '@/composables/quality/improvement'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
 import {
   AUDIT_SUPERVISION_CONCLUSION_OPTIONS,
@@ -57,6 +57,7 @@ import {
   beginQualityScopeRequest,
   isQualityScopeStaleError,
 } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -117,6 +118,7 @@ function supervisionConclusionColor(value: AuditSupervisionConclusionCode): Badg
 const supList = ref<AuditSupervisionVO[]>([])
 const supTotal = ref(0)
 const supLoading = ref(false)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const supQuery = reactive<AuditSupervisionQueryRequest>({
   pageNum: 1,
   pageSize: 10,
@@ -259,6 +261,7 @@ function removeSupervisionEvidenceItem(index: number) {
 async function loadList(options?: { refreshSignals?: boolean }) {
   const scope = beginQualityScopeRequest()
   supLoading.value = true
+  beginLoad()
   try {
     const page = await auditSupervisionApi.page({
       ...supQuery,
@@ -283,10 +286,12 @@ async function loadList(options?: { refreshSignals?: boolean }) {
         '工作台指标加载失败',
       )
     }
+    okLoad()
   } catch (error) {
     if (isQualityScopeStaleError(error) || scope.isStale()) {
       return
     }
+    failLoad()
     const err = toUserError(error, '督导复查记录加载失败')
     props.onLoadError?.(err)
     showUserError(error, '督导复查记录加载失败')
@@ -551,6 +556,7 @@ defineExpose({
       :columns="supColumns"
       :data-source="supList"
       :loading="supLoading"
+      :load-error="loadError"
       row-key="id"
       size="middle"
       :total="supTotal"

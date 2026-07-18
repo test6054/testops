@@ -72,7 +72,8 @@ const hasHeader = computed(
   background-color: var(--dp-surface);
   border: 1px solid var(--dp-card-border);
   border-radius: var(--dp-radius-panel);
-  box-shadow: var(--dp-shadow-card);
+  /* 列表/区块默认轻阴影；浮层级 --dp-shadow-card 仅 hoverable 或浮层使用 */
+  box-shadow: var(--dp-shadow-sm);
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease;
@@ -84,8 +85,13 @@ const hasHeader = computed(
   --dp-card-border: var(--dp-border-strong);
 }
 
+.dp-card--hoverable {
+  box-shadow: var(--dp-shadow-card);
+}
+
 .dp-card--hoverable:hover {
-  border-color: var(--dp-border-strong);
+  border-color: var(--dp-color-primary-border, var(--dp-blue-200));
+  box-shadow: var(--dp-shadow-card-hover);
 }
 
 .dp-card__header {
@@ -95,6 +101,7 @@ const hasHeader = computed(
   gap: var(--dp-space-3, 12px);
   padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
   border-bottom: 1px solid var(--dp-border);
+  background: var(--dp-surface-elevated);
 }
 
 .dp-card__title {
@@ -104,7 +111,8 @@ const hasHeader = computed(
   font-size: 15px;
   font-weight: 600;
   color: var(--dp-text-primary);
-  line-height: 1.5;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
 }
 
 .dp-card__title :deep(svg),

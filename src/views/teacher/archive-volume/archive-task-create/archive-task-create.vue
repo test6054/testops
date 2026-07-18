@@ -58,6 +58,7 @@
       <UiButton size="sm" variant="ghost" @click="ac.handleGoBack">取消</UiButton>
       <UiButton
         size="sm"
+        variant="primary"
         :loading="ac.submitting.value"
         :disabled="ac.submitting.value || ac.templateLoading.value || ac.templateLoadFailed.value"
         @click="handleSubmit"

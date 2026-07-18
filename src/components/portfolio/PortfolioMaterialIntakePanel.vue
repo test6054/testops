@@ -47,6 +47,7 @@
         </UiButton>
         <UiButton
           size="sm"
+          variant="primary"
           v-if="showRegisterStart"
           :loading="starting"
           :disabled="writePending"
@@ -175,7 +176,7 @@
         <UiButton size="sm" variant="outline" :loading="saving" :disabled="writePending" @click="saveDraft">
           保存草稿
         </UiButton>
-        <UiButton size="sm" :loading="submitting" :disabled="writePending" @click="handleSubmit">
+        <UiButton variant="primary" size="sm" :loading="submitting" :disabled="writePending" @click="handleSubmit">
           提交审核
         </UiButton>
       </div>
@@ -192,7 +193,7 @@
 import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'

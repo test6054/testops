@@ -37,7 +37,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { FormInstance } from 'ant-design-vue'
+import type { FormInstance } from 'ant-design-vue/es/form'
 import message from 'ant-design-vue/es/message'
 import { changePassword } from '@/apis/auth'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

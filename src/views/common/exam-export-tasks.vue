@@ -32,7 +32,7 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact :metrics="exportSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="exportSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="export-page__empty" />
@@ -40,10 +40,9 @@
     <UiEmpty
       size="sm"
       v-else-if="loadFailed"
+      title="加载失败"
       description="导出任务加载失败"
-      action-label="重试"
       class="export-page__empty"
-      @action="() => loadTasks()"
     />
 
     <template v-else>
@@ -65,7 +64,7 @@
               <CloudDownloadOutlined />
               当前考试导出任务
             </span>
-            <UiButton size="sm" @click="openCreateModal">
+            <UiButton variant="primary" size="sm" @click="openCreateModal">
               <template #icon><PlusOutlined /></template>
               创建导出任务
             </UiButton>
@@ -156,7 +155,7 @@
   >
     <template #footer>
       <UiButton size="sm" variant="outline" @click="createModalOpen = false">取消</UiButton>
-      <UiButton size="sm" :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
+      <UiButton variant="primary" size="sm" :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
     </template>
     <UiForm layout="vertical">
       <UiFormItem label="导出类型" required>

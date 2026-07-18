@@ -12,7 +12,7 @@ import type {
 } from '@/apis/portfolio/indicator-types'
 import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
@@ -927,7 +927,7 @@ onMounted(async () => {
       </template>
       <template v-else-if="activeTab === 'import'">
         <p class="hint">请先下载模板，填写后上传表格文件批量导入指标定义。</p>
-        <UiButton size="sm" :disabled="interactionLocked" @click="importModalOpen = true">
+        <UiButton size="sm" variant="primary" :disabled="interactionLocked" @click="importModalOpen = true">
           表格文件批量导入
         </UiButton>
       </template>

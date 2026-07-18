@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="复核任务中心">
         <template #actions>
           <UiButton variant="outline" size="sm" @click="goBatchConfirm"> 批量复核确认 </UiButton>
         </template>
@@ -11,6 +11,7 @@
     <template v-if="examId" #signal>
       <SignalBand
         :metrics="hubSignalMetrics"
+        variant="panel"
         compact
         @metric-click="handleHubSignalClick"
       />

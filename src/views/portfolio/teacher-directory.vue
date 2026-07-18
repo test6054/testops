@@ -11,7 +11,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -199,6 +199,7 @@ const filterFields = computed<FilterField[]>(() => [
 const identityColumns: ColumnsType = [
   { title: '身份类型', key: 'identityType', width: 120, fixed: 'left' },
   { title: '状态', key: 'identityStatus', width: 80 },
+  { title: '工号', dataIndex: 'staffNo', key: 'staffNo', width: 110 },
   { title: '聘任编号', dataIndex: 'appointmentNo', key: 'appointmentNo', width: 120 },
   { title: '展示名称', dataIndex: 'displayName', key: 'displayName' },
   { title: '企业/单位', dataIndex: 'enterpriseName', key: 'enterpriseName' },
@@ -225,6 +226,10 @@ const lifecycleLoadError = ref('')
 const lifecycleChangeType = ref<PortfolioTeacherLifecycleChangeTypeCode | undefined>(undefined)
 const lifecycleReason = ref('')
 const lifecycleEvents = ref<PortfolioTeacherLifecycleEventVO[]>([])
+const affiliationHistory = ref<
+  import('@/apis/portfolio/types').PortfolioTeacherAffiliationHistoryVO[]
+>([])
+const affiliationLoadError = ref('')
 
 const identityVisible = ref(false)
 const identityMode = ref<'create' | 'edit'>('create')
@@ -234,6 +239,7 @@ const identityEditor = reactive<PortfolioTeacherIdentitySaveRequest>({
   identityType: PortfolioTeacherIdentityTypeCode.INDUSTRY_MENTOR,
   identityStatus: PortfolioTeacherIdentityStatusCode.ACTIVE,
   appointmentNo: '',
+  staffNo: '',
   displayName: '',
   enterpriseName: '',
 })
@@ -390,6 +396,24 @@ function handleTeacherDirectoryAction(key: string, record: PortfolioTeacherSumma
   }
 }
 
+
+async function loadAffiliationHistory(userId: string, requestToken = detailRequestToken.value) {
+  affiliationLoadError.value = ''
+  try {
+    const rows = await portfolioTeacherApi.listAffiliationHistory({ teacherUserId: userId })
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
+    affiliationHistory.value = rows ?? []
+  } catch (error) {
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
+    affiliationHistory.value = []
+    affiliationLoadError.value = error instanceof Error ? error.message : '加载归属血缘失败'
+  }
+}
+
 async function openDetail(row: PortfolioTeacherSummaryVO) {
   const requestToken = detailRequestToken.value + 1
   detailRequestToken.value = requestToken
@@ -407,6 +431,7 @@ async function openDetail(row: PortfolioTeacherSummaryVO) {
     await Promise.all([
       loadTeacherExtensions(row.userId, requestToken),
       loadTeacherLifecycle(row.userId, requestToken),
+      loadAffiliationHistory(row.userId, requestToken),
     ])
   } catch (error) {
     if (detailRequestToken.value !== requestToken) {
@@ -457,6 +482,7 @@ async function reloadDetail() {
   detailRequestToken.value = requestToken
   try {
     detail.value = await portfolioTeacherApi.get(userId)
+    await loadAffiliationHistory(userId)
     if (detailRequestToken.value !== requestToken) {
       return
     }
@@ -475,6 +501,7 @@ function openIdentityCreate(context: { userId: string, nickName?: string, depart
   identityEditor.identityType = PortfolioTeacherIdentityTypeCode.INDUSTRY_MENTOR
   identityEditor.identityStatus = PortfolioTeacherIdentityStatusCode.ACTIVE
   identityEditor.appointmentNo = ''
+  identityEditor.staffNo = ''
   identityEditor.displayName = context.nickName ?? ''
   identityEditor.enterpriseName = ''
   identityEditor.anchorDepartmentId = context.departmentId
@@ -495,6 +522,7 @@ function openIdentityEdit(identity: PortfolioTeacherIdentityVO) {
   identityEditor.identityType = identity.identityType
   identityEditor.identityStatus = identity.identityStatus
   identityEditor.appointmentNo = identity.appointmentNo ?? ''
+  identityEditor.staffNo = identity.staffNo ?? ''
   identityEditor.displayName = identity.displayName ?? ''
   identityEditor.enterpriseName = identity.enterpriseName ?? ''
   identityEditor.anchorDepartmentId = identity.anchorDepartmentId
@@ -528,6 +556,7 @@ async function submitIdentity() {
     identityType: identityEditor.identityType,
     identityStatus: identityEditor.identityStatus,
     appointmentNo: identityEditor.appointmentNo?.trim() || undefined,
+    staffNo: identityEditor.staffNo?.trim() || undefined,
     displayName: identityEditor.displayName?.trim() || undefined,
     enterpriseName: identityEditor.enterpriseName?.trim() || undefined,
     anchorDepartmentId: identityEditor.anchorDepartmentId,
@@ -782,7 +811,7 @@ onMounted(async () => {
     />
     <UiCard>
       <div class="list-toolbar">
-        <UiButton size="sm" :loading="exporting" :disabled="interactionLocked" @click="exportRoster">
+        <UiButton size="sm" variant="primary" :loading="exporting" :disabled="interactionLocked" @click="exportRoster">
           导出名册
         </UiButton>
       </div>
@@ -948,6 +977,7 @@ onMounted(async () => {
             <label class="teacher-directory__import-transfer">
               <span class="teacher-directory__import-transfer-btn">
                 <UiButton
+                  variant="primary"
                   size="sm"
                   :disabled="interactionLocked"
                   :loading="operationKey.startsWith('lifecycle:import:')"
@@ -977,9 +1007,34 @@ onMounted(async () => {
           </div>
         </div>
 
+        <div class="teacher-directory__affiliation">
+          <h4>工号与组织归属血缘</h4>
+          <p v-if="affiliationLoadError" class="teacher-directory__muted">{{ affiliationLoadError }}</p>
+          <ul v-else-if="affiliationHistory.length" class="teacher-directory__affiliation-list">
+            <li
+              v-for="row in affiliationHistory"
+              :key="row.id || `${row.effectiveFrom}-${row.changeType}`"
+            >
+              <strong>{{ row.changeTypeLabel || row.changeType }}</strong>
+              <span v-if="row.openSegment"> · 当前</span>
+              <span v-if="row.staffNo"> · 工号 {{ row.staffNo }}</span>
+              <span v-if="row.appointmentNo"> · 聘任 {{ row.appointmentNo }}</span>
+              <span v-if="row.identityTypeLabel"> · {{ row.identityTypeLabel }}</span>
+              <div class="teacher-directory__muted">
+                {{ row.effectiveFrom || '-' }}
+                <template v-if="row.effectiveTo"> → {{ row.effectiveTo }}</template>
+                <template v-else> 起</template>
+                <template v-if="row.reasonText"> · {{ row.reasonText }}</template>
+              </div>
+            </li>
+          </ul>
+          <p v-else class="teacher-directory__muted">暂无归属血缘记录</p>
+        </div>
+
         <div class="teacher-directory__identity-header">
           <h4>扩展身份</h4>
           <UiButton
+            variant="primary"
             size="sm"
             :disabled="interactionLocked"
             @click="
@@ -1059,6 +1114,12 @@ onMounted(async () => {
         <UiFormItem label="聘任编号">
           <UiInput
             size="sm" v-model="identityEditor.appointmentNo" :disabled="writing"
+          />
+        </UiFormItem>
+        <UiFormItem label="当前工号">
+          <UiInput
+            size="sm" v-model="identityEditor.staffNo" :disabled="writing"
+            placeholder="校内工号；变更将写入归属血缘"
           />
         </UiFormItem>
         <UiFormItem label="展示名称">
@@ -1180,4 +1241,24 @@ onMounted(async () => {
 .teacher-directory__import-transfer-input:disabled {
   cursor: not-allowed;
 }
+.teacher-directory__affiliation {
+  margin-top: 16px;
+  h4 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+}
+.teacher-directory__affiliation-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--dp-text-secondary);
+  font-size: 12px;
+}
+.teacher-directory__muted {
+  margin: 0;
+  color: var(--dp-text-muted);
+  font-size: 12px;
+}
 </style>
+

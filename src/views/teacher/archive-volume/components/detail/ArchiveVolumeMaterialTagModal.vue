@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
 import { updateArchiveVolumeMaterialTags } from '@/apis/mark/archive-volume'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'

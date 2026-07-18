@@ -149,7 +149,7 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { UiOptionValue } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import {
   ARCHIVE_EXAM_FORM_OPTIONS,

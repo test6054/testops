@@ -48,7 +48,7 @@ import type {
   ExamQuestionCourseGoalMappingWorkspaceVO,
   QualityCourseGoalForMarkVO,
 } from '@/apis/mark/exam-question-course-goal-mapping'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import {
   deleteExamQuestionCourseGoalMapping,

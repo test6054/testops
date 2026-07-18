@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {PortfolioTeacherLifecycleApprovalStatusCode, PortfolioTeacherLifecycleChangeTypeCode, PortfolioTeacherLifecycleEventVO, PortfolioTeacherLifecycleStatusCode} from '@/apis/portfolio/teacher-lifecycle';
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -297,7 +297,7 @@ onMounted(() => {
           </UiButton>
           <label class="teacher-lifecycle-admin__import">
             <span class="teacher-lifecycle-admin__import-btn">
-              <UiButton size="sm" :loading="operationKey.startsWith('import:')">导入迁出包</UiButton>
+              <UiButton variant="primary" size="sm" :loading="operationKey.startsWith('import:')">导入迁出包</UiButton>
             </span>
             <input
               class="teacher-lifecycle-admin__import-input"

@@ -33,6 +33,7 @@
           </UiButton>
           <UiButton
             v-if="detail && canSubmitReview(detail)"
+            variant="primary"
             size="sm"
             @click="goAppeal(detail.examId)"
           >
@@ -252,7 +253,7 @@
                 v-if="selectedQuestion && canApplyReviewOnQuestion(selectedQuestion)"
                 class="answer-panel__actions"
               >
-                <UiButton size="sm" @click="goAppealForQuestion(selectedQuestion)">
+                <UiButton size="sm" variant="primary" @click="goAppealForQuestion(selectedQuestion)">
                   <template #icon><FormOutlined /></template>
                   对此题申请复核
                 </UiButton>
@@ -465,7 +466,7 @@ import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getImageBlobUrl } from '@/apis/edu/file-management'

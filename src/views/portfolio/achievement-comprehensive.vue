@@ -54,6 +54,8 @@ const columns: ColumnsType = [
   { title: '级别', dataIndex: 'levelCode', key: 'levelCode', width: 88 },
   { title: '日期', dataIndex: 'recordDate', key: 'recordDate', width: 110 },
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
+  { title: '业务日工号', dataIndex: 'affiliationStaffNo', key: 'affiliationStaffNo', width: 120 },
+  { title: '业务日归属', dataIndex: 'affiliationSnapshot', key: 'affiliationSnapshot', width: 160 },
 ]
 
 async function loadPage() {
@@ -140,6 +142,17 @@ onMounted(loadPage)
           </template>
           <template v-else-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}
+          </template>
+          <template v-else-if="column.key === 'affiliationStaffNo'">
+            {{ record.affiliationStaffNo || '—' }}
+          </template>
+          <template v-else-if="column.key === 'affiliationSnapshot'">
+            <span v-if="record.affiliationHistoryId">
+              院系 {{ record.affiliationDepartmentId || '—' }}
+              <template v-if="record.affiliationOpenSegment"> · 当前段</template>
+              <template v-else> · 历史段</template>
+            </span>
+            <span v-else>—</span>
           </template>
         </template>
       </UiDataTable>

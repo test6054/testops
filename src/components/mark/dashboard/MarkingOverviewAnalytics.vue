@@ -349,9 +349,10 @@ function formatDayLabel(day: string): string {
 
 .marking-overview-analytics__pin-kicker {
   flex-shrink: 0;
-  font-size: var(--dp-type-hint-size);
-  font-weight: var(--dp-font-weight-emphasis);
-  color: var(--dp-text-secondary);
+  font-size: var(--dp-type-label-size);
+  font-weight: var(--dp-type-label-weight);
+  line-height: var(--dp-type-label-line-height);
+  color: var(--dp-text-muted);
 }
 
 .marking-overview-analytics__spark {
@@ -432,10 +433,10 @@ function formatDayLabel(day: string): string {
 
 .marking-overview-analytics__title {
   margin: 0;
-  font-size: var(--dp-type-table-head-size);
-  font-weight: var(--dp-type-table-head-weight);
-  line-height: var(--dp-type-table-head-line-height);
-  color: var(--dp-text-primary);
+  font-size: var(--dp-type-label-size);
+  font-weight: var(--dp-type-label-weight);
+  line-height: var(--dp-type-label-line-height);
+  color: var(--dp-text-secondary);
 }
 
 .marking-overview-analytics__desc,

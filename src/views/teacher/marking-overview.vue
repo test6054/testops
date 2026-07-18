@@ -45,6 +45,23 @@
             <UiSpin v-if="filterRefreshing" size="sm" class="marking-overview__filter-spin" />
           </div>
         </template>
+        <template #actions>
+          <UiButton
+            v-if="hasPendingTodos"
+            variant="primary"
+            size="sm"
+            @click="goPriorityExamList"
+          >
+            处理待办
+          </UiButton>
+          <UiButton
+            :variant="hasPendingTodos ? 'outline' : 'primary'"
+            size="sm"
+            @click="goExamList"
+          >
+            考试列表
+          </UiButton>
+        </template>
       </ContextBar>
     </template>
 
@@ -100,6 +117,7 @@
         v-else
         :metrics="dashboardSignals"
         compact
+        variant="panel"
         @metric-click="handleSignalMetricClick"
       />
     </template>
@@ -154,10 +172,14 @@
               <UiEmpty
                 v-else-if="signalLoadFailed && !overview"
                 size="sm"
-                description="阅卷概览加载失败"
+                title="加载失败"
               />
               <UiSkeletonState v-else-if="examsPanelLoading" variant="card" :card-count="3" compact />
-              <UiEmpty size="sm" v-else-if="examsLoadFailed" description="进行中考试加载失败" />
+              <UiEmpty
+                size="sm"
+                v-else-if="examsLoadFailed"
+                title="加载失败"
+              />
               <template v-else>
                 <OngoingExamCardGrid
                   :exams="displayedOngoingExamItems"
@@ -218,10 +240,14 @@
               <UiEmpty
                 size="sm"
                 v-else-if="signalLoadFailed && !overview"
-                description="待处理事项暂不可用"
+                title="加载失败"
               />
               <UiSkeletonState v-else-if="todosPanelLoading" variant="list" :rows="5" compact />
-              <UiEmpty size="sm" v-else-if="todosLoadFailed" description="待处理事项加载失败" />
+              <UiEmpty
+                size="sm"
+                v-else-if="todosLoadFailed"
+                title="加载失败"
+              />
               <template v-else>
                 <UiSectionTabs
                   v-if="hasPendingTodos"
@@ -268,7 +294,7 @@
             <UiEmpty
               size="sm"
               v-else-if="signalLoadFailed && !overview"
-              description="已发布学情暂不可用"
+              title="加载失败"
               class="marking-overview__insight-empty"
             />
             <UiSkeletonState v-else-if="examsLoading && !overview" variant="table" :rows="4" :columns="5" compact />
@@ -355,6 +381,7 @@ const {
   ongoingExamPageSize,
   pendingTodoPageNum,
   pendingTodoPageSize,
+  pendingTodoScope,
   load,
   loadOngoingExamPage,
   loadPendingTodoPage,
@@ -563,7 +590,7 @@ function clearJourneyStageFilter(): void {
 }
 
 function handleSignalMetricClick(key: string): void {
-  if (key === 'active' || key === 'unpublished' || key === 'scan-attention') {
+  if (key === 'active' || key === 'unpublished' || key === 'scan-attention' || key === 'marking-progress') {
     void router.push(
       buildExamListRoute({
         tab: 'ongoing',
@@ -699,10 +726,12 @@ onMounted(() => {
 }
 
 .marking-overview__stage-rail-title {
-  font-size: var(--dp-type-table-head-size);
-  font-weight: var(--dp-type-table-head-weight);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
   color: var(--dp-text-primary);
   white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
 .marking-overview__stage-rail-hint {
@@ -761,15 +790,19 @@ onMounted(() => {
 .marking-overview__content {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: var(--dp-space-4);
+}
+
+.marking-overview__analytics-row {
+  margin: 0;
 }
 
 .marking-overview__content-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
-  gap: var(--dp-space-3);
+  gap: var(--dp-space-4);
   align-items: stretch;
-  margin-bottom: var(--dp-space-3);
+  margin-bottom: 0;
 }
 
 @media (max-width: #{bp.$ant-grid-xl - 1px}) {
@@ -858,6 +891,7 @@ onMounted(() => {
 
 .marking-overview__panel--focus-urgent .marking-overview__panel-title {
   color: var(--dp-red-700);
+  font-weight: var(--dp-font-weight-title);
 }
 
 .marking-overview__panel--focus-urgent .marking-overview__panel-desc {
@@ -867,6 +901,7 @@ onMounted(() => {
 .marking-overview__panel--focus-attention .marking-overview__panel-title,
 .marking-overview__panel--focus-pending .marking-overview__panel-title {
   color: var(--dp-orange-700);
+  font-weight: var(--dp-font-weight-title);
 }
 
 .marking-overview__content--todo-focus
@@ -934,30 +969,33 @@ onMounted(() => {
 .marking-overview__insight-slot {
   min-height: 120px;
   padding: var(--dp-space-3);
-  border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-panel);
-  background: var(--dp-surface);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-control-inner);
+  background: var(--dp-surface-subtle);
 }
 
 .marking-overview__panel-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-3);
   width: 100%;
 }
 
 .marking-overview__panel-title {
   margin: 0;
   font-size: 15px;
-  font-weight: var(--dp-font-weight-title);
-  line-height: 1.5;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--dp-text-primary);
+  letter-spacing: -0.01em;
+  text-transform: none;
 }
 
 .marking-overview__panel-desc {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--dp-text-secondary);
-  line-height: 1.5;
+  margin: var(--dp-space-1) 0 0;
+  font-size: var(--dp-type-hint-size);
+  line-height: var(--dp-type-hint-line-height);
+  color: var(--dp-text-muted);
 }
 </style>

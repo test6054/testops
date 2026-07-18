@@ -707,7 +707,8 @@ watch(isImmersiveWorkspace, (immersive) => {
     flex: 1;
     overflow: auto;
     padding: var(--dp-space-3);
-    background: var(--dp-gray-50);
+    /* 与全局 Main canvas 一致：灰底 + 白 Surface；沉浸宽页仍可局部覆盖 */
+    background: var(--dp-bg-layout);
 
     &--wide {
       padding: 8px;

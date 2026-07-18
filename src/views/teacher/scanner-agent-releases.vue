@@ -3,7 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerAgentReleaseResponse } from '@/apis/mark/scanner-agent-release'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   deleteScannerAgentRelease,
@@ -304,7 +304,7 @@ onMounted(() => {
     </template>
 
     <template #signal>
-      <SignalBand v-if="signalMetrics.length" :metrics="signalMetrics" compact />
+      <SignalBand v-if="signalMetrics.length" :metrics="signalMetrics" variant="panel" compact />
     </template>
 
     <UiEmpty size="sm" v-if="!canManage" description="仅平台超级管理员可维护扫描端发布包" />

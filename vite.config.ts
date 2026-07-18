@@ -1,11 +1,13 @@
 import type { UserConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
+import { visualizer } from 'rollup-plugin-visualizer'
 import { defineConfig, loadEnv } from 'vite'
 import createVitePlugins from './config/plugins'
 
 export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
   const env = loadEnv(mode, process.cwd())
   process.env.NODE_ENV = mode === 'production' ? 'production' : 'development'
+  const analyze = process.env.ANALYZE === 'true'
 
   return {
     base: env.VITE_BASE || '/',
@@ -83,12 +85,45 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
         },
       },
     },
-    plugins: await createVitePlugins(command === 'build'),
+    plugins: [
+      ...(await createVitePlugins(command === 'build')),
+      // ANALYZE=true 时生成 dist/stats.html；默认不自动打开浏览器
+      ...(command === 'build'
+        ? [
+            visualizer({
+              open: analyze,
+              filename: 'dist/stats.html',
+              gzipSize: true,
+              brotliSize: true,
+            }),
+          ]
+        : []),
+    ],
     optimizeDeps: {
-      include: ['vue-draggable-plus'],
+      include: [
+        'vue-draggable-plus',
+        'ant-design-vue',
+        '@ant-design/icons-vue',
+        'echarts',
+        'vue-echarts',
+        'konva',
+        'vue-konva',
+        'pdfjs-dist',
+        'aieditor',
+        'lodash-es',
+        '@vueuse/core',
+        'axios',
+        'pinia',
+        'dayjs',
+        'crypto-js',
+        'dompurify',
+        '@vue-office/docx',
+        '@vue-office/excel',
+        '@vue-office/pptx',
+      ],
     },
     build: {
-      chunkSizeWarningLimit: 2000,
+      chunkSizeWarningLimit: 500,
       outDir: 'dist',
       minify: 'esbuild',
       rollupOptions: {
@@ -96,9 +131,40 @@ export default defineConfig(async ({ command, mode }): Promise<UserConfig> => {
           chunkFileNames: 'static/js/[name]-[hash].js',
           entryFileNames: 'static/js/[name]-[hash].js',
           assetFileNames: 'static/[ext]/[name]-[hash].[ext]',
-          manualChunks: {
-            'ant-design-vue': ['ant-design-vue'],
-            "vendor": ['vue', 'vue-router', 'pinia', 'axios'],
+          // 按实际引用的 node_modules 路径拆包，避免 object 形式强制打入 ant-design-vue 主入口
+          manualChunks(id) {
+            if (!id.includes('node_modules')) {
+              return undefined
+            }
+            if (id.includes('ant-design-vue')) {
+              return 'ant-design-vue'
+            }
+            if (id.includes('@ant-design/icons-vue')) {
+              return 'ant-design-icons'
+            }
+            if (id.includes('echarts') || id.includes('vue-echarts')) {
+              return 'echarts'
+            }
+            if (id.includes('vue-konva') || id.includes('/konva/')) {
+              return 'konva'
+            }
+            if (id.includes('aieditor')) {
+              return 'aieditor'
+            }
+            if (id.includes('pdfjs-dist')) {
+              return 'pdf'
+            }
+            if (
+              id.includes('/vue/')
+              || id.includes('vue-router')
+              || id.includes('/pinia')
+              || id.includes('/axios/')
+              || id.includes('lodash-es')
+              || id.includes('/dayjs/')
+            ) {
+              return 'vendor'
+            }
+            return undefined
           },
         },
       },

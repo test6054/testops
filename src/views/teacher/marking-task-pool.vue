@@ -1,15 +1,15 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar v-if="isTrialTaskPool" layout="workbench">
+      <ContextBar layout="workbench" show-title title="阅卷任务池">
         <template #status>
-          <UiTag tone="orange" size="sm">试评阶段</UiTag>
+          <UiTag v-if="isTrialTaskPool" tone="orange" size="sm">试评阶段</UiTag>
         </template>
       </ContextBar>
     </template>
 
     <template v-if="selectedExamId && pageSignalMetrics.length > 0" #signal>
-      <SignalBand :metrics="pageSignalMetrics" compact />
+      <SignalBand :metrics="pageSignalMetrics" variant="panel" compact />
     </template>
 
     <ExamSelectGateStrip
@@ -75,7 +75,7 @@
             </UiFormItem>
             <UiFormItem>
               <div class="dp-space" style="--dp-space-gap: 8px">
-                <UiButton size="sm" :disabled="!canClaim" :loading="claiming" @click="submitClaim">
+                <UiButton variant="primary" size="sm" :disabled="!canClaim" :loading="claiming" @click="submitClaim">
                   <template #icon><PlusOutlined /></template>
                   批量领取一批
                 </UiButton>

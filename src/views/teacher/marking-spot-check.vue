@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="spot-check-page">
     <template #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="阅卷抽检">
         <template #status>
           <UiTag :tone="pendingCount > 0 ? 'orange' : 'green'" size="sm">
             {{ pendingCount > 0 ? `${pendingCount} 条待处理` : '暂无待办' }}
@@ -11,7 +11,7 @@
     </template>
 
     <template #signal>
-      <SignalBand compact :metrics="spotCheckSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="spotCheckSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip
@@ -93,7 +93,7 @@
     >
       <template #footer>
         <UiButton size="sm" variant="outline" @click="modalOpen = false">取消</UiButton>
-        <UiButton size="sm" :loading="submitting" :disabled="!valid" @click="submitConclusion">
+        <UiButton size="sm" variant="primary" :loading="submitting" :disabled="!valid" @click="submitConclusion">
           提交结论
         </UiButton>
       </template>

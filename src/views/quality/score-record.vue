@@ -22,7 +22,7 @@ import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
 import { assessmentItemApi } from '@/apis/quality/assessment-item'
@@ -68,6 +68,7 @@ import { usePolling } from '@/composables/usePolling'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useQualityStore } from '@/stores/modules/quality'
 import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -117,6 +118,12 @@ const qualityStore = useQualityStore()
 
 const batches = ref<ScoreBatchVO[]>([])
 const batchesLoading = ref(false)
+const {
+  loadError: batchesLoadError,
+  beginLoad: beginBatchesLoad,
+  failLoad: failBatchesLoad,
+  okLoad: okBatchesLoad,
+} = useUiTableLoadError()
 const batchPageNum = ref(1)
 const batchPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const batchTotal = ref(0)
@@ -155,6 +162,7 @@ async function loadBatches() {
   }
   const scope = beginQualityScopeRequest()
   batchesLoading.value = true
+  beginBatchesLoad()
   try {
     const page = await scoreBatchApi.page({
       pageNum: batchPageNum.value,
@@ -179,10 +187,12 @@ async function loadBatches() {
       await loadBatches()
       return
     }
+    okBatchesLoad()
   } catch (error) {
     if (scope.isStale()) {
       return
     }
+    failBatchesLoad()
     showUserError(error, '成绩批次列表加载失败')
   } finally {
     if (!scope.isStale()) {
@@ -248,6 +258,12 @@ async function refreshBatchesQuietly(): Promise<void> {
 
 const records = ref<ScoreRecordVO[]>([])
 const recordsLoading = ref(false)
+const {
+  loadError: recordsLoadError,
+  beginLoad: beginRecordsLoad,
+  failLoad: failRecordsLoad,
+  okLoad: okRecordsLoad,
+} = useUiTableLoadError()
 const recordPageNum = ref(1)
 const recordPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const recordTotal = ref(0)
@@ -332,6 +348,7 @@ async function loadRecords() {
     return
   }
   recordsLoading.value = true
+  beginRecordsLoad()
   try {
     const page = await scoreRecordApi.pageByBatch({
       batchId: selectedBatch.value.id,
@@ -349,10 +366,9 @@ async function loadRecords() {
       recordSummary.value = null
       showUserError(error, '成绩明细汇总加载失败')
     }
+    okRecordsLoad()
   } catch (error) {
-    records.value = []
-    recordTotal.value = 0
-    recordSummary.value = null
+    failRecordsLoad()
     showUserError(error, '成绩明细加载失败')
   } finally {
     recordsLoading.value = false
@@ -393,6 +409,7 @@ const signals = computed<SignalMetric[]>(() => {
   const invalid = summary ? Number(summary.invalidCount) : 0
   const errored = summary ? Number(summary.erroredCount) : 0
   const ratio = summary?.avgScoreRatioPercent != null ? Math.round(summary.avgScoreRatioPercent) : 0
+  const invalidFilterActive = filterForm.validFlag === 'false'
   return [
     { key: 'total', label: '当前明细', value: total, tone: 'blue', trendPolarity: 'neutral' },
     { key: 'valid', label: '有效', value: valid, tone: 'green', trendPolarity: 'positive' },
@@ -402,6 +419,8 @@ const signals = computed<SignalMetric[]>(() => {
       value: invalid,
       tone: invalid > 0 ? 'orange' : 'gray',
       trendPolarity: 'negative',
+      clickable: invalid > 0,
+      active: invalidFilterActive,
     },
     {
       key: 'errored',
@@ -426,6 +445,13 @@ const signals = computed<SignalMetric[]>(() => {
     },
   ]
 })
+
+function handleSignalMetricClick(key: string): void {
+  if (key === 'invalid') {
+    filterForm.validFlag = 'false'
+    handleSearch()
+  }
+}
 
 /* ========== 明细编辑 ========== */
 
@@ -689,6 +715,12 @@ async function handleDelete(record: ScoreRecordVO) {
 
 const validByItemVisible = ref(false)
 const validByItemLoading = ref(false)
+const {
+  loadError: validByItemLoadError,
+  beginLoad: beginValidByItemLoad,
+  failLoad: failValidByItemLoad,
+  okLoad: okValidByItemLoad,
+} = useUiTableLoadError()
 const validByItemId = ref<string>('')
 const validByItemRecords = ref<ScoreRecordVO[]>([])
 const validByItemPageNum = ref(1)
@@ -710,6 +742,7 @@ async function loadValidByItemPage() {
     return
   }
   validByItemLoading.value = true
+  beginValidByItemLoad()
   try {
     const page = await scoreRecordApi.pageValidByItem({
       assessmentItemId: validByItemId.value,
@@ -721,9 +754,9 @@ async function loadValidByItemPage() {
     validByItemTotal.value = page.total
     validByItemPageNum.value = page.pageNum ?? validByItemPageNum.value
     validByItemPageSize.value = page.pageSize ?? validByItemPageSize.value
+    okValidByItemLoad()
   } catch (error) {
-    validByItemRecords.value = []
-    validByItemTotal.value = 0
+    failValidByItemLoad()
     showUserError(error, '有效成绩明细加载失败')
   } finally {
     validByItemLoading.value = false
@@ -821,7 +854,7 @@ function handleCourseChange(courseId: string | null) {
 <template>
   <QualityIngestPageShell embedded>
     <template #context>
-      <QualityPageContextBar>
+      <QualityPageContextBar show-title title="成绩录入">
         <template #status>
           <span class="score-record__context-label">质量评价课程</span>
           <CourseSelector
@@ -858,7 +891,13 @@ function handleCourseChange(courseId: string | null) {
     </UiAlertStrip>
 
     <template v-else>
-      <SignalBand :metrics="signals" compact class="score-record__signals" />
+      <SignalBand
+        :metrics="signals"
+        variant="panel"
+        compact
+        class="score-record__signals"
+        @metric-click="handleSignalMetricClick"
+      />
 
       <div class="score-record__layout">
         <UiCard class="detail-table-card score-record__batch-card">
@@ -873,6 +912,7 @@ function handleCourseChange(courseId: string | null) {
             :columns="batchColumns"
             :data-source="batches"
             :loading="batchesLoading"
+            :load-error="batchesLoadError"
             row-key="id"
             size="middle"
             v-model:current="batchPageNum"
@@ -969,6 +1009,7 @@ function handleCourseChange(courseId: string | null) {
               :columns="recordColumns"
               :data-source="records"
               :loading="recordsLoading"
+              :load-error="recordsLoadError"
               row-key="id"
               size="middle"
               v-model:current="recordPageNum"
@@ -1170,6 +1211,7 @@ function handleCourseChange(courseId: string | null) {
         :columns="validByItemColumns"
         :data-source="validByItemRecords"
         :loading="validByItemLoading"
+        :load-error="validByItemLoadError"
         row-key="id"
         size="small"
         v-model:current="validByItemPageNum"
@@ -1207,7 +1249,7 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-3);
   }
 
   &__layout {
@@ -1229,7 +1271,7 @@ function handleCourseChange(courseId: string | null) {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-3);
   }
 
   &__panel-title {
@@ -1259,7 +1301,7 @@ function handleCourseChange(courseId: string | null) {
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--dp-space-3, 12px);
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-3);
     flex-wrap: wrap;
   }
 
@@ -1272,7 +1314,7 @@ function handleCourseChange(courseId: string | null) {
   &__detail-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-2);
     flex-wrap: wrap;
   }
 
@@ -1288,8 +1330,8 @@ function handleCourseChange(courseId: string | null) {
   &__valid-search {
     display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-2);
+    margin-bottom: var(--dp-space-3);
     flex-wrap: wrap;
   }
 
@@ -1303,7 +1345,7 @@ function handleCourseChange(courseId: string | null) {
     min-height: 32px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-2);
     color: var(--dp-text-primary);
   }
 
@@ -1314,7 +1356,7 @@ function handleCourseChange(courseId: string | null) {
 
   &__rubrics {
     display: grid;
-    gap: 8px;
+    gap: var(--dp-space-2);
     padding: 10px;
     border: 1px solid var(--dp-border);
     border-radius: 8px;
@@ -1333,9 +1375,9 @@ function handleCourseChange(courseId: string | null) {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 140px;
     align-items: center;
-    gap: 12px;
+    gap: var(--dp-space-3);
     min-height: 42px;
-    padding: 8px 10px;
+    padding: var(--dp-space-2) 10px;
     border: 1px solid var(--dp-border);
     border-radius: 6px;
     background: var(--dp-surface);
@@ -1365,7 +1407,7 @@ function handleCourseChange(courseId: string | null) {
 
   &__rubric-empty {
     margin: 0;
-    padding: 12px 0;
+    padding: var(--dp-space-3) 0;
   }
 
   &__import-link {

@@ -520,10 +520,14 @@ usePortfolioScopedLoader(
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar
-      title="智能问数与政策核验"
-      description="材料须先登记材料库，再提交智能问数或政策核验编排任务"
-    />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="智能问数与政策核验"
+        subtitle="材料须先登记材料库，再提交智能问数或政策核验编排任务"
+      />
+    </template>
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
     <template v-else>
       <UiCard title="材料上下文">

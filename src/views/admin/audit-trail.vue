@@ -43,7 +43,7 @@
     <ExamSelectGateStrip v-if="!selectedExamId" class="audit-trail__empty" />
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact :metrics="auditSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="auditSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="selectedExamId && isExamWorkspaceRoute" />
@@ -299,7 +299,7 @@ import type {
 } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {

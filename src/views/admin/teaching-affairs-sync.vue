@@ -29,7 +29,7 @@
           />
         </template>
         <template #actions>
-          <UiButton size="sm" :disabled="!selectedExamId" @click="openCreateModal">
+          <UiButton variant="primary" size="sm" :disabled="!selectedExamId" @click="openCreateModal">
             <template #icon><PlusOutlined /></template>
             新建同步任务
           </UiButton>
@@ -48,7 +48,7 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact :metrics="syncSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="syncSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="sync-page__empty" />
@@ -209,7 +209,7 @@
   >
     <template #footer>
       <UiButton size="sm" variant="outline" @click="createModalOpen = false">取消</UiButton>
-      <UiButton size="sm" :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
+      <UiButton variant="primary" size="sm" :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
     </template>
     <UiForm layout="vertical">
       <UiFormItem label="外部系统类型" required>

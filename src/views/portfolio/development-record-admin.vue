@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
@@ -43,7 +43,7 @@ const removingId = ref('')
 const exporting = ref(false)
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange }
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, search, handlePageChange }
   = useQueryTable(
     (params) =>
       portfolioDevelopmentRecordApi.page({
@@ -210,10 +210,10 @@ function switchTab(type: RecordType) {
     <UiCard>
       <div class="toolbar">
         <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
-        <UiButton size="sm" @click="importModalOpen = true"> 批量导入 </UiButton>
+        <UiButton size="sm" variant="primary" @click="importModalOpen = true"> 批量导入 </UiButton>
         <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportExcel"> 导出表格文件 </UiButton>
       </div>
-      <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="当前筛选无发展记录" />
+      <UiEmpty size="sm" v-if="!loadError && !loading && rows.length === 0" description="当前筛选无发展记录" />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -222,6 +222,7 @@ function switchTab(type: RecordType) {
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="loadError"
         row-key="id"
         style="margin-top: 16px"
         @page-change="handlePageChange"

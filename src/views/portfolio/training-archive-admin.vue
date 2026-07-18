@@ -12,7 +12,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const { loading, rows, pageNum, pageSize, pageTotal, loadPage, handlePageChange } = useQueryTable(
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } = useQueryTable(
   (params) =>
     portfolioArchiveApi.pageRecords({
       ...params,
@@ -40,7 +40,7 @@ function recordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
     </template>
     <UiCard>
       <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
-      <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="当前筛选无培训档案" />
+      <UiEmpty size="sm" v-if="!loadError && !loading && rows.length === 0" description="当前筛选无培训档案" />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -49,6 +49,7 @@ function recordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="loadError"
         row-key="id"
         style="margin-top: 16px"
         @page-change="handlePageChange"

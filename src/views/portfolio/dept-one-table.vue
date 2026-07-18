@@ -7,7 +7,7 @@ import type {
   PortfolioDeptTeacherSegmentItemVO,
 } from '@/apis/portfolio/teacher'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -453,13 +453,20 @@ watch(
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="部门一张表" subtitle="院系师资结构 · 教师明细 · 职称分布">
-      <template #actions>
-        <UiButton size="sm" :loading="exporting" :disabled="!filter.departmentId" @click="exportDeptOneTable">
-          导出部门一张表
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="部门一张表"
+        subtitle="院系师资结构 · 教师明细 · 职称分布"
+      >
+        <template #actions>
+          <UiButton size="sm" variant="primary" :loading="exporting" :disabled="!filter.departmentId" @click="exportDeptOneTable">
+            导出部门一张表
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <UiCard>
       <div class="filter-row">
         <UiSelect

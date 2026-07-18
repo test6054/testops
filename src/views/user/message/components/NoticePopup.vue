@@ -80,13 +80,12 @@ import type { PublishedSystemAnnouncementResponse } from '@/apis/edu/message'
 import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
 import ScheduleOutlined from '@ant-design/icons-vue/ScheduleOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import {
   AnnouncementStatusEnum,
   getPublishedAnnouncementDetail,
   getPublishedAnnouncementList,
 } from '@/apis/edu/message'
-import AiEditor from '@/components/AiEditor/index.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
@@ -104,6 +103,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   close: []
 }>()
+
+const AiEditor = defineAsyncComponent(() => import('@/components/AiEditor/index.vue'))
 
 const visible = ref(false)
 const unreadNoticeIds = ref<string[]>([])

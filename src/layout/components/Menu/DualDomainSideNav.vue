@@ -314,7 +314,7 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { RouteRecordRaw } from 'vue-router'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import UiMenu from '@/components/ui-guide/ui/UiMenu.vue'
@@ -405,10 +405,10 @@ function menuRouteLabel(item: RouteRecordRaw): string {
 }
 
 /**
- * 主任务一级化：secondary ≤4 时全部提升到主列表（消「更多」藏主路径）；
+ * 主任务一级化：secondary ≤8 时全部提升到主列表（消「更多」藏主路径）；
  * 仅更长配置尾部保留语义折叠入口，禁止裸「更多」。
  */
-const SECONDARY_PROMOTE_MAX = 4
+const SECONDARY_PROMOTE_MAX = 8
 
 function shouldPromoteSecondary(items: RouteRecordRaw[]): boolean {
   return secondarySideMenuRoutes(items).length <= SECONDARY_PROMOTE_MAX
@@ -562,9 +562,12 @@ function normalizeOpenKeys(keys: Key[]): Key[] {
 
   const openDomains = domainKeys.filter((domainKey) => next.has(domainKey))
   if (openDomains.length > 1) {
-    // 多域同时出现时保留用户最近点开的域（keys 末位），而不是锁死当前路由所属域
+    const routeDomainKey = resolveRouteDomainKey()
     const ordered = keys.map(String).filter((key) => domainKeys.includes(key))
-    const keepDomain = ordered[ordered.length - 1] || openDomains[openDomains.length - 1]
+    const keepDomain
+      = (routeDomainKey && next.has(routeDomainKey) ? routeDomainKey : null)
+        || ordered[ordered.length - 1]
+        || openDomains[openDomains.length - 1]
     for (const domainKey of domainKeys) {
       if (domainKey === keepDomain) {
         continue
@@ -588,6 +591,23 @@ function normalizeOpenKeys(keys: Key[]): Key[] {
 }
 
 /** 按当前路由展开对应一级域；quality-admin 路由归属系统管理域。 */
+function resolveRouteDomainKey(): string | null {
+  const groupKey = stringMetaValue(route.meta?.menuGroup)
+  if (groupKey === QUALITY_ADMIN_MENU_GROUP) {
+    return PLATFORM_DOMAIN_KEY
+  }
+  if (route.path.startsWith('/teacher')) {
+    return MARKING_DOMAIN_KEY
+  }
+  if (isPortfolioRoute(route.path)) {
+    return PORTFOLIO_DOMAIN_KEY
+  }
+  if (route.path.startsWith('/quality')) {
+    return QUALITY_DOMAIN_KEY
+  }
+  return null
+}
+
 function resolveDefaultOpenKeys(): Key[] {
   if (props.collapsed) {
     return []

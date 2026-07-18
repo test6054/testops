@@ -7,7 +7,7 @@ import type {
   IndirectEvaluationResponseVO,
 } from '@/apis/quality/indirect-response'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'

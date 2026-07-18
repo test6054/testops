@@ -14,7 +14,7 @@ import type {
 } from '@/apis/quality/accreditation-standard'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import {
@@ -37,6 +37,7 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
@@ -348,7 +349,11 @@ onActivated(() => {
 
 <template>
   <StageWorkbenchShell>
-    <SignalBand :metrics="signals" compact class="accreditation-standard__signals" />
+    <template #context>
+      <ContextBar layout="workbench" show-title title="认证标准台账" />
+    </template>
+
+    <SignalBand :metrics="signals" variant="panel" compact class="accreditation-standard__signals" />
 
     <UiCard class="detail-table-card accreditation-standard__table-card">
       <template #title>认证标准台账</template>

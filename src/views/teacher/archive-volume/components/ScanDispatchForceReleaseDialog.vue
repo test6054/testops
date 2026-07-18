@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
 import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'

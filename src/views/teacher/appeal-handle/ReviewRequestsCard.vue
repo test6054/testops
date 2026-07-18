@@ -249,12 +249,31 @@ const handleTitle = computed(() =>
   conclusionDraft.value === GradeReviewRequestStatusCode.APPROVED ? '通过复核申请' : '驳回复核申请',
 )
 
-function canClaimReviewRequest(status: GradeReviewRequestStatusCode): boolean {
-  return status === GradeReviewRequestStatusCode.PENDING
+/** MVR-194：与 BE assertGradeReviewOperatorSeparatedFromStudent 同源 */
+function isGradeReviewApplicantSelf(record: GradeReviewRequestItemResponse): boolean {
+  return Boolean(
+    currentUserId.value
+    && record.studentUserId
+    && String(record.studentUserId) === String(currentUserId.value),
+  )
+}
+
+function canClaimReviewRequest(record: GradeReviewRequestItemResponse): boolean {
+  if (record.requestStatus !== GradeReviewRequestStatusCode.PENDING) {
+    return false
+  }
+  // MVR-194：申请人不得领取本人申请
+  if (isGradeReviewApplicantSelf(record)) {
+    return false
+  }
+  return true
 }
 
 /** 后端要求先领取且仅领取人可处理（IN_REVIEW）后再 handleReviewRequest。 */
 function canHandleReviewRequest(record: GradeReviewRequestItemResponse): boolean {
+  if (isGradeReviewApplicantSelf(record)) {
+    return false
+  }
   return (
     record.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW
     && Boolean(currentUserId.value)
@@ -264,7 +283,7 @@ function canHandleReviewRequest(record: GradeReviewRequestItemResponse): boolean
 
 function buildReviewRequestActions(record: GradeReviewRequestItemResponse): UiTableRowActionItem[] {
   // 行内仅 1 个 primary：领取 / 通过
-  if (canClaimReviewRequest(record.requestStatus)) {
+  if (canClaimReviewRequest(record)) {
     return [{ key: 'claim', label: '领取', tone: 'primary' }]
   }
   if (!canHandleReviewRequest(record)) {

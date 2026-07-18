@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioHonorStatsVO } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDevelopmentRecordTypeCode } from '@/apis/portfolio/enums'
@@ -61,6 +61,7 @@ const {
   pageSize,
   pageTotal,
   filters: query,
+  loadError,
   loadPage,
   search,
   handlePageChange,
@@ -221,7 +222,7 @@ async function exportHonor() {
         />
         <UiButton size="sm" :disabled="writing" @click="search"> 查询 </UiButton>
         <UiButton size="sm" :disabled="writing" @click="exportHonor"> 导出 </UiButton>
-        <UiButton size="sm" :disabled="writing" @click="importModalOpen = true"> 批量导入 </UiButton>
+        <UiButton variant="primary" size="sm" :disabled="writing" @click="importModalOpen = true"> 批量导入 </UiButton>
       </div>
       <div class="form-row">
         <UiInput
@@ -262,7 +263,7 @@ async function exportHonor() {
       </div>
       <UiEmpty
         size="sm"
-        v-if="!loading && rows.length === 0"
+        v-if="!loadError && !loading && rows.length === 0"
         description="当前筛选无荣誉记录，请调整条件或新建"
       />
       <UiDataTable
@@ -273,6 +274,7 @@ async function exportHonor() {
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="loadError"
         row-key="id"
         style="margin-top: 16px"
         @page-change="handlePageChange"

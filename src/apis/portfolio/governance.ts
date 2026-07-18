@@ -66,6 +66,14 @@ export interface PortfolioMajorGroupPortfolioSectionItemVO {
   recordTitle: string
   periodLabel: string
   statusLabel: string
+  contributionFactor?: number | string
+  majorGroupMembershipCount?: number
+  contributionNote?: string
+  identityType?: string
+  identityTypeLabel?: string
+  externalIdentity?: boolean
+  identityCompositeScore?: number | string
+  workloadHours?: number | string
 }
 
 export interface PortfolioMaskRuleVO {

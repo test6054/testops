@@ -4,7 +4,7 @@ import type {
   ArchiveVolumeSignOffRoleCode,
   ArchiveVolumeSubmitChecklistResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import {
   ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES,
@@ -245,7 +245,7 @@ async function handleConfirm() {
     </template>
     <template #footer>
       <UiButton size="sm" variant="outline" @click="close">取消</UiButton>
-      <UiButton size="sm" :loading="submitting" :disabled="loading || loadFailed || !canConfirm" @click="handleConfirm">
+      <UiButton size="sm" variant="primary" :loading="submitting" :disabled="loading || loadFailed || !canConfirm" @click="handleConfirm">
         确认自查
       </UiButton>
     </template>

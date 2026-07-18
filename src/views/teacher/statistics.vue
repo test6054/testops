@@ -2,7 +2,7 @@
   <StageWorkbenchShell class="stats-page">
     <template v-if="currentExamId" #signal>
       <UiSkeletonState v-if="paperAnalysisLoading" variant="card" :card-count="3" compact />
-      <SignalBand v-else compact :metrics="statsSignalMetrics" />
+      <SignalBand v-else compact variant="panel" :metrics="statsSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!currentExamId" class="stats-page__empty" />

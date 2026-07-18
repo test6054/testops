@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherLibraryBorrowStatsVO } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
 import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'

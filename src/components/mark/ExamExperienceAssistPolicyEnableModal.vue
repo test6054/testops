@@ -41,7 +41,7 @@
 
 <script lang="ts" setup>
 import type { ExamGradingExperienceAssistPolicyResponse } from '@/apis/mark/grading-experience-assist'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   enableExamGradingExperienceAssistPolicy,

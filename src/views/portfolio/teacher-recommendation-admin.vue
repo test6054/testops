@@ -7,7 +7,7 @@ import type {
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -97,6 +97,7 @@ const {
   pageNum: runsPageNum,
   pageSize: runsPageSize,
   pageTotal: runsPageTotal,
+  loadError: runsLoadError,
   loadPage: loadRuns,
   search: searchRuns,
   handlePageChange: handleRunsPageChange,
@@ -114,6 +115,7 @@ const {
   pageNum,
   pageSize,
   pageTotal,
+  loadError: candidatesLoadError,
   loadPage: loadCandidatesPage,
   handlePageChange,
 } = useQueryTable(
@@ -410,7 +412,11 @@ watch(
           </UiButton>
           <UiButton size="sm" @click="loadCandidates"> 刷新候选 </UiButton>
         </div>
-        <UiEmpty size="sm" v-if="!loading && candidates.length === 0" description="当前筛选无推荐记录" />
+        <UiEmpty
+          size="sm"
+          v-if="!candidatesLoadError && !candidatesLoading && candidates.length === 0"
+          description="当前筛选无推荐记录"
+        />
         <UiDataTable
           v-model:current="pageNum"
           v-model:page-size="pageSize"
@@ -419,6 +425,7 @@ watch(
           :columns="candidateColumns"
           :data-source="candidates"
           :loading="candidatesLoading"
+          :load-error="candidatesLoadError"
           row-key="id"
           style="margin-top: 16px"
           @page-change="handlePageChange"
@@ -428,7 +435,11 @@ watch(
     <template v-else-if="activeTab === 'runs'">
       <UiCard>
         <UiButton size="sm" :loading="runsLoading" @click="loadRuns"> 刷新历史 </UiButton>
-        <UiEmpty size="sm" v-if="!runsLoading && runs.length === 0" description="当前筛选无推荐记录" />
+        <UiEmpty
+          size="sm"
+          v-if="!runsLoadError && !runsLoading && runs.length === 0"
+          description="当前筛选无推荐记录"
+        />
         <UiDataTable
           v-model:current="runsPageNum"
           v-model:page-size="runsPageSize"
@@ -437,6 +448,7 @@ watch(
           :columns="runColumns"
           :data-source="runs"
           :loading="runsLoading"
+          :load-error="runsLoadError"
           row-key="id"
           style="margin-top: 16px"
           @page-change="handleRunsPageChange"

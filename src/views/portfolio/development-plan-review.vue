@@ -2,7 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platform'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -270,7 +270,7 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" title="年度规划审核">
         <template v-if="canPickTeachers" #actions>
-          <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportPlans"> 导出表格文件 </UiButton>
+          <UiButton size="sm" variant="primary" :loading="exporting" :disabled="exporting" @click="exportPlans"> 导出表格文件 </UiButton>
         </template>
       </ContextBar>
     </template>

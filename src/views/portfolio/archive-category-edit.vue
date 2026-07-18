@@ -4,7 +4,7 @@ import type {
   PortfolioArchiveRecordVersionVO,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'

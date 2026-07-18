@@ -16,7 +16,7 @@ import type {
   PortfolioReviewTaskSummaryVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -774,6 +774,7 @@ watch(
       />
       <div class="review-toolbar">
         <UiButton
+          variant="primary"
           size="sm"
           :loading="batchSubmitting"
           :disabled="!selectedRowKeys.length || reviewWriting"
@@ -1007,7 +1008,7 @@ watch(
             placeholder="通过意见（可选）"
           />
           <div class="review-actions__row">
-            <UiButton size="sm" :loading="actionSubmitting" @click="handleApprove"> 通过 </UiButton>
+            <UiButton size="sm" variant="primary" :loading="actionSubmitting" @click="handleApprove"> 通过 </UiButton>
           </div>
           <template v-if="activeRow.escalateAllowed">
             <UiInput

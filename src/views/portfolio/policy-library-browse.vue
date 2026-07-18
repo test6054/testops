@@ -2,7 +2,7 @@
 import type { PortfolioPolicyDocumentSearchVO } from '@/apis/portfolio/policy'
 import type { PortfolioPolicyDocumentStatusCode } from '@/types/enums/portfolio-policy-document-status-enum'
 import type { PortfolioPolicyLevelCode } from '@/types/enums/portfolio-policy-level-enum'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
 import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -11,6 +11,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -26,6 +27,8 @@ const loading = ref(false)
 const loadFailed = ref(false)
 const keyword = ref('')
 const appliedKeyword = ref('')
+const includeHistory = ref(false)
+const appliedIncludeHistory = ref(false)
 const rows = ref<PortfolioPolicyDocumentSearchVO[]>([])
 const previewOpen = ref(false)
 const previewLoading = ref(false)
@@ -63,6 +66,7 @@ async function search(resetPage = true) {
     loading.value = false
     loadFailed.value = false
     appliedKeyword.value = ''
+    appliedIncludeHistory.value = false
     rows.value = []
     query.total = 0
     return
@@ -70,6 +74,7 @@ async function search(resetPage = true) {
   if (resetPage) {
     query.pageNum = 1
     appliedKeyword.value = kw
+    appliedIncludeHistory.value = includeHistory.value
   }
   const requestToken = searchRequestToken.value + 1
   searchRequestToken.value = requestToken
@@ -77,6 +82,7 @@ async function search(resetPage = true) {
     pageNum: query.pageNum,
     pageSize: query.pageSize,
     keyword: kw,
+    includeHistory: resetPage ? includeHistory.value : appliedIncludeHistory.value,
   }
   loading.value = true
   loadFailed.value = false
@@ -172,7 +178,7 @@ function handlePageChange(page: number, pageSize: number) {
         layout="workbench"
         show-title
         title="政策检索"
-        subtitle="全文检索现行与历史政策"
+        subtitle="默认仅现行有效；勾选含历史可检索被替代与已废止版本"
       />
     </template>
     <UiCard>
@@ -183,6 +189,7 @@ function handlePageChange(page: number, pageSize: number) {
           placeholder="输入关键词检索正文"
           @press-enter="() => void search(true)"
         />
+        <UiCheckbox v-model="includeHistory">含历史版本</UiCheckbox>
         <UiButton size="sm" :loading="loading" @click="() => void search(true)"> 检索 </UiButton>
       </div>
       <UiSpin :spinning="loading">

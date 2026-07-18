@@ -7,7 +7,7 @@ import type { AchievementResultVO } from '@/apis/quality/achievement-result'
 import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { achievementApi } from '@/apis/quality/achievement'
@@ -748,7 +748,7 @@ onActivated(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar :title="result?.targetLabel || '达成度结果详情'">
+      <ContextBar show-title :title="result?.targetLabel || '达成度结果详情'">
         <template #status>
           <UiButton variant="outline" size="sm" @click="router.back()">返回</UiButton>
           <UiTag v-if="result" :tone="auditStatusColor(result.auditStatus)" size="sm">
@@ -797,7 +797,7 @@ onActivated(() => {
     />
 
     <template v-else-if="result">
-      <SignalBand :metrics="signals" compact class="achievement-detail__signals" />
+      <SignalBand :metrics="signals" variant="panel" compact class="achievement-detail__signals" />
 
       <UiCard v-if="showDirectIndirectSynthesisPanel" class="achievement-detail__synthesis-card">
         <template #title>直间接合成</template>

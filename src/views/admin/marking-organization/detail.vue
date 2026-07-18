@@ -62,7 +62,7 @@
     </template>
 
     <template v-if="organization" #signal>
-      <SignalBand compact :metrics="orgSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="orgSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="isExamWorkspaceRoute" />
@@ -204,13 +204,13 @@
               />
             </template>
             <template v-if="canManageExamOwner" #toolbar-right>
-              <UiButton size="sm" @click="openGroupModal">
+              <UiButton variant="primary" size="sm" @click="openGroupModal">
                 <template #icon><PlusOutlined /></template>
                 新建题组
               </UiButton>
             </template>
             <template v-if="canManageExamOwner" #empty-action>
-              <UiButton size="sm" @click="openGroupModal">
+              <UiButton variant="primary" size="sm" @click="openGroupModal">
                 <template #icon><PlusOutlined /></template>
                 新建题组
               </UiButton>
@@ -378,6 +378,7 @@
                 </UiFormItem>
                 <UiButton
                   size="sm"
+                  variant="primary"
                   v-if="canManageExamOwner"
                   :loading="savingAllocation"
                   @click="submitAllocation"
@@ -428,7 +429,7 @@
                     :disabled="!canManageExamOwner"
                   />
                 </UiFormItem>
-                <UiButton size="sm" v-if="canManageExamOwner" :loading="savingRecycle" @click="submitRecycle">
+                <UiButton variant="primary" size="sm" v-if="canManageExamOwner" :loading="savingRecycle" @click="submitRecycle">
                   <template #icon><SaveOutlined /></template>
                   保存回收策略
                 </UiButton>
@@ -516,7 +517,7 @@
     >
       <template #footer>
         <UiButton size="sm" variant="outline" @click="groupModalOpen = false">取消</UiButton>
-        <UiButton size="sm" :loading="savingGroup" @click="submitGroup">提交</UiButton>
+        <UiButton variant="primary" size="sm" :loading="savingGroup" @click="submitGroup">提交</UiButton>
       </template>
       <UiForm ref="groupFormRef" :model="groupForm" :rules="groupRules" layout="vertical">
         <UiFormItem label="题组名称" name="groupName" required>
@@ -689,7 +690,7 @@
                   allow-clear
                 />
               </UiFormItem>
-              <UiButton size="sm" :loading="savingAllocation" @click="submitAllocation">
+              <UiButton variant="primary" size="sm" :loading="savingAllocation" @click="submitAllocation">
                 <template #icon><SaveOutlined /></template>
                 保存分配策略
               </UiButton>
@@ -731,7 +732,7 @@
                   allow-clear
                 />
               </UiFormItem>
-              <UiButton size="sm" :loading="savingRecycle" @click="submitRecycle">
+              <UiButton variant="primary" size="sm" :loading="savingRecycle" @click="submitRecycle">
                 <template #icon><SaveOutlined /></template>
                 保存回收策略
               </UiButton>

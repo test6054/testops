@@ -272,6 +272,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useUserStore } from '@/stores/modules/user'
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -286,6 +287,9 @@ const props = defineProps<{
   scorePolicy?: ExamScorePolicyCode
 }>()
 const emit = defineEmits<{ (e: 'changed'): void }>()
+const userStore = useUserStore()
+const currentUserId = computed(() => userStore.userInfo?.userId || '')
+
 const router = useRouter()
 
 const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 20
@@ -789,6 +793,10 @@ async function handleSubmitPlan(planId: string): Promise<void> {
 }
 
 async function handleApprove(planId: string): Promise<void> {
+  const row = rows.value.find((item) => item.id === planId)
+  if (!row || !canDecideBatchCorrectionPlan(row)) {
+    return
+  }
   if (operatingId.value || creating.value) {
     return
   }
@@ -808,7 +816,7 @@ async function handleApprove(planId: string): Promise<void> {
 
 function openRejectModal(planId: string): void {
   const row = rows.value.find((item) => item.id === planId)
-  if (!row || row.approvalStatus !== BatchCorrectionApprovalStatusCode.PENDING_APPROVAL) {
+  if (!row || !canDecideBatchCorrectionPlan(row)) {
     return
   }
   rejectPlanId.value = planId
@@ -906,11 +914,28 @@ function canSubmit(row: ExamBatchGradeCorrectionPlan): boolean {
   )
 }
 
+/** MVR-195：与 BE assertBatchCorrectionApproverSeparatedFromSubmitter 同源 */
+function isBatchCorrectionSubmitterSelf(row: ExamBatchGradeCorrectionPlan): boolean {
+  if (!currentUserId.value) {
+    return false
+  }
+  const submitterId = row.updateUser || row.createUser
+  return Boolean(submitterId && String(submitterId) === String(currentUserId.value))
+}
+
+function canDecideBatchCorrectionPlan(row: ExamBatchGradeCorrectionPlan): boolean {
+  return (
+    row.approvalStatus === BatchCorrectionApprovalStatusCode.PENDING_APPROVAL
+    && !isBatchCorrectionSubmitterSelf(row)
+  )
+}
+
 function buildBatchCorrectionPlanActions(
   row: ExamBatchGradeCorrectionPlan,
 ): UiTableRowActionItem[] {
   // 行内仅 1 个 primary：提交 > 通过 > 执行
   const operating = (action: OperationAction) => isOperating(row.id, action)
+  const canDecide = canDecideBatchCorrectionPlan(row)
   const actions: UiTableRowActionItem[] = [
     {
       key: 'submit',
@@ -921,14 +946,14 @@ function buildBatchCorrectionPlanActions(
     {
       key: 'approve',
       label: '通过',
-      hidden: row.approvalStatus !== BatchCorrectionApprovalStatusCode.PENDING_APPROVAL,
+      hidden: !canDecide,
       disabled: operating('approve'),
     },
     {
       key: 'reject',
       label: '驳回',
       tone: 'danger',
-      hidden: row.approvalStatus !== BatchCorrectionApprovalStatusCode.PENDING_APPROVAL,
+      hidden: !canDecide,
       disabled: operating('reject'),
     },
     {
@@ -940,7 +965,7 @@ function buildBatchCorrectionPlanActions(
   ]
   const primaryKey = canSubmit(row)
     ? 'submit'
-    : row.approvalStatus === BatchCorrectionApprovalStatusCode.PENDING_APPROVAL
+    : canDecide
       ? 'approve'
       : row.approvalStatus === BatchCorrectionApprovalStatusCode.APPROVED
         ? 'execute'

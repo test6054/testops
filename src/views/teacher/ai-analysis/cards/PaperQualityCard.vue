@@ -16,6 +16,7 @@
       v-else-if="showSignalBand"
       :metrics="displayMetrics"
       compact
+      variant="inline"
       class="paper-quality-card__metrics"
     />
   </AiAnalysisCardShell>

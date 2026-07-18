@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
 import { portfolioDoubleDutyApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -33,7 +33,7 @@ const form = reactive({
   dutyScope: '',
 })
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadPage, handlePageChange } = useQueryTable(
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } = useQueryTable(
   portfolioDoubleDutyApi.page,
 )
 
@@ -116,7 +116,14 @@ async function exportRoster() {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="双肩挑台账" subtitle="行政与教学岗位登记 · 查询统计 · 导出台账" />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="双肩挑台账"
+        subtitle="行政与教学岗位登记 · 查询统计 · 导出台账"
+      />
+    </template>
     <UiCard>
       <div class="form-row">
         <UiSelect
@@ -148,7 +155,7 @@ async function exportRoster() {
         <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving || !!revokingId" @click="saveRegistry"> 登记 </UiButton>
         <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster"> 导出台账 </UiButton>
       </div>
-      <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="暂无双肩挑台账记录" />
+      <UiEmpty size="sm" v-if="!loadError && !loading && rows.length === 0" description="暂无双肩挑台账记录" />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -157,6 +164,7 @@ async function exportRoster() {
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="loadError"
         row-key="id"
         style="margin-top: 16px"
         @page-change="handlePageChange"

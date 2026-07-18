@@ -8,7 +8,7 @@
     </template>
     <template v-if="canRegisterMaterial" #toolbar>
       <div class="archive-volume-material-table__actions">
-        <UiButton size="sm" @click="openUploadModal">登记材料</UiButton>
+        <UiButton size="sm" variant="primary" @click="openUploadModal">登记材料</UiButton>
         <UiButton
           v-if="canGenerateExamReports"
           size="sm"
@@ -71,9 +71,6 @@
       :load-error="materialsLoadFailed"
       @page-change="handlePageChange"
     >
-      <template v-if="materialsLoadFailed" #empty-action>
-        <UiButton size="sm" variant="outline" @click="loadMaterials">重新加载</UiButton>
-      </template>
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'materialType'">
           {{ materialTypeLabel(record.materialType) }}
@@ -133,7 +130,7 @@
           >
             下载
           </UiTextAction>
-          <UiTextAction v-if="canRegisterMaterial" tone="primary" @click="openTagModal(record)">
+          <UiTextAction v-if="canMaintainMaterial" tone="primary" @click="openTagModal(record)">
             编辑标签
           </UiTextAction>
           <UiTextAction
@@ -154,6 +151,52 @@
         </template>
       </template>
     </UiDataTable>
+
+    <div class="archive-volume-material-table__shared-refs">
+      <div class="archive-volume-material-table__shared-head">
+        <h4 class="archive-volume-material-table__shared-title">合用材料引用</h4>
+        <span class="archive-volume-material-table__meta">{{ sharedRefs.length }} 条</span>
+      </div>
+      <UiAlertStrip
+        v-if="sharedRefsLoadFailed"
+        tone="warning"
+        title="合用材料引用加载失败"
+        description="可重试加载；已登记引用在加载失败时暂不可见。"
+      >
+        <template #actions>
+          <UiButton size="sm" variant="outline" @click="loadSharedRefs">重新加载</UiButton>
+        </template>
+      </UiAlertStrip>
+      <UiDataTable
+        :columns="sharedRefColumns"
+        :data-source="sharedRefsLoadFailed ? [] : sharedRefs"
+        :loading="sharedRefsLoading"
+        pagination-mode="none"
+        flat
+        row-key="refId"
+        size="middle"
+        empty-description="本卷暂无合用材料引用"
+        :load-error="sharedRefsLoadFailed"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'refType'">
+            {{ sharedRefTypeLabel(record.refType) }}
+          </template>
+          <template v-else-if="column.key === 'sharedRefActions'">
+            <UiTextAction
+              v-if="canRemoveSharedMaterialRef"
+              tone="danger"
+              :disabled="removingSharedRefId === record.refId"
+              @click="confirmRemoveSharedRef(record)"
+            >
+              {{ removingSharedRefId === record.refId ? '解除中' : '解除' }}
+            </UiTextAction>
+            <span v-else>-</span>
+          </template>
+        </template>
+      </UiDataTable>
+    </div>
+
 
     <UiDrawer
       :open="uploadModalOpen"
@@ -306,10 +349,11 @@ import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
   ArchiveVolumeMaterialStatsResponse,
+  ArchiveVolumeSharedMaterialRefResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
@@ -330,9 +374,11 @@ import {
   generateArchiveVolumeCourseObjectiveReport,
   generateArchiveVolumeExamAnalysisReport,
   getArchiveVolumeMaterialStats,
+  listArchiveSharedMaterialRefs,
   pageArchiveVolumeMaterials,
   registerArchiveSharedMaterialRef,
   registerArchiveVolumeMaterial,
+  removeArchiveSharedMaterialRef,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -372,6 +418,10 @@ const props = defineProps<{
   detail: ArchiveVolumeDetailResponse
   selectedCatalogKeys: string[]
   canRegisterMaterial: boolean
+  /** MVR-185：标签/OCR 可不在收材窗口 */
+  canMaintainMaterial?: boolean
+  /** MVR-183：解除合用引用可不在收材窗口 */
+  canRemoveSharedMaterialRef?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -388,6 +438,10 @@ const generatingCourseObjective = ref(false)
 const uploadModalOpen = ref(false)
 const sharedRefModalOpen = ref(false)
 const sharedRefSubmitting = ref(false)
+const sharedRefs = ref<ArchiveVolumeSharedMaterialRefResponse[]>([])
+const sharedRefsLoading = ref(false)
+const sharedRefsLoadFailed = ref(false)
+const removingSharedRefId = ref<string | null>(null)
 const ocrDetailOpen = ref(false)
 const ocrDetailMaterialId = ref<string>()
 const tagModalOpen = ref(false)
@@ -455,6 +509,15 @@ const materialColumns: ColumnsType<ArchiveVolumeMaterialResponse> = [
   { title: '操作', key: 'materialActions', width: 280 },
 ]
 
+const sharedRefColumns: ColumnsType<ArchiveVolumeSharedMaterialRefResponse> = [
+  { title: '引用类型', key: 'refType', width: 120 },
+  { title: '目标卷编号', dataIndex: 'targetVolumeId' },
+  { title: '目标材料编号', dataIndex: 'targetMaterialId' },
+  { title: '目录备注', dataIndex: 'catalogNote' },
+  { title: '操作', key: 'sharedRefActions', width: 100 },
+]
+
+
 const filePreview = useFilePreview()
 
 const materialReadySummary = computed(() => {
@@ -516,8 +579,67 @@ async function loadMaterialStats(): Promise<void> {
   }
 }
 
+async function loadSharedRefs(): Promise<void> {
+  if (!props.volumeId) {
+    sharedRefs.value = []
+    sharedRefsLoadFailed.value = false
+    return
+  }
+  sharedRefsLoading.value = true
+  try {
+    sharedRefs.value = await listArchiveSharedMaterialRefs({ volumeId: props.volumeId })
+    sharedRefsLoadFailed.value = false
+  } catch (error) {
+    sharedRefsLoadFailed.value = true
+    showUserError(error, '加载合用材料引用失败')
+  } finally {
+    sharedRefsLoading.value = false
+  }
+}
+
 async function reloadMaterialsAndStats(): Promise<void> {
-  await Promise.all([loadMaterials(), loadMaterialStats()])
+  await Promise.all([loadMaterials(), loadMaterialStats(), loadSharedRefs()])
+}
+
+function sharedRefTypeLabel(refType?: ArchiveSharedMaterialRefTypeCode): string {
+  if (!refType) {
+    return '-'
+  }
+  const hit = sharedRefTypeOptions.find((item) => item.value === refType)
+  return hit?.label ?? String(refType)
+}
+
+async function confirmRemoveSharedRef(record: ArchiveVolumeSharedMaterialRefResponse): Promise<void> {
+  if (removingSharedRefId.value || !props.canRemoveSharedMaterialRef) {
+    return
+  }
+  void confirmAsync({
+    title: '解除合用材料引用？',
+    content: '解除后本卷不再共享该目标材料，须重新收材与审核后方可提交。',
+    type: 'warning',
+    okText: '解除引用',
+    cancelText: '取消',
+    onOk: () => removeSharedRef(record),
+  })
+}
+
+async function removeSharedRef(record: ArchiveVolumeSharedMaterialRefResponse): Promise<void> {
+  if (removingSharedRefId.value) {
+    return
+  }
+  removingSharedRefId.value = record.refId
+  try {
+    await removeArchiveSharedMaterialRef({
+      volumeId: props.volumeId,
+      refId: record.refId,
+    })
+    message.success('合用材料引用已解除')
+    emitRefreshed()
+  } catch (error) {
+    showUserError(error, '解除合用材料引用失败')
+  } finally {
+    removingSharedRefId.value = null
+  }
 }
 
 function handlePageChange(): void {
@@ -641,6 +763,8 @@ function materialOcrStatusTone(code: ArchiveMaterialOcrStatusCode): BadgeTone {
 }
 
 function canRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
+  // MVR-185：OCR 重试与收材窗口解耦
+  if (!props.canMaintainMaterial) return false
   return material.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED && Boolean(material.fileId)
 }
 
@@ -679,6 +803,7 @@ function openMaterialOcrDetail(material: ArchiveVolumeMaterialResponse): void {
 }
 
 function openTagModal(material: ArchiveVolumeMaterialResponse): void {
+  if (!props.canMaintainMaterial) return
   tagEditMaterial.value = material
   tagModalOpen.value = true
 }
@@ -689,6 +814,7 @@ function emitRefreshed(options?: { silent?: boolean }) {
 }
 
 function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void {
+  if (!props.canMaintainMaterial) return
   if (retryingMaterialIds.has(material.materialId)) return
   void confirmAsync({
     title: '重试文字识别？',
@@ -851,6 +977,9 @@ function openSharedRefModal() {
 }
 
 async function submitMaterial() {
+  if (uploading.value) {
+    return
+  }
   if (!uploadForm.materialType || !uploadForm.fileNodeId) {
     showFormValidationMessage('请选择材料类型和文件')
     return
@@ -889,6 +1018,9 @@ async function submitMaterial() {
 }
 
 async function submitSharedRef() {
+  if (sharedRefSubmitting.value) {
+    return
+  }
   if (!sharedRefForm.targetVolumeId.trim() || !sharedRefForm.targetMaterialId.trim()) {
     showFormValidationMessage('请填写目标卷与材料编号')
     return
@@ -920,6 +1052,25 @@ async function submitSharedRef() {
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-4);
+}
+
+.archive-volume-material-table__shared-refs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-3);
+}
+
+.archive-volume-material-table__shared-head {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+}
+
+.archive-volume-material-table__shared-title {
+  margin: 0;
+  font-size: var(--dp-font-size-sm);
+  font-weight: 600;
+  color: var(--dp-color-text-primary);
 }
 
 .archive-volume-material-table__head {

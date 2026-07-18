@@ -1,4 +1,4 @@
-import type { ColProps } from 'ant-design-vue'
+import type { ColProps } from 'ant-design-vue/es/grid'
 import { useBreakpoints } from '@vueuse/core'
 import { computed } from 'vue'
 import { ANT_GRID_MIN } from '@/constants/breakpoints'

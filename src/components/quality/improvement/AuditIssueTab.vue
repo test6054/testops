@@ -8,7 +8,7 @@ import type {
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
 import type { QualityScopeRequestToken } from '@/composables/useScopeRequestGuard'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
 import {
   AUDIT_ISSUE_SEVERITY_OPTIONS,
@@ -57,6 +57,7 @@ import {
   beginQualityScopeRequest,
   isQualityScopeStaleError,
 } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
@@ -111,6 +112,7 @@ function severityColor(value: AuditIssueSeverityCode): BadgeTone {
 const issueList = ref<AuditIssueVO[]>([])
 const issueTotal = ref(0)
 const issueLoading = ref(false)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const issueQuery = reactive<AuditIssueQueryRequest>({
   pageNum: 1,
   pageSize: 10,
@@ -236,6 +238,7 @@ async function refreshIssueRectificationCounts(scope: QualityScopeRequestToken) 
 async function loadList(options?: { refreshSignals?: boolean }) {
   const scope = beginQualityScopeRequest()
   issueLoading.value = true
+  beginLoad()
   try {
     const page = await auditIssueApi.page({
       ...issueQuery,
@@ -262,10 +265,12 @@ async function loadList(options?: { refreshSignals?: boolean }) {
         '工作台指标加载失败',
       )
     }
+    okLoad()
   } catch (error) {
     if (isQualityScopeStaleError(error) || scope.isStale()) {
       return
     }
+    failLoad()
     const err = toUserError(error, '审核评估问题加载失败')
     props.onLoadError?.(err)
     showUserError(error, '审核评估问题加载失败')
@@ -513,6 +518,7 @@ defineExpose({
       :columns="issueColumns"
       :data-source="issueList"
       :loading="issueLoading"
+      :load-error="loadError"
       row-key="id"
       size="middle"
       :total="issueTotal"

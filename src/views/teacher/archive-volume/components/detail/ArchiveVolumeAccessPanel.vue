@@ -3,7 +3,7 @@
     <template #head>
       <div class="archive-volume-access-panel__head">
         <h3 class="archive-volume-access-panel__title">查阅/借阅审批</h3>
-        <UiButton v-if="canRequestAccess" size="sm" @click="openAccessRequest">发起借阅</UiButton>
+        <UiButton v-if="canRequestAccess" variant="primary" size="sm" @click="openAccessRequest">发起借阅</UiButton>
       </div>
     </template>
 
@@ -123,6 +123,7 @@
             <div class="approval-card__action-row">
               <UiButton size="sm" variant="outline" @click="cancelApprove">取消</UiButton>
               <UiButton
+                variant="primary"
                 size="sm"
                 :loading="approveAccessSubmitting"
                 @click="submitApproveAccess(record.accessRecordId)"
@@ -132,7 +133,7 @@
             </div>
           </template>
           <template v-else>
-            <UiButton size="sm" @click="startApprove(record.accessRecordId)">批准</UiButton>
+            <UiButton size="sm" variant="primary" @click="startApprove(record.accessRecordId)">批准</UiButton>
             <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)">
               拒绝
             </UiButton>
@@ -240,7 +241,7 @@ import type {
   ArchiveVolumeAccessRecordResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   approveArchiveVolumeAccess,

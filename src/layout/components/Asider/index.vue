@@ -1,8 +1,7 @@
 <template>
   <aside
     v-if="isDesktop"
-    :class="{ 'app-menu-dark': appStore.menuDark, 'collapsed': appStore.menuCollapse }"
-    :style="appStore.menuDark ? appStore.themeCSSVar : undefined"
+    :class="{ collapsed: appStore.menuCollapse }"
     class="asider"
   >
     <Logo :collapsed="appStore.menuCollapse"></Logo>
@@ -70,11 +69,11 @@ const { isDesktop } = useDevice()
   height: 100%;
   min-height: 0;
   position: relative;
-  border-right: 1px solid var(--dp-border-subtle);
+  border-right: 1px solid var(--dp-border);
   box-sizing: border-box;
   color: var(--dp-text);
   background-color: var(--dp-bg-container);
-  transition: width 0.2s ease;
+  box-shadow: var(--dp-shadow-xs);
 
   &.collapsed {
     width: 80px;
@@ -112,8 +111,8 @@ const { isDesktop } = useDevice()
     justify-content: center;
     align-items: center;
     height: 56px;
-    border-top: 1px solid var(--dp-border-subtle);
-    background-color: inherit;
+    border-top: 1px solid var(--dp-border);
+    background-color: var(--dp-surface-elevated);
   }
 }
 </style>

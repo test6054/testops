@@ -25,7 +25,7 @@ import type {
   WorkbenchStageStatus,
 } from '@/types/workbench'
 import { LoadingOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { reportApi } from '@/apis/quality/report'
@@ -705,25 +705,34 @@ const signals = computed<SignalMetric[]>(() => {
   const exporting = e[ReportExportStatusCode.PENDING] + e[ReportExportStatusCode.PROCESSING]
   const exportFailed = e[ReportExportStatusCode.FAILED]
   const exportComplete = e[ReportExportStatusCode.COMPLETED]
+  const draftCount = b[ReportStatusCode.DRAFT]
+  const submittedCount = b[ReportStatusCode.SUBMITTED]
+  const returnedCount = b[ReportStatusCode.RETURNED]
   return [
     { key: 'total', label: '报告总数', value: counts.totalCount ?? 0, tone: 'blue' },
     {
       key: 'draft',
       label: '草稿',
-      value: b[ReportStatusCode.DRAFT],
-      tone: b[ReportStatusCode.DRAFT] > 0 ? 'orange' : 'gray',
+      value: draftCount,
+      tone: draftCount > 0 ? 'orange' : 'gray',
+      clickable: draftCount > 0,
+      active: query.status === ReportStatusCode.DRAFT,
     },
     {
       key: 'submitted',
       label: '待确认',
-      value: b[ReportStatusCode.SUBMITTED],
-      tone: b[ReportStatusCode.SUBMITTED] > 0 ? 'blue' : 'gray',
+      value: submittedCount,
+      tone: submittedCount > 0 ? 'blue' : 'gray',
+      clickable: submittedCount > 0,
+      active: query.status === ReportStatusCode.SUBMITTED,
     },
     {
       key: 'returned',
       label: '已驳回',
-      value: b[ReportStatusCode.RETURNED],
-      tone: b[ReportStatusCode.RETURNED] > 0 ? 'red' : 'gray',
+      value: returnedCount,
+      tone: returnedCount > 0 ? 'red' : 'gray',
+      clickable: returnedCount > 0,
+      active: query.status === ReportStatusCode.RETURNED,
     },
     {
       key: 'export-running',
@@ -745,6 +754,21 @@ const signals = computed<SignalMetric[]>(() => {
     },
   ]
 })
+
+function handleSignalMetricClick(key: string): void {
+  const statusMap: Record<string, ReportStatusCode> = {
+    draft: ReportStatusCode.DRAFT,
+    submitted: ReportStatusCode.SUBMITTED,
+    returned: ReportStatusCode.RETURNED,
+  }
+  const status = statusMap[key]
+  if (!status) {
+    return
+  }
+  query.status = status
+  query.pageNum = 1
+  loadList()
+}
 
 const auditDrawerOpen = ref(false)
 const auditEvents = ref<AuditTimelineEvent[]>([])
@@ -882,7 +906,7 @@ onBeforeUnmount(() => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar>
+      <QualityPageContextBar show-title title="质量评价报告">
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="handleScopeChange">
             刷新
@@ -899,7 +923,13 @@ onBeforeUnmount(() => {
 
     <template v-else>
       <StageRail :stages="stages" compact class="report__stages" />
-      <SignalBand :metrics="signals" compact class="report__signals" />
+      <SignalBand
+        :metrics="signals"
+        variant="panel"
+        compact
+        class="report__signals"
+        @metric-click="handleSignalMetricClick"
+      />
 
       <TaskResultPanel
         v-if="reportResultItems.length > 0"
@@ -912,7 +942,7 @@ onBeforeUnmount(() => {
       <UiCard class="detail-table-card report__table-card">
         <template #title>报告列表</template>
         <template #extra>
-          <UiButton size="sm" @click="openCreate">新建报告</UiButton>
+          <UiButton size="sm" variant="primary" @click="openCreate">新建报告</UiButton>
         </template>
 
         <UiFilterBar

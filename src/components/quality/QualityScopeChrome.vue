@@ -265,6 +265,7 @@ onMounted(() => {
       </UiTag>
       <UiButton
         v-if="needsPlanConfirmation"
+        variant="primary"
         size="sm"
         @click="goConfirmPlan"
       >
@@ -279,8 +280,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  min-height: 40px;
+  gap: var(--dp-space-2);
+  min-height: 44px;
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow:
+    var(--dp-shadow-xs),
+    inset 3px 0 0 color-mix(in srgb, var(--dp-blue-500) 55%, transparent);
 
   &__hint {
     font-size: var(--dp-font-size-sm);

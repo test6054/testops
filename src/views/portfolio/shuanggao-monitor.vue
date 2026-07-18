@@ -323,11 +323,17 @@ watch(
 <template>
   <StageWorkbenchShell title="双高建设监测">
     <template #context>
-      <ContextBar :title="pageTitle" :subtitle="monitor?.dataSourceNote" />
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="pageTitle"
+        :subtitle="monitor?.dataSourceNote"
+      />
     </template>
     <SignalBand
       v-if="signals.length"
       :metrics="signals"
+      variant="panel"
       compact
       @metric-click="handleShuanggaoSignalClick"
     />

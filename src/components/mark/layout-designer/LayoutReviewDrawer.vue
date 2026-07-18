@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import { adjustExamLayoutQuestionRegion } from '@/apis/mark/exam-layout-design'
 import LayoutCanvasLite from '@/components/mark/layout-designer/LayoutCanvasLite.vue'

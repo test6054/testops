@@ -115,7 +115,7 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
 
 .archive-next-steps__item:hover {
   border-color: var(--dp-primary);
-  box-shadow: var(--dp-shadow-sm));
+  box-shadow: var(--dp-shadow-sm);
 }
 
 .archive-next-steps__item--primary {

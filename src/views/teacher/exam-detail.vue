@@ -27,6 +27,7 @@
     <template v-if="detail && overviewSignalMetrics.length > 0" #signal>
       <SignalBand
         compact
+        variant="panel"
         :metrics="overviewSignalMetrics"
         @metric-click="handleOverviewMetricClick"
       />

@@ -1,7 +1,12 @@
 <template>
   <StageWorkbenchShell class="scan-batch-detail-workbench">
     <template v-if="selectedExamId && scanBatchId" #context>
-      <ContextBar layout="workbench" :subtitle="contextSubtitle">
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="扫描批次明细"
+        :subtitle="contextSubtitle"
+      >
         <template #status>
           <UiTag v-if="workbench?.batch" :tone="batchStatusTone(workbench.batch)" size="sm">
             {{ batchStatusLabel(workbench.batch) }}
@@ -60,7 +65,7 @@
     </template>
 
     <template v-if="workbench" #signal>
-      <SignalBand compact :metrics="workbenchSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="workbenchSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip

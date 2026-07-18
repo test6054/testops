@@ -6,7 +6,7 @@ import type {
   PortfolioNationalAchievementRequirementSaveItem,
 } from '@/apis/portfolio/national-achievement'
 import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import {
   PortfolioAchievementEvidenceTypeCode,
@@ -396,13 +396,7 @@ void loadCatalogs()
               { value: 'false', label: '已停用' },
             ]"
           />
-          <UiButton
-            size="sm"
-            @click="
-              pageNum = 1
-              loadCatalogs()
-            "
-          >
+          <UiButton size="sm" variant="primary" @click="(pageNum = 1, loadCatalogs())">
             查询
           </UiButton>
         </div>
@@ -470,13 +464,7 @@ void loadCatalogs()
           <UiInput
             size="sm" v-model="recordFilter.categoryCode" clearable placeholder="分类编码"
           />
-          <UiButton
-            size="sm"
-            @click="
-              recordPageNum = 1
-              loadRecords()
-            "
-          >
+          <UiButton size="sm" variant="primary" @click="(recordPageNum = 1, loadRecords())">
             查询
           </UiButton>
         </div>
@@ -560,7 +548,7 @@ void loadCatalogs()
             <UiTextarea size="sm" v-model="form.standardDescription" :rows="3" :disabled="operating" />
           </UiFormItem>
           <div class="achievement-admin__requirements-head">
-            <strong>标准要求（权重合计 100）</strong><UiButton size="sm" :disabled="operating" @click="addRequirement">新增要求</UiButton>
+            <strong>标准要求（权重合计 100）</strong><UiButton variant="primary" size="sm" :disabled="operating" @click="addRequirement">新增要求</UiButton>
           </div>
           <div
             v-for="(requirement, index) in form.requirements"

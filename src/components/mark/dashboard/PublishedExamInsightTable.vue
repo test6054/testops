@@ -56,7 +56,7 @@
 </template>
 
 <script lang="ts" setup>
-import type { TableColumnsType } from 'ant-design-vue'
+import type { ColumnsType as TableColumnsType } from 'ant-design-vue/es/table'
 import type { MarkTeacherDashboardPublishedExamInsightItemVO } from '@/apis/mark/teacher-dashboard'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'

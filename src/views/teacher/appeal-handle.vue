@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="appeal-page">
     <template #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="成绩复核">
         <template #status>
           <UiTag tone="blue" size="sm">阶段 成绩复核</UiTag>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
@@ -22,7 +22,7 @@
     </template>
 
     <template v-if="currentExamId" #signal>
-      <SignalBand compact :metrics="appealSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="appealSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!currentExamId" class="appeal-page__empty" />

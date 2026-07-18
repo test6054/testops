@@ -1,7 +1,11 @@
 <template>
   <StageWorkbenchShell class="experience-page">
+    <template v-if="selectedExamId" #context>
+      <ContextBar layout="workbench" show-title title="阅卷经验库" />
+    </template>
+
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact :metrics="experienceSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="experienceSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="experience-page__empty" />
@@ -9,10 +13,9 @@
     <UiEmpty
       size="sm"
       v-else-if="loadFailed"
+      title="加载失败"
       description="阅卷经验库加载失败"
-      action-label="重试"
       class="experience-page__empty"
-      @action="reloadActiveTab"
     />
 
     <template v-else>
@@ -31,7 +34,7 @@
                 EXPERIENCE_ASSIST_CALIBRATION_HINT
               }}</span>
               <span class="experience-page__flow-hint">{{ EXPERIENCE_CASE_FLOW_HINT }}</span>
-              <UiButton size="sm" :loading="generatingSignatures" @click="handleGenerateSignatures">
+              <UiButton size="sm" variant="primary" :loading="generatingSignatures" @click="handleGenerateSignatures">
                 <template #icon><ThunderboltOutlined /></template>
                 生成 / 重算签名
               </UiButton>
@@ -45,6 +48,7 @@
             :columns="signatureColumns"
             :data-source="signatures"
             :loading="signaturesLoading"
+            :load-error="signaturesLoadError"
             flat
             :total="signaturePageTotal"
             row-key="layoutQuestionId"
@@ -89,6 +93,7 @@
               <span class="experience-page__flow-hint">{{ EXPERIENCE_CASE_FLOW_HINT }}</span>
               <UiButton
                 size="sm"
+                variant="primary"
                 :disabled="!experienceFilterForm.layoutQuestionId"
                 :loading="extracting"
                 @click="handleExtract"
@@ -117,6 +122,7 @@
             :columns="experienceColumns"
             :data-source="experiences"
             :loading="experienceLoading"
+            :load-error="experiencesLoadError"
             flat
             :total="experiencePageTotal"
             row-key="id"
@@ -191,6 +197,7 @@
               <span class="experience-page__flow-hint">{{ AI_ANALYSIS_FLOW_HINT }}</span>
               <UiButton
                 size="sm"
+                variant="primary"
                 :disabled="!clusterFilterForm.layoutQuestionId"
                 :loading="clustering"
                 @click="handleGenerateCluster"
@@ -416,6 +423,7 @@
     <template #footer>
       <div class="dp-space" v-if="canConfirmExperience || canDeprecateExperience" style="--dp-space-gap: 8px">
         <UiButton
+          variant="primary"
           size="sm"
           v-if="canConfirmExperience"
           :loading="confirmingExperience"
@@ -497,6 +505,7 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
@@ -539,6 +548,7 @@ const {
   pageNum: signaturePageNum,
   pageSize: signaturePageSize,
   pageTotal: signaturePageTotal,
+  loadError: signaturesLoadError,
   handlePageChange: handleSignaturePageChange,
   search: searchSignatures,
   loadPage: loadSignaturePage,
@@ -582,6 +592,7 @@ const {
   pageSize: experiencePageSize,
   pageTotal: experiencePageTotal,
   filters: experienceFilters,
+  loadError: experiencesLoadError,
   handlePageChange: handleExperiencePageChange,
   search: searchExperienceTable,
   loadPage: loadExperiencePage,

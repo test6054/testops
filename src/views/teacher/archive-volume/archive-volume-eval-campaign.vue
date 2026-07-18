@@ -16,7 +16,7 @@
     </template>
 
     <template #signal>
-      <SignalBand compact :metrics="evalCampaignSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="evalCampaignSignalMetrics" />
     </template>
 
     <WorkbenchSurfaceCard flush>
@@ -263,7 +263,7 @@
             placeholder="学期"
             style="width: 120px"
           />
-          <UiButton size="sm" @click="handleMixedSearch">查询</UiButton>
+          <UiButton size="sm" variant="primary" @click="handleMixedSearch">查询</UiButton>
         </div>
         <UiDataTable
           v-model:current="mixedPagination.pageNum"

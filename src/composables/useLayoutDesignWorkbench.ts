@@ -7,7 +7,7 @@ import type {
   ExamLayoutQuestionDto,
 } from '@/apis/mark/exam-layout-design'
 import type { MarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {

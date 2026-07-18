@@ -10,7 +10,7 @@ import type {
   PortfolioTitleTaskCriteriaVO
 } from '@/apis/portfolio/title-promotion'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -1000,6 +1000,7 @@ onMounted(() => {
       >
         <template #actions>
           <UiButton
+            variant="primary"
             size="sm"
             v-if="canManageSchoolWorkflow && activeTab === 'task'"
             :disabled="writing"
@@ -1058,6 +1059,7 @@ onMounted(() => {
                 </UiButton>
                 <UiButton
                   v-if="record.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT"
+                  variant="primary"
                   size="sm"
                   :disabled="writing"
                   @click="publishTask(record)"
@@ -1144,6 +1146,7 @@ onMounted(() => {
                           === PortfolioTitlePromotionApplicationStatusCode.HR_PENDING)
                   "
                   size="sm"
+                  variant="primary"
                   :disabled="writing"
                   @click="openReview(record)"
                 >
@@ -1156,6 +1159,7 @@ onMounted(() => {
                         === PortfolioTitlePromotionApplicationStatusCode.EXPERT_PENDING
                   "
                   size="sm"
+                  variant="primary"
                   :disabled="writing"
                   @click="openExpertReview(record)"
                 >
@@ -1168,6 +1172,7 @@ onMounted(() => {
                         === PortfolioTitlePromotionApplicationStatusCode.PUBLICITY
                       && !record.publicityStartTime
                   "
+                  variant="primary"
                   size="sm"
                   :disabled="writing"
                   @click="openPublicity(record)"
@@ -1202,7 +1207,7 @@ onMounted(() => {
         <UiInput size="sm" v-model="form.targetTitleLevel" placeholder="如：副教授" />
         <label>评审年度</label>
         <UiInput size="sm" v-model="form.reviewYear" />
-        <p class="text-sm text-[var(--dp-text-secondary)]">
+        <p class="title-promo__hint">
           资格条件请在任务发布前通过「条件编辑/模板导入」配置；保存草稿任务会自动种子硬门槛三件套。
         </p>
       </div>
@@ -1356,6 +1361,7 @@ onMounted(() => {
         <div class="title-promo__actions">
           <UiButton
             size="sm"
+            variant="primary"
             :disabled="writing"
             :loading="operationKey.startsWith('publicity:')"
             @click="runStartPublicity"
@@ -1372,7 +1378,7 @@ onMounted(() => {
         <UiSpin :spinning="criteriaLoading || criteriaSaving">
           <div
             v-if="criteriaTask.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT"
-            class="mb-3 flex flex-col gap-2"
+            class="title-promo__criteria-import"
           >
             <label>从模板导入</label>
             <UiSelect
@@ -1384,10 +1390,10 @@ onMounted(() => {
               :options="availableCriteriaTemplates.map(item => ({ value: item.id, label: `${item.templateCode} ${item.templateTitle}` }))"
             />
             <div class="title-promo__actions">
-              <UiButton size="sm" :loading="criteriaSaving" @click="importTemplates">
+              <UiButton variant="primary" size="sm" :loading="criteriaSaving" @click="importTemplates">
                 导入模板
               </UiButton>
-              <UiButton size="sm" @click="addCriteriaRow">
+              <UiButton variant="primary" size="sm" @click="addCriteriaRow">
                 新增条件行
               </UiButton>
               <UiButton variant="primary" size="sm" :loading="criteriaSaving" @click="saveDraftCriteriaReplace">
@@ -1397,19 +1403,19 @@ onMounted(() => {
           </div>
           <div
             v-else-if="criteriaTask.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED"
-            class="mb-3 title-promo__actions"
+            class="title-promo__criteria-import title-promo__criteria-import--row"
           >
-            <UiButton size="sm" @click="addCriteriaRow">
+            <UiButton variant="primary" size="sm" @click="addCriteriaRow">
               新增条件行
             </UiButton>
           </div>
-          <div class="mb-3 flex flex-col gap-3">
+          <div class="title-promo__criteria-list">
             <div
               v-for="(item, index) in criteriaList"
               :key="item.id || `${item.criteriaCode}-${index}`"
-              class="rounded border border-[var(--dp-border)] p-3 text-sm"
+              class="title-promo__criteria-panel"
             >
-              <div class="mb-2 flex items-center justify-between gap-2">
+              <div class="title-promo__criteria-panel-head">
                 <strong>条件 {{ index + 1 }}</strong>
                 <UiButton
                   v-if="canEditCriteriaList()"
@@ -1507,7 +1513,7 @@ onMounted(() => {
                 <label>排序</label>
                 <UiInputNumber size="sm" v-model="item.sortNo" :min="0" :disabled="!canEditCriteriaList()" />
               </div>
-              <label class="mt-2 block">说明文案</label>
+              <label class="title-promo__criteria-note-label">说明文案</label>
               <UiTextarea
                 size="sm"
                 v-model="item.criteriaDescription"
@@ -1515,7 +1521,7 @@ onMounted(() => {
                 :disabled="!canEditCriteriaList()"
                 placeholder="教师端核验清单展示"
               />
-              <label class="mt-2 flex items-center gap-2">
+              <label class="title-promo__criteria-check">
                 <input
                   v-model="item.blockOnFail"
                   type="checkbox"
@@ -1533,7 +1539,7 @@ onMounted(() => {
           </div>
           <div
             v-if="criteriaTask.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED"
-            class="flex flex-col gap-2"
+            class="title-promo__emergency"
           >
             <label>紧急修正原因（必填）</label>
             <UiTextarea size="sm" v-model="emergencyReason" :rows="3" placeholder="说明为何修正条件（阳光评审审计）" />
@@ -1544,14 +1550,14 @@ onMounted(() => {
             <div
               v-for="log in changeLogs"
               :key="log.id"
-              class="rounded border border-[var(--dp-border)] p-2 text-sm"
+              class="title-promo__change-log"
             >
               <div>{{ log.createTime }} · 前 {{ log.beforeCriteriaCount }} → 后 {{ log.afterCriteriaCount }}</div>
               <div>{{ log.changeReason }}</div>
               <div
                 v-for="entry in log.items || []"
                 :key="entry.id"
-                class="text-xs text-[var(--dp-text-secondary)]"
+                class="dp-meta"
               >
                 {{ strictEnumLabel(PortfolioTitleCriteriaChangeActionDescription, entry.changeAction, '变更动作') }}
                 {{ entry.criteriaCode }} {{ entry.criteriaTitle }}
@@ -1605,6 +1611,92 @@ onMounted(() => {
   gap: 8px;
   flex-wrap: wrap;
   margin-top: 8px;
+}
+
+.title-promo__actions--spaced {
+  margin-bottom: var(--dp-space-3);
+}
+
+.title-promo__hint {
+  margin: 0;
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+
+.title-promo__criteria-import {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-3);
+}
+
+.title-promo__criteria-import--row {
+  flex-direction: row;
+  align-items: center;
+}
+
+.title-promo__criteria-note-label {
+  display: block;
+  margin-top: var(--dp-space-2);
+}
+
+.title-promo__criteria-check {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  margin-top: var(--dp-space-2);
+}
+
+.title-promo__criteria-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-3);
+  margin-bottom: var(--dp-space-3);
+}
+
+.title-promo__criteria-panel {
+  padding: var(--dp-space-3);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control);
+  font-size: var(--dp-font-size-sm);
+}
+
+.title-promo__criteria-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-2);
+}
+
+.title-promo__field-label {
+  font-size: 13px;
+  color: var(--dp-text-secondary);
+}
+
+.title-promo__field-label--block {
+  display: block;
+  margin-top: var(--dp-space-2);
+}
+
+.title-promo__checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  margin-top: var(--dp-space-2);
+}
+
+.title-promo__emergency {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-2);
+}
+
+.title-promo__change-log {
+  padding: var(--dp-space-2);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control);
+  font-size: var(--dp-font-size-sm);
 }
 .w-full {
   width: 100%;

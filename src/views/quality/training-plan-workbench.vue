@@ -55,7 +55,7 @@ import type { TrainingPlanWorkbenchSignalSummaryVO } from '@/apis/quality/workbe
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -770,6 +770,7 @@ function guardPlanStructureEditable(action: string): boolean {
 }
 
 const signalSummary = ref<TrainingPlanWorkbenchSignalSummaryVO | null>(null)
+const activeTab = ref<'objective' | 'requirement'>('objective')
 
 async function loadSignalSummary() {
   if (!qualityStore.currentTrainingPlanId) {
@@ -796,6 +797,8 @@ const signals = computed<SignalMetric[]>(() => {
   const requirementTotal = summary.requirementTotal ?? 0
   const objectiveHealthyCount = summary.objectiveHealthyCount ?? 0
   const requirementHealthyCount = summary.requirementHealthyCount ?? 0
+  const objectiveHealthOk = objectiveTotal === 0 || objectiveHealthyCount === objectiveTotal
+  const requirementHealthOk = requirementTotal === 0 || requirementHealthyCount === requirementTotal
   return [
     {
       key: 'plan',
@@ -810,20 +813,37 @@ const signals = computed<SignalMetric[]>(() => {
             ? 'red'
             : 'orange',
     },
-    { key: 'objectives', label: '培养目标数', value: objectiveTotal, tone: 'blue' },
+    {
+      key: 'objectives',
+      label: '培养目标数',
+      value: objectiveTotal,
+      tone: 'blue',
+      clickable: objectiveTotal > 0,
+      active: activeTab.value === 'objective',
+    },
     {
       key: 'objectivesHealth',
       label: '目标→要求权重健康',
       value: `${objectiveHealthyCount}/${objectiveTotal}`,
-      tone: objectiveTotal === 0 || objectiveHealthyCount === objectiveTotal ? 'green' : 'red',
+      tone: objectiveHealthOk ? 'green' : 'red',
+      clickable: !objectiveHealthOk,
+      active: activeTab.value === 'objective' && !objectiveHealthOk,
     },
-    { key: 'requirements', label: '毕业要求数', value: requirementTotal, tone: 'blue' },
+    {
+      key: 'requirements',
+      label: '毕业要求数',
+      value: requirementTotal,
+      tone: 'blue',
+      clickable: requirementTotal > 0,
+      active: activeTab.value === 'requirement',
+    },
     {
       key: 'requirementsHealth',
       label: '要求→观测点权重健康',
       value: `${requirementHealthyCount}/${requirementTotal}`,
-      tone:
-        requirementTotal === 0 || requirementHealthyCount === requirementTotal ? 'green' : 'red',
+      tone: requirementHealthOk ? 'green' : 'red',
+      clickable: !requirementHealthOk,
+      active: activeTab.value === 'requirement' && !requirementHealthOk,
     },
     { key: 'indicators', label: '观测点总数', value: summary.indicatorTotal ?? 0, tone: 'blue' },
     {
@@ -834,6 +854,16 @@ const signals = computed<SignalMetric[]>(() => {
     },
   ]
 })
+
+function handleSignalMetricClick(key: string): void {
+  if (key === 'objectives' || key === 'objectivesHealth') {
+    activeTab.value = 'objective'
+    return
+  }
+  if (key === 'requirements' || key === 'requirementsHealth') {
+    activeTab.value = 'requirement'
+  }
+}
 
 const objectiveMatrixRows = computed<MatrixRow[]>(() =>
   objectives.value.map((o) => {
@@ -1574,8 +1604,6 @@ function handleStdMappingAction(key: string, record: RequirementStandardMappingV
 
 /* ========== 上下文与 Tab 切换 ========== */
 
-const activeTab = ref<'objective' | 'requirement'>('objective')
-
 async function handleScopeChange(): Promise<void> {
   selectedObjective.value = null
   selectedRequirement.value = null
@@ -1647,7 +1675,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar>
+      <QualityPageContextBar show-title title="培养方案体系工作台">
         <template #status>
           <span v-if="currentPlan" class="tpw__context-meta">
             学年 {{ currentPlan.schoolYear || '未配置学年' }} · 年级
@@ -1751,7 +1779,13 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
       class="tpw__body"
       :class="[{ 'tpw__body--scoped-out': !qualityStore.currentTrainingPlanId }]"
     >
-      <SignalBand :metrics="signals" compact class="tpw__signals" />
+      <SignalBand
+        :metrics="signals"
+        variant="panel"
+        compact
+        class="tpw__signals"
+        @metric-click="handleSignalMetricClick"
+      />
 
       <div class="tpw__tabs">
         <UiButton

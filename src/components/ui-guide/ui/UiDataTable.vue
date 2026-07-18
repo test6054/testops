@@ -472,6 +472,8 @@ const handlePageChange = (page: number, size: number) => {
   width: 100%;
   border: 1px solid var(--dp-table-border);
   border-radius: var(--dp-radius-panel);
+  box-shadow: var(--dp-shadow-xs);
+  background: var(--dp-surface);
 }
 
 .ui-data-table__table-wrap--pinned {
@@ -568,6 +570,10 @@ const handlePageChange = (page: number, size: number) => {
 .ui-data-table__table :deep(.ant-table-thead > tr > th) {
   background: var(--dp-table-header-bg) !important;
   border-bottom: 1px solid var(--dp-table-border);
+  font-weight: 600;
+  color: var(--dp-text-secondary);
+  font-size: var(--dp-font-size-sm, 13px);
+  letter-spacing: 0.01em;
 }
 
 .ui-data-table__table
@@ -707,6 +713,7 @@ const handlePageChange = (page: number, size: number) => {
 
 .ui-data-table__table :deep(.ant-table-tbody > tr:hover > td) {
   background: var(--dp-table-row-hover-bg) !important;
+  transition: background var(--dp-duration-fast) ease;
 }
 
 .ui-data-table--zebra

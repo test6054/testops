@@ -7,7 +7,7 @@ import type {
 } from '@/apis/quality/improvement-task'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
@@ -55,6 +55,7 @@ import {
   beginQualityScopeRequest,
   isQualityScopeStaleError,
 } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
@@ -84,6 +85,7 @@ const improvementColumns: ColumnsType = [
 const improvementList = ref<ImprovementTaskVO[]>([])
 const improvementTotal = ref(0)
 const improvementLoading = ref(false)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const improvementQuery = reactive<ImprovementTaskQueryRequest>({
   pageNum: 1,
   pageSize: 10,
@@ -257,11 +259,13 @@ function handleImprovementReportChange(value: string | null | undefined): void {
 async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
   const scope = beginQualityScopeRequest()
   improvementLoading.value = true
+  beginLoad()
   try {
     if (!qualityStore.currentTrainingPlanId) {
       improvementList.value = []
       improvementTotal.value = 0
       assertQualityScopeFresh(scope)
+      okLoad()
       return
     }
     const page = await improvementTaskApi.page({
@@ -294,10 +298,12 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
         '工作台指标加载失败',
       )
     }
+    okLoad()
   } catch (error) {
     if (isQualityScopeStaleError(error) || scope.isStale()) {
       return
     }
+    failLoad()
     const err = toUserError(error, '持续改进任务加载失败')
     props.onLoadError?.(err)
     showUserError(error, '持续改进任务加载失败')
@@ -689,6 +695,7 @@ defineExpose({
       :columns="improvementColumns"
       :data-source="improvementList"
       :loading="improvementLoading"
+      :load-error="loadError"
       row-key="id"
       size="middle"
       :total="improvementTotal"

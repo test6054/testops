@@ -8,7 +8,7 @@ import type {
   PortfolioEvaluationTeacherNoticeVO,
 } from '@/apis/portfolio/types'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
@@ -70,6 +70,14 @@ const categoryColumns = [
   { title: '完成', key: 'completed', width: 100 },
 ]
 
+const identityMaterialColumns = [
+  { title: '分类编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 140 },
+  { title: '分类名称', dataIndex: 'categoryName', key: 'categoryName' },
+  { title: '学年', dataIndex: 'academicYear', key: 'academicYear', width: 120 },
+  { title: '身份切片', key: 'identityScope', width: 110 },
+  { title: '校内硬性', key: 'usableForCampusHardCriteria', width: 130 },
+]
+
 function evaluationMaterialCourseScopeLabel(record: unknown): string {
   const category = record as NonNullable<PortfolioEvaluationMaterialPreviewVO['categories']>[number]
   if (!category.courseCode) {
@@ -90,6 +98,35 @@ function evaluationCourseArchiveMeta(preview: PortfolioEvaluationMaterialPreview
     return ''
   }
   return ` · 讲授 ${preview.courseArchiveTaughtCourseCount} 门 · 五框架 ${preview.courseArchiveFrameworkSlotDone ?? 0}/${preview.courseArchiveFrameworkSlotTotal ?? 0}`
+}
+
+function identityScopeLabel(scope?: string): string {
+  if (scope === 'CAMPUS') return '校内'
+  if (scope === 'EXTERNAL') return '仅外部'
+  if (scope === 'SHARED') return '共享'
+  return scope || '—'
+}
+
+function identityScopeTone(scope?: string): 'blue' | 'orange' | 'green' | 'gray' {
+  if (scope === 'CAMPUS') return 'blue'
+  if (scope === 'EXTERNAL') return 'orange'
+  if (scope === 'SHARED') return 'green'
+  return 'gray'
+}
+
+function identityMaterialRowKey(record: unknown): string {
+  const item = record as {
+    archiveRecordId?: string
+    categoryCode?: string
+    academicYear?: string
+    identityScope?: string
+  }
+  return [
+    item.archiveRecordId ?? '',
+    item.categoryCode ?? '',
+    item.academicYear ?? '',
+    item.identityScope ?? '',
+  ].join(':')
 }
 
 function evaluationMaterialRowKey(record: unknown): string {
@@ -127,6 +164,7 @@ const {
   pageSize,
   pageTotal,
   filters: query,
+  loadError,
   loadPage,
   search,
   handlePageChange,
@@ -489,7 +527,7 @@ onMounted(async () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="多元评价任务">
         <template #actions>
-          <UiButton size="sm" :loading="exporting" :disabled="exporting || taskWriting" @click="exportExcel"> 导出表格文件 </UiButton>
+          <UiButton size="sm" variant="primary" :loading="exporting" :disabled="exporting || taskWriting" @click="exportExcel"> 导出表格文件 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -568,7 +606,7 @@ onMounted(async () => {
         <UiButton size="sm" :disabled="taskWriting" @click="search"> 查询 </UiButton>
       </div>
       <WorkbenchContextGateStrip
-        v-if="!loading && rows.length === 0"
+        v-if="!loadError && !loading && rows.length === 0"
         tag="无任务"
         body="当前筛选无评价任务；可在上方填写后创建，或调整筛选条件"
         cta-label="创建任务"
@@ -583,6 +621,7 @@ onMounted(async () => {
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="loadError"
         row-key="id"
         @page-change="handlePageChange"
       >
@@ -660,6 +699,62 @@ onMounted(async () => {
           {{ preview.requiredCategoryDone }} / {{ preview.requiredCategoryTotal
           }}{{ evaluationCourseArchiveMeta(preview) }}
         </p>
+        <div
+          v-if="preview.identityMaterialPackage"
+          class="evaluation-task-admin__identity-material"
+        >
+          <p class="evaluation-task-admin__preview-meta">
+            身份材料：正式档 {{ preview.identityMaterialPackage.officialRecordCount ?? 0 }}
+            · 校内硬性可用 {{ preview.identityMaterialPackage.campusHardUsableCount ?? 0 }}
+            · 仅外部 {{ preview.identityMaterialPackage.externalOnlyCount ?? 0 }}
+            · 共享 {{ preview.identityMaterialPackage.sharedCount ?? 0 }}
+          </p>
+          <p
+            v-if="preview.identityMaterialPackage.citationPolicy"
+            class="evaluation-task-admin__identity-policy"
+          >
+            {{ preview.identityMaterialPackage.citationPolicy }}
+          </p>
+          <ul
+            v-if="preview.identityMaterialPackage.identityLayers?.length"
+            class="evaluation-task-admin__identity-layers"
+          >
+            <li
+              v-for="(layer, idx) in preview.identityMaterialPackage.identityLayers"
+              :key="layer.identityId || `${layer.identityType}-${idx}`"
+            >
+              <UiTag :tone="layer.externalIdentity ? 'orange' : 'blue'">
+                {{ layer.identityTypeLabel || layer.identityType || '身份' }}
+              </UiTag>
+              <span>材料 {{ layer.materialCount ?? 0 }} 条</span>
+              <span v-if="layer.externalIdentity">（外部层，不替代校内硬门槛）</span>
+            </li>
+          </ul>
+          <UiDataTable
+            v-if="preview.identityMaterialPackage.mergedMaterials?.length"
+            :row-key="identityMaterialRowKey"
+            size="small"
+            pagination-mode="none"
+            :columns="identityMaterialColumns"
+            :data-source="preview.identityMaterialPackage.mergedMaterials"
+            :show-pagination="false"
+            :sticky-header="false"
+            flat
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'identityScope'">
+                <UiTag :tone="identityScopeTone(record.identityScope)">
+                  {{ identityScopeLabel(record.identityScope) }}
+                </UiTag>
+              </template>
+              <template v-else-if="column.key === 'usableForCampusHardCriteria'">
+                <UiTag :tone="record.usableForCampusHardCriteria ? 'green' : 'orange'">
+                  {{ record.usableForCampusHardCriteria ? '校内硬性可用' : '不可作校内硬性' }}
+                </UiTag>
+              </template>
+            </template>
+          </UiDataTable>
+        </div>
         <UiDataTable
           v-if="preview.categories?.length"
           :row-key="evaluationMaterialRowKey"
@@ -757,6 +852,34 @@ onMounted(async () => {
   margin: 0 0 12px;
   font-size: 13px;
   color: var(--dp-text-secondary);
+}
+.evaluation-task-admin__identity-material {
+  margin: 0 0 12px;
+  padding: 12px;
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: 6px;
+  background: var(--dp-bg-subtle);
+}
+.evaluation-task-admin__identity-policy {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dp-text-secondary);
+}
+.evaluation-task-admin__identity-layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--dp-text-secondary);
+}
+.evaluation-task-admin__identity-layers li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .evaluation-task-admin__notice {
   margin-top: 16px;

@@ -1,12 +1,10 @@
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { onBeforeUnmount, ref, shallowRef } from 'vue'
 import { getFileArrayBuffer } from '@/apis/edu/file-management'
 
-GlobalWorkerOptions.workerSrc = pdfWorker
-
 const rasterCache = new Map<string, HTMLCanvasElement>()
 const objectUrlCache = new Map<string, string>()
+
+let pdfWorkerConfigured = false
 
 function cacheKey(fileId: string, pageNo: number, targetWidth: number): string {
   return `${fileId}:${pageNo}:${targetWidth}`
@@ -50,7 +48,13 @@ async function renderPdfPageToCanvas(
   pageNo: number,
   targetWidth: number,
 ): Promise<HTMLCanvasElement> {
-  const pdf = await getDocument({ data: buffer }).promise
+  const pdfjs = await import('pdfjs-dist')
+  if (!pdfWorkerConfigured) {
+    const workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href
+    pdfjs.GlobalWorkerOptions.workerSrc = workerSrc
+    pdfWorkerConfigured = true
+  }
+  const pdf = await pdfjs.getDocument({ data: buffer }).promise
   const page = await pdf.getPage(pageNo)
   const viewport = page.getViewport({ scale: 1 })
   const scale = targetWidth / viewport.width

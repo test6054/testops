@@ -6,7 +6,7 @@ import type {
   TrainingPlanStatusAuditVO,
   TrainingPlanVO,
 } from '@/apis/quality/training-plan'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { trainingPlanApi } from '@/apis/quality/training-plan'
 import { ConfirmationStatusCode, ConfirmationStatusDescription } from '@/apis/quality/types'
@@ -389,7 +389,7 @@ onActivated(() => {
             :placeholder="canRevoke ? '撤回原因不少于 10 个字符' : '退回意见不少于 10 个字符；确认发布无需填写'"
           />
           <div class="training-plan-review-queue__actions">
-            <UiButton size="sm" v-if="canConfirm" :loading="submitting" @click="confirmPlan">确认发布</UiButton>
+            <UiButton size="sm" v-if="canConfirm" variant="primary" :loading="submitting" @click="confirmPlan">确认发布</UiButton>
             <UiButton size="sm" v-if="canConfirm" variant="outline" status="danger" :disabled="reviewComment.trim().length < 10" :loading="submitting" @click="returnPlan">退回整改</UiButton>
             <UiButton size="sm" v-if="canRemind" variant="outline" :loading="submitting" @click="remindPlan">催办确认人</UiButton>
             <UiButton size="sm" v-if="canRevoke" variant="outline" status="danger" :disabled="reviewComment.trim().length < 10" :loading="submitting" @click="revokePlan">撤回发布</UiButton>

@@ -208,7 +208,7 @@
           </div>
           <div class="review-task-detail-page__footer-actions">
             <UiButton variant="ghost" size="md" @click="goBack">返回</UiButton>
-            <UiButton v-if="canEnterWorkspace" size="md" @click="goWorkspace">
+            <UiButton v-if="canEnterWorkspace" size="md" variant="primary" @click="goWorkspace">
               <template #icon><EditOutlined /></template>
               进入复核
             </UiButton>

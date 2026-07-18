@@ -6,6 +6,12 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioCockpitSummaryVO,
+  PortfolioDigitalLiteracyVO,
+  PortfolioEducatingOutcomeContributionVO,
+  PortfolioGuidanceContributionVO,
+  PortfolioIndustryEducationProjectContributionVO,
+  PortfolioIndustryPackSceneScoreVO,
+  PortfolioMasterpieceContributionVO,
   PortfolioTeacherCompletenessGetRequest,
   PortfolioTeacherPortraitCohortCompareVO,
   PortfolioTeacherPortraitGetRequest,
@@ -17,6 +23,9 @@ import type {
   PortfolioTeacherProgressCockpitGetRequest,
   PortfolioTeacherProgressCockpitVO,
   PortfolioTeacherWorkbenchSummaryVO,
+  PortfolioTeachingWorkloadByIdentityVO,
+  PortfolioTextbookContributionVO,
+  PortfolioVirtualTeachingRoomContributionVO,
 } from '@/apis/portfolio/types'
 import type { IdRequest, PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
@@ -71,6 +80,11 @@ export interface PortfolioPortraitCreditCurveVO {
   dataSource: string
   totalCredits: string
   points: PortfolioPortraitCreditCurvePointVO[]
+  creditCategory?: string
+  availableCategories?: string[]
+  trendNote?: string | null
+  officialFactCount?: number
+  dedupDroppedCount?: number
 }
 
 export interface PortfolioAnalysisComplianceAlertVO {
@@ -148,6 +162,42 @@ export const portfolioAnalysisApi = {
     ),
   getPortrait: (data: PortfolioTeacherPortraitGetRequest = {}) =>
     http.post<PortfolioTeacherPortraitVO>('/api/portfolio/portrait/teacher/get', data),
+  getDigitalLiteracy: (data: PortfolioTeacherPortraitGetRequest = {}) =>
+    http.post<PortfolioDigitalLiteracyVO>('/api/portfolio/portrait/teacher/digital-literacy/get', data),
+  getGuidanceContribution: (data: PortfolioTeacherPortraitGetRequest = {}) =>
+    http.post<PortfolioGuidanceContributionVO>('/api/portfolio/portrait/teacher/guidance-contribution/get', data),
+  getTextbookContribution: (data: PortfolioTeacherPortraitGetRequest = {}) =>
+    http.post<PortfolioTextbookContributionVO>('/api/portfolio/portrait/teacher/textbook-contribution/get', data),
+  getVirtualTeachingRoomContribution: (data: PortfolioTeacherPortraitGetRequest = {}) =>
+    http.post<PortfolioVirtualTeachingRoomContributionVO>(
+      '/api/portfolio/portrait/teacher/virtual-teaching-room-contribution/get',
+      data,
+    ),
+  getIndustryEducationProjectContribution: (data: PortfolioTeacherPortraitGetRequest = {}) =>
+    http.post<PortfolioIndustryEducationProjectContributionVO>(
+      '/api/portfolio/portrait/teacher/industry-education-project-contribution/get',
+      data,
+    ),
+  getTeachingWorkloadByIdentity: (data: PortfolioTeacherPortraitGetRequest = {}) =>
+    http.post<PortfolioTeachingWorkloadByIdentityVO>(
+      '/api/portfolio/portrait/teacher/teaching-workload-by-identity/get',
+      data,
+    ),
+  getMasterpieceContribution: (data: PortfolioTeacherPortraitGetRequest = {}) =>
+    http.post<PortfolioMasterpieceContributionVO>(
+      '/api/portfolio/portrait/teacher/masterpiece-contribution/get',
+      data,
+    ),
+  getEducatingOutcomeContribution: (data: PortfolioTeacherPortraitGetRequest = {}) =>
+    http.post<PortfolioEducatingOutcomeContributionVO>(
+      '/api/portfolio/portrait/teacher/educating-outcome-contribution/get',
+      data,
+    ),
+  getIndustryPackSceneScore: (data: PortfolioTeacherPortraitGetRequest = {}) =>
+    http.post<PortfolioIndustryPackSceneScoreVO>(
+      '/api/portfolio/portrait/teacher/industry-pack-scene-score/get',
+      data,
+    ),
   getPortraitCohortCompare: (data: PortfolioTeacherPortraitGetRequest = {}) =>
     http.post<PortfolioTeacherPortraitCohortCompareVO>(
       '/api/portfolio/portrait/teacher/cohort-compare',
@@ -176,7 +226,7 @@ export const portfolioAnalysisApi = {
     ),
   dismissTrainingRecommendation: (data: { recommendationId: string }) =>
     http.post<void>('/api/portfolio/analysis/recommend/training/dismiss', data),
-  getCreditCurve: (data: { teacherId: string }) =>
+  getCreditCurve: (data: { teacherId: string, creditCategory?: string }) =>
     http.post<PortfolioPortraitCreditCurveVO>('/api/portfolio/portrait/teacher/credit-curve', data),
   getDepartmentPortrait: (data: { departmentId: string }) =>
     http.post<PortfolioDepartmentPortraitVO>('/api/portfolio/portrait/department/get', data),

@@ -59,15 +59,15 @@
     <!-- KPI 分组 -->
     <section class="ledger-summary__group">
       <h3 class="ledger-summary__group-title">影像收录</h3>
-      <SignalBand :metrics="scanSignalMetrics" compact />
+      <SignalBand :metrics="scanSignalMetrics" compact variant="inline" />
     </section>
     <section class="ledger-summary__group">
       <h3 class="ledger-summary__group-title">试卷重构与绑定</h3>
-      <SignalBand :metrics="bindSignalMetrics" compact />
+      <SignalBand :metrics="bindSignalMetrics" compact variant="inline" />
     </section>
     <section class="ledger-summary__group">
       <h3 class="ledger-summary__group-title">偏差与异常</h3>
-      <SignalBand :metrics="deviationSignalMetrics" compact />
+      <SignalBand :metrics="deviationSignalMetrics" compact variant="inline" />
     </section>
   </div>
 </template>

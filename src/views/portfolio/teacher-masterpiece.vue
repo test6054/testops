@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {PortfolioProcessSessionVO} from '@/apis/portfolio/process-session';
+import type { PortfolioMasterpieceContributionVO } from '@/apis/portfolio/types'
 /**
  * 教学代表作只读预览：聚合简历/数据/陈述/过程入口/发展/成果，供本人与院审阅读。
  */
@@ -42,6 +43,7 @@ const philosophyText = ref('')
 const honorCount = ref(0)
 const loadError = ref(false)
 const processSessions = ref<PortfolioProcessSessionVO[]>([])
+const masterpieceContribution = ref<PortfolioMasterpieceContributionVO | null>(null)
 
 const isSelf = computed(
   () => Boolean(targetTeacherId.value && targetTeacherId.value === currentUserId.value),
@@ -72,6 +74,9 @@ async function loadAll() {
       .list({ ...teacherRequest.value, selectedOnly: true })
       .catch(() => [])
     processSessions.value = selectedSessions ?? []
+    masterpieceContribution.value = await portfolioAnalysisApi
+      .getMasterpieceContribution(teacherRequest.value)
+      .catch(() => null)
     completeness.value = summary?.completenessPercent ?? null
     officialCount.value = portrait?.officialRecordCount ?? null
     const firstPhil = philosophyRows?.[0]
@@ -146,6 +151,28 @@ usePortfolioScopedLoader(loadAll, () => targetTeacherId.value)
           <p class="masterpiece__hint">
             覆盖度反映填报进度，不等于代表作质量。
           </p>
+        </UiCard>
+
+        <UiCard title="§8.54 代表作贡献度" class="masterpiece__section">
+          <template v-if="masterpieceContribution">
+            <p class="masterpiece__body">
+              贡献度
+              <strong>{{ masterpieceContribution.contributionScore ?? 0 }}</strong>
+              · 精选
+              <strong>{{ masterpieceContribution.masterpieceCount ?? 0 }}</strong>
+              项 · 最高单项
+              <strong>{{ masterpieceContribution.topItemScore ?? 0 }}</strong>
+            </p>
+            <p class="masterpiece__hint">{{ masterpieceContribution.formulaLabel }}</p>
+            <p
+              v-for="(note, idx) in masterpieceContribution.evidenceNotes || []"
+              :key="`mp-note-${idx}`"
+              class="masterpiece__hint"
+            >
+              {{ note }}
+            </p>
+          </template>
+          <UiEmpty v-else description="暂无代表作贡献度" size="sm" />
         </UiCard>
 
         <UiCard title="③ 教学陈述" class="masterpiece__section">

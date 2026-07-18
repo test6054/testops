@@ -17,6 +17,7 @@
             刷新
           </UiButton>
           <UiButton
+            variant="primary"
             size="sm"
             :disabled="unreadTotal === 0"
             :loading="markingAll"
@@ -227,6 +228,7 @@
         <UiDivider />
         <UiButton
           v-if="!announcementDetail.isRead"
+          variant="primary"
           size="sm"
           :loading="confirmingRead"
           @click="confirmAnnouncementRead(announcementDetail)"
@@ -251,7 +253,7 @@ import type { UserDto } from '@/types/api-types.d'
 import BellOutlined from '@ant-design/icons-vue/BellOutlined'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'

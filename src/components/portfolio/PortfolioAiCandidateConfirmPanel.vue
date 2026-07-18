@@ -16,7 +16,7 @@
         v-if="taskStatus === AiTaskStatusCode.SUCCEEDED && !readonly"
         class="portfolio-ai-candidate-panel__actions"
       >
-        <UiButton size="sm" :loading="confirming" @click="confirmAllEligible">
+        <UiButton variant="primary" size="sm" :loading="confirming" @click="confirmAllEligible">
           确认全部可自动通过项
         </UiButton>
       </div>
@@ -96,7 +96,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCandidateFieldVO } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import {

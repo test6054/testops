@@ -232,8 +232,8 @@ onMounted(async () => {
 }
 
 .login-page {
-  --login-bg: var(--dp-surface);
-  --login-surface: var(--dp-bg-container);
+  --login-bg: var(--dp-bg-layout);
+  --login-surface: var(--dp-surface);
   --login-text: var(--dp-text-primary);
   --login-muted: var(--dp-text-secondary);
   --login-accent: var(--dp-color-primary);
@@ -309,9 +309,9 @@ onMounted(async () => {
 
 .login-brand__sub {
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  color: rgba(23, 52, 93, 0.5);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--dp-text-muted);
 }
 
 .login-brand__layout {
@@ -381,24 +381,27 @@ onMounted(async () => {
   gap: 0;
   border-radius: var(--dp-radius-panel);
   background: transparent;
-  box-shadow: var(--dp-shadow-md);
+  box-shadow: var(--dp-shadow-lg);
   backdrop-filter: none;
+  overflow: hidden;
 }
 
 .login-panel__header {
   margin-bottom: 0;
   padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) var(--dp-space-3, 12px);
-  border-radius: var(--dp-radius-panel) var(--dp-radius-panel) 0 0;
+  border-radius: 0;
   background: var(--login-surface);
-  border: 1px solid var(--dp-border-subtle);
+  border: 1px solid var(--dp-border);
   border-bottom: none;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--dp-blue-500) 55%, transparent);
 }
 
 .login-panel__title {
   margin: 0;
   font-size: 22px;
   line-height: 1.3;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--login-text);
 }
 
@@ -411,10 +414,11 @@ onMounted(async () => {
 
 .login-panel__surface {
   padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-4, 16px);
-  border-radius: 0 0 var(--dp-radius-panel) var(--dp-radius-panel);
+  border-radius: 0;
   background: var(--login-surface);
-  border: 1px solid var(--dp-border-subtle);
+  border: 1px solid var(--dp-border);
   border-top: none;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--dp-blue-500) 55%, transparent);
 }
 
 .login-body {

@@ -22,7 +22,7 @@
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
-  box-shadow: var(--dp-shadow-sm);
+  box-shadow: var(--dp-shadow-xs);
   overflow: hidden;
 }
 
@@ -33,6 +33,7 @@
   gap: var(--dp-space-2);
   padding: var(--dp-space-3) var(--dp-space-4);
   border-bottom: 1px solid var(--dp-border);
+  background: var(--dp-surface-elevated);
 }
 
 :global(.workbench-surface-card__toolbar) {
@@ -239,7 +240,7 @@
 }
 
 :global(.exam-status-card__progress-track) {
-  height: 6px;
+  height: 8px;
   border-radius: var(--dp-radius-full);
   background: var(--dp-gray-100);
   overflow: hidden;
@@ -262,9 +263,10 @@
 }
 
 :global(.exam-status-card__stat-value) {
-  font-size: 18px;
+  font-size: 22px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
 

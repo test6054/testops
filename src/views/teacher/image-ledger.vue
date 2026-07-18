@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="ledger-page">
     <template #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="影像账本">
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -13,6 +13,7 @@
     <template v-if="selectedExamId && ledger" #signal>
       <SignalBand
         compact
+        variant="panel"
         :metrics="ledgerSignalMetrics"
         @metric-click="handleLedgerMetricClick"
       />

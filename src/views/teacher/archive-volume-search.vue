@@ -10,7 +10,7 @@
     </template>
 
     <template v-if="signalMetrics.length > 0" #signal>
-      <SignalBand :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" variant="panel" compact />
     </template>
 
     <WorkbenchSurfaceCard flush>
@@ -273,9 +273,6 @@
         :load-error="searchLoadFailed"
         @page-change="loadHits"
       >
-        <template v-if="searchLoadFailed" #empty-action>
-          <UiButton size="sm" variant="outline" @click="loadHits">重新检索</UiButton>
-        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'archive'">
             <button type="button" class="link-cell" @click="goDetail(record.volumeId)">
@@ -413,7 +410,7 @@ import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
 import type { AcademicYearSemesterTripleFilterState } from '@/utils/academic-year-semester-triple-filter'
 import type { MarkExamSelectOption } from '@/utils/mark-exam-option'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {

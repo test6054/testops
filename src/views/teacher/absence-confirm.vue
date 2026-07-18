@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="absence-page">
     <template #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="缺考确认">
         <template #status>
           <UiTag tone="blue" size="sm">阶段 缺考确认</UiTag>
           <UiTag v-if="pendingAbsenceCount > 0" tone="orange" size="sm">
@@ -42,7 +42,7 @@
     </template>
 
     <template v-if="reconcileVO" #signal>
-      <SignalBand :metrics="absenceListMetrics" compact />
+      <SignalBand :metrics="absenceListMetrics" variant="panel" compact />
     </template>
 
     <ExamSelectGateStrip
@@ -271,7 +271,7 @@
       </UiForm>
       <template #footer>
         <UiButton size="sm" variant="outline" @click="confirmModalOpen = false">取消</UiButton>
-        <UiButton size="sm" :loading="confirming" :disabled="!confirmValid" @click="handleConfirm">
+        <UiButton size="sm" variant="primary" :loading="confirming" :disabled="!confirmValid" @click="handleConfirm">
           确认
         </UiButton>
       </template>
@@ -362,6 +362,7 @@
         <UiButton size="sm" variant="outline" @click="deriveModalOpen = false">取消</UiButton>
         <UiButton
           size="sm"
+          variant="primary"
           :loading="deriving"
           :disabled="!deriveValid || deriveDetailLoading"
           @click="handleDeriveMakeup"

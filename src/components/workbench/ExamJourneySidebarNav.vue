@@ -149,7 +149,6 @@ function statusClass(status: WorkbenchStageStatus): string {
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--dp-text-muted);
-    text-transform: uppercase;
   }
 
   &__item {

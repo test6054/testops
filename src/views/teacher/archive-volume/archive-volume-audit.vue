@@ -9,15 +9,14 @@
     </template>
 
     <template #signal>
-      <SignalBand :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" variant="panel" compact />
     </template>
 
     <UiEmpty
       size="sm"
       v-if="loadFailed"
+      title="加载失败"
       description="审计事件加载失败"
-      action-label="重试"
-      @action="() => initPage()"
     />
 
     <WorkbenchSurfaceCard v-else flush>

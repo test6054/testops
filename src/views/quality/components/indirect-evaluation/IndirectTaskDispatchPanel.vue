@@ -7,7 +7,7 @@ import type {
   IndirectEvaluationStatisticsVO,
   TargetWeightedScoreVO,
 } from '@/apis/quality/indirect-form'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'

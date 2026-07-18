@@ -170,6 +170,10 @@ export const portfolioDualTeacherApi = {
       '/api/portfolio/dual-teacher/page',
       data,
     ),
+  contributionGet: (data: { id: string }) =>
+    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/get', data),
+  contributionByTeacher: (data: { teacherId?: string }) =>
+    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/by-teacher', data),
   get: (data: { id: string }) =>
     http.post<PortfolioDualTeacherApplicationVO>('/api/portfolio/dual-teacher/get', data),
   saveDraft: (data: PortfolioDualTeacherSaveDraftRequest) =>
@@ -213,6 +217,21 @@ export interface PortfolioDualTeacherCertLevelCountVO {
   count: number
 }
 
+export interface PortfolioIndustryMentorContributionVO {
+  formulaLabel: string
+  teacherUserId?: string
+  externalTeacherId?: string
+  identityType?: string
+  contributionScore: number
+  appointmentValidityScore: number
+  teachingParticipationScore: number
+  practiceGuidanceScore: number
+  industryOutcomeScore: number
+  assessmentScore: number
+  evidenceNotes: string[]
+  usableForCampusTitleEvaluation: boolean
+}
+
 export interface PortfolioExternalTeacherVO {
   id: string
   fullName: string
@@ -238,6 +257,7 @@ export interface PortfolioExternalTeacherVO {
   dataStatus: PortfolioExternalTeacherDataStatusCode
   importBatchId?: string
   createTime?: string
+  contribution?: PortfolioIndustryMentorContributionVO
 }
 
 export interface PortfolioExternalTeacherStatsVO {
@@ -328,6 +348,10 @@ export const portfolioExternalTeacherApi = {
     http.post<PageResult<PortfolioExternalTeacherVO>>('/api/portfolio/external-teacher/page', data),
   stats: (data: PortfolioExternalTeacherStatsRequest = {}) =>
     http.post<PortfolioExternalTeacherStatsVO>('/api/portfolio/external-teacher/stats', data),
+  contributionGet: (data: { id: string }) =>
+    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/get', data),
+  contributionByTeacher: (data: { teacherId?: string }) =>
+    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/by-teacher', data),
   get: (data: { id: string }) =>
     http.post<PortfolioExternalTeacherVO>('/api/portfolio/external-teacher/get', data),
   save: (data: PortfolioExternalTeacherSaveRequest) =>
@@ -599,6 +623,15 @@ export interface PortfolioDevelopmentRecordVO {
   descriptionText?: string
   fileId?: string
   createTime?: string
+  /** 业务日命中的归属血缘段 */
+  affiliationHistoryId?: string
+  affiliationStaffNo?: string
+  affiliationDepartmentId?: string
+  affiliationPortfolioOrgId?: string
+  affiliationIdentityId?: string
+  affiliationOpenSegment?: boolean
+  affiliationEffectiveFrom?: string
+  affiliationEffectiveTo?: string
 }
 
 export interface PortfolioHonorStatsVO {
@@ -1145,6 +1178,10 @@ export interface PortfolioPortraitTemplateListRequest {
 export const portfolioPortraitTemplateApi = {
   list: (data: PortfolioPortraitTemplateListRequest = {}) =>
     http.post<PortfolioPortraitTemplateVO[]>('/api/portfolio/portrait-template/list', data),
+  contributionGet: (data: { id: string }) =>
+    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/get', data),
+  contributionByTeacher: (data: { teacherId?: string }) =>
+    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/by-teacher', data),
   get: (data: { id: string }) =>
     http.post<PortfolioPortraitTemplateVO>('/api/portfolio/portrait-template/get', data),
   save: (data: PortfolioPortraitTemplateSaveRequest) =>
@@ -1264,6 +1301,8 @@ export interface PortfolioEvaluationEntryVO {
   score: number
   commentText?: string
   evaluatorUserId: string
+  evaluatorSourceType?: string
+  evaluatorSourceTypeLabel?: string
   createTime?: string
   updateTime?: string
 }
@@ -1273,6 +1312,10 @@ export interface PortfolioEvaluationEntrySummaryItemVO {
   indicatorCode?: string
   entryCount: number
   averageScore: number
+  weightedScore?: number
+  studentSampleSize?: number
+  studentWeightZeroed?: boolean
+  weightNote?: string
 }
 
 export interface PortfolioEvaluationEntrySummaryVO {
@@ -1318,6 +1361,8 @@ export interface PortfolioEvaluationEntrySaveRequest {
   indicatorCode?: string
   score: number
   commentText?: string
+  /** §8.53 评价来源类型 */
+  evaluatorSourceType: string
 }
 
 export interface PortfolioEvaluationComprehensiveAnalysisRequest {

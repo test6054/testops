@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="progress-page">
     <template v-if="selectedExamId" #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="复核进度">
         <template #status>
           <UiTag :tone="confirmedPercent >= 100 ? 'green' : 'blue'" size="sm">
             已确认 {{ confirmedPercent }}%
@@ -11,7 +11,7 @@
     </template>
 
     <template v-if="selectedExamId && progress" #signal>
-      <SignalBand compact :metrics="pageSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="pageSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="progress-page__empty" />
@@ -19,10 +19,8 @@
     <UiEmpty
       size="sm"
       v-else-if="loadFailed"
-      description="复核进度加载失败"
-      action-label="重试"
+      title="加载失败"
       class="progress-page__empty"
-      @action="loadAll"
     />
 
     <UiSkeletonState v-else-if="loading && !progress" variant="card" compact />
@@ -122,6 +120,7 @@
           :columns="questionColumns"
           :data-source="questionTableRows"
           :loading="questionTableLoading || loading"
+          :load-error="questionTableLoadError"
           :total="questionPageTotal"
           :sticky-header="false"
           flat
@@ -361,6 +360,8 @@ const {
   pageSize: questionPageSize,
   pageTotal: questionPageTotal,
   filters: questionTableFilters,
+  loadError: questionTableLoadError,
+  loadPage: loadQuestionTablePage,
   search: searchQuestionTable,
   handlePageChange: handleQuestionPageChange,
 } = useQueryTable<ReviewQuestionProgressItemResponse, { examId: string }>(
@@ -851,17 +852,17 @@ onActivated(() => {
 .progress-page {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-4);
   min-width: 0;
-  padding: 8px 10px;
+  padding: 0;
 
   &__empty {
-    padding: var(--dp-space-3, 12px) 0;
+    padding: var(--dp-space-4) 0;
   }
 }
 
 .overview-row {
-  row-gap: var(--dp-space-3, 12px);
+  row-gap: var(--dp-space-4);
 }
 
 .status-card {
@@ -870,10 +871,11 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 16px;
+    gap: var(--dp-space-2);
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
+    letter-spacing: -0.01em;
   }
 
   &__body {
@@ -894,10 +896,11 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 16px;
+    gap: var(--dp-space-2);
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
+    letter-spacing: -0.01em;
   }
 
   &__body {
@@ -938,10 +941,11 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 16px;
+    gap: var(--dp-space-2);
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
+    letter-spacing: -0.01em;
   }
 }
 
@@ -949,10 +953,11 @@ onActivated(() => {
   &__title {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 16px;
+    gap: var(--dp-space-2);
+    font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
+    letter-spacing: -0.01em;
   }
 }
 

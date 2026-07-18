@@ -55,9 +55,6 @@
         :load-error="hitsLoadFailed"
         @page-change="loadHits"
       >
-        <template v-if="hitsLoadFailed" #empty-action>
-          <UiButton size="sm" variant="outline" @click="loadHits">重新检索</UiButton>
-        </template>
         <template #bodyCell="{ record }">
           <div class="archive-volume-ocr-search__hit-item">
             <div class="archive-volume-ocr-search__hit-head">
@@ -110,7 +107,7 @@
         <span class="archive-volume-ocr-search__overview-title">材料文字识别状态</span>
         <UiButton
           size="sm"
-          v-if="canRegisterMaterial && pendingOcrCount > 0"
+          v-if="canMaintainMaterial && pendingOcrCount > 0"
           variant="ghost"
           :loading="batchOcrSubmitting"
           @click="handleBatchOcr"
@@ -134,9 +131,6 @@
         :load-error="overviewLoadFailed"
         @page-change="loadOcrMaterials"
       >
-        <template v-if="overviewLoadFailed" #empty-action>
-          <UiButton size="sm" variant="outline" @click="loadOcrMaterials">重新加载</UiButton>
-        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'materialType'">
             {{ materialTypeLabel(record.materialType) }}
@@ -187,7 +181,7 @@ import type {
   ArchiveVolumeMaterialStatsResponse,
   ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -222,6 +216,8 @@ defineOptions({ name: 'ArchiveVolumeOcrSearchPanel' })
 const props = defineProps<{
   volumeId: string
   canRegisterMaterial: boolean
+  /** MVR-185：批量 OCR 可不在收材窗口 */
+  canMaintainMaterial?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -345,7 +341,7 @@ function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): bool
 
 function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    props.canRegisterMaterial
+    props.canMaintainMaterial
     && Boolean(record.fileId)
     && (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING
       || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED

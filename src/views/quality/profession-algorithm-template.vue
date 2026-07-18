@@ -16,7 +16,7 @@ import type {
 } from '@/apis/quality/profession-algorithm-template'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
@@ -52,6 +52,7 @@ import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
@@ -478,7 +479,11 @@ onActivated(() => {
 
 <template>
   <StageWorkbenchShell>
-    <SignalBand :metrics="signals" compact class="pat__signals" />
+    <template #context>
+      <ContextBar layout="workbench" show-title title="专业算法模板" />
+    </template>
+
+    <SignalBand :metrics="signals" variant="panel" compact class="pat__signals" />
 
     <UiCard class="detail-table-card pat__table-card">
       <template #title>模板台账</template>

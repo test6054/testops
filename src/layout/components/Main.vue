@@ -78,8 +78,8 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
   flex-direction: column;
   overflow: hidden;
   position: relative;
-  /* 工作面统一白底（用户 2026-07-17：禁灰底容器） */
-  background: var(--dp-bg-container);
+  /* 页面 canvas 用布局灰；白 panel 由 WorkbenchSurfaceCard / Shell 承载 */
+  background: var(--dp-bg-layout);
 }
 
 // 滚动包装层：负责滚动，覆盖整个宽度
@@ -91,10 +91,9 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-4, 16px);
   box-sizing: border-box;
-  /* 滚动面统一白底 */
-  background: var(--dp-bg-container);
+  background: var(--dp-bg-layout);
 
   // 自定义细滚动条样式（替代完全隐藏，保持可操作性）
   scrollbar-width: thin; // Firefox

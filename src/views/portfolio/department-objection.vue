@@ -7,7 +7,7 @@ import type {
   PortfolioEvaluationObjectionSummaryVO,
 } from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -372,21 +372,23 @@ void loadPage()
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar layout="workbench" title="公示异议">
-      <template #actions>
-        <UiSelect
-          v-model="objectionStatusFilter"
-          size="sm"
-          class="department-objection__status-filter"
-          :options="STATUS_FILTER_OPTIONS"
-          :disabled="Boolean(handlingId)"
-          @change="onStatusFilterChange"
-        />
-        <UiButton size="sm" :loading="loading" :disabled="Boolean(handlingId)" @click="() => void loadPage()">
-          刷新
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar layout="workbench" show-title title="公示异议">
+        <template #actions>
+          <UiSelect
+            v-model="objectionStatusFilter"
+            size="sm"
+            class="department-objection__status-filter"
+            :options="STATUS_FILTER_OPTIONS"
+            :disabled="Boolean(handlingId)"
+            @change="onStatusFilterChange"
+          />
+          <UiButton size="sm" :loading="loading" :disabled="Boolean(handlingId)" @click="() => void loadPage()">
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
     <UiCard title="异议工单">
       <UiDataTable

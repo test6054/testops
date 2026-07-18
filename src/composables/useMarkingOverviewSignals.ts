@@ -83,6 +83,7 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
             ? `${confirmedQuestions.toLocaleString('zh-CN')} / ${totalQuestions.toLocaleString('zh-CN')} 题`
             : '暂无确认题量',
         sparkValues: resolveProgressSpark(toValue(options.dailyProgressTrend)),
+        clickable: totalQuestions > 0,
       },
       {
         key: 'exceptions',

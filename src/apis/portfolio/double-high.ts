@@ -1,3 +1,4 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -60,6 +61,8 @@ export interface PortfolioDoubleHighTaskVO {
   voidTime?: string
   stages: PortfolioDoubleHighTaskStageVO[]
   createTime: string
+  responsibleIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  responsibleMultiIdentityNote?: string
 }
 
 export interface PortfolioDoubleHighMonitorGetRequest {

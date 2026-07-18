@@ -71,6 +71,7 @@
     <template v-if="selectedExamId && signalMetrics.length > 0" #signal>
       <SignalBand
         :metrics="signalMetrics"
+        variant="panel"
         compact
         @metric-click="handleOrgSignalClick"
       />

@@ -15,7 +15,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { PortfolioSuggestionTypeCode } from '@/types/enums/portfolio-suggestion-type-enum'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
@@ -88,8 +88,33 @@ const planCompletion = ref<PortfolioDevelopmentPlanCompletionVO | null>(null)
 const suggestions = ref<PortfolioAnalysisSuggestionVO[]>([])
 const trainingRecommendations = ref<PortfolioAnalysisTrainingRecommendVO[]>([])
 const creditCurve = ref<PortfolioPortraitCreditCurveVO | null>(null)
+/** §8.66 学分曲线分类：ALL / DIGITAL_LITERACY / NATIONAL_TRAINING / CERTIFICATE / OTHER_TRAINING */
+const creditCategory = ref('ALL')
+const creditCurveLoading = ref(false)
 const planYear = String(new Date().getFullYear())
 const cohortType = ref<PortfolioPortraitCohortTypeCode>(PortfolioPortraitCohortTypeCode.DEPARTMENT)
+
+const CREDIT_CATEGORY_LABELS: Record<string, string> = {
+  ALL: '全部分类合计',
+  DIGITAL_LITERACY: '数字素养',
+  NATIONAL_TRAINING: '国培/国家级培训',
+  CERTIFICATE: '证书/资格',
+  OTHER_TRAINING: '其它正式培训',
+}
+
+const creditCategoryTabItems = computed(() => {
+  const codes = creditCurve.value?.availableCategories?.length
+    ? creditCurve.value.availableCategories
+    : ['ALL']
+  const unique = Array.from(new Set(codes.map((code) => String(code || '').trim()).filter(Boolean)))
+  if (!unique.includes('ALL')) {
+    unique.unshift('ALL')
+  }
+  return unique.map((code) => ({
+    key: code,
+    label: CREDIT_CATEGORY_LABELS[code] ?? code,
+  }))
+})
 const portraitRequestToken = ref(0)
 const cohortRequestToken = ref(0)
 const detailRequestToken = ref(0)
@@ -319,7 +344,9 @@ async function loadSecondaryPortraitData() {
     teacherId
       ? portfolioAnalysisApi.listTrainingRecommendations({ teacherId })
       : Promise.resolve([]),
-    teacherId ? portfolioAnalysisApi.getCreditCurve({ teacherId }) : Promise.resolve(null),
+    teacherId
+      ? portfolioAnalysisApi.getCreditCurve({ teacherId, creditCategory: creditCategory.value })
+      : Promise.resolve(null),
   ])
   const [cohortSettled, trendSettled, , suggestionSettled, trainingSettled, creditSettled] = settled
   if (portraitRequestToken.value !== requestToken) {
@@ -377,6 +404,7 @@ async function loadPortraitBundle() {
   suggestions.value = []
   trainingRecommendations.value = []
   creditCurve.value = null
+  creditCategory.value = 'ALL'
   try {
     const request = buildPortraitRequest()
     const nextPortrait = await portfolioAnalysisApi.getPortrait(request)
@@ -453,6 +481,31 @@ usePortfolioScopedLoader(
 watch(cohortType, () => {
   void loadCohortCompare()
 })
+
+async function reloadCreditCurveByCategory() {
+  const teacherId = targetTeacherId.value
+  if (!teacherId || !portrait.value) {
+    return
+  }
+  creditCurveLoading.value = true
+  try {
+    creditCurve.value = await portfolioAnalysisApi.getCreditCurve({
+      teacherId,
+      creditCategory: creditCategory.value,
+    })
+  } catch (error) {
+    showUserError(error, '切换学分分类失败')
+  } finally {
+    creditCurveLoading.value = false
+  }
+}
+
+watch(creditCategory, (next, prev) => {
+  if (next === prev) {
+    return
+  }
+  void reloadCreditCurveByCategory()
+})
 </script>
 
 <template>
@@ -476,7 +529,7 @@ watch(cohortType, () => {
     <template v-else>
       <UiSpin :spinning="loading">
         <UiCard v-if="portrait" title="综合画像">
-          <SignalBand :metrics="compositeItems" compact />
+          <SignalBand :metrics="compositeItems" variant="panel" compact />
           <p class="teacher-portrait__meta">加权：核心 30% · 教学 25% · 科研/培训/实践各 15%</p>
           <p class="teacher-portrait__meta">
             正式档案记录 {{ portrait.officialRecordCount }} 条
@@ -573,21 +626,14 @@ watch(cohortType, () => {
             class="teacher-portrait__cohort-tabs"
           />
           <UiAlert
-            v-if="cohort?.displayMode === 'INSUFFICIENT'"
-            type="warning"
-            class="teacher-portrait__cohort-alert"
-          >
-            {{ cohortHint }}
-          </UiAlert>
-          <UiAlert
-            v-else-if="cohort?.displayMode === 'LIMITED'"
+            v-if="cohort?.displayMode === 'INSUFFICIENT' || cohort?.displayMode === 'LIMITED'"
             type="warning"
             class="teacher-portrait__cohort-alert"
           >
             {{ cohortHint }}
           </UiAlert>
           <MarkChart
-            v-else
+            v-if="cohort?.displayMode !== 'INSUFFICIENT'"
             :option="cohortRangeOption"
             height="320px"
             aria-label="教师画像同群体区间对比图"
@@ -608,12 +654,30 @@ watch(cohortType, () => {
       <MarkChartCard
         v-if="portrait && creditCurve"
         title="培训学分曲线"
-        :loading="loading"
+        :loading="loading || creditCurveLoading"
         chart-min-height="280"
         class="teacher-portrait__credit"
       >
+        <UiSectionTabs
+          v-model="creditCategory"
+          :items="creditCategoryTabItems"
+          aria-label="学分曲线分类切换"
+          class="teacher-portrait__credit-tabs"
+        />
         <p class="teacher-portrait__meta">
           数据来源：{{ creditCurve.dataSource }} · 累计 {{ creditCurve.totalCredits }} 学分
+          <template v-if="creditCurve.creditCategory">
+            · 当前分类 {{ CREDIT_CATEGORY_LABELS[creditCurve.creditCategory] || creditCurve.creditCategory }}
+          </template>
+          <template v-if="creditCurve.officialFactCount != null">
+            · 事实 {{ creditCurve.officialFactCount }} 条
+          </template>
+          <template v-if="creditCurve.dedupDroppedCount">
+            · 去重 {{ creditCurve.dedupDroppedCount }} 条
+          </template>
+        </p>
+        <p v-if="creditCurve.trendNote" class="teacher-portrait__meta teacher-portrait__meta--warn">
+          {{ creditCurve.trendNote }}
         </p>
         <UiEmpty
           size="sm"
@@ -699,6 +763,504 @@ watch(cohortType, () => {
           </ul>
         </UiCard>
       </div>
+
+      <UiCard
+        v-if="portrait && (portrait.identityLayers?.length ?? 0) > 0"
+        title="多身份贡献分层"
+        class="teacher-portrait__identity-layers"
+      >
+        <p class="teacher-portrait__hint-text">
+          同一人员不同身份分层统计；参评合并引用仍使用上方综合分。外部身份不含校内职称核心。
+        </p>
+        <table class="teacher-portrait__table">
+          <thead>
+            <tr>
+              <th>身份</th>
+              <th>范围</th>
+              <th>综合分</th>
+              <th>教学</th>
+              <th>科研</th>
+              <th>培训</th>
+              <th>实践</th>
+              <th>§8.42 贡献度</th>
+              <th>工作量学时</th>
+              <th>已计分/不适用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="layer in portrait.identityLayers"
+              :key="layer.identityId ?? layer.identityType"
+            >
+              <td>
+                <div>{{ layer.identityTypeLabel || layer.identityType }}</div>
+                <div
+                  v-if="layer.displayName || layer.appointmentNo || layer.enterpriseName"
+                  class="teacher-portrait__hint-text"
+                >
+                  {{ [layer.displayName, layer.appointmentNo, layer.enterpriseName].filter(Boolean).join(' · ') }}
+                </div>
+              </td>
+              <td>
+                <UiTag :tone="layer.externalIdentity ? 'orange' : 'blue'">
+                  {{ layer.externalIdentity ? '外部师资' : '校内身份' }}
+                </UiTag>
+              </td>
+              <td>{{ layer.compositeScore ?? '—' }}</td>
+              <td>{{ layer.teachingScore ?? '—' }}</td>
+              <td>{{ layer.researchScore ?? '—' }}</td>
+              <td>{{ layer.trainingScore ?? '—' }}</td>
+              <td>{{ layer.practiceScore ?? '—' }}</td>
+              <td>{{ layer.industryMentorContribution?.contributionScore ?? '—' }}</td>
+              <td>{{ layer.workloadHours ?? '—' }}</td>
+              <td>{{ layer.scoredIndicatorCount }}/{{ layer.notApplicableIndicatorCount }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </UiCard>
+
+
+      <UiCard
+        v-if="portrait?.digitalLiteracy"
+        title="§8.43 数字素养达成度"
+        class="teacher-portrait__digital-literacy"
+      >
+        <p class="teacher-portrait__hint-text">
+          综合 {{ portrait.digitalLiteracy.achievementScore }}
+          · 学年 {{ portrait.digitalLiteracy.academicYear || '—' }}
+          · {{ portrait.digitalLiteracy.shortboard ? '存在短板，请关注培训推荐' : '暂无明显短板' }}
+        </p>
+        <p class="teacher-portrait__hint-text">{{ portrait.digitalLiteracy.formulaLabel }}</p>
+        <table class="teacher-portrait__table">
+          <thead>
+            <tr>
+              <th>数字教学应用</th>
+              <th>数字资源建设</th>
+              <th>数据治理合规</th>
+              <th>AI规范使用</th>
+              <th>数字培训发展</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ portrait.digitalLiteracy.digitalTeachingScore }}</td>
+              <td>{{ portrait.digitalLiteracy.digitalResourceScore }}</td>
+              <td>{{ portrait.digitalLiteracy.dataGovernanceScore }}</td>
+              <td>{{ portrait.digitalLiteracy.aiComplianceScore }}</td>
+              <td>{{ portrait.digitalLiteracy.digitalTrainingScore }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ul v-if="portrait.digitalLiteracy.evidenceNotes?.length" class="teacher-portrait__hint-text">
+          <li v-for="(note, idx) in portrait.digitalLiteracy.evidenceNotes" :key="idx">{{ note }}</li>
+        </ul>
+      </UiCard>
+
+
+      <UiCard
+        v-if="portrait?.guidanceContribution"
+        title="§8.44 指导贡献度"
+        class="teacher-portrait__guidance"
+      >
+        <p class="teacher-portrait__hint-text">
+          综合 {{ portrait.guidanceContribution.contributionScore }}
+          · 任务 {{ portrait.guidanceContribution.taskCount }}
+          · 最高单项 {{ portrait.guidanceContribution.topItemScore }}
+        </p>
+        <p class="teacher-portrait__hint-text">{{ portrait.guidanceContribution.formulaLabel }}</p>
+        <table
+          v-if="portrait.guidanceContribution.items?.length"
+          class="teacher-portrait__table"
+        >
+          <thead>
+            <tr>
+              <th>类型</th>
+              <th>任务</th>
+              <th>基础分</th>
+              <th>角色</th>
+              <th>过程</th>
+              <th>成效</th>
+              <th>审核</th>
+              <th>得分</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in portrait.guidanceContribution.items"
+              :key="`${item.sourceType}-${item.sourceId ?? item.taskName}`"
+            >
+              <td>{{ item.guidanceTypeLabel }}</td>
+              <td>{{ item.taskName || '—' }}</td>
+              <td>{{ item.baseScore }}</td>
+              <td>{{ item.roleFactor }}</td>
+              <td>{{ item.processFactor }}</td>
+              <td>{{ item.outcomeFactor }}</td>
+              <td>{{ item.auditFactor }}</td>
+              <td>{{ item.itemScore }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ul v-if="portrait.guidanceContribution.evidenceNotes?.length" class="teacher-portrait__hint-text">
+          <li
+            v-for="(note, idx) in portrait.guidanceContribution.evidenceNotes"
+            :key="idx"
+          >
+            {{ note }}
+          </li>
+        </ul>
+      </UiCard>
+
+
+
+
+      <UiCard
+        v-if="portrait?.industryPackSceneScore"
+        title="§8.57 行业包场景合并计分"
+        class="teacher-portrait__industry-pack"
+      >
+        <p class="teacher-portrait__hint-text">
+          场景分 {{ portrait.industryPackSceneScore.sceneScore }}
+          · 通用 {{ portrait.industryPackSceneScore.generalScore }}
+          · 行业包 {{ portrait.industryPackSceneScore.industryPackScore }}
+          · 权重 {{ portrait.industryPackSceneScore.packWeight }}
+        </p>
+        <p class="teacher-portrait__hint-text">
+          {{ portrait.industryPackSceneScore.packBound ? (portrait.industryPackSceneScore.packName || portrait.industryPackSceneScore.packCode) : '未挂载行业包' }}
+          · 硬性达标 {{ portrait.industryPackSceneScore.hardRequirementsMet ? '是' : '否' }}
+        </p>
+        <p class="teacher-portrait__hint-text">{{ portrait.industryPackSceneScore.formulaLabel }}</p>
+        <table
+          v-if="portrait.industryPackSceneScore.dimensionScores?.length"
+          class="teacher-portrait__table"
+        >
+          <thead>
+            <tr>
+              <th>维度</th>
+              <th>权重</th>
+              <th>得分</th>
+              <th>证据</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in portrait.industryPackSceneScore.dimensionScores"
+              :key="item.dimensionCode"
+            >
+              <td>{{ item.dimensionLabel }}</td>
+              <td>{{ item.weight }}</td>
+              <td>{{ item.score }}</td>
+              <td>{{ item.evidenceNote || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-if="portrait.industryPackSceneScore.hardGaps?.length" class="teacher-portrait__hint-text">
+          <p>行业达标缺口清单：</p>
+          <ul>
+            <li
+              v-for="(gap, idx) in portrait.industryPackSceneScore.hardGaps"
+              :key="`gap-${idx}`"
+            >
+              [{{ gap.gapType }}] {{ gap.gapTitle }}
+              <span v-if="gap.remediationHint"> — {{ gap.remediationHint }}</span>
+            </li>
+          </ul>
+        </div>
+        <ul v-if="portrait.industryPackSceneScore.evidenceNotes?.length" class="teacher-portrait__hint-text">
+          <li
+            v-for="(note, idx) in portrait.industryPackSceneScore.evidenceNotes"
+            :key="idx"
+          >
+            {{ note }}
+          </li>
+        </ul>
+      </UiCard>
+
+
+      <UiCard
+        v-if="portrait?.educatingOutcomeContribution"
+        title="§8.58 育人成果贡献度"
+        class="teacher-portrait__educating-outcome"
+      >
+        <p class="teacher-portrait__hint-text">
+          综合 {{ portrait.educatingOutcomeContribution.contributionScore }}
+          · 计入 {{ portrait.educatingOutcomeContribution.itemCount }}
+          · 去重剔除 {{ portrait.educatingOutcomeContribution.dedupDroppedCount ?? 0 }}
+          · 最高单项 {{ portrait.educatingOutcomeContribution.topItemScore }}
+        </p>
+        <p class="teacher-portrait__hint-text">{{ portrait.educatingOutcomeContribution.formulaLabel }}</p>
+        <table
+          v-if="portrait.educatingOutcomeContribution.items?.length"
+          class="teacher-portrait__table"
+        >
+          <thead>
+            <tr>
+              <th>类型</th>
+              <th>成果</th>
+              <th>基础分</th>
+              <th>角色</th>
+              <th>过程</th>
+              <th>学生成效</th>
+              <th>得分</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in portrait.educatingOutcomeContribution.items"
+              :key="`${item.sourceType}-${item.sourceId ?? item.taskName}`"
+            >
+              <td>{{ item.outcomeTypeLabel }}</td>
+              <td>{{ item.taskName || '—' }}</td>
+              <td>{{ item.baseScore }}</td>
+              <td>{{ item.roleFactor }}</td>
+              <td>{{ item.processFactor }}</td>
+              <td>{{ item.studentOutcomeFactor }}</td>
+              <td>{{ item.itemScore }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ul v-if="portrait.educatingOutcomeContribution.evidenceNotes?.length" class="teacher-portrait__hint-text">
+          <li
+            v-for="(note, idx) in portrait.educatingOutcomeContribution.evidenceNotes"
+            :key="idx"
+          >
+            {{ note }}
+          </li>
+        </ul>
+      </UiCard>
+
+
+      <UiCard
+        v-if="portrait?.textbookContribution"
+        title="§8.45 职教教材贡献度"
+        class="teacher-portrait__textbook"
+      >
+        <p class="teacher-portrait__hint-text">
+          综合 {{ portrait.textbookContribution.contributionScore }}
+          · 教材 {{ portrait.textbookContribution.textbookCount }}
+          · 最高单本 {{ portrait.textbookContribution.topItemScore }}
+        </p>
+        <p class="teacher-portrait__hint-text">{{ portrait.textbookContribution.formulaLabel }}</p>
+        <table
+          v-if="portrait.textbookContribution.items?.length"
+          class="teacher-portrait__table"
+        >
+          <thead>
+            <tr>
+              <th>类型</th>
+              <th>名称</th>
+              <th>类型分</th>
+              <th>级别</th>
+              <th>角色</th>
+              <th>应用</th>
+              <th>验收</th>
+              <th>得分</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in portrait.textbookContribution.items"
+              :key="item.sourceId ?? item.textbookName"
+            >
+              <td>{{ item.textbookTypeLabel }}</td>
+              <td>{{ item.textbookName || '—' }}</td>
+              <td>{{ item.typeScore }}</td>
+              <td>{{ item.levelFactor }}</td>
+              <td>{{ item.roleFactor }}</td>
+              <td>{{ item.applicationFactor }}</td>
+              <td>{{ item.acceptanceFactor }}</td>
+              <td>{{ item.itemScore }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ul v-if="portrait.textbookContribution.evidenceNotes?.length" class="teacher-portrait__hint-text">
+          <li
+            v-for="(note, idx) in portrait.textbookContribution.evidenceNotes"
+            :key="idx"
+          >
+            {{ note }}
+          </li>
+        </ul>
+      </UiCard>
+
+      <UiCard
+        v-if="portrait?.virtualTeachingRoomContribution"
+        title="§8.41 产教虚拟教研室贡献度"
+        class="teacher-portrait__vtr"
+      >
+        <p class="teacher-portrait__hint-text">
+          综合 {{ portrait.virtualTeachingRoomContribution.contributionScore }}
+          · 活动 {{ portrait.virtualTeachingRoomContribution.activityCount }}
+          · 最高单项 {{ portrait.virtualTeachingRoomContribution.topItemScore }}
+        </p>
+        <p class="teacher-portrait__hint-text">{{ portrait.virtualTeachingRoomContribution.formulaLabel }}</p>
+        <table
+          v-if="portrait.virtualTeachingRoomContribution.items?.length"
+          class="teacher-portrait__table"
+        >
+          <thead>
+            <tr>
+              <th>类型</th>
+              <th>名称</th>
+              <th>基础分</th>
+              <th>角色</th>
+              <th>成果</th>
+              <th>应用</th>
+              <th>审核</th>
+              <th>得分</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in portrait.virtualTeachingRoomContribution.items"
+              :key="item.sourceId ?? item.activityName"
+            >
+              <td>{{ item.activityTypeLabel }}</td>
+              <td>{{ item.activityName || '—' }}</td>
+              <td>{{ item.baseScore }}</td>
+              <td>{{ item.roleFactor }}</td>
+              <td>{{ item.outcomeFactor }}</td>
+              <td>{{ item.applicationFactor }}</td>
+              <td>{{ item.auditFactor }}</td>
+              <td>{{ item.itemScore }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ul
+          v-if="portrait.virtualTeachingRoomContribution.evidenceNotes?.length"
+          class="teacher-portrait__hint-text"
+        >
+          <li
+            v-for="(note, idx) in portrait.virtualTeachingRoomContribution.evidenceNotes"
+            :key="idx"
+          >
+            {{ note }}
+          </li>
+        </ul>
+      </UiCard>
+
+      <UiCard
+        v-if="portrait?.industryEducationProjectContribution"
+        title="§8.46 产教项目贡献度"
+        class="teacher-portrait__iep"
+      >
+        <p class="teacher-portrait__hint-text">
+          综合 {{ portrait.industryEducationProjectContribution.contributionScore }}
+          · 项目 {{ portrait.industryEducationProjectContribution.projectCount }}
+          · 最高单项目 {{ portrait.industryEducationProjectContribution.topItemScore }}
+        </p>
+        <p class="teacher-portrait__hint-text">{{ portrait.industryEducationProjectContribution.formulaLabel }}</p>
+        <div
+          v-if="portrait.industryEducationProjectContribution.ownerIdentityLayers?.length"
+          class="teacher-portrait__identity-layers"
+        >
+          <UiTag
+            v-for="(layer, idx) in portrait.industryEducationProjectContribution.ownerIdentityLayers"
+            :key="layer.identityId || `${layer.identityType}-${idx}`"
+            tone="blue"
+          >
+            {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+          </UiTag>
+        </div>
+        <p
+          v-if="portrait.industryEducationProjectContribution.ownerMultiIdentityNote"
+          class="teacher-portrait__meta"
+        >
+          {{ portrait.industryEducationProjectContribution.ownerMultiIdentityNote }}
+        </p>
+        <table
+          v-if="portrait.industryEducationProjectContribution.items?.length"
+          class="teacher-portrait__table"
+        >
+          <thead>
+            <tr>
+              <th>类型</th>
+              <th>名称</th>
+              <th>基础分</th>
+              <th>角色</th>
+              <th>阶段</th>
+              <th>人才成效</th>
+              <th>企业参与</th>
+              <th>得分</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in portrait.industryEducationProjectContribution.items"
+              :key="item.sourceId ?? item.projectName"
+            >
+              <td>{{ item.projectTypeLabel }}</td>
+              <td>{{ item.projectName || '—' }}</td>
+              <td>{{ item.baseScore }}</td>
+              <td>{{ item.roleFactor }}</td>
+              <td>{{ item.stageFactor }}</td>
+              <td>{{ item.talentOutcomeFactor }}</td>
+              <td>{{ item.enterpriseFactor }}</td>
+              <td>{{ item.itemScore }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ul
+          v-if="portrait.industryEducationProjectContribution.evidenceNotes?.length"
+          class="teacher-portrait__hint-text"
+        >
+          <li
+            v-for="(note, idx) in portrait.industryEducationProjectContribution.evidenceNotes"
+            :key="idx"
+          >
+            {{ note }}
+          </li>
+        </ul>
+      </UiCard>
+
+      <UiCard
+        v-if="portrait?.teachingWorkloadByIdentity"
+        title="§8.50 教学工作量按身份"
+        class="teacher-portrait__workload"
+      >
+        <p class="teacher-portrait__hint-text">
+          课程覆盖 {{ portrait.teachingWorkloadByIdentity.coveredCourseCount }} 门
+          · 校内学时 {{ portrait.teachingWorkloadByIdentity.campusWorkloadHours }}
+          · 外部学时 {{ portrait.teachingWorkloadByIdentity.externalWorkloadHours }}
+        </p>
+        <p class="teacher-portrait__hint-text">{{ portrait.teachingWorkloadByIdentity.formulaLabel }}</p>
+        <table
+          v-if="portrait.teachingWorkloadByIdentity.identityItems?.length"
+          class="teacher-portrait__table"
+        >
+          <thead>
+            <tr>
+              <th>身份</th>
+              <th>外部</th>
+              <th>学时</th>
+              <th>课程门数</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in portrait.teachingWorkloadByIdentity.identityItems"
+              :key="item.identityId ?? item.identityType"
+            >
+              <td>{{ item.identityTypeLabel }}</td>
+              <td>{{ item.externalIdentity ? '是' : '否' }}</td>
+              <td>{{ item.workloadHours }}</td>
+              <td>{{ item.taughtCourseCount }}</td>
+              <td>{{ item.evidenceNote || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ul
+          v-if="portrait.teachingWorkloadByIdentity.evidenceNotes?.length"
+          class="teacher-portrait__hint-text"
+        >
+          <li
+            v-for="(note, idx) in portrait.teachingWorkloadByIdentity.evidenceNotes"
+            :key="idx"
+          >
+            {{ note }}
+          </li>
+        </ul>
+      </UiCard>
 
       <UiCard v-if="portrait" title="维度明细" class="teacher-portrait__dimensions">
         <p class="teacher-portrait__hint-text">点击维度行查看得分依据与关联档案</p>

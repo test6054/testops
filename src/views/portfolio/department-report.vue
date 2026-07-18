@@ -2,7 +2,7 @@
 import type { PortfolioDoubleHighMonitorVO } from '@/apis/portfolio/double-high'
 import type { PortfolioCompletenessLevelCode } from '@/apis/portfolio/enums'
 import type { PortfolioDeptOneTableSummaryVO } from '@/apis/portfolio/teacher'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
@@ -245,7 +245,12 @@ onMounted(() => {
 <template>
   <StageWorkbenchShell title="院系报告">
     <template #context>
-      <ContextBar title="院系师资发展报告" subtitle="须经导出审批" />
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="院系师资发展报告"
+        subtitle="须经导出审批"
+      />
     </template>
     <UiCard title="导出范围">
       <div class="report-filter">
@@ -325,7 +330,7 @@ onMounted(() => {
           >
             预览摘要
           </UiButton>
-          <UiButton size="sm" :loading="applying" :disabled="busy" @click="applyExport"> 提交审批 </UiButton>
+          <UiButton size="sm" variant="primary" :loading="applying" :disabled="busy" @click="applyExport"> 提交审批 </UiButton>
         </div>
       </div>
     </UiCard>

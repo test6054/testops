@@ -9,7 +9,7 @@
       "
       #context
     >
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="成绩确认">
         <template #status>
           <UiTag v-if="effectiveRiskOverview?.readyToPublish" tone="green" size="sm">
             可进入发布
@@ -49,7 +49,7 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand :metrics="statMetrics" compact />
+      <SignalBand :metrics="statMetrics" variant="panel" compact />
     </template>
 
     <ExamSelectGateStrip
@@ -622,7 +622,7 @@
     <!-- 撤回成绩 Drawer -->
     <UiDrawer
       :open="withdrawOpen"
-      title="撤回最终成绩"
+      :title="withdrawModalTitle"
       :width="520"
       :confirm-loading="withdrawing"
       :hide-footer="false"
@@ -1497,7 +1497,7 @@ function buildFinalizeActions(record: ExamScoreSummaryItemResponse): UiTableRowA
       tone: !confirmable && publishable ? 'primary' : undefined,
       disabled: !publishable,
     },
-    { key: 'withdraw', label: '撤回', disabled: !canWithdraw(record) },
+    { key: 'withdraw', label: withdrawButtonLabel(record), disabled: !canWithdraw(record) },
   ]
 }
 
@@ -1521,7 +1521,15 @@ function handleFinalizeRowAction(key: string, record: ExamScoreSummaryItemRespon
 function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
-  return s === FinalScoreStatusCode.PUBLISHED || s === FinalScoreStatusCode.CORRECTED
+  // MVR-184：与 BE withdrawFinalScore 对齐，CONFIRMED 可直接撤销确认，无需先发布再撤回
+  return (
+    s === FinalScoreStatusCode.CONFIRMED
+    || s === FinalScoreStatusCode.PUBLISHED
+    || s === FinalScoreStatusCode.CORRECTED
+  )
+}
+function withdrawButtonLabel(record: ExamScoreSummaryItemResponse): string {
+  return record.finalScoreStatus === FinalScoreStatusCode.CONFIRMED ? '撤销确认' : '撤回'
 }
 
 // ─── 成绩明细 Drawer ─────────────────────────────
@@ -2082,6 +2090,12 @@ const withdrawOpen = ref(false)
 const withdrawing = ref(false)
 const withdrawCandidate = ref<ExamScoreSummaryItemResponse | null>(null)
 const withdrawReason = ref('')
+/** MVR-184：CONFIRMED 用「撤销确认」文案，避免教师误以为必须先发布 */
+const withdrawModalTitle = computed(() =>
+  withdrawCandidate.value?.finalScoreStatus === FinalScoreStatusCode.CONFIRMED
+    ? '撤销成绩确认'
+    : '撤回最终成绩',
+)
 
 function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
   withdrawCandidate.value = record
@@ -2106,7 +2120,11 @@ async function handleWithdraw(): Promise<void> {
       paperInstanceId: withdrawCandidate.value.paperInstanceId,
       reason,
     })
-    message.success('成绩已撤回')
+    message.success(
+      withdrawCandidate.value?.finalScoreStatus === FinalScoreStatusCode.CONFIRMED
+        ? '已撤销成绩确认'
+        : '成绩已撤回',
+    )
     withdrawOpen.value = false
     await refreshAfterScoreWrite()
   } catch (error) {
@@ -2154,7 +2172,7 @@ watch(
   }
 
   &__guide {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-3);
   }
 
   &__exam-select {
@@ -2201,18 +2219,18 @@ watch(
 
   &__table-title {
     margin: 0;
-    font-size: 16px;
-    font-weight: var(--dp-font-weight-title);
+    font-size: 15px;
+    font-weight: 600;
     line-height: 1.5;
     color: var(--dp-text-primary);
   }
 
   &__detail-summary {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-4);
   }
 
   &__detail-section-title {
-    margin: 16px 0 8px 0;
+    margin: var(--dp-space-4) 0 var(--dp-space-2) 0;
     font-size: 14px;
     font-weight: 600;
   }
@@ -2224,13 +2242,13 @@ watch(
   &__table-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-2);
   }
 
   &__risk-review-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--dp-space-3);
   }
 
   &__risk-review-item {
@@ -2275,18 +2293,18 @@ watch(
   }
 
   &__detail-section-helper {
-    margin-left: 8px;
+    margin-left: var(--dp-space-2);
     font-size: 12px;
     font-weight: normal;
     color: var(--dp-text-muted);
   }
 
   &__history-chart {
-    margin-top: 8px;
+    margin-top: var(--dp-space-2);
   }
 
   &__audit-pagination {
-    margin-top: 12px;
+    margin-top: var(--dp-space-3);
     display: flex;
     justify-content: flex-end;
   }

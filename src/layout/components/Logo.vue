@@ -39,7 +39,9 @@ const toHome = () => {
   height: 56px;
   padding: 0 12px;
   color: var(--dp-text);
-  font-size: 20px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -47,6 +49,8 @@ const toHome = () => {
   cursor: pointer;
   user-select: none;
   box-sizing: border-box;
+  border-bottom: 1px solid var(--dp-border);
+  background: var(--dp-surface-elevated);
 
   &.collapsed {
     padding: 0;

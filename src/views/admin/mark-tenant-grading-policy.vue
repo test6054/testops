@@ -109,7 +109,7 @@
             </label>
 
             <div class="tenant-policy__actions">
-              <UiButton size="sm" :loading="saving" @click="handleSave">保存策略</UiButton>
+              <UiButton variant="primary" size="sm" :loading="saving" @click="handleSave">保存策略</UiButton>
             </div>
           </form>
         </WorkbenchSurfaceCard>
@@ -162,7 +162,7 @@ import type {
   MarkTenantGradingPolicyResponse,
   MarkTenantGradingPolicySaveRequest,
 } from '@/apis/mark/grading-experience-assist'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   getTenantGradingOpsOverview,

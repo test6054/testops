@@ -32,6 +32,7 @@ const iwbTabItems = [
   { key: 'supervision', label: '督导复查' },
 ]
 const loading = ref(false)
+const signalsLoadFailed = ref(false)
 const skipFirstActivatedLoad = ref(true)
 let scopeChangeSerial = 0
 
@@ -111,6 +112,7 @@ const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
 async function handleScopeChange(): Promise<void> {
   const serial = ++scopeChangeSerial
   loading.value = true
+  signalsLoadFailed.value = false
   try {
     await loadTabLists()
     if (serial !== scopeChangeSerial) {
@@ -121,6 +123,7 @@ async function handleScopeChange(): Promise<void> {
       return
     }
     if (!signalsApplied) {
+      signalsLoadFailed.value = true
       handleTabLoadError(toUserError(null, '工作台指标加载失败'))
     }
     await consumeImprovementDeepLink()
@@ -182,7 +185,7 @@ onActivated(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar />
+      <QualityPageContextBar show-title title="持续改进与审核闭环" />
     </template>
 
     <QualityPlanGateStrip
@@ -192,13 +195,28 @@ onActivated(async () => {
     />
 
     <template v-else>
-      <SignalBand :metrics="signals" compact class="iwb__signals" />
+      <UiEmpty
+        v-if="signalsLoadFailed"
+        size="sm"
+        title="加载失败"
+        class="iwb__empty"
+      />
+
+      <SignalBand
+        v-else
+        :metrics="signals"
+        variant="panel"
+        compact
+        class="iwb__signals"
+      />
 
       <UiEmpty
         v-if="
           !loading
+            && !signalsLoadFailed
             && activeTab === 'improvement'
-            && !signalSummary?.improvementTotal
+            && signalSummary
+            && !signalSummary.improvementTotal
         "
         size="sm"
         description="当前范围无改进任务"

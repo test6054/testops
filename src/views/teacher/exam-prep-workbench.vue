@@ -347,7 +347,7 @@ watch(
 
   <StageWorkbenchShell v-else>
     <template v-if="prepSignalMetrics.length > 0" #signal>
-      <SignalBand compact :metrics="prepSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="prepSignalMetrics" />
     </template>
 
     <ExamWorkspaceJourneySubNav />
@@ -453,17 +453,17 @@ watch(
 <style scoped lang="scss">
 .exam-prep {
   &__empty {
-    margin-top: var(--dp-space-3, 12px);
+    margin-top: var(--dp-space-4);
   }
 
   &__blocking-strip {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-4);
   }
 
   &__info,
   &__scenario,
   &__pipeline-row {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-4);
   }
 }
 </style>

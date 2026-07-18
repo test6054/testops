@@ -220,11 +220,18 @@ onMounted(loadAll)
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="师资分析看板" subtitle="院系结构 · 档案完整度 · 五框架 · 双师 · 外聘">
-      <template #actions>
-        <UiButton size="sm" :loading="loading" @click="loadAll">刷新</UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="师资分析看板"
+        subtitle="院系结构 · 档案完整度 · 五框架 · 双师 · 外聘"
+      >
+        <template #actions>
+          <UiButton size="sm" :loading="loading" @click="loadAll">刷新</UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <UiSpin :spinning="loading">
       <UiEmpty
         size="sm"

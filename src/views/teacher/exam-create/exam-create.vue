@@ -35,6 +35,7 @@
       <UiButton size="sm" variant="ghost" @click="ec.handleGoBack">取消</UiButton>
       <UiButton
         size="sm"
+        variant="primary"
         :loading="ec.submitting.value"
         :disabled="ec.submitting.value || ec.rosterPreviewSyncing.value"
         @click="handleSubmit"

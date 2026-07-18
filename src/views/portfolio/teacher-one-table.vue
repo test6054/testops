@@ -2,7 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherIdentityTypeCode } from '@/apis/portfolio/enums'
 import type { PortfolioTeacherOneTableSummaryVO } from '@/apis/portfolio/teacher'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -205,6 +205,7 @@ usePortfolioScopedLoader(
           </UiButton>
           <UiButton
             size="sm"
+            variant="primary"
             :loading="exporting"
             :disabled="loading || (canPickTeachers && !targetTeacherId)"
             @click="exportOneTable"

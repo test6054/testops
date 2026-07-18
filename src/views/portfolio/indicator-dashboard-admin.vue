@@ -266,7 +266,7 @@ onMounted(loadDashboard)
       <UiButton size="sm" variant="primary" :loading="loading" @click="loadDashboard">刷新</UiButton>
     </div>
     <template #signal>
-      <SignalBand v-if="summary" :metrics="signals" compact />
+      <SignalBand v-if="summary" :metrics="signals" variant="panel" compact />
     </template>
     <UiSpin :spinning="loading">
       <UiEmpty size="sm" v-if="!loading && !summary" description="当前范围无指标看板数据" />

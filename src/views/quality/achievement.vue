@@ -17,7 +17,7 @@ import type {
   WorkbenchStageStatus,
 } from '@/types/workbench'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ExportBusinessType } from '@/apis/edu/export'
@@ -65,6 +65,7 @@ import TaskResultPanel from '@/components/workbench/TaskResultPanel.vue'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityTableExport } from '@/composables/useQualityTableExport'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { ConfirmationStatusCode } from '@/types/enums/confirmation-status-enum'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
@@ -130,6 +131,7 @@ const qualityStore = useQualityStore()
 const list = ref<AchievementResultVO[]>([])
 const total = ref(0)
 const loading = ref(false)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const triggerLoading = ref<string>('')
 const { exporting: achievementExporting, exportExcel: exportAchievementExcel }
   = useQualityTableExport()
@@ -347,6 +349,7 @@ const programRequired = computed(
 async function loadList() {
   if (!qualityStore.currentTrainingPlanId) return
   loading.value = true
+  beginLoad()
   try {
     const page = await achievementResultApi.page(buildAchievementListQuery())
     list.value = page.list
@@ -356,8 +359,13 @@ async function loadList() {
     if (list.value.length === 0 && total.value > 0 && query.pageNum > 1) {
       query.pageNum -= 1
       await loadList()
+      return
     }
+    okLoad()
   } catch (error) {
+    list.value = []
+    total.value = 0
+    failLoad()
     showUserError(error, '达成度结果加载失败')
   } finally {
     loading.value = false
@@ -1086,7 +1094,7 @@ onActivated(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar>
+      <QualityPageContextBar show-title title="达成度结果">
         <template #actions>
           <UiButton
             variant="outline"
@@ -1109,7 +1117,7 @@ onActivated(async () => {
 
     <template v-else>
       <StageRail :stages="stages" compact class="achievement__stages" />
-      <SignalBand :metrics="signals" compact class="achievement__signals" />
+      <SignalBand :metrics="signals" variant="panel" compact class="achievement__signals" />
 
       <TaskResultPanel
         v-if="achievementResultItems.length > 0"
@@ -1133,7 +1141,7 @@ onActivated(async () => {
               <template #icon><DownloadOutlined /></template>
               导出 Excel
             </UiButton>
-            <UiButton size="sm" :disabled="trainingPlanRequired" @click="openTriggerDrawer">
+            <UiButton size="sm" variant="primary" :disabled="trainingPlanRequired" @click="openTriggerDrawer">
               触发达成度计算
             </UiButton>
           </div>
@@ -1172,6 +1180,7 @@ onActivated(async () => {
           :columns="columns"
           :data-source="list"
           :loading="loading"
+          :load-error="loadError"
           row-key="id"
           size="middle"
           :total="total"
@@ -1386,15 +1395,15 @@ onActivated(async () => {
   }
 
   &__stages {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-4);
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-3);
   }
 
   &__result-panel {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-4);
   }
 
   &__panel {
@@ -1408,8 +1417,8 @@ onActivated(async () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-3);
+    margin-bottom: var(--dp-space-3);
     flex-wrap: wrap;
   }
 
@@ -1423,7 +1432,7 @@ onActivated(async () => {
   &__panel-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-2);
     flex-wrap: wrap;
   }
 
@@ -1452,11 +1461,11 @@ onActivated(async () => {
   }
 
   &__editor-alert {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-3);
   }
 
   &__section-title {
-    margin: 16px 0 8px;
+    margin: var(--dp-space-4) 0 var(--dp-space-2);
     font-size: 14px;
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -1465,17 +1474,17 @@ onActivated(async () => {
   &__trigger-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 8px;
+    gap: var(--dp-space-2);
   }
 
   &__trigger-chain {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--dp-space-3);
   }
 
   &__trigger-step {
-    padding: 12px;
+    padding: var(--dp-space-3);
     border: 1px solid var(--dp-border);
     border-radius: 8px;
     background: var(--dp-surface);
@@ -1490,8 +1499,8 @@ onActivated(async () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: var(--dp-space-2);
+    margin-bottom: var(--dp-space-2);
   }
 
   &__trigger-step-title {
@@ -1501,7 +1510,7 @@ onActivated(async () => {
   }
 
   &__trigger-blockers {
-    margin: 0 0 8px;
+    margin: 0 0 var(--dp-space-2);
     padding-left: 18px;
     font-size: 12px;
     color: var(--dp-text-secondary);
@@ -1509,7 +1518,7 @@ onActivated(async () => {
   }
 
   &__readiness-hint {
-    margin: 0 0 8px;
+    margin: 0 0 var(--dp-space-2);
     font-size: 12px;
     color: var(--dp-text-muted);
   }

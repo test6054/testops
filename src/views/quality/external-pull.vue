@@ -19,7 +19,7 @@ import type { ExternalPullWorkbenchSignalSummaryVO } from '@/apis/quality/workbe
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { BusinessAnchorCode } from '@/types/enums/business-anchor-code-enum'
 import type { SignalMetric, TaskResultItem } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { externalDataSourceApi } from '@/apis/quality/external-data-source'
 import { externalPullAuditApi } from '@/apis/quality/external-pull-audit'
@@ -42,6 +42,7 @@ import {
 } from '@/apis/quality/types'
 import { workbenchApi } from '@/apis/quality/workbench'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
   AchievementResultSelector,
   AssessmentItemSelector,
@@ -1193,7 +1194,11 @@ onMounted(async () => {
 
 <template>
   <QualityIngestPageShell embedded>
-    <SignalBand :metrics="signals" compact class="external-pull__signals" />
+    <template #context>
+      <QualityPageContextBar show-title title="外部成绩拉取" />
+    </template>
+
+    <SignalBand :metrics="signals" variant="panel" compact class="external-pull__signals" />
 
     <TaskResultPanel
       v-if="pullResultItems.length > 0"
@@ -1264,7 +1269,7 @@ onMounted(async () => {
     <UiCard class="detail-table-card external-pull__task-card">
       <template #title>拔取任务</template>
       <template #extra>
-        <UiButton size="sm" :disabled="!sources.some((s) => s.enabled)" @click="openTaskCreate">
+        <UiButton variant="primary" size="sm" :disabled="!sources.some((s) => s.enabled)" @click="openTaskCreate">
           新建拔取任务
         </UiButton>
       </template>

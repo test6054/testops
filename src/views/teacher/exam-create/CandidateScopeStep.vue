@@ -143,7 +143,7 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, toRef, watch } from 'vue'
 import {
   EXAM_ROSTER_SCOPE_MODE_OPTIONS,

@@ -6,7 +6,7 @@ import type {
 } from '@/apis/mark/exam-layout-design'
 import type { LayoutQuestionDraft } from '@/utils/layout-question-templates'
 import QuestionCircleOutlined from '@ant-design/icons-vue/QuestionCircleOutlined'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'

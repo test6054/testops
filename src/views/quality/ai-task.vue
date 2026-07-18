@@ -28,7 +28,7 @@ import type {
   WorkbenchStage,
   WorkbenchStageStatus,
 } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
@@ -1269,7 +1269,7 @@ onMounted(async () => {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar>
+      <QualityPageContextBar show-title title="AI 任务中心">
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="loading" @click="handleScopeChange">
             刷新
@@ -1286,7 +1286,7 @@ onMounted(async () => {
 
     <template v-else>
       <StageRail :stages="stages" compact class="ai-task__stages" />
-      <SignalBand :metrics="signals" compact class="ai-task__signals" />
+      <SignalBand :metrics="signals" variant="panel" compact class="ai-task__signals" />
 
       <TaskResultPanel
         v-if="taskResultItems.length > 0"
@@ -1299,7 +1299,7 @@ onMounted(async () => {
       <UiCard class="detail-table-card ai-task__table-card">
         <template #title>任务列表</template>
         <template #extra>
-          <UiButton size="sm" @click="openSubmit">提交任务</UiButton>
+          <UiButton size="sm" variant="primary" @click="openSubmit">提交任务</UiButton>
         </template>
 
         <UiFilterBar

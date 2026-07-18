@@ -1,3 +1,7 @@
+import type {
+  PortfolioMultiIdentityLayerVO,
+  PortfolioTeachingWorkloadByIdentityVO,
+} from '@/apis/portfolio/types'
 import http from '@/config/axios'
 
 export interface PortfolioCourseArchiveFrameworkVO {
@@ -19,6 +23,8 @@ export interface PortfolioCourseArchiveCourseVO {
   completedFrameworkCount: number
   totalFrameworkCount: number
   frameworks: PortfolioCourseArchiveFrameworkVO[]
+  /** 教务讲授校内口径 CAMPUS */
+  identityScope?: string
 }
 
 export interface PortfolioCourseArchiveOverviewVO {
@@ -28,6 +34,9 @@ export interface PortfolioCourseArchiveOverviewVO {
   frameworkSlotDone: number
   frameworkSlotTotal: number
   courses: PortfolioCourseArchiveCourseVO[]
+  teachingWorkloadByIdentity?: PortfolioTeachingWorkloadByIdentityVO
+  identityLayers?: PortfolioMultiIdentityLayerVO[]
+  multiIdentityNotes?: string[]
 }
 
 export interface PortfolioCourseArchiveOverviewRequest {

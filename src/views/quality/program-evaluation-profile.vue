@@ -15,7 +15,7 @@ import type {
 } from '@/apis/quality/program-evaluation-profile'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
@@ -30,6 +30,7 @@ import {
   EvaluationMethodCode,
   EvaluationMethodDescription,
 } from '@/apis/quality/types'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import { ProgramSelector } from '@/components/quality/selectors'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
@@ -447,12 +448,16 @@ onActivated(() => {
 
 <template>
   <StageWorkbenchShell>
-    <SignalBand :metrics="signals" compact class="program-profile__signals" />
+    <template #context>
+      <QualityPageContextBar show-title title="专业评价口径" />
+    </template>
+
+    <SignalBand :metrics="signals" variant="panel" compact class="program-profile__signals" />
 
     <UiCard class="detail-table-card program-profile__table-card">
       <template #title>口径列表</template>
       <template #extra>
-        <UiButton size="sm" @click="openCreate">新建评价口径</UiButton>
+        <UiButton size="sm" variant="primary" @click="openCreate">新建评价口径</UiButton>
       </template>
 
       <UiFilterBar

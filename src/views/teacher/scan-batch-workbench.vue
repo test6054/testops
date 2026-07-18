@@ -4,6 +4,7 @@
       <SignalBand
         v-if="selectedExamId"
         compact
+        variant="panel"
         :metrics="summaryMetrics"
         @metric-click="handleMetricClick"
       />

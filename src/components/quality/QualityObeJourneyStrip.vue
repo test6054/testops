@@ -3,7 +3,7 @@
  * layout 级 OBE 七步快捷导航（32px、低饱和、无 KPI 数字）。
  */
 import type { ObeJourneyStepVO } from '@/apis/quality/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ConfirmationStatusCode } from '@/apis/quality/types'

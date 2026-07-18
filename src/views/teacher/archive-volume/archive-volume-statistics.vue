@@ -16,6 +16,7 @@
     <template #signal>
       <SignalBand
         :metrics="signalMetrics"
+        variant="panel"
         compact
         @metric-click="handleSignalMetricClick"
       />

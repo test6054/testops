@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="roster-page">
     <template v-if="selectedExamId && showRosterContextBar" #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="考生名册">
         <template #status>
           <UiTag v-if="rosterPanel?.filterScopeApplied" tone="blue" size="sm">筛选范围内</UiTag>
           <UiTag v-if="rosterLocked" tone="orange" size="sm">已有扫描</UiTag>
@@ -14,7 +14,7 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact :metrics="rosterSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="rosterSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip
@@ -123,7 +123,7 @@
                 <template #icon><UploadOutlined /></template>
                 批量导入考生
               </UiButton>
-              <UiButton size="sm" @click="openSingleAddModal">
+              <UiButton size="sm" variant="primary" @click="openSingleAddModal">
                 <template #icon><PlusOutlined /></template>
                 添加单个考生
               </UiButton>
@@ -867,7 +867,8 @@ async function loadExamContext(): Promise<void> {
 }
 
 async function persistInferredClassScope(): Promise<void> {
-  if (!selectedExamId.value || !classIds.value.length || classScopeReadOnly.value) {
+  if (!selectedExamId.value || !classIds.value.length || classScopeReadOnly.value
+    || persistClassScopeSaving.value) {
     return
   }
   persistClassScopeSaving.value = true

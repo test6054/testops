@@ -208,6 +208,7 @@
       background: var(--dp-blue-50) !important;
       color: var(--dp-blue-700) !important;
       font-weight: var(--dp-type-sidebar-weight-active) !important;
+      box-shadow: inset 3px 0 0 var(--dp-blue-500);
 
       &::after {
         display: none !important;
@@ -275,6 +276,7 @@
       background: var(--dp-blue-50) !important;
       color: var(--dp-blue-700) !important;
       font-weight: 600;
+      box-shadow: inset 3px 0 0 var(--dp-blue-500);
     }
   }
 }

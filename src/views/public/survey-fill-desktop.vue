@@ -799,7 +799,7 @@ async function handleSubmit() {
   border-color: var(--survey-primary);
   background: var(--survey-primary);
   color: var(--survey-on-primary);
-  box-shadow: var(--dp-shadow-sm));
+  box-shadow: var(--dp-shadow-sm);
   transform: scale(1.08);
 }
 
@@ -926,12 +926,12 @@ async function handleSubmit() {
   font-weight: 600;
   color: var(--survey-on-primary);
   background: var(--survey-primary);
-  box-shadow: var(--dp-shadow-md));
+  box-shadow: var(--dp-shadow-md);
   cursor: pointer;
   transition: all 0.2s;
 
   &:hover {
-    box-shadow: var(--dp-shadow-md));
+    box-shadow: var(--dp-shadow-md);
     transform: translateY(-1px);
   }
 

@@ -1,6 +1,6 @@
 import type { RouteLocationRaw, RouteRecordNormalized } from 'vue-router'
 import type { QualityGate } from '@/constants/quality-scope-profile'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
 import { useQualityStore } from '@/stores/modules/quality'
 

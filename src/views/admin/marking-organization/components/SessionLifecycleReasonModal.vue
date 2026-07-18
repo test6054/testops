@@ -30,7 +30,7 @@
     </UiForm>
     <template #footer>
       <UiButton size="sm" variant="outline" @click="handleOpenChange(false)">取消</UiButton>
-      <UiButton size="sm" :loading="submitting" :disabled="!canManage" @click="confirm">提交</UiButton>
+      <UiButton variant="primary" size="sm" :loading="submitting" :disabled="!canManage" @click="confirm">提交</UiButton>
     </template>
   </UiDrawer>
 </template>

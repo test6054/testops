@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import type { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { FileOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import { stagePlatformFile } from '@/apis/platform/file'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

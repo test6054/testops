@@ -53,7 +53,7 @@
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { CSSProperties } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { debounce } from 'lodash-es'
 import { computed, ref, watch } from 'vue'
 import { ConfirmationStatusCode } from '@/apis/quality/types'

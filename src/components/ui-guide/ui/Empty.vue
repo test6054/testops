@@ -91,38 +91,47 @@ const resolvedDescription = computed(() => {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: var(--dp-space-3, 12px) var(--dp-space-2, 8px);
+  padding: var(--dp-space-6, 24px) var(--dp-space-4, 16px);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface-elevated);
+  border: 1px solid var(--dp-border);
 }
 
 .ui-empty--sm {
-  padding: var(--dp-space-2, 8px) var(--dp-space-2, 8px);
+  padding: var(--dp-space-3, 12px) var(--dp-space-2, 8px);
+  background: transparent;
+  border: none;
 }
 
 .ui-empty--md {
-  padding: var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-6, 24px) var(--dp-space-4, 16px);
 }
 
 .ui-empty__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-bottom: var(--dp-space-2, 8px);
+  width: 36px;
+  height: 36px;
+  margin-bottom: var(--dp-space-3, 12px);
+  border-radius: var(--dp-radius-full);
+  background: var(--dp-surface);
+  border: 1px solid var(--dp-border);
 }
 
 .ui-empty__dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--dp-border);
+  background: var(--dp-text-muted);
 }
 
 .ui-empty__title {
   margin-bottom: var(--dp-space-1, 4px);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--dp-text);
+  color: var(--dp-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .ui-empty__description {

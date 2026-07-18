@@ -1,5 +1,5 @@
 import type { ArchiveEvaluationExportResponse } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import { cancelEvaluationExport, getEvaluationExportProgress } from '@/apis/mark/archive-volume'

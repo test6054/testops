@@ -27,6 +27,7 @@
               class="experience-assist-policy__head-actions"
             >
               <UiButton
+                variant="primary"
                 size="sm"
                 :disabled="!canEnable || policy?.enabled"
                 @click="openPolicyConfigModal('enable')"
@@ -116,6 +117,7 @@
           :columns="bindingColumns"
           :data-source="bindings"
           :loading="bindingsLoading"
+          :load-error="bindingsLoadError"
           :total="bindingPageTotal"
           flat
           row-key="layoutQuestionId"
@@ -186,7 +188,7 @@ import type {
   UiTableRowActionItem,
 } from '@/components/ui-guide/ui/types'
 import type { ExperienceAssistBindingFilterQuery } from '@/utils/experience-assist-binding-filter'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   disableExamGradingExperienceAssistPolicy,
@@ -251,6 +253,7 @@ const {
   pageSize: bindingPageSize,
   pageTotal: bindingPageTotal,
   filters: bindingFilters,
+  loadError: bindingsLoadError,
   handlePageChange: handleBindingPageChange,
   search: searchBindings,
   loadPage: loadBindingPage,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PortfolioPortraitTemplateVO } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref } from 'vue'
 import { portfolioPortraitTemplateApi } from '@/apis/portfolio/teacher-platform'
 import PortfolioPortraitLayoutEditor from '@/components/portfolio/PortfolioPortraitLayoutEditor.vue'
@@ -136,7 +136,7 @@ onMounted(loadList)
             </li>
           </ul>
         </UiSpin>
-        <UiButton size="sm" style="margin-top: 12px" @click="newTemplate"> 新建模板 </UiButton>
+        <UiButton size="sm" variant="primary" style="margin-top: 12px" @click="newTemplate"> 新建模板 </UiButton>
       </UiCard>
       <UiCard title="布局编辑">
         <div class="form-row">

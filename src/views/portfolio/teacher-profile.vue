@@ -11,7 +11,7 @@ import type {
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { PlusOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeacherCohortProfileApi } from '@/apis/portfolio/teacher-cohort-profile'
 import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
@@ -680,7 +680,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
 
     <UiCard v-else-if="loadFailed" title="加载失败">
       <UiEmpty size="sm" description="个人资料加载失败">
-        <UiButton size="sm" @click="loadProfile">重试</UiButton>
+        <UiButton size="sm" variant="primary" @click="loadProfile">重试</UiButton>
       </UiEmpty>
     </UiCard>
 
@@ -712,7 +712,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
               placeholder="例如：新一代信息技术专业群"
             />
           </UiFormItem>
-          <UiButton size="sm" :loading="savingCohortProfile" @click="saveCohortProfile">
+          <UiButton size="sm" variant="primary" :loading="savingCohortProfile" @click="saveCohortProfile">
             保存对标主数据
           </UiButton>
         </UiForm>
@@ -736,7 +736,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
               placeholder="可补充教研室名称"
             />
           </UiFormItem>
-          <UiButton size="sm" v-if="!readonlyProfile" :loading="savingProfile" @click="saveProfile">
+          <UiButton variant="primary" size="sm" v-if="!readonlyProfile" :loading="savingProfile" @click="saveProfile">
             保存资料
           </UiButton>
         </UiForm>
@@ -796,7 +796,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         />
         <template v-if="profileActiveTab === 'education'">
           <div v-if="!readonlyProfile" class="cv-actions">
-            <UiButton size="sm" :disabled="cvWriteBusy" @click="openCvModal('education')">
+            <UiButton variant="primary" size="sm" :disabled="cvWriteBusy" @click="openCvModal('education')">
               <PlusOutlined />
               新增学历
             </UiButton>
@@ -826,7 +826,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         </template>
         <template v-else-if="profileActiveTab === 'academic-experience'">
           <div v-if="!readonlyProfile" class="cv-actions">
-            <UiButton size="sm" :disabled="cvWriteBusy" @click="openCvModal('academicExperience')">
+            <UiButton variant="primary" size="sm" :disabled="cvWriteBusy" @click="openCvModal('academicExperience')">
               <PlusOutlined />
               新增经历
             </UiButton>
@@ -856,7 +856,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         </template>
         <template v-else-if="profileActiveTab === 'academic-appointment'">
           <div v-if="!readonlyProfile" class="cv-actions">
-            <UiButton size="sm" :disabled="cvWriteBusy" @click="openCvModal('academicAppointment')">
+            <UiButton variant="primary" size="sm" :disabled="cvWriteBusy" @click="openCvModal('academicAppointment')">
               <PlusOutlined />
               新增任职
             </UiButton>

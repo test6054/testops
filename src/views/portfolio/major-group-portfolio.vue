@@ -7,7 +7,7 @@ import type {
 } from '@/apis/portfolio/governance'
 import type { PortfolioOrgTreeNodeVO } from '@/apis/portfolio/types'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
@@ -129,6 +129,22 @@ const sectionColumns: ColumnsType = [
   { title: '状态', dataIndex: 'statusLabel', key: 'statusLabel', width: 100 },
 ]
 
+/** OVERVIEW：同人多身份并列（US-MI-01 / §8.50） */
+const overviewIdentityColumns: ColumnsType = [
+  { title: '教师编号', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
+  { title: '身份', dataIndex: 'identityTypeLabel', key: 'identityTypeLabel', width: 120 },
+  { title: '外部身份', key: 'externalIdentity', width: 100 },
+  { title: '身份切片分', dataIndex: 'identityCompositeScore', key: 'identityCompositeScore', width: 110 },
+  { title: '教学学时', dataIndex: 'workloadHours', key: 'workloadHours', width: 100 },
+  { title: '说明', dataIndex: 'contributionNote', key: 'contributionNote' },
+]
+
+const activeSectionColumns = computed(() =>
+  activeSection.value === PortfolioMajorGroupSectionCode.OVERVIEW
+    ? overviewIdentityColumns
+    : sectionColumns,
+)
+
 function sectionLabel(code: PortfolioMajorGroupSectionCode): string {
   return PortfolioMajorGroupSectionDescription[code]
 }
@@ -182,7 +198,7 @@ async function loadPortfolio() {
 
 async function loadSection() {
   const currentToken = ++sectionRequestToken.value
-  if (!portfolioOrgId.value || activeSection.value === PortfolioMajorGroupSectionCode.OVERVIEW) {
+  if (!portfolioOrgId.value) {
     sectionLoading.value = false
     sectionItems.value = []
     sectionTotal.value = 0
@@ -380,7 +396,7 @@ watch(
           :options="majorGroupOptions"
           :disabled="exportLoading"
         />
-        <UiButton size="sm" v-if="portfolioOrgId" :loading="exportLoading" @click="openExportModal">
+        <UiButton size="sm" variant="primary" v-if="portfolioOrgId" :loading="exportLoading" @click="openExportModal">
           申请导出
         </UiButton>
       </div>
@@ -474,19 +490,29 @@ watch(
                 <span>{{ item.itemCount }} 条</span>
               </li>
             </ul>
+            <p class="major-group-portfolio__overview-hint">
+              同人多身份并列：一人多身份不合并为单一角色，外部身份单独切片展示（§8.50 / US-MI-01）
+            </p>
           </template>
           <UiDataTable
-            v-else
             v-model:current="sectionFilter.pageNum"
             v-model:page-size="sectionFilter.pageSize"
             row-key="businessId"
-            :columns="sectionColumns"
+            :columns="activeSectionColumns"
             :data-source="sectionItems"
             :loading="sectionLoading"
             pagination-mode="server"
             :total="sectionTotal"
             @page-change="onSectionPageChange"
-          />
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'externalIdentity'">
+                <UiTag :tone="record.externalIdentity ? 'orange' : 'blue'">
+                  {{ record.externalIdentity ? '外部' : '校内' }}
+                </UiTag>
+              </template>
+            </template>
+          </UiDataTable>
         </UiCard>
       </template>
     </UiSpin>
@@ -569,6 +595,12 @@ watch(
   justify-content: space-between;
   padding: 8px 0;
   border-bottom: 1px solid var(--dp-border-subtle);
+}
+
+.major-group-portfolio__overview-hint {
+  margin: 12px 0 8px;
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
 }
 
 .major-group-portfolio__gate-row {

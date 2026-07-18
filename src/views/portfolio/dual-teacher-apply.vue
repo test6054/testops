@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
@@ -339,6 +339,7 @@ watch(
             @change="onAttachmentPick"
           />
           <UiButton
+            variant="primary"
             size="sm"
             :loading="uploading"
             :disabled="!canEdit || operationPending"
@@ -363,7 +364,7 @@ watch(
           >
             发起复核申请
           </UiButton>
-          <UiButton size="sm" :loading="saving" :disabled="!canEdit || operationPending" @click="saveDraft">
+          <UiButton variant="primary" size="sm" :loading="saving" :disabled="!canEdit || operationPending" @click="saveDraft">
             保存草稿
           </UiButton>
           <UiButton

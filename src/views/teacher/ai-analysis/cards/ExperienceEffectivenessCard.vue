@@ -63,6 +63,7 @@
         v-if="record && record.analysisStatus === AiAnalysisStatusCode.SUCCESS"
         :metrics="effectivenessMetrics"
         compact
+        variant="inline"
       />
 
       <div class="ai-record__charts">

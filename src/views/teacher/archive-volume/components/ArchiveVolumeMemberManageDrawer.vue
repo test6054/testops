@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ArchiveVolumeMemberDisplayVO } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
 import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'

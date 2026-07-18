@@ -433,6 +433,8 @@ export interface ArchiveVolumeResponse {
   canApproveDepartmentReview?: boolean
   /** 当前用户是否可撤回已通过院系审核（列表 capabilities 摘要） */
   canWithdrawDepartmentReview?: boolean
+  /** 最新待验收移交提交人；MVR-196 批量退回双人制同源 */
+  transferSubmitUserId?: string
   /** 租户/院系是否启用院系审核门禁 */
   departmentReviewEnabled?: boolean
   /** 逾期提交是否须填写说明（硬阻断策略） */
@@ -562,6 +564,12 @@ export interface ArchiveVolumeDetailResponse {
   canManageAppraisal?: boolean
   /** 当前用户是否具备该院系 ARCHIVE_ADMIN 职责 */
   canManageArchiveAdmin?: boolean
+  /** MVR-187：可授权材料缺失豁免（ARCHIVE_ADMIN + 收材/开放整改窗口） */
+  canWaiveMaterialMissing?: boolean
+  /** MVR-187：可登记延迟补交（COLLEGE_COORDINATOR + 收材/开放整改窗口） */
+  canAllowMaterialDelay?: boolean
+  /** MVR-188：可确认线下成绩完成（DRAFT/COLLECTING + OFFLINE_CONFIRMED 待确认 + 组织/提交/材料管理） */
+  canConfirmScoreCompletion?: boolean
   /** 当前用户是否可确认卷密级定密标记 */
   canConfirmSecurityMark?: boolean
   /** 当前用户是否可变更卷密级 */
@@ -602,6 +610,10 @@ export interface ArchiveVolumeCapabilitiesVO {
   member?: boolean
   canScan?: boolean
   canManageMaterials?: boolean
+  /** 是否可解除合用材料跨卷引用（可不在收材窗口，MVR-183） */
+  canRemoveSharedMaterialRef?: boolean
+  /** 是否可维护材料标签/OCR（可不在收材窗口，MVR-185） */
+  canMaintainMaterial?: boolean
   canReviewScanBatches?: boolean
   canEditCatalog?: boolean
   canSelfCheck?: boolean
@@ -1925,6 +1937,10 @@ export interface ArchiveVolumeAccessRecordResponse {
   lastReadPage?: number
   /** 授权材料累计下载次数 */
   downloadCount?: number
+  /** MVR-189：当前用户可批准该 PENDING 查阅（职责+密级+非申请人） */
+  canApprove?: boolean
+  /** MVR-189：当前用户可驳回该 PENDING 查阅（与 canApprove 同源） */
+  canReject?: boolean
 }
 
 export interface ArchiveIntegrityCheckResponse {
@@ -2674,6 +2690,36 @@ export function registerArchiveSharedMaterialRef(
 ): Promise<void> {
   return http.post<void>('/api/mark/archive-volumes/shared-material/ref', request)
 }
+
+export interface ArchiveVolumeSharedMaterialRefResponse {
+  refId: string
+  volumeId: string
+  refType: ArchiveSharedMaterialRefTypeCode
+  targetVolumeId: string
+  targetMaterialId: string
+  catalogNote?: string
+}
+
+export function listArchiveSharedMaterialRefs(
+  request: { volumeId: string },
+): Promise<ArchiveVolumeSharedMaterialRefResponse[]> {
+  return http.post<ArchiveVolumeSharedMaterialRefResponse[]>(
+    '/api/mark/archive-volumes/shared-material/ref/list',
+    request,
+  )
+}
+
+export interface ArchiveSharedMaterialRefRemoveRequest {
+  volumeId: string
+  refId: string
+}
+
+export function removeArchiveSharedMaterialRef(
+  request: ArchiveSharedMaterialRefRemoveRequest,
+): Promise<void> {
+  return http.post<void>('/api/mark/archive-volumes/shared-material/ref/remove', request)
+}
+
 
 export interface ArchiveVolumeAccessDownloadRequest {
   accessRecordId: string

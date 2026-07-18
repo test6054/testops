@@ -40,15 +40,14 @@
     </template>
 
     <template v-if="taskDetail" #signal>
-      <SignalBand :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" variant="panel" compact />
     </template>
 
     <UiEmpty
       size="sm"
       v-if="loadFailed"
+      title="加载失败"
       description="整改任务加载失败"
-      action-label="重试"
-      @action="loadTask"
     />
 
     <UiSkeletonState v-else-if="loading" variant="card" compact />
@@ -270,7 +269,7 @@
               保存改派
             </UiButton>
             <UiButton
-              v-if="taskDetail.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED"
+              v-if="canCloseRemediationAsCoordinator"
               size="sm"
               variant="outline"
               :loading="updating"
@@ -282,6 +281,7 @@
           <template v-else-if="showAssigneeActions">
             <UiButton
               v-if="taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN"
+              variant="primary"
               size="sm"
               :loading="updating"
               @click="advanceStatus(ArchiveRemediationStatusCode.IN_PROGRESS)"
@@ -380,7 +380,7 @@ import type {
 } from '@/apis/mark/archive-volume'
 import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
@@ -575,6 +575,15 @@ const isCurrentAssignee = computed(
 
 const showAssigneeActions = computed(() => !isSupervisionRead.value && isCurrentAssignee.value)
 
+/** MVR-192：与 BE 复检关闭双人制同源，责任人兼协调人时不可自关 */
+const canCloseRemediationAsCoordinator = computed(() => {
+  const task = taskDetail.value
+  if (!task || !showCoordinatorActions.value) return false
+  if (task.taskStatus !== ArchiveRemediationStatusCode.RESUBMITTED) return false
+  if (isCurrentAssignee.value) return false
+  return true
+})
+
 const canActOnTask = computed(() => showCoordinatorActions.value || showAssigneeActions.value)
 
 const canUploadEvidence = computed(() => {
@@ -752,12 +761,20 @@ async function reassignAssignee() {
 }
 
 function openCloseVerifyModal() {
+  if (!canCloseRemediationAsCoordinator.value) {
+    showFormValidationMessage('整改责任人不得复检关闭本人任务')
+    return
+  }
   closeVerifyComment.value = ''
   closeVerifyModalOpen.value = true
 }
 
 async function submitCloseWithVerification() {
   if (!taskDetail.value || updating.value) return
+  if (!canCloseRemediationAsCoordinator.value) {
+    showFormValidationMessage('整改责任人不得复检关闭本人任务')
+    return
+  }
   if (!closeVerifyComment.value.trim()) {
     showFormValidationMessage('请填写验证备注')
     return

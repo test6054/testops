@@ -290,7 +290,7 @@ onActivated(() => {
     </template>
 
     <template v-if="workbenchReady" #signal>
-      <SignalBand :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" variant="panel" compact />
     </template>
 
     <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="acc-empty" />

@@ -2,7 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
 import type { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiCard from '@/components/ui-guide/ui/Card.vue'

@@ -20,7 +20,7 @@ import type {
 import type { AiHealthStatusCode } from '@/apis/quality/types'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { aiModelProfileApi } from '@/apis/quality/ai-model-profile'
 import {
@@ -29,6 +29,7 @@ import {
   AiProviderTypeCode,
   AiProviderTypeDescription,
 } from '@/apis/quality/types'
+import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -479,7 +480,13 @@ onActivated(() => {
 
 <template>
   <StageWorkbenchShell>
-    <SignalBand :metrics="signals" compact class="ai-model__signals" />
+    <template #context>
+      <QualityPageContextBar show-title title="AI 模型配置" />
+    </template>
+
+    <template #signal>
+      <SignalBand :metrics="signals" variant="panel" compact class="ai-model__signals" />
+    </template>
 
     <UiCard class="detail-table-card ai-model__active-card">
       <template #title>当前启用模型</template>
@@ -546,7 +553,7 @@ onActivated(() => {
     <UiCard class="detail-table-card ai-model__table-card">
       <template #title>模型候选仓库</template>
       <template #extra>
-        <UiButton size="sm" @click="openCreate">新建配置</UiButton>
+        <UiButton size="sm" variant="primary" @click="openCreate">新建配置</UiButton>
       </template>
 
       <UiFilterBar

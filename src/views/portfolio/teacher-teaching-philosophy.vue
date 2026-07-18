@@ -4,7 +4,7 @@ import type {
   PortfolioTeachingPhilosophySaveRequest,
   PortfolioTeachingPhilosophyVO,
 } from '@/apis/portfolio/teaching-philosophy'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
@@ -189,13 +189,13 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
 
     <UiCard v-else-if="loadFailed" title="加载失败">
       <UiEmpty size="sm" description="教学理念加载失败">
-        <UiButton size="sm" @click="loadList">重试</UiButton>
+        <UiButton size="sm" variant="primary" @click="loadList">重试</UiButton>
       </UiEmpty>
     </UiCard>
 
     <UiCard v-else title="按年教学理念" :loading="loading">
       <template #extra>
-        <UiButton size="sm" v-if="!readonlyMode" @click="openModal()">新增学年</UiButton>
+        <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openModal()">新增学年</UiButton>
       </template>
       <UiDataTable :columns="columns" :data-source="rows" row-key="id" :pagination="false">
         <template #bodyCell="{ column, record }">

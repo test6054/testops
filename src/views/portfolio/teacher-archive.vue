@@ -17,7 +17,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -1259,7 +1259,7 @@ watch(
             </template>
           </p>
           <div v-if="canCreateRevision" class="teacher-archive__detail-actions">
-            <UiButton size="sm" :loading="revisionLoading" @click="createRevision"> 创建修订版 </UiButton>
+            <UiButton size="sm" variant="primary" :loading="revisionLoading" @click="createRevision"> 创建修订版 </UiButton>
           </div>
           <section
             v-if="recordDetail.versionHistory?.length"
@@ -1339,6 +1339,7 @@ watch(
                   关联材料库
                 </UiButton>
                 <UiButton
+                  variant="primary"
                   size="sm"
                   :disabled="supportMaterialWriting"
                   @click="openLocalMaterialModal"

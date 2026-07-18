@@ -418,6 +418,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
           <span class="ai-assistants__params-meta">来源：已确认材料 · AI 草稿未入库</span>
           <UiButton
             size="sm"
+            variant="primary"
             class="ai-assistants__params-cta"
             :loading="submitting"
             :disabled="!canOperate"
@@ -514,6 +515,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
             </UiButton>
             <UiButton
               size="sm"
+              variant="primary"
               :loading="reviewLoading"
               @click="reviewResult(PortfolioAiAnalysisReviewStatusCode.APPROVED)"
             >

@@ -5,7 +5,7 @@ import type {
   PortfolioDevelopmentPlanItemSaveRequest,
   PortfolioDevelopmentPlanItemVO,
 } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_OPTIONS,
@@ -75,6 +75,7 @@ const {
   pageNum,
   pageSize,
   pageTotal,
+  loadError,
   loadPage: loadPlansPage,
   handlePageChange,
 } = useQueryTable(
@@ -348,11 +349,18 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="部门年度规划" subtitle="科室编制 · 提交审核 · 年度唯一">
-      <template #actions>
-        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportPlans"> 导出表格文件 </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="部门年度规划"
+        subtitle="科室编制 · 提交审核 · 年度唯一"
+      >
+        <template #actions>
+          <UiButton size="sm" variant="primary" :loading="exporting" :disabled="exporting" @click="exportPlans"> 导出表格文件 </UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <UiCard>
       <div class="toolbar">
         <input
@@ -386,7 +394,7 @@ onMounted(async () => {
             <UiButton size="sm" variant="primary" @click="createPlan"> 创建 </UiButton>
           </div>
         </UiCard>
-        <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="当前年度暂无部门规划" />
+        <UiEmpty size="sm" v-if="!loadError && !loading && rows.length === 0" description="当前年度暂无部门规划" />
         <UiDataTable
           v-model:current="pageNum"
           v-model:page-size="pageSize"
@@ -395,6 +403,7 @@ onMounted(async () => {
           :columns="columns"
           :data-source="rows"
           :loading="loading"
+          :load-error="loadError"
           row-key="id"
           style="margin-top: 16px"
           @page-change="handlePageChange"
@@ -436,7 +445,7 @@ onMounted(async () => {
             @change="loadPlanItems"
           />
           <UiButton size="sm" :disabled="!selectedPlanId" @click="loadPlanItems"> 刷新明细 </UiButton>
-          <UiButton size="sm" v-if="planItemEditable" @click="addPlanItemRow"> 新增行 </UiButton>
+          <UiButton variant="primary" size="sm" v-if="planItemEditable" @click="addPlanItemRow"> 新增行 </UiButton>
           <UiButton
             size="sm"
             v-if="planItemEditable"

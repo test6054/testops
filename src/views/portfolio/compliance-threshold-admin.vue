@@ -4,7 +4,7 @@ import type {
   PortfolioComplianceMetricVO,
   PortfolioComplianceThresholdVO,
 } from '@/apis/portfolio/compliance'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioComplianceApi } from '@/apis/portfolio/compliance'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -325,7 +325,7 @@ onMounted(() => {
           <UiButton size="sm" variant="soft" :loading="recomputing" :disabled="writing" @click="recompute">
             重算全校
           </UiButton>
-          <UiButton size="sm" :disabled="writing" @click="openCreate"> 新建阈值 </UiButton>
+          <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate"> 新建阈值 </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -516,7 +516,7 @@ onMounted(() => {
       </div>
       <template #footer>
         <UiButton size="sm" variant="soft" @click="editorOpen = false"> 取消 </UiButton>
-        <UiButton size="sm" :loading="saving" @click="saveRow"> 保存 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="saving" @click="saveRow"> 保存 </UiButton>
       </template>
     </UiDrawer>
   </StageWorkbenchShell>

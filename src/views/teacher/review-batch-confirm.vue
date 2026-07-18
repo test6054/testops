@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="批量复核确认">
         <template #status>
           <UiTag tone="blue" size="sm"> 待复核 {{ pagination.total }} 条 </UiTag>
           <UiTag v-if="selectedRowKeys.length > 0" tone="orange" size="sm">
@@ -32,7 +32,7 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand compact :metrics="batchSignalMetrics" />
+      <SignalBand compact variant="panel" :metrics="batchSignalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!selectedExamId" body="缺少考试上下文，请从考试列表进入批量确认" />
@@ -131,7 +131,7 @@ import type {
 import type { GradeSourceCode, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { batchConfirmQuestionGrades } from '@/apis/mark/exam-grade'

@@ -93,7 +93,7 @@ onBeforeUnmount(clearTimer)
     border: 1px solid var(--dp-border, var(--dp-border-subtle));
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface, var(--dp-bg-container));
-    box-shadow: var(--dp-shadow-md));
+    box-shadow: var(--dp-shadow-md);
   }
 
   &__title {

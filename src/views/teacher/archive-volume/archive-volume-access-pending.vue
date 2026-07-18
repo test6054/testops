@@ -81,6 +81,7 @@
               <div class="approval-card__action-row">
                 <UiButton size="sm" variant="outline" @click="cancelApprove">取消</UiButton>
                 <UiButton
+                  variant="primary"
                   size="sm"
                   :loading="submitting"
                   @click="submitApprove(record.accessRecordId)"
@@ -90,7 +91,7 @@
               </div>
             </template>
             <template v-else>
-              <UiButton size="sm" @click="startApprove(record.accessRecordId)">批准</UiButton>
+              <UiButton size="sm" variant="primary" @click="startApprove(record.accessRecordId)">批准</UiButton>
               <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)">
                 拒绝
               </UiButton>
@@ -123,7 +124,6 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import {
   archiveAccessApplicantLabel,
   archiveAccessApprovalCardClass,
@@ -136,8 +136,6 @@ import { formatDateTime } from '@/utils/format'
 defineOptions({ name: 'TeacherArchiveVolumeAccessPending' })
 
 const router = useRouter()
-const { canApproveAccessForVolume } = useArchiveDutyAccess()
-
 const loading = ref(false)
 const loadFailed = ref(false)
 const submitting = ref(false)
@@ -148,10 +146,8 @@ const approveComment = ref('')
 const rejectComment = ref('')
 
 function canApprove(record: ArchiveVolumeAccessRecordResponse): boolean {
-  return canApproveAccessForVolume({
-    departmentId: record.departmentId,
-    securityLevel: record.securityLevel,
-  })
+  // MVR-189：与 BE listPendingAccessRecords canApprove 同源，屏蔽申请人自批自驳
+  return record.canApprove === true
 }
 
 async function loadRecords(): Promise<void> {

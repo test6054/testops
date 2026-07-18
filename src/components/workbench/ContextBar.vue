@@ -81,12 +81,12 @@ const isCompactToolbar = computed(
   &--workbench {
     align-items: center;
     flex-wrap: nowrap;
-    margin-bottom: var(--dp-space-3);
-    min-height: var(--dp-control-height-sm, 28px);
+    margin-bottom: 0;
+    min-height: var(--dp-control-height-md, 36px);
   }
 
   &--compact-toolbar {
-    margin-bottom: var(--dp-space-2);
+    margin-bottom: 0;
     justify-content: flex-end;
 
     &:has(.context-bar__info) {
@@ -99,7 +99,7 @@ const isCompactToolbar = computed(
     min-width: 240px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--dp-space-1);
   }
 
   &--workbench &__info {
@@ -114,18 +114,19 @@ const isCompactToolbar = computed(
     line-height: var(--dp-type-h1-line-height, var(--dp-type-h1-lh));
     font-weight: var(--dp-type-h1-weight);
     color: var(--dp-text-primary);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.02em;
   }
 
   &--workbench &__title {
-    font-size: 16px;
-    line-height: 24px;
+    font-size: var(--dp-type-h1-size);
+    line-height: var(--dp-type-h1-line-height);
+    font-weight: var(--dp-type-h1-weight);
   }
 
   &__subtitle {
     margin: 0;
-    font-size: 13px;
-    line-height: 18px;
+    font-size: var(--dp-font-size-sm);
+    line-height: var(--dp-type-hint-line-height);
     color: var(--dp-text-muted);
   }
 

@@ -672,6 +672,7 @@ export interface PortfolioTeacherSummaryVO {
 }
 
 export interface PortfolioTeacherIdentityVO {
+  staffNo?: string
   id: string
   teacherUserId?: string
   identityType: PortfolioTeacherIdentityTypeCode
@@ -711,6 +712,8 @@ export interface PortfolioTeacherIdentitySaveRequest {
   identityType: PortfolioTeacherIdentityTypeCode
   identityStatus: PortfolioTeacherIdentityStatusCode
   appointmentNo?: string
+  /** 当前工号；变更写入归属血缘 */
+  staffNo?: string
   displayName?: string
   enterpriseName?: string
   anchorDepartmentId?: string
@@ -1411,6 +1414,39 @@ export interface PortfolioPortraitGapItemVO {
   calcScore?: number
 }
 
+export interface PortfolioTeacherPortraitIdentityLayerVO {
+  identityId?: string
+  identityType: string
+  identityTypeLabel: string
+  identityStatus?: string
+  externalIdentity: boolean
+  appointmentNo?: string
+  displayName?: string
+  enterpriseName?: string
+  scoredIndicatorCount: number
+  notApplicableIndicatorCount: number
+  compositeScore?: number
+  developmentCoreScore?: number
+  teachingScore?: number
+  researchScore?: number
+  trainingScore?: number
+  practiceScore?: number
+  industryMentorContribution?: {
+    formulaLabel: string
+    contributionScore: number
+    appointmentValidityScore: number
+    teachingParticipationScore: number
+    practiceGuidanceScore: number
+    industryOutcomeScore: number
+    assessmentScore: number
+    evidenceNotes: string[]
+    usableForCampusTitleEvaluation: boolean
+  }
+  workloadHours?: number
+  taughtCourseCount?: number
+  workloadEvidenceNote?: string
+}
+
 export interface PortfolioTeacherPortraitDimensionVO {
   dimensionCode: PortfolioPortraitDimensionCode
   dimensionLabel: string
@@ -1418,6 +1454,257 @@ export interface PortfolioTeacherPortraitDimensionVO {
   weightPercent: number
   dataSource: string
   readiness: PortfolioPortraitDimensionReadinessCode
+}
+
+
+
+
+/** §8.45 教材贡献明细 */
+export interface PortfolioTextbookContributionItemVO {
+  sourceId?: string
+  textbookName?: string
+  textbookTypeCode: string
+  textbookTypeLabel: string
+  typeScore: number
+  levelFactor: number
+  roleFactor: number
+  applicationFactor: number
+  acceptanceFactor: number
+  itemScore: number
+  evidenceNote?: string
+}
+
+/** §8.45 职教教材贡献度 */
+export interface PortfolioTextbookContributionVO {
+  formulaLabel: string
+  teacherId?: string
+  contributionScore: number
+  textbookCount: number
+  topItemScore: number
+  items: PortfolioTextbookContributionItemVO[]
+  evidenceNotes: string[]
+}
+
+/** §8.41 虚拟教研室活动贡献明细 */
+export interface PortfolioVirtualTeachingRoomContributionItemVO {
+  sourceId?: string
+  activityName?: string
+  activityTypeCode: string
+  activityTypeLabel: string
+  baseScore: number
+  roleFactor: number
+  outcomeFactor: number
+  applicationFactor: number
+  auditFactor: number
+  itemScore: number
+  evidenceNote?: string
+}
+
+/** §8.41 产教虚拟教研室贡献度 */
+export interface PortfolioVirtualTeachingRoomContributionVO {
+  formulaLabel: string
+  teacherId?: string
+  contributionScore: number
+  activityCount: number
+  topItemScore: number
+  items: PortfolioVirtualTeachingRoomContributionItemVO[]
+  evidenceNotes: string[]
+}
+
+/** §8.46 产教项目贡献明细 */
+export interface PortfolioIndustryEducationProjectContributionItemVO {
+  sourceId?: string
+  projectName?: string
+  projectTypeCode: string
+  projectTypeLabel: string
+  baseScore: number
+  roleFactor: number
+  stageFactor: number
+  talentOutcomeFactor: number
+  enterpriseFactor: number
+  itemScore: number
+  evidenceNote?: string
+}
+
+/** §8.46 产业学院/订单班/现代学徒制贡献度 */
+export interface PortfolioIndustryEducationProjectContributionVO {
+  formulaLabel: string
+  teacherId?: string
+  contributionScore: number
+  projectCount: number
+  topItemScore: number
+  items: PortfolioIndustryEducationProjectContributionItemVO[]
+  evidenceNotes: string[]
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  ownerMultiIdentityNote?: string
+
+}
+
+/** §8.44 指导贡献度明细 */
+export interface PortfolioGuidanceContributionItemVO {
+  sourceType: string
+  sourceId?: string
+  guidanceTypeCode: string
+  guidanceTypeLabel: string
+  taskName?: string
+  baseScore: number
+  roleFactor: number
+  processFactor: number
+  outcomeFactor: number
+  auditFactor: number
+  itemScore: number
+  evidenceNote?: string
+}
+
+/** §8.44 创新创业与竞赛指导贡献度 */
+export interface PortfolioGuidanceContributionVO {
+  formulaLabel: string
+  teacherId?: string
+  contributionScore: number
+  taskCount: number
+  topItemScore: number
+  items: PortfolioGuidanceContributionItemVO[]
+  evidenceNotes: string[]
+}
+
+/** §8.43 教师数字素养达成度 */
+export interface PortfolioDigitalLiteracyVO {
+  formulaLabel: string
+  teacherId?: string
+  academicYear?: string
+  achievementScore: number
+  digitalTeachingScore: number
+  digitalResourceScore: number
+  dataGovernanceScore: number
+  aiComplianceScore: number
+  digitalTrainingScore: number
+  shortboard: boolean
+  evidenceNotes: string[]
+}
+
+
+/** §8.42/§8.50 身份教学工作量切片 */
+export interface PortfolioTeachingWorkloadIdentityItemVO {
+  identityId?: string
+  identityType: string
+  identityTypeLabel: string
+  externalIdentity: boolean
+  workloadHours: number
+  taughtCourseCount: number
+  evidenceNote?: string
+}
+
+/** §8.42/§8.50 教学工作量按身份统计 */
+export interface PortfolioTeachingWorkloadByIdentityVO {
+  formulaLabel: string
+  teacherId?: string
+  coveredCourseCount: number
+  campusWorkloadHours: number
+  externalWorkloadHours: number
+  identityItems: PortfolioTeachingWorkloadIdentityItemVO[]
+  evidenceNotes: string[]
+}
+
+/** US-MI-01 多身份并列展示层（课程档案 / 双高责任人等） */
+export interface PortfolioMultiIdentityLayerVO {
+  identityId?: string
+  identityType: string
+  identityTypeLabel: string
+  externalIdentity: boolean
+  displayName?: string
+  workloadHours: number
+  taughtCourseCount?: number
+}
+
+/** §8.54 教学代表作贡献明细 */
+export interface PortfolioMasterpieceContributionItemVO {
+  processSessionId?: string
+  title?: string
+  levelScore: number
+  materialCompletenessFactor: number
+  multiEvalSupportFactor: number
+  processEvidenceFactor: number
+  auditStatusFactor: number
+  itemScore: number
+  evidenceNote?: string
+}
+
+/** §8.54 教学代表作贡献度 */
+export interface PortfolioMasterpieceContributionVO {
+  formulaLabel: string
+  teacherId?: string
+  contributionScore: number
+  masterpieceCount: number
+  topItemScore: number
+  items: PortfolioMasterpieceContributionItemVO[]
+  evidenceNotes: string[]
+}
+
+
+/** §8.58 育人成果贡献明细 */
+export interface PortfolioEducatingOutcomeContributionItemVO {
+  sourceType?: string
+  sourceId?: string
+  projectKey?: string
+  outcomeTypeCode?: string
+  outcomeTypeLabel?: string
+  taskName?: string
+  baseScore: number
+  roleFactor: number
+  processFactor: number
+  studentOutcomeFactor: number
+  itemScore: number
+  evidenceNote?: string
+}
+
+/** §8.58 育人成果贡献度 */
+export interface PortfolioEducatingOutcomeContributionVO {
+  formulaLabel: string
+  teacherId?: string
+  contributionScore: number
+  itemCount: number
+  dedupDroppedCount?: number
+  topItemScore: number
+  items: PortfolioEducatingOutcomeContributionItemVO[]
+  evidenceNotes: string[]
+}
+
+
+/** §8.57 行业包维度得分 */
+export interface PortfolioIndustryPackDimensionScoreVO {
+  dimensionCode: string
+  dimensionLabel: string
+  weight: number
+  score: number
+  evidenceNote?: string
+}
+
+/** §8.57 行业硬性缺口 */
+export interface PortfolioIndustryPackHardGapItemVO {
+  gapType: string
+  dimensionCode?: string
+  gapTitle: string
+  remediationHint?: string
+  hardRequired?: boolean
+}
+
+/** §8.57 行业包场景合并计分 */
+export interface PortfolioIndustryPackSceneScoreVO {
+  formulaLabel: string
+  teacherId?: string
+  majorGroupCode?: string
+  majorGroupName?: string
+  packCode?: string
+  packName?: string
+  packBound: boolean
+  packWeight: number
+  generalScore: number
+  industryPackScore: number
+  sceneScore: number
+  hardRequirementsMet: boolean
+  dimensionScores: PortfolioIndustryPackDimensionScoreVO[]
+  hardGaps: PortfolioIndustryPackHardGapItemVO[]
+  evidenceNotes: string[]
 }
 
 export interface PortfolioTeacherPortraitVO {
@@ -1437,6 +1724,26 @@ export interface PortfolioTeacherPortraitVO {
   strengthTags: PortfolioPortraitStrengthTagVO[]
   gapItems: PortfolioPortraitGapItemVO[]
   dimensions: PortfolioTeacherPortraitDimensionVO[]
+  /** 多身份贡献分层（US-MI-01） */
+  identityLayers?: PortfolioTeacherPortraitIdentityLayerVO[]
+  /** §8.43 数字素养达成度 */
+  digitalLiteracy?: PortfolioDigitalLiteracyVO
+  /** §8.44 指导贡献度 */
+  guidanceContribution?: PortfolioGuidanceContributionVO
+  /** §8.45 职教教材贡献度 */
+  textbookContribution?: PortfolioTextbookContributionVO
+  /** §8.41 产教虚拟教研室贡献度 */
+  virtualTeachingRoomContribution?: PortfolioVirtualTeachingRoomContributionVO
+  /** §8.46 产教项目贡献度 */
+  industryEducationProjectContribution?: PortfolioIndustryEducationProjectContributionVO
+  /** §8.42 / §8.50 教学工作量按身份统计 */
+  teachingWorkloadByIdentity?: PortfolioTeachingWorkloadByIdentityVO
+  /** §8.54 教学代表作贡献度 */
+  masterpieceContribution?: PortfolioMasterpieceContributionVO
+  /** §8.58 育人成果贡献度 */
+  educatingOutcomeContribution?: PortfolioEducatingOutcomeContributionVO
+  /** §8.57 行业包场景合并计分 */
+  industryPackSceneScore?: PortfolioIndustryPackSceneScoreVO
 }
 
 export interface PortfolioTeacherPortraitTrendGetRequest extends PortfolioTeacherPortraitGetRequest {
@@ -1476,6 +1783,8 @@ export interface PortfolioTeacherPortraitCohortCompareVO {
   /** 已有画像快照的同群体教师数 */
   sampleSize: number
   displayMode: PortfolioPortraitCohortDisplayModeCode
+  /** §8.55 有限/不足样本页面与导出共用标注 */
+  limitedSampleNote?: string
   dimensions: PortfolioTeacherPortraitCohortDimensionVO[]
 }
 
@@ -1899,6 +2208,45 @@ export interface PortfolioEvaluationMaterialCategoryItemVO {
   semester?: string
 }
 
+/** 参评材料身份用途切片：CAMPUS / EXTERNAL / SHARED */
+export type PortfolioEvaluationIdentityMaterialScopeCode
+  = | 'CAMPUS'
+    | 'EXTERNAL'
+    | 'SHARED'
+
+export interface PortfolioEvaluationIdentityMaterialItemVO {
+  archiveRecordId?: string
+  categoryCode?: string
+  categoryName?: string
+  academicYear?: string
+  sourceType?: string
+  identityScope?: PortfolioEvaluationIdentityMaterialScopeCode | string
+  usableForCampusHardCriteria?: boolean
+  hasPrimaryFile?: boolean
+  citationNote?: string
+}
+
+export interface PortfolioEvaluationIdentityMaterialLayerVO {
+  identityId?: string
+  identityType?: string
+  identityTypeLabel?: string
+  externalIdentity?: boolean
+  materialCount?: number
+  materials?: PortfolioEvaluationIdentityMaterialItemVO[]
+}
+
+export interface PortfolioEvaluationIdentityMaterialPackageVO {
+  citationPolicy?: string
+  teacherId?: string
+  officialRecordCount?: number
+  campusHardUsableCount?: number
+  externalOnlyCount?: number
+  sharedCount?: number
+  identityLayers?: PortfolioEvaluationIdentityMaterialLayerVO[]
+  mergedMaterials?: PortfolioEvaluationIdentityMaterialItemVO[]
+  evidenceNotes?: string[]
+}
+
 export interface PortfolioEvaluationMaterialPreviewVO {
   evaluationTaskId: string
   taskName?: string
@@ -1914,6 +2262,8 @@ export interface PortfolioEvaluationMaterialPreviewVO {
   courseArchiveFrameworkSlotDone?: number
   courseArchiveFrameworkSlotTotal?: number
   categories?: PortfolioEvaluationMaterialCategoryItemVO[]
+  /** US-MI-01 参评材料按身份切片引用包 */
+  identityMaterialPackage?: PortfolioEvaluationIdentityMaterialPackageVO
 }
 
 export interface PortfolioEvaluationPublicityListRequest {
@@ -2076,6 +2426,12 @@ export interface PortfolioMaterialVO {
   providerChain?: string
   /** 重分类未映射字段快照 JSON */
   unmappedFieldSnapshot?: string
+  /** §8.51 当前版本号 */
+  currentVersionNo?: number
+  /** §8.51 当前版本 ID */
+  currentVersionId?: string
+  /** §8.51 活跃冻结引用数 */
+  activeFreezeRefCount?: number
 }
 
 /**
@@ -2117,4 +2473,121 @@ export interface PortfolioMaterialSaveRequest {
   materialTitle: string
   fileNodeId: string
   categoryCode?: string
+}
+
+/** §8.51 材料附件版本 */
+export interface PortfolioMaterialVersionVO {
+  id: string
+  materialId: string
+  versionNo: number
+  fileNodeId: string
+  fileHash?: string
+  materialType?: string
+  materialTitle?: string
+  categoryCode?: string
+  versionStatus?: string
+  freezeReferenced?: boolean
+  createUser?: string
+  createTime?: string
+}
+
+/** §8.51 材料业务引用 */
+export interface PortfolioMaterialRefVO {
+  id: string
+  materialId: string
+  versionId: string
+  versionNo: number
+  fileNodeId?: string
+  refScope?: string
+  refBusinessId?: string
+  refLabel?: string
+  freezeStatus?: string
+  createTime?: string
+}
+
+/** §8.52 源修复重算事件明细 */
+export interface PortfolioSourceFixEventItemVO {
+  id?: string
+  teacherId?: string
+  beforeValue?: string
+  afterValue?: string
+  itemStatus?: string
+  recomputeResult?: string
+  failureReason?: string
+}
+
+/** §8.52 源修复重算事件 */
+export interface PortfolioSourceFixEventVO {
+  id?: string
+  triggerType?: string
+  triggerSource?: string
+  triggerReason?: string
+  beforeValue?: string
+  afterValue?: string
+  fieldCode?: string
+  fieldLabel?: string
+  dataSourceCode?: string
+  businessRefType?: string
+  businessRefId?: string
+  eventStatus?: string
+  impactSummary?: string
+  affectedTeacherCount?: number
+  affectedIndicatorCount?: number
+  affectedEvaluationTaskCount?: number
+  recomputeResult?: string
+  failureReason?: string
+  alertStatus?: string
+  startedTime?: string
+  finishedTime?: string
+  createTime?: string
+  items?: PortfolioSourceFixEventItemVO[]
+}
+
+/** §8.52 事件分页请求 */
+export interface PortfolioSourceFixEventPageRequest {
+  pageNum?: number
+  pageSize?: number
+  eventStatus?: string
+  alertStatus?: string
+  triggerType?: string
+  scopeTeacherId?: string
+}
+
+/** §8.52 批量重算请求 */
+export interface PortfolioSourceFixBatchRequest {
+  triggerReason: string
+  beforeValue?: string
+  afterValue?: string
+  fieldCode?: string
+  fieldLabel?: string
+  dataSourceCode?: string
+  teacherIds?: string[]
+  departmentOrgId?: string
+  majorGroupOrgId?: string
+  evaluationTaskId?: string
+}
+
+
+/** §8.50 工号/组织归属血缘段 */
+export interface PortfolioTeacherAffiliationHistoryVO {
+  id?: string
+  teacherUserId?: string
+  identityId?: string
+  identityType?: string
+  identityTypeLabel?: string
+  changeType?: string
+  changeTypeLabel?: string
+  staffNo?: string
+  appointmentNo?: string
+  anchorDepartmentId?: string
+  anchorPortfolioOrgId?: string
+  effectiveFrom?: string
+  effectiveTo?: string
+  openSegment?: boolean
+  sourceType?: string
+  reasonText?: string
+}
+
+export interface PortfolioTeacherAffiliationHistoryListRequest {
+  teacherUserId: string
 }

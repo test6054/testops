@@ -5,7 +5,11 @@ import type {
   PortfolioCourseArchiveFrameworkVO,
 } from '@/apis/portfolio/course-archive'
 import type { PortfolioTeacherCustomCategoryVO } from '@/apis/portfolio/teacher-custom-category'
-import { message } from 'ant-design-vue'
+import type {
+  PortfolioMultiIdentityLayerVO,
+  PortfolioTeachingWorkloadByIdentityVO,
+} from '@/apis/portfolio/types'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioCourseArchiveApi } from '@/apis/portfolio/course-archive'
@@ -49,6 +53,9 @@ const overviewSummary = ref({
   frameworkSlotDone: 0,
   frameworkSlotTotal: 0,
 })
+const identityLayers = ref<PortfolioMultiIdentityLayerVO[]>([])
+const multiIdentityNotes = ref<string[]>([])
+const teachingWorkload = ref<PortfolioTeachingWorkloadByIdentityVO | null>(null)
 const customCategories = ref<PortfolioTeacherCustomCategoryVO[]>([])
 const customModalOpen = ref(false)
 const customForm = reactive({ categoryName: '' })
@@ -75,6 +82,7 @@ const courseColumns: ColumnsType = [
   { title: '课程名称', dataIndex: 'courseName', key: 'courseName' },
   { title: '学年', dataIndex: 'academicYear', key: 'academicYear', width: 110 },
   { title: '学期', dataIndex: 'semester', key: 'semester', width: 72 },
+  { title: '身份口径', key: 'identityScope', width: 96 },
   { title: '框架完成', key: 'progress', width: 120 },
 ]
 
@@ -117,6 +125,9 @@ function resetOverviewContext() {
     frameworkSlotDone: 0,
     frameworkSlotTotal: 0,
   }
+  identityLayers.value = []
+  multiIdentityNotes.value = []
+  teachingWorkload.value = null
   loadFailed.value = false
 }
 
@@ -147,6 +158,9 @@ async function loadOverview() {
       frameworkSlotDone: overview.frameworkSlotDone ?? 0,
       frameworkSlotTotal: overview.frameworkSlotTotal ?? 0,
     }
+    identityLayers.value = overview.identityLayers ?? []
+    multiIdentityNotes.value = overview.multiIdentityNotes ?? []
+    teachingWorkload.value = overview.teachingWorkloadByIdentity ?? null
     try {
       const customList = await portfolioTeacherCustomCategoryApi.list({
         teacherId: scopeTeacherId(),
@@ -304,7 +318,7 @@ watch(
 
     <UiCard v-else-if="loadFailed" title="加载失败">
       <UiEmpty size="sm" description="课程档案加载失败">
-        <UiButton size="sm" @click="loadOverview">重试</UiButton>
+        <UiButton size="sm" variant="primary" @click="loadOverview">重试</UiButton>
       </UiEmpty>
     </UiCard>
 
@@ -314,6 +328,28 @@ watch(
           讲授 {{ overviewSummary.taughtCourseCount }} 门 · 五框架齐备
           {{ overviewSummary.fullyCompleteCourseCount }} 门 · 槽位完成
           {{ overviewSummary.frameworkSlotDone }}/{{ overviewSummary.frameworkSlotTotal }}
+        </p>
+        <div v-if="teachingWorkload" class="course-archive__workload">
+          <span>校内学时 {{ teachingWorkload.campusWorkloadHours ?? 0 }}</span>
+          <span> · 外部学时 {{ teachingWorkload.externalWorkloadHours ?? 0 }}</span>
+          <span> · 覆盖课程 {{ teachingWorkload.coveredCourseCount ?? 0 }} 门（按课去重）</span>
+        </div>
+        <div v-if="identityLayers.length" class="course-archive__identity-layers">
+          <UiTag
+            v-for="(layer, idx) in identityLayers"
+            :key="layer.identityId || `${layer.identityType}-${idx}`"
+            :tone="layer.externalIdentity ? 'orange' : 'blue'"
+            style="margin-right: 8px; margin-top: 8px"
+          >
+            {{ layer.identityTypeLabel || layer.displayName }} · {{ layer.workloadHours ?? 0 }} 学时
+          </UiTag>
+        </div>
+        <p
+          v-for="(note, idx) in multiIdentityNotes"
+          :key="`mi-note-${idx}`"
+          class="course-archive__note"
+        >
+          {{ note }}
         </p>
       </UiCard>
 
@@ -344,6 +380,9 @@ watch(
           :pagination="false"
         >
           <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'identityScope'">
+              <UiTag tone="blue">{{ record.identityScope || 'CAMPUS' }}</UiTag>
+            </template>
             <template v-if="column.key === 'progress'">
               <UiTag
                 :tone="
@@ -381,7 +420,7 @@ watch(
 
       <UiCard title="框架外自建分类" :loading="customLoading" style="margin-top: 16px">
         <template #extra>
-          <UiButton size="sm" v-if="!readonlyMode" @click="openCustomModal">新建分类</UiButton>
+          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCustomModal">新建分类</UiButton>
         </template>
         <UiDataTable
           :columns="customColumns"
@@ -430,5 +469,18 @@ watch(
   margin: 0;
   font-size: 14px;
   color: var(--dp-text-secondary);
+}
+.course-archive__workload {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--dp-text-secondary);
+}
+.course-archive__identity-layers {
+  margin-top: 4px;
+}
+.course-archive__note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--dp-text-tertiary, var(--dp-text-secondary));
 }
 </style>

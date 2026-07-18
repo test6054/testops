@@ -253,6 +253,7 @@ onMounted(async () => {
       <SignalBand
         v-if="cockpit?.summary"
         :metrics="signals"
+        variant="panel"
         compact
         @metric-click="handleSignalMetricClick"
       />

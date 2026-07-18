@@ -38,9 +38,9 @@ function handleScopeChange(): void {
   flex: 1;
 
   &__scope {
-    padding: var(--dp-space-4) 24px 0;
-    background: var(--dp-bg-container);
-    border-bottom: 1px solid var(--dp-border-subtle);
+    padding: var(--dp-space-4) var(--dp-space-6, 24px) var(--dp-space-3);
+    background: var(--dp-bg-layout);
+    border-bottom: none;
   }
 }
 </style>

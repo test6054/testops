@@ -12,7 +12,7 @@ import type {
   QualitySelectorChangeValue,
   WorkbenchSignalRefreshHandler,
 } from '@/composables/quality/improvement'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
 import { auditIssueApi } from '@/apis/quality/audit-issue'
 import { auditRectificationApi } from '@/apis/quality/audit-rectification'
@@ -50,6 +50,7 @@ import {
   beginQualityScopeRequest,
   isQualityScopeStaleError,
 } from '@/composables/useScopeRequestGuard'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { AuditRectificationVerifyDecisionCode } from '@/types/enums/audit-rectification-verify-decision-enum'
 import { showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -87,6 +88,7 @@ function rectificationStatusColor(value: AuditRectificationStatusCode) {
 const rectList = ref<AuditRectificationVO[]>([])
 const rectTotal = ref(0)
 const rectLoading = ref(false)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const rectIssuesCache = ref<Map<string, AuditIssueVO>>(new Map())
 const rectQuery = reactive<AuditRectificationQueryRequest>({
   pageNum: 1,
@@ -194,6 +196,7 @@ const auditEvidenceTypeOptions = [
 async function loadList(options?: { refreshSignals?: boolean }) {
   const scope = beginQualityScopeRequest()
   rectLoading.value = true
+  beginLoad()
   try {
     const page = await auditRectificationApi.page({
       ...rectQuery,
@@ -224,10 +227,12 @@ async function loadList(options?: { refreshSignals?: boolean }) {
         '工作台指标加载失败',
       )
     }
+    okLoad()
   } catch (error) {
     if (isQualityScopeStaleError(error) || scope.isStale()) {
       return
     }
+    failLoad()
     const err = toUserError(error, '整改任务加载失败')
     props.onLoadError?.(err)
     showUserError(error, '整改任务加载失败')
@@ -603,6 +608,7 @@ defineExpose({
       :columns="rectColumns"
       :data-source="rectList"
       :loading="rectLoading"
+      :load-error="loadError"
       row-key="id"
       size="middle"
       :total="rectTotal"

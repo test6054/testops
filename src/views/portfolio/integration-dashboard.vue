@@ -21,7 +21,7 @@ import type {
   PortfolioTargetFieldDefinition,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS, PORTFOLIO_INTEGRATION_PASSWORD_MASK, portfolioIntegrationApi } from '@/apis/portfolio/integration'
@@ -31,7 +31,6 @@ import {
   QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
@@ -43,6 +42,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
@@ -489,11 +489,15 @@ const mappingTransformOptions = [
   { value: 'SUBSTRING', label: '截取子串' },
   { value: 'PREFIX_SUFFIX', label: '前后缀拼接' },
   { value: 'LOOKUP_COURSE_CODE', label: '课程编码归一化' },
+  { value: 'REPLACE', label: '全文替换' },
+  { value: 'CONDITIONAL_ASSIGN', label: '条件赋值' },
 ]
 const mappingTransformExprPlaceholder = computed(() => {
   if (mappingForm.transformType === 'SUBSTRING') return '起始位置,长度，例如 0,8'
   if (mappingForm.transformType === 'PREFIX_SUFFIX') return '前缀|后缀，例如 工号-| -2026'
   if (mappingForm.transformType === 'LOOKUP_COURSE_CODE') return '来源系统编码；留空使用数据源渠道'
+  if (mappingForm.transformType === 'REPLACE') return '原串|新串，例如 旧-|新-'
+  if (mappingForm.transformType === 'CONDITIONAL_ASSIGN') return 'A=>甲;B=>乙;*=>默认'
   return ''
 })
 const courseCodeMapForm = reactive({
@@ -1729,10 +1733,20 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="数据集成中心" subtitle="八渠道配置、同步监控与渠道健康" />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="数据集成中心"
+        subtitle="八渠道配置、同步监控与渠道健康"
+      />
+    </template>
     <UiSectionTabs v-model:active-key="activeTab" :items="tabItems" />
 
-    <UiCard v-if="activeTab === 'datasource'" title="数据源配置" style="margin-top: 16px">
+    <WorkbenchSurfaceCard v-if="activeTab === 'datasource'" class="integration-dashboard__panel">
+      <template #head>
+        <span class="integration-dashboard__panel-title">数据源配置</span>
+      </template>
       <div class="integration-dashboard__preset-bar">
         <span class="integration-dashboard__preset-label">全国教师系统（同渠道仅一条 OPENAPI，切换方向即编辑现有配置）</span>
         <UiButton size="sm" :disabled="writing || editingDatasource" @click="applyNationalTeacherPreset('OUTBOUND')">
@@ -1799,7 +1813,7 @@ onMounted(async () => {
         <template v-if="dsForm.syncDirection === 'INBOUND'">
           <div class="integration-dashboard__inbound-head">
             <strong>回流记录</strong>
-            <UiButton size="sm" :disabled="writing" @click="addInboundRecord">
+            <UiButton variant="primary" size="sm" :disabled="writing" @click="addInboundRecord">
               添加行
             </UiButton>
           </div>
@@ -1903,7 +1917,7 @@ onMounted(async () => {
       <div class="integration-dashboard__form-actions">
         <UiButton
           size="sm"
-          tone="primary"
+          variant="primary"
           :loading="operationKey === 'datasource:save'"
           :disabled="writing"
           @click="saveDatasource"
@@ -1936,6 +1950,7 @@ onMounted(async () => {
                 编辑
               </UiButton>
               <UiButton
+                variant="primary"
                 size="sm"
                 :loading="operationKey === `sync:trigger:${record.id}`"
                 :disabled="writing"
@@ -1947,9 +1962,12 @@ onMounted(async () => {
           </template>
         </template>
       </UiDataTable>
-    </UiCard>
+    </WorkbenchSurfaceCard>
 
-    <UiCard v-else-if="activeTab === 'mapping'" title="字段映射" style="margin-top: 16px">
+    <WorkbenchSurfaceCard v-else-if="activeTab === 'mapping'" class="integration-dashboard__panel">
+      <template #head>
+        <span class="integration-dashboard__panel-title">字段映射</span>
+      </template>
       <div class="integration-dashboard__mapping-bar">
         <label>数据源</label>
         <select
@@ -2017,6 +2035,7 @@ onMounted(async () => {
           :disabled="writing"
         />
         <UiButton
+          variant="primary"
           size="sm"
           tone="primary"
           :loading="operationKey.startsWith('mapping:save:')"
@@ -2040,9 +2059,12 @@ onMounted(async () => {
           </UiTag>
         </template>
       </UiDataTable>
-    </UiCard>
+    </WorkbenchSurfaceCard>
 
-    <UiCard v-else-if="activeTab === 'course-map'" title="课程编码对照" style="margin-top: 16px">
+    <WorkbenchSurfaceCard v-else-if="activeTab === 'course-map'" class="integration-dashboard__panel">
+      <template #head>
+        <span class="integration-dashboard__panel-title">课程编码对照</span>
+      </template>
       <div class="integration-dashboard__filter-bar">
         <UiInput
           size="sm"
@@ -2174,9 +2196,12 @@ onMounted(async () => {
           </template>
         </template>
       </UiDataTable>
-    </UiCard>
+    </WorkbenchSurfaceCard>
 
-    <UiCard v-else-if="activeTab === 'dictionary'" title="字段转换字典" style="margin-top: 16px">
+    <WorkbenchSurfaceCard v-else-if="activeTab === 'dictionary'" class="integration-dashboard__panel">
+      <template #head>
+        <span class="integration-dashboard__panel-title">字段转换字典</span>
+      </template>
       <div class="integration-dashboard__filter-bar">
         <UiInput
           size="sm"
@@ -2278,9 +2303,12 @@ onMounted(async () => {
           </template>
         </template>
       </UiDataTable>
-    </UiCard>
+    </WorkbenchSurfaceCard>
 
-    <UiCard v-else-if="activeTab === 'sync'" title="同步任务" style="margin-top: 16px">
+    <WorkbenchSurfaceCard v-else-if="activeTab === 'sync'" flush class="integration-dashboard__panel">
+      <template #head>
+        <span class="integration-dashboard__panel-title">同步任务</span>
+      </template>
       <UiDataTable
         v-model:current="syncTaskQuery.pageNum"
         v-model:page-size="syncTaskQuery.pageSize"
@@ -2291,11 +2319,15 @@ onMounted(async () => {
         :load-error="Boolean(loadError.syncTasks)"
         pagination-mode="server"
         :total="syncTaskTotal"
+        flat
         @page-change="onSyncTaskPageChange"
       />
-    </UiCard>
+    </WorkbenchSurfaceCard>
 
-    <UiCard v-else-if="activeTab === 'clean-log'" title="字段清洗日志" style="margin-top: 16px">
+    <WorkbenchSurfaceCard v-else-if="activeTab === 'clean-log'" class="integration-dashboard__panel">
+      <template #head>
+        <span class="integration-dashboard__panel-title">字段清洗日志</span>
+      </template>
       <div class="integration-dashboard__filter-bar">
         <UiSelect
           size="sm"
@@ -2326,9 +2358,12 @@ onMounted(async () => {
         :total="cleanLogTotal"
         @page-change="onCleanLogPageChange"
       />
-    </UiCard>
+    </WorkbenchSurfaceCard>
 
-    <UiCard v-else-if="activeTab === 'queue'" title="待匹配、冲突与全国上报" style="margin-top: 16px">
+    <WorkbenchSurfaceCard v-else-if="activeTab === 'queue'" class="integration-dashboard__panel">
+      <template #head>
+        <span class="integration-dashboard__panel-title">待匹配、冲突与全国上报</span>
+      </template>
       <h4 class="integration-dashboard__sub-title">身份待匹配</h4>
       <UiDataTable
         v-model:current="unmatchedQuery.pageNum"
@@ -2368,6 +2403,7 @@ onMounted(async () => {
             </template>
             <UiButton
               v-if="identityResolveRowId !== record.id"
+              variant="primary"
               size="sm"
               :disabled="writing"
               @click="
@@ -2382,6 +2418,7 @@ onMounted(async () => {
             </UiButton>
             <UiButton
               v-else
+              variant="primary"
               size="sm"
               :loading="operationKey === `identity:${record.id}:RESOLVED`"
               :disabled="writing"
@@ -2451,6 +2488,7 @@ onMounted(async () => {
           <template v-else-if="column.key === 'actions'">
             <UiButton
               v-if="record.status === 'OPEN'"
+              variant="primary"
               size="sm"
               :loading="operationKey === `national-issue:${record.id}`"
               :disabled="writing"
@@ -2514,13 +2552,15 @@ onMounted(async () => {
           </template>
         </template>
       </UiDataTable>
-    </UiCard>
+    </WorkbenchSurfaceCard>
 
-    <UiCard
+    <WorkbenchSurfaceCard
       v-else-if="activeTab === 'failed-message'"
-      title="消息推送入站与异常重放"
-      style="margin-top: 16px"
+      class="integration-dashboard__panel"
     >
+      <template #head>
+        <span class="integration-dashboard__panel-title">消息推送入站与异常重放</span>
+      </template>
       <div class="integration-dashboard__form integration-dashboard__message-enqueue">
         <label>入站数据源</label>
         <UiSelect
@@ -2645,20 +2685,26 @@ onMounted(async () => {
           <UiEmpty v-else size="sm" description="当前数据源没有异常消息" />
         </template>
       </UiDataTable>
-    </UiCard>
+    </WorkbenchSurfaceCard>
 
-    <UiCard
+    <WorkbenchSurfaceCard
       v-else-if="activeTab === 'health'"
-      title="渠道健康看板"
-      :loading="loadState.health"
-      style="margin-top: 16px"
+      class="integration-dashboard__panel"
     >
-      <p v-if="health?.computedTime" class="integration-dashboard__hint">
+      <template #head>
+        <span class="integration-dashboard__panel-title">渠道健康看板</span>
+      </template>
+      <p v-if="loadState.health" class="integration-dashboard__hint">加载中…</p>
+      <p v-else-if="health?.computedTime" class="integration-dashboard__hint">
         计算时间 {{ health.computedTime }}
       </p>
-      <UiEmpty size="sm" v-if="loadError.health" :description="loadError.health" />
-      <UiEmpty size="sm" v-else-if="!health?.channels.length" description="暂无渠道健康数据" />
-      <ul v-else class="integration-dashboard__health-list">
+      <UiEmpty size="sm" v-if="!loadState.health && loadError.health" :description="loadError.health" />
+      <UiEmpty
+        size="sm"
+        v-else-if="!loadState.health && !health?.channels.length"
+        description="暂无渠道健康数据"
+      />
+      <ul v-else-if="!loadState.health" class="integration-dashboard__health-list">
         <li v-for="item in health.channels" :key="`${item.channelCode}-${item.pathwayCode}`">
           <strong>{{ item.channelCode }}</strong> / {{ item.pathwayCode }}
           <UiTag :tone="item.healthStatus === 'HEALTHY' ? 'green' : 'orange'">
@@ -2667,7 +2713,7 @@ onMounted(async () => {
           <span v-if="item.maturityScore">成熟度 {{ item.maturityScore }}</span>
         </li>
       </ul>
-    </UiCard>
+    </WorkbenchSurfaceCard>
   </StageWorkbenchShell>
 
   <UiDrawer
@@ -2708,6 +2754,14 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.integration-dashboard__panel {
+  margin-top: var(--dp-space-4);
+}
+.integration-dashboard__panel-title {
+  font-size: var(--dp-font-size-md, 15px);
+  font-weight: 600;
+  color: var(--dp-text-primary);
+}
 .integration-dashboard__form {
   display: grid;
   grid-template-columns: 80px 1fr 80px 1fr 80px 1fr;

@@ -11,7 +11,7 @@ import type {
 } from '@/apis/quality/indirect-item'
 import type { ScaleConversionRuleVO } from '@/apis/quality/scale-conversion-rule'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { indirectFormApi } from '@/apis/quality/indirect-form'
 import { indirectItemApi } from '@/apis/quality/indirect-item'
@@ -968,7 +968,7 @@ defineExpose({
   <UiCard class="detail-table-card ie__form-card">
     <template #title>间接评价问卷台账</template>
     <template #extra>
-      <UiButton size="sm" @click="openFormCreate">新建问卷</UiButton>
+      <UiButton size="sm" variant="primary" @click="openFormCreate">新建问卷</UiButton>
     </template>
 
     <UiFilterBar

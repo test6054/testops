@@ -25,7 +25,7 @@
     <UiSkeletonState v-if="loading" variant="card" compact />
 
     <div v-else class="score-dist">
-      <SignalBand :metrics="displayMetrics" compact class="score-dist__metrics" />
+      <SignalBand :metrics="displayMetrics" compact variant="inline" class="score-dist__metrics" />
 
       <MarkBarSection
         title="五级分数分布"

@@ -274,7 +274,7 @@ onActivated(async () => {
 <template>
   <QualityIngestPageShell embedded>
     <template #context>
-      <QualityPageContextBar>
+      <QualityPageContextBar show-title title="间接评价">
         <template #actions>
           <UiButton variant="outline" size="sm" :loading="formsLoading" @click="handleScopeChange">
             刷新
@@ -292,6 +292,7 @@ onActivated(async () => {
     <template v-else>
       <SignalBand
         :metrics="signals"
+        variant="panel"
         compact
         class="ie__signals"
         @metric-click="handleSignalMetricClick"

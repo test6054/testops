@@ -35,7 +35,7 @@
           <UiButton size="sm" v-if="!props.hideCancel" variant="outline" @click="handleClose">
             {{ props.cancelText }}
           </UiButton>
-          <UiButton size="sm" :loading="props.confirmLoading" @click="handleOk">
+          <UiButton variant="primary" size="sm" :loading="props.confirmLoading" @click="handleOk">
             {{ props.okText }}
           </UiButton>
         </slot>

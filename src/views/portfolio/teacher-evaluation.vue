@@ -9,7 +9,7 @@ import type {
   PortfolioEvaluationTeacherResultSummaryVO,
 } from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -191,10 +191,47 @@ function evaluationCourseArchiveMeta(preview: PortfolioEvaluationMaterialPreview
   return ` · 讲授 ${preview.courseArchiveTaughtCourseCount} 门 · 五框架 ${preview.courseArchiveFrameworkSlotDone ?? 0}/${preview.courseArchiveFrameworkSlotTotal ?? 0}`
 }
 
+function identityScopeLabel(scope?: string): string {
+  if (scope === 'CAMPUS') return '校内'
+  if (scope === 'EXTERNAL') return '仅外部'
+  if (scope === 'SHARED') return '共享'
+  return scope || '—'
+}
+
+function identityScopeTone(scope?: string): 'blue' | 'orange' | 'green' | 'gray' {
+  if (scope === 'CAMPUS') return 'blue'
+  if (scope === 'EXTERNAL') return 'orange'
+  if (scope === 'SHARED') return 'green'
+  return 'gray'
+}
+
+function identityMaterialRowKey(record: unknown): string {
+  const item = record as {
+    archiveRecordId?: string
+    categoryCode?: string
+    academicYear?: string
+    identityScope?: string
+  }
+  return [
+    item.archiveRecordId ?? '',
+    item.categoryCode ?? '',
+    item.academicYear ?? '',
+    item.identityScope ?? '',
+  ].join(':')
+}
+
 const categoryColumns: ColumnsType<PortfolioEvaluationMaterialCategoryItemVO> = [
   { title: '档案分类', dataIndex: 'categoryName', key: 'categoryName', fixed: 'left' },
   { title: '课程维度', key: 'courseScope', width: 140 },
   { title: '完成', key: 'completed', width: 100 },
+]
+
+const identityMaterialColumns: ColumnsType = [
+  { title: '分类编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 140 },
+  { title: '分类名称', dataIndex: 'categoryName', key: 'categoryName' },
+  { title: '学年', dataIndex: 'academicYear', key: 'academicYear', width: 120 },
+  { title: '身份切片', key: 'identityScope', width: 110 },
+  { title: '校内硬性', key: 'usableForCampusHardCriteria', width: 130 },
 ]
 
 function evaluationMaterialRowKey(record: unknown): string {
@@ -664,31 +701,38 @@ watch(
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="我的评价" description="参评材料确认、完整度预览与结果公示">
-      <template #actions>
-        <UiButton
-          size="sm"
-          variant="ghost"
-          :disabled="canPickTeachers && !targetTeacherId"
-          @click="goArchive"
-        >
-          查看档案
-        </UiButton>
-        <UiButton
-          size="sm"
-          :loading="loading || publicityLoading"
-          :disabled="canPickTeachers && !targetTeacherId"
-          @click="
-            () => {
-              void loadNotices()
-              void loadPublicity()
-            }
-          "
-        >
-          刷新
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="我的评价"
+        subtitle="参评材料确认、完整度预览与结果公示"
+      >
+        <template #actions>
+          <UiButton
+            size="sm"
+            variant="ghost"
+            :disabled="canPickTeachers && !targetTeacherId"
+            @click="goArchive"
+          >
+            查看档案
+          </UiButton>
+          <UiButton
+            size="sm"
+            :loading="loading || publicityLoading"
+            :disabled="canPickTeachers && !targetTeacherId"
+            @click="
+              () => {
+                void loadNotices()
+                void loadPublicity()
+              }
+            "
+          >
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
@@ -738,6 +782,63 @@ watch(
             <p v-if="preview.endTime" class="teacher-evaluation__meta">
               评价截止 {{ preview.endTime }}
             </p>
+            <div
+              v-if="preview.identityMaterialPackage"
+              class="teacher-evaluation__identity-material"
+            >
+              <p class="teacher-evaluation__meta">
+                身份材料：正式档 {{ preview.identityMaterialPackage.officialRecordCount ?? 0 }}
+                · 校内硬性可用 {{ preview.identityMaterialPackage.campusHardUsableCount ?? 0 }}
+                · 仅外部 {{ preview.identityMaterialPackage.externalOnlyCount ?? 0 }}
+                · 共享 {{ preview.identityMaterialPackage.sharedCount ?? 0 }}
+              </p>
+              <p
+                v-if="preview.identityMaterialPackage.citationPolicy"
+                class="teacher-evaluation__identity-policy"
+              >
+                {{ preview.identityMaterialPackage.citationPolicy }}
+              </p>
+              <ul
+                v-if="preview.identityMaterialPackage.identityLayers?.length"
+                class="teacher-evaluation__identity-layers"
+              >
+                <li
+                  v-for="(layer, idx) in preview.identityMaterialPackage.identityLayers"
+                  :key="layer.identityId || `${layer.identityType}-${idx}`"
+                >
+                  <UiTag :tone="layer.externalIdentity ? 'orange' : 'blue'">
+                    {{ layer.identityTypeLabel || layer.identityType || '身份' }}
+                  </UiTag>
+                  <span>材料 {{ layer.materialCount ?? 0 }} 条</span>
+                  <span v-if="layer.externalIdentity">（外部层，不替代校内硬门槛）</span>
+                </li>
+              </ul>
+              <UiDataTable
+                v-if="preview.identityMaterialPackage.mergedMaterials?.length"
+                :row-key="identityMaterialRowKey"
+                size="sm"
+                pagination-mode="none"
+                :columns="identityMaterialColumns"
+                :data-source="preview.identityMaterialPackage.mergedMaterials"
+                :show-pagination="false"
+                :sticky-header="false"
+                flat
+                class="teacher-evaluation__identity-material-table"
+              >
+                <template #bodyCell="{ column, record }">
+                  <template v-if="column.key === 'identityScope'">
+                    <UiTag :tone="identityScopeTone(record.identityScope)">
+                      {{ identityScopeLabel(record.identityScope) }}
+                    </UiTag>
+                  </template>
+                  <template v-else-if="column.key === 'usableForCampusHardCriteria'">
+                    <UiTag :tone="record.usableForCampusHardCriteria ? 'green' : 'orange'">
+                      {{ record.usableForCampusHardCriteria ? '校内硬性可用' : '不可作校内硬性' }}
+                    </UiTag>
+                  </template>
+                </template>
+              </UiDataTable>
+            </div>
             <UiDataTable
               v-if="preview.categories?.length"
               :row-key="evaluationMaterialRowKey"
@@ -929,6 +1030,42 @@ watch(
 }
 
 .teacher-evaluation__category-table {
+  margin-top: var(--dp-space-3);
+}
+
+.teacher-evaluation__identity-material {
+  margin: var(--dp-space-3) 0;
+  padding: var(--dp-space-3);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-md);
+  background: var(--dp-bg-subtle);
+}
+
+.teacher-evaluation__identity-policy {
+  margin: var(--dp-space-2) 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--dp-text-secondary);
+}
+
+.teacher-evaluation__identity-layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2) var(--dp-space-4);
+  margin: var(--dp-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--dp-text-secondary);
+}
+
+.teacher-evaluation__identity-layers li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+}
+
+.teacher-evaluation__identity-material-table {
   margin-top: var(--dp-space-3);
 }
 

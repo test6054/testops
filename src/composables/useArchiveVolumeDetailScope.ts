@@ -12,6 +12,8 @@ const EMPTY_CAPABILITIES: ArchiveVolumeCapabilitiesVO = {
   member: false,
   canScan: false,
   canManageMaterials: false,
+  canRemoveSharedMaterialRef: false,
+  canMaintainMaterial: false,
   canEditCatalog: false,
   canSelfCheck: false,
   canRunIntegrityCheck: false,
@@ -94,6 +96,16 @@ export function useArchiveVolumeDetailScope(
     return status === ArchiveVolumeStatusCode.DRAFT || status === ArchiveVolumeStatusCode.COLLECTING
   })
 
+  /** MVR-183：解除合用引用与收材窗口解耦，高级卷态可触发回退 */
+  const canRemoveSharedMaterialRef = computed(
+    () => capabilities.value.canRemoveSharedMaterialRef === true,
+  )
+
+  /** MVR-185：标签/OCR 与收材窗口解耦 */
+  const canMaintainMaterial = computed(
+    () => capabilities.value.canMaintainMaterial === true,
+  )
+
   const canRunIntegrityCheck = computed(() => capabilities.value.canRunIntegrityCheck === true)
 
   const canManageCollaborators = computed(() => capabilities.value.canManageCollaborators === true)
@@ -115,6 +127,8 @@ export function useArchiveVolumeDetailScope(
     canEditCatalog,
     canEditSelfCheck,
     canRegisterMaterial,
+    canRemoveSharedMaterialRef,
+    canMaintainMaterial,
     canRunIntegrityCheck,
     canManageCollaborators,
     canStartCollecting,

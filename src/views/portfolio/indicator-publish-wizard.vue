@@ -5,7 +5,7 @@ import type {
   PortfolioIndicatorEngineReadinessVO,
 
   PortfolioPublishImpactReportVO} from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'

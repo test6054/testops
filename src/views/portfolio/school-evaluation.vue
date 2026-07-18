@@ -5,7 +5,7 @@ import type {
   PortfolioEvaluationWorkgroupOptionVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -511,12 +511,19 @@ void loadPage()
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="学校评价" description="评价任务状态推进、公示发布与归档">
-      <template #actions>
-        <UiButton size="sm" variant="primary" @click="() => void openCreateModal()"> 新建任务 </UiButton>
-        <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="学校评价"
+        subtitle="评价任务状态推进、公示发布与归档"
+      >
+        <template #actions>
+          <UiButton size="sm" variant="primary" @click="() => void openCreateModal()"> 新建任务 </UiButton>
+          <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
     <UiAlertStrip
       v-if="archiveReminderText"

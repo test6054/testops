@@ -275,7 +275,12 @@ function onLayoutDesignerMoreAction(key: string) {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" :subtitle="layoutDesignerContextSubtitle">
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="制卷设计器"
+        :subtitle="layoutDesignerContextSubtitle"
+      >
         <template #status>
           <UiTag v-if="examStatusLabel" :tone="examStatusTone" size="sm">
             {{ examStatusLabel }}
@@ -350,6 +355,7 @@ function onLayoutDesignerMoreAction(key: string) {
     <template v-if="signalMetrics.length > 0" #signal>
       <SignalBand
         :metrics="signalMetrics"
+        variant="panel"
         compact
         @metric-click="handleSignalMetricClick"
       />

@@ -23,7 +23,7 @@
 
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import { exportArchiveVolumeEvents } from '@/apis/mark/archive-volume'

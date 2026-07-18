@@ -73,7 +73,8 @@ const props = withDefaults(
   {
     metrics: () => [],
     compact: false,
-    variant: 'panel',
+    /* 列表页默认 inline，避免 KPI 再叠一层白卡；驾驶舱可显式 panel */
+    variant: 'inline',
     trendPolarity: 'negative',
   },
 )
@@ -124,21 +125,29 @@ function sparkPolyline(metric: SignalMetric): string {
 .signal-band {
   display: flex;
   flex-wrap: wrap;
+  align-items: stretch;
   gap: var(--dp-space-4);
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  box-shadow: var(--dp-shadow-xs);
 }
 
 .signal-band--compact {
   gap: var(--dp-space-3);
+  padding: var(--dp-space-2) var(--dp-space-3);
 }
 
 /* panel：独立指标卡 + 真实间距，禁止 1px 连体条 */
 .signal-band--panel {
   flex-wrap: nowrap;
-  gap: var(--dp-space-4);
+  gap: var(--dp-space-3);
   padding: 0;
   border: none;
   border-radius: 0;
   background: transparent;
+  box-shadow: none;
   overflow-x: auto;
 }
 
@@ -151,9 +160,9 @@ function sparkPolyline(metric: SignalMetric): string {
 }
 
 .signal-band--panel .signal-band__item--active {
-  background: color-mix(in srgb, var(--dp-primary) 6%, var(--dp-surface));
-  border-color: color-mix(in srgb, var(--dp-primary) 28%, var(--dp-border));
-  box-shadow: none;
+  background: color-mix(in srgb, var(--dp-primary) 8%, var(--dp-surface));
+  border-color: color-mix(in srgb, var(--dp-primary) 32%, var(--dp-border));
+  box-shadow: var(--dp-shadow-xs);
   color: var(--dp-primary);
 }
 
@@ -172,7 +181,7 @@ function sparkPolyline(metric: SignalMetric): string {
 .signal-band__item {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: var(--dp-space-2);
   border: none;
   background: transparent;
   font: inherit;
@@ -190,7 +199,7 @@ function sparkPolyline(metric: SignalMetric): string {
   display: inline-flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--dp-space-2);
 }
 
 .signal-band--panel .signal-band__item {
@@ -199,28 +208,30 @@ function sparkPolyline(metric: SignalMetric): string {
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 2px;
-  min-height: 64px;
+  gap: var(--dp-space-1);
+  min-height: 72px;
   padding: var(--dp-space-3) var(--dp-space-4);
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-control-inner);
-  box-shadow: none;
+  border-radius: var(--dp-radius-panel);
+  box-shadow: var(--dp-shadow-xs);
   transition:
     background var(--dp-duration-normal) ease,
-    border-color var(--dp-duration-normal) ease;
+    border-color var(--dp-duration-normal) ease,
+    box-shadow var(--dp-duration-normal) ease;
 }
 
 .signal-band--panel .signal-band__item--clickable:hover {
-  background: var(--dp-surface);
+  background: color-mix(in srgb, var(--dp-primary) 4%, var(--dp-surface));
   border-color: var(--dp-color-primary-border);
+  box-shadow: var(--dp-shadow-sm);
 }
 
 .signal-band--panel .signal-band__value-row {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--dp-space-2);
 }
 
 .signal-band--panel .signal-band__label {
@@ -228,7 +239,7 @@ function sparkPolyline(metric: SignalMetric): string {
 }
 
 .signal-band--panel .signal-band__helper {
-  margin-top: 2px;
+  margin-top: var(--dp-space-1);
 }
 
 .signal-band__item--clickable {
@@ -242,20 +253,23 @@ function sparkPolyline(metric: SignalMetric): string {
 .signal-band__label {
   font-size: var(--dp-type-hint-size);
   line-height: var(--dp-type-hint-line-height);
-  color: var(--dp-text-muted);
+  font-weight: 500;
+  color: var(--dp-text-secondary);
+  letter-spacing: 0.01em;
 }
 
 .signal-band__value {
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   font-weight: var(--dp-font-weight-metric);
   color: var(--dp-text-primary);
-  line-height: 1.2;
+  line-height: 1.15;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 .signal-band--compact .signal-band__value {
-  font-size: 20px;
-  line-height: 1.15;
+  font-size: var(--dp-type-metric-size);
+  line-height: var(--dp-type-metric-line-height);
 }
 
 .signal-band__unit {
@@ -322,7 +336,7 @@ function sparkPolyline(metric: SignalMetric): string {
   width: 100%;
   max-width: 88px;
   height: 16px;
-  margin-top: 2px;
+  margin-top: var(--dp-space-1);
   color: var(--dp-color-primary);
 }
 

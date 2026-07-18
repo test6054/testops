@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="归档复盘">
         <template #status>
           <UiTag v-if="reviewStatusLabel" :tone="reviewStatusTone" size="sm">
             {{ reviewStatusLabel }}
@@ -39,7 +39,7 @@
     </template>
 
     <template v-if="examId && reviewSignals.length > 0" #signal>
-      <SignalBand compact :metrics="reviewSignals" />
+      <SignalBand compact variant="panel" :metrics="reviewSignals" />
     </template>
 
     <ExamSelectGateStrip
@@ -195,7 +195,7 @@ import type {
   ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {

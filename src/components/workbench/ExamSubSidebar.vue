@@ -176,7 +176,6 @@ const journeyProgressLabel = computed(() => {
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--dp-text-muted, var(--dp-text-quaternary));
-    text-transform: uppercase;
     flex-shrink: 0;
   }
 

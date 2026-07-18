@@ -62,6 +62,8 @@ const materialColumns: ColumnsType = [
   { title: '版本', dataIndex: 'documentVersionNo', key: 'documentVersionNo', width: 80 },
   { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 100 },
   { title: '主附件', key: 'hasPrimaryFile', width: 90 },
+  { title: '身份切片', key: 'identityScope', width: 100 },
+  { title: '校内硬性', key: 'usableForCampusHardCriteria', width: 110 },
   { title: '支撑材料', dataIndex: 'supportMaterialCount', key: 'supportMaterialCount', width: 100 },
   { title: 'AI 初审', key: 'aiPreReview', width: 220 },
 ]
@@ -121,11 +123,18 @@ watch(
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="外部专家脱敏审阅" subtitle="只读审阅正式档案材料；填分请进入评价填报">
-      <template #extra>
-        <UiButton size="sm" v-if="bundle" variant="primary" @click="goEvaluationFill"> 去评价填报 </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="外部专家脱敏审阅"
+        subtitle="只读审阅正式档案材料；填分请进入评价填报"
+      >
+        <template #actions>
+          <UiButton size="sm" v-if="bundle" variant="primary" @click="goEvaluationFill"> 去评价填报 </UiButton>
+        </template>
+      </ContextBar>
+    </template>
     <UiCard :loading="loading">
       <template v-if="bundle">
         <div class="expert-review__meta">
@@ -176,6 +185,24 @@ watch(
             <template v-if="column.key === 'hasPrimaryFile'">
               {{ record.hasPrimaryFile ? '有' : '无' }}
             </template>
+            <template v-else-if="column.key === 'identityScope'">
+              <UiTag :tone="record.identityScope === 'EXTERNAL' ? 'orange' : record.identityScope === 'SHARED' ? 'green' : 'blue'">
+                {{
+                  record.identityScope === 'CAMPUS'
+                    ? '校内'
+                    : record.identityScope === 'EXTERNAL'
+                      ? '仅外部'
+                      : record.identityScope === 'SHARED'
+                        ? '共享'
+                        : (record.identityScope || '—')
+                }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'usableForCampusHardCriteria'">
+              <UiTag :tone="record.usableForCampusHardCriteria ? 'green' : 'orange'">
+                {{ record.usableForCampusHardCriteria ? '可用' : '不可用' }}
+              </UiTag>
+            </template>
             <template v-else-if="column.key === 'aiPreReview'">
               <template v-if="record.hasAiPreReview">
                 <div class="expert-review__ai">
@@ -207,7 +234,7 @@ watch(
         :description="errorMessage || '当前授权没有可审阅材料。'"
       >
         <template #action>
-          <UiButton size="sm" :loading="loading" @click="loadBundle">重试</UiButton>
+          <UiButton size="sm" variant="primary" :loading="loading" @click="loadBundle">重试</UiButton>
         </template>
       </UiEmpty>
     </UiCard>

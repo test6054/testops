@@ -32,32 +32,37 @@ defineOptions({
 .stage-workbench-shell {
   display: flex;
   flex-direction: column;
-  gap: var(--dp-space-3, 12px);
+  gap: var(--dp-space-4);
   width: 100%;
   padding: 0;
   background: transparent;
 }
 
 .stage-workbench-shell__context {
-  padding: 0 0 var(--dp-space-1, 4px);
-  border: none;
-  border-radius: 0;
-  background: transparent;
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
+  /* 品牌主色左侧内嵌条：与 QualityScopeChrome 同级强调，非营销装饰 */
+  box-shadow:
+    var(--dp-shadow-xs),
+    inset 3px 0 0 color-mix(in srgb, var(--dp-blue-500) 55%, transparent);
 }
 
 .stage-workbench-shell__rail {
-  padding: 0 0 var(--dp-space-2, 8px);
-  border: none;
-  border-radius: 0;
-  background: transparent;
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-surface);
   width: 100%;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
+  box-shadow: var(--dp-shadow-xs);
 }
 
 .stage-workbench-shell__signal {
-  padding: 0 0 var(--dp-space-2, 8px);
+  padding: 0;
   border: none;
   border-radius: 0;
   background: transparent;
@@ -66,5 +71,8 @@ defineOptions({
 .stage-workbench-shell__surface {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-4);
 }
 </style>

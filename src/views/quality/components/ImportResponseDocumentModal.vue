@@ -125,7 +125,7 @@
 
 <script setup lang="ts">
 import type { IndirectResponseDocumentExtractionVO } from '@/apis/quality/indirect-response'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { aiTaskApi } from '@/apis/quality/ai-task'

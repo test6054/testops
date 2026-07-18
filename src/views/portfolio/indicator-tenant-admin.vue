@@ -5,7 +5,7 @@ import type {
   PortfolioIndustryPackVO,
   PortfolioTenantIndicatorConfigVO,
 } from '@/apis/portfolio/indicator-types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -485,6 +485,7 @@ onMounted(loadConfig)
           </UiButton>
           <UiButton
             size="sm"
+            variant="primary"
             :disabled="interactionLocked"
             @click="router.push({ name: 'PortfolioIndicatorPublishWizard' })"
           >
@@ -511,7 +512,7 @@ onMounted(loadConfig)
             clearable
             :disabled="writing"
           />
-          <UiButton size="sm" :loading="enabling" :disabled="writing" @click="enableAll">
+          <UiButton size="sm" variant="primary" :loading="enabling" :disabled="writing" @click="enableAll">
             批量启用 T001–T100
           </UiButton>
           <UiButton size="sm" :loading="loadState.config" :disabled="writing" @click="loadConfig">
@@ -559,6 +560,7 @@ onMounted(loadConfig)
             :disabled="writing"
           />
           <UiButton
+            variant="primary"
             size="sm"
             :loading="operationKey.startsWith('save:model:')"
             :disabled="writing || !modelEditable"

@@ -5,7 +5,7 @@ import type {
   PortfolioReportingShareFieldCodeValue,
   PortfolioReportingTaskVO,
 } from '@/apis/portfolio/reporting'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ALL_PORTFOLIO_REPORTING_SHARE_FIELD_CODES,
@@ -424,7 +424,7 @@ onMounted(() => {
         title="上级报送共享"
         subtitle="正式档案口径清单预览、审批与生成"
       >
-        <template #extra>
+        <template #actions>
           <UiButton size="sm" variant="primary" :disabled="operating" @click="openCreateModal">
             新建报送
           </UiButton>

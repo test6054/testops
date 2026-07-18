@@ -321,6 +321,7 @@ watch(
       <SignalBand
         v-if="summary"
         :metrics="signals"
+        variant="panel"
         compact
         @metric-click="handleSignalMetricClick"
       />

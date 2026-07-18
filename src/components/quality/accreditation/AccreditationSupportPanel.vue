@@ -6,7 +6,7 @@ import type {
 } from '@/apis/quality/accreditation'
 import type { FacultyProfileSaveRequest, FacultyProfileVO } from '@/apis/quality/faculty-profile'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { accreditationApi } from '@/apis/quality/accreditation'
 import { facultyProfileApi } from '@/apis/quality/faculty-profile'

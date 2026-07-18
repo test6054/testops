@@ -1,4 +1,4 @@
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 
 /**
  * 规范化材料自由标签输入：去空白、去重、长度与数量校验。

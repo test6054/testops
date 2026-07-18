@@ -33,6 +33,7 @@
       <SignalBand
         :metrics="activeSignalMetrics"
         compact
+        variant="panel"
         @metric-click="handleSignalMetricClick"
       />
     </template>
@@ -157,9 +158,6 @@
           :load-error="listLoadFailed"
           @page-change="loadVolumes"
         >
-          <template v-if="listLoadFailed" #empty-action>
-            <UiButton size="sm" variant="outline" @click="loadVolumes">重新加载</UiButton>
-          </template>
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'archiveNo'">
               <button type="button" class="link-cell" @click="goDetail(record.volumeId)">
@@ -315,7 +313,7 @@ import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/
 import type { ArchiveVolumeScenarioKey } from '@/composables/useArchiveVolumeFilterPresets'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
@@ -446,6 +444,17 @@ const {
 
 const currentUserId = computed(() => userStore.userInfo?.userId ?? '')
 
+/** MVR-196：列表批量退回与详情移交双人制同源 */
+function isTransferSubmitterSelf(record: ArchiveVolumeResponse): boolean {
+  const submitUserId = record.transferSubmitUserId
+  return Boolean(
+    submitUserId
+    && currentUserId.value
+    && String(submitUserId) === String(currentUserId.value),
+  )
+}
+
+
 const listTab = ref<ListTabKey>('mine')
 const volumeScope = ref<VolumeScopeKey>('all')
 const archiveListQuickFilter = ref<ArchiveListQuickFilter | null>(null)
@@ -455,6 +464,8 @@ const listLoadFailed = ref(false)
 const batchRejecting = ref(false)
 const batchRejectOpen = ref(false)
 const withdrawingVolumeId = ref<string | null>(null)
+const requestingDepartmentReviewVolumeId = ref<string | null>(null)
+const remindingVolumeId = ref<string | null>(null)
 const deptReviewDrawerOpen = ref(false)
 const deptReviewVolumeId = ref<string | null>(null)
 const importDrawerOpen = ref(false)
@@ -805,9 +816,11 @@ const rowSelection = computed<TableProps['rowSelection']>(() => {
       selectedVolumeIds.value = keys.map(String)
     },
     getCheckboxProps: (record: ArchiveVolumeResponse) => ({
+      // MVR-196：与 BE assertTransferApproverSeparatedFromSubmitter 同源，禁止提交人自选
       disabled:
         record.volumeStatus !== ArchiveVolumeStatusCode.SUBMITTED
-        || record.transferStatus !== ArchiveTransferStatusCode.PENDING_REVIEW,
+        || record.transferStatus !== ArchiveTransferStatusCode.PENDING_REVIEW
+        || isTransferSubmitterSelf(record),
     }),
   }
 })
@@ -943,6 +956,7 @@ function buildVolumeActions(record: ArchiveVolumeResponse): UiTableRowActionItem
       key: 'dept-review',
       label: '发起院系审核',
       hidden: !showSubmitInMine.value || record.canRequestDepartmentReview !== true,
+      disabled: requestingDepartmentReviewVolumeId.value === record.volumeId,
     },
     {
       key: 'dept-audit',
@@ -962,7 +976,12 @@ function buildVolumeActions(record: ArchiveVolumeResponse): UiTableRowActionItem
       hidden: !showSubmitInMine.value || (!canSubmit && !submitBlocked),
       disabled: submitBlocked,
     },
-    { key: 'remind', label: '催办', hidden: !shouldRemindVolume(record) },
+    {
+      key: 'remind',
+      label: '催办',
+      hidden: !shouldRemindVolume(record),
+      disabled: remindingVolumeId.value === record.volumeId,
+    },
   ]
 }
 
@@ -1341,6 +1360,19 @@ function handleReset() {
 }
 
 function openBatchReject() {
+  // MVR-196：批量退回前剔除本人提交的待验收卷，避免假可写
+  const selectableIds = selectedVolumeIds.value.filter((volumeId) => {
+    const row = volumes.value.find((item) => item.volumeId === volumeId)
+    return row != null && !isTransferSubmitterSelf(row)
+  })
+  if (selectableIds.length === 0) {
+    message.warning('所选卷均为本人提交的移交，不能自驳，请改选他人提交的卷')
+    return
+  }
+  if (selectableIds.length !== selectedVolumeIds.value.length) {
+    message.warning(`已排除 ${selectedVolumeIds.value.length - selectableIds.length} 条本人提交的移交`)
+    selectedVolumeIds.value = selectableIds
+  }
   batchRejectReason.value = ''
   batchRejectOpen.value = true
 }
@@ -1457,6 +1489,9 @@ function goRemediationVolumeByVolumeId(volumeId: string) {
 }
 
 async function requestDepartmentReviewFromList(record: ArchiveVolumeResponse) {
+  if (requestingDepartmentReviewVolumeId.value) {
+    return
+  }
   const confirmed = await confirmAsync({
     title: '发起院系审核？',
     content: '发起后系统会停止在途归档扫描并冻结材料补录，审核退回或主动撤回后才能继续补件。',
@@ -1464,6 +1499,7 @@ async function requestDepartmentReviewFromList(record: ArchiveVolumeResponse) {
     okText: '发起审核',
   })
   if (!confirmed) return
+  requestingDepartmentReviewVolumeId.value = record.volumeId
   try {
     await requestArchiveVolumeDepartmentReview({ volumeId: record.volumeId })
     message.success('已发起院系审核')
@@ -1471,6 +1507,8 @@ async function requestDepartmentReviewFromList(record: ArchiveVolumeResponse) {
   } catch (error) {
     showUserError(error, '发起院系审核失败')
     await goDetailForSubmitBlocker(record.volumeId)
+  } finally {
+    requestingDepartmentReviewVolumeId.value = null
   }
 }
 
@@ -1511,12 +1549,18 @@ async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
 }
 
 function remindVolume(record: ArchiveVolumeResponse) {
+  if (remindingVolumeId.value) {
+    return
+  }
   void (async () => {
+    remindingVolumeId.value = record.volumeId
     try {
       await remindArchiveDue(record.volumeId)
       message.success('催办通知已发送')
     } catch (error) {
       showUserError(error, '催办失败')
+    } finally {
+      remindingVolumeId.value = null
     }
   })()
 }

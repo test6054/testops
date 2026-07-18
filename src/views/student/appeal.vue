@@ -24,6 +24,7 @@
             刷新
           </UiButton>
           <UiButton
+            variant="primary"
             size="sm"
             :disabled="!selectedAppealableExam || selectedExamCannotSubmitReview"
             :title="selectedExamSubmitBlockedReason || undefined"
@@ -289,7 +290,7 @@ import ClockCircleOutlined from '@ant-design/icons-vue/ClockCircleOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import FormOutlined from '@ant-design/icons-vue/FormOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {

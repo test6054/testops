@@ -326,6 +326,8 @@
               :detail="detail"
               :selected-catalog-keys="selectedCatalogKeys"
               :can-register-material="detailScope.canRegisterMaterial"
+              :can-maintain-material="detailScope.canMaintainMaterial"
+              :can-remove-shared-material-ref="detailScope.canRemoveSharedMaterialRef"
               @refreshed="(opts) => loadDetail(opts)"
               @ocr-completed-stale="handleMaterialOcrCompleted"
             />
@@ -344,6 +346,8 @@
           v-else-if="activeTab === 'ocr-search'"
           :volume-id="volumeId"
           :can-register-material="detailScope.canRegisterMaterial"
+          :can-maintain-material="detailScope.canMaintainMaterial"
+          :can-remove-shared-material-ref="detailScope.canRemoveSharedMaterialRef"
           @navigate-materials="setActiveTab('materials')"
           @refreshed="loadDetail"
         />
@@ -381,6 +385,7 @@
           :detail="detail"
           :can-review-transfer="canReviewTransfer"
           :can-reject-transfer="canRejectTransfer"
+          :current-user-id="currentUserId"
           @refreshed="loadDetail"
         />
 
@@ -498,7 +503,7 @@ import type {
   ArchiveVolumeSubmitChecklistItemVO,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { downloadFile } from '@/apis/edu/file-management'
@@ -507,8 +512,6 @@ import {
   ArchiveIntegrityStatusCode,
   ArchiveRemediationStatusCode,
   ArchiveRemediationStatusDescription,
-  ArchiveScoreCompletionStatusCode,
-  ArchiveScoreSourceCode,
   ArchiveVolumeSourceTypeDescription,
   ArchiveVolumeStatusCode,
   checkArchiveVolumeIntegrity,
@@ -590,7 +593,6 @@ const setActiveTab = workbench.setActiveTab
 const userStore = useUserStore()
 const {
   canApproveDestructionForDepartment,
-  canApproveAccessForVolume,
   canManageRemediationAsCoordinator,
   canReviewTransferForDepartment,
   canRejectTransferForDepartment,
@@ -686,21 +688,8 @@ const canRunFourPropertyCheck = computed(() => {
   return d.volume.volumeStatus === ArchiveVolumeStatusCode.SUBMITTED && canReviewTransfer.value
 })
 
-const canConfirmScoreCompletion = computed(() => {
-  const d = detail.value
-  if (!d) return false
-  const vol = d.volume
-  if (!detailScope.volumeAcceptsScoreCompletion(vol.volumeStatus)) return false
-  const canManageScores
-    = detailScope.capabilities.canManageMaterials === true
-      || detailScope.capabilities.canSubmitVolume === true
-      || detailScope.capabilities.canManageCollaborators === true
-  if (!canManageScores) return false
-  if (vol.scoreSource !== ArchiveScoreSourceCode.OFFLINE_CONFIRMED) {
-    return false
-  }
-  return vol.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.PENDING
-})
+// MVR-188：与 BE getDetail canConfirmScoreCompletion / confirmScoreCompletion 同源
+const canConfirmScoreCompletion = computed(() => detail.value?.canConfirmScoreCompletion === true)
 
 const submitBlockReason = computed(() => {
   const d = detail.value
@@ -897,10 +886,8 @@ function sourceTypeLabel(code: ArchiveVolumeDetailResponse['volume']['sourceType
 }
 
 function canApproveAccessRecord(record: ArchiveVolumeAccessRecordResponse) {
-  return canApproveAccessForVolume({
-    departmentId: record.departmentId,
-    securityLevel: record.securityLevel,
-  })
+  // MVR-189：与 BE 列表 canApprove 同源（PENDING + 职责密级 + 非申请人），勿仅看 duty
+  return record.canApprove === true
 }
 
 const canManageAppraisal = computed(() => detail.value?.canManageAppraisal === true)
@@ -977,13 +964,10 @@ const canManageCoordinatorRemediation = computed(() => {
   return canManageRemediationAsCoordinator(d.volume)
 })
 
-const canAllowMaterialDelay = computed(() => {
-  const d = detail.value
-  if (!d) return false
-  return canManageRemediationAsCoordinator(d.volume)
-})
+// MVR-187：与 BE getDetail canAllowMaterialDelay / canWaiveMaterialMissing 同源，勿仅看 duty
+const canAllowMaterialDelay = computed(() => detail.value?.canAllowMaterialDelay === true)
 
-const canWaiveMaterialMissing = computed(() => detail.value?.canManageArchiveAdmin === true)
+const canWaiveMaterialMissing = computed(() => detail.value?.canWaiveMaterialMissing === true)
 
 const canWaiveIntegrity = computed(() => {
   const d = detail.value

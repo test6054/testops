@@ -7,7 +7,7 @@ import type {
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { QualityArchiveDestructionLedgerExportDecisionCode } from '@/types/enums/quality-archive-destruction-ledger-export-decision-enum'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { archiveApi } from '@/apis/quality/archive'
@@ -19,6 +19,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { QualityArchiveDestructionLedgerExportDecisionDescription } from '@/types/enums/quality-archive-destruction-ledger-export-decision-enum'
 import {
@@ -37,6 +38,7 @@ defineOptions({ name: 'QualityArchiveDestructionLedger' })
 const router = useRouter()
 const rows = ref<ArchiveDestructionLedgerRowVO[]>([])
 const loading = ref(false)
+const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const exportLoading = ref(false)
 const pagination = reactive({
   pageNum: 1,
@@ -129,11 +131,16 @@ function buildQuery(): ArchiveDestructionLedgerPageRequest {
 
 async function loadLedger() {
   loading.value = true
+  beginLoad()
   try {
     const result = await archiveApi.pageDestructionLedger(buildQuery())
     rows.value = result.list
     pagination.total = result.total
+    okLoad()
   } catch (error) {
+    rows.value = []
+    pagination.total = 0
+    failLoad()
     showUserError(error, '销毁清册加载失败')
   } finally {
     loading.value = false
@@ -199,7 +206,9 @@ onMounted(() => {
       </QualityPageContextBar>
     </template>
 
-    <SignalBand :metrics="signals" compact />
+    <template #signal>
+      <SignalBand :metrics="signals" variant="panel" compact />
+    </template>
 
     <UiCard>
       <template #title>销毁清册台账</template>
@@ -218,6 +227,7 @@ onMounted(() => {
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="loadError"
         :total="pagination.total"
         flat
         row-key="destructionRecordId"

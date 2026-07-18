@@ -2,7 +2,7 @@
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
 import type { DispatchQueueStatusFilterCode } from '@/types/enums/dispatch-queue-status-filter-enum'
 import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {

@@ -13,11 +13,7 @@
     </template>
   </UiButton>
 
-  <div
-    :class="{ 'app-menu-dark': appStore.menuDark }"
-    :style="appStore.menuDark ? appStore.themeCSSVar : undefined"
-    class="drawer"
-  >
+  <div class="drawer">
     <UiDrawer
       v-model:open="visible"
       :body-style="{

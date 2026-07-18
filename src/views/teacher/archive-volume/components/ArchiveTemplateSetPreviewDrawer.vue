@@ -262,6 +262,7 @@ watch(
     <template v-else-if="preview">
       <SignalBand
         compact
+        variant="inline"
         class="archive-template-preview__signal"
         :metrics="previewSignalMetrics"
       />

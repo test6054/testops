@@ -19,7 +19,7 @@
     </template>
 
     <template v-if="selectedExamId && !resolving" #signal>
-      <SignalBand :metrics="entrySignalMetrics" compact />
+      <SignalBand :metrics="entrySignalMetrics" variant="panel" compact />
     </template>
 
     <ExamWorkspaceJourneySubNav v-if="selectedExamId && !resolving" />
@@ -271,7 +271,7 @@ onActivated(() => {
   }
 
   &__empty-title {
-    margin: 0 0 8px;
+    margin: 0 0 var(--dp-space-2);
     font-size: 15px;
     font-weight: 600;
     color: var(--dp-text-primary);
@@ -282,13 +282,13 @@ onActivated(() => {
   }
 
   &__empty-desc {
-    margin: 8px 0 16px;
+    margin: var(--dp-space-2) 0 var(--dp-space-4);
     font-size: 14px;
     color: var(--dp-text-secondary);
   }
 
   &__switch-hint {
-    margin-left: 8px;
+    margin-left: var(--dp-space-2);
     font-size: 13px;
     color: var(--dp-text-secondary);
   }

@@ -9,7 +9,7 @@ import type {
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
@@ -488,7 +488,7 @@ watch(
               size="sm" v-model="form.evidenceRef" :disabled="submitting"
             />
           </UiFormItem>
-          <UiButton size="sm" :loading="submitting" @click="handleSubmit"> 提交纠错 </UiButton>
+          <UiButton size="sm" variant="primary" :loading="submitting" @click="handleSubmit"> 提交纠错 </UiButton>
         </UiForm>
       </UiCard>
 

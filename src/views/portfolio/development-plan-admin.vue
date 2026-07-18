@@ -20,7 +20,7 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { ReloadOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons-vue'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
@@ -144,6 +144,7 @@ const {
   pageNum: historyBatchPageNum,
   pageSize: historyBatchPageSize,
   pageTotal: historyBatchPageTotal,
+  loadError: historyBatchLoadError,
   loadPage: loadHistoryImportBatches,
   handlePageChange: handleHistoryBatchPageChange,
 } = useQueryTable(portfolioDevelopmentPlanApi.historyImportBatchPage, { immediate: false })
@@ -464,6 +465,7 @@ const {
   pageNum,
   pageSize,
   pageTotal,
+  loadError,
   loadPage: loadPlansPage,
   handlePageChange,
 } = useQueryTable(
@@ -1037,7 +1039,7 @@ watch(
           </div>
         </UiCard>
         <WorkbenchContextGateStrip
-          v-if="!loading && rows.length === 0"
+          v-if="!loadError && !loading && rows.length === 0"
           tag="无规划"
           body="当前筛选无发展规划；可在上方新建规划，或调整筛选"
           hide-cta
@@ -1051,6 +1053,7 @@ watch(
           :columns="columns"
           :data-source="rows"
           :loading="loading"
+          :load-error="loadError"
           row-key="id"
           :row-class-name="planRowClassName"
           style="margin-top: 16px"
@@ -1467,6 +1470,7 @@ watch(
             :columns="historyBatchColumns"
             :data-source="historyBatchRows"
             :loading="historyBatchLoading"
+            :load-error="historyBatchLoadError"
             row-key="id"
             style="margin-top: 16px"
             @page-change="handleHistoryBatchPageChange"

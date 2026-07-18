@@ -4,7 +4,7 @@ import type {
   PortfolioDoubleHighEvidenceArchiveVO,
   PortfolioDoubleHighTaskVO,
 } from '@/apis/portfolio/double-high'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
@@ -203,6 +203,7 @@ const columns: ColumnsType = [
   { title: '状态', key: 'taskStatus', width: 110 },
   { title: '阶段', key: 'stageProgress', width: 90 },
   { title: '验收包', key: 'acceptancePackage', width: 120 },
+  { title: '责任人身份', key: 'responsibleIdentity', width: 180 },
   { title: '操作', key: 'actions', width: 220 },
 ]
 
@@ -631,11 +632,16 @@ watch(
 <template>
   <StageWorkbenchShell title="双高任务台账">
     <template #context>
-      <ContextBar title="双高建设任务" subtitle="发布→认领→实施→阶段提交→审核→验收归档" />
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="双高建设任务"
+        subtitle="发布→认领→实施→阶段提交→审核→验收归档"
+      />
     </template>
     <UiCard>
       <div class="shuanggao-tasks__toolbar">
-        <UiButton size="sm" :disabled="busy" @click="openCreateModal">发布任务</UiButton>
+        <UiButton size="sm" variant="primary" :disabled="busy" @click="openCreateModal">发布任务</UiButton>
       </div>
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
       <UiDataTable
@@ -663,6 +669,19 @@ watch(
             <span v-if="record.acceptanceFileNodeId" class="shuanggao-tasks__cell-text">
               {{ record.acceptanceFileName || '已生成' }}
             </span>
+            <span v-else class="shuanggao-tasks__cell-muted">—</span>
+          </template>
+          <template v-else-if="column.key === 'responsibleIdentity'">
+            <template v-if="record.responsibleIdentityLayers?.length">
+              <UiTag
+                v-for="(layer, idx) in record.responsibleIdentityLayers"
+                :key="layer.identityId || `${layer.identityType}-${idx}`"
+                :tone="layer.externalIdentity ? 'orange' : 'blue'"
+                style="margin-right: 4px; margin-bottom: 4px"
+              >
+                {{ layer.identityTypeLabel }}
+              </UiTag>
+            </template>
             <span v-else class="shuanggao-tasks__cell-muted">—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
@@ -781,6 +800,23 @@ watch(
               · {{ detailTask.periodStartDate || '—' }} ~ {{ detailTask.periodEndDate || '—' }}
             </template>
           </p>
+          <div
+            v-if="detailTask.responsibleIdentityLayers?.length"
+            class="shuanggao-tasks__detail-meta shuanggao-tasks__detail-meta--spaced"
+          >
+            <span>责任人身份：</span>
+            <UiTag
+              v-for="(layer, idx) in detailTask.responsibleIdentityLayers"
+              :key="layer.identityId || `${layer.identityType}-${idx}`"
+              :tone="layer.externalIdentity ? 'orange' : 'blue'"
+              style="margin-right: 4px"
+            >
+              {{ layer.identityTypeLabel }} · {{ layer.workloadHours ?? 0 }} 学时
+            </UiTag>
+            <p v-if="detailTask.responsibleMultiIdentityNote" class="shuanggao-tasks__cell-muted">
+              {{ detailTask.responsibleMultiIdentityNote }}
+            </p>
+          </div>
           <ul class="shuanggao-tasks__stage-list">
             <li
               v-for="stage in detailTask.stages"

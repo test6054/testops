@@ -35,12 +35,14 @@
     <template #toolbar>
       <div
         v-if="
-          canReviewTransfer
+          (canApproveTransferAction || canRejectTransferAction)
             && detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
         "
         class="archive-volume-transfer-panel__actions"
       >
         <UiButton
+          v-if="canApproveTransferAction"
+          variant="primary"
           size="sm"
           :loading="approvingTransfer"
           :disabled="rejectingTransfer || detail.hasOpenRemediationTask === true"
@@ -49,7 +51,7 @@
           验收通过
         </UiButton>
         <UiButton
-          v-if="canRejectTransfer"
+          v-if="canRejectTransferAction"
           size="sm"
           variant="outline"
           :disabled="approvingTransfer"
@@ -124,8 +126,8 @@ import type {
   ArchiveVolumeTransferRecordResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
-import { onMounted, ref } from 'vue'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import {
   approveArchiveVolumeTransfer,
@@ -157,11 +159,38 @@ const props = defineProps<{
   detail: ArchiveVolumeDetailResponse
   canReviewTransfer: boolean
   canRejectTransfer: boolean
+  /** 当前登录用户，用于 MVR-190 移交提交人自批屏蔽 */
+  currentUserId?: string
 }>()
 
 const emit = defineEmits<{
   refreshed: []
 }>()
+
+/** MVR-190/193：与 BE assertTransferApproverSeparatedFromSubmitter 同源，禁止提交人自批/自驳 */
+function isTransferSubmitterSelf(): boolean {
+  const submitUserId = props.detail.latestTransferRecord?.submitUserId
+  return Boolean(
+    submitUserId
+    && props.currentUserId
+    && String(submitUserId) === String(props.currentUserId),
+  )
+}
+
+const canApproveTransferAction = computed(() => {
+  if (!props.canReviewTransfer) return false
+  if (props.detail.volume.transferStatus !== ArchiveTransferStatusCode.PENDING_REVIEW) return false
+  if (isTransferSubmitterSelf()) return false
+  return true
+})
+
+const canRejectTransferAction = computed(() => {
+  if (!props.canRejectTransfer) return false
+  if (props.detail.volume.transferStatus !== ArchiveTransferStatusCode.PENDING_REVIEW) return false
+  // MVR-193：提交人不得驳回本人提交的移交
+  if (isTransferSubmitterSelf()) return false
+  return true
+})
 
 const approvingTransfer = ref(false)
 const rejectingTransfer = ref(false)
@@ -238,6 +267,10 @@ async function downloadTransferPackage() {
 
 async function handleApproveTransfer() {
   if (approvingTransfer.value || rejectingTransfer.value) return
+  if (!canApproveTransferAction.value) {
+    showFormValidationMessage('移交提交人不得验收通过本人提交的移交')
+    return
+  }
   if (props.detail.hasOpenRemediationTask === true) {
     showFormValidationMessage('存在未关闭整改，请先完成整改或退回移交')
     return

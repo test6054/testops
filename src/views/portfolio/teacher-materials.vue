@@ -3,12 +3,14 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
 import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
 import type {
+  PortfolioMaterialRefVO,
   PortfolioMaterialSaveRequest,
   PortfolioMaterialSearchResponse,
+  PortfolioMaterialVersionVO,
   PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -103,7 +105,9 @@ const listColumns: ColumnsType<PortfolioMaterialVO> = [
   { title: '分类编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
   { title: '状态', key: 'status', width: 100 },
   { title: '文字识别', key: 'ocrStatus', width: 100 },
-  { title: '操作', key: 'actions', width: 280 },
+  { title: '版本', key: 'currentVersionNo', width: 80 },
+  { title: '冻结引用', key: 'activeFreezeRefCount', width: 90 },
+  { title: '操作', key: 'actions', width: 300 },
 ]
 
 const searchColumns: ColumnsType<PortfolioMaterialSearchResponse> = [
@@ -130,6 +134,11 @@ const filterModel = ref<MaterialFilterModel>({})
 const searchKeyword = ref('')
 const formModalOpen = ref(false)
 const editingId = ref<string>()
+const versionModalOpen = ref(false)
+const versionLoading = ref(false)
+const versionRows = ref<PortfolioMaterialVersionVO[]>([])
+const refRows = ref<PortfolioMaterialRefVO[]>([])
+const versionMaterialTitle = ref('')
 const form = reactive<PortfolioMaterialSaveRequest>({
   materialType: PortfolioMaterialTypeCode.DOCUMENT,
   materialTitle: '',
@@ -312,6 +321,54 @@ async function deleteMaterial(row: PortfolioMaterialVO) {
   }
 }
 
+async function openVersionHistory(row: PortfolioMaterialVO) {
+  versionMaterialTitle.value = row.materialTitle ?? row.id
+  versionModalOpen.value = true
+  versionLoading.value = true
+  versionRows.value = []
+  refRows.value = []
+  try {
+    const [versions, refs] = await Promise.all([
+      portfolioMaterialApi.listVersions(row.id),
+      portfolioMaterialApi.listRefs(row.id),
+    ])
+    versionRows.value = versions ?? []
+    refRows.value = refs ?? []
+  } catch (error) {
+    showUserError(error, '加载材料版本失败')
+    versionModalOpen.value = false
+  } finally {
+    versionLoading.value = false
+  }
+}
+
+async function voidMaterial(row: PortfolioMaterialVO) {
+  if (writing.value) return
+  if (!(await confirmProxyWrite('作废材料'))) {
+    return
+  }
+  const operation = `void:${row.id}`
+  operationKey.value = operation
+  const confirmed = await confirmAsync({
+    title: '作废材料（仅影响未来）',
+    content: `确认作废「${row.materialTitle ?? row.id}」？历史评价/导出冻结引用将保留，未来任务不再使用该材料。`,
+    type: 'warning',
+  })
+  if (!confirmed) {
+    if (operationKey.value === operation) operationKey.value = ''
+    return
+  }
+  try {
+    await portfolioMaterialApi.voidForFuture(row.id)
+    message.success('材料已作废')
+    await loadPage()
+  } catch (error) {
+    showUserError(error, '作废材料失败')
+  } finally {
+    if (operationKey.value === operation) operationKey.value = ''
+  }
+}
+
 function openAiOrchestration(row: PortfolioMaterialVO, tab: 'ask' | 'policy' = 'ask') {
   if (!row.fileNodeId) {
     showFormValidationMessage('材料未关联文件')
@@ -420,11 +477,17 @@ function buildMaterialRowActions(row: PortfolioMaterialVO): UiTableRowActionItem
     { key: 'aiAsk', label: '智能问数', disabled: writing.value },
     { key: 'aiPolicy', label: '政策核验', disabled: writing.value },
     { key: 'edit', label: '编辑', disabled: writing.value },
+    { key: 'versions', label: '版本历史', disabled: writing.value },
+    {
+      key: 'void',
+      label: operationKey.value === `void:${row.id}` ? '作废中' : '作废',
+      disabled: writing.value || row.status === 'VOID',
+    },
     {
       key: 'delete',
       label: operationKey.value === `delete:${row.id}` ? '删除中' : '删除',
       tone: 'danger',
-      disabled: writing.value,
+      disabled: writing.value || (row.activeFreezeRefCount ?? 0) > 0,
     },
   )
   return actions
@@ -446,6 +509,12 @@ function handleMaterialRowAction(key: string, row: PortfolioMaterialVO): void {
       break
     case 'edit':
       openEditModal(row)
+      break
+    case 'versions':
+      void openVersionHistory(row)
+      break
+    case 'void':
+      void voidMaterial(row)
       break
     case 'delete':
       void deleteMaterial(row)
@@ -475,16 +544,23 @@ watch(
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="材料库" description="教师佐证材料登记、文字识别检索与复用">
-      <template #actions>
-        <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreateModal">
-          登记材料
-        </UiButton>
-        <UiButton size="sm" :loading="loading" :disabled="writing" @click="() => void loadPage()">
-          刷新
-        </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="材料库"
+        subtitle="教师佐证材料登记、文字识别检索与复用"
+      >
+        <template #actions>
+          <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreateModal">
+            登记材料
+          </UiButton>
+          <UiButton size="sm" :loading="loading" :disabled="writing" @click="() => void loadPage()">
+            刷新
+          </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
@@ -566,6 +642,14 @@ watch(
                 {{ ocrStatusLabel(record.ocrStatus) }}
               </UiTag>
             </template>
+            <template v-else-if="column.key === 'currentVersionNo'">
+              v{{ record.currentVersionNo ?? '-' }}
+            </template>
+            <template v-else-if="column.key === 'activeFreezeRefCount'">
+              <UiTag :tone="(record.activeFreezeRefCount ?? 0) > 0 ? 'orange' : 'gray'">
+                {{ record.activeFreezeRefCount ?? 0 }}
+              </UiTag>
+            </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 :items="buildMaterialRowActions(record)"
@@ -614,6 +698,38 @@ watch(
           label="材料文件"
         />
       </UiDialog>
+
+      <UiDialog
+        v-model:open="versionModalOpen"
+        :title="`版本与引用 · ${versionMaterialTitle}`"
+        ok-text="关闭"
+        hide-cancel
+        :confirm-loading="versionLoading"
+        @ok="versionModalOpen = false"
+      >
+        <UiCard title="版本历史（§8.51）" :loading="versionLoading">
+          <ul v-if="versionRows.length" class="teacher-materials__version-list">
+            <li v-for="item in versionRows" :key="item.id">
+              <strong>v{{ item.versionNo }}</strong>
+              <span>{{ item.versionStatus }}</span>
+              <span>file={{ item.fileNodeId }}</span>
+              <UiTag v-if="item.freezeReferenced" tone="orange">冻结引用中</UiTag>
+            </li>
+          </ul>
+          <UiEmpty v-else size="sm" description="暂无版本" />
+        </UiCard>
+        <UiCard title="业务引用" style="margin-top: 12px" :loading="versionLoading">
+          <ul v-if="refRows.length" class="teacher-materials__version-list">
+            <li v-for="item in refRows" :key="item.id">
+              <strong>{{ item.refScope }}</strong>
+              <span>v{{ item.versionNo }}</span>
+              <span>{{ item.freezeStatus }}</span>
+              <span>{{ item.refLabel || item.refBusinessId }}</span>
+            </li>
+          </ul>
+          <UiEmpty v-else size="sm" description="暂无业务引用" />
+        </UiCard>
+      </UiDialog>
     </template>
   </StageWorkbenchShell>
 </template>
@@ -627,5 +743,19 @@ watch(
 
 .teacher-materials__select {
   width: 100%;
+}
+.teacher-materials__version-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.teacher-materials__version-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--dp-border-subtle);
+  font-size: var(--dp-font-size-sm);
 }
 </style>

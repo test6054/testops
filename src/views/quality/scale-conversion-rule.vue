@@ -11,7 +11,7 @@ import type {
 } from '@/apis/quality/scale-conversion-rule'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import { ALL_SCALE_TYPE_CODES, ScaleTypeCode, ScaleTypeDescription } from '@/apis/quality/types'
@@ -434,7 +434,7 @@ onActivated(() => {
       <ContextBar show-title title="量表换算规则库" />
     </template>
 
-    <SignalBand :metrics="signals" compact class="scr__signals" />
+    <SignalBand :metrics="signals" variant="panel" compact class="scr__signals" />
 
     <UiCard class="detail-table-card scr__table-card">
       <template #title>换算规则台账</template>

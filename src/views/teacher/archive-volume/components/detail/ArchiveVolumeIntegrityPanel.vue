@@ -305,7 +305,7 @@ import type {
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import {
   allowArchiveMaterialDelay,
@@ -455,6 +455,9 @@ function openConfirmSecurityMarkModal() {
 }
 
 async function submitConfirmSecurityMark() {
+  if (confirmingSecurityMark.value) {
+    return
+  }
   if (!confirmSecurityMarkReason.value.trim()) {
     showFormValidationMessage('请填写定密确认说明')
     return
@@ -483,6 +486,9 @@ function openUpdateSecurityLevelModal() {
 }
 
 async function submitUpdateSecurityLevel() {
+  if (updatingSecurityLevel.value) {
+    return
+  }
   if (!updateSecurityLevelForm.securityLevel) {
     showFormValidationMessage('请选择新密级')
     return
@@ -537,6 +543,9 @@ function openDelayAllowModal(item: ArchiveIntegrityMissingItemVO) {
 }
 
 async function submitDelayAllow() {
+  if (delayAllowSubmitting.value) {
+    return
+  }
   if (!delayAllowTarget.value) return
   if (!delayAllowForm.deadline) {
     showFormValidationMessage('请选择补交截止时间')
@@ -577,6 +586,9 @@ function openWaiveMissingModal(item: ArchiveIntegrityMissingItemVO) {
 }
 
 async function submitWaiveMissing() {
+  if (waiveMissingSubmitting.value) {
+    return
+  }
   if (!waiveMissingTarget.value) return
   if (!waiveMissingReason.value.trim()) {
     showFormValidationMessage('请填写豁免原因')
@@ -606,6 +618,9 @@ function openWaiveIntegrityModal() {
 }
 
 async function submitWaiveIntegrity() {
+  if (waivingIntegrity.value) {
+    return
+  }
   if (!waiveIntegrityReason.value.trim()) {
     showFormValidationMessage('请填写豁免原因')
     return

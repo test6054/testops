@@ -4,7 +4,7 @@ import type {
   PortfolioTeacherHonorCategoryVO,
   PortfolioTeacherHonorVO,
 } from '@/apis/portfolio/teacher-honor'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -402,14 +402,14 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 
     <UiCard v-else-if="loadFailed" title="加载失败">
       <UiEmpty size="sm" description="荣誉档案加载失败">
-        <UiButton size="sm" @click="loadData">重试</UiButton>
+        <UiButton size="sm" variant="primary" @click="loadData">重试</UiButton>
       </UiEmpty>
     </UiCard>
 
     <template v-else>
       <UiCard title="荣誉记录" :loading="loading">
         <template #extra>
-          <UiButton size="sm" v-if="!readonlyMode" @click="openModal()">新增荣誉</UiButton>
+          <UiButton variant="primary" size="sm" v-if="!readonlyMode" @click="openModal()">新增荣誉</UiButton>
         </template>
         <UiDataTable :columns="honorColumns" :data-source="rows" row-key="id" :pagination="false">
           <template #bodyCell="{ column, record }">
@@ -448,7 +448,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 
       <UiCard title="荣誉分类" :loading="categoryLoading" style="margin-top: 16px">
         <template #extra>
-          <UiButton size="sm" v-if="!readonlyMode" @click="openCategoryModal">新建分类</UiButton>
+          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal">新建分类</UiButton>
         </template>
         <UiDataTable
           :columns="categoryColumns"
@@ -523,7 +523,7 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
       <UiFormItem label="证明材料" compact>
         <div class="teacher-honor__attachment">
           <span v-if="form.attachmentName">{{ form.attachmentName }}</span>
-          <UiButton size="sm" v-if="!readonlyMode" :loading="uploadingFile" @click="openAttachmentPicker">
+          <UiButton variant="primary" size="sm" v-if="!readonlyMode" :loading="uploadingFile" @click="openAttachmentPicker">
             上传附件
           </UiButton>
         </div>

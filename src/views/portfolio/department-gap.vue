@@ -2,7 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioGapTaskStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioGapTaskSummaryVO } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
@@ -164,11 +164,18 @@ void loadPage()
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="补采督办" description="院系补采任务催办与进度跟踪">
-      <template #actions>
-        <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="补采督办"
+        subtitle="院系补采任务催办与进度跟踪"
+      >
+        <template #actions>
+          <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
     <UiCard title="开放补采任务">
       <UiDataTable

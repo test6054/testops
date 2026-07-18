@@ -71,7 +71,7 @@
   --dp-font-weight-body: 400;
   --dp-font-weight-emphasis: 500;
   --dp-font-weight-title: 600;
-  --dp-font-weight-metric: 600;
+  --dp-font-weight-metric: 700;
 
   /* 角色字阶（Phase 2 契约） */
   --dp-type-sidebar-size: 14px;
@@ -140,8 +140,8 @@
   --dp-bg-muted: var(--ant-color-bg-layout);
   --dp-surface: var(--ant-color-bg-container);
   --dp-surface-subtle: var(--ant-color-fill-quaternary);
-  /* 与 _card.scss / 质量工作台区块对齐的别名 */
-  --dp-surface-elevated: var(--dp-surface-subtle);
+  /* 可感知 elevated：略深于白底，打破 head/toolbar 与 body 白对白 */
+  --dp-surface-elevated: #f6f8fb;
   --dp-bg-control: var(--ant-color-fill-tertiary);
   --dp-bg-control-disabled: var(--ant-color-fill-quaternary);
   --dp-bg-button-disabled: var(--ant-color-fill-tertiary);
@@ -164,8 +164,9 @@
   --dp-button-height-md: 36px;
   --dp-button-height-lg: 40px;
 
-  --dp-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --dp-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.06);
+  /* xs：面板抬升；略加强以区分灰画布上的白板 */
+  --dp-shadow-xs: 0 1px 3px rgba(15, 23, 42, 0.055);
+  --dp-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.07);
   --dp-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
   --dp-shadow-card: 0 10px 30px rgba(15, 23, 42, 0.06);
   --dp-shadow-card-hover: 0 16px 36px rgba(15, 23, 42, 0.08);
@@ -182,7 +183,7 @@
   --dp-z-popover: 1060;
   --dp-z-tooltip: 1080;
 
-  --dp-table-header-bg: #fafbfc;
+  --dp-table-header-bg: var(--dp-surface-elevated);
   --dp-table-header-height: 40px;
   --dp-table-header-padding: 0 16px;
   --dp-table-cell-padding: 10px 16px;

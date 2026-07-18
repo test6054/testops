@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="score-publish-page">
     <template #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="成绩发布">
         <template #status>
           <UiTag v-if="scoresFullyPublished" tone="green" size="sm">已全部发布</UiTag>
           <UiTag v-else-if="hasPendingAbsence" tone="orange" size="sm">缺考待确认</UiTag>
@@ -23,7 +23,7 @@
     </template>
 
     <template v-if="selectedExamId" #signal>
-      <SignalBand :metrics="publishSignalMetrics" compact />
+      <SignalBand :metrics="publishSignalMetrics" variant="panel" compact />
     </template>
 
     <ExamSelectGateStrip
@@ -373,7 +373,7 @@
     <!-- 撤回成绩 Drawer -->
     <UiDrawer
       :open="withdrawOpen"
-      title="撤回最终成绩"
+      :title="withdrawModalTitle"
       :width="520"
       :confirm-loading="withdrawing"
       :hide-footer="false"
@@ -458,6 +458,7 @@
           取消
         </UiButton>
         <UiButton
+          variant="primary"
           size="md"
           :loading="bulkRunning"
           :disabled="!canBulkPublish"
@@ -1057,7 +1058,15 @@ function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
 function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
   const s = record.finalScoreStatus
-  return s === FinalScoreStatusCode.PUBLISHED || s === FinalScoreStatusCode.CORRECTED
+  // MVR-184：与 BE withdrawFinalScore 对齐，CONFIRMED 可直接撤销确认，无需先发布再撤回
+  return (
+    s === FinalScoreStatusCode.CONFIRMED
+    || s === FinalScoreStatusCode.PUBLISHED
+    || s === FinalScoreStatusCode.CORRECTED
+  )
+}
+function withdrawButtonLabel(record: ExamScoreSummaryItemResponse): string {
+  return record.finalScoreStatus === FinalScoreStatusCode.CONFIRMED ? '撤销确认' : '撤回'
 }
 
 function buildPublishActions(record: ExamScoreSummaryItemResponse): UiTableRowActionItem[] {
@@ -1069,7 +1078,7 @@ function buildPublishActions(record: ExamScoreSummaryItemResponse): UiTableRowAc
       tone: 'primary',
       disabled: !canPublish(record),
     },
-    { key: 'withdraw', label: '撤回', disabled: !canWithdraw(record) },
+    { key: 'withdraw', label: withdrawButtonLabel(record), disabled: !canWithdraw(record) },
   ]
 }
 
@@ -1121,6 +1130,12 @@ const withdrawOpen = ref(false)
 const withdrawing = ref(false)
 const withdrawCandidate = ref<ExamScoreSummaryItemResponse | null>(null)
 const withdrawReason = ref('')
+/** MVR-184：CONFIRMED 用「撤销确认」文案，避免教师误以为必须先发布 */
+const withdrawModalTitle = computed(() =>
+  withdrawCandidate.value?.finalScoreStatus === FinalScoreStatusCode.CONFIRMED
+    ? '撤销成绩确认'
+    : '撤回最终成绩',
+)
 
 function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
   withdrawCandidate.value = record
@@ -1145,7 +1160,11 @@ async function handleWithdraw(): Promise<void> {
       paperInstanceId: withdrawCandidate.value.paperInstanceId,
       reason,
     })
-    message.success('成绩已撤回')
+    message.success(
+      withdrawCandidate.value?.finalScoreStatus === FinalScoreStatusCode.CONFIRMED
+        ? '已撤销成绩确认'
+        : '成绩已撤回',
+    )
     withdrawOpen.value = false
     await Promise.all([loadCandidates(), loadFinalScoreOverview(), refreshArchiveGate()])
     try {
@@ -1254,7 +1273,7 @@ watch(
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 8px 12px;
+    gap: var(--dp-space-2) var(--dp-space-3);
     margin: 0 0 var(--dp-space-3);
   }
 
@@ -1299,8 +1318,8 @@ watch(
 
   &__table-title {
     margin: 0;
-    font-size: 16px;
-    font-weight: var(--dp-font-weight-title);
+    font-size: 15px;
+    font-weight: 600;
     line-height: 1.5;
     color: var(--dp-text-primary);
   }
@@ -1320,7 +1339,7 @@ watch(
   }
 
   &__table-card {
-    margin-top: 8px;
+    margin-top: var(--dp-space-2);
   }
 
   &__filter-chips {
@@ -1357,11 +1376,11 @@ watch(
   }
 
   &__detail-summary {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-4);
   }
 
   &__detail-section-title {
-    margin: 16px 0 8px 0;
+    margin: var(--dp-space-4) 0 var(--dp-space-2) 0;
     font-size: 14px;
     font-weight: 600;
   }
@@ -1371,7 +1390,7 @@ watch(
   }
 
   &__bulk-progress {
-    margin: 12px 0 4px;
+    margin: var(--dp-space-3) 0 var(--dp-space-1);
   }
 
   &__bulk-meta {
@@ -1383,14 +1402,14 @@ watch(
   &__bulk-list {
     max-height: 320px;
     overflow-y: auto;
-    margin-top: 8px;
+    margin-top: var(--dp-space-2);
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-panel);
     background: var(--dp-surface);
   }
 
   &__bulk-error-tag {
-    margin-left: 8px;
+    margin-left: var(--dp-space-2);
   }
 }
 </style>

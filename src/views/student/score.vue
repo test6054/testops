@@ -16,7 +16,7 @@
     </template>
 
     <template #signal>
-      <SignalBand v-if="!pageBootstrapping" :metrics="summarySignalMetrics" compact />
+      <SignalBand v-if="!pageBootstrapping" :metrics="summarySignalMetrics" variant="panel" compact />
     </template>
 
     <UiSkeletonState v-if="pageBootstrapping" :rows="4" compact />
@@ -93,6 +93,7 @@
       <SignalBand
         v-if="insightItems.length > 0"
         :metrics="insightSignalMetrics"
+        variant="panel"
         compact
         class="student-score__insights"
       />
@@ -113,6 +114,7 @@
           :columns="examColumns"
           :data-source="rows"
           :loading="tableLoading"
+          :load-error="loadError"
           :total="pageTotal"
           flat
           row-key="examId"
@@ -216,6 +218,7 @@ const {
   pageNum,
   pageSize,
   pageTotal,
+  loadError,
   handlePageChange,
   reload: reloadExamTable,
 } = useQueryTable((params) => pageMyExams(params), {

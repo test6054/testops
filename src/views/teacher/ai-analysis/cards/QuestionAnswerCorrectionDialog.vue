@@ -141,7 +141,7 @@ import type {
   ExamAnswerEffectiveConfig,
   ExamQuestionAnalysisRecordResponse,
 } from '@/apis/mark/question-analysis'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   getStandardAnswer,

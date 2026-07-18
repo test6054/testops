@@ -15,7 +15,7 @@ import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
 import { storeToRefs } from 'pinia'
 
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
 import { aiTaskApi } from '@/apis/quality/ai-task'
@@ -40,14 +40,17 @@ import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vu
 import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
 import QualityWorkbenchCharts from '@/components/quality/QualityWorkbenchCharts.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageRail from '@/components/workbench/StageRail.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useAccreditationCockpit } from '@/composables/useAccreditationCockpit'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 import { showUserError } from '@/utils/error-handler'
@@ -89,9 +92,35 @@ const loading = reactive({
   ai: false,
 })
 
+const summaryLoaded = ref(false)
+const summaryLoadFailed = ref(false)
+const activeSignal = ref<string | null>(null)
+const todoSectionRef = ref<HTMLElement | null>(null)
+const achievementListSectionRef = ref<HTMLElement | null>(null)
+const improvementListSectionRef = ref<HTMLElement | null>(null)
+const aiListSectionRef = ref<HTMLElement | null>(null)
+
 const recentAchievements = ref<AchievementResultVO[]>([])
 const recentImprovements = ref<ImprovementTaskVO[]>([])
 const recentAiTasks = ref<AiTaskVO[]>([])
+const {
+  loadError: achievementLoadError,
+  beginLoad: beginAchievementLoad,
+  failLoad: failAchievementLoad,
+  okLoad: okAchievementLoad,
+} = useUiTableLoadError()
+const {
+  loadError: improvementLoadError,
+  beginLoad: beginImprovementLoad,
+  failLoad: failImprovementLoad,
+  okLoad: okImprovementLoad,
+} = useUiTableLoadError()
+const {
+  loadError: aiLoadError,
+  beginLoad: beginAiLoad,
+  failLoad: failAiLoad,
+  okLoad: okAiLoad,
+} = useUiTableLoadError()
 
 const achievementCounts = reactive({
   total: 0,
@@ -202,22 +231,51 @@ const stages = computed<WorkbenchStage[]>(() => {
 const qualityTaskStore = useQualityTaskStore()
 const { totalAttentionCount } = storeToRefs(qualityTaskStore)
 
-const signals = computed<SignalMetric[]>(() => [
-  {
-    key: 'attention',
-    label: '待关注任务',
-    value: totalAttentionCount.value,
-    tone: totalAttentionCount.value > 0 ? 'orange' : 'gray',
-  },
-  { key: 'a-total', label: '达成度总数', value: achievementCounts.total, tone: 'blue' },
-  { key: 'a-conf', label: '已确认', value: achievementCounts.confirmed, tone: 'green' },
-  { key: 'a-fail', label: '未达成', value: achievementCounts.notAchieved, tone: 'red' },
-  { key: 'i-total', label: '改进任务', value: improvementCounts.total, tone: 'blue' },
-  { key: 'i-prog', label: '整改中', value: improvementCounts.inProgress, tone: 'orange' },
-  { key: 'i-closed', label: '已闭环', value: improvementCounts.closed, tone: 'green' },
-  { key: 'ai-total', label: 'AI 任务', value: aiCounts.total, tone: 'blue' },
-  { key: 'ai-fail', label: 'AI 失败', value: aiCounts.failed, tone: 'red' },
-])
+const signals = computed<SignalMetric[]>(() => {
+  const attention = totalAttentionCount.value
+  const notAchieved = achievementCounts.notAchieved
+  const inProgress = improvementCounts.inProgress
+  const aiFailed = aiCounts.failed
+  return [
+    {
+      key: 'attention',
+      label: '待关注任务',
+      value: attention,
+      tone: attention > 0 ? 'orange' : 'gray',
+      clickable: attention > 0,
+      active: activeSignal.value === 'attention',
+    },
+    { key: 'a-total', label: '达成度总数', value: achievementCounts.total, tone: 'blue' },
+    { key: 'a-conf', label: '已确认', value: achievementCounts.confirmed, tone: 'green' },
+    {
+      key: 'a-fail',
+      label: '未达成',
+      value: notAchieved,
+      tone: 'red',
+      clickable: notAchieved > 0,
+      active: activeSignal.value === 'a-fail',
+    },
+    { key: 'i-total', label: '改进任务', value: improvementCounts.total, tone: 'blue' },
+    {
+      key: 'i-prog',
+      label: '整改中',
+      value: inProgress,
+      tone: 'orange',
+      clickable: inProgress > 0,
+      active: activeSignal.value === 'i-prog',
+    },
+    { key: 'i-closed', label: '已闭环', value: improvementCounts.closed, tone: 'green' },
+    { key: 'ai-total', label: 'AI 任务', value: aiCounts.total, tone: 'blue' },
+    {
+      key: 'ai-fail',
+      label: 'AI 失败',
+      value: aiFailed,
+      tone: 'red',
+      clickable: aiFailed > 0,
+      active: activeSignal.value === 'ai-fail',
+    },
+  ]
+})
 
 const qualityChartGroups = computed<QualityChartGroup[]>(() => {
   const groups: QualityChartGroup[] = []
@@ -289,10 +347,12 @@ function aiTypeLabel(value: AiTaskTypeCode): string {
 async function loadSummary() {
   if (!trainingPlanId.value) return
   loading.summary = true
+  summaryLoadFailed.value = false
   try {
     const summary = await workbenchApi.obeJourneySummary({
       trainingPlanId: trainingPlanId.value,
     })
+    summaryLoaded.value = true
     achievementCounts.total = summary.achievementTotal ?? 0
     achievementCounts.calculated = summary.achievementCalculated ?? 0
     achievementCounts.submitted = summary.achievementSubmitted ?? 0
@@ -310,15 +370,43 @@ async function loadSummary() {
     aiCounts.succeeded = summary.aiTaskSucceeded ?? 0
     aiCounts.failed = summary.aiTaskFailed ?? 0
   } catch (error) {
+    summaryLoadFailed.value = true
     showUserError(error, '工作台汇总加载失败')
   } finally {
     loading.summary = false
   }
 }
 
+async function scrollToDashboardSection(section: HTMLElement | null) {
+  await nextTick()
+  section?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function handleSignalMetricClick(key: string) {
+  activeSignal.value = key
+  switch (key) {
+    case 'attention':
+      if (dashboardTodos.value.length > 0) {
+        void scrollToDashboardSection(todoSectionRef.value)
+        return
+      }
+      goImprovement()
+      return
+    case 'a-fail':
+      void scrollToDashboardSection(achievementListSectionRef.value)
+      return
+    case 'i-prog':
+      void scrollToDashboardSection(improvementListSectionRef.value)
+      return
+    case 'ai-fail':
+      void scrollToDashboardSection(aiListSectionRef.value)
+  }
+}
+
 async function loadAchievement() {
   if (!trainingPlanId.value) return
   loading.achievement = true
+  beginAchievementLoad()
   try {
     const page = await achievementResultApi.page({
       pageNum: 1,
@@ -326,7 +414,9 @@ async function loadAchievement() {
       trainingPlanId: trainingPlanId.value,
     })
     recentAchievements.value = page.list
+    okAchievementLoad()
   } catch (error) {
+    failAchievementLoad()
     showUserError(error, '达成度数据加载失败')
   } finally {
     loading.achievement = false
@@ -336,6 +426,7 @@ async function loadAchievement() {
 async function loadImprovement() {
   if (!trainingPlanId.value) return
   loading.improvement = true
+  beginImprovementLoad()
   try {
     const page = await improvementTaskApi.page({
       pageNum: 1,
@@ -343,7 +434,9 @@ async function loadImprovement() {
       trainingPlanId: trainingPlanId.value,
     })
     recentImprovements.value = page.list
+    okImprovementLoad()
   } catch (error) {
+    failImprovementLoad()
     showUserError(error, '改进任务数据加载失败')
   } finally {
     loading.improvement = false
@@ -353,6 +446,7 @@ async function loadImprovement() {
 async function loadAiTasks() {
   if (!trainingPlanId.value) return
   loading.ai = true
+  beginAiLoad()
   try {
     const plan = trainingPlanId.value
     const page = await aiTaskApi.page({
@@ -361,7 +455,9 @@ async function loadAiTasks() {
       trainingPlanId: plan,
     })
     recentAiTasks.value = page.list
+    okAiLoad()
   } catch (error) {
+    failAiLoad()
     showUserError(error, '智能任务数据加载失败')
   } finally {
     loading.ai = false
@@ -524,7 +620,7 @@ function handleTodoAction(key: string) {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar>
+      <QualityPageContextBar show-title title="质量评价驾驶舱">
         <template #actions>
           <UiButton
             variant="outline"
@@ -534,7 +630,7 @@ function handleTodoAction(key: string) {
           >
             刷新
           </UiButton>
-          <UiButton variant="ghost" size="sm" :disabled="!trainingPlanId" @click="goAchievement">
+          <UiButton variant="primary" size="sm" :disabled="!trainingPlanId" @click="goAchievement">
             进入达成度
           </UiButton>
         </template>
@@ -543,6 +639,31 @@ function handleTodoAction(key: string) {
 
     <template v-if="trainingPlanId && planConfirmationStatus === ConfirmationStatusCode.CONFIRMED" #rail>
       <StageRail :stages="stages" @select="handleStageSelect" />
+    </template>
+
+    <template
+      v-if="trainingPlanId && planConfirmationStatus === ConfirmationStatusCode.CONFIRMED"
+      #signal
+    >
+      <UiSkeletonState
+        v-if="loading.summary && !summaryLoaded && !summaryLoadFailed"
+        variant="card"
+        :card-count="4"
+        compact
+      />
+      <UiEmpty
+        v-else-if="summaryLoadFailed"
+        size="sm"
+        title="加载失败"
+      />
+      <SignalBand
+        v-else
+        :metrics="signals"
+        variant="panel"
+        compact
+        class="quality-dashboard__signals"
+        @metric-click="handleSignalMetricClick"
+      />
     </template>
 
     <QualityPlanGateStrip
@@ -557,146 +678,161 @@ function handleTodoAction(key: string) {
     />
 
     <template v-if="trainingPlanId && planConfirmationStatus === ConfirmationStatusCode.CONFIRMED">
-      <UiCard v-if="dashboardTodos.length" class="quality-dashboard__todo-card" title="待办事项">
-        <ul class="quality-dashboard__todo-list">
-          <li v-for="item in dashboardTodos" :key="item.key" class="quality-dashboard__todo-item">
-            <UiTag :tone="item.tone" size="sm">{{ item.tone === 'red' ? '紧急' : '待办' }}</UiTag>
-            <span class="quality-dashboard__todo-label">{{ item.label }}</span>
-            <UiButton variant="ghost" size="sm" @click="handleTodoAction(item.key)">
-              {{ item.actionLabel }}
-            </UiButton>
-          </li>
-        </ul>
-      </UiCard>
-      <SignalBand :metrics="signals" compact class="quality-dashboard__signals" />
+      <div v-if="dashboardTodos.length" ref="todoSectionRef">
+        <WorkbenchSurfaceCard class="quality-dashboard__todo-card">
+          <template #head>
+            <span class="quality-dashboard__panel-title">待办事项</span>
+          </template>
+          <ul class="quality-dashboard__todo-list">
+            <li v-for="item in dashboardTodos" :key="item.key" class="quality-dashboard__todo-item">
+              <UiTag :tone="item.tone" size="sm">{{ item.tone === 'red' ? '紧急' : '待办' }}</UiTag>
+              <span class="quality-dashboard__todo-label">{{ item.label }}</span>
+              <UiButton variant="ghost" size="sm" @click="handleTodoAction(item.key)">
+                {{ item.actionLabel }}
+              </UiButton>
+            </li>
+          </ul>
+        </WorkbenchSurfaceCard>
+      </div>
       <QualityWorkbenchCharts :groups="qualityChartGroups" />
 
-      <div class="quality-dashboard__lists">
-        <UiCard class="quality-dashboard__list-card" title="最近达成度结果">
-          <template #extra>
-            <UiButton variant="ghost" size="sm" @click="goAchievement"> 查看全部 </UiButton>
-          </template>
-          <UiDataTable
-            pagination-mode="server"
-            :columns="recentAchievementColumns"
-            :data-source="recentAchievements"
-            :loading="loading.achievement || loading.summary"
-            :show-pagination="false"
-            row-key="id"
-            size="small"
-            flat
-            :total="achievementCounts.total"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'targetType'">
-                {{ targetTypeLabel(record.targetType) }}
+      <WorkbenchSurfaceCard class="quality-dashboard__lists-surface">
+        <template #head>
+          <span class="quality-dashboard__panel-title">最近动态</span>
+        </template>
+        <div class="quality-dashboard__lists">
+          <section ref="achievementListSectionRef" class="quality-dashboard__list-section">
+            <div class="quality-dashboard__list-head">
+              <h4 class="quality-dashboard__list-title">最近达成度结果</h4>
+              <UiButton variant="ghost" size="sm" @click="goAchievement">查看全部</UiButton>
+            </div>
+            <UiDataTable
+              pagination-mode="server"
+              :columns="recentAchievementColumns"
+              :data-source="recentAchievements"
+              :loading="loading.achievement || loading.summary"
+              :load-error="achievementLoadError"
+              :show-pagination="false"
+              row-key="id"
+              size="small"
+              flat
+              :total="achievementCounts.total"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'targetType'">
+                  {{ targetTypeLabel(record.targetType) }}
+                </template>
+                <template v-else-if="column.key === 'targetLabel'">
+                  {{ record.targetLabel }}
+                </template>
+                <template v-else-if="column.key === 'finalValue'">
+                  <span
+                    class="quality-dashboard__value"
+                    :class="[
+                      record.finalValue !== null
+                        && record.thresholdValue !== null
+                        && record.finalValue >= record.thresholdValue
+                        ? 'quality-dashboard__value--ok'
+                        : 'quality-dashboard__value--bad',
+                    ]"
+                  >
+                    {{ record.finalValue == null ? '-' : record.finalValue.toFixed(3) }}
+                    / {{ record.thresholdValue == null ? '-' : record.thresholdValue.toFixed(3) }}
+                  </span>
+                </template>
+                <template v-else-if="column.key === 'achievementStatus'">
+                  <UiTag :tone="achievementStatusColor(record.achievementStatus)">
+                    {{ achievementStatusLabel(record.achievementStatus) }}
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'auditStatus'">
+                  <UiTag :tone="auditStatusColor(record.auditStatus)">
+                    {{ auditStatusLabel(record.auditStatus) }}
+                  </UiTag>
+                </template>
               </template>
-              <template v-else-if="column.key === 'targetLabel'">
-                {{ record.targetLabel }}
-              </template>
-              <template v-else-if="column.key === 'finalValue'">
-                <span
-                  class="quality-dashboard__value"
-                  :class="[
-                    record.finalValue !== null
-                      && record.thresholdValue !== null
-                      && record.finalValue >= record.thresholdValue
-                      ? 'quality-dashboard__value--ok'
-                      : 'quality-dashboard__value--bad',
-                  ]"
-                >
-                  {{ record.finalValue == null ? '-' : record.finalValue.toFixed(3) }}
-                  / {{ record.thresholdValue == null ? '-' : record.thresholdValue.toFixed(3) }}
-                </span>
-              </template>
-              <template v-else-if="column.key === 'achievementStatus'">
-                <UiTag :tone="achievementStatusColor(record.achievementStatus)">
-                  {{ achievementStatusLabel(record.achievementStatus) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'auditStatus'">
-                <UiTag :tone="auditStatusColor(record.auditStatus)">
-                  {{ auditStatusLabel(record.auditStatus) }}
-                </UiTag>
-              </template>
-            </template>
-          </UiDataTable>
-        </UiCard>
+            </UiDataTable>
+          </section>
 
-        <UiCard class="quality-dashboard__list-card" title="最近改进任务">
-          <template #extra>
-            <UiButton variant="ghost" size="sm" @click="goImprovement"> 查看全部 </UiButton>
-          </template>
-          <UiDataTable
-            pagination-mode="server"
-            :columns="recentImprovementColumns"
-            :data-source="recentImprovements"
-            :loading="loading.improvement || loading.summary"
-            :show-pagination="false"
-            row-key="id"
-            size="small"
-            flat
-            :total="improvementCounts.total"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'ownerRef'">
-                {{ record.ownerUserName }}
+          <section ref="improvementListSectionRef" class="quality-dashboard__list-section">
+            <div class="quality-dashboard__list-head">
+              <h4 class="quality-dashboard__list-title">最近改进任务</h4>
+              <UiButton variant="ghost" size="sm" @click="goImprovement">查看全部</UiButton>
+            </div>
+            <UiDataTable
+              pagination-mode="server"
+              :columns="recentImprovementColumns"
+              :data-source="recentImprovements"
+              :loading="loading.improvement || loading.summary"
+              :load-error="improvementLoadError"
+              :show-pagination="false"
+              row-key="id"
+              size="small"
+              flat
+              :total="improvementCounts.total"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'ownerRef'">
+                  {{ record.ownerUserName }}
+                </template>
+                <template v-else-if="column.key === 'dueDate'">
+                  {{ record.dueDate }}
+                </template>
+                <template v-else-if="column.key === 'status'">
+                  <UiTag :tone="improvementStatusColorOf(record.status)">
+                    {{ improvementStatusLabelOf(record.status) }}
+                  </UiTag>
+                </template>
               </template>
-              <template v-else-if="column.key === 'dueDate'">
-                {{ record.dueDate }}
-              </template>
-              <template v-else-if="column.key === 'status'">
-                <UiTag :tone="improvementStatusColorOf(record.status)">
-                  {{ improvementStatusLabelOf(record.status) }}
-                </UiTag>
-              </template>
-            </template>
-          </UiDataTable>
-        </UiCard>
+            </UiDataTable>
+          </section>
 
-        <UiCard class="quality-dashboard__list-card" title="最近 AI 任务">
-          <template #extra>
-            <UiButton variant="ghost" size="sm" @click="goAiTask"> 查看全部 </UiButton>
-          </template>
-          <UiDataTable
-            pagination-mode="server"
-            :columns="recentAiTaskColumns"
-            :data-source="recentAiTasks"
-            :loading="loading.ai || loading.summary"
-            :show-pagination="false"
-            row-key="id"
-            size="small"
-            flat
-            :total="aiCounts.total"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'taskType'">
-                {{ aiTypeLabel(record.taskType) }}
+          <section ref="aiListSectionRef" class="quality-dashboard__list-section quality-dashboard__list-section--wide">
+            <div class="quality-dashboard__list-head">
+              <h4 class="quality-dashboard__list-title">最近 AI 任务</h4>
+              <UiButton variant="ghost" size="sm" @click="goAiTask">查看全部</UiButton>
+            </div>
+            <UiDataTable
+              pagination-mode="server"
+              :columns="recentAiTaskColumns"
+              :data-source="recentAiTasks"
+              :loading="loading.ai || loading.summary"
+              :load-error="aiLoadError"
+              :show-pagination="false"
+              row-key="id"
+              size="small"
+              flat
+              :total="aiCounts.total"
+            >
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'taskType'">
+                  {{ aiTypeLabel(record.taskType) }}
+                </template>
+                <template v-else-if="column.key === 'status'">
+                  <UiTag :tone="aiStatusColor(record.status)">
+                    {{ aiStatusLabel(record.status) }}
+                  </UiTag>
+                </template>
+                <template v-else-if="column.key === 'startedTime'">
+                  {{ record.startedTime }}
+                </template>
+                <template v-else-if="column.key === 'finishedTime'">
+                  {{ record.finishedTime }}
+                </template>
+                <template v-else-if="column.key === 'failurePhase'">
+                  <span
+                    :class="{
+                      'quality-dashboard__value--error': record.status === AiTaskStatusCode.FAILED,
+                    }"
+                  >
+                    {{ record.status === AiTaskStatusCode.FAILED ? record.failurePhase : '不适用' }}
+                  </span>
+                </template>
               </template>
-              <template v-else-if="column.key === 'status'">
-                <UiTag :tone="aiStatusColor(record.status)">
-                  {{ aiStatusLabel(record.status) }}
-                </UiTag>
-              </template>
-              <template v-else-if="column.key === 'startedTime'">
-                {{ record.startedTime }}
-              </template>
-              <template v-else-if="column.key === 'finishedTime'">
-                {{ record.finishedTime }}
-              </template>
-              <template v-else-if="column.key === 'failurePhase'">
-                <span
-                  :class="{
-                    'quality-dashboard__value--error': record.status === AiTaskStatusCode.FAILED,
-                  }"
-                >
-                  {{ record.status === AiTaskStatusCode.FAILED ? record.failurePhase : '不适用' }}
-                </span>
-              </template>
-            </template>
-          </UiDataTable>
-        </UiCard>
-      </div>
+            </UiDataTable>
+          </section>
+        </div>
+      </WorkbenchSurfaceCard>
     </template>
   </StageWorkbenchShell>
 </template>
@@ -717,7 +853,38 @@ function handleTodoAction(key: string) {
   }
 
   &__todo-card {
-    margin-bottom: 16px;
+    margin-bottom: var(--dp-space-4);
+  }
+
+  &__panel-title {
+    font-size: var(--dp-font-size-md, 15px);
+    font-weight: 600;
+    color: var(--dp-text-primary);
+  }
+
+  &__list-section {
+    min-width: 0;
+
+    & + & {
+      margin-top: var(--dp-space-4);
+      padding-top: var(--dp-space-4);
+      border-top: 1px solid var(--dp-border-subtle);
+    }
+  }
+
+  &__list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--dp-space-3);
+    margin-bottom: var(--dp-space-2);
+  }
+
+  &__list-title {
+    margin: 0;
+    font-size: var(--dp-font-size-sm, 14px);
+    font-weight: 600;
+    color: var(--dp-text-primary);
   }
 
   &__todo-list {
@@ -725,14 +892,26 @@ function handleTodoAction(key: string) {
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 12px;
+    gap: var(--dp-space-2);
   }
 
   &__todo-item {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--dp-space-3);
     flex-wrap: wrap;
+    padding: var(--dp-space-3);
+    border: 1px solid var(--dp-border);
+    border-radius: var(--dp-radius-control);
+    background: var(--dp-surface-elevated);
+    transition:
+      border-color var(--dp-duration-normal) ease,
+      background var(--dp-duration-normal) ease;
+
+    &:hover {
+      border-color: var(--dp-color-primary-border);
+      background: var(--dp-surface);
+    }
   }
 
   &__todo-label {
@@ -740,23 +919,40 @@ function handleTodoAction(key: string) {
     min-width: 200px;
     color: var(--dp-text-primary);
     font-size: 14px;
+    font-weight: 500;
   }
 
-  &__signals {
-    margin-bottom: var(--dp-space-3, 12px);
+  &__lists-surface {
+    margin-top: var(--dp-space-4);
+    margin-bottom: var(--dp-space-3);
   }
 
   &__lists {
     display: grid;
     grid-template-columns: 1fr;
-    gap: var(--dp-space-3, 12px);
-    margin-bottom: var(--dp-space-3, 12px);
+    gap: 0;
 
     @media (min-width: bp.$shell-laptop-max) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--dp-space-4);
 
-      .quality-dashboard__list-card:last-child {
+      .quality-dashboard__list-section {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+
+        & + & {
+          margin-top: 0;
+          padding-top: 0;
+          border-top: none;
+        }
+      }
+
+      .quality-dashboard__list-section--wide {
         grid-column: span 2;
+        margin-top: var(--dp-space-4);
+        padding-top: var(--dp-space-4);
+        border-top: 1px solid var(--dp-border-subtle);
       }
     }
   }

@@ -1,7 +1,7 @@
 <template>
   <StageWorkbenchShell class="arbitration-page">
     <template v-if="selectedExamId" #context>
-      <ContextBar layout="workbench">
+      <ContextBar layout="workbench" show-title title="仲裁复核">
         <template #status>
           <UiTag :tone="actionableCount > 0 ? 'orange' : 'green'" size="sm">
             {{ actionableCount > 0 ? `待处理 ${actionableCount}` : '暂无待办' }}
@@ -13,6 +13,7 @@
     <template v-if="selectedExamId" #signal>
       <SignalBand
         compact
+        variant="panel"
         :metrics="signalMetrics"
         @metric-click="handleSignalClick"
       />

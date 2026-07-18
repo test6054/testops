@@ -5,7 +5,7 @@ import type {
   PortfolioDualTeacherEligibilityFreezeVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
@@ -78,7 +78,7 @@ function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatu
 }
 
 const importModalOpen = ref(false)
-const { loading, rows, pageNum, pageSize, pageTotal, loadPage, handlePageChange } = useQueryTable(
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } = useQueryTable(
   portfolioDualTeacherApi.page,
 )
 
@@ -371,6 +371,7 @@ async function handleImportSuccess() {
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="loadError"
         row-key="id"
         flat
         empty-kind="first-run"

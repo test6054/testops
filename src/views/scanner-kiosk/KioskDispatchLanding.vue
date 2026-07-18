@@ -152,6 +152,7 @@ function goHub() {
       >
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
         <UiButton
+          variant="primary"
           :disabled="session.actionLoading.value || leaseBlocked"
           @click="session.resumeTicket()"
         >
@@ -160,6 +161,7 @@ function goHub() {
       </div>
       <div v-else-if="!session.isPreviewMode" class="dispatch-landing__actions">
         <UiButton
+          variant="primary"
           v-if="ticketStatus === ScanDispatchTicketStatusCode.PENDING"
           :disabled="session.actionLoading.value || leaseBlocked || !session.canClaimTicket.value"
           @click="session.claimTicket()"
@@ -184,6 +186,7 @@ function goHub() {
         </UiButton>
         <UiButton
           v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
+          variant="primary"
           :disabled="session.actionLoading.value || leaseBlocked || !session.canClaimTicket.value"
           @click="session.cognitive.requestConfirm(session.ticket.value!)"
         >
@@ -212,6 +215,7 @@ function goHub() {
       >
         <UiButton variant="primary" @click="goQueue">返回队列</UiButton>
         <UiButton
+          variant="primary"
           :disabled="session.actionLoading.value || leaseBlocked"
           @click="session.resumeTicket()"
         >
@@ -220,6 +224,7 @@ function goHub() {
       </div>
       <div v-else-if="!session.isPreviewMode" class="dispatch-landing__actions">
         <UiButton
+          variant="primary"
           v-if="ticketStatus === ScanDispatchTicketStatusCode.PENDING"
           :disabled="session.actionLoading.value || leaseBlocked || !session.canClaimTicket.value"
           @click="session.claimTicket()"
@@ -244,6 +249,7 @@ function goHub() {
         </UiButton>
         <UiButton
           v-if="ticketStatus === ScanDispatchTicketStatusCode.PROCESSING"
+          variant="primary"
           :disabled="session.actionLoading.value || leaseBlocked || !session.canClaimTicket.value"
           @click="session.cognitive.requestConfirm(session.ticket.value!)"
         >

@@ -40,6 +40,7 @@
         </UiButton>
         <UiButton
           v-if="canApproveDestructionAction"
+          variant="primary"
           size="sm"
           @click="openDestructionApproval(ArchiveDestructionDecisionCode.APPROVED)"
         >
@@ -53,7 +54,7 @@
         >
           驳回销毁
         </UiButton>
-        <UiButton v-if="canExecuteDestruction" size="sm" @click="handleExecuteDestruction">
+        <UiButton v-if="canExecuteDestruction" variant="primary" size="sm" @click="handleExecuteDestruction">
           执行销毁
         </UiButton>
         <UiButton
@@ -140,7 +141,7 @@
           </p>
           <p class="approval-card__meta">{{ formatFlowRecordMeta(record) }}</p>
           <div v-if="showRecordActions(record)" class="approval-card__actions">
-            <UiButton v-if="canApproveAppraisal" size="sm" @click="handleApproveAppraisal">
+            <UiButton v-if="canApproveAppraisal" variant="primary" size="sm" @click="handleApproveAppraisal">
               鉴定审批通过
             </UiButton>
             <UiButton
@@ -384,7 +385,7 @@ import type {
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import {
   approveArchiveVolumeAppraisal,
@@ -555,12 +556,28 @@ const canExecuteDestruction = computed(
     && props.detail.destructionApproverUserId !== props.currentUserId,
 )
 
-const canSuperviseDestruction = computed(
-  () =>
-    props.canApproveDestruction
-    && props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.EXECUTED
-    && Boolean(props.detail.destructionExecutionUserId),
-)
+/** MVR-199：与 BE assertDestructionWitnessSeparated 同源，申请/审批/执行人不可见监销确认 */
+const canSuperviseDestruction = computed(() => {
+  if (
+    !props.canApproveDestruction
+    || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.EXECUTED
+    || !props.detail.destructionExecutionUserId
+    || !props.currentUserId
+  ) {
+    return false
+  }
+  const selfId = props.currentUserId
+  if (props.detail.destructionRequestUserId && props.detail.destructionRequestUserId === selfId) {
+    return false
+  }
+  if (props.detail.destructionApproverUserId && props.detail.destructionApproverUserId === selfId) {
+    return false
+  }
+  if (props.detail.destructionExecutionUserId === selfId) {
+    return false
+  }
+  return true
+})
 
 const destructionApprovalTitle = computed(() =>
   destructionApprovalDecision.value === ArchiveDestructionDecisionCode.REJECTED

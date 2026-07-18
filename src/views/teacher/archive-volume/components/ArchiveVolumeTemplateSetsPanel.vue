@@ -247,7 +247,7 @@
       </UiForm>
       <template #footer>
         <UiButton size="sm" variant="outline" @click="resyncOpen = false">取消</UiButton>
-        <UiButton size="sm" :loading="resyncLoading" :disabled="!canSubmitResync" @click="submitResync">
+        <UiButton size="sm" variant="primary" :loading="resyncLoading" :disabled="!canSubmitResync" @click="submitResync">
           确认同步
         </UiButton>
       </template>
@@ -322,7 +322,7 @@ import type {
   ArchiveTemplateMaterialEditRow,
   ArchiveTemplateSelfCheckEditRow,
 } from '@/views/teacher/archive-volume/components/archive-template-editor-types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   copyAllArchivePlatformTemplatesToTenant,

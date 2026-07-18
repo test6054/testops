@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnonymousRevealResponse } from '@/apis/mark/marking-organization'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
 import { revealAnonymous } from '@/apis/mark/marking-organization'
 import PasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'

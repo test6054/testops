@@ -319,7 +319,7 @@
 </template>
 
 <script setup lang="ts">
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import { formatPublicSurveyItemType } from '@/apis/public-survey'
 import { useSurveyFill } from '@/composables/useSurveyFill'
@@ -834,7 +834,7 @@ async function handleSubmit() {
   border-color: var(--survey-primary);
   background: var(--survey-primary);
   color: var(--survey-on-primary);
-  box-shadow: var(--dp-shadow-sm));
+  box-shadow: var(--dp-shadow-sm);
   transform: scale(1.05);
 }
 
@@ -988,13 +988,13 @@ async function handleSubmit() {
 .m-survey__btn--primary {
   background: var(--survey-primary);
   color: var(--survey-on-primary);
-  box-shadow: var(--dp-shadow-sm));
+  box-shadow: var(--dp-shadow-sm);
 }
 
 .m-survey__btn--submit {
   background: var(--dp-success);
   color: var(--survey-on-primary);
-  box-shadow: var(--dp-shadow-sm));
+  box-shadow: var(--dp-shadow-sm);
 }
 
 .m-survey__btn--ghost {

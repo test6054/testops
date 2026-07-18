@@ -1,5 +1,5 @@
 import type { ArchiveVolumeSelfCheckItemVO, ArchiveVolumeSelfCheckListResponse } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import {

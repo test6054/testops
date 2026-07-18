@@ -63,8 +63,8 @@ const emit = defineEmits<{
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px 12px;
-  padding: 12px 16px;
+  gap: var(--dp-space-2) var(--dp-space-3);
+  padding: var(--dp-space-3) var(--dp-space-4);
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
@@ -73,7 +73,7 @@ const emit = defineEmits<{
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px 12px;
+    gap: var(--dp-space-2) var(--dp-space-3);
     min-width: 0;
     flex: 1 1 200px;
   }
@@ -85,13 +85,13 @@ const emit = defineEmits<{
   &__titles {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--dp-space-1);
     min-width: 0;
   }
 
   &__title {
-    font-size: 14px;
-    font-weight: 600;
+    font-size: var(--dp-font-size-sm);
+    font-weight: var(--dp-font-weight-title);
     color: var(--dp-text-primary);
     line-height: 1.4;
     overflow: hidden;
@@ -100,9 +100,9 @@ const emit = defineEmits<{
   }
 
   &__subtitle {
-    font-size: 12px;
+    font-size: var(--dp-type-hint-size);
     color: var(--dp-text-secondary);
-    line-height: 1.4;
+    line-height: var(--dp-type-hint-line-height);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -112,7 +112,7 @@ const emit = defineEmits<{
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-2);
     min-width: 0;
   }
 
@@ -120,7 +120,7 @@ const emit = defineEmits<{
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: var(--dp-space-2);
     flex-shrink: 0;
   }
 }

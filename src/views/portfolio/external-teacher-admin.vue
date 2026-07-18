@@ -8,9 +8,10 @@ import type {
   PortfolioExternalTeacherSaveRequest,
   PortfolioExternalTeacherStatsVO,
   PortfolioExternalTeacherVO,
+  PortfolioIndustryMentorContributionVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
@@ -55,6 +56,7 @@ const externalTabItems = [
   { key: 'import-batch', label: '导入批次' },
 ]
 const statsLoading = ref(false)
+const statsLoadError = ref(false)
 /** 统计请求 token，与名册筛选切换隔离 */
 const statsRequestToken = ref(0)
 const saving = ref(false)
@@ -62,6 +64,7 @@ const revokingId = ref('')
 const exporting = ref(false)
 const editLoading = ref(false)
 const stats = ref<PortfolioExternalTeacherStatsVO | null>(null)
+const detailContribution = ref<PortfolioIndustryMentorContributionVO | null>(null)
 const drawerOpen = ref(false)
 const batchDetailOpen = ref(false)
 const batchDetail = ref<PortfolioExternalTeacherImportBatchVO | null>(null)
@@ -73,7 +76,7 @@ type ExternalTeacherFilters = Pick<
 >
 & Record<string, unknown>
 
-const { loading, rows, pageNum, pageSize, pageTotal, filters, loadPage, search, handlePageChange }
+const { loading, rows, pageNum, pageSize, pageTotal, filters, loadError, loadPage, search, handlePageChange }
   = useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
     (params) =>
       portfolioExternalTeacherApi.page({
@@ -100,6 +103,7 @@ const {
   pageNum: batchPageNum,
   pageSize: batchPageSize,
   pageTotal: batchPageTotal,
+  loadError: batchLoadError,
   loadPage: loadImportBatches,
   handlePageChange: handleBatchPageChange,
 } = useQueryTable<PortfolioExternalTeacherImportBatchVO>(
@@ -149,6 +153,7 @@ const columns: ColumnsType<PortfolioExternalTeacherVO> = [
   { title: '聘任学期', dataIndex: 'hireTerm', key: 'hireTerm', width: 100 },
   { title: '任教科目', dataIndex: 'teachSubject', key: 'teachSubject', width: 100 },
   { title: '任职单位', dataIndex: 'employerUnit', key: 'employerUnit' },
+  { title: '贡献度', key: 'contributionScore', width: 88 },
   { title: '合同状态', dataIndex: 'contractStatus', key: 'contractStatus', width: 88 },
   { title: '状态', key: 'dataStatus', width: 72 },
   { title: '操作', key: 'actions', width: 100 },
@@ -310,17 +315,20 @@ async function loadStats() {
   const currentToken = ++statsRequestToken.value
   const requestFilters = buildRosterFilters()
   statsLoading.value = true
+  statsLoadError.value = false
   try {
     const next = await portfolioExternalTeacherApi.stats(requestFilters)
     if (currentToken !== statsRequestToken.value) {
       return
     }
     stats.value = next
+    statsLoadError.value = false
   } catch (error) {
     if (currentToken !== statsRequestToken.value) {
       return
     }
     stats.value = null
+    statsLoadError.value = true
     showUserError(error, '加载外聘教师统计失败')
   } finally {
     if (currentToken === statsRequestToken.value) {
@@ -337,6 +345,7 @@ async function searchRoster() {
 
 function openCreate() {
   resetForm()
+  detailContribution.value = null
   drawerOpen.value = true
 }
 
@@ -366,6 +375,7 @@ async function openEdit(id: string) {
   drawerOpen.value = true
   try {
     const detail = await portfolioExternalTeacherApi.get({ id })
+    detailContribution.value = detail.contribution ?? null
     form.id = detail.id
     form.fullName = detail.fullName
     form.gender = detail.gender ?? ''
@@ -525,7 +535,7 @@ onMounted(async () => {
     />
     <template v-if="activeTab === 'roster'">
       <UiCard title="批量导入">
-        <UiButton size="sm" @click="importModalOpen = true"> 表格文件批量导入 </UiButton>
+        <UiButton size="sm" variant="primary" @click="importModalOpen = true"> 表格文件批量导入 </UiButton>
       </UiCard>
       <UiPlatformExcelImportModal
         v-model:open="importModalOpen"
@@ -572,7 +582,7 @@ onMounted(async () => {
           <UiButton size="sm" variant="outline" :loading="exporting" :disabled="exporting || saving" @click="exportRoster"> 导出台账 </UiButton>
         </div>
         <WorkbenchContextGateStrip
-          v-if="!loading && rows.length === 0"
+          v-if="!loadError && !loading && rows.length === 0"
           tag="无记录"
           body="当前筛选无外聘教师，可新增或调整筛选"
           cta-label="新增外聘教师"
@@ -587,6 +597,7 @@ onMounted(async () => {
           :columns="columns"
           :data-source="rows"
           :loading="loading"
+          :load-error="loadError"
           row-key="id"
           @page-change="handlePageChange"
         >
@@ -609,6 +620,9 @@ onMounted(async () => {
               >
                 {{ dataStatusLabel(record.dataStatus) }}
               </UiTag>
+            </template>
+            <template v-else-if="column.key === 'contributionScore'">
+              {{ record.contribution?.contributionScore ?? '—' }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
@@ -655,6 +669,13 @@ onMounted(async () => {
               />
             </div>
           </div>
+          <UiEmpty
+            size="sm"
+            v-else-if="statsLoadError"
+            title="统计数据加载失败"
+            action-label="重试"
+            @action="loadStats"
+          />
           <UiEmpty size="sm" v-else-if="!statsLoading" description="暂无统计数据" />
         </UiSpin>
       </UiCard>
@@ -670,6 +691,7 @@ onMounted(async () => {
           :columns="batchColumns"
           :data-source="batchRows"
           :loading="batchLoading"
+          :load-error="batchLoadError"
           row-key="id"
           style="margin-top: 16px"
           @page-change="handleBatchPageChange"
@@ -821,7 +843,7 @@ onMounted(async () => {
               class="sr-only"
               @change="onAttachmentPick"
             />
-            <UiButton size="sm" :loading="uploadingAttachment" @click="openAttachmentPicker">
+            <UiButton variant="primary" size="sm" :loading="uploadingAttachment" @click="openAttachmentPicker">
               上传附件
             </UiButton>
             <ul v-if="attachmentItems.length" class="attachment-list">
@@ -831,6 +853,15 @@ onMounted(async () => {
               </li>
             </ul>
           </UiFormItem>
+          <div v-if="detailContribution" class="contribution-panel">
+            <p class="contribution-panel__title">§8.42 产业导师贡献度</p>
+            <p>综合 {{ detailContribution.contributionScore }} · 聘任 {{ detailContribution.appointmentValidityScore }} · 教学 {{ detailContribution.teachingParticipationScore }} · 实践 {{ detailContribution.practiceGuidanceScore }} · 成果 {{ detailContribution.industryOutcomeScore }} · 考核 {{ detailContribution.assessmentScore }}</p>
+            <p class="contribution-panel__hint">{{ detailContribution.formulaLabel }}</p>
+            <p class="contribution-panel__hint">不得作为校内职称评价结论</p>
+            <ul v-if="detailContribution.evidenceNotes?.length">
+              <li v-for="(note, idx) in detailContribution.evidenceNotes" :key="idx">{{ note }}</li>
+            </ul>
+          </div>
           <UiButton size="sm" variant="primary" :loading="saving" @click="saveRecord"> 保存 </UiButton>
         </UiForm>
       </UiSpin>
@@ -903,5 +934,20 @@ onMounted(async () => {
   gap: 8px;
   align-items: center;
   font-size: 13px;
+}
+
+.contribution-panel {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--dp-border-subtle, #e5e7eb);
+  border-radius: 8px;
+}
+.contribution-panel__title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.contribution-panel__hint {
+  color: var(--dp-text-secondary, #6b7280);
+  font-size: 12px;
 }
 </style>

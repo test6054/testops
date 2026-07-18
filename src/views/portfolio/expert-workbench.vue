@@ -117,10 +117,14 @@ onMounted(() => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar
-      title="专家评审工作台"
-      subtitle="仅展示本人有效授权范围内的评审任务；不可访问无关档案与敏感字段"
-    />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="专家评审工作台"
+        subtitle="仅展示本人有效授权范围内的评审任务；不可访问无关档案与敏感字段"
+      />
+    </template>
     <UiCard :loading="loading">
       <UiDataTable
         :load-error="loadError"

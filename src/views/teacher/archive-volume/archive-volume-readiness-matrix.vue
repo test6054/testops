@@ -9,7 +9,7 @@
     </template>
 
     <template #signal>
-      <SignalBand :metrics="signalMetrics" compact />
+      <SignalBand :metrics="signalMetrics" variant="panel" compact />
     </template>
 
     <WorkbenchSurfaceCard flush class="archive-readiness-matrix">
@@ -51,7 +51,7 @@
             placeholder="迎评批次（可选）"
             style="width: 280px"
           />
-          <UiButton size="sm" @click="handleSearch">查询</UiButton>
+          <UiButton size="sm" variant="primary" @click="handleSearch">查询</UiButton>
         </div>
       </template>
 

@@ -55,6 +55,10 @@ export interface PortfolioExpertReviewMaterialItemVO {
   aiPreReviewResultTitle?: string
   /** AI 初审摘要；maskRequired 时不返回 */
   aiPreReviewSummary?: string
+  /** 身份用途切片 CAMPUS / EXTERNAL / SHARED */
+  identityScope?: string
+  /** 是否可用于校内硬性条件 */
+  usableForCampusHardCriteria?: boolean
 }
 
 export interface PortfolioExpertAssignmentReviewBundleVO {

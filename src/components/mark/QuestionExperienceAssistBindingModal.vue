@@ -42,7 +42,7 @@
 <script lang="ts" setup>
 import type { GradingExperienceAssistCandidateResponse } from '@/apis/mark/grading-experience-assist'
 import type { ExperienceRecommendationCode } from '@/types/enums/experience-recommendation-enum'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
 import {
   listExamExperienceAssistCandidates,

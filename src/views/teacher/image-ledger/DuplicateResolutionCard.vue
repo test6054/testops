@@ -12,6 +12,7 @@
       :columns="columns"
       :data-source="rows"
       :loading="loading"
+      :load-error="loadError"
       :total="pageTotal"
       :sticky-header="false"
       flat
@@ -64,7 +65,7 @@ const props = defineProps<{
 
 defineEmits<{ (e: 'resolve', record: ExamPaperDuplicateResolutionVO): void }>()
 
-const { rows, loading, pageNum, pageSize, pageTotal, filters, search, handlePageChange }
+const { rows, loading, pageNum, pageSize, pageTotal, filters, loadError, loadPage, search, handlePageChange }
   = useQueryTable<ExamPaperDuplicateResolutionVO, { examId: string }>(
     (params) => pagePendingDuplicates(params),
     {

@@ -2,6 +2,7 @@
   <div class="archive-supervision-panel">
     <SignalBand
       :metrics="panelSignalMetrics"
+      variant="panel"
       compact
       class="archive-supervision-panel__top-signal"
     />
@@ -71,9 +72,6 @@
           :load-error="volumeLoadFailed"
           @page-change="loadVolumes"
         >
-          <template v-if="volumeLoadFailed" #empty-action>
-            <UiButton size="sm" variant="outline" @click="loadVolumes">重新加载</UiButton>
-          </template>
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'archive'">
               <button type="button" class="link-cell" @click="openDetail(record.volumeId)">
@@ -145,7 +143,7 @@
               allow-clear
               style="width: 120px"
             />
-            <UiButton size="sm" @click="queryReadinessPreview">查询</UiButton>
+            <UiButton size="sm" variant="primary" @click="queryReadinessPreview">查询</UiButton>
             <UiButton size="sm" variant="outline" @click="goReadinessMatrix">四学期矩阵</UiButton>
             <UiButton size="sm" variant="outline" @click="goMarkingQuality">阅卷督导</UiButton>
           </div>
@@ -158,6 +156,7 @@
           <SignalBand
             v-if="matrixPreviewRows.length"
             :metrics="statsMetrics"
+            variant="inline"
             compact
             class="archive-supervision-panel__signal"
           />
@@ -241,9 +240,6 @@
           :load-error="remediationLoadFailed"
           @page-change="loadRemediation"
         >
-          <template v-if="remediationLoadFailed" #empty-action>
-            <UiButton size="sm" variant="outline" @click="loadRemediation">重新加载</UiButton>
-          </template>
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'taskStatus'">
               <UiTag :tone="remediationStatusTone(record.taskStatus)" size="sm">
@@ -330,9 +326,6 @@
           :load-error="campaignLoadFailed"
           @page-change="loadCampaigns"
         >
-          <template v-if="campaignLoadFailed" #empty-action>
-            <UiButton size="sm" variant="outline" @click="loadCampaigns">重新加载</UiButton>
-          </template>
         </UiDataTable>
       </WorkbenchSurfaceCard>
     </section>
@@ -380,9 +373,6 @@
         :load-error="detailMaterialLoadFailed"
         @page-change="loadDetailMaterials"
       >
-        <template v-if="detailMaterialLoadFailed" #empty-action>
-          <UiButton size="sm" variant="outline" @click="loadDetailMaterials">重新加载</UiButton>
-        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'tags'">
             <template v-if="record.tags?.length">
@@ -450,7 +440,7 @@ import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {

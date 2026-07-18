@@ -4,7 +4,7 @@ import type {
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
@@ -696,221 +696,205 @@ onUnmounted(() => {
           </span>
         </template>
       </UiAlertStrip>
-      <WorkbenchSurfaceCard class="teacher-home__checklist">
-        <template #head>
-          <div class="teacher-home__panel-head">
-            <h3 class="teacher-home__panel-title">教学档案清单</h3>
-            <span class="teacher-home__meta">对齐六模块 · 点进已有页面维护</span>
-          </div>
-        </template>
-        <ul class="teacher-home__checklist-list">
-          <li v-for="item in moduleChecklist" :key="item.key">
-            <div class="teacher-home__check-main">
-              <span class="teacher-home__check-label">{{ item.label }}</span>
-              <span class="teacher-home__meta">{{ item.status }}</span>
+      <div class="teacher-home__grid">
+        <WorkbenchSurfaceCard class="teacher-home__checklist">
+          <template #head>
+            <div class="teacher-home__panel-head">
+              <h3 class="teacher-home__panel-title">教学档案清单</h3>
+              <span class="teacher-home__meta">对齐六模块 · 点进已有页面维护</span>
             </div>
-            <UiButton
-              v-if="item.run"
-              size="sm"
-              :variant="item.key === 'process' ? 'outline' : 'ghost'"
-              @click="item.run()"
-            >
-              {{ item.actionLabel }}
-            </UiButton>
-          </li>
-        </ul>
-        <p class="teacher-home__antipile">
-          材料覆盖完整度反映填报进度，不等于教学代表作质量；出包前请甄选证据。
-          <UiButton size="sm" variant="ghost" @click="goMasterpiece">预览代表作</UiButton>
-        </p>
-      </WorkbenchSurfaceCard>
-      <WorkbenchSurfaceCard v-if="!(canPickTeachers && !targetTeacherId)" class="teacher-home__more" flush>
-        <template #head>
-          <span class="teacher-home__panel-title">更多办理入口</span>
-        </template>
-        <ul class="teacher-home__more-list">
-          <li>
-            <span>课程与材料</span>
-            <div class="teacher-home__more-actions">
-              <UiButton size="sm" variant="ghost" @click="goCourseArchive">课程档案</UiButton>
-              <UiButton size="sm" variant="ghost" @click="goMasterpiece">预览代表作</UiButton>
-              <UiButton size="sm" variant="ghost" @click="goCorrection">我的纠错</UiButton>
-            </div>
-          </li>
-          <li>
-            <span>发展与认定</span>
-            <div class="teacher-home__more-actions">
-              <UiButton size="sm" variant="ghost" @click="goPromotionScene">职称材料包</UiButton>
-              <UiButton size="sm" variant="ghost" @click="goDualTeacherApply">资格与认定</UiButton>
-              <UiButton size="sm" variant="ghost" @click="goOneTable">教师一张表</UiButton>
-            </div>
-          </li>
-          <li>
-            <span>维护</span>
-            <div class="teacher-home__more-actions">
-              <UiButton size="sm" variant="ghost" :loading="loading" @click="reloadHomeData">刷新数据</UiButton>
-            </div>
-          </li>
-          <li>
-            <span>画像与隐私</span>
-            <div class="teacher-home__more-actions">
-              <UiButton size="sm" variant="ghost" @click="goPortrait">教师画像</UiButton>
-              <UiButton
-                v-if="canManageOwnPrivacy"
-                size="sm"
-                variant="ghost"
-                @click="goPrivacySettings"
-              >
-                隐私设置
-              </UiButton>
-            </div>
-          </li>
-        </ul>
-      </WorkbenchSurfaceCard>
-
-      <WorkbenchSurfaceCard class="teacher-home__status">
-        <template #head>
-          <div class="teacher-home__panel-head">
-            <h3 class="teacher-home__panel-title">
-              {{
-                workbenchSummary?.currentAcademicYear
-                  ? `${workbenchSummary.currentAcademicYear} 档案状态`
-                  : '档案状态'
-              }}
-            </h3>
-            <UiButton
-              variant="ghost"
-              size="sm"
-              :disabled="!portrait && !portraitAbsent"
-              @click="goPortrait"
-            >
-              查看画像
-            </UiButton>
-          </div>
-        </template>
-        <UiSpin :spinning="workbenchSummaryLoading || loading">
-          <div class="teacher-home__status-grid">
-            <section class="teacher-home__status-block">
-              <template v-if="workbenchSummary">
-                <div class="teacher-home__completeness-head">
-                  <span class="teacher-home__percent">{{ completenessPercentText }}</span>
-                  <UiTag
-                    v-if="workbenchSummary.completenessLevel"
-                    :tone="
-                      strictEnumTone(
-                        PORTFOLIO_COMPLETENESS_LEVEL_TONE,
-                        workbenchSummary.completenessLevel,
-                        '档案完整度等级',
-                      )
-                    "
+          </template>
+          <UiSpin :spinning="workbenchSummaryLoading || loading">
+            <div class="teacher-home__status-grid teacher-home__status-grid--inline">
+              <section class="teacher-home__status-block">
+                <template v-if="workbenchSummary">
+                  <div class="teacher-home__completeness-head">
+                    <span class="teacher-home__percent">{{ completenessPercentText }}</span>
+                    <UiTag
+                      v-if="workbenchSummary.completenessLevel"
+                      :tone="
+                        strictEnumTone(
+                          PORTFOLIO_COMPLETENESS_LEVEL_TONE,
+                          workbenchSummary.completenessLevel,
+                          '档案完整度等级',
+                        )
+                      "
+                    >
+                      {{
+                        strictEnumLabel(
+                          PortfolioCompletenessLevelDescription,
+                          workbenchSummary.completenessLevel,
+                          '档案完整度等级',
+                        )
+                      }}
+                    </UiTag>
+                  </div>
+                  <p class="teacher-home__meta">
+                    必填分类 {{ workbenchSummary.requiredCategoryDone ?? 0 }} /
+                    {{ workbenchSummary.requiredCategoryTotal ?? 0 }} · 荣誉
+                    {{ workbenchSummary.honorTotalCount ?? 0 }} · 拓展
+                    {{ workbenchSummary.extensionActivityTotalCount ?? 0 }}
+                  </p>
+                  <p
+                    v-if="(workbenchSummary.courseArchiveTaughtCourseCount ?? 0) > 0"
+                    class="teacher-home__meta teacher-home__meta--link"
+                    @click="goCourseArchiveWithAcademicYear(workbenchSummary?.currentAcademicYear)"
                   >
-                    {{
-                      strictEnumLabel(
-                        PortfolioCompletenessLevelDescription,
-                        workbenchSummary.completenessLevel,
-                        '档案完整度等级',
-                      )
-                    }}
-                  </UiTag>
-                </div>
-                <p class="teacher-home__meta">
-                  必填分类 {{ workbenchSummary.requiredCategoryDone ?? 0 }} /
-                  {{ workbenchSummary.requiredCategoryTotal ?? 0 }} · 荣誉
-                  {{ workbenchSummary.honorTotalCount ?? 0 }} · 拓展
-                  {{ workbenchSummary.extensionActivityTotalCount ?? 0 }}
-                </p>
-                <p
-                  v-if="(workbenchSummary.courseArchiveTaughtCourseCount ?? 0) > 0"
-                  class="teacher-home__meta teacher-home__meta--link"
-                  @click="goCourseArchiveWithAcademicYear(workbenchSummary?.currentAcademicYear)"
+                    本学年讲授 {{ workbenchSummary.courseArchiveTaughtCourseCount }} 门 · 五框架齐备
+                    {{ workbenchSummary.courseArchiveFullyCompleteCount ?? 0 }} 门（{{
+                      workbenchSummary.courseArchiveFrameworkSlotDone ?? 0
+                    }}/{{ workbenchSummary.courseArchiveFrameworkSlotTotal ?? 0 }}）
+                  </p>
+                  <p
+                    v-if="
+                      workbenchSummary.completenessPercent === 0
+                        && (workbenchSummary.requiredCategoryDone ?? 0) === 0
+                    "
+                    class="teacher-home__onboarding"
+                  >
+                    数据不足，请先完成建档
+                  </p>
+                </template>
+                <UiEmpty size="sm" v-else-if="!workbenchSummaryLoading" description="尚未生成档案完整度" />
+              </section>
+              <section class="teacher-home__status-block">
+                <template v-if="portrait">
+                  <p class="teacher-home__portrait-score">
+                    综合画像 {{ portrait.compositeScore }}
+                    <span class="teacher-home__portrait-unit">分</span>
+                  </p>
+                  <p class="teacher-home__meta">
+                    正式档案 {{ portrait.officialRecordCount }} 条
+                    <template v-if="portrait.computedTime">
+                      · 更新于 {{ portrait.computedTime }}
+                    </template>
+                  </p>
+                  <p v-if="portraitDataInsufficient" class="teacher-home__onboarding">
+                    画像数据不足，请先完成建档
+                  </p>
+                </template>
+                <UiEmpty v-else-if="portraitAbsent && !loading" size="sm" description="尚未生成画像快照" />
+                <UiButton
+                  v-if="portrait || portraitAbsent"
+                  class="teacher-home__portrait-link"
+                  variant="ghost"
+                  size="sm"
+                  @click="goPortrait"
                 >
-                  本学年讲授 {{ workbenchSummary.courseArchiveTaughtCourseCount }} 门 · 五框架齐备
-                  {{ workbenchSummary.courseArchiveFullyCompleteCount ?? 0 }} 门（{{
-                    workbenchSummary.courseArchiveFrameworkSlotDone ?? 0
-                  }}/{{ workbenchSummary.courseArchiveFrameworkSlotTotal ?? 0 }}）
-                </p>
-                <p
-                  v-if="
-                    workbenchSummary.completenessPercent === 0
-                      && (workbenchSummary.requiredCategoryDone ?? 0) === 0
-                  "
-                  class="teacher-home__onboarding"
-                >
-                  数据不足，请先完成建档
-                </p>
-              </template>
-              <UiEmpty size="sm" v-else-if="!workbenchSummaryLoading" description="尚未生成档案完整度" />
-            </section>
-            <section class="teacher-home__status-block">
-              <template v-if="portrait">
-                <p class="teacher-home__portrait-score">
-                  综合画像 {{ portrait.compositeScore }}
-                  <span class="teacher-home__portrait-unit">分</span>
-                </p>
-                <p class="teacher-home__meta">
-                  正式档案 {{ portrait.officialRecordCount }} 条
-                  <template v-if="portrait.computedTime">
-                    · 更新于 {{ portrait.computedTime }}
-                  </template>
-                </p>
-                <p v-if="portraitDataInsufficient" class="teacher-home__onboarding">
-                  画像数据不足，请先完成建档
-                </p>
-              </template>
-              <UiEmpty v-else-if="portraitAbsent && !loading" size="sm" description="尚未生成画像快照" />
-            </section>
-          </div>
-        </UiSpin>
-      </WorkbenchSurfaceCard>
-
-      <WorkbenchSurfaceCard class="teacher-home__todos">
-        <template #head>
-          <div class="teacher-home__panel-head">
-            <h3 class="teacher-home__panel-title">待办聚合</h3>
-            <span v-if="workbenchSummary" class="teacher-home__todo-count">
-              未完成 {{ workbenchSummary.pendingTodoCount }} 项
-            </span>
-          </div>
-        </template>
-        <UiSpin :spinning="todoLoading || workbenchSummaryLoading">
-          <ul v-if="todos.length" class="teacher-home__todo-list">
-            <li
-              v-for="item in todos"
-              :key="`${item.todoType}-${item.refId}`"
-              class="teacher-home__todo-item"
-              @click="openTodo(item)"
-            >
-              <p class="teacher-home__todo-title">
-                {{ item.title }}
-              </p>
-              <p v-if="item.summary" class="teacher-home__meta">
-                {{ item.summary }}
-              </p>
-              <p v-if="todoCourseScopeLabel(item)" class="teacher-home__meta">
-                课程 {{ todoCourseScopeLabel(item) }}
-              </p>
-              <p v-if="item.dueTime" class="teacher-home__meta">截止 {{ item.dueTime }}</p>
+                  查看画像
+                </UiButton>
+              </section>
+            </div>
+          </UiSpin>
+          <ul class="teacher-home__checklist-list">
+            <li v-for="item in moduleChecklist" :key="item.key">
+              <div class="teacher-home__check-main">
+                <span class="teacher-home__check-label">{{ item.label }}</span>
+                <span class="teacher-home__meta">{{ item.status }}</span>
+              </div>
               <UiButton
-                v-if="
-                  item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED && canManageOwnPrivacy
-                "
+                v-if="item.run"
                 size="sm"
-                variant="soft"
-                :loading="acknowledgingTodoKey === `${item.todoType}:${item.refId}`"
-                :disabled="Boolean(acknowledgingTodoKey)"
-                @click.stop="acknowledgeRejectedCorrection(item)"
+                :variant="item.key === 'process' ? 'outline' : 'ghost'"
+                @click="item.run()"
               >
-                确认知悉
+                {{ item.actionLabel }}
               </UiButton>
             </li>
           </ul>
-          <UiEmpty
-            size="sm"
-            v-else
-            description="当前无未完成待办。若刚提交材料请刷新；缺口与退回会出现在此列表，不会被隐藏。"
-          />
-        </UiSpin>
-      </WorkbenchSurfaceCard>
+          <ul class="teacher-home__more-list">
+            <li>
+              <span class="teacher-home__more-label">课程与材料</span>
+              <div class="teacher-home__more-actions">
+                <UiButton size="sm" variant="ghost" @click="goCourseArchive">课程档案</UiButton>
+                <UiButton size="sm" variant="ghost" @click="goMasterpiece">预览代表作</UiButton>
+                <UiButton size="sm" variant="ghost" @click="goCorrection">我的纠错</UiButton>
+              </div>
+            </li>
+            <li>
+              <span class="teacher-home__more-label">发展与认定</span>
+              <div class="teacher-home__more-actions">
+                <UiButton size="sm" variant="ghost" @click="goPromotionScene">职称材料包</UiButton>
+                <UiButton size="sm" variant="ghost" @click="goDualTeacherApply">资格与认定</UiButton>
+                <UiButton size="sm" variant="ghost" @click="goOneTable">教师一张表</UiButton>
+              </div>
+            </li>
+            <li>
+              <span class="teacher-home__more-label">维护</span>
+              <div class="teacher-home__more-actions">
+                <UiButton size="sm" variant="ghost" :loading="loading" @click="reloadHomeData">刷新数据</UiButton>
+              </div>
+            </li>
+            <li>
+              <span class="teacher-home__more-label">画像与隐私</span>
+              <div class="teacher-home__more-actions">
+                <UiButton size="sm" variant="ghost" @click="goPortrait">教师画像</UiButton>
+                <UiButton
+                  v-if="canManageOwnPrivacy"
+                  size="sm"
+                  variant="ghost"
+                  @click="goPrivacySettings"
+                >
+                  隐私设置
+                </UiButton>
+              </div>
+            </li>
+          </ul>
+          <p class="teacher-home__antipile">
+            材料覆盖完整度反映填报进度，不等于教学代表作质量；出包前请甄选证据。
+            <UiButton size="sm" variant="ghost" @click="goMasterpiece">预览代表作</UiButton>
+          </p>
+        </WorkbenchSurfaceCard>
+
+        <WorkbenchSurfaceCard class="teacher-home__todos">
+          <template #head>
+            <div class="teacher-home__panel-head">
+              <h3 class="teacher-home__panel-title">待办聚合</h3>
+              <span v-if="workbenchSummary" class="teacher-home__todo-count">
+                未完成 {{ workbenchSummary.pendingTodoCount }} 项
+              </span>
+            </div>
+          </template>
+          <UiSpin :spinning="todoLoading || workbenchSummaryLoading">
+            <ul v-if="todos.length" class="teacher-home__todo-list">
+              <li
+                v-for="item in todos"
+                :key="`${item.todoType}-${item.refId}`"
+                class="teacher-home__todo-item"
+                @click="openTodo(item)"
+              >
+                <p class="teacher-home__todo-title">
+                  {{ item.title }}
+                </p>
+                <p v-if="item.summary" class="teacher-home__meta">
+                  {{ item.summary }}
+                </p>
+                <p v-if="todoCourseScopeLabel(item)" class="teacher-home__meta">
+                  课程 {{ todoCourseScopeLabel(item) }}
+                </p>
+                <p v-if="item.dueTime" class="teacher-home__meta">截止 {{ item.dueTime }}</p>
+                <UiButton
+                  v-if="
+                    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED && canManageOwnPrivacy
+                  "
+                  size="sm"
+                  variant="soft"
+                  :loading="acknowledgingTodoKey === `${item.todoType}:${item.refId}`"
+                  :disabled="Boolean(acknowledgingTodoKey)"
+                  @click.stop="acknowledgeRejectedCorrection(item)"
+                >
+                  确认知悉
+                </UiButton>
+              </li>
+            </ul>
+            <UiEmpty
+              size="sm"
+              v-else
+              description="当前无未完成待办。若刚提交材料请刷新；缺口与退回会出现在此列表，不会被隐藏。"
+            />
+          </UiSpin>
+        </WorkbenchSurfaceCard>
+      </div>
     </div>
   </StageWorkbenchShell>
   <PortfolioProgressCompareDrawer v-model:open="compareDrawerOpen" :teacher-id="targetTeacherId" />
@@ -922,6 +906,19 @@ onUnmounted(() => {
   flex-direction: column;
   gap: var(--dp-space-4);
   min-width: 0;
+}
+
+.teacher-home__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dp-space-4);
+  min-width: 0;
+}
+
+.teacher-home__status-grid--inline {
+  margin-bottom: var(--dp-space-3);
+  padding-bottom: var(--dp-space-3);
+  border-bottom: 1px solid var(--dp-border-subtle);
 }
 
 .teacher-home__actions {
@@ -941,8 +938,10 @@ onUnmounted(() => {
 
 .teacher-home__panel-title {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--dp-text-primary);
 }
 
 .teacher-home__status-grid {
@@ -958,10 +957,12 @@ onUnmounted(() => {
 }
 
 .teacher-home__percent {
-  font-size: 22px;
-  font-weight: var(--dp-font-weight-semibold);
-  line-height: 1.2;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.15;
   color: var(--dp-text-primary);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .teacher-home__portrait-score {
@@ -1009,18 +1010,27 @@ onUnmounted(() => {
 }
 
 .teacher-home__todo-item {
-  padding: var(--dp-space-2) 0;
-  border-bottom: 1px solid var(--dp-border-subtle);
+  padding: var(--dp-space-3);
+  margin-bottom: var(--dp-space-2);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-surface-elevated);
   cursor: pointer;
+  transition:
+    border-color var(--dp-duration-normal) ease,
+    background var(--dp-duration-normal) ease;
 }
 
 .teacher-home__todo-item:hover {
-  background: var(--dp-fill-quaternary);
+  background: var(--dp-surface);
+  border-color: var(--dp-color-primary-border);
 }
 
 .teacher-home__todo-title {
   margin: 0;
   font-size: 14px;
+  font-weight: 500;
+  color: var(--dp-text-primary);
 }
 
 .teacher-home__hint {
@@ -1028,14 +1038,12 @@ onUnmounted(() => {
 }
 
 @media (max-width: 960px) {
+  .teacher-home__grid,
   .teacher-home__status-grid {
     grid-template-columns: 1fr;
   }
 }
 
-.teacher-home__checklist {
-  margin-bottom: var(--dp-space-4);
-}
 .teacher-home__checklist-list {
   list-style: none;
   margin: 0;
@@ -1048,10 +1056,18 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: var(--dp-space-3);
-  min-height: 36px;
-  padding: 0 var(--dp-space-1);
-  border-bottom: 1px solid var(--dp-border-secondary);
+  min-height: 44px;
+  padding: var(--dp-space-2) var(--dp-space-3);
+  border: 1px solid var(--dp-border);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-surface-elevated);
   font-size: var(--dp-font-size-sm);
+  transition: border-color var(--dp-duration-normal) ease;
+
+  &:hover {
+    border-color: var(--dp-color-primary-border);
+    background: var(--dp-surface);
+  }
 }
 .teacher-home__check-main {
   display: flex;
@@ -1071,6 +1087,39 @@ onUnmounted(() => {
   align-items: center;
   flex-wrap: wrap;
   gap: var(--dp-space-2);
+}
+
+.teacher-home__more-list {
+  list-style: none;
+  margin: var(--dp-space-3) 0 0;
+  padding: var(--dp-space-3) 0 0;
+  border-top: 1px solid var(--dp-border-subtle);
+  display: grid;
+  gap: var(--dp-space-2);
+}
+
+.teacher-home__more-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+  flex-wrap: wrap;
+  min-height: 32px;
+}
+
+.teacher-home__more-label {
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+
+.teacher-home__more-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-1);
+}
+
+.teacher-home__portrait-link {
+  margin-top: var(--dp-space-2);
 }
 
 .teacher-home__skip-prompt {

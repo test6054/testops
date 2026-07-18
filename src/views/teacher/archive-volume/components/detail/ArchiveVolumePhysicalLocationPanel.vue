@@ -3,7 +3,7 @@ import type {
   ArchivePhysicalLocationResponse,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ArchiveSecurityLevelDescription,

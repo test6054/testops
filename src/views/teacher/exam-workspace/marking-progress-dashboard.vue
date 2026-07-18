@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { TableColumnsType } from 'ant-design-vue'
+import type { ColumnsType as TableColumnsType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
 import type {
   FormalSessionResponse,
@@ -228,14 +228,18 @@ watch(examId, () => loadPanel(), { immediate: true })
 <template>
   <StageWorkbenchShell class="marking-progress-dash">
     <template v-if="examId" #context>
-      <ContextBar layout="workbench">
+      <ContextBar
+        layout="workbench"
+        show-title
+        :title="isTrialPhase ? '试评进度' : '阅卷进度'"
+      >
         <template #status>
           <UiTag :tone="progressPercent >= 100 ? 'green' : 'blue'" size="sm">
             任务完成 {{ progressPercent }}%
           </UiTag>
         </template>
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goTaskPool">
+          <UiButton variant="primary" size="sm" @click="goTaskPool">
             {{ isTrialPhase ? '试评任务池' : '阅卷任务池' }}
           </UiButton>
         </template>
@@ -243,7 +247,7 @@ watch(examId, () => loadPanel(), { immediate: true })
     </template>
 
     <template v-if="examId && panel" #signal>
-      <SignalBand compact :metrics="signalMetrics" />
+      <SignalBand compact variant="panel" :metrics="signalMetrics" />
     </template>
 
     <ExamSelectGateStrip v-if="!examId" class="marking-progress-dash__empty" />
@@ -251,10 +255,8 @@ watch(examId, () => loadPanel(), { immediate: true })
     <UiEmpty
       size="sm"
       v-else-if="loadFailed"
-      description="阅卷进度加载失败"
-      action-label="重试"
+      title="加载失败"
       class="marking-progress-dash__empty"
-      @action="loadPanel"
     />
 
     <UiSkeletonState v-else-if="loading && !panel" variant="card" compact />
@@ -407,14 +409,17 @@ watch(examId, () => loadPanel(), { immediate: true })
 
 <style scoped>
 .marking-progress-dash__empty {
-  margin-top: var(--dp-space-3, 12px);
+  margin-top: var(--dp-space-4);
 }
 
 .marking-progress-dash__head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--dp-space-2);
+  font-size: 15px;
   font-weight: 600;
+  color: var(--dp-text-primary);
+  letter-spacing: -0.01em;
 }
 
 .marking-progress-dash__toolbar {
@@ -422,12 +427,13 @@ watch(examId, () => loadPanel(), { immediate: true })
   flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--dp-space-3);
   width: 100%;
 }
 
 .marking-progress-dash__mono {
   font-variant-numeric: tabular-nums;
   font-size: 13px;
+  color: var(--dp-text-secondary);
 }
 </style>

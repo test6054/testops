@@ -336,8 +336,10 @@ function qualityFillClass(rate: number): string {
     align-items: center;
     gap: var(--dp-space-2);
     margin: 0;
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--dp-text-primary);
   }
 
   &__quality-list {
@@ -350,7 +352,13 @@ function qualityFillClass(rate: number): string {
     display: flex;
     align-items: center;
     gap: var(--dp-space-3);
-    padding: var(--dp-space-2) 0;
+    padding: var(--dp-space-2) var(--dp-space-1);
+    border-radius: var(--dp-radius-control);
+    transition: background var(--dp-duration-fast) ease;
+
+    &:hover {
+      background: var(--dp-surface-elevated);
+    }
   }
 
   &__quality-name {

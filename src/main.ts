@@ -1,6 +1,4 @@
-import Antd from 'ant-design-vue'
 import { createApp } from 'vue'
-import VueKonva from 'vue-konva'
 // 错误处理
 import { DEV_ERROR_CONFIG, initGlobalErrorHandler, PROD_ERROR_CONFIG } from '@/config/error-config'
 import { installVueECharts } from '@/plugins/vue-echarts'
@@ -69,14 +67,13 @@ configureAppFeedback()
 const app = createApp(App)
 
 installVueECharts(app)
-app.use(VueKonva)
 
 app.use(pinia)
 
 // 在路由初始化之前注册 pinia；认证恢复不阻塞首屏挂载，由路由守卫与后台 initializeAuth 承接
 const authStore = useAuthStore()
 
-app.use(Antd)
+// Ant Design Vue / vue-konva 均按需注册：组件走 unplugin-vue-components，Konva 仅 LayoutCanvas 局部导入
 app.use(router)
 app.mount('#app')
 

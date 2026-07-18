@@ -1,7 +1,12 @@
 <template>
   <StageWorkbenchShell class="scan-manual-entry">
     <template v-if="selectedExamId" #context>
-      <ContextBar layout="workbench" :subtitle="contextBarSubtitle">
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="手动补录"
+        :subtitle="contextBarSubtitle"
+      >
         <template #status>
           <UiTag
             v-if="workbench"
@@ -32,6 +37,7 @@
     <template v-if="selectedExamId" #signal>
       <SignalBand
         compact
+        variant="panel"
         :metrics="signalMetrics"
         class="scan-manual-entry__stats"
         @metric-click="handleMetricClick"

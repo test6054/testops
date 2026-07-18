@@ -11,7 +11,7 @@ import type {
 } from '@/apis/quality/accreditation'
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,

@@ -54,7 +54,7 @@ export function buildPortraitRadarChartOption(
   ]
   const showCohortMedian
     = cohort
-      && cohort.displayMode !== PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT
+      && cohort.displayMode === PortfolioPortraitCohortDisplayModeCode.FULL
       && cohort.dimensions.some((item) => item.cohortMedian != null)
   if (showCohortMedian) {
     const cohortMedianValues = dimensions.map((item) => {
@@ -97,13 +97,14 @@ export function buildPortraitRadarChartOption(
   })
 }
 
-/** 同群体 P25–P75 区间对比：仅展示分布区间，不展示名次 */
+/** 同群体分位区间对比：仅展示分布区间，不展示名次；LIMITED 不展示中位/均值具体值（§8.55） */
 export function buildPortraitCohortRangeChartOption(
   cohort: PortfolioTeacherPortraitCohortCompareVO,
 ): EChartsCoreOption {
   if (cohort.displayMode === PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT) {
     return emptyChartOption('同院系样本不足，暂不展示群体区间')
   }
+  const limited = cohort.displayMode === PortfolioPortraitCohortDisplayModeCode.LIMITED
   const rows = cohort.dimensions.filter(
     (item) => item.cohortPercentileLow != null && item.cohortPercentileHigh != null,
   )
@@ -119,6 +120,41 @@ export function buildPortraitCohortRangeChartOption(
   const medianValues = rows.map((item) => Number(item.cohortMedian ?? item.cohortAverage ?? 0))
   const bandColor = resolveThemeColor('--dp-warning-bg', 'rgba(245, 158, 11, 0.28)')
   const medianColor = MARK_ECHARTS_PALETTE.warning
+  const series: Array<Record<string, unknown>> = [
+    {
+      name: '区间基线',
+      type: 'bar',
+      stack: 'range',
+      itemStyle: { color: 'transparent' },
+      emphasis: { disabled: true },
+      data: lowValues,
+    },
+    {
+      name: limited ? '分位区间' : 'P25–P75 区间',
+      type: 'bar',
+      stack: 'range',
+      itemStyle: { color: bandColor, borderRadius: [0, 4, 4, 0] },
+      data: bandValues,
+    },
+  ]
+  if (!limited) {
+    series.push({
+      name: '群体中位',
+      type: 'scatter',
+      symbol: 'diamond',
+      symbolSize: 10,
+      itemStyle: { color: medianColor },
+      data: medianValues.map((value, index) => [value, index]),
+    })
+  }
+  series.push({
+    name: '个人得分',
+    type: 'scatter',
+    symbol: 'circle',
+    symbolSize: 12,
+    itemStyle: { color: MARK_ECHARTS_PALETTE.primary },
+    data: personalValues.map((value, index) => [value, index]),
+  })
 
   return finalizeMarkChartOption({
     tooltip: {
@@ -131,6 +167,14 @@ export function buildPortraitCohortRangeChartOption(
         if (!row) {
           return ''
         }
+        if (limited) {
+          return [
+            row.dimensionLabel,
+            `个人 ${row.personalScore}`,
+            `区间 ${row.cohortPercentileLow} – ${row.cohortPercentileHigh}`,
+            '样本量有限，仅供参考',
+          ].join('<br/>')
+        }
         return [
           row.dimensionLabel,
           `个人 ${row.personalScore}`,
@@ -142,7 +186,9 @@ export function buildPortraitCohortRangeChartOption(
     },
     legend: {
       bottom: 0,
-      data: ['P25–P75 区间', '群体中位', '个人得分'],
+      data: limited
+        ? ['分位区间', '个人得分']
+        : ['P25–P75 区间', '群体中位', '个人得分'],
       textStyle: { ...MARK_CHART_AXIS_LABEL_STYLE, fontSize: 12 },
     },
     grid: { left: 96, right: 24, top: 16, bottom: 48 },
@@ -159,39 +205,7 @@ export function buildPortraitCohortRangeChartOption(
       axisLabel: { ...MARK_CHART_AXIS_LABEL_STYLE },
       axisLine: { lineStyle: { color: MARK_ECHARTS_PALETTE.axisLine } },
     },
-    series: [
-      {
-        name: 'P25 基线',
-        type: 'bar',
-        stack: 'range',
-        itemStyle: { color: 'transparent' },
-        emphasis: { disabled: true },
-        data: lowValues,
-      },
-      {
-        name: 'P25–P75 区间',
-        type: 'bar',
-        stack: 'range',
-        itemStyle: { color: bandColor, borderRadius: [0, 4, 4, 0] },
-        data: bandValues,
-      },
-      {
-        name: '群体中位',
-        type: 'scatter',
-        symbol: 'diamond',
-        symbolSize: 10,
-        itemStyle: { color: medianColor },
-        data: medianValues.map((value, index) => [value, index]),
-      },
-      {
-        name: '个人得分',
-        type: 'scatter',
-        symbol: 'circle',
-        symbolSize: 12,
-        itemStyle: { color: MARK_ECHARTS_PALETTE.primary },
-        data: personalValues.map((value, index) => [value, index]),
-      },
-    ],
+    series,
   })
 }
 
@@ -237,10 +251,10 @@ export function resolveCohortHint(
   const label = cohortLabel ? `「${cohortLabel}」` : '同院系'
   const sampleText = `已有画像快照的同院系教师 ${sampleSize} 人`
   if (displayMode === PortfolioPortraitCohortDisplayModeCode.INSUFFICIENT) {
-    return `${label}${sampleText}，少于 5 人时不展示群体分位（§8.55）`
+    return `${label}${sampleText}，样本量不足（N=${sampleSize}），仅展示个人趋势，不展示群体分位（§8.55）`
   }
-  if (displayMode === 'LIMITED') {
-    return `${label}${sampleText}，区间仅供参考（5–14 人有限样本）`
+  if (displayMode === PortfolioPortraitCohortDisplayModeCode.LIMITED) {
+    return `${label}${sampleText}，样本量有限（N=${sampleSize}），仅供参考（§8.55）`
   }
   return `${label}${sampleText}，展示 P25–P75 区间与群体中位`
 }

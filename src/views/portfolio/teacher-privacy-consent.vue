@@ -7,7 +7,7 @@ import type {
   PortfolioPrivacyConsentNoticeVO,
   PortfolioPrivacyConsentVO,
 } from '@/apis/portfolio/privacy-consent'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioPrivacyConsentApi } from '@/apis/portfolio/privacy-consent'
@@ -168,7 +168,14 @@ watch(
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="个人信息处理同意" subtitle="管理教师数据采集与使用授权" />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="个人信息处理同意"
+        subtitle="管理教师数据采集与使用授权"
+      />
+    </template>
     <div
       v-if="isProxyPrivacyTarget"
       class="privacy-consent__proxy-gate"

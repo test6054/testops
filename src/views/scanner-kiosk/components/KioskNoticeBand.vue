@@ -5,7 +5,7 @@
  * 将 workflow.errorMessage / successMessage 映射为右上角单条 notification；
  * 错误优先于成功，同一时刻只展示一条。
  */
-import { notification } from 'ant-design-vue'
+import notification from 'ant-design-vue/es/notification'
 import { computed, h, onBeforeUnmount, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import {

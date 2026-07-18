@@ -59,3 +59,27 @@
     line-height: var(--dp-type-quality-body-line-height);
   }
 }
+
+/* 页级字阶：拉开标题 / 正文 / 元信息对比 */
+.dp-page-lead {
+  margin: 0;
+  font-size: var(--dp-font-size-md, 16px);
+  line-height: 1.5;
+  font-weight: 500;
+  color: var(--dp-text-primary);
+}
+
+.dp-section-title {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--dp-text-primary);
+}
+
+.dp-meta {
+  margin: 0;
+  font-size: var(--dp-font-size-xs, 12px);
+  line-height: 1.4;
+  color: var(--dp-text-muted);
+}

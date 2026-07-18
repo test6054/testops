@@ -50,7 +50,7 @@ import type { QualityCourseMatrixSignalSummaryVO } from '@/apis/quality/workbenc
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
@@ -613,6 +613,7 @@ const requirementsCoveredCount = computed(() => {
 })
 
 const signalSummary = ref<QualityCourseMatrixSignalSummaryVO | null>(null)
+const activeTab = ref<'support' | 'assess' | 'goals'>('support')
 
 async function loadSignalSummary() {
   if (!qualityStore.currentQualityCourseId) {
@@ -645,18 +646,28 @@ const signals = computed<SignalMetric[]>(() => {
   const assessmentItemHealthyCount = summary.assessmentItemHealthyCount ?? 0
   const courseGoalWeightedCount = summary.courseGoalWeightedCount ?? goalsWeighted.value
   const courseGoalHealthyCount = summary.courseGoalHealthyCount ?? goalsHealthy.value
+  const goalsCoverageOk = courseGoalTotal === 0 || courseGoalCoveredCount === courseGoalTotal
+  const itemsHealthOk
+    = assessmentItemWeightedCount === 0
+      || assessmentItemHealthyCount === assessmentItemWeightedCount
+  const goalsWeightHealthOk
+    = courseGoalWeightedCount === 0 || courseGoalHealthyCount === courseGoalWeightedCount
   return [
     {
       key: 'goals',
       label: '课程目标数',
       value: courseGoalTotal,
       tone: courseGoalTotal === 0 ? 'gray' : 'blue',
+      clickable: courseGoalTotal > 0,
+      active: activeTab.value === 'goals',
     },
     {
       key: 'goalsCovered',
       label: '已挂支撑目标',
       value: `${courseGoalCoveredCount}/${courseGoalTotal}`,
-      tone: courseGoalTotal > 0 && courseGoalCoveredCount === courseGoalTotal ? 'green' : 'red',
+      tone: goalsCoverageOk ? 'green' : 'red',
+      clickable: !goalsCoverageOk,
+      active: activeTab.value === 'support' && !goalsCoverageOk,
     },
     {
       key: 'reqCovered',
@@ -675,6 +686,8 @@ const signals = computed<SignalMetric[]>(() => {
       label: '考核环节数',
       value: assessmentItemTotal,
       tone: assessmentItemTotal === 0 ? 'gray' : 'blue',
+      clickable: assessmentItemTotal > 0,
+      active: activeTab.value === 'assess',
     },
     {
       key: 'itemsHealth',
@@ -690,6 +703,8 @@ const signals = computed<SignalMetric[]>(() => {
           : assessmentItemWeightedCount > 0
             ? 'red'
             : 'gray',
+      clickable: !itemsHealthOk,
+      active: activeTab.value === 'assess' && !itemsHealthOk,
     },
     {
       key: 'goalsWeightHealth',
@@ -704,9 +719,25 @@ const signals = computed<SignalMetric[]>(() => {
           : courseGoalWeightedCount > 0
             ? 'red'
             : 'gray',
+      clickable: !goalsWeightHealthOk,
+      active: activeTab.value === 'goals' && !goalsWeightHealthOk,
     },
   ]
 })
+
+function handleSignalMetricClick(key: string): void {
+  if (key === 'goals' || key === 'goalsWeightHealth') {
+    activeTab.value = 'goals'
+    return
+  }
+  if (key === 'items' || key === 'itemsHealth') {
+    activeTab.value = 'assess'
+    return
+  }
+  if (key === 'goalsCovered') {
+    activeTab.value = 'support'
+  }
+}
 
 /* ========== 矩阵 1：课程目标 × 毕业要求/观测点 ========== */
 
@@ -1790,9 +1821,6 @@ async function submitRule() {
 
 /* ========== 上下文与 Tab 切换 ========== */
 
-const activeTab = ref<'support' | 'assess' | 'goals'>('support')
-
-
 const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   if (!qualityStore.currentTrainingPlanId) {
     return 'need-plan'
@@ -1858,7 +1886,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <QualityPageContextBar>
+      <QualityPageContextBar show-title title="课程支撑矩阵">
         <template #status>
           <span class="qcm__context-label">质量评价课程</span>
           <CourseSelector
@@ -1907,7 +1935,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
       class="qcm__empty"
     >
       <template #default>
-        <span style="display:inline-flex;align-items:center;gap:8px">
+        <span class="qcm__gate-row">
           <UiTag tone="blue" size="sm">未选择课程</UiTag>
           <span>请在上方选择质量评价课程后再维护支撑矩阵</span>
         </span>
@@ -1915,7 +1943,13 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
     </UiAlertStrip>
 
     <template v-else>
-      <SignalBand :metrics="signals" compact class="qcm__signals" />
+      <SignalBand
+        :metrics="signals"
+        variant="panel"
+        compact
+        class="qcm__signals"
+        @metric-click="handleSignalMetricClick"
+      />
 
       <div class="qcm__tabs">
         <UiButton
@@ -2761,28 +2795,28 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
   }
 
   &__signals {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-3);
   }
 
   &__tabs {
     display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
+    gap: var(--dp-space-2);
+    margin-bottom: var(--dp-space-3);
     flex-wrap: wrap;
   }
 
   &__tab-content {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: var(--dp-space-3);
   }
 
   &__matrix-toolbar,
   &__rubric-toolbar {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 8px 0;
+    gap: var(--dp-space-3);
+    padding: var(--dp-space-2) 0;
   }
 
   &__hint {
@@ -2800,8 +2834,17 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
   }
 
   &__file-name {
-    margin-top: 8px;
+    margin-top: var(--dp-space-2);
     font-size: 12px;
+    color: var(--dp-text-secondary);
+  }
+
+  &__gate-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--dp-space-2);
+    min-width: 0;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 }

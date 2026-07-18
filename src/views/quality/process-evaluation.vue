@@ -27,7 +27,7 @@ import type { ProcessEvaluationSignalSummaryVO } from '@/apis/quality/workbench'
  */
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { processNodeApi } from '@/apis/quality/process-evaluation'
@@ -899,7 +899,7 @@ function handleCourseChange(courseId: string | null) {
 <template>
   <QualityIngestPageShell embedded>
     <template #context>
-      <QualityPageContextBar>
+      <QualityPageContextBar show-title title="过程性评价">
         <template #status>
           <span class="pe__filter-label">质量评价课程：</span>
           <CourseSelector
@@ -921,6 +921,7 @@ function handleCourseChange(courseId: string | null) {
     <SignalBand
       v-else-if="qualityStore.currentQualityCourseId"
       :metrics="signals"
+      variant="panel"
       compact
       class="pe__signals"
     />

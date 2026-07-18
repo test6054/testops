@@ -10,7 +10,7 @@ import type {
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -36,6 +36,10 @@ import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
+import {
+  PortfolioMultiSourceEvaluatorTypeCode,
+  PortfolioMultiSourceEvaluatorTypeOptions,
+} from '@/types/enums/portfolio-multi-source-evaluator-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
 import { buildEmptyPageResult } from '@/utils/page-result'
@@ -74,6 +78,8 @@ const {
   pageSize: entryPageSize,
   pageTotal: entryPageTotal,
   filters: entryFilters,
+  loadError: entryLoadError,
+  loadPage: loadEntryPage,
   handlePageChange: handleEntryPageChange,
   search: searchEntries,
 } = useQueryTable<PortfolioEvaluationEntryVO, { evaluationTaskId: string }>(
@@ -94,11 +100,13 @@ const fillForm = reactive<{
   indicatorCode: string
   score?: number
   commentText: string
+  evaluatorSourceType: string
 }>({
   subjectTeacherUserId: '',
   indicatorCode: '',
   score: undefined,
   commentText: '',
+  evaluatorSourceType: PortfolioMultiSourceEvaluatorTypeCode.PEER,
 })
 
 const selectedTask = computed(() => tasks.value.find((item) => item.id === selectedTaskId.value))
@@ -149,7 +157,7 @@ const taskSummaryItems = computed<UiStatPanelItem[]>(() => {
       value: String(summary.value.entryCount),
       tone: 'blue',
     },
-    { key: 'avg', label: '平均分', value: summary.value.averageScore, unit: '分' },
+    { key: 'avg', label: '加权综合分', value: summary.value.averageScore, unit: '分' },
     { key: 'mode', label: '评价模式', value: evaluationModeLabel(summary.value.evaluationMode) },
   ]
 })
@@ -158,6 +166,7 @@ const entryColumns: ColumnsType<PortfolioEvaluationEntryVO> = [
   { title: '被评教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 100 },
   { title: '指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
   { title: '得分', dataIndex: 'score', key: 'score', width: 72 },
+  { title: '来源', dataIndex: 'evaluatorSourceTypeLabel', key: 'evaluatorSourceTypeLabel', width: 110 },
   { title: '评语', dataIndex: 'commentText', key: 'commentText' },
   { title: '评价人', dataIndex: 'evaluatorUserId', key: 'evaluatorUserId', width: 100 },
 ]
@@ -166,6 +175,8 @@ const summaryColumns = computed<ColumnsType<PortfolioEvaluationEntrySummaryItemV
   const metricColumns: ColumnsType<PortfolioEvaluationEntrySummaryItemVO> = [
     { title: '条目数', dataIndex: 'entryCount', key: 'entryCount', width: 80 },
     { title: '平均分', dataIndex: 'averageScore', key: 'averageScore', width: 88 },
+    { title: '加权分', dataIndex: 'weightedScore', key: 'weightedScore', width: 88 },
+    { title: '学生样本', dataIndex: 'studentSampleSize', key: 'studentSampleSize', width: 88 },
   ]
   if (summary.value?.evaluationMode === 'BY_INDICATOR') {
     return [
@@ -330,6 +341,10 @@ async function saveEntry() {
     showFormValidationMessage('请填写被评教师与得分')
     return
   }
+  if (!fillForm.evaluatorSourceType.trim()) {
+    showFormValidationMessage('请选择评价来源类型（§8.53）')
+    return
+  }
   if (isByIndicator.value && !fillForm.indicatorCode.trim()) {
     showFormValidationMessage('以指标为主模式须选择指标')
     return
@@ -342,6 +357,7 @@ async function saveEntry() {
       indicatorCode: isByIndicator.value ? fillForm.indicatorCode.trim() : undefined,
       score: fillForm.score,
       commentText: fillForm.commentText.trim() || undefined,
+      evaluatorSourceType: fillForm.evaluatorSourceType.trim(),
     })
     message.success('评价已保存')
     fillForm.score = undefined
@@ -480,6 +496,13 @@ onMounted(async () => {
             placeholder="得分"
             style="width: 100px"
           />
+          <UiSelect
+            v-model="fillForm.evaluatorSourceType"
+            placeholder="评价来源"
+            style="width: 160px"
+            size="sm"
+            :options="PortfolioMultiSourceEvaluatorTypeOptions"
+          />
           <UiInput
             size="sm" v-model="fillForm.commentText" placeholder="评语" style="flex: 1"
           />
@@ -495,7 +518,7 @@ onMounted(async () => {
         </div>
         <UiEmpty
           size="sm"
-          v-if="!entryTableLoading && entries.length === 0"
+          v-if="!entryLoadError && !entryTableLoading && entries.length === 0"
           description="当前筛选无填答记录"
         />
         <UiDataTable
@@ -505,6 +528,7 @@ onMounted(async () => {
           :columns="entryColumns"
           :data-source="entries"
           :loading="entryTableLoading"
+          :load-error="entryLoadError"
           :total="entryPageTotal"
           row-key="id"
           style="margin-top: 16px"
@@ -522,7 +546,7 @@ onMounted(async () => {
           <span>条目 {{ summary.entryCount }}</span>
           <span>平均分 {{ summary.averageScore }}</span>
           <span>模式 {{ evaluationModeLabel(summary.evaluationMode) }}</span>
-          <UiButton size="sm" :loading="exporting" @click="exportSummaryCsv"> 导出表格文件 </UiButton>
+          <UiButton size="sm" variant="primary" :loading="exporting" @click="exportSummaryCsv"> 导出表格文件 </UiButton>
         </div>
         <UiDataTable
           pagination-mode="none"

@@ -1,7 +1,12 @@
 <template>
   <StageWorkbenchShell class="scan-monitor">
     <template v-if="selectedExamId" #context>
-      <ContextBar layout="workbench" :subtitle="scanMonitorContextSubtitle">
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="扫描监控"
+        :subtitle="scanMonitorContextSubtitle"
+      >
         <template #status>
           <UiTag
             :tone="connectionTone"
@@ -44,6 +49,7 @@
     <template v-if="selectedExamId" #signal>
       <SignalBand
         :metrics="scanMonitorSignalMetrics"
+        variant="panel"
         compact
         class="scan-monitor__stats"
         @metric-click="handleScanMonitorMetricClick"
@@ -214,6 +220,7 @@
               <template #toolbar-right>
                 <UiButton
                   v-if="activeTab === 'abnormal'"
+                  variant="primary"
                   size="sm"
                   :disabled="selectedRowKeys.length === 0"
                   :loading="batchBinding"

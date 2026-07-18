@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
 import {
   PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS,
@@ -45,7 +45,7 @@ const form = reactive({
 })
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadPage, search, handlePageChange }
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, search, handlePageChange }
   = useQueryTable(
     (params) =>
       portfolioKeyTeacherApi.page({
@@ -190,7 +190,7 @@ function switchType(key: string | number) {
         <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving || !!revokingId" @click="saveRegistry"> 登记 </UiButton>
         <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster"> 导出台账 </UiButton>
       </div>
-      <UiEmpty size="sm" v-if="!loading && rows.length === 0" description="当前筛选无骨干教师记录" />
+      <UiEmpty size="sm" v-if="!loadError && !loading && rows.length === 0" description="当前筛选无骨干教师记录" />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -199,6 +199,7 @@ function switchType(key: string | number) {
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="loadError"
         row-key="id"
         style="margin-top: 16px"
         @page-change="handlePageChange"

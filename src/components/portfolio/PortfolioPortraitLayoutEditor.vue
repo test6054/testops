@@ -193,7 +193,7 @@ function selectWidget(index: number) {
       />
       <UiButton size="sm" @click="removeWidget(selectedIndex)"> 删除 </UiButton>
     </div>
-    <UiButton size="sm" @click="addWidget"> 添加组件 </UiButton>
+    <UiButton size="sm" variant="primary" @click="addWidget"> 添加组件 </UiButton>
   </div>
 </template>
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { TreeProps } from 'ant-design-vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { TreeProps } from 'ant-design-vue/es/tree'
 import type {
   PortfolioOrgAliasSaveRequest,
   PortfolioOrgAliasVO,
@@ -9,7 +9,7 @@ import type {
   PortfolioOrgTreeNodeVO,
   PortfolioOrgUnitSaveRequest,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ORG_UNIT_TYPE_OPTIONS,

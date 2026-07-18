@@ -3,7 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTitleCriteriaTemplateVO } from '@/apis/portfolio/title-promotion'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
 import type { PortfolioTitleJobCategoryCode } from '@/types/enums/portfolio-title-job-category-enum'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
@@ -303,15 +303,17 @@ onMounted(() => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar layout="workbench" title="职称资格条件模板" />
+    <template #context>
+      <ContextBar layout="workbench" show-title title="职称资格条件模板" />
+    </template>
     <UiCard>
-      <div class="mb-3 flex flex-wrap items-center gap-2">
+      <div class="title-criteria__toolbar">
         <UiInput
           v-model="query.keyword"
           size="sm"
           clearable
           placeholder="编码/标题"
-          class="w-56"
+          class="title-criteria__keyword"
           @enter="loadData"
         />
         <UiButton size="sm" variant="outline" @click="loadData">
@@ -354,7 +356,7 @@ onMounted(() => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'action'">
-            <div class="flex gap-2">
+            <div class="title-criteria__row-actions">
               <UiButton
                 v-if="isTemplateRecord(record)"
                 size="sm"
@@ -379,14 +381,14 @@ onMounted(() => {
       :title="editingId ? '编辑条件模板' : '新建条件模板'"
       width="520"
     >
-      <div class="flex flex-col gap-3">
-        <label class="text-sm">模板编码</label>
+      <div class="title-criteria__drawer-form">
+        <label class="title-criteria__field-label">模板编码</label>
         <UiInput v-model="form.templateCode" size="sm" :disabled="Boolean(editingId)" />
-        <label class="text-sm">模板标题</label>
+        <label class="title-criteria__field-label">模板标题</label>
         <UiInput v-model="form.templateTitle" size="sm" />
-        <label class="text-sm">条件说明</label>
+        <label class="title-criteria__field-label">条件说明</label>
         <UiTextarea v-model="form.criteriaDescription" size="sm" :rows="3" />
-        <label class="text-sm">门槛类型</label>
+        <label class="title-criteria__field-label">门槛类型</label>
         <UiSelect
           size="sm"
           v-model="form.gateKind"
@@ -400,7 +402,7 @@ onMounted(() => {
             }
           }"
         />
-        <label class="text-sm">核验类型</label>
+        <label class="title-criteria__field-label">核验类型</label>
         <UiSelect
           size="sm"
           v-model="form.checkType"
@@ -409,7 +411,7 @@ onMounted(() => {
             label: PortfolioTitleCriteriaCheckTypeDescription[code],
           }))"
         />
-        <label class="text-sm">满足模式</label>
+        <label class="title-criteria__field-label">满足模式</label>
         <UiSelect
           size="sm"
           v-model="form.satisfyMode"
@@ -418,7 +420,7 @@ onMounted(() => {
             label: PortfolioTitleCriteriaSatisfyModeDescription[code],
           }))"
         />
-        <label class="text-sm">路径</label>
+        <label class="title-criteria__field-label">路径</label>
         <UiSelect
           size="sm"
           v-model="form.pathCode"
@@ -427,13 +429,13 @@ onMounted(() => {
             label: PortfolioTitleCriteriaPathDescription[code],
           }))"
         />
-        <label class="text-sm">业绩组编码</label>
+        <label class="title-criteria__field-label">业绩组编码</label>
         <UiInput v-model="form.groupCode" size="sm" placeholder="组模式时填写" />
         <template v-if="form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP">
-          <label class="text-sm">组内最低满足条数</label>
+          <label class="title-criteria__field-label">组内最低满足条数</label>
           <UiInputNumber v-model="form.groupMinimumCount" size="sm" :min="1" :precision="0" />
         </template>
-        <label class="text-sm">岗位类型</label>
+        <label class="title-criteria__field-label">岗位类型</label>
         <UiSelect
           size="sm"
           v-model="form.jobCategory"
@@ -444,9 +446,9 @@ onMounted(() => {
             label: PortfolioTitleJobCategoryDescription[code],
           }))"
         />
-        <label class="text-sm">单条核验阈值</label>
+        <label class="title-criteria__field-label">单条核验阈值</label>
         <UiInput v-model="form.expectedValue" size="sm" placeholder="如数量、学时、年限或级别" />
-        <label class="text-sm">证据档案分类</label>
+        <label class="title-criteria__field-label">证据档案分类</label>
         <UiSelect
           size="sm"
           v-model="form.evidenceCategoryCode"
@@ -456,18 +458,18 @@ onMounted(() => {
           option-filter-prop="label"
           placeholder="需要按材料类型核验时选择"
         />
-        <div class="flex items-center gap-2">
+        <div class="title-criteria__switch-row">
           <UiSwitch
             v-model="form.blockOnFail"
             :disabled="form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD"
           />
           <span>不满足阻断提交{{ form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? '（硬门槛强制）' : '' }}</span>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="title-criteria__switch-row">
           <UiSwitch v-model="form.enabled" />
           <span>启用</span>
         </div>
-        <div class="mt-2 flex justify-end gap-2">
+        <div class="title-criteria__drawer-actions">
           <UiButton size="sm" @click="editorOpen = false">
             取消
           </UiButton>
@@ -479,3 +481,46 @@ onMounted(() => {
     </UiDrawer>
   </StageWorkbenchShell>
 </template>
+
+<style scoped lang="scss">
+.title-criteria__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-3);
+}
+
+.title-criteria__keyword {
+  width: 14rem;
+}
+
+.title-criteria__row-actions {
+  display: flex;
+  gap: var(--dp-space-2);
+}
+
+.title-criteria__drawer-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-3);
+}
+
+.title-criteria__field-label {
+  font-size: var(--dp-font-size-sm);
+  color: var(--dp-text-secondary);
+}
+
+.title-criteria__switch-row {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+}
+
+.title-criteria__drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dp-space-2);
+  margin-top: var(--dp-space-2);
+}
+</style>

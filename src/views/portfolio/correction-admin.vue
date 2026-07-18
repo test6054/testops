@@ -5,7 +5,7 @@ import type {
   PortfolioCorrectionSummaryVO,
 } from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import {
@@ -278,11 +278,18 @@ void loadPage()
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="纠错处理" description="管理端受理与流转纠错工单">
-      <template #actions>
-        <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
-      </template>
-    </ContextBar>
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="纠错处理"
+        subtitle="管理端受理与流转纠错工单"
+      >
+        <template #actions>
+          <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
+        </template>
+      </ContextBar>
+    </template>
 
     <UiCard title="纠错工单">
       <UiDataTable
@@ -351,6 +358,7 @@ void loadPage()
             <UiButton
               v-if="impactDetail.retryAllowed"
               size="sm"
+              variant="primary"
               :loading="impactRecomputing"
               :disabled="operationPending && !impactRecomputing"
               @click="recomputeImpact"

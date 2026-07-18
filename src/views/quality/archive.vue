@@ -11,7 +11,7 @@ import type {
 } from '@/apis/quality/archive'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
@@ -927,15 +927,32 @@ const signals = computed<SignalMetric[]>(() => {
   }
   const confirmed = summary.confirmedCount ?? 0
   const pending = summary.pendingCount ?? 0
+  const expertCount = summary.expertPackageCount ?? 0
   return [
     { key: 'total', label: '归档总数', value: summary.totalCount ?? 0, tone: 'blue' },
-    { key: 'confirmed', label: '已确认', value: confirmed, tone: confirmed > 0 ? 'green' : 'gray' },
-    { key: 'pending', label: '待确认', value: pending, tone: pending > 0 ? 'orange' : 'gray' },
+    {
+      key: 'confirmed',
+      label: '已确认',
+      value: confirmed,
+      tone: confirmed > 0 ? 'green' : 'gray',
+      clickable: confirmed > 0,
+      active: query.archiveOfficeConfirmed === true,
+    },
+    {
+      key: 'pending',
+      label: '待确认',
+      value: pending,
+      tone: pending > 0 ? 'orange' : 'gray',
+      clickable: pending > 0,
+      active: query.archiveOfficeConfirmed === false,
+    },
     {
       key: 'expert',
       label: '专家材料包',
-      value: summary.expertPackageCount ?? 0,
-      tone: (summary.expertPackageCount ?? 0) > 0 ? 'yellow' : 'gray',
+      value: expertCount,
+      tone: expertCount > 0 ? 'yellow' : 'gray',
+      clickable: expertCount > 0,
+      active: archiveListTab.value === 'expert',
     },
     {
       key: 'report',
@@ -945,6 +962,23 @@ const signals = computed<SignalMetric[]>(() => {
     },
   ]
 })
+
+function handleSignalMetricClick(key: string): void {
+  query.pageNum = 1
+  switch (key) {
+    case 'confirmed':
+      query.archiveOfficeConfirmed = true
+      void loadList()
+      return
+    case 'pending':
+      query.archiveOfficeConfirmed = false
+      void loadList()
+      return
+    case 'expert':
+      applyArchiveListTab('expert')
+      void loadList()
+  }
+}
 
 const columns: ColumnsType = [
   { title: '归档编码', dataIndex: 'archiveCode', key: 'archiveCode', fixed: 'left' },
@@ -1069,7 +1103,13 @@ onMounted(async () => {
         @change="handleArchiveListTabChange"
       />
 
-      <SignalBand :metrics="signals" compact class="archive__signals" />
+      <SignalBand
+        :metrics="signals"
+        variant="panel"
+        compact
+        class="archive__signals"
+        @metric-click="handleSignalMetricClick"
+      />
 
       <UiCard class="detail-table-card archive__table-card">
         <template #title>归档列表</template>

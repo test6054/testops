@@ -36,6 +36,7 @@
         :columns="columns"
         :data-source="rows"
         :loading="loading"
+        :load-error="loadError"
         :total="pageTotal"
         flat
         row-key="examId"
@@ -143,6 +144,7 @@ const {
   pageSize,
   pageTotal,
   filters: historyFilters,
+  loadError,
   search: searchExams,
   resetFilters: resetExamFilters,
   handlePageChange,

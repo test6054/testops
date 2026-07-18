@@ -14,7 +14,7 @@
       </div>
     </template>
     <template v-if="canConfirmScoreCompletion" #toolbar>
-      <UiButton size="sm" :loading="scoreConfirmSubmitting" @click="handleConfirmScoreCompletion">
+      <UiButton size="sm" variant="primary" :loading="scoreConfirmSubmitting" @click="handleConfirmScoreCompletion">
         确认成绩完成
       </UiButton>
     </template>
@@ -53,9 +53,6 @@
         :load-error="materialsLoadFailed"
         @page-change="handlePageChange"
       >
-        <template v-if="materialsLoadFailed" #empty-action>
-          <UiButton size="sm" variant="outline" @click="loadScoreMaterials">重新加载</UiButton>
-        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'materialType'">
             {{ materialTypeLabel(record.materialType) }}
@@ -89,7 +86,7 @@ import type {
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArchiveMaterialTypeCode,
@@ -260,7 +257,9 @@ async function loadExamGate() {
 }
 
 async function handleConfirmScoreCompletion() {
-  if (!props.volumeId) return
+  if (!props.volumeId || scoreConfirmSubmitting.value) {
+    return
+  }
   scoreConfirmSubmitting.value = true
   try {
     await confirmArchiveVolumeScoreCompletion({

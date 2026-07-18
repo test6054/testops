@@ -147,6 +147,11 @@ export const portfolioTeacherApi = {
   get: (id: string) => http.post<PortfolioTeacherDetailVO>(`${BASE}/get`, { id }),
   saveIdentity: (data: PortfolioTeacherIdentitySaveRequest) =>
     http.post<string>(`${BASE}/identity/save`, data),
+  listAffiliationHistory: (data: { teacherUserId: string }) =>
+    http.post<import('@/apis/portfolio/types').PortfolioTeacherAffiliationHistoryVO[]>(
+      `${BASE}/identity/affiliation-history/list`,
+      data,
+    ),
   getOneTableSummary: (data: PortfolioTeacherOneTableGetRequest = {}) =>
     http.post<PortfolioTeacherOneTableSummaryVO>(`${BASE}/one-table/summary/get`, data),
   exportOneTable: (data: PortfolioTeacherOneTableGetRequest = {}) =>

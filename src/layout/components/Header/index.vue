@@ -56,7 +56,8 @@ const { isMobile } = useDevice()
   padding: 0 var(--dp-space-4);
   height: 56px;
   background: var(--dp-surface);
-  border-bottom: 1px solid var(--dp-border-subtle);
+  border-bottom: 1px solid var(--dp-border);
+  box-shadow: var(--dp-shadow-xs);
 
   // 移动端适配
   @media (max-width: bp.$layout-mobile-max) {

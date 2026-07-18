@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { TreeProps } from 'ant-design-vue'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { TreeProps } from 'ant-design-vue/es/tree'
 import type {
   PortfolioArchiveCategorySaveRequest,
   PortfolioArchiveCategoryTreeNodeVO,
@@ -12,7 +12,7 @@ import type {
   PortfolioArchiveTemplateDiffSummary,
   PortfolioArchiveTemplateVersionVO,
 } from '@/apis/portfolio/types'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import {
@@ -1027,6 +1027,7 @@ onMounted(async () => {
             新建根分类
           </UiButton>
           <UiButton
+            variant="primary"
             size="sm"
             :disabled="!selectedCategory || interactionLocked"
             @click="openCreateSubCategory"
@@ -1123,6 +1124,7 @@ onMounted(async () => {
               :disabled="writing"
             />
             <UiButton
+              variant="primary"
               size="sm"
               :loading="operationKey.startsWith('audit-flow:bind:')"
               :disabled="writing"
@@ -1143,6 +1145,7 @@ onMounted(async () => {
               查看已发布
             </UiButton>
             <UiButton
+              variant="primary"
               size="sm"
               :loading="operationKey.startsWith('version:draft:')"
               :disabled="writing"

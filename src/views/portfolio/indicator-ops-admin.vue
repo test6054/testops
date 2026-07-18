@@ -15,7 +15,7 @@ import type {
 } from '@/apis/portfolio/indicator-types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
@@ -678,6 +678,7 @@ watch(
           />
           <UiButton
             size="sm"
+            variant="primary"
             :loading="operationKey.startsWith('export:diff:')"
             :disabled="operating"
             @click="exportSnapshotDiff"

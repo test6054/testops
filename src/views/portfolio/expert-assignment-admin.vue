@@ -2,7 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExpertAssignmentVO } from '@/apis/portfolio/expert-assignment'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
-import { message } from 'ant-design-vue'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
@@ -389,7 +389,14 @@ onMounted(async () => {
 
 <template>
   <StageWorkbenchShell>
-    <ContextBar title="外部专家授权" subtitle="为多元评价任务配置脱敏审阅授权" />
+    <template #context>
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="外部专家授权"
+        subtitle="为多元评价任务配置脱敏审阅授权"
+      />
+    </template>
     <UiCard>
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch">
         <template #actions>

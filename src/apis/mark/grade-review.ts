@@ -533,6 +533,10 @@ export interface ExamBatchGradeCorrectionPlan {
   approvedTime?: string
   executedTime?: string
   executedCount: number
+  /** 创建人；草稿归属 */
+  createUser?: string
+  /** 最近更新人；PENDING 态为提交审批人（MVR-195） */
+  updateUser?: string
   createTime: string
   updateTime?: string
 }

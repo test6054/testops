@@ -127,7 +127,7 @@ onMounted(() => {
         :description="errorMessage || '当前授权没有可审阅材料。'"
       >
         <template v-if="tenantId && accessToken" #action>
-          <UiButton size="sm" :loading="loading" @click="loadBundle">重试</UiButton>
+          <UiButton size="sm" variant="primary" :loading="loading" @click="loadBundle">重试</UiButton>
         </template>
       </UiEmpty>
     </UiCard>
