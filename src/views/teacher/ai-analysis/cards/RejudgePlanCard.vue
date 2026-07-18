@@ -120,6 +120,9 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
@@ -129,9 +132,6 @@ import {
   RejudgePlanStatusDescription,
   RejudgeTriggerTypeDescription,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -141,10 +141,10 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import { useUserStore } from '@/stores/modules/user'
 
 defineOptions({ name: 'RejudgePlanCard' })
 
@@ -271,7 +271,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()

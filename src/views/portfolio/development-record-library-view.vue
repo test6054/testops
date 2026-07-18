@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDevelopmentRecordStatusDescription,
   PortfolioDevelopmentRecordTypeCode,
 } from '@/apis/portfolio/enums'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -39,8 +39,8 @@ const saving = ref(false)
 const removingId = ref('')
 const exporting = ref(false)
 const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
 const {
   loading,
   rows,

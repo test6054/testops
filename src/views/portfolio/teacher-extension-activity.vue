@@ -4,21 +4,21 @@ import type {
   PortfolioTeachingExtensionActivityVO,
   PortfolioTeachingExtensionCategoryVO,
 } from '@/apis/portfolio/teaching-extension'
-import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -29,12 +29,12 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
@@ -49,8 +49,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 const route = useRoute()
 const router = useRouter()
 
@@ -98,9 +98,9 @@ const isTraining = computed(() => form.activityKind === PortfolioTeachingExtensi
 
 function canEditActivity(row: PortfolioTeachingExtensionActivityVO) {
   return (
-    !row.archiveRecordId ||
-    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
-    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    !row.archiveRecordId
+    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT
+    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 }
 
@@ -221,10 +221,10 @@ async function loadData() {
       }
     }
     if (
-      typeof route.query.recommendationId === 'string' &&
-      !recommendationIntentConsumed.value &&
-      !readonlyMode.value &&
-      !modalOpen.value
+      typeof route.query.recommendationId === 'string'
+      && !recommendationIntentConsumed.value
+      && !readonlyMode.value
+      && !modalOpen.value
     ) {
       openModal()
     }
@@ -266,10 +266,10 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
   form.fileId = row?.fileId || ''
   form.attachmentName = row?.fileId ? `附件 ${row.fileId}` : ''
   if (!row && !recommendationIntentConsumed.value) {
-    form.trainingRecommendationId =
-      typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
-    form.activityName =
-      typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
+    form.trainingRecommendationId
+      = typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
+    form.activityName
+      = typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
     recommendationIntentConsumed.value = true
   }
   modalOpen.value = true
@@ -277,10 +277,10 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
 
 async function saveActivity() {
   if (
-    saving.value ||
-    Boolean(deletingActivityId.value) ||
-    Boolean(deletingCategoryId.value) ||
-    Boolean(submittingTrainingId.value)
+    saving.value
+    || Boolean(deletingActivityId.value)
+    || Boolean(deletingCategoryId.value)
+    || Boolean(submittingTrainingId.value)
   ) {
     return
   }
@@ -537,9 +537,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
             style="width: 120px; margin-right: 8px"
             :options="PortfolioTeachingExtensionKindOptions"
           />
-          <UiButton variant="primary" size="sm" v-if="!readonlyMode" @click="openModal()"
-            >新增活动</UiButton
-          >
+          <UiButton variant="primary" size="sm" v-if="!readonlyMode" @click="openModal()">
+            新增活动
+          </UiButton>
         </template>
         <UiDataTable
           :columns="activityColumns"
@@ -576,9 +576,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               <UiButton
                 size="sm"
                 v-if="
-                  !readonlyMode &&
-                  record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING &&
-                  !record.archiveRecordId
+                  !readonlyMode
+                    && record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING
+                    && !record.archiveRecordId
                 "
                 variant="ghost"
                 :loading="submittingTrainingId === record.id"
@@ -622,9 +622,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 
       <UiCard title="活动分类" :loading="categoryLoading" style="margin-top: 16px">
         <template #extra>
-          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal"
-            >新建分类</UiButton
-          >
+          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal">
+            新建分类
+          </UiButton>
         </template>
         <UiDataTable
           :columns="categoryColumns"

@@ -4,7 +4,6 @@ import type {
   PortfolioArchiveRecordVersionVO,
   PortfolioTargetFieldDefinition,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -14,26 +13,27 @@ import {
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
 } from '@/apis/portfolio/enums'
+import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import PortfolioArchiveVersionComparePanel from '@/components/portfolio/PortfolioArchiveVersionComparePanel.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -42,8 +42,8 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -87,17 +87,17 @@ const editableFields = computed(() => fieldDefs.value.filter((item) => !item.rea
 const writeInProgress = computed(() => saving.value || submitting.value)
 const recordEditable = computed(
   () =>
-    !recordStatus.value ||
-    recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT ||
-    recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED,
+    !recordStatus.value
+    || recordStatus.value === PortfolioArchiveRecordStatusCode.DRAFT
+    || recordStatus.value === PortfolioArchiveRecordStatusCode.RETURNED,
 )
 const writeDisabled = computed(
   () =>
-    loading.value ||
-    writeInProgress.value ||
-    !recordEditable.value ||
-    !categoryId.value ||
-    (canPickTeachers.value && !targetTeacherId.value),
+    loading.value
+    || writeInProgress.value
+    || !recordEditable.value
+    || !categoryId.value
+    || (canPickTeachers.value && !targetTeacherId.value),
 )
 
 const statusHint = computed(() => {
@@ -213,8 +213,8 @@ function buildReturnQuery(): Record<string, string> {
 }
 
 function returnToArchiveSource() {
-  const path =
-    fromPage.value === 'courseArchive'
+  const path
+    = fromPage.value === 'courseArchive'
       ? '/portfolio/teacher/course-archive'
       : fromPage.value === 'trainingExtension'
         ? '/portfolio/teacher/extension-activity'
@@ -405,7 +405,7 @@ usePortfolioScopedLoader(
 )
 
 const categoryEditMoreActionItems = computed(() => {
-  const items: Array<{ key: string; label: string }> = [{ key: 'back', label: '返回档案' }]
+  const items: Array<{ key: string, label: string }> = [{ key: 'back', label: '返回档案' }]
   if (versionHistory.value.length >= 2) {
     items.push({ key: 'compare', label: '版本对比' })
   }

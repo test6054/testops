@@ -4,19 +4,11 @@ import type {
   ExamLayoutDocument,
   ExamLayoutGenerateQuestionRequest,
 } from '@/apis/mark/exam-layout-design'
-import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import type { LayoutQuestionDraft } from '@/utils/layout-question-templates'
-import {
-  buildGenerateQuestionsFromDrafts,
-  createAnswerSheetDefaultQuestionRows,
-  createQuestionDraft,
-  defaultFullScore,
-  defaultOptionCount,
-  deriveQuestionType,
-} from '@/utils/layout-question-templates'
 import QuestionCircleOutlined from '@ant-design/icons-vue/QuestionCircleOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
+import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -38,6 +30,14 @@ import {
 import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { layoutHasSourceFileDetectResult } from '@/utils/exam-layout-designer'
+import {
+  buildGenerateQuestionsFromDrafts,
+  createAnswerSheetDefaultQuestionRows,
+  createQuestionDraft,
+  defaultFullScore,
+  defaultOptionCount,
+  deriveQuestionType,
+} from '@/utils/layout-question-templates'
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
@@ -51,7 +51,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'generate-sheet': [paperSpec: string, questions: ExamLayoutGenerateQuestionRequest[]]
   'auto-detect': [sourcePdfFileId: string]
-  patch: [document: ExamLayoutDocument]
+  "patch": [document: ExamLayoutDocument]
 }>()
 
 const OCR_SCENE_OPTIONS = [
@@ -100,8 +100,8 @@ const sourceFileCanAutoDetect = computed(() => {
   return /\.(pdf|doc|docx|png|jpe?g)$/i.test(sourcePdfFileName.value)
 })
 const paperSpec = ref<ExamLayoutPaperSpecCode>(
-  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec) ??
-    defaultBlankSheetPaperSpec(),
+  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec)
+  ?? defaultBlankSheetPaperSpec(),
 )
 const layoutName = ref(props.document?.layoutName ?? '')
 const printSafeMarginMm = ref(props.document?.printSafeMarginMm ?? 5)

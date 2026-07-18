@@ -299,9 +299,9 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { RouteRecordRaw } from 'vue-router'
-import { useRoute, useRouter } from 'vue-router'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import UiMenu from '@/components/ui-guide/ui/UiMenu.vue'
 import UiMenuItem from '@/components/ui-guide/ui/UiMenuItem.vue'
 import UiSubMenu from '@/components/ui-guide/ui/UiSubMenu.vue'
@@ -439,8 +439,8 @@ function moreMenuKey(parentKey: string): string {
 /** 仅含一个 primary 且无 secondary 时展平，避免误藏「更多」。 */
 function isFlattenedMenuGroup(group: MenuGroup): boolean {
   return (
-    primarySideMenuRoutes(group.items).length === 1 &&
-    secondarySideMenuRoutes(group.items).length === 0
+    primarySideMenuRoutes(group.items).length === 1
+    && secondarySideMenuRoutes(group.items).length === 0
   )
 }
 
@@ -544,17 +544,17 @@ function normalizeOpenKeys(keys: Key[]): Key[] {
     const ordered = keys.map(String).filter((key) => domainKeys.includes(key))
     // 优先保留用户刚展开的一级域，否则才回落到当前路由所属域。
     // 若始终优先 routeDomain，则在阅卷页无法展开「系统管理」查看子菜单。
-    const keepDomain =
-      ordered[ordered.length - 1] ||
-      (routeDomainKey && next.has(routeDomainKey) ? routeDomainKey : null) ||
-      openDomains[openDomains.length - 1]
+    const keepDomain
+      = ordered[ordered.length - 1]
+        || (routeDomainKey && next.has(routeDomainKey) ? routeDomainKey : null)
+        || openDomains[openDomains.length - 1]
     for (const domainKey of domainKeys) {
       if (domainKey === keepDomain) {
         continue
       }
       next.delete(domainKey)
-      const groupKeys =
-        domainKey === MARKING_DOMAIN_KEY
+      const groupKeys
+        = domainKey === MARKING_DOMAIN_KEY
           ? markingGroupKeys
           : domainKey === PLATFORM_DOMAIN_KEY
             ? platformGroupKeys
@@ -665,10 +665,10 @@ function collectGroupedRoutes(grouped: {
 function onMenuClick({ key }: { key: Key }) {
   const keyStr = String(key)
   if (
-    keyStr === MARKING_DOMAIN_KEY ||
-    keyStr === PLATFORM_DOMAIN_KEY ||
-    keyStr === QUALITY_DOMAIN_KEY ||
-    keyStr === PORTFOLIO_DOMAIN_KEY
+    keyStr === MARKING_DOMAIN_KEY
+    || keyStr === PLATFORM_DOMAIN_KEY
+    || keyStr === QUALITY_DOMAIN_KEY
+    || keyStr === PORTFOLIO_DOMAIN_KEY
   ) {
     return
   }

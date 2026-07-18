@@ -72,7 +72,6 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
-import { computed } from 'vue'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
@@ -80,6 +79,7 @@ import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage } from '@/types/workbench'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
+import { computed } from 'vue'
 import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
 import ExamJourneySidebarNav from '@/components/workbench/ExamJourneySidebarNav.vue'
 import ExamSidebarExamSwitch from '@/components/workbench/ExamSidebarExamSwitch.vue'

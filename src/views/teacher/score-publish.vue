@@ -474,16 +474,23 @@ import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
-import { getPaperScore } from '@/apis/mark/exam-grade'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
-import { getScorePanel } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
   FinalScoreBatchPublishResponse,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
+import { getExamDetail } from '@/apis/mark/exam'
+import { getPaperScore } from '@/apis/mark/exam-grade'
+import { getScorePanel } from '@/apis/mark/exam-progress'
 import {
   batchPublishFinalScores,
   getFinalScoreRiskOverview,
@@ -491,19 +498,6 @@ import {
   publishFinalScore,
   withdrawFinalScore,
 } from '@/apis/mark/exam-score'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
-import {
-  buildScoreAnalyticsFlowSteps,
-  buildScoreBulkPublishModalStatItems,
-  buildScoreConfirmStatusTabItems,
-  SCORE_STATUS_TAB_ALL,
-} from '@/utils/score-workbench-analytics'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { repairScoreZeroFinalScores } from '@/apis/mark/absence'
 import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusCode,
@@ -547,6 +541,12 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { buildExamScoreSummaryTableColumns } from '@/utils/exam-score-summary-table-columns'
 import { formatDateTime } from '@/utils/format'
 import { isExamScoresFullyPublished } from '@/utils/score-release-readiness'
+import {
+  buildScoreAnalyticsFlowSteps,
+  buildScoreBulkPublishModalStatItems,
+  buildScoreConfirmStatusTabItems,
+  SCORE_STATUS_TAB_ALL,
+} from '@/utils/score-workbench-analytics'
 import { buildScorePublishSignalMetrics } from '@/utils/score-workbench-signal'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -867,7 +867,7 @@ function handleStatusTabChange(tabKey: Key): void {
   void loadCandidates()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidates()
@@ -946,10 +946,10 @@ function bulkModalValueClass(valClass?: string): string | undefined {
 
 const canBulkPublish = computed(
   () =>
-    Boolean(selectedExamId.value) &&
-    publishableOverviewCount.value > 0 &&
-    finalScoreOverview.value?.readyToPublish === true &&
-    (finalScoreOverview.value?.blockedCount ?? 0) === 0,
+    Boolean(selectedExamId.value)
+    && publishableOverviewCount.value > 0
+    && finalScoreOverview.value?.readyToPublish === true
+    && (finalScoreOverview.value?.blockedCount ?? 0) === 0,
 )
 
 const bulkOpen = ref(false)
@@ -1040,23 +1040,23 @@ function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   // MVR-204：场级硬拦（阻塞事件/重复影像）禁用按钮，与 BE ensureFinalScoreSourceFactsReady 同源
   const overview = effectiveFinalScoreOverview.value
   if (
-    overview &&
-    ((overview.blockingIncidentCount ?? 0) > 0 || (overview.pendingDuplicateImageCount ?? 0) > 0)
+    overview
+    && ((overview.blockingIncidentCount ?? 0) > 0 || (overview.pendingDuplicateImageCount ?? 0) > 0)
   ) {
     return false
   }
   // 单卷发布不要求全场 readyToPublish；软风险集中复核与缺考等在 handlePublish 门禁校验。
   const s = record.finalScoreStatus
   return (
-    s === FinalScoreStatusCode.CONFIRMED ||
-    s === FinalScoreStatusCode.WITHDRAWN ||
-    s === FinalScoreStatusCode.CORRECTED
+    s === FinalScoreStatusCode.CONFIRMED
+    || s === FinalScoreStatusCode.WITHDRAWN
+    || s === FinalScoreStatusCode.CORRECTED
   )
 }
 function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
   // WITHDRAWN / CORRECTED 均为学生端不可见后的再发；文案须引导「重新发布」。
-  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN ||
-    record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
+  return record.finalScoreStatus === FinalScoreStatusCode.WITHDRAWN
+    || record.finalScoreStatus === FinalScoreStatusCode.CORRECTED
     ? '重新发布'
     : '发布'
 }
@@ -1065,9 +1065,9 @@ function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   const s = record.finalScoreStatus
   // MVR-184：与 BE withdrawFinalScore 对齐，CONFIRMED 可直接撤销确认，无需先发布再撤回
   return (
-    s === FinalScoreStatusCode.CONFIRMED ||
-    s === FinalScoreStatusCode.PUBLISHED ||
-    s === FinalScoreStatusCode.CORRECTED
+    s === FinalScoreStatusCode.CONFIRMED
+    || s === FinalScoreStatusCode.PUBLISHED
+    || s === FinalScoreStatusCode.CORRECTED
   )
 }
 function withdrawButtonLabel(record: ExamScoreSummaryItemResponse): string {
@@ -1201,8 +1201,8 @@ const paperTotalScoreCorrectionNotice = computed(() => {
   if (!score) return null
   // 题分之和与官方考试分不一致时始终提示；不依赖「最近一条更正是否为总分」。
   if (
-    score.questionScoreSumMatchesExamScore !== false &&
-    !score.latestTotalScoreCorrectionApplied
+    score.questionScoreSumMatchesExamScore !== false
+    && !score.latestTotalScoreCorrectionApplied
   ) {
     return null
   }

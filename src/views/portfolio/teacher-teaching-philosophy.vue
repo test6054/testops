@@ -4,16 +4,16 @@ import type {
   PortfolioTeachingPhilosophySaveRequest,
   PortfolioTeachingPhilosophyVO,
 } from '@/apis/portfolio/teaching-philosophy'
-import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -21,18 +21,18 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -214,9 +214,9 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
 
     <UiCard v-else title="按年教学理念" :loading="loading">
       <template #extra>
-        <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openModal()"
-          >新增学年</UiButton
-        >
+        <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openModal()">
+          新增学年
+        </UiButton>
       </template>
       <UiDataTable :columns="columns" :data-source="rows" row-key="id" :pagination="false">
         <template #bodyCell="{ column, record }">

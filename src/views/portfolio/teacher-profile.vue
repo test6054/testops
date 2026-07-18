@@ -8,15 +8,13 @@ import type {
   PortfolioTeacherTaughtCourseSaveRequest,
   PortfolioTeacherTaughtCourseVO,
 } from '@/apis/portfolio/teacher-profile'
-import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
-import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeacherCohortProfileApi } from '@/apis/portfolio/teacher-cohort-profile'
+import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -24,6 +22,7 @@ import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -34,20 +33,21 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const profileActiveTab = ref('education')
@@ -82,10 +82,10 @@ const academicExperiences = ref<PortfolioTeacherAcademicExperienceVO[]>([])
 const academicAppointments = ref<PortfolioTeacherAcademicAppointmentVO[]>([])
 
 type CvKind = 'education' | 'academicExperience' | 'academicAppointment'
-type CvRecord =
-  | PortfolioTeacherEducationVO
-  | PortfolioTeacherAcademicExperienceVO
-  | PortfolioTeacherAcademicAppointmentVO
+type CvRecord
+  = | PortfolioTeacherEducationVO
+    | PortfolioTeacherAcademicExperienceVO
+    | PortfolioTeacherAcademicAppointmentVO
 
 const cvForm = reactive({
   schoolName: '',
@@ -315,9 +315,9 @@ async function loadCvRecords() {
       portfolioTeacherProfileApi.listAcademicAppointments(request),
     ])
     if (
-      requestToken.value !== scopeToken ||
-      cvRequestToken.value !== currentToken ||
-      targetTeacherId.value !== teacherId
+      requestToken.value !== scopeToken
+      || cvRequestToken.value !== currentToken
+      || targetTeacherId.value !== teacherId
     ) {
       return
     }
@@ -641,7 +641,7 @@ async function removeCourse(row: PortfolioTeacherTaughtCourseVO) {
   }
 }
 
-function onCoursePageChange(pageEvent: { current: number; pageSize: number }) {
+function onCoursePageChange(pageEvent: { current: number, pageSize: number }) {
   coursePageNum.value = pageEvent.current
   coursePageSize.value = pageEvent.pageSize
   void loadCourses()

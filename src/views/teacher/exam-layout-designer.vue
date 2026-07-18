@@ -37,8 +37,8 @@ defineOptions({ name: 'TeacherExamWorkspaceLayoutDesigner' })
 const router = useRouter()
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const { selectedExamId } = useMarkExamContext()
-const { contextBarSubtitle, examStatusLabel, examStatusTone, examDetail, examDetailLoading } =
-  useExamJourneyContextBar('制卷设计器')
+const { contextBarSubtitle, examStatusLabel, examStatusTone, examDetail, examDetailLoading }
+  = useExamJourneyContextBar('制卷设计器')
 
 const examId = computed(() => selectedExamId.value ?? '')
 
@@ -149,9 +149,9 @@ const designerStatusAlert = computed(() => {
     }
   }
   if (
-    wbLayoutWritable.value &&
-    wbIdentitySetupPending.value &&
-    wbDocument.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
+    wbLayoutWritable.value
+    && wbIdentitySetupPending.value
+    && wbDocument.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
   ) {
     return {
       kind: 'identity' as DesignerStatusAlertKind,

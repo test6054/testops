@@ -855,6 +855,10 @@ onActivated(() => {
   gap: var(--dp-space-4);
   min-width: 0;
   padding: 0;
+  /* 滚动页：surface 随内容增高，避免 flex 吃满视口产生底部空白 */
+  :deep(.stage-workbench-shell__surface) {
+    flex: 0 0 auto;
+  }
 
   &__empty {
     padding: var(--dp-space-4) 0;
@@ -936,8 +940,6 @@ onActivated(() => {
 }
 
 .question-card {
-  height: 100%;
-
   &__title {
     display: flex;
     align-items: center;

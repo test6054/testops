@@ -69,7 +69,8 @@ defineOptions({
 }
 
 .stage-workbench-shell__surface {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;

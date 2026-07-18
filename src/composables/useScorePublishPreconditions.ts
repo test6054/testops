@@ -1,11 +1,11 @@
 import type { Ref } from 'vue'
-import { ref } from 'vue'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
-import { FinalScoreRiskReasonCode } from '@/apis/mark/exam-score'
 import message from 'ant-design-vue/es/message'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAbsenceExamStats } from '@/apis/mark/absence'
+import { FinalScoreRiskReasonCode } from '@/apis/mark/exam-score'
 import { showUserError } from '@/utils/error-handler'
 
 /**
@@ -173,10 +173,7 @@ export function useScorePublishPreconditions(options: {
     if (!ensureFieldWideSourceFactGates(overview, '发布成绩')) {
       return false
     }
-    if (!ensureSoftRiskReviewedBeforePublish(overview)) {
-      return false
-    }
-    return true
+    return ensureSoftRiskReviewedBeforePublish(overview);
   }
 
   async function ensureScorePublishPreconditions(): Promise<boolean> {
@@ -211,10 +208,7 @@ export function useScorePublishPreconditions(options: {
       return false
     }
     // 确认亦走 ensureFinalScoreSourceFactsReady：阻塞事件 / 重复影像场级硬拦
-    if (!ensureFieldWideSourceFactGates(overview, '确认成绩')) {
-      return false
-    }
-    return true
+    return ensureFieldWideSourceFactGates(overview, '确认成绩');
   }
 
   return {

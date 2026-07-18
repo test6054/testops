@@ -31,15 +31,15 @@
 <script lang="ts" setup>
 import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 import type { Component } from 'vue'
-import { computed, inject } from 'vue'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuItem, ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
-import { getMenuGroupsForJourney } from '@/constants/exam-workspace-menu'
+import { computed, inject } from 'vue'
 import UiMenu from '@/components/ui-guide/ui/UiMenu.vue'
 import UiMenuItem from '@/components/ui-guide/ui/UiMenuItem.vue'
 import ExamSubSidebarMenuIcon from '@/components/workbench/ExamSubSidebarMenuIcon.vue'
 import { useExperienceAssistTrialPendingCount } from '@/composables/useExperienceAssistTrialPendingCount'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
+import { getMenuGroupsForJourney } from '@/constants/exam-workspace-menu'
 
 defineOptions({
   name: 'ExamSubSidebarNav',

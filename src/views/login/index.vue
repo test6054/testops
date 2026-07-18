@@ -113,7 +113,7 @@ const appStore = useAppStore()
 
 const isSubdomain = ref(false)
 const activeTab = ref('1')
-const studentPrefill = ref<{ studentNo: string; password: string }>({ studentNo: '', password: '' })
+const studentPrefill = ref<{ studentNo: string, password: string }>({ studentNo: '', password: '' })
 
 /** CAS 回跳或深链带来的预置租户；无子域时由 CasLogin 内选校解析 */
 const casTenantId = ref<string>('')
@@ -126,7 +126,7 @@ const loginTabItems = computed(() => [
   { value: '3', label: casTabLabel.value },
 ])
 
-function switchToStudentTab(val: { studentNo: string; password: string }) {
+function switchToStudentTab(val: { studentNo: string, password: string }) {
   activeTab.value = '2'
   studentPrefill.value = {
     studentNo: val.studentNo,
@@ -134,7 +134,7 @@ function switchToStudentTab(val: { studentNo: string; password: string }) {
   }
 }
 
-function onCasTenantReady(payload: { tenantId: string; casEnabled: boolean; displayName: string }) {
+function onCasTenantReady(payload: { tenantId: string, casEnabled: boolean, displayName: string }) {
   casTenantId.value = payload.tenantId
   if (payload.displayName) {
     casTabLabel.value = payload.displayName

@@ -1,37 +1,42 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
-import { ARCHIVE_MATERIAL_OCR_STATUS_TONE, ArchiveMaterialOcrStatusDescription } from '@/apis/mark/archive-ocr-status'
-import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_MATERIAL_STATUS_OPTIONS,
-  PORTFOLIO_MATERIAL_TYPE_OPTIONS,
-  PortfolioMaterialStatusDescription,
-  PortfolioMaterialTypeCode,
-  PortfolioMaterialTypeDescription
-} from '@/apis/portfolio/enums'
 import type {
   PortfolioMaterialRefVO,
   PortfolioMaterialSaveRequest,
   PortfolioMaterialSearchResponse,
   PortfolioMaterialVersionVO,
-  PortfolioMaterialVO
+  PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import {
+  PORTFOLIO_MATERIAL_STATUS_OPTIONS,
+  PORTFOLIO_MATERIAL_TYPE_OPTIONS,
+  PortfolioMaterialStatusCode,
+  PortfolioMaterialStatusDescription,
+  PortfolioMaterialTypeCode,
+  PortfolioMaterialTypeDescription,
+} from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
+import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -39,11 +44,14 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { buildPortfolioIntakeReassignQuery, canReassignPortfolioMaterial } from '@/utils/portfolio-material-reassign'
+import {
+  buildPortfolioIntakeReassignQuery,
+  canReassignPortfolioMaterial,
+} from '@/utils/portfolio-material-reassign'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const router = useRouter()
@@ -230,12 +238,14 @@ function handleSearch() {
 
 function openCreateModal() {
   if (writing.value) return
+  if (!assertArchiveWritable()) return
   resetFormContext()
   formModalOpen.value = true
 }
 
 function openEditModal(row: PortfolioMaterialVO) {
   if (writing.value) return
+  if (!assertArchiveWritable()) return
   editingId.value = row.id
   form.materialType = row.materialType
   form.materialTitle = row.materialTitle ?? ''
@@ -277,7 +287,7 @@ async function submitForm() {
       categoryCode: form.categoryCode?.trim() || undefined,
     })
     if (requestToken.value !== scopeToken || targetTeacherId.value !== scopeTeacherId) return
-    message.success(targetId ? '材料已更新' : '材料已登记')
+    void message.success(targetId ? '材料已更新' : '材料已登记')
     formModalOpen.value = false
     await loadPage()
   } catch (error) {
@@ -313,7 +323,7 @@ async function deleteMaterial(row: PortfolioMaterialVO) {
   try {
     await portfolioMaterialApi.delete(row.id)
     if (requestToken.value !== scopeToken || targetTeacherId.value !== scopeTeacherId) return
-    message.success('材料已删除')
+    void message.success('材料已删除')
     await loadPage()
   } catch (error) {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== scopeTeacherId) return
@@ -365,7 +375,7 @@ async function voidMaterial(row: PortfolioMaterialVO) {
   }
   try {
     await portfolioMaterialApi.voidForFuture(row.id)
-    message.success('材料已作废')
+    void message.success('材料已作废')
     await loadPage()
   } catch (error) {
     showUserError(error, '作废材料失败')
@@ -486,7 +496,7 @@ function buildMaterialRowActions(row: PortfolioMaterialVO): UiTableRowActionItem
     {
       key: 'void',
       label: operationKey.value === `void:${row.id}` ? '作废中' : '作废',
-      disabled: writing.value || row.status === 'VOID',
+      disabled: writing.value || row.status === PortfolioMaterialStatusCode.VOID,
     },
     {
       key: 'delete',
@@ -557,7 +567,12 @@ watch(
         subtitle="教师佐证材料登记、文字识别检索与复用"
       >
         <template #actions>
-          <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreateModal">
+          <UiButton
+            size="sm"
+            variant="primary"
+            :disabled="writing || archiveWriteForbidden"
+            @click="openCreateModal"
+          >
             登记材料
           </UiButton>
           <UiButton size="sm" :loading="loading" :disabled="writing" @click="() => void loadPage()">
@@ -568,15 +583,21 @@ watch(
     </template>
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
-    </template>
-    <UiAlertStrip
-      v-if="archiveWriteForbidden"
-      tone="warning"
-      title="档案已封存写禁"
-      :description="archiveWriteBlockMessage"
-      class="mb-3"
-    />
+    <template v-else>
+      <UiAlertStrip
+        v-if="archiveWriteForbidden"
+        tone="warning"
+        title="档案已封存写禁"
+        :description="archiveWriteBlockMessage"
+        class="mb-3"
+      />
 
+      <UiFilterBar v-model="filterModel" :fields="filterFields" @search="handleSearch">
+        <UiSearchBox
+          v-model="searchKeyword"
+          placeholder="文字识别全文检索"
+          @search="handleSearch"
+        />
       </UiFilterBar>
 
       <UiCard :title="showSearchResults ? '文字识别检索结果' : '材料列表'">
@@ -662,7 +683,11 @@ watch(
             </template>
           </template>
         </UiDataTable>
-        <UiEmpty size="sm" v-else :description="showSearchResults ? '未命中文字识别结果' : '暂无材料'" />
+        <UiEmpty
+          v-else
+          size="sm"
+          :description="showSearchResults ? '未命中文字识别结果' : '暂无材料'"
+        />
       </UiCard>
 
       <UiDialog
@@ -683,8 +708,8 @@ watch(
           placeholder="材料标题"
         />
         <UiSelect
-          size="sm"
           v-model="form.materialType"
+          size="sm"
           class="teacher-materials__field teacher-materials__select"
           :options="materialTypeOptions"
           placeholder="材料类型"
@@ -711,7 +736,7 @@ watch(
         :confirm-loading="versionLoading"
         @ok="versionModalOpen = false"
       >
-        <UiCard title="版本历史（§8.51）" :loading="versionLoading">
+        <UiCard title="版本历史（§8.51）">
           <ul v-if="versionRows.length" class="teacher-materials__version-list">
             <li v-for="item in versionRows" :key="item.id">
               <strong>v{{ item.versionNo }}</strong>
@@ -722,7 +747,7 @@ watch(
           </ul>
           <UiEmpty v-else size="sm" description="暂无版本" />
         </UiCard>
-        <UiCard title="业务引用" style="margin-top: 12px" :loading="versionLoading">
+        <UiCard title="业务引用" style="margin-top: 12px">
           <ul v-if="refRows.length" class="teacher-materials__version-list">
             <li v-for="item in refRows" :key="item.id">
               <strong>{{ item.refScope }}</strong>

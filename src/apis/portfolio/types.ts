@@ -554,6 +554,7 @@ export {
 
 export const PORTFOLIO_MATERIAL_STATUS_TONE: Record<PortfolioMaterialStatusCode, BadgeTone> = {
   [PortfolioMaterialStatusCode.ACTIVE]: 'green',
+  [PortfolioMaterialStatusCode.VOID]: 'gray',
 }
 
 export const PORTFOLIO_MATERIAL_STATUS_OPTIONS: Array<{ value: PortfolioMaterialStatusCode, label: string }>

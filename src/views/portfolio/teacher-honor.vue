@@ -4,19 +4,19 @@ import type {
   PortfolioTeacherHonorCategoryVO,
   PortfolioTeacherHonorVO,
 } from '@/apis/portfolio/teacher-honor'
-import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -26,12 +26,12 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   PortfolioHonorLevelCode,
   PortfolioHonorLevelDescription,
@@ -42,8 +42,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 const router = useRouter()
 
 const loading = ref(false)
@@ -435,9 +435,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
     <template v-else>
       <UiCard title="荣誉记录" :loading="loading">
         <template #extra>
-          <UiButton variant="primary" size="sm" v-if="!readonlyMode" @click="openModal()"
-            >新增荣誉</UiButton
-          >
+          <UiButton variant="primary" size="sm" v-if="!readonlyMode" @click="openModal()">
+            新增荣誉
+          </UiButton>
         </template>
         <UiDataTable :columns="honorColumns" :data-source="rows" row-key="id" :pagination="false">
           <template #bodyCell="{ column, record }">
@@ -479,9 +479,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 
       <UiCard title="荣誉分类" :loading="categoryLoading" style="margin-top: 16px">
         <template #extra>
-          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal"
-            >新建分类</UiButton
-          >
+          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal">
+            新建分类
+          </UiButton>
         </template>
         <UiDataTable
           :columns="categoryColumns"

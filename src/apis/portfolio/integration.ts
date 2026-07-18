@@ -294,16 +294,16 @@ export const portfolioIntegrationApi = {
   }) {
     return http.post<PageResult<PortfolioIntegrationSyncTaskVO>>(`${BASE}/sync/log/page`, data)
   },
-  pageIdentityUnmatched(data: { pageNum: number; pageSize: number; status?: string }) {
+  pageIdentityUnmatched(data: { pageNum: number, pageSize: number, status?: string }) {
     return http.post<PageResult<PortfolioIdentityUnmatchedVO>>(
       `${BASE}/identity/unmatched/page`,
       data,
     )
   },
-  pageConflict(data: { pageNum: number; pageSize: number; ticketStatus?: string }) {
+  pageConflict(data: { pageNum: number, pageSize: number, ticketStatus?: string }) {
     return http.post<PageResult<PortfolioConflictTicketVO>>(`${BASE}/conflict/page`, data)
   },
-  resolveConflict(data: { conflictTicketId: string; action: string; resolveRemark?: string }) {
+  resolveConflict(data: { conflictTicketId: string, action: string, resolveRemark?: string }) {
     return http.post<void>(`${BASE}/conflict/resolve`, data)
   },
   resolveIdentityUnmatched(data: {
@@ -322,7 +322,7 @@ export const portfolioIntegrationApi = {
   }) {
     return http.post<string>(`${BASE}/message/enqueue`, data)
   },
-  pageFailedMessages(data: { pageNum: number; pageSize: number; datasourceConfigId: string }) {
+  pageFailedMessages(data: { pageNum: number, pageSize: number, datasourceConfigId: string }) {
     return http.post<PageResult<PortfolioIntegrationMessageInboxVO>>(
       `${BASE}/message/failed/page`,
       data,
@@ -336,7 +336,7 @@ export const portfolioIntegrationApi = {
   }) {
     return http.post<void>(`${BASE}/message/requeue`, data)
   },
-  pageCleanLog(data: { pageNum: number; pageSize: number; datasourceConfigId?: string }) {
+  pageCleanLog(data: { pageNum: number, pageSize: number, datasourceConfigId?: string }) {
     return http.post<PageResult<PortfolioIntegrationCleanLogVO>>(`${BASE}/clean-log/page`, data)
   },
   pageCourseCodeMap(data: {
@@ -362,7 +362,7 @@ export const portfolioIntegrationApi = {
   deleteCourseCodeMap(id: string) {
     return http.post<void>(`${BASE}/course-code-map/delete`, { id })
   },
-  pageDictEntry(data: { pageNum: number; pageSize: number; dictionaryCode?: string }) {
+  pageDictEntry(data: { pageNum: number, pageSize: number, dictionaryCode?: string }) {
     return http.post<PageResult<PortfolioIntegrationDictEntryVO>>(`${BASE}/dict-entry/page`, data)
   },
   saveDictEntry(data: {
@@ -390,19 +390,19 @@ export const portfolioIntegrationApi = {
       data,
     )
   },
-  fixNationalReportIssue(data: { issueId: string; fixRemark?: string }) {
+  fixNationalReportIssue(data: { issueId: string, fixRemark?: string }) {
     return http.post<void>(`${BASE}/national-report/issue/fix`, data)
   },
   getNationalReportBatch(id: string) {
     return http.post<PortfolioNationalReportBatchVO>(`${BASE}/national-report/batch/get`, { id })
   },
-  exportNationalReportPackage(data: { syncTaskId: string; maskMode?: boolean }) {
+  exportNationalReportPackage(data: { syncTaskId: string, maskMode?: boolean }) {
     return http.post<PortfolioArchiveBagExportResultVO>(
       `${BASE}/national-report/package/export`,
       data,
     )
   },
-  retransmitNationalReportIssues(data: { datasourceConfigId: string; sourceSyncTaskId?: string }) {
+  retransmitNationalReportIssues(data: { datasourceConfigId: string, sourceSyncTaskId?: string }) {
     return http.post<PortfolioNationalReportBatchVO>(
       `${BASE}/national-report/issue/retransmit`,
       data,

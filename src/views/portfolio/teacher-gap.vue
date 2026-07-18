@@ -1,25 +1,34 @@
 <script setup lang="ts">
 import type { PortfolioArchiveRecordFieldInput, PortfolioGapTaskDetailVO } from '@/apis/portfolio/types'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { PortfolioGapTaskStatusCode, PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
+import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 function gapTaskStatusLabel(status: PortfolioGapTaskStatusCode): string {
   return strictEnumLabel(PortfolioGapTaskStatusDescription, status, '补采任务状态')
@@ -90,6 +99,10 @@ const gapSubmissionAvailable = computed(() => {
   }
   return new Date(detail.value.dueTime.replace(' ', 'T')).getTime() > Date.now()
 })
+
+const formWritable = computed(
+  () => gapSubmissionAvailable.value && !archiveWriteForbidden.value,
+)
 
 function resetFormState() {
   scopeRequestToken.value += 1
@@ -182,7 +195,7 @@ function buildFieldInputs(): PortfolioArchiveRecordFieldInput[] {
 }
 
 async function handleSaveDraft() {
-  if (!detail.value || !gapSubmissionAvailable.value) {
+  if (!detail.value || !formWritable.value) {
     return
   }
   if (!assertArchiveWritable()) {
@@ -204,7 +217,7 @@ async function handleSaveDraft() {
     if (scopeRequestToken.value !== requestToken) {
       return
     }
-    message.success('草稿已保存')
+    void message.success('草稿已保存')
     await loadTask()
   } catch (error) {
     if (scopeRequestToken.value !== requestToken) {
@@ -223,6 +236,12 @@ async function handleSubmit() {
     showFormValidationMessage('补采任务已逾期或已结束，请联系院系办理延期')
     return
   }
+  if (!assertArchiveWritable()) {
+    return
+  }
+  if (!(await confirmProxyWrite('提交补采'))) {
+    return
+  }
   const requestToken = scopeRequestToken.value
   submitting.value = true
   try {
@@ -235,7 +254,7 @@ async function handleSubmit() {
     if (scopeRequestToken.value !== requestToken) {
       return
     }
-    message.success('补采已提交审核')
+    void message.success('补采已提交审核')
     void router.push({
       path: '/portfolio/teacher/home',
       query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
@@ -266,6 +285,9 @@ async function openPortfolioGapScan() {
   }
   if (!gapSubmissionAvailable.value) {
     showFormValidationMessage('补采任务已逾期或已结束，不能创建扫描派单')
+    return
+  }
+  if (!assertArchiveWritable()) {
     return
   }
   const requestToken = scopeRequestToken.value
@@ -352,7 +374,7 @@ watch(
               size="sm"
               variant="outline"
               :loading="saving"
-              :disabled="loading || !gapSubmissionAvailable"
+              :disabled="loading || !formWritable"
               @click="handleSaveDraft"
             >
               保存草稿
@@ -361,7 +383,7 @@ watch(
               size="sm"
               variant="primary"
               :loading="submitting"
-              :disabled="loading || !gapSubmissionAvailable"
+              :disabled="loading || !formWritable"
               @click="handleSubmit"
             >
               提交补采
@@ -370,17 +392,78 @@ watch(
         </template>
       </ContextBar>
     </template>
-    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
-    </template>
-    <UiAlertStrip
-      v-if="archiveWriteForbidden"
-      tone="warning"
-      title="档案已封存写禁"
-      :description="archiveWriteBlockMessage"
-      class="mb-3"
-    />
 
-    </UiSpin>
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+    <template v-else>
+      <UiAlertStrip
+        v-if="archiveWriteForbidden"
+        tone="warning"
+        title="档案已封存写禁"
+        :description="archiveWriteBlockMessage"
+        class="mb-3"
+      />
+      <UiSpin :spinning="loading">
+        <template v-if="detail">
+          <p class="teacher-gap__meta">
+            <UiTag tone="blue">
+              {{ statusLabel }}
+            </UiTag>
+            <span v-if="detail.categoryName">{{ detail.categoryName }}</span>
+            <span v-if="courseScopeText">课程 {{ courseScopeText }}</span>
+            <span v-if="detail.dueTime">截止 {{ detail.dueTime }}</span>
+          </p>
+          <p v-if="detail.returnReason" class="teacher-gap__return">
+            退回原因：{{ detail.returnReason }}
+          </p>
+          <UiCard v-if="detail.missingFields.length" title="必填字段补采">
+            <UiForm layout="vertical">
+              <UiFormItem label="补交附件">
+                <UiPlatformFileField
+                  v-model:file-node-id="attachmentFileNodeId"
+                  v-model:file-name="attachmentFileName"
+                  :disabled="!formWritable"
+                  :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
+                  accept=".pdf,.doc,.docx,.png,.jpg"
+                  button-text="上传附件"
+                />
+                <UiButton
+                  size="sm"
+                  class="teacher-gap__scan-btn"
+                  variant="outline"
+                  :loading="scanOpening"
+                  :disabled="!formWritable"
+                  @click="openPortfolioGapScan"
+                >
+                  一体机扫描
+                </UiButton>
+              </UiFormItem>
+              <UiFormItem
+                v-for="field in detail.missingFields"
+                :key="field.fieldCode"
+                :label="field.fieldLabel ?? field.fieldCode"
+                :required="field.missing"
+              >
+                <UiInput
+                  v-model="fieldValues[field.fieldCode]"
+                  size="sm"
+                  :disabled="!formWritable"
+                  placeholder="必填"
+                />
+                <UiInput
+                  v-model="evidenceRefs[field.fieldCode]"
+                  size="sm"
+                  class="teacher-gap__evidence"
+                  :disabled="!formWritable"
+                  placeholder="证据引用（可选）"
+                />
+              </UiFormItem>
+            </UiForm>
+          </UiCard>
+          <UiEmpty v-else size="sm" description="该分类必填字段已补全，可直接提交或返回首页" />
+        </template>
+      </UiSpin>
+    </template>
+
     <ScanDispatchResultDialog
       v-model:open="dispatchResultOpen"
       :payload="dispatchResult"
@@ -407,6 +490,10 @@ watch(
 }
 
 .teacher-gap__evidence {
+  margin-top: var(--dp-space-2);
+}
+
+.teacher-gap__scan-btn {
   margin-top: var(--dp-space-2);
 }
 
