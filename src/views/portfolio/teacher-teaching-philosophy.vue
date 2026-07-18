@@ -4,11 +4,12 @@ import type {
   PortfolioTeachingPhilosophySaveRequest,
   PortfolioTeachingPhilosophyVO,
 } from '@/apis/portfolio/teaching-philosophy'
+import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -25,10 +26,13 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -44,7 +48,9 @@ const form = reactive<PortfolioTeachingPhilosophySaveRequest>({
   philosophyText: '',
 })
 
-const readonlyMode = computed(() => canPickTeachers.value && !!targetTeacherId.value)
+const readonlyMode = computed(
+  () => (canPickTeachers.value && !!targetTeacherId.value) || archiveWriteForbidden.value,
+)
 
 const columns: ColumnsType = [
   { title: '学年', dataIndex: 'academicYear', key: 'academicYear', width: 120 },
@@ -110,6 +116,9 @@ function openModal(row?: PortfolioTeachingPhilosophyVO) {
 }
 
 async function save() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('保存教学理念'))) {
     return
   }
@@ -134,6 +143,9 @@ async function save() {
 
 async function remove(row: PortfolioTeachingPhilosophyVO) {
   if (readonlyMode.value || deletingId.value) {
+    return
+  }
+  if (!assertArchiveWritable()) {
     return
   }
   if (!(await confirmProxyWrite('删除教学理念'))) {
@@ -184,6 +196,13 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
     <template #context>
       <ContextBar layout="workbench" show-title title="教学理念" subtitle="按学年记录与修订" />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
@@ -195,7 +214,9 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
 
     <UiCard v-else title="按年教学理念" :loading="loading">
       <template #extra>
-        <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openModal()">新增学年</UiButton>
+        <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openModal()"
+          >新增学年</UiButton
+        >
       </template>
       <UiDataTable :columns="columns" :data-source="rows" row-key="id" :pagination="false">
         <template #bodyCell="{ column, record }">

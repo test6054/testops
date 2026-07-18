@@ -4,13 +4,14 @@ import type {
   PortfolioTeacherHonorCategoryVO,
   PortfolioTeacherHonorVO,
 } from '@/apis/portfolio/teacher-honor'
+import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -30,6 +31,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   PortfolioHonorLevelCode,
   PortfolioHonorLevelDescription,
@@ -40,6 +42,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 const router = useRouter()
 
 const loading = ref(false)
@@ -72,7 +76,9 @@ const form = reactive({
 
 const categoryForm = reactive({ categoryName: '' })
 
-const readonlyMode = computed(() => canPickTeachers.value && !!targetTeacherId.value)
+const readonlyMode = computed(
+  () => (canPickTeachers.value && !!targetTeacherId.value) || archiveWriteForbidden.value,
+)
 
 const categoryOptions = computed(() =>
   categories.value.map((item) => ({
@@ -87,6 +93,7 @@ const honorColumns: ColumnsType = [
   { title: '等级', key: 'levelCode', width: 88 },
   { title: '授予单位', dataIndex: 'awardUnit', key: 'awardUnit', width: 140 },
   { title: '获得日期', dataIndex: 'recordDate', key: 'recordDate', width: 110 },
+  { title: '业务日工号', dataIndex: 'affiliationStaffNo', key: 'affiliationStaffNo', width: 120 },
   { title: '操作', key: 'actions', width: 210 },
 ]
 
@@ -190,6 +197,9 @@ async function saveHonor() {
   if (saving.value || Boolean(deletingHonorId.value) || Boolean(deletingCategoryId.value)) {
     return
   }
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('保存荣誉档案'))) {
     return
   }
@@ -220,6 +230,9 @@ async function saveHonor() {
 
 async function removeHonor(row: PortfolioTeacherHonorVO) {
   if (readonlyMode.value || deletingHonorId.value || preparingArchiveId.value) {
+    return
+  }
+  if (!assertArchiveWritable()) {
     return
   }
   if (!(await confirmProxyWrite('删除荣誉档案'))) {
@@ -286,6 +299,9 @@ function openCategoryModal() {
 }
 
 async function createCategory() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('创建荣誉自建分类'))) {
     return
   }
@@ -308,6 +324,9 @@ async function createCategory() {
 
 async function confirmDeleteCategory(row: PortfolioTeacherHonorCategoryVO) {
   if (readonlyMode.value || row.preset || !row.id || deletingCategoryId.value) {
+    return
+  }
+  if (!assertArchiveWritable()) {
     return
   }
   if (!(await confirmProxyWrite('删除荣誉自建分类'))) {
@@ -397,6 +416,13 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
     <template #context>
       <ContextBar layout="workbench" show-title title="获奖情况" subtitle="荣誉档案与证明材料" />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
@@ -409,12 +435,17 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
     <template v-else>
       <UiCard title="荣誉记录" :loading="loading">
         <template #extra>
-          <UiButton variant="primary" size="sm" v-if="!readonlyMode" @click="openModal()">新增荣誉</UiButton>
+          <UiButton variant="primary" size="sm" v-if="!readonlyMode" @click="openModal()"
+            >新增荣誉</UiButton
+          >
         </template>
         <UiDataTable :columns="honorColumns" :data-source="rows" row-key="id" :pagination="false">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'levelCode'">
               {{ honorLevelLabel(record.levelCode) }}
+            </template>
+            <template v-else-if="column.key === 'affiliationStaffNo'">
+              {{ record.affiliationStaffNo || '—' }}
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton size="sm" variant="ghost" @click="openModal(record)">
@@ -448,7 +479,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 
       <UiCard title="荣誉分类" :loading="categoryLoading" style="margin-top: 16px">
         <template #extra>
-          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal">新建分类</UiButton>
+          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal"
+            >新建分类</UiButton
+          >
         </template>
         <UiDataTable
           :columns="categoryColumns"
@@ -523,7 +556,13 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
       <UiFormItem label="证明材料" compact>
         <div class="teacher-honor__attachment">
           <span v-if="form.attachmentName">{{ form.attachmentName }}</span>
-          <UiButton variant="primary" size="sm" v-if="!readonlyMode" :loading="uploadingFile" @click="openAttachmentPicker">
+          <UiButton
+            variant="primary"
+            size="sm"
+            v-if="!readonlyMode"
+            :loading="uploadingFile"
+            @click="openAttachmentPicker"
+          >
             上传附件
           </UiButton>
         </div>

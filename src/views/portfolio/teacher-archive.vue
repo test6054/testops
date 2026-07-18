@@ -5,7 +5,15 @@ import type {
   PortfolioArchiveBagPreviewVO,
   PortfolioArchiveScoreResultVO,
 } from '@/apis/portfolio/bag-types'
+import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
 import type { PortfolioArchiveRecordSourceTypeCode } from '@/apis/portfolio/enums'
+import {
+  PortfolioArchiveRecordSourceTypeDescription,
+  PortfolioArchiveRecordStatusCode,
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioArchiveSupportMaterialSourceTypeDescription,
+  PortfolioCompletenessLevelDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioArchiveRecordDetailVO,
   PortfolioArchiveRecordSummaryVO,
@@ -15,27 +23,21 @@ import type {
   PortfolioMaterialVO,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
+  PORTFOLIO_COMPLETENESS_LEVEL_TONE,
+} from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
-import {
-  PortfolioArchiveRecordSourceTypeDescription,
-  PortfolioArchiveRecordStatusCode,
-  PortfolioArchiveRecordStatusDescription,
-  PortfolioArchiveSupportMaterialSourceTypeDescription,
-  PortfolioCompletenessLevelDescription,
-} from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
-import {
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
-  PORTFOLIO_COMPLETENESS_LEVEL_TONE,
-} from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -59,8 +61,8 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -114,8 +116,8 @@ function completenessLevelTone(level?: PortfolioCompletenessLevelCode): BadgeTon
 function bagCompletenessHeadline(
   preview: PortfolioArchiveBagPreviewVO | PortfolioArchiveBagAssembleVO,
 ): string {
-  const level
-    = 'completenessLevel' in preview && preview.completenessLevel
+  const level =
+    'completenessLevel' in preview && preview.completenessLevel
       ? completenessLevelLabel(preview.completenessLevel)
       : ''
   const percent = preview.completenessPercent ?? '—'
@@ -181,6 +183,8 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 const { currentUserId } = usePortfolioTeacherAccess()
 
 const oneTableLoading = ref(false)
@@ -317,8 +321,8 @@ async function loadOneTable() {
     }
     categories.value = vo.categories
     if (
-      selectedCategoryId.value
-      && !categories.value.some((item) => item.categoryId === selectedCategoryId.value)
+      selectedCategoryId.value &&
+      !categories.value.some((item) => item.categoryId === selectedCategoryId.value)
     ) {
       selectedCategoryId.value = undefined
     }
@@ -426,8 +430,8 @@ async function openRecordById(recordId: string) {
     }
     recordDetail.value = nextRecordDetail
     if (
-      recordDetail.value?.categoryId
-      && selectedCategoryId.value !== recordDetail.value.categoryId
+      recordDetail.value?.categoryId &&
+      selectedCategoryId.value !== recordDetail.value.categoryId
     ) {
       selectedCategoryId.value = recordDetail.value.categoryId
       pageNum.value = 1
@@ -457,8 +461,8 @@ const canCreateRevision = computed(() => {
     return false
   }
   return (
-    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
-    || recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.SUPERSEDED
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL ||
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.SUPERSEDED
   )
 })
 
@@ -467,8 +471,8 @@ const canManageSupportMaterials = computed(() => {
     return false
   }
   return (
-    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.DRAFT
-    || recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 })
 
@@ -478,9 +482,9 @@ async function refreshSupportMaterials(archiveRecordId: string) {
   const currentToken = ++supportMaterialRequestToken.value
   const rows = await portfolioArchiveApi.listSupportMaterials(archiveRecordId)
   if (
-    requestToken.value !== currentScopeToken
-    || supportMaterialRequestToken.value !== currentToken
-    || recordDetail.value?.id !== archiveRecordId
+    requestToken.value !== currentScopeToken ||
+    supportMaterialRequestToken.value !== currentToken ||
+    recordDetail.value?.id !== archiveRecordId
   ) {
     return
   }
@@ -497,6 +501,9 @@ function openLocalMaterialModal() {
 
 /** 将平台暂存文件正式挂接到当前草稿档案。 */
 async function addLocalSupportMaterial() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('添加支撑材料'))) {
     return
   }
@@ -552,9 +559,9 @@ async function loadMaterialLibrary() {
       pageSize: materialLibraryPageSize.value,
     })
     if (
-      requestToken.value !== currentScopeToken
-      || materialLibraryRequestToken.value !== currentToken
-      || recordDetail.value?.id !== archiveRecordId
+      requestToken.value !== currentScopeToken ||
+      materialLibraryRequestToken.value !== currentToken ||
+      recordDetail.value?.id !== archiveRecordId
     ) {
       return
     }
@@ -562,8 +569,8 @@ async function loadMaterialLibrary() {
     materialLibraryTotal.value = page.total
   } catch (error) {
     if (
-      requestToken.value === currentScopeToken
-      && materialLibraryRequestToken.value === currentToken
+      requestToken.value === currentScopeToken &&
+      materialLibraryRequestToken.value === currentToken
     ) {
       materialLibraryRows.value = []
       materialLibraryTotal.value = 0
@@ -571,8 +578,8 @@ async function loadMaterialLibrary() {
     }
   } finally {
     if (
-      requestToken.value === currentScopeToken
-      && materialLibraryRequestToken.value === currentToken
+      requestToken.value === currentScopeToken &&
+      materialLibraryRequestToken.value === currentToken
     ) {
       materialLibraryLoading.value = false
     }
@@ -585,7 +592,7 @@ function openMaterialLibraryModal() {
   void loadMaterialLibrary()
 }
 
-function handleMaterialLibraryPageChange(page: { current: number, pageSize: number }) {
+function handleMaterialLibraryPageChange(page: { current: number; pageSize: number }) {
   materialLibraryPageNum.value = page.current
   materialLibraryPageSize.value = page.pageSize
   void loadMaterialLibrary()
@@ -593,6 +600,9 @@ function handleMaterialLibraryPageChange(page: { current: number, pageSize: numb
 
 /** 将教师材料库条目关联为当前草稿档案的支撑材料。 */
 async function linkSupportMaterial(material: PortfolioMaterialVO) {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('关联支撑材料'))) {
     return
   }
@@ -635,6 +645,9 @@ async function downloadSupportMaterial(material: PortfolioArchiveSupportMaterial
 
 /** 删除当前草稿档案与支撑材料的关联。 */
 async function deleteSupportMaterial(material: PortfolioArchiveSupportMaterialVO) {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('删除支撑材料'))) {
     return
   }
@@ -668,6 +681,9 @@ async function deleteSupportMaterial(material: PortfolioArchiveSupportMaterialVO
 }
 
 async function createRevision() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('创建档案修订版'))) {
     return
   }
@@ -726,7 +742,7 @@ function selectCategory(categoryId: string) {
   void loadRecords()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadRecords()
@@ -868,6 +884,9 @@ function openExportConfirm() {
 }
 
 async function confirmExportBag() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('导出一表通'))) {
     return
   }
@@ -934,19 +953,26 @@ async function openRecordFromRouteQuery() {
   await openRecordById(recordId)
 }
 
-
 const archiveMoreActionItems = computed(() => [
-  { key: 'preview', label: '结构化预览', disabled: !canLoadTeacherArchive.value || bagLoading.value },
-  { key: 'assemble', label: '汇聚预览', disabled: !canLoadTeacherArchive.value || bagLoading.value },
+  {
+    key: 'preview',
+    label: '结构化预览',
+    disabled: !canLoadTeacherArchive.value || bagLoading.value,
+  },
+  {
+    key: 'assemble',
+    label: '汇聚预览',
+    disabled: !canLoadTeacherArchive.value || bagLoading.value,
+  },
   { key: 'correction', label: '我的纠错', disabled: !canLoadTeacherArchive.value },
   {
     key: 'reload',
     label: '刷新',
     disabled:
-      !canLoadTeacherArchive.value
-      || oneTableLoading.value
-      || recordLoading.value
-      || timelineLoading.value,
+      !canLoadTeacherArchive.value ||
+      oneTableLoading.value ||
+      recordLoading.value ||
+      timelineLoading.value,
   },
 ])
 
@@ -1025,6 +1051,13 @@ watch(
             @select="onArchiveMoreAction"
           />
         </template>
+        <UiAlertStrip
+          v-if="archiveWriteForbidden"
+          tone="warning"
+          title="档案已封存写禁"
+          :description="archiveWriteBlockMessage"
+          class="mb-3"
+        />
       </ContextBar>
     </template>
 
@@ -1069,7 +1102,9 @@ watch(
               <template v-if="item.decayProfileLabel">（{{ item.decayProfileLabel }}）</template>
               ·
             </template>
-            <template v-if="item.recognitionYear != null">认定年 {{ item.recognitionYear }} · </template>
+            <template v-if="item.recognitionYear != null"
+              >认定年 {{ item.recognitionYear }} ·
+            </template>
             <template v-if="item.decayApplied">已衰减</template>
             <template v-else-if="item.lineType === 'ACHIEVEMENT_ITEM'">未衰减</template>
           </div>
@@ -1259,7 +1294,14 @@ watch(
             </template>
           </p>
           <div v-if="canCreateRevision" class="teacher-archive__detail-actions">
-            <UiButton size="sm" variant="primary" :loading="revisionLoading" @click="createRevision"> 创建修订版 </UiButton>
+            <UiButton
+              size="sm"
+              variant="primary"
+              :loading="revisionLoading"
+              @click="createRevision"
+            >
+              创建修订版
+            </UiButton>
           </div>
           <section
             v-if="recordDetail.versionHistory?.length"
@@ -1448,9 +1490,9 @@ watch(
               size="table"
               tone="primary"
               :disabled="
-                supportMaterialWriting
-                  || !record.fileNodeId
-                  || recordDetail?.supportMaterials.some((item) => item.linkedMaterialId === record.id)
+                supportMaterialWriting ||
+                !record.fileNodeId ||
+                recordDetail?.supportMaterials.some((item) => item.linkedMaterialId === record.id)
               "
               @click="linkSupportMaterial(record)"
             >

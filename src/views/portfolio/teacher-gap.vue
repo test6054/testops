@@ -1,38 +1,25 @@
 <script setup lang="ts">
-import type {
-  PortfolioArchiveRecordFieldInput,
-  PortfolioGapTaskDetailVO,
-} from '@/apis/portfolio/types'
+import type { PortfolioArchiveRecordFieldInput, PortfolioGapTaskDetailVO } from '@/apis/portfolio/types'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { PortfolioGapTaskStatusCode, PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
-import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiForm from '@/components/ui-guide/ui/UiForm.vue'
-import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
-import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import {
-  usePortfolioPageScope,
-  usePortfolioScopedLoader,
-} from '@/composables/usePortfolioPageScope'
+import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 function gapTaskStatusLabel(status: PortfolioGapTaskStatusCode): string {
   return strictEnumLabel(PortfolioGapTaskStatusDescription, status, '补采任务状态')
@@ -46,6 +33,11 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -191,6 +183,9 @@ function buildFieldInputs(): PortfolioArchiveRecordFieldInput[] {
 
 async function handleSaveDraft() {
   if (!detail.value || !gapSubmissionAvailable.value) {
+    return
+  }
+  if (!assertArchiveWritable()) {
     return
   }
   if (!(await confirmProxyWrite('补齐档案缺口草稿'))) {
@@ -376,65 +371,15 @@ watch(
       </ContextBar>
     </template>
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
-    <UiSpin v-else :spinning="loading">
-      <template v-if="detail">
-        <p class="teacher-gap__meta">
-          <UiTag tone="blue">
-            {{ statusLabel }}
-          </UiTag>
-          <span v-if="detail.categoryName">{{ detail.categoryName }}</span>
-          <span v-if="courseScopeText">课程 {{ courseScopeText }}</span>
-          <span v-if="detail.dueTime">截止 {{ detail.dueTime }}</span>
-        </p>
-        <p v-if="detail.returnReason" class="teacher-gap__return">
-          退回原因：{{ detail.returnReason }}
-        </p>
-        <UiCard v-if="detail.missingFields.length" title="必填字段补采">
-          <UiForm layout="vertical">
-            <UiFormItem label="补交附件">
-              <UiPlatformFileField
-                v-model:file-node-id="attachmentFileNodeId"
-                v-model:file-name="attachmentFileName"
-                :disabled="!gapSubmissionAvailable"
-                :scene-key="FileUploadSceneKey.PORTFOLIO_MATERIAL"
-                accept=".pdf,.doc,.docx,.png,.jpg"
-                button-text="上传附件"
-              />
-              <UiButton
-                size="sm"
-                class="teacher-gap__scan-btn"
-                variant="outline"
-                :loading="scanOpening"
-                :disabled="!gapSubmissionAvailable"
-                @click="openPortfolioGapScan"
-              >
-                一体机扫描
-              </UiButton>
-            </UiFormItem>
-            <UiFormItem
-              v-for="field in detail.missingFields"
-              :key="field.fieldCode"
-              :label="field.fieldLabel ?? field.fieldCode"
-              :required="field.missing"
-            >
-              <UiInput
-                size="sm"
-                v-model="fieldValues[field.fieldCode]"
-                :disabled="!gapSubmissionAvailable"
-                placeholder="必填"
-              />
-              <UiInput
-                size="sm"
-                v-model="evidenceRefs[field.fieldCode]"
-                class="teacher-gap__evidence"
-                :disabled="!gapSubmissionAvailable"
-                placeholder="证据引用（可选）"
-              />
-            </UiFormItem>
-          </UiForm>
-        </UiCard>
-        <UiEmpty v-else size="sm" description="该分类必填字段已补全，可直接提交或返回首页" />
-      </template>
+    </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
+
     </UiSpin>
     <ScanDispatchResultDialog
       v-model:open="dispatchResultOpen"

@@ -49,11 +49,11 @@
 
 <script lang="ts" setup>
 import type { QuestionMarkingGroupResponse } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import {
   QUESTION_GROUP_STATUS_TONE,
   QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -109,7 +109,7 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
 
   &__title {
     margin: 0;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
   }
 
@@ -123,14 +123,14 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
     flex-direction: column;
     gap: var(--dp-space-2);
     margin: 0;
-    padding: var(--dp-space-3);
+    padding: var(--dp-space-2) var(--dp-space-3);
     list-style: none;
   }
 
   &__item {
     border: 1px solid var(--dp-border);
-    border-radius: 6px;
-    padding: 12px;
+    border-radius: 4px;
+    padding: 8px 10px;
     background: var(--dp-surface);
   }
 
@@ -139,7 +139,7 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
     align-items: center;
     justify-content: space-between;
     gap: var(--dp-space-2);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   &__item-title {
@@ -150,7 +150,7 @@ function groupStatusLabel(status: QuestionMarkingGroupStatusCode): string {
   }
 
   &__name {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
   }
 

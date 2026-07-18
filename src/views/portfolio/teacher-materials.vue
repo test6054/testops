@@ -1,40 +1,36 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
+import { ARCHIVE_MATERIAL_OCR_STATUS_TONE, ArchiveMaterialOcrStatusDescription } from '@/apis/mark/archive-ocr-status'
 import type { PortfolioMaterialStatusCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioMaterialRefVO,
-  PortfolioMaterialSaveRequest,
-  PortfolioMaterialSearchResponse,
-  PortfolioMaterialVersionVO,
-  PortfolioMaterialVO,
-} from '@/apis/portfolio/types'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_MATERIAL_STATUS_OPTIONS,
   PORTFOLIO_MATERIAL_TYPE_OPTIONS,
   PortfolioMaterialStatusDescription,
   PortfolioMaterialTypeCode,
-  PortfolioMaterialTypeDescription,
+  PortfolioMaterialTypeDescription
 } from '@/apis/portfolio/enums'
-import { portfolioMaterialApi } from '@/apis/portfolio/material'
+import type {
+  PortfolioMaterialRefVO,
+  PortfolioMaterialSaveRequest,
+  PortfolioMaterialSearchResponse,
+  PortfolioMaterialVersionVO,
+  PortfolioMaterialVO
+} from '@/apis/portfolio/types'
 import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
@@ -43,21 +39,21 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import {
-  usePortfolioPageScope,
-  usePortfolioScopedLoader,
-} from '@/composables/usePortfolioPageScope'
+import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import {
-  buildPortfolioIntakeReassignQuery,
-  canReassignPortfolioMaterial,
-} from '@/utils/portfolio-material-reassign'
+import { buildPortfolioIntakeReassignQuery, canReassignPortfolioMaterial } from '@/utils/portfolio-material-reassign'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard()
 
 interface MaterialFilterModel {
   materialType?: PortfolioMaterialTypeCode
@@ -252,6 +248,9 @@ function openEditModal(row: PortfolioMaterialVO) {
 async function submitForm() {
   if (writing.value) return
 
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('保存材料'))) {
     return
   }
@@ -292,6 +291,9 @@ async function submitForm() {
 async function deleteMaterial(row: PortfolioMaterialVO) {
   if (writing.value) return
 
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('删除材料'))) {
     return
   }
@@ -344,6 +346,9 @@ async function openVersionHistory(row: PortfolioMaterialVO) {
 
 async function voidMaterial(row: PortfolioMaterialVO) {
   if (writing.value) return
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('作废材料'))) {
     return
   }
@@ -563,16 +568,15 @@ watch(
     </template>
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+    </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
 
-    <template v-else>
-      <UiFilterBar v-model="filterModel" :fields="filterFields" @search="handleSearch">
-        <template #extra>
-          <UiSearchBox
-            v-model="searchKeyword"
-            placeholder="文字识别全文检索"
-            @search="handleSearch"
-          />
-        </template>
       </UiFilterBar>
 
       <UiCard :title="showSearchResults ? '文字识别检索结果' : '材料列表'">

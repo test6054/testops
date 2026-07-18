@@ -1,5 +1,6 @@
 import type { NavigationGuardReturn, RouteLocationNormalized, Router } from 'vue-router'
 import type { SeoMeta } from '@/utils/seo'
+import { applySeoMeta } from '@/utils/seo'
 import NProgress from 'nprogress'
 import {
   ensurePortfolioReviewAccessLoaded,
@@ -26,7 +27,6 @@ import {
   resolveQualityPlanGateRedirect,
   routeRequiresPlanConfirmed,
 } from '@/utils/quality-plan-guard'
-import { applySeoMeta } from '@/utils/seo'
 import { getRoutePreloadManager } from './preload-strategy'
 import 'nprogress/nprogress.css'
 
@@ -117,6 +117,7 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
 
   let userInfoLoadFailed = false
   const permissionVersionBeforeRefresh = userStore.userInfo.permissionVersion
+  const tenantAdminProjectionBeforeRefresh = userStore.userInfo.isTenantAdmin
   if (!userStore.userInfo.userId) {
     try {
       await userStore.getInfo()
@@ -135,8 +136,10 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
   }
 
   const routeStore = useRouteStore()
-  const permissionVersionChanged
-    = permissionVersionBeforeRefresh !== userStore.userInfo.permissionVersion
+  const permissionVersionChanged =
+    permissionVersionBeforeRefresh !== userStore.userInfo.permissionVersion
+  const tenantAdminBeforeRefresh = tenantAdminProjectionBeforeRefresh
+  const tenantAdminChanged = tenantAdminBeforeRefresh !== userStore.userInfo.isTenantAdmin
   if (permissionVersionChanged) {
     resetPortfolioReviewAccessCache()
   }
@@ -146,14 +149,15 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
   // 仅进入教学档案袋域时拉 access-scope（edu-quality）；阅卷 /teacher、质量 /quality 不依赖该接口
   if (userRole && isValidRole(userRole) && isPortfolioRoute(to.path)) {
     const reviewAccessScope = await ensurePortfolioReviewAccessLoaded(permissionVersionChanged)
-    reviewAccessChanged
-      = reviewAccessScope !== null && reviewAccessBeforeLoad !== readPortfolioReviewAccessProjection()
+    reviewAccessChanged =
+      reviewAccessScope !== null && reviewAccessBeforeLoad !== readPortfolioReviewAccessProjection()
   }
   if (
-    !hasMenuFlag
-    || routeStore.asyncRoutes.length === 0
-    || permissionVersionChanged
-    || reviewAccessChanged
+    !hasMenuFlag ||
+    routeStore.asyncRoutes.length === 0 ||
+    permissionVersionChanged ||
+    tenantAdminChanged ||
+    reviewAccessChanged
   ) {
     try {
       await routeStore.generateMenus()
@@ -171,9 +175,9 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
     return getDefaultRoute(authStore.userRole)
   }
 
-  const needsSecurityRefresh
-    = to.path !== '/change-password'
-      && (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
+  const needsSecurityRefresh =
+    to.path !== '/change-password' &&
+    (!userStore.userInfo.forcePasswordChange || !userStore.userInfo.currentLoginProviderType)
 
   if (needsSecurityRefresh) {
     try {
@@ -226,7 +230,7 @@ async function runProtectedRouteGuard(to: RouteLocationNormalized): Promise<Navi
 
 async function runBeforeEachWithTimeout(
   task: () => Promise<NavigationGuardReturn>,
-): Promise<{ timedOut: true } | { timedOut: false, result: NavigationGuardReturn }> {
+): Promise<{ timedOut: true } | { timedOut: false; result: NavigationGuardReturn }> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([
@@ -264,8 +268,8 @@ export const setupRouterGuard = (router: Router) => {
       return
     }
 
-    const guardOutcome
-      = routeRequiresPlanConfirmed(to.matched) || isPortfolioRoute(to.path)
+    const guardOutcome =
+      routeRequiresPlanConfirmed(to.matched) || isPortfolioRoute(to.path)
         ? { timedOut: false as const, result: await runProtectedRouteGuard(to) }
         : await runBeforeEachWithTimeout(() => runProtectedRouteGuard(to))
     if (guardOutcome.timedOut) {

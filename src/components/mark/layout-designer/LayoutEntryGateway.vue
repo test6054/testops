@@ -4,11 +4,19 @@ import type {
   ExamLayoutDocument,
   ExamLayoutGenerateQuestionRequest,
 } from '@/apis/mark/exam-layout-design'
+import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import type { LayoutQuestionDraft } from '@/utils/layout-question-templates'
+import {
+  buildGenerateQuestionsFromDrafts,
+  createAnswerSheetDefaultQuestionRows,
+  createQuestionDraft,
+  defaultFullScore,
+  defaultOptionCount,
+  deriveQuestionType,
+} from '@/utils/layout-question-templates'
 import QuestionCircleOutlined from '@ant-design/icons-vue/QuestionCircleOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -30,14 +38,6 @@ import {
 import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { layoutHasSourceFileDetectResult } from '@/utils/exam-layout-designer'
-import {
-  buildGenerateQuestionsFromDrafts,
-  createAnswerSheetDefaultQuestionRows,
-  createQuestionDraft,
-  defaultFullScore,
-  defaultOptionCount,
-  deriveQuestionType,
-} from '@/utils/layout-question-templates'
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
@@ -51,7 +51,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'generate-sheet': [paperSpec: string, questions: ExamLayoutGenerateQuestionRequest[]]
   'auto-detect': [sourcePdfFileId: string]
-  "patch": [document: ExamLayoutDocument]
+  patch: [document: ExamLayoutDocument]
 }>()
 
 const OCR_SCENE_OPTIONS = [
@@ -100,8 +100,8 @@ const sourceFileCanAutoDetect = computed(() => {
   return /\.(pdf|doc|docx|png|jpe?g)$/i.test(sourcePdfFileName.value)
 })
 const paperSpec = ref<ExamLayoutPaperSpecCode>(
-  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec)
-  ?? defaultBlankSheetPaperSpec(),
+  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec) ??
+    defaultBlankSheetPaperSpec(),
 )
 const layoutName = ref(props.document?.layoutName ?? '')
 const printSafeMarginMm = ref(props.document?.printSafeMarginMm ?? 5)
@@ -349,40 +349,48 @@ function onSourcePdfChange(fileId: string | undefined): void {
         />
       </UiTooltip>
 
-      <UiFormItem label="制卷名称">
-        <UiInput
-          size="sm"
-          v-model="layoutName"
-          :disabled="readonly"
-          placeholder="如：2025 春季期末试卷"
-          @blur="patchDocument({ layoutName })"
-        />
-      </UiFormItem>
-      <UiFormItem>
-        <template #label>
-          <span class="layout-entry-gateway__label">
-            安全边距（mm）
-            <UiTooltip title="印刷裁切留白，影响页边识别区与题区排版。">
-              <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
-            </UiTooltip>
-          </span>
-        </template>
-        <UiInputNumber
-          size="sm"
-          v-model="printSafeMarginMm"
-          :min="3"
-          :max="20"
-          style="width: 100%"
-          @change="patchDocument({ printSafeMarginMm })"
-        />
-      </UiFormItem>
+      <div class="layout-entry-gateway__meta">
+        <UiFormItem label="制卷名称" class="layout-entry-gateway__meta-name">
+          <UiInput
+            size="sm"
+            v-model="layoutName"
+            :disabled="readonly"
+            placeholder="如：2025 春季期末试卷"
+            @blur="patchDocument({ layoutName })"
+          />
+        </UiFormItem>
+        <UiFormItem class="layout-entry-gateway__meta-margin">
+          <template #label>
+            <span class="layout-entry-gateway__label">
+              安全边距
+              <UiTooltip title="印刷裁切留白（毫米），影响页边识别区与题区排版。">
+                <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
+              </UiTooltip>
+            </span>
+          </template>
+          <div class="layout-entry-gateway__margin-control">
+            <UiInputNumber
+              size="sm"
+              v-model="printSafeMarginMm"
+              :min="3"
+              :max="20"
+              :disabled="readonly"
+              aria-label="安全边距毫米"
+              @change="patchDocument({ printSafeMarginMm })"
+            />
+            <span class="layout-entry-gateway__unit">mm</span>
+          </div>
+        </UiFormItem>
+      </div>
 
       <template v-if="isFullPaperMode">
         <UiFormItem>
           <template #label>
             <span class="layout-entry-gateway__label">
               整卷源文件
-              <UiTooltip title="上传便携文档、文字文档或图片后将异步识别题目、分页入库并生成题单。">
+              <UiTooltip
+                title="支持 PDF / Word / PNG / JPG；上传后将异步识别题目、分页入库并生成题单。"
+              >
                 <QuestionCircleOutlined class="layout-entry-gateway__label-icon" />
               </UiTooltip>
             </span>
@@ -393,7 +401,9 @@ function onSourcePdfChange(fileId: string | undefined): void {
             :scene-key="FileUploadSceneKey.MARK_EXAM_TEMPLATE"
             accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg"
             :disabled="entryReadonly"
+            variant="dragger"
             button-text="上传源文件"
+            tip="支持 PDF / Word / PNG / JPG，单文件上传"
             @update:file-node-id="onSourcePdfChange"
           />
         </UiFormItem>
@@ -520,40 +530,85 @@ function onSourcePdfChange(fileId: string | undefined): void {
 <style scoped lang="scss">
 .layout-entry-gateway {
   max-width: 720px;
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-3) var(--dp-space-4);
+
+  &__form {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
 
   &__alert {
-    margin-bottom: 12px;
+    margin-bottom: var(--dp-space-2);
+  }
+
+  &__meta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 112px;
+    gap: var(--dp-space-3);
+    align-items: start;
+  }
+
+  &__meta-margin :deep(.ant-input-number) {
+    width: 100%;
+  }
+
+  &__margin-control {
+    display: flex;
+    align-items: center;
+    gap: var(--dp-space-2);
+  }
+
+  &__unit {
+    flex-shrink: 0;
+    font-size: var(--dp-font-size-sm);
+    color: var(--dp-text-secondary);
   }
 
   &__label {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: var(--dp-space-1);
   }
 
   &__label-icon {
-    font-size: 12px;
+    font-size: var(--dp-type-hint-size);
     color: var(--dp-text-muted);
     cursor: help;
+  }
+
+  &__form :deep(.ant-form-item) {
+    margin-bottom: 10px;
+  }
+
+  &__form :deep(.ant-upload.ant-upload-drag) {
+    padding: 12px 8px;
+  }
+
+  &__form :deep(.ant-upload-drag-icon .anticon) {
+    font-size: 28px !important;
+  }
+
+  &__form :deep(.ant-upload-text) {
+    font-size: 13px !important;
   }
 
   &__quick-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 8px;
+    gap: var(--dp-space-2);
+    margin-bottom: var(--dp-space-2);
   }
 
   &__quick-button,
   &__remove-button {
     height: 26px;
-    padding: 0 8px;
+    padding: 0 var(--dp-space-2);
     border: 1px solid var(--dp-border-subtle);
-    border-radius: 6px;
+    border-radius: var(--dp-radius-control);
     background: var(--dp-bg-container);
     color: var(--dp-text-primary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 24px;
     cursor: pointer;
 
@@ -573,7 +628,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
   &__question-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: var(--dp-space-2);
     max-height: 360px;
     overflow: auto;
     padding-right: 2px;
@@ -583,7 +638,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
   &__question-row {
     display: grid;
     grid-template-columns: 48px minmax(112px, 1.2fr) 42px 62px 58px 44px;
-    gap: 6px;
+    gap: var(--dp-space-2);
     align-items: center;
   }
 
@@ -594,7 +649,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
     min-height: 24px;
     background: var(--dp-bg-container);
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__question-row {
@@ -606,9 +661,9 @@ function onSourcePdfChange(fileId: string | undefined): void {
     align-items: center;
     justify-content: center;
     height: 22px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
+    border-radius: var(--dp-radius-control);
+    font-size: var(--dp-font-size-xs);
+    font-weight: var(--dp-font-weight-emphasis);
 
     &--objective {
       background: var(--dp-color-primary-bg);
@@ -624,6 +679,12 @@ function onSourcePdfChange(fileId: string | undefined): void {
   &__remove-button {
     width: 44px;
     padding: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .layout-entry-gateway__meta {
+    grid-template-columns: 1fr;
   }
 }
 </style>

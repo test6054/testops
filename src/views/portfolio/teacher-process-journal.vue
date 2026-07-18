@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import type {PortfolioCourseArchiveCourseVO} from '@/apis/portfolio/course-archive';
-import type {PortfolioProcessSessionVO} from '@/apis/portfolio/process-session';
+import type { PortfolioCourseArchiveCourseVO } from '@/apis/portfolio/course-archive'
+import { portfolioCourseArchiveApi } from '@/apis/portfolio/course-archive'
+import type { PortfolioProcessSessionVO } from '@/apis/portfolio/process-session'
+import { portfolioProcessSessionApi } from '@/apis/portfolio/process-session'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
 /**
  * 教学全过程过程记录：讲授课程锚定 + 课次三段（准备/过程/反馈）独立落库。
@@ -9,14 +11,6 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import {
-  portfolioCourseArchiveApi
-  
-} from '@/apis/portfolio/course-archive'
-import {
-  portfolioProcessSessionApi
-  
-} from '@/apis/portfolio/process-session'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -41,6 +35,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 
@@ -49,6 +44,8 @@ defineOptions({ name: 'PortfolioTeacherProcessJournal' })
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 const loading = ref(false)
 const sessionsLoading = ref(false)
 const saving = ref(false)
@@ -62,7 +59,7 @@ const linking = ref(false)
 const linkSessionId = ref<string | undefined>()
 const linkCategoryId = ref<string | undefined>()
 const linkSubmitForReview = ref(true)
-const categoryOptions = ref<{ value: string, label: string, code?: string }[]>([])
+const categoryOptions = ref<{ value: string; label: string; code?: string }[]>([])
 const categoriesLoading = ref(false)
 
 const form = reactive({
@@ -106,8 +103,8 @@ async function loadCourses() {
     })
     courses.value = overview.courses ?? []
     if (
-      selectedCourseId.value
-      && !courses.value.some((item) => item.taughtCourseId === selectedCourseId.value)
+      selectedCourseId.value &&
+      !courses.value.some((item) => item.taughtCourseId === selectedCourseId.value)
     ) {
       selectedCourseId.value = ''
     }
@@ -143,13 +140,12 @@ async function loadSessions() {
   }
 }
 
-
 function flattenCategories(
   nodes: PortfolioArchiveCategoryTreeNodeVO[] | undefined,
   prefix = '',
-): { value: string, label: string, code?: string }[] {
+): { value: string; label: string; code?: string }[] {
   // 仅列出已发布模板的分类：租户可配类目通过档案模板治理 + 系统预置 PROCESS_SESSION
-  const rows: { value: string, label: string, code?: string }[] = []
+  const rows: { value: string; label: string; code?: string }[] = []
   for (const node of nodes ?? []) {
     const label = `${prefix}${node.categoryName || node.categoryCode || node.id}`
     if (node.id && node.publishedVersionId) {
@@ -207,6 +203,9 @@ async function confirmLinkArchive() {
     showFormValidationMessage('请选择目标档案分类')
     return
   }
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite(linkSubmitForReview.value ? '提交材料审核' : '写入档案草稿'))) {
     return
   }
@@ -219,9 +218,7 @@ async function confirmLinkArchive() {
       submitForReview: linkSubmitForReview.value,
     })
     message.success(
-      linkSubmitForReview.value
-        ? '已提交材料审核并回写档案关联'
-        : '已写入档案草稿并回写关联',
+      linkSubmitForReview.value ? '已提交材料审核并回写档案关联' : '已写入档案草稿并回写关联',
     )
     linkDrawerOpen.value = false
     await loadSessions()
@@ -272,7 +269,6 @@ async function goLinkedArchive(row: PortfolioProcessSessionVO) {
     showUserError(error, '打开关联档案失败')
   }
 }
-
 
 function goMasterpiece() {
   void router.push({
@@ -349,6 +345,9 @@ async function saveSession() {
     showFormValidationMessage('课前准备、课堂过程、结果反馈至少填写一项')
     return
   }
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite(editingId.value ? '更新过程记录' : '保存过程记录'))) {
     return
   }
@@ -377,6 +376,9 @@ async function saveSession() {
 }
 
 async function removeSession(row: PortfolioProcessSessionVO) {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('删除过程记录'))) {
     return
   }
@@ -401,6 +403,9 @@ async function removeSession(row: PortfolioProcessSessionVO) {
 
 async function toggleMasterpiece(row: PortfolioProcessSessionVO) {
   const next = !row.selectedForMasterpiece
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite(next ? '精选代表作' : '取消代表作精选'))) {
     return
   }
@@ -446,8 +451,15 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
     </template>
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
 
-    <UiSpin v-else :spinning="loading">
+    <UiSpin :spinning="loading">
       <UiCard title="全过程过程记录">
         <p class="process-journal__lead">
           对齐清北全过程：选讲授课程 → 新建课次/阶段 → 填写课前准备 · 课堂过程 · 结果反馈 →
@@ -472,14 +484,7 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
           </UiButton>
         </div>
 
-        <UiAlertStrip
-          v-if="!courses.length"
-          tone="info"
-          size="sm"
-          dense
-          inline
-          :show-icon="false"
-        >
+        <UiAlertStrip v-if="!courses.length" tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
             <span style="display: inline-flex; align-items: center; gap: 8px">
               <UiTag tone="blue" size="sm">无课程</UiTag>
@@ -513,7 +518,9 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
                   <UiTag :tone="row.sessionStatus === 'CONFIRMED' ? 'green' : 'blue'" size="sm">
                     {{ row.sessionStatus === 'CONFIRMED' ? '已确认' : '草稿' }}
                   </UiTag>
-                  <UiTag v-if="row.selectedForMasterpiece" tone="orange" size="sm">代表作精选</UiTag>
+                  <UiTag v-if="row.selectedForMasterpiece" tone="orange" size="sm"
+                    >代表作精选</UiTag
+                  >
                   <UiTag v-if="row.linkedArchiveRecordId" tone="green" size="sm">已关联档案</UiTag>
                   <UiTag tone="gray" size="sm">{{ segmentSummary(row) }}</UiTag>
                 </div>
@@ -592,14 +599,27 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
         </UiFormItem>
         <UiFormItem label="课次标题" required>
           <UiInput
-            size="sm" v-model="form.sessionTitle" :maxlength="200" placeholder="如：第3周 · 项目中期检查"
+            size="sm"
+            v-model="form.sessionTitle"
+            :maxlength="200"
+            placeholder="如：第3周 · 项目中期检查"
           />
         </UiFormItem>
         <UiFormItem label="课前准备">
-          <UiTextarea size="sm" v-model="form.prepText" :rows="3" placeholder="教学目标、材料准备、学情预判…" />
+          <UiTextarea
+            size="sm"
+            v-model="form.prepText"
+            :rows="3"
+            placeholder="教学目标、材料准备、学情预判…"
+          />
         </UiFormItem>
         <UiFormItem label="课堂过程">
-          <UiTextarea size="sm" v-model="form.processText" :rows="3" placeholder="关键环节、互动、突发处理…" />
+          <UiTextarea
+            size="sm"
+            v-model="form.processText"
+            :rows="3"
+            placeholder="关键环节、互动、突发处理…"
+          />
         </UiFormItem>
         <UiFormItem label="结果反馈">
           <UiTextarea
@@ -653,7 +673,9 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
           />
         </UiFormItem>
         <UiFormItem>
-          <UiCheckbox v-model="linkSubmitForReview">立即提交审核（关闭则仅保存档案草稿）</UiCheckbox>
+          <UiCheckbox v-model="linkSubmitForReview"
+            >立即提交审核（关闭则仅保存档案草稿）</UiCheckbox
+          >
         </UiFormItem>
       </UiForm>
     </UiDrawer>

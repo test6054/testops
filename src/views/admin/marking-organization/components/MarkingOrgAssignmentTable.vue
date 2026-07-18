@@ -3,7 +3,7 @@
     <template #head>
       <div class="org-assignment__head">
         <h3 class="org-assignment__title">试题分配规则</h3>
-        <UiButton v-if="canManage" variant="outline" size="sm" @click="emit('create-group')">
+        <UiButton v-if="canManage" variant="primary" size="sm" @click="emit('create-group')">
           <template #icon><PlusOutlined /></template>
           新建题组
         </UiButton>
@@ -15,7 +15,7 @@
       :columns="columns"
       :data-source="rows"
       row-key="groupId"
-      size="middle"
+      size="small"
       :show-pagination="false"
       flat
       :total="rows.length"
@@ -30,7 +30,9 @@
             <span v-for="q in record.questionLabels" :key="q" class="org-assignment__chip">{{
               q
             }}</span>
-            <span v-if="record.questionLabels.length === 0" class="org-assignment__muted">整卷题组</span>
+            <span v-if="record.questionLabels.length === 0" class="org-assignment__muted"
+              >整卷题组</span
+            >
           </div>
         </template>
         <template v-else-if="column.key === 'questionType'">
@@ -70,11 +72,6 @@
         </UiTableSummaryRow>
       </template>
     </UiDataTable>
-
-    <footer v-if="rows.length > 0" class="org-assignment__footer">
-      <strong>分配说明：</strong>
-      主观题组建议启用匿名阅卷并由多名教师独立评分；分差超阈值将进入仲裁。客观题组可按轮询策略自动分配。
-    </footer>
   </WorkbenchSurfaceCard>
 </template>
 
@@ -84,14 +81,14 @@ import type {
   AllocationPolicyResponse,
   QuestionMarkingGroupResponse,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import { computed } from 'vue'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import {
   AllocationUnitDescription,
   MarkingAllocationModeDescription,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import { computed } from 'vue'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -161,7 +158,7 @@ function isEditable(status: QuestionMarkingGroupStatusCode): boolean {
   return status !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
 }
 
-function resolveTypeLabel(group: QuestionMarkingGroupResponse): { label: string, tone: BadgeTone } {
+function resolveTypeLabel(group: QuestionMarkingGroupResponse): { label: string; tone: BadgeTone } {
   if (group.questions.length === 0) {
     return { label: '整卷', tone: 'gray' }
   }
@@ -185,8 +182,8 @@ const rows = computed((): AssignmentRow[] =>
     const anonymityLabel = policy
       ? strictEnumLabel(AnonymityModeDescription, policy.anonymityMode, '匿名模式')
       : '—'
-    const anonymityTone: BadgeTone
-      = policy?.anonymityMode === AnonymityModeCode.ANONYMOUS ? 'green' : 'gray'
+    const anonymityTone: BadgeTone =
+      policy?.anonymityMode === AnonymityModeCode.ANONYMOUS ? 'green' : 'gray'
     return {
       groupId: group.id,
       groupName: group.groupName,
@@ -232,7 +229,7 @@ const summaryReviewerCount = computed(() => {
 
   &__title {
     margin: 0;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
   }
 
@@ -248,11 +245,12 @@ const summaryReviewerCount = computed(() => {
 
   &__chip {
     display: inline-flex;
-    padding: 1px 6px;
+    padding: 0 6px;
     border-radius: 4px;
     background: var(--dp-surface-sunken);
     font-size: 12px;
     font-weight: 500;
+    line-height: 20px;
   }
 
   &__muted {
@@ -269,15 +267,6 @@ const summaryReviewerCount = computed(() => {
     display: block;
     text-align: right;
     font-variant-numeric: tabular-nums;
-  }
-
-  &__footer {
-    padding: 12px 16px;
-    border-top: 1px solid var(--dp-border);
-    background: var(--dp-surface-sunken);
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--dp-text-muted);
   }
 }
 </style>

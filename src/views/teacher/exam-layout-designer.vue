@@ -37,8 +37,8 @@ defineOptions({ name: 'TeacherExamWorkspaceLayoutDesigner' })
 const router = useRouter()
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const { selectedExamId } = useMarkExamContext()
-const { contextBarSubtitle, examStatusLabel, examStatusTone, examDetail, examDetailLoading }
-  = useExamJourneyContextBar('制卷设计器')
+const { contextBarSubtitle, examStatusLabel, examStatusTone, examDetail, examDetailLoading } =
+  useExamJourneyContextBar('制卷设计器')
 
 const examId = computed(() => selectedExamId.value ?? '')
 
@@ -131,13 +131,6 @@ const materialLayoutMode = computed(() => examDetail.value?.materialLayoutMode)
 
 const scanPaperStyleLabel = computed(() => examDetail.value?.scanPaperStyleText ?? '')
 
-const prepScenarioGuide = computed(
-  () =>
-    examDetail.value?.prepScenarioGuide
-    ?? workbenchContext?.snapshot.value?.prepScenarioGuide
-    ?? null,
-)
-
 const pageLoading = computed(
   () => wbLoading.value || (examDetailLoading.value && !examDetail.value),
 )
@@ -156,9 +149,9 @@ const designerStatusAlert = computed(() => {
     }
   }
   if (
-    wbLayoutWritable.value
-    && wbIdentitySetupPending.value
-    && wbDocument.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
+    wbLayoutWritable.value &&
+    wbIdentitySetupPending.value &&
+    wbDocument.value?.layoutEntryKind === ExamLayoutEntryKindCode.SOURCE_FILE
   ) {
     return {
       kind: 'identity' as DesignerStatusAlertKind,
@@ -168,19 +161,6 @@ const designerStatusAlert = computed(() => {
     }
   }
   return null
-})
-
-/** 场景引导 info strip：与 detect/identity 状态条互斥，避免同屏堆叠 */
-const layoutDesignerScenarioAlert = computed(() => {
-  if (designerStatusAlert.value || !prepScenarioGuide.value) {
-    return null
-  }
-  const guide = prepScenarioGuide.value
-  const descriptionParts = [guide.scenarioSummary, guide.scanGuidance, guide.printGuidance].filter(Boolean)
-  return {
-    title: guide.scenarioTitle,
-    description: descriptionParts.join(' '),
-  }
 })
 
 const writeLockTooltip = computed(() =>
@@ -363,24 +343,6 @@ function onLayoutDesignerMoreAction(key: string) {
 
     <ExamSelectGateStrip v-if="!examId" body="缺少考试上下文，请从考试工作台进入版面设计" />
     <template v-else>
-      <UiAlertStrip
-        v-if="layoutDesignerScenarioAlert"
-        tone="info"
-        :title="layoutDesignerScenarioAlert.title"
-        :description="layoutDesignerScenarioAlert.description"
-        :closable="false"
-        dense
-        class="layout-designer-scenario-strip"
-      />
-
-      <LayoutDesignWorkflowRail
-        :phase="wbPhase"
-        :document="wbDocument"
-        :exam-detail="examDetail"
-        :layout-writable="wbLayoutWritable"
-        @select="wbGoPhase"
-      />
-
       <UiTooltip v-if="designerStatusAlert" :title="designerStatusAlert.tooltip">
         <UiAlertStrip
           :tone="designerStatusAlert.tone"
@@ -423,8 +385,18 @@ function onLayoutDesignerMoreAction(key: string) {
       </UiTooltip>
 
       <WorkbenchSurfaceCard flush class="layout-designer__surface">
+        <template #toolbar>
+          <LayoutDesignWorkflowRail
+            :phase="wbPhase"
+            :document="wbDocument"
+            :exam-detail="examDetail"
+            :layout-writable="wbLayoutWritable"
+            embedded
+            @select="wbGoPhase"
+          />
+        </template>
         <UiSkeletonState v-if="pageLoading" variant="card" :card-count="2" compact />
-        <div v-else ref="sourcePanelRef">
+        <div v-else ref="sourcePanelRef" class="layout-designer__phase">
           <LayoutDesignSourcePhase
             v-if="wbPhase === LayoutDesignPhaseCode.SOURCE"
             :document="wbDocument"
@@ -493,8 +465,17 @@ function onLayoutDesignerMoreAction(key: string) {
 </template>
 
 <style scoped lang="scss">
-.layout-designer-scenario-strip,
 .layout-designer-status-strip {
   margin-bottom: 8px;
+}
+
+.layout-designer__surface :deep(.workbench-surface-card__toolbar) {
+  padding: 0;
+  border-bottom: 1px solid var(--dp-border);
+  background: var(--dp-surface);
+}
+
+.layout-designer__phase {
+  min-width: 0;
 }
 </style>

@@ -2,12 +2,12 @@ import type {
   ArchiveDutyGrantResponse,
   ArchiveSecurityPolicyResponse,
 } from '@/apis/mark/archive-config'
-import { computed, ref } from 'vue'
 import {
   ArchiveDutyTypeCode,
   listArchiveSecurityPolicy,
   listMyArchiveDutyGrants,
 } from '@/apis/mark/archive-config'
+import { computed, ref } from 'vue'
 import { ArchiveSecurityLevelCode } from '@/apis/mark/archive-volume'
 import { useUserStore } from '@/stores/modules/user'
 import { canViewArchiveDepartmentQueueFromGrants } from '@/utils/archive-department-queue-access'
@@ -169,8 +169,8 @@ export function useArchiveDutyAccess() {
   }
 
   function filterListDepartmentOptions(
-    all: Array<{ value: string, label: string }>,
-  ): Array<{ value: string, label: string }> {
+    all: Array<{ value: string; label: string }>,
+  ): Array<{ value: string; label: string }> {
     const scopeIds = listScopedDepartmentIds.value
     if (scopeIds.length === 0) {
       return all
@@ -179,8 +179,8 @@ export function useArchiveDutyAccess() {
   }
 
   function filterDestructionLedgerDepartmentOptions(
-    all: Array<{ value: string, label: string }>,
-  ): Array<{ value: string, label: string }> {
+    all: Array<{ value: string; label: string }>,
+  ): Array<{ value: string; label: string }> {
     const scopeIds = destructionLedgerScopedDepartmentIds.value
     if (scopeIds.length === 0) {
       return all
@@ -189,8 +189,8 @@ export function useArchiveDutyAccess() {
   }
 
   function filterStatisticsDepartmentOptions(
-    all: Array<{ value: string, label: string }>,
-  ): Array<{ value: string, label: string }> {
+    all: Array<{ value: string; label: string }>,
+  ): Array<{ value: string; label: string }> {
     const scopeIds = statisticsScopedDepartmentIds.value
     if (scopeIds.length === 0) {
       return all
@@ -199,8 +199,8 @@ export function useArchiveDutyAccess() {
   }
 
   function filterAccessLedgerDepartmentOptions(
-    all: Array<{ value: string, label: string }>,
-  ): Array<{ value: string, label: string }> {
+    all: Array<{ value: string; label: string }>,
+  ): Array<{ value: string; label: string }> {
     const scopeIds = accessLedgerScopedDepartmentIds.value
     if (scopeIds.length === 0) {
       return all
@@ -209,8 +209,8 @@ export function useArchiveDutyAccess() {
   }
 
   function filterGlobalAuditDepartmentOptions(
-    all: Array<{ value: string, label: string }>,
-  ): Array<{ value: string, label: string }> {
+    all: Array<{ value: string; label: string }>,
+  ): Array<{ value: string; label: string }> {
     const scopeIds = globalAuditScopedDepartmentIds.value
     if (scopeIds.length === 0) {
       return all
@@ -219,8 +219,8 @@ export function useArchiveDutyAccess() {
   }
 
   function filterSearchAuditDepartmentOptions(
-    all: Array<{ value: string, label: string }>,
-  ): Array<{ value: string, label: string }> {
+    all: Array<{ value: string; label: string }>,
+  ): Array<{ value: string; label: string }> {
     const scopeIds = searchAuditScopedDepartmentIds.value
     if (scopeIds.length === 0) {
       return all
@@ -231,8 +231,8 @@ export function useArchiveDutyAccess() {
   const canViewCollegeBoard = computed(() => canViewDepartmentTasks.value)
   const canViewDepartmentTasks = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
-      || hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
+      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR) ||
+      hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
   )
   const canViewArchiveReviewer = computed(
     () =>
@@ -242,8 +242,8 @@ export function useArchiveDutyAccess() {
   const canApproveDestruction = computed(() => hasDuty(ArchiveDutyTypeCode.DESTRUCTION_APPROVER))
   const canViewDestructionLedger = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
-      || hasDuty(ArchiveDutyTypeCode.DESTRUCTION_APPROVER),
+      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN) ||
+      hasDuty(ArchiveDutyTypeCode.DESTRUCTION_APPROVER),
   )
   const canApproveAccess = computed(
     () =>
@@ -252,8 +252,8 @@ export function useArchiveDutyAccess() {
   const canViewAccessLedger = computed(() => canApproveAccess.value)
   const canViewGlobalAudit = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
-      || hasDuty(ArchiveDutyTypeCode.SUPERVISION_INSPECTOR),
+      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN) ||
+      hasDuty(ArchiveDutyTypeCode.SUPERVISION_INSPECTOR),
   )
   const canReviewTransfer = computed(
     () =>
@@ -261,9 +261,9 @@ export function useArchiveDutyAccess() {
   )
   const canRejectTransfer = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER)
-      || hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
-      || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
+      hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER) ||
+      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR) ||
+      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
   )
 
   function canApproveDestructionForDepartment(departmentId?: string): boolean {
@@ -272,40 +272,40 @@ export function useArchiveDutyAccess() {
 
   function canReviewTransferForDepartment(departmentId?: string): boolean {
     return (
-      hasDutyForDepartment(ArchiveDutyTypeCode.TRANSFER_REVIEWER, departmentId)
-      || hasDutyForDepartment(ArchiveDutyTypeCode.ARCHIVE_ADMIN, departmentId)
+      hasDutyForDepartment(ArchiveDutyTypeCode.TRANSFER_REVIEWER, departmentId) ||
+      hasDutyForDepartment(ArchiveDutyTypeCode.ARCHIVE_ADMIN, departmentId)
     )
   }
 
   function canRejectTransferForDepartment(departmentId?: string): boolean {
     return (
-      hasDutyForDepartment(ArchiveDutyTypeCode.TRANSFER_REVIEWER, departmentId)
-      || hasDutyForDepartment(ArchiveDutyTypeCode.COLLEGE_COORDINATOR, departmentId)
-      || hasDutyForDepartment(ArchiveDutyTypeCode.ARCHIVE_ADMIN, departmentId)
+      hasDutyForDepartment(ArchiveDutyTypeCode.TRANSFER_REVIEWER, departmentId) ||
+      hasDutyForDepartment(ArchiveDutyTypeCode.COLLEGE_COORDINATOR, departmentId) ||
+      hasDutyForDepartment(ArchiveDutyTypeCode.ARCHIVE_ADMIN, departmentId)
     )
   }
   const canViewStatisticsKpi = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
-      || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
+      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR) ||
+      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN),
   )
   const isDepartmentArchivistOnly = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST)
-      && !hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR),
+      hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST) &&
+      !hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR),
   )
   const canRemindArchiveDue = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
-      || hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
+      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR) ||
+      hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
   )
   const canViewSearchAudit = computed(
     () =>
-      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
-      || hasDuty(ArchiveDutyTypeCode.SUPERVISION_INSPECTOR)
-      || hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER)
-      || hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)
-      || hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
+      hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN) ||
+      hasDuty(ArchiveDutyTypeCode.SUPERVISION_INSPECTOR) ||
+      hasDuty(ArchiveDutyTypeCode.TRANSFER_REVIEWER) ||
+      hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR) ||
+      hasDuty(ArchiveDutyTypeCode.DEPARTMENT_ARCHIVIST),
   )
   const canViewArchiveDepartmentQueue = computed(() =>
     canViewArchiveDepartmentQueueFromGrants(grants.value),
@@ -315,12 +315,14 @@ export function useArchiveDutyAccess() {
     loading.value = true
     grantsLoadFailed.value = false
     try {
-      const [grantList, policyList] = await Promise.all([
-        listMyArchiveDutyGrants(),
-        listArchiveSecurityPolicy(),
-      ])
-      grants.value = grantList
-      securityPolicies.value = policyList
+      // 职责授权：任意登录教师可读；密级策略只读供岗位门禁，与「归档配置」维护页解耦
+      grants.value = await listMyArchiveDutyGrants()
+      try {
+        securityPolicies.value = await listArchiveSecurityPolicy()
+      } catch (policyError) {
+        securityPolicies.value = []
+        showUserError(policyError, '加载归档密级策略失败')
+      }
     } catch (error) {
       showUserError(error, '加载档案职责授权失败')
       grantsLoadFailed.value = true

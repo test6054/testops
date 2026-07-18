@@ -8,13 +8,15 @@ import type {
   PortfolioTeacherTaughtCourseSaveRequest,
   PortfolioTeacherTaughtCourseVO,
 } from '@/apis/portfolio/teacher-profile'
+import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
+import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeacherCohortProfileApi } from '@/apis/portfolio/teacher-cohort-profile'
-import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -37,13 +39,15 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const profileActiveTab = ref('education')
@@ -78,10 +82,10 @@ const academicExperiences = ref<PortfolioTeacherAcademicExperienceVO[]>([])
 const academicAppointments = ref<PortfolioTeacherAcademicAppointmentVO[]>([])
 
 type CvKind = 'education' | 'academicExperience' | 'academicAppointment'
-type CvRecord
-  = | PortfolioTeacherEducationVO
-    | PortfolioTeacherAcademicExperienceVO
-    | PortfolioTeacherAcademicAppointmentVO
+type CvRecord =
+  | PortfolioTeacherEducationVO
+  | PortfolioTeacherAcademicExperienceVO
+  | PortfolioTeacherAcademicAppointmentVO
 
 const cvForm = reactive({
   schoolName: '',
@@ -234,6 +238,9 @@ async function loadProfile() {
 async function saveCohortProfile() {
   if (!targetTeacherId.value || savingCohortProfile.value) return
 
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('保存分群画像'))) {
     return
   }
@@ -308,9 +315,9 @@ async function loadCvRecords() {
       portfolioTeacherProfileApi.listAcademicAppointments(request),
     ])
     if (
-      requestToken.value !== scopeToken
-      || cvRequestToken.value !== currentToken
-      || targetTeacherId.value !== teacherId
+      requestToken.value !== scopeToken ||
+      cvRequestToken.value !== currentToken ||
+      targetTeacherId.value !== teacherId
     ) {
       return
     }
@@ -402,6 +409,9 @@ function validateCvForm(): boolean {
 /** 履历保存绑定打开弹窗时的教师 Scope，响应返回后不得改写已切换教师的新页面。 */
 async function saveCvRecord() {
   if (!validateCvForm() || cvWriteBusy.value) {
+    return
+  }
+  if (!assertArchiveWritable()) {
     return
   }
   if (!(await confirmProxyWrite('保存履历记录'))) {
@@ -524,6 +534,9 @@ async function saveProfile() {
   if (savingProfile.value) {
     return
   }
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('保存个人资料'))) {
     return
   }
@@ -564,6 +577,9 @@ async function saveCourse() {
   if (courseWriteBusy.value) {
     return
   }
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('保存授课课程'))) {
     return
   }
@@ -597,6 +613,9 @@ async function removeCourse(row: PortfolioTeacherTaughtCourseVO) {
   }
   if (readonlyProfile.value || courseWriteBusy.value) return
 
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('删除授课课程'))) {
     return
   }
@@ -622,7 +641,7 @@ async function removeCourse(row: PortfolioTeacherTaughtCourseVO) {
   }
 }
 
-function onCoursePageChange(pageEvent: { current: number, pageSize: number }) {
+function onCoursePageChange(pageEvent: { current: number; pageSize: number }) {
   coursePageNum.value = pageEvent.current
   coursePageSize.value = pageEvent.pageSize
   void loadCourses()
@@ -675,6 +694,13 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         :subtitle="profile?.nickName || profile?.teacherNumber"
       />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
@@ -712,7 +738,12 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
               placeholder="例如：新一代信息技术专业群"
             />
           </UiFormItem>
-          <UiButton size="sm" variant="primary" :loading="savingCohortProfile" @click="saveCohortProfile">
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="savingCohortProfile"
+            @click="saveCohortProfile"
+          >
             保存对标主数据
           </UiButton>
         </UiForm>
@@ -736,7 +767,13 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
               placeholder="可补充教研室名称"
             />
           </UiFormItem>
-          <UiButton variant="primary" size="sm" v-if="!readonlyProfile" :loading="savingProfile" @click="saveProfile">
+          <UiButton
+            variant="primary"
+            size="sm"
+            v-if="!readonlyProfile"
+            :loading="savingProfile"
+            @click="saveProfile"
+          >
             保存资料
           </UiButton>
         </UiForm>
@@ -744,7 +781,9 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
 
       <UiCard title="讲授课程" class="mt-16">
         <template #extra>
-          <UiButton size="sm" v-if="!readonlyProfile" @click="openCourseModal()"> 手工补充 </UiButton>
+          <UiButton size="sm" v-if="!readonlyProfile" @click="openCourseModal()">
+            手工补充
+          </UiButton>
         </template>
         <UiDataTable
           v-model:current="coursePageNum"
@@ -788,15 +827,15 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
       </UiCard>
 
       <UiCard title="学历与学术履历" class="mt-16">
-        <UiSectionTabs
-          v-model="profileActiveTab"
-          :items="profileTabItems"
-          compact
-          divided
-        />
+        <UiSectionTabs v-model="profileActiveTab" :items="profileTabItems" compact divided />
         <template v-if="profileActiveTab === 'education'">
           <div v-if="!readonlyProfile" class="cv-actions">
-            <UiButton variant="primary" size="sm" :disabled="cvWriteBusy" @click="openCvModal('education')">
+            <UiButton
+              variant="primary"
+              size="sm"
+              :disabled="cvWriteBusy"
+              @click="openCvModal('education')"
+            >
               <PlusOutlined />
               新增学历
             </UiButton>
@@ -826,7 +865,12 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         </template>
         <template v-else-if="profileActiveTab === 'academic-experience'">
           <div v-if="!readonlyProfile" class="cv-actions">
-            <UiButton variant="primary" size="sm" :disabled="cvWriteBusy" @click="openCvModal('academicExperience')">
+            <UiButton
+              variant="primary"
+              size="sm"
+              :disabled="cvWriteBusy"
+              @click="openCvModal('academicExperience')"
+            >
               <PlusOutlined />
               新增经历
             </UiButton>
@@ -856,7 +900,12 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         </template>
         <template v-else-if="profileActiveTab === 'academic-appointment'">
           <div v-if="!readonlyProfile" class="cv-actions">
-            <UiButton variant="primary" size="sm" :disabled="cvWriteBusy" @click="openCvModal('academicAppointment')">
+            <UiButton
+              variant="primary"
+              size="sm"
+              :disabled="cvWriteBusy"
+              @click="openCvModal('academicAppointment')"
+            >
               <PlusOutlined />
               新增任职
             </UiButton>

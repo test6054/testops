@@ -3,24 +3,23 @@
  * 考试准备聚合工作台：Signal 五 KPI、信息双栏、横向步骤流水线（含主操作）、制卷形态配置。
  */
 import type { ExamPrintSourceModeCode } from '@/apis/mark/exam'
+import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
 import type { ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
+import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import type { SignalMetric } from '@/types/workbench'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
+import { buildPrepStepCards, resolvePrepStepRouteLocation } from '@/utils/exam-prep-step-ui'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
-import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import ExamPrepInfoPanels from '@/components/workbench/ExamPrepInfoPanels.vue'
-import ExamPrepScenarioPanel from '@/components/workbench/ExamPrepScenarioPanel.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
 import MaterialLayoutConfigModal from '@/components/workbench/MaterialLayoutConfigModal.vue'
@@ -31,7 +30,6 @@ import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
-import { buildPrepStepCards, resolvePrepStepRouteLocation } from '@/utils/exam-prep-step-ui'
 import {
   canEnterReviewBatch,
   canStartScanRegistration,
@@ -60,9 +58,6 @@ const markingProgress = computed(
 )
 const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
 const prepAdvisoryReasons = computed(() => snapshot.value?.prepAdvisoryReasons ?? [])
-const prepScenarioGuide = computed(
-  () => snapshot.value?.prepScenarioGuide ?? examDetail.value?.prepScenarioGuide ?? null,
-)
 const prepBlockingDescription = computed(() => prepBlockingReasons.value.join('；'))
 const prepAdvisoryDescription = computed(() => prepAdvisoryReasons.value.join('；'))
 
@@ -78,8 +73,8 @@ const scanEntryEnabled = computed(() =>
 )
 const scanEntryDisabledReason = computed(
   () =>
-    resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN)
-    ?? prepBlockingReasons.value[0],
+    resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN) ??
+    prepBlockingReasons.value[0],
 )
 const reviewEntryEnabled = computed(() =>
   canEnterReviewBatch(nextActions.value, markingProgress.value),
@@ -186,9 +181,9 @@ const layoutDirty = computed(() => {
     return false
   }
   return (
-    draftLayoutMode.value !== detail.materialLayoutMode
-    || (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER
-      && draftPrintSource.value !== detail.printSourceMode)
+    draftLayoutMode.value !== detail.materialLayoutMode ||
+    (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER &&
+      draftPrintSource.value !== detail.printSourceMode)
   )
 })
 
@@ -362,42 +357,46 @@ watch(
       />
 
       <template v-else-if="examDetail && prepSteps.length > 0">
-        <UiAlertStrip
-          v-if="prepBlockingReasons.length > 0"
-          tone="error"
-          title="扫描登记暂不可用"
-          :description="prepBlockingDescription"
-          :closable="false"
-          dense
-          class="exam-prep__blocking-strip"
-        >
-          <template #actions>
-            <UiButton size="sm" variant="primary" @click="goPrepBlockingAction">
-              去处理
-            </UiButton>
-          </template>
-        </UiAlertStrip>
-
-        <UiAlertStrip
-          v-else-if="prepAdvisoryReasons.length > 0"
-          tone="warning"
-          title="准备项待完善"
-          :description="prepAdvisoryDescription"
-          dense
-          class="exam-prep__blocking-strip"
-        />
-
         <ExamPrepInfoPanels
           :detail="examDetail"
           :exam-full-score="examFullScore"
+          :alert-tone="
+            prepBlockingReasons.length > 0
+              ? 'error'
+              : prepAdvisoryReasons.length > 0
+                ? 'warning'
+                : undefined
+          "
+          :alert-title="
+            prepBlockingReasons.length > 0
+              ? '扫描登记暂不可用'
+              : prepAdvisoryReasons.length > 0
+                ? '准备项待完善'
+                : undefined
+          "
+          :alert-description="
+            prepBlockingReasons.length > 0
+              ? prepBlockingDescription
+              : prepAdvisoryReasons.length > 0
+                ? prepAdvisoryDescription
+                : undefined
+          "
           class="exam-prep__info"
-        />
-
-        <ExamPrepScenarioPanel
-          v-if="prepScenarioGuide"
-          :guide="prepScenarioGuide"
-          class="exam-prep__scenario"
-        />
+        >
+          <template v-if="prepBlockingReasons.length > 0" #alert-actions>
+            <UiButton size="sm" variant="primary" @click="goPrepBlockingAction"> 去处理 </UiButton>
+          </template>
+          <template v-else-if="prepAdvisoryReasons.length > 0" #alert-actions>
+            <UiButton
+              v-if="firstPendingPrepStep"
+              size="sm"
+              variant="outline"
+              @click="goFirstPendingPrepStep"
+            >
+              去补齐
+            </UiButton>
+          </template>
+        </ExamPrepInfoPanels>
 
         <PrepStepPipelineRow
           class="exam-prep__pipeline-row"
@@ -413,8 +412,8 @@ watch(
             </UiButton>
             <UiTooltip
               :title="
-                contextPrimaryAction?.tooltip
-                  ?? (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
+                contextPrimaryAction?.tooltip ??
+                (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
               "
             >
               <UiButton
@@ -456,14 +455,9 @@ watch(
     margin-top: var(--dp-space-4);
   }
 
-  &__blocking-strip {
-    margin-bottom: var(--dp-space-4);
-  }
-
   &__info,
-  &__scenario,
   &__pipeline-row {
-    margin-bottom: var(--dp-space-4);
+    margin-bottom: var(--dp-space-3);
   }
 }
 </style>

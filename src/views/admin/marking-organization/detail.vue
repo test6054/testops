@@ -96,6 +96,7 @@
         />
 
         <MarkingOrgAssignmentTable
+          class="org-workbench__assignment"
           :groups="groups"
           :allocation-policies="allocationPolicies"
           :can-manage="canManageExamOwner"
@@ -429,7 +430,13 @@
                     :disabled="!canManageExamOwner"
                   />
                 </UiFormItem>
-                <UiButton variant="primary" size="sm" v-if="canManageExamOwner" :loading="savingRecycle" @click="submitRecycle">
+                <UiButton
+                  variant="primary"
+                  size="sm"
+                  v-if="canManageExamOwner"
+                  :loading="savingRecycle"
+                  @click="submitRecycle"
+                >
                   <template #icon><SaveOutlined /></template>
                   保存回收策略
                 </UiButton>
@@ -517,7 +524,9 @@
     >
       <template #footer>
         <UiButton size="sm" variant="outline" @click="groupModalOpen = false">取消</UiButton>
-        <UiButton variant="primary" size="sm" :loading="savingGroup" @click="submitGroup">提交</UiButton>
+        <UiButton variant="primary" size="sm" :loading="savingGroup" @click="submitGroup"
+          >提交</UiButton
+        >
       </template>
       <UiForm ref="groupFormRef" :model="groupForm" :rules="groupRules" layout="vertical">
         <UiFormItem label="题组名称" name="groupName" required>
@@ -584,9 +593,7 @@
     >
       <UiForm ref="editFormRef" :model="editForm" :rules="editRules" layout="vertical">
         <UiFormItem label="关联考试">
-          <UiInput
-            size="sm" :value="organizationExamLabel" disabled
-          />
+          <UiInput size="sm" :value="organizationExamLabel" disabled />
         </UiFormItem>
         <UiFormItem label="是否启用匿名阅卷" name="anonymousMode">
           <UiSwitch size="sm" v-model="editForm.anonymousMode" />
@@ -690,7 +697,12 @@
                   allow-clear
                 />
               </UiFormItem>
-              <UiButton variant="primary" size="sm" :loading="savingAllocation" @click="submitAllocation">
+              <UiButton
+                variant="primary"
+                size="sm"
+                :loading="savingAllocation"
+                @click="submitAllocation"
+              >
                 <template #icon><SaveOutlined /></template>
                 保存分配策略
               </UiButton>
@@ -748,9 +760,13 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
+import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import type {
   AllocationPolicyResponse,
   AllocationPolicySaveRequest,
@@ -762,19 +778,6 @@ import type {
   RecyclePolicyResponse,
   RecyclePolicySaveRequest,
 } from '@/apis/mark/marking-organization'
-import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
-import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
-import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
-import { getExamDetail } from '@/apis/mark/exam'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
-import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import {
   ALLOCATION_UNIT_OPTIONS,
   ANONYMOUS_TOKEN_POLICY_OPTIONS,
@@ -796,7 +799,16 @@ import {
   saveRecyclePolicy,
   updateOrganization,
 } from '@/apis/mark/marking-organization'
+import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
 import { listReviewerMetrics } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
 import UiInfoGridItem from '@/components/ui-guide/ui/InfoGridItem.vue'
@@ -860,8 +872,8 @@ defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 const MARKING_TEACHER_OPTION_PAGE_SIZE = 20
 const TEACHER_SEARCH_DEBOUNCE_MS = 300
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷安排')
 
 const route = useRoute()
 const router = useRouter()
@@ -923,16 +935,16 @@ function matchesGroupSearch(group: QuestionMarkingGroupResponse, keyword: string
   if (
     group.reviewers.some(
       (reviewer) =>
-        reviewer.reviewerUserName?.toLowerCase().includes(keyword)
-        || reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
+        reviewer.reviewerUserName?.toLowerCase().includes(keyword) ||
+        reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
     )
   ) {
     return true
   }
   return group.questions.some(
     (question) =>
-      String(question.questionNo).includes(keyword)
-      || question.questionTypeMessage?.toLowerCase().includes(keyword),
+      String(question.questionNo).includes(keyword) ||
+      question.questionTypeMessage?.toLowerCase().includes(keyword),
   )
 }
 
@@ -973,8 +985,8 @@ const orgSignalMetrics = computed((): SignalMetric[] => {
     return []
   }
   const summary = markingProgressPanel.value?.markingTaskSummary
-  const overallPercent
-    = summary && summary.totalTaskCount > 0
+  const overallPercent =
+    summary && summary.totalTaskCount > 0
       ? Math.round((summary.finalizedTaskCount * 100) / summary.totalTaskCount)
       : null
   const metrics: SignalMetric[] = [
@@ -1221,11 +1233,11 @@ const groupColumns: ColumnType<QuestionMarkingGroupResponse>[] = [
 ]
 
 const teacherList = ref<UserListItemDto[]>([])
-const teacherOptions = ref<Array<{ value: string, label: string }>>([])
+const teacherOptions = ref<Array<{ value: string; label: string }>>([])
 const teacherLoading = ref(false)
 let teacherSearchTimer: ReturnType<typeof setTimeout> | undefined
 
-function buildTeacherOption(item: UserListItemDto): { value: string, label: string } {
+function buildTeacherOption(item: UserListItemDto): { value: string; label: string } {
   return {
     value: item.id,
     label: item.identifierNumber ? `${item.nickName} (${item.identifierNumber})` : item.nickName,
@@ -1511,9 +1523,9 @@ function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
 
 function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
   return (
-    canManageExamOwner.value
-    && (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
-      || record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
+    canManageExamOwner.value &&
+    (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE ||
+      record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
   )
 }
 
@@ -1608,7 +1620,6 @@ async function submitUpdate(): Promise<void> {
     updating.value = false
   }
 }
-
 
 const orgDetailMoreActionItems = computed(() => [
   { key: 'delete', label: '删除组织', danger: true, disabled: deleting.value },
@@ -1792,7 +1803,7 @@ const groupAllocationUnitMap = computed(() => {
 })
 
 function policyOptionLabel(
-  options: Array<{ value: string, label: string }>,
+  options: Array<{ value: string; label: string }>,
   value?: string | null,
 ): string {
   if (!value) {
@@ -2030,6 +2041,10 @@ watch(
 
 .status-form {
   max-width: 480px;
+}
+
+.org-workbench__assignment {
+  margin-bottom: 0;
 }
 
 .org-workbench__grid {

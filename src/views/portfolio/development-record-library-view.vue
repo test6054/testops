@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDevelopmentRecordStatusDescription,
   PortfolioDevelopmentRecordTypeCode,
 } from '@/apis/portfolio/enums'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -39,29 +39,36 @@ const saving = ref(false)
 const removingId = ref('')
 const exporting = ref(false)
 const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, search, handlePageChange }
-  = useQueryTable(
-    (params) =>
-      portfolioDevelopmentRecordApi.page({
-        ...params,
-        recordType: props.recordType,
-        categoryCode: props.categoryCode,
-        levelCode: props.levelCode ?? (props.nationalOnly ? 'NATIONAL' : undefined),
-      }),
-    {
-      onLoaded: (list) => {
-        if (props.recordType !== PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT) {
-          return
-        }
-        const userIds = list
-          .map((row) => row.teacherUserId)
-          .filter((id): id is string => Boolean(id))
-        void hydrateTeacherLabels([...new Set(userIds)])
-      },
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
+const {
+  loading,
+  rows,
+  pageNum,
+  pageSize,
+  pageTotal,
+  loadError,
+  loadPage,
+  search,
+  handlePageChange,
+} = useQueryTable(
+  (params) =>
+    portfolioDevelopmentRecordApi.page({
+      ...params,
+      recordType: props.recordType,
+      categoryCode: props.categoryCode,
+      levelCode: props.levelCode ?? (props.nationalOnly ? 'NATIONAL' : undefined),
+    }),
+  {
+    onLoaded: (list) => {
+      if (props.recordType !== PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT) {
+        return
+      }
+      const userIds = list.map((row) => row.teacherUserId).filter((id): id is string => Boolean(id))
+      void hydrateTeacherLabels([...new Set(userIds)])
     },
-  )
+  },
+)
 
 const requiresTeacher = computed(
   () => props.recordType === PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
@@ -79,6 +86,12 @@ const columns = computed<ColumnsType>(() => {
   const base: ColumnsType = [{ title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' }]
   if (requiresTeacher.value) {
     base.push({ title: '所属教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 })
+    base.push({
+      title: '业务日工号',
+      dataIndex: 'affiliationStaffNo',
+      key: 'affiliationStaffNo',
+      width: 120,
+    })
   }
   base.push(
     { title: '分类', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
@@ -196,16 +209,32 @@ watch(
           :options="teacherOptions"
           @search="searchTeachers"
         />
-        <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving" @click="saveRecord"> 保存 </UiButton>
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="saving"
+          :disabled="saving"
+          @click="saveRecord"
+        >
+          保存
+        </UiButton>
       </div>
     </UiCard>
     <UiCard>
       <div class="toolbar">
         <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
-        <UiButton size="sm" variant="primary" v-if="showEditor" @click="importModalOpen = true"> 批量导入 </UiButton>
-        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportExcel"> 导出表格文件 </UiButton>
+        <UiButton size="sm" variant="primary" v-if="showEditor" @click="importModalOpen = true">
+          批量导入
+        </UiButton>
+        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportExcel">
+          导出表格文件
+        </UiButton>
       </div>
-      <UiEmpty size="sm" v-if="!loadError && !loading && rows.length === 0" description="当前筛选无发展记录" />
+      <UiEmpty
+        size="sm"
+        v-if="!loadError && !loading && rows.length === 0"
+        description="当前筛选无发展记录"
+      />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -222,6 +251,9 @@ watch(
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}
+          </template>
+          <template v-else-if="column.key === 'affiliationStaffNo'">
+            {{ record.affiliationStaffNo || '—' }}
           </template>
           <template v-else-if="column.key === 'recordStatus'">
             {{ recordStatusLabel(record.recordStatus) }}

@@ -45,17 +45,17 @@
         :description="printPackageSkipHint"
         class="print-package-page__empty"
       >
-        <UiButton size="sm" variant="primary" @click="goPrepWorkbench">
-          返回准备工作台
-        </UiButton>
+        <UiButton size="sm" variant="primary" @click="goPrepWorkbench"> 返回准备工作台 </UiButton>
       </UiEmpty>
 
       <template v-else>
-        <ExamPrepScenarioPanel
+        <WorkbenchSurfaceCard
           v-if="examDetail?.prepScenarioGuide"
-          :guide="examDetail.prepScenarioGuide"
+          flush
           class="print-package-page__scenario"
-        />
+        >
+          <ExamPrepScenarioPanel :guide="examDetail.prepScenarioGuide" />
+        </WorkbenchSurfaceCard>
 
         <WorkbenchSurfaceCard flush>
           <template #toolbar>
@@ -144,7 +144,11 @@
           :width="960"
           hide-footer
         >
-          <UiSkeletonState v-if="detailLoading && detailItems.length === 0" variant="table" compact />
+          <UiSkeletonState
+            v-if="detailLoading && detailItems.length === 0"
+            variant="table"
+            compact
+          />
           <UiDataTable
             v-else
             v-model:current="detailPagination.pageNum"
@@ -173,7 +177,12 @@
         </UiDrawer>
 
         <!-- PDF 预览 -->
-        <UiDrawer v-model:open="previewModalOpen" title="印刷包便携文档预览" :width="900" hide-footer>
+        <UiDrawer
+          v-model:open="previewModalOpen"
+          title="印刷包便携文档预览"
+          :width="900"
+          hide-footer
+        >
           <UiSkeletonState v-if="previewLoading" variant="card" compact />
           <iframe
             v-else-if="previewPdfUrl"
@@ -190,16 +199,8 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchPrintPackagePanelResponse } from '@/apis/mark/exam-progress'
-import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
-import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
-import { ExamMaterialLayoutModeCode, ExamPrintSourceModeCode, getExamDetail } from '@/apis/mark/exam'
 import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
+import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
 import {
   generatePrintPackage,
   isLayoutNotReadyError,
@@ -211,6 +212,18 @@ import {
   PRINT_PACKAGE_STATUS_TONE,
   PrintPackageStatusDescription,
 } from '@/apis/mark/print-package'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { downloadFile, getFileArrayBuffer } from '@/apis/edu/file-management'
+import {
+  ExamMaterialLayoutModeCode,
+  ExamPrintSourceModeCode,
+  getExamDetail,
+} from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -423,7 +436,7 @@ async function loadPackageList() {
   }
 }
 
-function handlePackagePageChange(pageEvent: { current: number, pageSize: number }): void {
+function handlePackagePageChange(pageEvent: { current: number; pageSize: number }): void {
   pagination.pageNum = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   loadPackageList()
@@ -593,7 +606,7 @@ async function loadDetailItems(): Promise<void> {
   }
 }
 
-function handleDetailPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleDetailPageChange(pageEvent: { current: number; pageSize: number }): void {
   detailPagination.pageNum = pageEvent.current
   detailPagination.pageSize = pageEvent.pageSize
   void loadDetailItems()

@@ -4,18 +4,24 @@ import type { ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
 import type { LayoutDesignPhaseCode } from '@/types/enums/layout-design-phase-enum'
 import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
 import LockOutlined from '@ant-design/icons-vue/LockOutlined'
-import QuestionCircleOutlined from '@ant-design/icons-vue/QuestionCircleOutlined'
 import { computed } from 'vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTooltip from '@/components/ui-guide/ui/UiTooltip.vue'
 import { buildLayoutDesignPhaseSteps } from '@/utils/layout-design-workflow'
 
-const props = defineProps<{
-  phase: LayoutDesignPhaseCode
-  document: ExamLayoutDocument | null
-  examDetail: ExamDetailResponse | null | undefined
-  layoutWritable: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    phase: LayoutDesignPhaseCode
+    document: ExamLayoutDocument | null
+    examDetail: ExamDetailResponse | null | undefined
+    layoutWritable: boolean
+    /** 嵌在 SurfaceCard toolbar 时去掉外框与底边距 */
+    embedded?: boolean
+  }>(),
+  {
+    embedded: false,
+  },
+)
 
 const emit = defineEmits<{
   select: [phase: LayoutDesignPhaseCode]
@@ -24,8 +30,6 @@ const emit = defineEmits<{
 const steps = computed(() =>
   buildLayoutDesignPhaseSteps(props.phase, props.document, props.examDetail),
 )
-
-const activeStep = computed(() => steps.value.find((step) => step.phase === props.phase))
 
 const completedCount = computed(
   () => steps.value.filter((step) => step.status === 'completed').length,
@@ -40,7 +44,11 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
 </script>
 
 <template>
-  <section class="layout-design-workflow-rail" aria-label="制卷设计阶段">
+  <section
+    class="layout-design-workflow-rail"
+    :class="{ 'layout-design-workflow-rail--embedded': embedded }"
+    aria-label="制卷设计阶段"
+  >
     <div class="layout-design-workflow-rail__bar">
       <span class="layout-design-workflow-rail__label">制卷流程</span>
       <span class="layout-design-workflow-rail__meta">{{ completedCount }}/{{ steps.length }}</span>
@@ -67,11 +75,6 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
           </button>
         </UiTooltip>
       </nav>
-      <UiTooltip v-if="activeStep?.guide" :title="activeStep.guide">
-        <button type="button" class="layout-design-workflow-rail__help" aria-label="当前阶段说明">
-          <QuestionCircleOutlined />
-        </button>
-      </UiTooltip>
     </div>
   </section>
 </template>
@@ -81,19 +84,30 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
   width: 100%;
   margin-bottom: 8px;
 
+  &--embedded {
+    margin-bottom: 0;
+  }
+
+  &--embedded &__bar {
+    border: none;
+    border-radius: 0;
+    padding: 6px 12px;
+    background: var(--dp-surface-elevated);
+  }
+
   &__bar {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
-    padding: 6px 10px;
+    gap: 6px;
+    padding: 4px 8px;
     border: 1px solid var(--dp-border-subtle);
     border-radius: 6px;
     background: var(--dp-surface);
   }
 
   &__label {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--dp-text-primary);
     white-space: nowrap;
@@ -109,19 +123,20 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
     display: flex;
     flex: 1 1 auto;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
     min-width: 0;
   }
 
   &__step {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
+    gap: 4px;
+    padding: 2px 8px;
     border: 1px solid var(--dp-border-subtle);
-    border-radius: 6px;
-    background: var(--dp-surface-subtle);
-    font-size: 13px;
+    border-radius: 4px;
+    background: var(--dp-surface);
+    font-size: 12px;
+    line-height: 20px;
     color: var(--dp-text-primary);
     cursor: pointer;
     transition:
@@ -134,7 +149,7 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
 
     &:disabled {
       cursor: not-allowed;
-      opacity: 0.6;
+      opacity: 0.55;
     }
 
     &--active {
@@ -154,32 +169,13 @@ function handleSelect(phase: LayoutDesignPhaseCode, accessible: boolean): void {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 16px;
-    font-size: 11px;
+    width: 14px;
+    height: 14px;
+    font-size: 10px;
   }
 
   &__step-label {
     white-space: nowrap;
-  }
-
-  &__help {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--dp-text-muted);
-    cursor: help;
-
-    &:hover {
-      color: var(--dp-color-primary);
-      background: var(--dp-surface-subtle);
-    }
   }
 }
 </style>

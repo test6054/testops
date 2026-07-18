@@ -50,7 +50,6 @@
 
     <template v-if="activeJourneyKey !== 'overview'">
       <UiDivider v-if="!collapsed" class="exam-sub-sidebar__divider" />
-      <div v-if="!collapsed" class="exam-sub-sidebar__section-label">本程工具</div>
       <div class="exam-sub-sidebar__menu">
         <ExamSubSidebarNav
           :active-journey-key="activeJourneyKey"
@@ -61,10 +60,6 @@
         />
       </div>
     </template>
-
-    <p v-else-if="!collapsed" class="exam-sub-sidebar__overview-hint">
-      概览看本场进度与待办；点上方旅程进入该程工作台，次要工具在程内打开。
-    </p>
 
     <div class="exam-sub-sidebar__footer">
       <button type="button" class="exam-sub-sidebar__collapse-btn" @click="emit('toggle-collapse')">
@@ -77,6 +72,7 @@
 
 <script lang="ts" setup>
 import type { Component } from 'vue'
+import { computed } from 'vue'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { ExamWorkspaceJourneyKey } from '@/constants/exam-journey'
 import type { ExamWorkspaceMenuKey } from '@/constants/exam-workspace-menu'
@@ -84,7 +80,6 @@ import type { MarkStageKey } from '@/stores/modules/markStage'
 import type { WorkbenchStage } from '@/types/workbench'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
-import { computed } from 'vue'
 import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
 import ExamJourneySidebarNav from '@/components/workbench/ExamJourneySidebarNav.vue'
 import ExamSidebarExamSwitch from '@/components/workbench/ExamSidebarExamSwitch.vue'
@@ -168,24 +163,6 @@ const journeyProgressLabel = computed(() => {
 
   &__divider {
     margin: 0 !important;
-  }
-
-  &__section-label {
-    padding: var(--dp-space-1, 4px) var(--dp-space-3, 12px) 0;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--dp-text-muted, var(--dp-text-quaternary));
-    flex-shrink: 0;
-  }
-
-  &__overview-hint {
-    flex: 1;
-    margin: 0;
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--dp-text-muted, var(--dp-text-tertiary));
   }
 
   &__menu {

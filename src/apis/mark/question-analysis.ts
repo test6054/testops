@@ -290,6 +290,10 @@ export interface ExamRejudgePlan {
   approvedTime?: string
   executedTime?: string
   executedCount?: number
+  /** 创建人（答案修正提交人），双人制审批分离用 */
+  createUser?: string
+  /** 最近更新人；PENDING 时通常与 createUser 同为提交人 */
+  updateUser?: string
   createTime?: string
   updateTime?: string
 }

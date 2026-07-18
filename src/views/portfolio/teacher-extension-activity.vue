@@ -4,14 +4,15 @@ import type {
   PortfolioTeachingExtensionActivityVO,
   PortfolioTeachingExtensionCategoryVO,
 } from '@/apis/portfolio/teaching-extension'
+import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -33,6 +34,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   PortfolioArchiveRecordStatusCode,
   PortfolioArchiveRecordStatusDescription,
@@ -47,6 +49,8 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 const route = useRoute()
 const router = useRouter()
 
@@ -86,15 +90,17 @@ const form = reactive({
 
 const categoryForm = reactive({ categoryName: '' })
 
-const readonlyMode = computed(() => canPickTeachers.value && !!targetTeacherId.value)
+const readonlyMode = computed(
+  () => (canPickTeachers.value && !!targetTeacherId.value) || archiveWriteForbidden.value,
+)
 
 const isTraining = computed(() => form.activityKind === PortfolioTeachingExtensionKindCode.TRAINING)
 
 function canEditActivity(row: PortfolioTeachingExtensionActivityVO) {
   return (
-    !row.archiveRecordId
-    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT
-    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    !row.archiveRecordId ||
+    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
+    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 }
 
@@ -215,10 +221,10 @@ async function loadData() {
       }
     }
     if (
-      typeof route.query.recommendationId === 'string'
-      && !recommendationIntentConsumed.value
-      && !readonlyMode.value
-      && !modalOpen.value
+      typeof route.query.recommendationId === 'string' &&
+      !recommendationIntentConsumed.value &&
+      !readonlyMode.value &&
+      !modalOpen.value
     ) {
       openModal()
     }
@@ -260,17 +266,25 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
   form.fileId = row?.fileId || ''
   form.attachmentName = row?.fileId ? `附件 ${row.fileId}` : ''
   if (!row && !recommendationIntentConsumed.value) {
-    form.trainingRecommendationId
-      = typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
-    form.activityName
-      = typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
+    form.trainingRecommendationId =
+      typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
+    form.activityName =
+      typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
     recommendationIntentConsumed.value = true
   }
   modalOpen.value = true
 }
 
 async function saveActivity() {
-  if (saving.value || Boolean(deletingActivityId.value) || Boolean(deletingCategoryId.value) || Boolean(submittingTrainingId.value)) {
+  if (
+    saving.value ||
+    Boolean(deletingActivityId.value) ||
+    Boolean(deletingCategoryId.value) ||
+    Boolean(submittingTrainingId.value)
+  ) {
+    return
+  }
+  if (!assertArchiveWritable()) {
     return
   }
   if (!(await confirmProxyWrite('保存教学拓展活动'))) {
@@ -307,6 +321,9 @@ async function saveActivity() {
 
 async function removeActivity(row: PortfolioTeachingExtensionActivityVO) {
   if (readonlyMode.value || deletingActivityId.value || submittingTrainingId.value) {
+    return
+  }
+  if (!assertArchiveWritable()) {
     return
   }
   if (!(await confirmProxyWrite('删除教学拓展活动'))) {
@@ -369,6 +386,9 @@ function openCategoryModal() {
 }
 
 async function createCategory() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('创建拓展自建分类'))) {
     return
   }
@@ -391,6 +411,9 @@ async function createCategory() {
 
 async function confirmDeleteCategory(row: PortfolioTeachingExtensionCategoryVO) {
   if (readonlyMode.value || row.preset || !row.id || deletingCategoryId.value) {
+    return
+  }
+  if (!assertArchiveWritable()) {
     return
   }
   if (!(await confirmProxyWrite('删除拓展自建分类'))) {
@@ -487,6 +510,13 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
         subtitle="培训与其他专业实践"
       />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
@@ -507,7 +537,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
             style="width: 120px; margin-right: 8px"
             :options="PortfolioTeachingExtensionKindOptions"
           />
-          <UiButton variant="primary" size="sm" v-if="!readonlyMode" @click="openModal()">新增活动</UiButton>
+          <UiButton variant="primary" size="sm" v-if="!readonlyMode" @click="openModal()"
+            >新增活动</UiButton
+          >
         </template>
         <UiDataTable
           :columns="activityColumns"
@@ -544,9 +576,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               <UiButton
                 size="sm"
                 v-if="
-                  !readonlyMode
-                    && record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING
-                    && !record.archiveRecordId
+                  !readonlyMode &&
+                  record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING &&
+                  !record.archiveRecordId
                 "
                 variant="ghost"
                 :loading="submittingTrainingId === record.id"
@@ -590,7 +622,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
 
       <UiCard title="活动分类" :loading="categoryLoading" style="margin-top: 16px">
         <template #extra>
-          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal">新建分类</UiButton>
+          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCategoryModal"
+            >新建分类</UiButton
+          >
         </template>
         <UiDataTable
           :columns="categoryColumns"
@@ -685,7 +719,13 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
       <UiFormItem label="证明材料" compact>
         <div class="teacher-extension__attachment">
           <span v-if="form.attachmentName">{{ form.attachmentName }}</span>
-          <UiButton variant="primary" size="sm" v-if="!readonlyMode" :loading="uploadingFile" @click="openAttachmentPicker">
+          <UiButton
+            variant="primary"
+            size="sm"
+            v-if="!readonlyMode"
+            :loading="uploadingFile"
+            @click="openAttachmentPicker"
+          >
             上传附件
           </UiButton>
         </div>

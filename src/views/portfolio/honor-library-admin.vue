@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioHonorStatsVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDevelopmentRecordTypeCode } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -40,6 +40,7 @@ const columns: ColumnsType = [
   { title: '授予单位', dataIndex: 'awardUnit', key: 'awardUnit', width: 140 },
   { title: '日期', dataIndex: 'recordDate', key: 'recordDate', width: 110 },
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
+  { title: '业务日工号', dataIndex: 'affiliationStaffNo', key: 'affiliationStaffNo', width: 120 },
   { title: '操作', key: 'actions', width: 80 },
 ]
 
@@ -52,8 +53,8 @@ const form = reactive({
   categoryCode: '',
   descriptionText: '',
 })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 const {
   loading,
   rows,
@@ -199,15 +200,9 @@ async function exportHonor() {
         </span>
       </div>
       <div class="toolbar">
-        <UiInput
-          size="sm" v-model="query.levelCode" placeholder="等级" style="width: 100px"
-        />
-        <UiInput
-          size="sm" v-model="query.awardUnit" placeholder="授予单位" style="width: 140px"
-        />
-        <UiInput
-          size="sm" v-model="query.categoryCode" placeholder="分类" style="width: 100px"
-        />
+        <UiInput size="sm" v-model="query.levelCode" placeholder="等级" style="width: 100px" />
+        <UiInput size="sm" v-model="query.awardUnit" placeholder="授予单位" style="width: 140px" />
+        <UiInput size="sm" v-model="query.categoryCode" placeholder="分类" style="width: 100px" />
         <UiDatePicker
           size="sm"
           v-model="query.recordDateFrom"
@@ -222,12 +217,12 @@ async function exportHonor() {
         />
         <UiButton size="sm" :disabled="writing" @click="search"> 查询 </UiButton>
         <UiButton size="sm" :disabled="writing" @click="exportHonor"> 导出 </UiButton>
-        <UiButton variant="primary" size="sm" :disabled="writing" @click="importModalOpen = true"> 批量导入 </UiButton>
+        <UiButton variant="primary" size="sm" :disabled="writing" @click="importModalOpen = true">
+          批量导入
+        </UiButton>
       </div>
       <div class="form-row">
-        <UiInput
-          size="sm" v-model="form.recordTitle" placeholder="荣誉标题" style="width: 180px"
-        />
+        <UiInput size="sm" v-model="form.recordTitle" placeholder="荣誉标题" style="width: 180px" />
         <UiSelect
           size="sm"
           v-model="form.teacherUserId"
@@ -239,12 +234,8 @@ async function exportHonor() {
           :options="teacherOptions"
           @search="searchTeachers"
         />
-        <UiInput
-          size="sm" v-model="form.levelCode" placeholder="等级" style="width: 88px"
-        />
-        <UiInput
-          size="sm" v-model="form.awardUnit" placeholder="授予单位" style="width: 140px"
-        />
+        <UiInput size="sm" v-model="form.levelCode" placeholder="等级" style="width: 88px" />
+        <UiInput size="sm" v-model="form.awardUnit" placeholder="授予单位" style="width: 140px" />
         <UiDatePicker
           size="sm"
           v-model="form.recordDate"
@@ -282,6 +273,9 @@ async function exportHonor() {
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}
+          </template>
+          <template v-else-if="column.key === 'affiliationStaffNo'">
+            {{ record.affiliationStaffNo || '—' }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

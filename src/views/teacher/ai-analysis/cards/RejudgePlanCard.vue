@@ -120,9 +120,6 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
@@ -132,6 +129,9 @@ import {
   RejudgePlanStatusDescription,
   RejudgeTriggerTypeDescription,
 } from '@/apis/mark/question-analysis'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -144,6 +144,7 @@ import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import { useUserStore } from '@/stores/modules/user'
 
 defineOptions({ name: 'RejudgePlanCard' })
 
@@ -158,6 +159,9 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{ changed: [] }>()
+
+const userStore = useUserStore()
+const currentUserId = computed(() => userStore.userInfo?.userId || '')
 
 const rows = ref<ExamRejudgePlan[]>([])
 const loading = ref(false)
@@ -207,9 +211,7 @@ const executeReason = ref('')
 
 const tableEmptyKind = computed(() => (filterForm.status ? 'no-result' : 'first-run'))
 
-const tableEmptyTitle = computed(() =>
-  filterForm.status ? '无匹配计划' : '暂无重判计划',
-)
+const tableEmptyTitle = computed(() => (filterForm.status ? '无匹配计划' : '暂无重判计划'))
 
 const tableEmptyDescription = computed(() => {
   if (filterForm.status) {
@@ -269,7 +271,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -294,7 +296,7 @@ async function handleApprove(planId: string): Promise<void> {
 
 function openRejectModal(planId: string): void {
   const row = rows.value.find((item) => item.id === planId)
-  if (!row || row.planStatus !== 'PENDING_APPROVAL') {
+  if (!row || !canDecideRejudgePlan(row)) {
     return
   }
   rejectPlanId.value = planId
@@ -389,20 +391,34 @@ function isOperating(planId: string, action: 'approve' | 'reject' | 'execute'): 
   return operatingId.value === planId && operatingAction.value === action
 }
 
+/** MVR-203：与 BE assertRejudgePlanApproverSeparatedFromSubmitter 同源 */
+function isRejudgePlanSubmitterSelf(row: ExamRejudgePlan): boolean {
+  if (!currentUserId.value) {
+    return false
+  }
+  const submitterId = row.createUser || row.updateUser
+  return Boolean(submitterId && String(submitterId) === String(currentUserId.value))
+}
+
+function canDecideRejudgePlan(row: ExamRejudgePlan): boolean {
+  return row.planStatus === 'PENDING_APPROVAL' && !isRejudgePlanSubmitterSelf(row)
+}
+
 function buildRejudgePlanActions(row: ExamRejudgePlan): UiTableRowActionItem[] {
   const operating = (action: 'approve' | 'reject' | 'execute') => isOperating(row.id, action)
+  const canDecide = canDecideRejudgePlan(row)
   return [
     {
       key: 'approve',
       label: '通过',
-      hidden: row.planStatus !== 'PENDING_APPROVAL',
+      hidden: !canDecide,
       disabled: operating('approve'),
     },
     {
       key: 'reject',
       label: '驳回',
       tone: 'danger',
-      hidden: row.planStatus !== 'PENDING_APPROVAL',
+      hidden: !canDecide,
       disabled: operating('reject'),
     },
     {
@@ -417,10 +433,11 @@ function buildRejudgePlanActions(row: ExamRejudgePlan): UiTableRowActionItem[] {
 function handleRejudgePlanAction(key: string, row: ExamRejudgePlan): void {
   switch (key) {
     case 'approve':
-      if (row.planStatus !== 'PENDING_APPROVAL') return
+      if (!canDecideRejudgePlan(row)) return
       void handleApprove(row.id)
       break
     case 'reject':
+      if (!canDecideRejudgePlan(row)) return
       openRejectModal(row.id)
       break
     case 'execute':

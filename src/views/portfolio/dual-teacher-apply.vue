@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -7,7 +8,6 @@ import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -18,10 +18,14 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { currentUserId } = usePortfolioTeacherAccess()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 const saving = ref(false)
 const submitting = ref(false)
 interface AttachmentItem {
@@ -62,38 +66,41 @@ function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatu
 }
 
 const canEdit = computed(() => {
+  if (archiveWriteForbidden.value) {
+    return false
+  }
   const status = application.value?.applicationStatus
   if (!status) {
     return true
   }
   // 驳回或已通过后可发起新单：清空 form.id 后进入可编辑
   if (
-    status === PortfolioDualTeacherApplicationStatusCode.REJECTED
-    || status === PortfolioDualTeacherApplicationStatusCode.APPROVED
+    status === PortfolioDualTeacherApplicationStatusCode.REJECTED ||
+    status === PortfolioDualTeacherApplicationStatusCode.APPROVED
   ) {
     return !form.id
   }
   return (
-    status === PortfolioDualTeacherApplicationStatusCode.DRAFT
-    || status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED
-    || status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
+    status === PortfolioDualTeacherApplicationStatusCode.DRAFT ||
+    status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED ||
+    status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
   )
 })
 
 /** 已认定通过且仍绑定旧单时，允许发起年度复核（新建申请）。 */
 const canStartReReview = computed(() => {
   return (
-    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED
-    && !!form.id
-    && !operationPending.value
+    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED &&
+    !!form.id &&
+    !operationPending.value
   )
 })
 
 /** 复核填写中：已通过态下已清空申请主键，尚未保存新草稿。 */
 const reReviewDrafting = computed(() => {
   return (
-    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED
-    && !form.id
+    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED &&
+    !form.id
   )
 })
 
@@ -232,10 +239,16 @@ function buildDraftPayload() {
 }
 
 async function persistDraft() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   form.id = await portfolioDualTeacherApi.saveDraft(buildDraftPayload())
 }
 
 async function saveDraft() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!currentUserId.value) {
     showFormValidationMessage('未获取当前用户')
     return
@@ -256,6 +269,9 @@ async function saveDraft() {
 }
 
 async function submitApplication() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!currentUserId.value) {
     showFormValidationMessage('未获取当前用户')
     return
@@ -300,6 +316,14 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" title="双师认定申请" />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
+
     <UiCard>
       <div v-if="application" class="status-bar">
         <span>申请单号 {{ application.applicationNo }}</span>
@@ -316,9 +340,7 @@ watch(
           />
         </UiFormItem>
         <UiFormItem label="认定年度" required>
-          <UiInput
-            size="sm" v-model="form.certYear" :disabled="!canEdit || operationPending"
-          />
+          <UiInput size="sm" v-model="form.certYear" :disabled="!canEdit || operationPending" />
         </UiFormItem>
         <UiFormItem label="企业实践天数">
           <UiInputNumber
@@ -350,7 +372,9 @@ watch(
           <ul v-if="attachmentItems.length" class="attachment-list">
             <li v-for="item in attachmentItems" :key="item.fileNodeId">
               <span>{{ item.fileName }}</span>
-              <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)">移除</a>
+              <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)"
+                >移除</a
+              >
             </li>
           </ul>
         </UiFormItem>
@@ -364,7 +388,13 @@ watch(
           >
             发起复核申请
           </UiButton>
-          <UiButton variant="primary" size="sm" :loading="saving" :disabled="!canEdit || operationPending" @click="saveDraft">
+          <UiButton
+            variant="primary"
+            size="sm"
+            :loading="saving"
+            :disabled="!canEdit || operationPending"
+            @click="saveDraft"
+          >
             保存草稿
           </UiButton>
           <UiButton

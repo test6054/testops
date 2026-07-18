@@ -43,11 +43,6 @@
         <dd>{{ anonymityLabel }}</dd>
       </div>
     </dl>
-
-    <footer class="org-strategy__footer">
-      <strong>策略说明：</strong>
-      {{ strategyHint }}
-    </footer>
   </WorkbenchSurfaceCard>
 </template>
 
@@ -56,12 +51,12 @@ import type {
   AllocationPolicyResponse,
   RecyclePolicyResponse,
 } from '@/apis/mark/marking-organization'
-import { computed } from 'vue'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import {
   AllocationUnitDescription,
   MarkingAllocationModeDescription,
 } from '@/apis/mark/marking-organization'
+import { computed } from 'vue'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -108,13 +103,6 @@ const anonymityLabel = computed(() =>
 const autoRecycleEnabled = computed(() =>
   Boolean(props.recyclePolicy?.timeoutMinutes && props.recyclePolicy.timeoutMinutes > 0),
 )
-
-const strategyHint = computed(() => {
-  const unit = allocationUnitLabel.value
-  const load = props.allocationPolicy?.loadLimit ?? '—'
-  const timeout = props.recyclePolicy?.timeoutMinutes ?? '—'
-  return `系统按 ${unit} 粒度分配任务，教师同时在手上限 ${load} 份，超时 ${timeout} 分钟未处理的任务将回收并重新分配。`
-})
 </script>
 
 <style lang="scss" scoped>
@@ -129,13 +117,13 @@ const strategyHint = computed(() => {
 
   &__title {
     margin: 0;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
   }
 
   &__list {
     margin: 0;
-    padding: 12px 16px;
+    padding: 8px 12px;
   }
 
   &__row {
@@ -143,34 +131,26 @@ const strategyHint = computed(() => {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 8px 0;
+    padding: 6px 0;
     border-bottom: 1px solid var(--dp-border-light);
 
     dt {
       margin: 0;
-      font-size: 13px;
-      color: var(--dp-text-secondary);
+      font-size: 12px;
+      color: var(--dp-text-muted);
     }
 
     dd {
       margin: 0;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
       text-align: right;
+      color: var(--dp-text-primary);
     }
 
     &:last-child {
       border-bottom: none;
     }
-  }
-
-  &__footer {
-    padding: 12px 16px;
-    border-top: 1px solid var(--dp-border);
-    background: var(--dp-surface-sunken);
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--dp-text-muted);
   }
 }
 </style>

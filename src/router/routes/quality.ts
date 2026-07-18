@@ -341,7 +341,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     meta: {
       title: '销毁清册',
       roles: ALL_ROLES,
-      icon: 'file-excel',
+      icon: 'exception',
       hideInMenu: false,
       menuTier: 'secondary',
       keepAlive: true,

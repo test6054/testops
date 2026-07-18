@@ -14,6 +14,8 @@ export interface PortfolioTeacherHonorVO {
   descriptionText?: string
   fileId?: string
   updateTime?: string
+  affiliationStaffNo?: string
+  affiliationDepartmentId?: string
 }
 
 export interface PortfolioTeacherHonorCategoryVO {

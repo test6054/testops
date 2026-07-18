@@ -84,10 +84,10 @@ const menuData = computed(() => {
 // 是否应该显示为菜单项（而不是子菜单）
 const shouldShowAsMenuItem = computed(() => {
   return (
-    menuData.value.isOneShowingChild
-    && (!menuData.value.onlyOneChild?.children
-      || menuData.value.onlyOneChild?.meta?.noShowingChildren)
-    && !props.item?.meta?.alwaysShow
+    menuData.value.isOneShowingChild &&
+    (!menuData.value.onlyOneChild?.children ||
+      menuData.value.onlyOneChild?.meta?.noShowingChildren) &&
+    !props.item?.meta?.alwaysShow
   )
 })
 
@@ -116,15 +116,12 @@ const menuItemIcon = computed(() => {
   return menuData.value.onlyOneChild?.meta?.icon || props.item?.meta?.icon
 })
 
-// 菜单项的标题
+// 菜单项的标题（仅正式路由 title；门控状态不得写入侧栏文案）
 const menuItemTitle = computed(() => {
   const target = menuData.value.onlyOneChild ?? props.item
   const title = target.meta?.title
   if (typeof title !== 'string') {
     return title
-  }
-  if (target.meta?.qualityGateBlocked) {
-    return `${title} · 待确认`
   }
   return title
 })

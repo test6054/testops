@@ -2,40 +2,31 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioCorrectionRequestStatusCode } from '@/apis/portfolio/enums'
+import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
 import type {
   PortfolioCorrectionDetailVO,
   PortfolioCorrectionSummaryVO,
   PortfolioTargetFieldDefinition,
-  PortfolioTeacherOneTableCategoryVO,
+  PortfolioTeacherOneTableCategoryVO
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
-import { PortfolioCorrectionRequestStatusDescription } from '@/apis/portfolio/enums'
-import { PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE } from '@/apis/portfolio/types'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiForm from '@/components/ui-guide/ui/UiForm.vue'
-import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
-import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
-import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import {
-  usePortfolioPageScope,
-  usePortfolioScopedLoader,
-} from '@/composables/usePortfolioPageScope'
+import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -67,6 +58,11 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -308,6 +304,9 @@ async function handleSubmit() {
   if (submitting.value || (canPickTeachers.value && !targetTeacherId.value)) {
     return
   }
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('提交纠错申请'))) {
     return
   }
@@ -444,80 +443,15 @@ watch(
     </template>
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+    </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
 
-    <template v-else>
-      <UiCard title="发起纠错" class="correction-page__form">
-        <UiForm layout="vertical">
-          <UiFormItem label="档案分类" required>
-            <UiSelect
-              size="sm"
-              v-model="form.categoryId"
-              :options="categoryOptions"
-              placeholder="选择分类"
-              :disabled="submitting"
-              @change="onCategoryChange"
-            />
-          </UiFormItem>
-          <UiFormItem label="纠错字段" required>
-            <UiSelect
-              size="sm"
-              v-model="form.fieldCode"
-              :options="fieldOptions"
-              placeholder="选择已发布模板字段"
-              allow-search
-              option-filter-prop="label"
-              :disabled="submitting"
-              @change="onFieldChange"
-            />
-          </UiFormItem>
-          <UiFormItem label="当前错误值">
-            <UiInput
-              size="sm" v-model="form.wrongValue" :disabled="submitting"
-            />
-          </UiFormItem>
-          <UiFormItem label="期望正确值" required>
-            <UiInput
-              size="sm" v-model="form.expectedValue" :disabled="submitting"
-            />
-          </UiFormItem>
-          <UiFormItem label="纠错原因" required>
-            <UiTextarea size="sm" v-model="form.reason" :rows="3" :disabled="submitting" />
-          </UiFormItem>
-          <UiFormItem label="佐证引用">
-            <UiInput
-              size="sm" v-model="form.evidenceRef" :disabled="submitting"
-            />
-          </UiFormItem>
-          <UiButton size="sm" variant="primary" :loading="submitting" @click="handleSubmit"> 提交纠错 </UiButton>
-        </UiForm>
-      </UiCard>
-
-      <UiCard title="纠错记录" class="correction-page__list">
-        <UiDataTable
-          v-model:current="pageNum"
-          v-model:page-size="pageSize"
-          pagination-mode="server"
-          row-key="id"
-          size="small"
-          :columns="columns"
-          :data-source="rows"
-          :loading="loading"
-          :total="pageTotal"
-          @page-change="handlePageChange"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'requestStatus'">
-              <UiTag :tone="correctionRequestStatusTone(record.requestStatus)">
-                {{ correctionRequestStatusLabel(record.requestStatus) }}
-              </UiTag>
-            </template>
-            <template v-else-if="column.key === 'actions'">
-              <UiTableActions
-                :items="[{ key: 'detail', label: '详情' }]"
-                split
-                @action="() => openCorrectionDetail(record)"
-              />
-            </template>
           </template>
         </UiDataTable>
       </UiCard>

@@ -107,10 +107,7 @@
           <MenuIcon icon="reconciliation" />
         </MenuCollapsedTooltip>
       </template>
-      <UiMenuItem
-        v-for="item in primaryGroupItems(qualityGrouped.ungrouped)"
-        :key="item.path"
-      >
+      <UiMenuItem v-for="item in primaryGroupItems(qualityGrouped.ungrouped)" :key="item.path">
         <template #icon>
           <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
             <MenuIcon :icon="routeIcon(item, 'dashboard')" />
@@ -125,18 +122,12 @@
         <template #title>
           <span>{{ moreMenuLabel('quality', qualityGrouped.ungrouped) }}</span>
         </template>
-        <UiMenuItem
-          v-for="item in secondaryGroupItems(qualityGrouped.ungrouped)"
-          :key="item.path"
-        >
+        <UiMenuItem v-for="item in secondaryGroupItems(qualityGrouped.ungrouped)" :key="item.path">
           <span>{{ menuRouteLabel(item) }}</span>
         </UiMenuItem>
       </UiSubMenu>
       <template v-for="group in qualityGrouped.groups" :key="group.key">
-        <UiMenuItem
-          v-if="isFlattenedMenuGroup(group)"
-          :key="flattenedMenuGroupItem(group).path"
-        >
+        <UiMenuItem v-if="isFlattenedMenuGroup(group)" :key="flattenedMenuGroupItem(group).path">
           <template #icon>
             <MenuCollapsedTooltip :collapsed="collapsed" :label="group.title">
               <MenuIcon :icon="group.icon" />
@@ -153,10 +144,7 @@
               <MenuIcon :icon="group.icon" />
             </MenuCollapsedTooltip>
           </template>
-          <UiMenuItem
-            v-for="item in primaryGroupItems(group.items)"
-            :key="item.path"
-          >
+          <UiMenuItem v-for="item in primaryGroupItems(group.items)" :key="item.path">
             <template #icon>
               <MenuCollapsedTooltip :collapsed="collapsed" :label="routeTitle(item)">
                 <MenuIcon :icon="routeIcon(item, 'folder')" />
@@ -171,10 +159,7 @@
             <template #title>
               <span>{{ moreMenuLabel('group', group.items, group.title) }}</span>
             </template>
-            <UiMenuItem
-              v-for="item in secondaryGroupItems(group.items)"
-              :key="item.path"
-            >
+            <UiMenuItem v-for="item in secondaryGroupItems(group.items)" :key="item.path">
               <span>{{ menuRouteLabel(item) }}</span>
             </UiMenuItem>
           </UiSubMenu>
@@ -314,9 +299,9 @@
 <script lang="ts" setup>
 import type { Key } from 'ant-design-vue/es/_util/type'
 import type { RouteRecordRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import UiMenu from '@/components/ui-guide/ui/UiMenu.vue'
 import UiMenuItem from '@/components/ui-guide/ui/UiMenuItem.vue'
 import UiSubMenu from '@/components/ui-guide/ui/UiSubMenu.vue'
@@ -395,13 +380,9 @@ function routeTitle(item: RouteRecordRaw): string {
   return stringMetaValue(item.meta?.title) ?? ''
 }
 
-/** 门控未通过时旁注「待确认」，避免灰禁用被误读为无权限 */
+/** 侧栏只展示正式路由标题；培养方案门控用点击拦截引导，禁止在菜单文案旁注状态 */
 function menuRouteLabel(item: RouteRecordRaw): string {
-  const title = routeTitle(item)
-  if (item.meta?.qualityGateBlocked) {
-    return `${title} · 待确认`
-  }
-  return title
+  return routeTitle(item)
 }
 
 /**
@@ -458,8 +439,8 @@ function moreMenuKey(parentKey: string): string {
 /** 仅含一个 primary 且无 secondary 时展平，避免误藏「更多」。 */
 function isFlattenedMenuGroup(group: MenuGroup): boolean {
   return (
-    primarySideMenuRoutes(group.items).length === 1
-    && secondarySideMenuRoutes(group.items).length === 0
+    primarySideMenuRoutes(group.items).length === 1 &&
+    secondarySideMenuRoutes(group.items).length === 0
   )
 }
 
@@ -476,10 +457,7 @@ function flattenedMenuGroupItem(group: MenuGroup): RouteRecordRaw {
   return group.items[0]
 }
 
-function shouldOpenMenuGroup(
-  groupKey: string,
-  grouped: { groups: MenuGroup[] },
-): boolean {
+function shouldOpenMenuGroup(groupKey: string, grouped: { groups: MenuGroup[] }): boolean {
   const group = grouped.groups.find((entry) => entry.key === groupKey)
   return group !== undefined && !isFlattenedMenuGroup(group)
 }
@@ -564,17 +542,19 @@ function normalizeOpenKeys(keys: Key[]): Key[] {
   if (openDomains.length > 1) {
     const routeDomainKey = resolveRouteDomainKey()
     const ordered = keys.map(String).filter((key) => domainKeys.includes(key))
-    const keepDomain
-      = (routeDomainKey && next.has(routeDomainKey) ? routeDomainKey : null)
-        || ordered[ordered.length - 1]
-        || openDomains[openDomains.length - 1]
+    // 优先保留用户刚展开的一级域，否则才回落到当前路由所属域。
+    // 若始终优先 routeDomain，则在阅卷页无法展开「系统管理」查看子菜单。
+    const keepDomain =
+      ordered[ordered.length - 1] ||
+      (routeDomainKey && next.has(routeDomainKey) ? routeDomainKey : null) ||
+      openDomains[openDomains.length - 1]
     for (const domainKey of domainKeys) {
       if (domainKey === keepDomain) {
         continue
       }
       next.delete(domainKey)
-      const groupKeys
-        = domainKey === MARKING_DOMAIN_KEY
+      const groupKeys =
+        domainKey === MARKING_DOMAIN_KEY
           ? markingGroupKeys
           : domainKey === PLATFORM_DOMAIN_KEY
             ? platformGroupKeys
@@ -685,10 +665,10 @@ function collectGroupedRoutes(grouped: {
 function onMenuClick({ key }: { key: Key }) {
   const keyStr = String(key)
   if (
-    keyStr === MARKING_DOMAIN_KEY
-    || keyStr === PLATFORM_DOMAIN_KEY
-    || keyStr === QUALITY_DOMAIN_KEY
-    || keyStr === PORTFOLIO_DOMAIN_KEY
+    keyStr === MARKING_DOMAIN_KEY ||
+    keyStr === PLATFORM_DOMAIN_KEY ||
+    keyStr === QUALITY_DOMAIN_KEY ||
+    keyStr === PORTFOLIO_DOMAIN_KEY
   ) {
     return
   }
