@@ -450,7 +450,10 @@
             v-else-if="detail && activeTab === 'start-collecting'"
             :detail="detail"
             :can-start-collecting="detailScope.canStartCollecting"
+            :can-manage-collaborators="detailScope.canManageCollaborators"
+            :can-update-archive-due-time="detailScope.capabilities.canUpdateArchiveDueTime === true"
             @started="handleStartCollectingStarted"
+            @updated="loadDetail"
             @navigate="setActiveTab"
           />
         </WorkbenchSurfaceCard>

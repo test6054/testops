@@ -99,79 +99,140 @@
         </template>
       </UiAlertStrip>
 
-      <WorkbenchSurfaceCard
-        v-if="workbench?.attributionItems?.length"
-        flush
-        class="scan-batch-detail-workbench__attribution-surface"
-      >
-        <template #title>批次学生归卷总览</template>
-        <template #toolbar>
+      <div class="scan-batch-detail-workbench__screen">
+        <header class="scan-batch-detail-workbench__screen-head">
           <div class="scan-batch-detail-workbench__attribution-summary">
             识别卷 {{ attributionSummary.paperCount }} 份 · 未归卷页
             {{ attributionSummary.unassignedPageCount }} 张 · 待人工复核
             {{ attributionSummary.manualReviewCount }} 份
           </div>
-        </template>
-        <UiDataTable
-          pagination-mode="none"
-          :columns="attributionColumns"
-          :data-source="workbench.attributionItems"
-          :show-pagination="false"
-          flat
-          row-key="bucketKey"
-          size="small"
-          :sticky-header="false"
-          :total="workbench.attributionItems.length"
-        />
-      </WorkbenchSurfaceCard>
-
-      <div class="scan-batch-detail-workbench__filters">
-        <UiSectionTabs
-          v-model="pageStatusFilter"
-          :items="pageStatusTabItems"
-          compact
-          @update:model-value="handlePageStatusFilterChange"
-        />
-        <UiSearchBox
-          v-model="pageKeyword"
-          allow-clear
-          placeholder="学号 / 姓名 / 班级搜索"
-          class="scan-batch-detail-workbench__keyword"
-          @search="handlePageKeywordSearch"
-        />
-      </div>
-
-      <div v-if="isNarrowViewport" class="scan-batch-detail-workbench__narrow-toolbar">
-        <UiButton size="sm" variant="outline" @click="leftDrawerOpen = true"> 页轨 </UiButton>
-        <UiButton size="sm" variant="outline" @click="rightDrawerOpen = true"> 页检视 </UiButton>
-      </div>
-
-      <div
-        class="scan-batch-detail-workbench__layout"
-        :class="{ 'scan-batch-detail-workbench__layout--narrow': isNarrowViewport }"
-      >
-        <aside v-if="!isNarrowViewport" class="scan-batch-detail-workbench__rail">
-          <ScanBatchPageRail
-            layout="strip"
-            :page-items="pageItems"
-            :selected-page-key="selectedPageKey"
-            :loading="pagesLoading"
-            :loading-more="pagesLoadingMore"
-            :empty-description="pageRailEmptyDescription"
-            @select="handleSelectPage"
-            @reach-end="loadMorePages"
-          >
-            <template #header>
-              <div class="scan-batch-detail-workbench__rail-summary">
-                共 {{ pageRailCounts.total }} 条 · 待登记 {{ pageRailCounts.pending }} · 已登记
-                {{ pageRailCounts.registered }} · 异常 {{ pageRailCounts.exception }}
-              </div>
+          <div class="scan-batch-detail-workbench__screen-actions">
+            <UiButton
+              v-if="hasAttributionItems"
+              size="sm"
+              variant="outline"
+              @click="browseAllPages = !browseAllPages"
+            >
+              {{ browseAllPages ? '归卷列表' : '全部页轨' }}
+            </UiButton>
+            <template v-if="isNarrowViewport">
+              <UiButton size="sm" variant="outline" @click="leftDrawerOpen = true">列表</UiButton>
+              <UiButton size="sm" variant="outline" @click="rightDrawerOpen = true">检视</UiButton>
             </template>
-          </ScanBatchPageRail>
-        </aside>
+          </div>
+        </header>
 
-        <div class="scan-batch-detail-workbench__workspace">
+        <div
+          class="scan-batch-detail-workbench__immersion"
+          :class="{ 'scan-batch-detail-workbench__immersion--narrow': isNarrowViewport }"
+        >
+          <aside v-if="!isNarrowViewport" class="scan-batch-detail-workbench__queue">
+            <div v-if="browseAllPages || !hasAttributionItems" class="scan-batch-detail-workbench__browse">
+              <UiSectionTabs
+                v-model="pageStatusFilter"
+                :items="pageStatusTabItems"
+                compact
+                @update:model-value="handlePageStatusFilterChange"
+              />
+              <UiSearchBox
+                v-model="pageKeyword"
+                allow-clear
+                placeholder="学号 / 姓名 / 班级"
+                class="scan-batch-detail-workbench__keyword"
+                @search="handlePageKeywordSearch"
+              />
+              <ScanBatchPageRail
+                layout="rail"
+                :rail-viewport-height="420"
+                :page-items="pageItems"
+                :selected-page-key="selectedPageKey"
+                :loading="pagesLoading"
+                :loading-more="pagesLoadingMore"
+                :empty-description="pageRailEmptyDescription"
+                @select="handleSelectPage"
+                @reach-end="loadMorePages"
+              />
+            </div>
+            <div v-else class="scan-batch-detail-workbench__queue-list">
+              <article
+                v-for="item in workbench?.attributionItems ?? []"
+                :key="item.bucketKey"
+                class="scan-batch-detail-workbench__queue-item"
+                :class="{
+                  'scan-batch-detail-workbench__queue-item--active':
+                    item.bucketKey === selectedBucketKey,
+                }"
+              >
+                <button
+                  type="button"
+                  class="scan-batch-detail-workbench__queue-main"
+                  @click="selectAttributionItem(item)"
+                >
+                  <UiTag
+                    :tone="
+                      strictEnumTone(
+                        SCAN_BATCH_ATTRIBUTION_REVIEW_STATUS_TONE,
+                        item.reviewStatus,
+                        '扫描批次归卷复核状态',
+                      )
+                    "
+                    size="sm"
+                  >
+                    {{
+                      strictEnumLabel(
+                        ScanBatchAttributionReviewStatusDescription,
+                        item.reviewStatus,
+                        '扫描批次归卷复核状态',
+                      )
+                    }}
+                  </UiTag>
+                  <span class="scan-batch-detail-workbench__queue-title">
+                    {{ attributionPrimaryLabel(item) }}
+                  </span>
+                  <span class="scan-batch-detail-workbench__queue-meta">
+                    {{ attributionSecondaryLabel(item) }}
+                  </span>
+                  <span v-if="item.diagnostic" class="scan-batch-detail-workbench__queue-diag">
+                    {{ item.diagnostic }}
+                  </span>
+                </button>
+                <UiButton
+                  v-if="!item.unassignedBucket && item.paperInstanceId"
+                  size="sm"
+                  variant="outline"
+                  class="scan-batch-detail-workbench__queue-action"
+                  @click="setPreferredReassignTarget(item.paperInstanceId!)"
+                >
+                  设为调卷目标
+                </UiButton>
+              </article>
+            </div>
+          </aside>
+
           <section class="scan-batch-detail-workbench__stage">
+            <div
+              v-if="selectedBucketPages.length"
+              class="scan-batch-detail-workbench__bucket-pages"
+            >
+              <button
+                v-for="page in selectedBucketPages"
+                :key="page.pageKey"
+                type="button"
+                class="scan-batch-detail-workbench__bucket-chip"
+                :class="{
+                  'scan-batch-detail-workbench__bucket-chip--active':
+                    page.pageKey === selectedPageKey,
+                  'scan-batch-detail-workbench__bucket-chip--exception': page.hasException,
+                }"
+                @click="selectBucketPage(page.pageKey)"
+              >
+                #{{ page.fileOrder }}
+                <template v-if="page.pageSeq != null"> · 第{{ page.pageSeq }}页</template>
+                <template v-else-if="page.templatePageNo != null">
+                  · T{{ page.templatePageNo }}
+                </template>
+              </button>
+            </div>
             <UiSectionTabs
               v-if="showPreviewTabs"
               v-model="previewTab"
@@ -179,7 +240,14 @@
               compact
               class="scan-batch-detail-workbench__preview-tabs"
             />
-            <UiSkeletonState v-if="previewLoading" variant="card" compact />
+            <UiSkeletonState
+              v-if="
+                previewLoading
+                  || (Boolean(selectedPageKey) && inspectorLoading && !previewImageUrl)
+              "
+              variant="card"
+              compact
+            />
             <ScanImageStage
               v-else-if="previewImageUrl"
               :src="previewImageUrl"
@@ -187,8 +255,9 @@
               :confidential="isExamConfidential"
               :exam-label="examConfidentialLabel"
               :watermark-lines="watermarkLines"
-              :min-height="520"
+              :min-height="360"
               empty-text="预览加载失败"
+              class="scan-batch-detail-workbench__image"
             />
             <UiEmpty
               size="sm"
@@ -221,21 +290,64 @@
       </div>
     </UiSpin>
 
-    <UiDrawer v-model:open="leftDrawerOpen" title="页轨" width="360" hide-footer>
-      <ScanBatchPageRail
-        :page-items="pageItems"
-        :selected-page-key="selectedPageKey"
-        :loading="pagesLoading"
-        :loading-more="pagesLoadingMore"
-        :empty-description="pageRailEmptyDescription"
-        @select="
-          (key) => {
-            handleSelectPage(key)
-            leftDrawerOpen = false
-          }
-        "
-        @reach-end="loadMorePages"
-      />
+    <UiDrawer v-model:open="leftDrawerOpen" title="归卷列表" width="360" hide-footer>
+      <div v-if="browseAllPages || !hasAttributionItems" class="scan-batch-detail-workbench__browse">
+        <ScanBatchPageRail
+          :page-items="pageItems"
+          :selected-page-key="selectedPageKey"
+          :loading="pagesLoading"
+          :loading-more="pagesLoadingMore"
+          :empty-description="pageRailEmptyDescription"
+          @select="
+            (key) => {
+              handleSelectPage(key)
+              leftDrawerOpen = false
+            }
+          "
+          @reach-end="loadMorePages"
+        />
+      </div>
+      <div v-else class="scan-batch-detail-workbench__queue-list">
+        <article
+          v-for="item in workbench?.attributionItems ?? []"
+          :key="item.bucketKey"
+          class="scan-batch-detail-workbench__queue-item"
+          :class="{
+            'scan-batch-detail-workbench__queue-item--active': item.bucketKey === selectedBucketKey,
+          }"
+        >
+          <button
+            type="button"
+            class="scan-batch-detail-workbench__queue-main"
+            @click="onDrawerSelectAttribution(item)"
+          >
+            <UiTag
+              :tone="
+                strictEnumTone(
+                  SCAN_BATCH_ATTRIBUTION_REVIEW_STATUS_TONE,
+                  item.reviewStatus,
+                  '扫描批次归卷复核状态',
+                )
+              "
+              size="sm"
+            >
+              {{
+                strictEnumLabel(
+                  ScanBatchAttributionReviewStatusDescription,
+                  item.reviewStatus,
+                  '扫描批次归卷复核状态',
+                )
+              }}
+            </UiTag>
+            <span class="scan-batch-detail-workbench__queue-title">
+              {{ attributionPrimaryLabel(item) }}
+            </span>
+            <span class="scan-batch-detail-workbench__queue-meta">
+              {{ attributionSecondaryLabel(item) }}
+            </span>
+          </button>
+        </article>
+      </div>
     </UiDrawer>
 
     <UiDrawer v-model:open="rightDrawerOpen" title="页检视面板" width="420" hide-footer>
@@ -328,7 +440,7 @@ import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types
 import type { SignalMetric } from '@/types/workbench'
 import { useWindowSize } from '@vueuse/core'
 import message from 'ant-design-vue/es/message'
-import { computed, h, onUnmounted, ref, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import ScanBatchDiscardDialog from '@/components/mark/ScanBatchDiscardDialog.vue'
@@ -351,7 +463,6 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfidentialContext'
@@ -456,6 +567,8 @@ const pagesLoadingMore = ref(false)
 const pagesNextCursor = ref<string | null | undefined>(undefined)
 const pagesLoadMoreInFlight = ref(false)
 const selectedPageKey = ref('')
+const selectedBucketKey = ref('')
+const browseAllPages = ref(false)
 const pageInspector = ref<ExamScannerBatchPageInspectorVO | null>(null)
 const preferredTargetPaperInstanceId = ref<string | undefined>(undefined)
 const inspectorLoading = ref(false)
@@ -464,6 +577,7 @@ const previewImageUrl = ref('')
 const previewLoading = ref(false)
 const previewLoadFailed = ref(false)
 const previewingOriginal = ref(false)
+let previewRequestSeq = 0
 const actionLoading = ref<ScanBatchWorkbenchTopActionCode | ''>('')
 const discardModalOpen = ref(false)
 const supplementModalOpen = ref(false)
@@ -479,8 +593,15 @@ const contextSubtitle = computed(() => {
   if (!batch) {
     return ''
   }
-  const device = `${batch.scannerDeviceId || '—'} · ${batch.scannerStationId || '—'}`
-  return `${batch.batchNo} · ${device} · ${formatDateTimeWithSeconds(batch.scanStartTime)} 至 ${formatDateTimeWithSeconds(batch.scanEndTime)}`
+  const parts: string[] = [batch.batchNo]
+  const deviceName = batch.scannerDeviceName?.trim()
+  if (deviceName) {
+    parts.push(deviceName)
+  }
+  parts.push(
+    `${formatDateTimeWithSeconds(batch.scanStartTime)} 至 ${formatDateTimeWithSeconds(batch.scanEndTime)}`,
+  )
+  return parts.join(' · ')
 })
 
 const visibleTopActions = computed(() => workbench.value?.topActions ?? [])
@@ -661,6 +782,36 @@ const attributionSummary = computed(() => {
   }
 })
 
+const hasAttributionItems = computed(() => (workbench.value?.attributionItems?.length ?? 0) > 0)
+
+const selectedAttributionItem = computed(() => {
+  const items = workbench.value?.attributionItems ?? []
+  if (!selectedBucketKey.value) {
+    return null
+  }
+  return items.find((item) => item.bucketKey === selectedBucketKey.value) ?? null
+})
+
+const selectedBucketPages = computed(() => selectedAttributionItem.value?.pages ?? [])
+
+function attributionPrimaryLabel(item: ExamScannerBatchAttributionItemVO): string {
+  if (item.unassignedBucket) {
+    return '未归卷页'
+  }
+  return item.studentName || item.recognizedStudentName || '待确认学生'
+}
+
+function attributionSecondaryLabel(item: ExamScannerBatchAttributionItemVO): string {
+  const pagesText = item.pages
+    .map((page) => `T${page.templatePageNo ?? '—'}·#${page.fileOrder}`)
+    .join(' / ')
+  const identity = [
+    item.studentNo || item.recognizedStudentNo || '无学号',
+    item.className || item.recognizedClassName || '未识别班级',
+  ].join(' · ')
+  return pagesText ? `${identity} · ${pagesText}` : identity
+}
+
 const attributionSealBlockReason = computed(() => {
   const items = workbench.value?.attributionItems ?? []
   if (!items.length) {
@@ -679,117 +830,16 @@ const attributionSealBlockReason = computed(() => {
   return ''
 })
 
-const attributionColumns: ColumnType<ExamScannerBatchAttributionItemVO>[] = [
-  {
-    title: '归卷状态',
-    dataIndex: 'reviewStatus',
-    key: 'reviewStatus',
-    width: 156,
-    customRender: ({ record }) =>
-      h(
-        UiTag,
-        {
-          tone: strictEnumTone(
-            SCAN_BATCH_ATTRIBUTION_REVIEW_STATUS_TONE,
-            record.reviewStatus,
-            '扫描批次归卷复核状态',
-          ),
-          size: 'sm',
-        },
-        () =>
-          strictEnumLabel(
-            ScanBatchAttributionReviewStatusDescription,
-            record.reviewStatus,
-            '扫描批次归卷复核状态',
-          ),
-      ),
-  },
-  {
-    title: '学生 / 卷实例',
-    key: 'identity',
-    width: 260,
-    customRender: ({ record }) => {
-      const primary = record.unassignedBucket
-        ? '未归卷页'
-        : record.studentName || record.recognizedStudentName || '待确认学生'
-      const secondary = [
-        record.studentNo || record.recognizedStudentNo || '无学号',
-        record.className || record.recognizedClassName || '未识别班级',
-      ].join(' · ')
-      return h('div', { class: 'scan-batch-detail-workbench__attribution-cell' }, [
-        h('div', { class: 'scan-batch-detail-workbench__attribution-main' }, primary),
-        h('div', { class: 'scan-batch-detail-workbench__attribution-sub' }, secondary),
-      ])
-    },
-  },
-  {
-    title: '页位',
-    key: 'pages',
-    width: 180,
-    customRender: ({ record }) => {
-      const text = record.pages
-        .map((page) => `T${page.templatePageNo ?? '—'}·#${page.fileOrder}`)
-        .join(' / ')
-      const suffix = record.expectedPageCount
-        ? `（${record.registeredPageCount ?? record.pages.length}/${record.expectedPageCount}）`
-        : ''
-      return `${text}${suffix}`
-    },
-  },
-  {
-    title: '识别线索',
-    key: 'recognized',
-    width: 220,
-    customRender: ({ record }) =>
-      [
-        record.recognizedStudentName || record.studentName,
-        record.recognizedStudentNo || record.studentNo,
-        record.recognizedClassName || record.className,
-      ]
-        .filter(Boolean)
-        .join(' · ') || '—',
-  },
-  { title: '诊断', dataIndex: 'diagnostic', key: 'diagnostic' },
-  {
-    title: '操作',
-    key: 'actions',
-    width: 180,
-    customRender: ({ record }) =>
-      h('div', { class: 'scan-batch-detail-workbench__attribution-actions' }, [
-        h(
-          UiButton,
-          {
-            size: 'sm',
-            variant: 'outline',
-            onClick: () => locateAttributionItem(record),
-          },
-          () => '定位页轨',
-        ),
-        !record.unassignedBucket && record.paperInstanceId
-          ? h(
-              UiButton,
-              {
-                size: 'sm',
-                variant: 'outline',
-                onClick: () => setPreferredReassignTarget(record.paperInstanceId!),
-              },
-              () => '设为调卷目标',
-            )
-          : null,
-      ]),
-  },
-]
-
 const selectedPage = computed(() => {
-  const fromRail = pageItems.value.find((item) => item.pageKey === selectedPageKey.value)
-  if (fromRail) {
-    return fromRail
+  const pageKey = selectedPageKey.value
+  if (!pageKey) {
+    return null
   }
   const inspectorPage = pageInspector.value?.page
-  if (inspectorPage?.pageKey === selectedPageKey.value) {
+  if (inspectorPage?.pageKey === pageKey) {
     return inspectorPage
   }
-  return null
+  return pageItems.value.find((item) => item.pageKey === pageKey) ?? null
 })
 
 const showPreviewTabs = computed(() =>
@@ -824,7 +874,9 @@ const previewCaption = computed(() => {
 const previewEmptyDescription = computed(() => {
   const page = selectedPage.value
   if (!page) {
-    return '请选择页轨条目预览'
+    return hasAttributionItems.value
+      ? '请在上方归卷列表点选一卷，下方将展示对应影像'
+      : '请选择页轨条目预览'
   }
   if (page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING) {
     return '原件仅在后台登记和身份识别链路使用，工作台不显示未脱敏影像。请重试页登记。'
@@ -931,6 +983,7 @@ async function loadWorkbench(): Promise<void> {
   }
   workbenchLoading.value = true
   const preservedPageKey = selectedPageKey.value
+  const preservedBucketKey = selectedBucketKey.value
   const preservedFileOrder = parsePendingFileOrder(preservedPageKey)
   try {
     workbench.value = await getScannerBatchWorkbench({
@@ -938,19 +991,32 @@ async function loadWorkbench(): Promise<void> {
       scanBatchId: scanBatchId.value,
     })
     pageItems.value = workbench.value.initialPageItems ?? []
-    selectedPageKey.value =
-      preservedPageKey || workbench.value.initialPageKey || pageItems.value[0]?.pageKey || ''
     pagesNextCursor.value = undefined
     await refreshPagesWindow()
 
-    let pageKey = resolvePageKeyAfterRefresh(selectedPageKey.value, pageItems.value)
+    const attributionItems = workbench.value.attributionItems ?? []
+    let pageKey = resolvePageKeyAfterRefresh(preservedPageKey, pageItems.value)
     if (!pageItems.value.some((item) => item.pageKey === pageKey) && preservedFileOrder !== null) {
       const byFileOrder = pageItems.value.find((item) => item.fileOrder === preservedFileOrder)
       if (byFileOrder) {
         pageKey = byFileOrder.pageKey
       }
     }
+    if (!pageKey && attributionItems.length) {
+      const preferredBucket
+        = attributionItems.find((item) => item.bucketKey === preservedBucketKey)
+          ?? attributionItems.find((item) => item.manualReviewRequired)
+          ?? attributionItems[0]
+      pageKey = preferredBucket?.pages[0]?.pageKey || ''
+      if (preferredBucket) {
+        selectedBucketKey.value = preferredBucket.bucketKey
+      }
+    }
+    if (!pageKey) {
+      pageKey = workbench.value.initialPageKey || pageItems.value[0]?.pageKey || ''
+    }
     await syncSelectedPageAfterRefresh(pageKey)
+    syncBucketKeyForPage(pageKey)
   } catch (error) {
     workbench.value = null
     showUserError(error, '批次工作台加载失败')
@@ -1094,6 +1160,7 @@ async function loadInspector(pageKey: string): Promise<void> {
 }
 
 async function loadPreview(): Promise<void> {
+  const requestSeq = ++previewRequestSeq
   releasePreviewUrl()
   previewLoadFailed.value = false
   previewingOriginal.value = false
@@ -1107,77 +1174,130 @@ async function loadPreview(): Promise<void> {
     }
     previewLoading.value = true
     try {
-      previewImageUrl.value = await fetchStoragePreviewBlobUrl(page.identitySlicePreviewUrl)
+      const blobUrl = await fetchStoragePreviewBlobUrl(page.identitySlicePreviewUrl)
+      if (requestSeq !== previewRequestSeq) {
+        URL.revokeObjectURL(blobUrl)
+        return
+      }
+      previewImageUrl.value = blobUrl
     } catch (error) {
+      if (requestSeq !== previewRequestSeq) {
+        return
+      }
       previewLoadFailed.value = true
       showUserError(error, '身份切片加载失败')
     } finally {
-      previewLoading.value = false
+      if (requestSeq === previewRequestSeq) {
+        previewLoading.value = false
+      }
     }
     return
   }
   if (!page.previewUrl) {
-    // 脱敏影像未生成时，主考走原件看片（与顶栏「查看原始影像」同权）；非主考只展示诊断空态
     if (
-      page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING &&
-      canViewOriginalImage.value &&
-      page.pageId
+      page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
+      && canViewOriginalImage.value
+      && page.pageId
     ) {
-      await loadOriginalPreview()
+      await loadOriginalPreview(requestSeq)
     }
     return
   }
   previewLoading.value = true
   try {
-    previewImageUrl.value = await fetchStoragePreviewBlobUrl(page.previewUrl)
+    const blobUrl = await fetchStoragePreviewBlobUrl(page.previewUrl)
+    if (requestSeq !== previewRequestSeq) {
+      URL.revokeObjectURL(blobUrl)
+      return
+    }
+    previewImageUrl.value = blobUrl
   } catch (error) {
+    if (requestSeq !== previewRequestSeq) {
+      return
+    }
     previewLoadFailed.value = true
     showUserError(error, '影像预览加载失败')
   } finally {
-    previewLoading.value = false
+    if (requestSeq === previewRequestSeq) {
+      previewLoading.value = false
+    }
   }
 }
 
-async function loadOriginalPreview(): Promise<void> {
+async function loadOriginalPreview(requestSeq = ++previewRequestSeq): Promise<void> {
   const page = selectedPage.value
   if (!page?.pageId || !selectedExamId.value || !canViewOriginalImage.value) {
     return
   }
-  releasePreviewUrl()
-  previewLoadFailed.value = false
+  if (requestSeq === previewRequestSeq) {
+    releasePreviewUrl()
+    previewLoadFailed.value = false
+  }
   previewLoading.value = true
   try {
     const previewPath = `/api/mark/exams/scanner-batches/pages/original-image?examId=${selectedExamId.value}&pageId=${page.pageId}`
-    previewImageUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
+    const blobUrl = await fetchStoragePreviewBlobUrl(previewPath)
+    if (requestSeq !== previewRequestSeq) {
+      URL.revokeObjectURL(blobUrl)
+      return
+    }
+    previewImageUrl.value = blobUrl
     previewingOriginal.value = true
   } catch (error) {
+    if (requestSeq !== previewRequestSeq) {
+      return
+    }
     previewLoadFailed.value = true
     showUserError(error, '原始影像加载失败')
   } finally {
-    previewLoading.value = false
+    if (requestSeq === previewRequestSeq) {
+      previewLoading.value = false
+    }
   }
 }
 
-function handleSelectPage(pageKey: string): void {
-  selectedPageKey.value = pageKey
-  preferredTargetPaperInstanceId.value = undefined
-  previewTab.value = 'page'
-  void loadInspector(pageKey)
+function syncBucketKeyForPage(pageKey: string): void {
+  if (!pageKey) {
+    return
+  }
+  const items = workbench.value?.attributionItems ?? []
+  const matched = items.find((item) => item.pages.some((page) => page.pageKey === pageKey))
+  if (matched) {
+    selectedBucketKey.value = matched.bucketKey
+  }
 }
 
-function locateAttributionItem(item: ExamScannerBatchAttributionItemVO): void {
+function selectAttributionItem(item: ExamScannerBatchAttributionItemVO): void {
+  selectedBucketKey.value = item.bucketKey
   const pageKey = item.pages[0]?.pageKey
   if (!pageKey) {
     return
   }
-  preferredTargetPaperInstanceId.value = undefined
   previewTab.value = 'page'
   selectedPageKey.value = pageKey
-  ensureSelectedPageInRail(pageKey)
   void loadInspector(pageKey)
-  document
-    .querySelector('.scan-batch-detail-workbench__workspace')
-    ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+}
+
+function onDrawerSelectAttribution(item: ExamScannerBatchAttributionItemVO): void {
+  selectAttributionItem(item)
+  leftDrawerOpen.value = false
+}
+
+function selectBucketPage(pageKey: string): void {
+  if (!pageKey) {
+    return
+  }
+  previewTab.value = 'page'
+  selectedPageKey.value = pageKey
+  void loadInspector(pageKey)
+}
+
+function handleSelectPage(pageKey: string): void {
+  selectedPageKey.value = pageKey
+  syncBucketKeyForPage(pageKey)
+  preferredTargetPaperInstanceId.value = undefined
+  previewTab.value = 'page'
+  void loadInspector(pageKey)
 }
 
 function setPreferredReassignTarget(paperInstanceId: string): void {
@@ -1456,11 +1576,11 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .scan-batch-detail-workbench__signal-alert {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .scan-batch-detail-workbench__collate-alert {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .scan-batch-detail-workbench__collate-alert :deep(.ui-alert-strip) {
@@ -1468,17 +1588,28 @@ onUnmounted(() => {
   border-color: var(--dp-warning-border);
 }
 
-.scan-batch-detail-workbench__filters {
+.scan-batch-detail-workbench__screen {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  flex-direction: column;
+  gap: 8px;
+  height: calc(100vh - 168px);
+  min-height: 560px;
 }
 
-.scan-batch-detail-workbench__attribution-surface {
-  margin-bottom: 12px;
+.scan-batch-detail-workbench__screen-head {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.scan-batch-detail-workbench__screen-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
 }
 
 .scan-batch-detail-workbench__attribution-summary {
@@ -1486,80 +1617,103 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
-.scan-batch-detail-workbench__attribution-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.scan-batch-detail-workbench__attribution-main {
-  color: var(--dp-text);
-  font-weight: 600;
-}
-
-.scan-batch-detail-workbench__attribution-sub {
-  color: var(--dp-text-secondary);
-  font-size: 12px;
-}
-
-.scan-batch-detail-workbench__attribution-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.scan-batch-detail-workbench__keyword {
-  width: min(280px, 100%);
-}
-
-.scan-batch-detail-workbench__rail-summary {
-  color: var(--dp-text-tertiary);
-  font-size: 12px;
-}
-
-.scan-batch-detail-workbench__narrow-toolbar {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.scan-batch-detail-workbench__layout {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: calc(100vh - 220px);
-
-  &--narrow {
-    min-height: 0;
-  }
-}
-
-.scan-batch-detail-workbench__rail {
-  flex-shrink: 0;
-  border: 1px solid var(--dp-border-subtle);
-  border-radius: 8px;
-  background: var(--dp-bg-container);
-}
-
-.scan-batch-detail-workbench__workspace {
+.scan-batch-detail-workbench__immersion {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr) minmax(300px, 380px);
   gap: 12px;
   flex: 1;
   min-height: 0;
+
+  &--narrow {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
-.scan-batch-detail-workbench__layout--narrow .scan-batch-detail-workbench__workspace {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.scan-batch-detail-workbench__inspector {
+.scan-batch-detail-workbench__queue,
+.scan-batch-detail-workbench__inspector,
+.scan-batch-detail-workbench__stage {
   min-height: 0;
-  padding: 12px;
-  overflow-y: auto;
   border: 1px solid var(--dp-border-subtle);
   border-radius: 8px;
   background: var(--dp-bg-container);
+}
+
+.scan-batch-detail-workbench__queue {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.scan-batch-detail-workbench__queue-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.scan-batch-detail-workbench__queue-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: 6px;
+  background: var(--dp-bg-container);
+
+  &--active {
+    border-color: var(--dp-color-primary);
+    background: var(--dp-blue-50);
+  }
+}
+
+.scan-batch-detail-workbench__queue-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scan-batch-detail-workbench__queue-title {
+  color: var(--dp-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.scan-batch-detail-workbench__queue-meta,
+.scan-batch-detail-workbench__queue-diag {
+  overflow: hidden;
+  color: var(--dp-text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scan-batch-detail-workbench__queue-diag {
+  color: var(--dp-text-tertiary);
+}
+
+.scan-batch-detail-workbench__queue-action {
+  align-self: flex-start;
+}
+
+.scan-batch-detail-workbench__browse {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 8px;
+}
+
+.scan-batch-detail-workbench__keyword {
+  width: 100%;
 }
 
 .scan-batch-detail-workbench__stage {
@@ -1567,22 +1721,56 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  min-height: 520px;
-  border: 1px solid var(--dp-border-subtle);
-  border-radius: 8px;
-  background: var(--dp-bg-container);
   padding: 8px;
+}
+
+.scan-batch-detail-workbench__bucket-pages {
+  display: flex;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.scan-batch-detail-workbench__bucket-chip {
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: 6px;
+  background: var(--dp-bg-container);
+  color: var(--dp-text);
+  font-size: 13px;
+  cursor: pointer;
+
+  &--active {
+    border-color: var(--dp-color-primary);
+    background: var(--dp-blue-50);
+  }
+
+  &--exception {
+    border-left: 3px solid var(--dp-danger);
+  }
 }
 
 .scan-batch-detail-workbench__preview-tabs {
   flex-shrink: 0;
 }
 
+.scan-batch-detail-workbench__image {
+  flex: 1;
+  min-height: 0;
+}
+
 .scan-batch-detail-workbench__preview-empty {
   flex: 1;
-  min-height: 240px;
+  min-height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.scan-batch-detail-workbench__inspector {
+  padding: 12px;
+  overflow-y: auto;
 }
 </style>

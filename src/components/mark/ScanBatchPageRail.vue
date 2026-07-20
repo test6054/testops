@@ -1,5 +1,11 @@
 <template>
-  <div class="scan-batch-page-rail" :class="{ 'scan-batch-page-rail--strip': isStrip }">
+  <div
+    class="scan-batch-page-rail"
+    :class="{
+      'scan-batch-page-rail--strip': isStrip,
+      'scan-batch-page-rail--embedded': !isStrip && Boolean(railViewportHeight),
+    }"
+  >
     <div v-if="$slots.header" class="scan-batch-page-rail__header">
       <slot name="header" />
     </div>
@@ -83,11 +89,11 @@
 
 <script lang="ts" setup>
 import type { ExamScannerBatchWorkbenchPageVO } from '@/apis/mark/exam-scan'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
   ScanBatchWorkbenchRegisterStatusCode,
   ScanBatchWorkbenchRegisterStatusDescription,
 } from '@/apis/mark/exam-scan'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiList from '@/components/ui-guide/ui/UiList.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
@@ -105,6 +111,8 @@ const props = withDefaults(
     emptyDescription?: string
     /** rail=侧栏竖列表；strip=顶部品带，配合上列表下影像布局 */
     layout?: 'rail' | 'strip'
+    /** 竖列表可视高度；嵌入沉浸区时传入，避免按整窗估算 */
+    railViewportHeight?: number
   }>(),
   {
     selectedPageKey: '',
@@ -112,16 +120,18 @@ const props = withDefaults(
     loadingMore: false,
     emptyDescription: '暂无页轨数据',
     layout: 'rail',
+    railViewportHeight: undefined,
   },
 )
 
 const emit = defineEmits<{
-  select: [pageKey: string]
+  "select": [pageKey: string]
   'reach-end': []
 }>()
 
 const isStrip = computed(() => props.layout === 'strip')
 const stripRef = ref<HTMLElement | null>(null)
+const railViewportHeight = computed(() => props.railViewportHeight)
 
 const listHeight = ref(480)
 const virtualListProps = {
@@ -196,14 +206,14 @@ function rowSecondaryLabel(item: ExamScannerBatchWorkbenchPageVO): string {
     return item.studentNo
   }
   if (
-    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
-    item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT
+    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
+    && item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT
   ) {
     return '绑定冲突'
   }
   if (
-    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
-    item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND
+    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
+    && item.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND
   ) {
     const ocrHint = formatOcrIdentityHint(item)
     if (ocrHint) {
@@ -212,8 +222,8 @@ function rowSecondaryLabel(item: ExamScannerBatchWorkbenchPageVO): string {
     return '待绑定'
   }
   if (
-    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
-    item.hasException
+    item.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
+    && item.hasException
   ) {
     const ocrHint = formatOcrIdentityHint(item)
     if (ocrHint) {
@@ -240,6 +250,10 @@ function syncListHeight(): void {
   if (isStrip.value) {
     return
   }
+  if (props.railViewportHeight && props.railViewportHeight > 0) {
+    listHeight.value = Math.max(props.railViewportHeight, 240)
+    return
+  }
   listHeight.value = Math.max(window.innerHeight - 180, 320)
 }
 
@@ -253,7 +267,7 @@ onUnmounted(() => {
 })
 
 watch(
-  () => [props.pageItems.length, props.layout] as const,
+  () => [props.pageItems.length, props.layout, props.railViewportHeight] as const,
   () => {
     syncListHeight()
   },
@@ -367,6 +381,11 @@ watch(
 .scan-batch-page-rail__scroller {
   height: calc(100vh - 180px);
   min-height: 240px;
+}
+
+.scan-batch-page-rail--embedded .scan-batch-page-rail__scroller {
+  height: auto;
+  min-height: 0;
 }
 
 .scan-batch-page-rail__list {

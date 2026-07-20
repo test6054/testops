@@ -87,9 +87,6 @@ const selectOptions = computed<ExamSwitcherOption[]>(() => props.options)
   :deep(.ant-select-selection-item),
   :deep(.ant-select-selection-placeholder),
   :deep(.ant-select-selection-search-input) {
-    display: flex;
-    align-items: center;
-    min-height: 100%;
     line-height: 1.4;
   }
 }
