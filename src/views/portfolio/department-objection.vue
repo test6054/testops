@@ -17,6 +17,7 @@ import {
   PortfolioEvaluationObjectionStatusDescription,
   PortfolioEvaluationObjectionTypeCode,
   PortfolioEvaluationObjectionTypeDescription,
+  PortfolioEvaluationSceneDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import {
@@ -38,6 +39,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const HANDLE_ACTION_OPTIONS: PortfolioEvaluationObjectionHandleActionCode[] = [
@@ -98,6 +100,7 @@ function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionTypeC
 
 const route = useRoute()
 const loading = ref(false)
+const exporting = ref(false)
 const handlingId = ref('')
 const rows = ref<PortfolioEvaluationObjectionSummaryVO[]>([])
 const pageNum = ref(1)
@@ -150,11 +153,21 @@ function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'oran
   return 'neutral'
 }
 
+function evaluationSceneLabel(
+  scene?: PortfolioEvaluationObjectionSummaryVO['sceneCode'],
+): string {
+  if (!scene) {
+    return '—'
+  }
+  return strictEnumLabel(PortfolioEvaluationSceneDescription, scene, '评价任务场景')
+}
+
 const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
   { title: '教师', key: 'teacherName', width: 120, fixed: 'left' },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '任务', dataIndex: 'taskName', key: 'taskName' },
+  { title: '场景', dataIndex: 'sceneCode', key: 'sceneCode', width: 120 },
   { title: '公示标题', dataIndex: 'publicityTitle', key: 'publicityTitle' },
   { title: '异议类型', key: 'objectionType', width: 120 },
   { title: '争议指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 150 },
@@ -410,6 +423,25 @@ function handleObjectionRowAction(key: string, row: PortfolioEvaluationObjection
   }
 }
 
+
+/** 导出异议台账 Excel（含业务场景）。 */
+async function exportObjectionExcel(): Promise<void> {
+  if (exporting.value || loading.value || Boolean(handlingId.value)) {
+    return
+  }
+  exporting.value = true
+  try {
+    const result = await portfolioEvaluationPublicityApi.exportObjectionExcel({
+      pageNum: 1,
+      pageSize: pageSize.value,
+      objectionStatus: objectionStatusFilter.value || undefined,
+    })
+    await downloadPortfolioExcelExport(result)
+  } finally {
+    exporting.value = false
+  }
+}
+
 void loadPage()
 </script>
 
@@ -426,7 +458,16 @@ void loadPage()
             :disabled="Boolean(handlingId)"
             @change="onStatusFilterChange"
           />
-          <UiButton size="sm" :loading="loading" :disabled="Boolean(handlingId)" @click="() => void loadPage()">
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="exporting"
+            :disabled="exporting || loading || Boolean(handlingId)"
+            @click="() => void exportObjectionExcel()"
+          >
+            导出台账
+          </UiButton>
+          <UiButton size="sm" :loading="loading" :disabled="Boolean(handlingId) || exporting" @click="() => void loadPage()">
             刷新
           </UiButton>
         </template>

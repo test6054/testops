@@ -111,6 +111,7 @@ const listColumns: ColumnsType<PortfolioMaterialVO> = [
   { title: '文字识别', key: 'ocrStatus', width: 100 },
   { title: '版本', key: 'currentVersionNo', width: 80 },
   { title: '冻结引用', key: 'activeFreezeRefCount', width: 90 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '操作', key: 'actions', width: 300 },
 ]
 
@@ -118,6 +119,7 @@ const searchColumns: ColumnsType<PortfolioMaterialSearchResponse> = [
   { title: '标题', dataIndex: 'materialTitle', key: 'materialTitle', fixed: 'left' },
   { title: '类型', key: 'materialType', width: 120 },
   { title: '命中摘要', dataIndex: 'snippet', key: 'snippet' },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '操作', key: 'actions', width: 240 },
 ]
 
@@ -617,6 +619,19 @@ watch(
             <template v-if="column.key === 'materialType'">
               {{ materialTypeLabel(record.materialType) }}
             </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+                <UiTag
+                  v-for="(layer, i) in record.ownerIdentityLayers"
+                  :key="`${record.id}-${layer.identityType}-${i}`"
+                  size="sm"
+                  :tone="layer.externalIdentity ? 'orange' : 'blue'"
+                >
+                  {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+                </UiTag>
+              </div>
+              <span v-else>—</span>
+            </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 :items="[
@@ -674,6 +689,19 @@ watch(
               <UiTag :tone="(record.activeFreezeRefCount ?? 0) > 0 ? 'orange' : 'gray'">
                 {{ record.activeFreezeRefCount ?? 0 }}
               </UiTag>
+            </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+                <UiTag
+                  v-for="(layer, i) in record.ownerIdentityLayers"
+                  :key="`${record.id}-${layer.identityType}-${i}`"
+                  size="sm"
+                  :tone="layer.externalIdentity ? 'orange' : 'blue'"
+                >
+                  {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+                </UiTag>
+              </div>
+              <span v-else>—</span>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions

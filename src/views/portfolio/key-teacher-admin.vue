@@ -76,6 +76,7 @@ const columns: ColumnsType = [
   { title: '聘任年份', dataIndex: 'appointYear', key: 'appointYear', width: 96 },
   { title: '状态', dataIndex: 'registryStatus', key: 'registryStatus', width: 88 },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '操作', key: 'actions', width: 80 },
 ]
@@ -253,6 +254,19 @@ function switchType(key: string | number) {
             </UiTag>
             
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'identityLayers'">
+            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+              <UiTag
+                v-for="(layer, idx) in record.ownerIdentityLayers"
+                :key="`${record.id}-${layer.identityType}-${idx}`"
+                size="sm"
+                :tone="layer.externalIdentity ? 'orange' : 'blue'"
+              >
+                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+              </UiTag>
+            </div>
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">

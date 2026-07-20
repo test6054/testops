@@ -6,13 +6,8 @@ import type {
   PortfolioEvaluationComprehensiveTeacherRowVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import {
-  portfolioEvaluationEntryApi,
-  portfolioEvaluationTaskApi,
-} from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
@@ -20,6 +15,11 @@ import {
   PortfolioEvaluationModeDescription,
   PortfolioEvaluationSceneDescription,
 } from '@/apis/portfolio/enums'
+import {
+  portfolioEvaluationEntryApi,
+  portfolioEvaluationTaskApi,
+} from '@/apis/portfolio/teacher-platform'
+import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -101,15 +101,16 @@ const taskColumns: ColumnsType<PortfolioEvaluationComprehensiveTaskItemVO> = [
 
 function lifecycleTagTone(record: {
   lifecycleStatus?: string
-}): 'green' | 'orange' | 'neutral' | 'red' {
+}): BadgeTone {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 const teacherColumns: ColumnsType<PortfolioEvaluationComprehensiveTeacherRowVO> = [
   { title: '被评教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 160 },
+  { title: '涉及场景', dataIndex: 'involvedSceneLabels', key: 'involvedSceneLabels', width: 160 },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   {
@@ -236,7 +237,7 @@ async function exportAnalysis() {
       analysisParamsSnapshot.value,
     )
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条填报`)
+    void message.success(`已导出 ${result.rowCount} 条填报`)
   } catch (error) {
     showUserError(error, '导出综合分析失败')
   } finally {
@@ -370,7 +371,7 @@ onMounted(async () => {
               <span v-else-if="!record.lifecycleStatus">-</span>
             </template>
             <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
-              <UiTag :tone="record.countsInCurrentFacultyStructure === true ? 'green' : 'neutral'">
+              <UiTag :tone="record.countsInCurrentFacultyStructure === true ? 'green' : 'gray'">
                 {{
                   record.countsInCurrentFacultyStructure === true
                     ? '是'

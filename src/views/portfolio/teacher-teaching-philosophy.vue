@@ -12,6 +12,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -55,6 +56,7 @@ const readonlyMode = computed(
 const columns: ColumnsType = [
   { title: '学年', dataIndex: 'academicYear', key: 'academicYear', width: 120 },
   { title: '教学理念', dataIndex: 'philosophyText', key: 'philosophyText', ellipsis: true },
+  { title: '身份层', key: 'identityLayers', width: 180 },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 168 },
   { title: '操作', key: 'actions', width: 120 },
 ]
@@ -220,7 +222,20 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
       </template>
       <UiDataTable :columns="columns" :data-source="rows" row-key="id" :pagination="false">
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'actions'">
+          <template v-if="column.key === 'identityLayers'">
+            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+              <UiTag
+                v-for="(layer, idx) in record.ownerIdentityLayers"
+                :key="`${record.id}-${layer.identityType}-${idx}`"
+                size="sm"
+                :tone="layer.externalIdentity ? 'orange' : 'blue'"
+              >
+                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+              </UiTag>
+            </div>
+            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'actions'">
             <UiButton size="sm" variant="ghost" @click="openModal(record)">
               {{ readonlyMode ? '查看' : '编辑' }}
             </UiButton>

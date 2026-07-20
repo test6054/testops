@@ -778,9 +778,13 @@ async function submitCopyAll() {
 
 function openResyncModal(record: ArchiveTenantTemplateSetResponse) {
   if (templateSetsLoadFailed.value) return
-  // MVR-381：重同步入口与 canManageArchiveConfig 二次拦截
+  // MVR-381/421：重同步入口与 canManageArchiveConfig ∧ canResyncTenantSet 二次拦截
   if (canManageArchiveConfig.value !== true) {
     message.warning('仅超级管理员或租户管理员可重新同步归档模板')
+    return
+  }
+  if (!canResyncTenantSet(record)) {
+    message.warning('当前模板集无需或无法重新同步（无更新的平台源版本）')
     return
   }
   resyncTarget.value = record
@@ -912,12 +916,16 @@ async function submitResync() {
   if (resyncLoading.value) {
     return
   }
-  // MVR-314：模板配置写二次拦截
+  // MVR-314/421：模板配置写 ∧ 可重同步源版本二次拦截
   if (!canManageArchiveConfig.value) {
     message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
-  if (!resyncTarget.value || !canSubmitResync.value || templateSetsLoadFailed.value) return
+  if (!resyncTarget.value || !canResyncTenantSet(resyncTarget.value)) {
+    message.warning('当前模板集无需或无法重新同步（无更新的平台源版本）')
+    return
+  }
+  if (!canSubmitResync.value || templateSetsLoadFailed.value) return
   resyncLoading.value = true
   try {
     await resyncArchiveTenantTemplateSet({

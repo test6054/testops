@@ -972,6 +972,8 @@ async function resolveOwnerOverrideReason(): Promise<string | undefined | null> 
 
 /** FIX-10: 快捷给分按钮 */
 function setQuickScore(score: number): void {
+  // MVR-416：与 canConfirm / canManageReviewerWrites 二次闸，禁止仅靠按钮 disabled
+  if (!canConfirm.value) return
   gradeForm.teacherReviewScore = score
 }
 
@@ -1143,6 +1145,8 @@ async function adoptAiSuggestionAndSubmit(): Promise<void> {
 
 /** 清空建议分转人工评分，仅重置表单 */
 function clearAiSuggestionToManual(): void {
+  // MVR-416：与 canConfirm 二次闸，禁止只读/无写权态假可清空写分表单
+  if (!canConfirm.value) return
   gradeForm.teacherReviewScore = undefined
   message.info(
     isHardJudgeSource.value
@@ -1211,8 +1215,13 @@ function timelineColor(status: AiExecutionStatusCode): string {
  * advanceToNext=true 时进入"提交并取下一份"流水线，提示文案会区分。
  */
 async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
-  if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无阅卷写权限')
+  // MVR-418：与 canConfirm / 按钮 disabled 同源二次闸（写权∧PENDING/IN_PROGRESS∧非他人领取）
+  if (!canConfirm.value) {
+    message.warning(
+      canManageReviewerWrites.value
+        ? '当前任务不可提交复核（状态不可写或已被他人领取）'
+        : '当前账号无阅卷写权限',
+    )
     return
   }
 
@@ -1248,8 +1257,13 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
 
 /** 提交核心：仅提交教师复核给分，成功返回 true；失败已提示并返回 false */
 async function submitGrade(): Promise<boolean> {
-  if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无阅卷写权限')
+  // MVR-418：与 canConfirm / BE ensureWritableReviewTask 同源二次闸
+  if (!canConfirm.value) {
+    message.warning(
+      canManageReviewerWrites.value
+        ? '当前任务不可提交复核（状态不可写或已被他人领取）'
+        : '当前账号无阅卷写权限',
+    )
     return false
   }
   if (!examId.value || !detail.value) return false
@@ -1307,8 +1321,13 @@ async function submitGrade(): Promise<boolean> {
 }
 
 function openRejectConfirm(): void {
-  if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无阅卷写权限')
+  // MVR-418：与 canReject 同源二次闸（可确认且非仲裁任务）
+  if (!canReject.value) {
+    message.warning(
+      canManageReviewerWrites.value
+        ? '当前任务不可驳回（状态不可写、已被他人领取或仲裁任务不可再驳回）'
+        : '当前账号无阅卷写权限',
+    )
     return
   }
   if (!examId.value || !detail.value?.gradeResultId) return
@@ -1323,8 +1342,13 @@ function openRejectConfirm(): void {
 }
 
 async function handleReject(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无阅卷写权限')
+  // MVR-418：与 canReject / openRejectConfirm 同源二次闸
+  if (!canReject.value) {
+    message.warning(
+      canManageReviewerWrites.value
+        ? '当前任务不可驳回（状态不可写、已被他人领取或仲裁任务不可再驳回）'
+        : '当前账号无阅卷写权限',
+    )
     return
   }
   if (!examId.value || !detail.value?.gradeResultId) return

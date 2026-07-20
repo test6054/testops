@@ -19,6 +19,7 @@ import {
   PortfolioEvaluationObjectionStatusDescription,
   PortfolioEvaluationObjectionTypeCode,
   PortfolioEvaluationPublicityStatusDescription,
+  PortfolioEvaluationSceneDescription,
   PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
@@ -53,6 +54,7 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): string {
@@ -61,6 +63,15 @@ function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): 
 
 function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusCode) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE, status, '评价通知状态')
+}
+
+function evaluationSceneLabel(
+  scene?: PortfolioEvaluationPublicityListItemVO['sceneCode'],
+): string {
+  if (!scene) {
+    return '—'
+  }
+  return strictEnumLabel(PortfolioEvaluationSceneDescription, scene, '评价任务场景')
 }
 
 function publicityStatusLabel(
@@ -114,6 +125,7 @@ const { currentUserId, canPickTeachers } = usePortfolioTeacherAccess()
 
 const loading = ref(false)
 const publicityLoading = ref(false)
+const publicityExporting = ref(false)
 const resultLoading = ref(false)
 const previewLoading = ref(false)
 const confirming = ref(false)
@@ -276,6 +288,7 @@ function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'oran
 
 const publicityColumns: ColumnsType<PortfolioEvaluationPublicityListItemVO> = [
   { title: '任务', dataIndex: 'taskName', key: 'taskName', fixed: 'left' },
+  { title: '场景', dataIndex: 'sceneCode', key: 'sceneCode', width: 120 },
   { title: '公示标题', dataIndex: 'publicityTitle', key: 'publicityTitle' },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
@@ -466,6 +479,34 @@ async function loadPublicity() {
     }
   }
 }
+
+/** 导出当前可见公示台账 Excel（含业务场景）。 */
+async function exportPublicityExcel(): Promise<void> {
+  if (publicityExporting.value || publicityLoading.value) {
+    return
+  }
+  if (canPickTeachers.value && !targetTeacherId.value) {
+    return
+  }
+  publicityExporting.value = true
+  try {
+    const listRequest: {
+      teacherId?: string
+      evaluationTaskId?: string
+    } = {}
+    if (targetTeacherId.value) {
+      listRequest.teacherId = targetTeacherId.value
+    }
+    if (deepLinkedEvaluationTaskId.value) {
+      listRequest.evaluationTaskId = deepLinkedEvaluationTaskId.value
+    }
+    const result = await portfolioEvaluationPublicityApi.exportPublicityExcel(listRequest)
+    await downloadPortfolioExcelExport(result)
+  } finally {
+    publicityExporting.value = false
+  }
+}
+
 
 async function loadResultSummary(evaluationTaskId: string) {
   const scopeToken = evaluationRequestToken.value
@@ -999,6 +1040,17 @@ watch(
       </UiCard>
 
       <UiCard title="评价公示" class="teacher-evaluation__block">
+        <template #extra>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="publicityExporting"
+            :disabled="publicityExporting || publicityLoading"
+            @click="() => void exportPublicityExcel()"
+          >
+            导出公示
+          </UiButton>
+        </template>
         <UiDataTable
           v-if="publicityRows.length || publicityLoading"
           :columns="publicityColumns"
@@ -1075,7 +1127,7 @@ watch(
         <UiSpin :spinning="resultLoading">
           <template v-if="resultSummary">
             <p class="teacher-evaluation__meta">
-              任务：{{ resultSummary.taskName }} · 条目 {{ resultSummary.entryCount ?? 0 }} 条
+              任务：{{ resultSummary.taskName }} · 场景 {{ evaluationSceneLabel(resultSummary.sceneCode) }} · 条目 {{ resultSummary.entryCount ?? 0 }} 条
               <template v-if="resultSummary.averageScore != null">
                 · 平均分 {{ resultSummary.averageScore }}
               </template>

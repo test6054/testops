@@ -1,3 +1,4 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
 import type { PortfolioTeachingExtensionKindCode } from '@/types/enums/portfolio-teaching-extension-kind-enum'
 import http from '@/config/axios'
@@ -31,6 +32,10 @@ export interface PortfolioTeachingExtensionActivityVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
 
 }
 

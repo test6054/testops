@@ -51,7 +51,7 @@
           </UiButton>
           <UiButton variant="outline" size="sm" @click="goTrialSessions"> 试评定标 </UiButton>
           <UiDropdownAction
-            v-if="organization && canManageExamOwner"
+            v-if="organization && canDeleteOrganization === true"
             trigger-style="button"
             button-text="更多"
             :items="orgDetailMoreActionItems"
@@ -772,13 +772,9 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
-import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import type {
   AllocationPolicyResponse,
   AllocationPolicySaveRequest,
@@ -790,6 +786,19 @@ import type {
   RecyclePolicyResponse,
   RecyclePolicySaveRequest,
 } from '@/apis/mark/marking-organization'
+import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
+import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
+import { getExamDetail } from '@/apis/mark/exam'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
+import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import {
   ALLOCATION_UNIT_OPTIONS,
   ANONYMOUS_TOKEN_POLICY_OPTIONS,
@@ -811,16 +820,7 @@ import {
   saveRecyclePolicy,
   updateOrganization,
 } from '@/apis/mark/marking-organization'
-import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
 import { listReviewerMetrics } from '@/apis/mark/marking-quality'
-import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
 import UiInfoGridItem from '@/components/ui-guide/ui/InfoGridItem.vue'
@@ -884,8 +884,8 @@ defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 const MARKING_TEACHER_OPTION_PAGE_SIZE = 20
 const TEACHER_SEARCH_DEBOUNCE_MS = 300
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
-  useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useOptionalExamJourneyContextBar('阅卷安排')
 
 const route = useRoute()
 const router = useRouter()
@@ -947,16 +947,16 @@ function matchesGroupSearch(group: QuestionMarkingGroupResponse, keyword: string
   if (
     group.reviewers.some(
       (reviewer) =>
-        reviewer.reviewerUserName?.toLowerCase().includes(keyword) ||
-        reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
+        reviewer.reviewerUserName?.toLowerCase().includes(keyword)
+        || reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
     )
   ) {
     return true
   }
   return group.questions.some(
     (question) =>
-      String(question.questionNo).includes(keyword) ||
-      question.questionTypeMessage?.toLowerCase().includes(keyword),
+      String(question.questionNo).includes(keyword)
+      || question.questionTypeMessage?.toLowerCase().includes(keyword),
   )
 }
 
@@ -997,8 +997,8 @@ const orgSignalMetrics = computed((): SignalMetric[] => {
     return []
   }
   const summary = markingProgressPanel.value?.markingTaskSummary
-  const overallPercent =
-    summary && summary.totalTaskCount > 0
+  const overallPercent
+    = summary && summary.totalTaskCount > 0
       ? Math.round((summary.finalizedTaskCount * 100) / summary.totalTaskCount)
       : null
   const metrics: SignalMetric[] = [
@@ -1083,6 +1083,10 @@ const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organiz
 const canUpdateOrganizationAnonymousMode = computed(
   () => organization.value?.canUpdateOrganizationAnonymousMode === true,
 )
+/** MVR-405：仅认 BE canDeleteOrganization===true；有试评/正评/任务时禁删 */
+const canDeleteOrganization = computed(
+  () => organization.value?.canDeleteOrganization === true,
+)
 
 function guardExamOwnerAction(): boolean {
   if (canManageExamOwner.value) return true
@@ -1146,7 +1150,7 @@ const canReassignRecycledTasks = computed(() => {
     return false
   }
   // 主考路径已叠 ACTIVE
-  if (canManageExamOwner.value === true) {
+  if (canManageExamOwner.value) {
     return true
   }
   // 非主考再分配写须 ACTIVE；examDetail 未就绪默认拒绝
@@ -1154,8 +1158,8 @@ const canReassignRecycledTasks = computed(() => {
     return false
   }
   if (
-    organization.value.leaderUserId != null &&
-    String(organization.value.leaderUserId) === String(userId)
+    organization.value.leaderUserId != null
+    && String(organization.value.leaderUserId) === String(userId)
   ) {
     return true
   }
@@ -1163,7 +1167,7 @@ const canReassignRecycledTasks = computed(() => {
 })
 /** 整场回收任务列表：主考（ACTIVE）或组织负责人（BE canListAll；关考主考仍可由 BE 列表门禁承接，FE 与 canManageExamOwner 对齐不扩权） */
 const canViewAllRecycledTasks = computed(() => {
-  if (canManageExamOwner.value === true) {
+  if (canManageExamOwner.value) {
     return true
   }
   const userId = userStore.userInfo.userId
@@ -1279,11 +1283,11 @@ const groupColumns: ColumnType<QuestionMarkingGroupResponse>[] = [
 ]
 
 const teacherList = ref<UserListItemDto[]>([])
-const teacherOptions = ref<Array<{ value: string; label: string }>>([])
+const teacherOptions = ref<Array<{ value: string, label: string }>>([])
 const teacherLoading = ref(false)
 let teacherSearchTimer: ReturnType<typeof setTimeout> | undefined
 
-function buildTeacherOption(item: UserListItemDto): { value: string; label: string } {
+function buildTeacherOption(item: UserListItemDto): { value: string, label: string } {
   return {
     value: item.id,
     label: item.identifierNumber ? `${item.nickName} (${item.identifierNumber})` : item.nickName,
@@ -1491,9 +1495,9 @@ function openGroupModal(): void {
 
 function openGroupEdit(record: QuestionMarkingGroupResponse): void {
   if (!guardExamOwnerAction()) return
-  // MVR-385：与 canEditGroup / 非 CLOSED 状态二次拦截
+  // MVR-385/406：与 canEditGroup / BE canEditQuestionGroup 二次拦截
   if (!canEditGroup(record)) {
-    showFormValidationMessage('当前题组状态不可编辑')
+    showFormValidationMessage('当前题组不可编辑（已关闭或已有试评/正评/任务）')
     return
   }
   groupForm.groupId = record.id
@@ -1530,11 +1534,11 @@ async function submitGroup(): Promise<void> {
     return
   }
   if (!guardExamOwnerAction()) return
-  // MVR-396：更新已有题组须叠 canEditGroup（非 CLOSED）；创建仅主考闸
+  // MVR-396/406：更新已有题组须叠 canEditGroup；创建仅主考闸
   if (groupForm.groupId) {
     const existing = groups.value.find((group) => group.id === groupForm.groupId)
     if (!existing || !canEditGroup(existing)) {
-      showFormValidationMessage('当前题组状态不可编辑')
+      showFormValidationMessage('当前题组不可编辑（已关闭或已有试评/正评/任务）')
       return
     }
   }
@@ -1569,22 +1573,21 @@ async function submitGroup(): Promise<void> {
 }
 
 function canEditGroup(record: QuestionMarkingGroupResponse): boolean {
-  return (
-    canManageExamOwner.value && record.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
-  )
+  // MVR-406：仅认 BE canEditQuestionGroup===true（主考∧ACTIVE∧非关闭∧无运行态）
+  return record.canEditQuestionGroup === true
 }
 
 function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
-  return (
-    canManageExamOwner.value && record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_DRAFT
-  )
+  // MVR-406：仅认 BE canDeleteQuestionGroup===true（主考∧ACTIVE∧草稿∧无运行态）
+  return record.canDeleteQuestionGroup === true
 }
 
 function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
+  // MVR-407：关闭题组须主考∧ACTIVE；状态仅 ACTIVE/CONFIGURED
   return (
-    canManageExamOwner.value &&
-    (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE ||
-      record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
+    canManageExamOwner.value === true
+    && (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
+      || record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
   )
 }
 
@@ -1596,7 +1599,7 @@ async function handleGroupRowAction(key: string, record: QuestionMarkingGroupRes
   if (key === 'delete') {
     // MVR-385：与 canDeleteGroup / 仅 DRAFT 二次拦截
     if (!canDeleteGroup(record)) {
-      showFormValidationMessage('仅草稿题组可删除')
+      showFormValidationMessage('仅无运行态引用的草稿题组可删除')
       return
     }
     if (!(await confirmAsync({ content: '确认删除该题组？', okText: '删除', type: 'warning' })))
@@ -1678,8 +1681,8 @@ async function submitUpdate(): Promise<void> {
   if (!guardExamOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
   // MVR-404：匿名模式变更须 canUpdateOrganizationAnonymousMode；仅改备注始终可走
-  const anonymityChanged =
-    Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
+  const anonymityChanged
+    = Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
   if (anonymityChanged && canUpdateOrganizationAnonymousMode.value !== true) {
     showFormValidationMessage('已进入试评/正评或任务后不可修改匿名模式')
     return
@@ -1693,10 +1696,9 @@ async function submitUpdate(): Promise<void> {
   try {
     const request: OrganizationUpdateRequest = {
       organizationId: requireMarkingOrganizationId(organization.value),
-      anonymousMode:
-        canUpdateOrganizationAnonymousMode.value === true
-          ? editForm.anonymousMode
-          : Boolean(organization.value.anonymousMode),
+      anonymousMode: canUpdateOrganizationAnonymousMode.value === true
+        ? editForm.anonymousMode
+        : Boolean(organization.value.anonymousMode),
       remark: editForm.remark?.trim() || undefined,
     }
     organization.value = await updateOrganization(request)
@@ -1711,7 +1713,13 @@ async function submitUpdate(): Promise<void> {
 }
 
 const orgDetailMoreActionItems = computed(() => [
-  { key: 'delete', label: '删除组织', danger: true, disabled: deleting.value },
+  {
+    key: 'delete',
+    label: '删除组织',
+    danger: true,
+    // MVR-405：菜单仅在 canDeleteOrganization 时展示；disabled 防并发
+    disabled: deleting.value || canDeleteOrganization.value !== true,
+  },
 ])
 
 function onOrgDetailMoreAction(key: string) {
@@ -1723,9 +1731,14 @@ function onOrgDetailMoreAction(key: string) {
 async function requestDeleteOrganization(): Promise<void> {
   // MVR-396：删除组织打开确认前叠主考闸，禁止仅靠更多菜单显隐
   if (!guardExamOwnerAction()) return
+  // MVR-405：与 BE canDeleteOrganization / runtimeRefs 二次闸
+  if (canDeleteOrganization.value !== true) {
+    showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
+    return
+  }
   const ok = await confirmAsync({
     title: '确认删除该阅卷组织？',
-    content: '删除后不可恢复；请确认组织下无进行中的试评/正评会话。',
+    content: '删除后不可恢复；请确认组织下无试评/正评会话与阅卷任务。',
     type: 'error',
     okText: '删除',
   })
@@ -1740,6 +1753,10 @@ async function submitDelete(): Promise<void> {
     return
   }
   if (!guardExamOwnerAction()) return
+  if (canDeleteOrganization.value !== true) {
+    showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
+    return
+  }
   if (!organization.value) return
   deleting.value = true
   try {
@@ -1905,7 +1922,7 @@ const groupAllocationUnitMap = computed(() => {
 })
 
 function policyOptionLabel(
-  options: Array<{ value: string; label: string }>,
+  options: Array<{ value: string, label: string }>,
   value?: string | null,
 ): string {
   if (!value) {

@@ -56,6 +56,7 @@ import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import { TrialSessionStatusCode } from '@/types/enums/trial-session-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -89,6 +90,15 @@ watch(
 async function submit(): Promise<void> {
   if (props.canManage !== true) {
     showFormValidationMessage('仅考试主考老师可管理试评会话')
+    return
+  }
+  // MVR-412：与 canCalibrate 同源二次闸（TRIAL_ASSIGNED / TRIAL_SUBMITTED）
+  const status = props.session?.sessionStatus
+  if (
+    status !== TrialSessionStatusCode.TRIAL_ASSIGNED
+    && status !== TrialSessionStatusCode.TRIAL_SUBMITTED
+  ) {
+    showFormValidationMessage('当前试评会话状态不可提交校准')
     return
   }
   if (!props.session?.id || !calibrationSummary.value.trim()) {

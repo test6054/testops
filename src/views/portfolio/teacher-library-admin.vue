@@ -14,6 +14,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -82,6 +83,13 @@ async function loadStats() {
   }
 }
 
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
   { title: '书名', dataIndex: 'bookTitle', key: 'bookTitle' },
@@ -90,6 +98,8 @@ const columns: ColumnsType = [
   { title: '应还时间', dataIndex: 'dueTime', key: 'dueTime', width: 160 },
   { title: '归还时间', dataIndex: 'returnTime', key: 'returnTime', width: 160 },
   { title: '逾期天数', dataIndex: 'overdueDays', key: 'overdueDays', width: 88, align: 'right' },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '操作', key: 'actions', width: 130, fixed: 'right' },
 ]
 
@@ -330,6 +340,25 @@ void loadStats()
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'identityLayers'">
+            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+              <UiTag
+                v-for="(layer, idx) in record.ownerIdentityLayers"
+                :key="`${record.id}-${layer.identityType}-${idx}`"
+                size="sm"
+                :tone="layer.externalIdentity ? 'orange' : 'blue'"
+              >
+                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+              </UiTag>
+            </div>
+            <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

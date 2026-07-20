@@ -15,6 +15,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -94,6 +95,7 @@ const honorColumns: ColumnsType = [
   { title: '授予单位', dataIndex: 'awardUnit', key: 'awardUnit', width: 140 },
   { title: '获得日期', dataIndex: 'recordDate', key: 'recordDate', width: 110 },
   { title: '业务日工号', dataIndex: 'affiliationStaffNo', key: 'affiliationStaffNo', width: 120 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '操作', key: 'actions', width: 210 },
 ]
 
@@ -441,7 +443,20 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
         </template>
         <UiDataTable :columns="honorColumns" :data-source="rows" row-key="id" :pagination="false">
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'levelCode'">
+            <template v-if="column.key === 'identityLayers'">
+              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+                <UiTag
+                  v-for="(layer, idx) in record.ownerIdentityLayers"
+                  :key="`${record.id}-${layer.identityType}-${idx}`"
+                  size="sm"
+                  :tone="layer.externalIdentity ? 'orange' : 'blue'"
+                >
+                  {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+                </UiTag>
+              </div>
+              <span v-else>—</span>
+            </template>
+            <template v-else-if="column.key === 'levelCode'">
               {{ honorLevelLabel(record.levelCode) }}
             </template>
             <template v-else-if="column.key === 'affiliationStaffNo'">

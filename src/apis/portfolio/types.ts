@@ -26,6 +26,7 @@ import type {
 } from '@/types/enums/portfolio-correction-impact-recompute-status-enum'
 import type { PortfolioEduUserOrgTreeNodeTypeCode } from '@/types/enums/portfolio-edu-user-org-tree-node-type-enum'
 import type { PortfolioEvaluationObjectionTypeCode } from '@/types/enums/portfolio-evaluation-objection-type-enum'
+import type { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
 import type {
   PortfolioEvaluationTaskAdvanceActionCode
 } from '@/types/enums/portfolio-evaluation-task-advance-action-enum'
@@ -682,6 +683,10 @@ export interface PortfolioTeacherSummaryVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioTeacherIdentityVO {
@@ -738,6 +743,10 @@ export interface PortfolioTeacherDetailVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 
 }
 
@@ -1339,6 +1348,10 @@ export interface PortfolioTeacherWorkbenchSummaryVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioTeacherOnboardingStateVO {
@@ -1426,6 +1439,10 @@ export interface PortfolioMaterialIntakeStatusVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 
 }
 
@@ -1525,6 +1542,10 @@ export interface PortfolioTeacherCompletenessVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioTeacherPortraitGetRequest {
@@ -1574,6 +1595,8 @@ export interface PortfolioTeacherPortraitIdentityLayerVO {
     industryOutcomeScore: number
     assessmentScore: number
     evidenceNotes: string[]
+    ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+    ownerMultiIdentityNote?: string
     usableForCampusTitleEvaluation: boolean
   }
   workloadHours?: number
@@ -1617,6 +1640,10 @@ export interface PortfolioTextbookContributionVO {
   topItemScore: number
   items: PortfolioTextbookContributionItemVO[]
   evidenceNotes: string[]
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
   /** 归属教师生命周期状态编码 */
   lifecycleStatus?: string
   /** 归属教师生命周期状态标签 */
@@ -1654,6 +1681,10 @@ export interface PortfolioVirtualTeachingRoomContributionVO {
   topItemScore: number
   items: PortfolioVirtualTeachingRoomContributionItemVO[]
   evidenceNotes: string[]
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
   /** 归属教师生命周期状态编码 */
   lifecycleStatus?: string
   /** 归属教师生命周期状态标签 */
@@ -1732,6 +1763,10 @@ export interface PortfolioGuidanceContributionVO {
   topItemScore: number
   items: PortfolioGuidanceContributionItemVO[]
   evidenceNotes: string[]
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
   /** 归属教师生命周期状态编码 */
   lifecycleStatus?: string
   /** 归属教师生命周期状态标签 */
@@ -1758,6 +1793,10 @@ export interface PortfolioDigitalLiteracyVO {
   digitalTrainingScore: number
   shortboard: boolean
   evidenceNotes: string[]
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
   /** 归属教师生命周期状态编码 */
   lifecycleStatus?: string
   /** 归属教师生命周期状态标签 */
@@ -1838,6 +1877,10 @@ export interface PortfolioMasterpieceContributionVO {
   topItemScore: number
   items: PortfolioMasterpieceContributionItemVO[]
   evidenceNotes: string[]
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
   /** 归属教师生命周期状态编码 */
   lifecycleStatus?: string
   /** 归属教师生命周期状态标签 */
@@ -1878,6 +1921,10 @@ export interface PortfolioEducatingOutcomeContributionVO {
   topItemScore: number
   items: PortfolioEducatingOutcomeContributionItemVO[]
   evidenceNotes: string[]
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
   /** 归属教师生命周期状态编码 */
   lifecycleStatus?: string
   /** 归属教师生命周期状态标签 */
@@ -1927,6 +1974,10 @@ export interface PortfolioIndustryPackSceneScoreVO {
   dimensionScores: PortfolioIndustryPackDimensionScoreVO[]
   hardGaps: PortfolioIndustryPackHardGapItemVO[]
   evidenceNotes: string[]
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
   /** 归属教师生命周期状态编码 */
   lifecycleStatus?: string
   /** 归属教师生命周期状态标签 */
@@ -2666,6 +2717,8 @@ export interface PortfolioEvaluationPublicityListItemVO {
   publicityId: string
   evaluationTaskId: string
   taskName?: string
+  /** §8.48 任务业务场景 */
+  sceneCode?: PortfolioEvaluationSceneCode
   taskStatus?: PortfolioEvaluationTaskStatusCode
   publicityTitle?: string
   publicityStatus: PortfolioEvaluationPublicityStatusCode
@@ -2705,6 +2758,8 @@ export interface PortfolioEvaluationObjectionSummaryVO {
   objectionId: string
   evaluationTaskId: string
   taskName?: string
+  /** §8.48 任务业务场景 */
+  sceneCode?: PortfolioEvaluationSceneCode
   publicityId: string
   publicityTitle?: string
   teacherId: string
@@ -2787,6 +2842,8 @@ export interface PortfolioEvaluationTeacherResultEntryVO {
 export interface PortfolioEvaluationTeacherResultSummaryVO {
   evaluationTaskId: string
   taskName?: string
+  /** §8.48 任务业务场景 */
+  sceneCode?: PortfolioEvaluationSceneCode
   teacherId: string
   teacherName?: string
   entryCount?: number
@@ -2866,6 +2923,10 @@ export interface PortfolioMaterialVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 
 }
 
@@ -2899,6 +2960,10 @@ export interface PortfolioMaterialSearchResponse {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 }
 
 

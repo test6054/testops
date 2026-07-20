@@ -234,6 +234,14 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     if (batchApplying.value) {
       return
     }
+    // MVR-413：与 canSubmit / isScoreReadOnly / BE requireActiveExam 二次闸，禁止关考后批量应用假可写
+    if (options.isReadOnly.value || !options.canSubmit.value) {
+      showFormValidationMessage(
+        options.isReadOnly.value ? '当前不可给分（已定稿/已回收或考试已关闭）' : '当前任务状态不可提交给分',
+      )
+      closeApplyModal()
+      return
+    }
     const currentTask = options.task.value
     const score = submittedScoreSnapshot.value
     const layoutQuestionId
@@ -389,6 +397,14 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     if (submitting.value) {
       return
     }
+    // MVR-413：handler 二次闸，与 canSubmit / isScoreReadOnly / BE requireActiveExam 同源；
+    // 覆盖 AI 采纳、整卷末题 Enter、键盘 Enter 等非按钮入口，禁止仅靠 disabled 拦截。
+    if (options.isReadOnly.value || !options.canSubmit.value) {
+      showFormValidationMessage(
+        options.isReadOnly.value ? '当前不可给分（已定稿/已回收或考试已关闭）' : '当前任务状态不可提交给分',
+      )
+      return
+    }
     if (!options.taskId.value || !options.task.value || !formRef.value) return
     if (!options.usesWholePaperWorkspace.value) {
       try {
@@ -458,6 +474,13 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
 
   async function acceptAiScoreAndSubmit(): Promise<void> {
     if (options.questionView.value?.aiScore == null || submitting.value) return
+    // MVR-413：与 submit 二次闸同源，避免采纳入口绕过按钮 disabled
+    if (options.isReadOnly.value || !options.canSubmit.value) {
+      showFormValidationMessage(
+        options.isReadOnly.value ? '当前不可给分（已定稿/已回收或考试已关闭）' : '当前任务状态不可提交给分',
+      )
+      return
+    }
     options.form.score = options.questionView.value.aiScore
     await submit()
   }

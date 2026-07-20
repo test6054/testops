@@ -374,8 +374,11 @@ async function openEdit(id: string) {
   editLoading.value = true
   drawerOpen.value = true
   try {
-    const detail = await portfolioExternalTeacherApi.get({ id })
-    detailContribution.value = detail.contribution ?? null
+    const [detail, contribution] = await Promise.all([
+      portfolioExternalTeacherApi.get({ id }),
+      portfolioExternalTeacherApi.contributionGet({ id }),
+    ])
+    detailContribution.value = contribution
     form.id = detail.id
     form.fullName = detail.fullName
     form.gender = detail.gender ?? ''
@@ -857,6 +860,25 @@ onMounted(async () => {
             <p class="contribution-panel__title">§8.42 产业导师贡献度</p>
             <p>综合 {{ detailContribution.contributionScore }} · 聘任 {{ detailContribution.appointmentValidityScore }} · 教学 {{ detailContribution.teachingParticipationScore }} · 实践 {{ detailContribution.practiceGuidanceScore }} · 成果 {{ detailContribution.industryOutcomeScore }} · 考核 {{ detailContribution.assessmentScore }}</p>
             <p class="contribution-panel__hint">{{ detailContribution.formulaLabel }}</p>
+            <div
+              v-if="detailContribution.ownerIdentityLayers?.length"
+              class="contribution-panel__identity-layers"
+            >
+              <UiTag
+                v-for="(layer, idx) in detailContribution.ownerIdentityLayers"
+                :key="layer.identityId || `${layer.identityType}-${idx}`"
+                size="sm"
+                :tone="layer.externalIdentity ? 'orange' : 'blue'"
+              >
+                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+              </UiTag>
+            </div>
+            <p
+              v-if="detailContribution.ownerMultiIdentityNote"
+              class="contribution-panel__hint"
+            >
+              {{ detailContribution.ownerMultiIdentityNote }}
+            </p>
             <p class="contribution-panel__hint">不得作为校内职称评价结论</p>
             <ul v-if="detailContribution.evidenceNotes?.length">
               <li v-for="(note, idx) in detailContribution.evidenceNotes" :key="idx">{{ note }}</li>

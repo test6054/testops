@@ -687,14 +687,29 @@ async function withTaskAction(
 }
 
 function handleExecute(record: ExamTeachingAffairsSyncTask): void {
+  // MVR-420：与 canExecute / 行内 disabled 同源二次闸（PENDING 且未重试）
+  if (!canExecute(record)) {
+    message.warning('仅未执行的待处理任务可触发回写')
+    return
+  }
   void withTaskAction(record, () => executeGradePassback(record.id!), '已触发执行回写')
 }
 
 function handleRetry(record: ExamTeachingAffairsSyncTask): void {
+  // MVR-420：与 canRetry / 行内 disabled 同源二次闸
+  if (!canRetry(record.taskStatus)) {
+    message.warning('仅失败或部分成功的任务可重试')
+    return
+  }
   void withTaskAction(record, () => retrySyncTask(record.id!), '已重试')
 }
 
 function handleCancel(record: ExamTeachingAffairsSyncTask): void {
+  // MVR-420：与 canCancel / 行内 disabled 同源二次闸
+  if (!canCancel(record.taskStatus)) {
+    message.warning('当前任务状态不可取消')
+    return
+  }
   void withTaskAction(record, () => cancelSyncTask(record.id!), '已取消')
 }
 

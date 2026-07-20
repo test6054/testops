@@ -144,6 +144,7 @@ const teacherColumns: ColumnsType = [
   { title: '双师', key: 'dualTeacherApproved', width: 64 },
   { title: '骨干', key: 'keyTeacherActive', width: 64 },
   { title: '外聘', key: 'externalTeacher', width: 64 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '成果', dataIndex: 'achievementCount', key: 'achievementCount', width: 64 },
   { title: '荣誉', dataIndex: 'honorCount', key: 'honorCount', width: 64 },
   { title: '规划状态', key: 'developmentPlanStatus', width: 88 },
@@ -660,6 +661,19 @@ watch(
                       ? `${record.developmentPlanItemCompletionPercent}%`
                       : '—'
                   }}
+                </template>
+                <template v-else-if="column.key === 'identityLayers'">
+                  <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+                    <UiTag
+                      v-for="(layer, i) in record.ownerIdentityLayers"
+                      :key="`${record.teacherUserId}-${layer.identityType}-${i}`"
+                      size="sm"
+                      :tone="layer.externalIdentity ? 'orange' : 'blue'"
+                    >
+                      {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+                    </UiTag>
+                  </div>
+                  <span v-else>—</span>
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions

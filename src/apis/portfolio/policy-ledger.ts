@@ -36,6 +36,10 @@ export interface PortfolioVirtualTeachingRoomActivityVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 
 }
 

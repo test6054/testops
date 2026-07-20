@@ -70,6 +70,7 @@ const pkForm = reactive({
 const candidateColumns: ColumnsType = [
   { title: '排名', dataIndex: 'rankOrder', key: 'rankOrder', width: 64 },
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '评分', dataIndex: 'ruleScore', key: 'ruleScore', width: 80 },
   { title: '推荐理由', dataIndex: 'reasonText', key: 'reasonText' },
@@ -440,7 +441,20 @@ watch(
           @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'lifecycleStatus'">
+            <template v-if="column.key === 'identityLayers'">
+              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+                <UiTag
+                  v-for="(layer, i) in record.ownerIdentityLayers"
+                  :key="`${record.teacherUserId}-${layer.identityType}-${i}`"
+                  size="sm"
+                  :tone="layer.externalIdentity ? 'orange' : 'blue'"
+                >
+                  {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+                </UiTag>
+              </div>
+              <span v-else>—</span>
+            </template>
+            <template v-else-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>

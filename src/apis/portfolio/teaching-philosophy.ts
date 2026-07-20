@@ -1,3 +1,4 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import http from '@/config/axios'
 
 export interface PortfolioTeachingPhilosophyVO {
@@ -16,6 +17,10 @@ export interface PortfolioTeachingPhilosophyVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
 
 }
 

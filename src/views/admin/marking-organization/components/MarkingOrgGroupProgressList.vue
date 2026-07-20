@@ -37,9 +37,10 @@
           <span class="org-group-progress__percent">{{ progressPercent(group.id) }}%</span>
         </div>
         <div
-          v-if="canManage && group.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED"
+          v-if="group.canEditQuestionGroup === true"
           class="org-group-progress__actions"
         >
+          <!-- MVR-407：仅认 BE canEditQuestionGroup===true；禁止仅认非 CLOSED 假可编辑 -->
           <UiButton variant="ghost" size="sm" @click="emit('edit-group', group.id)">编辑</UiButton>
         </div>
       </li>
@@ -50,6 +51,7 @@
 <script lang="ts" setup>
 import type { QuestionMarkingGroupResponse } from '@/apis/mark/marking-organization'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
 import {
   QUESTION_GROUP_STATUS_TONE,
   QuestionMarkingGroupStatusDescription,
@@ -58,7 +60,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingOrgGroupProgressList' })

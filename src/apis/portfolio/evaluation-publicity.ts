@@ -1,3 +1,4 @@
+import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioEvaluationObjectionHandleRequest,
@@ -22,6 +23,14 @@ const BASE = '/api/portfolio/evaluation'
 export const portfolioEvaluationPublicityApi = {
   listPublicity: (data: PortfolioEvaluationPublicityListRequest = {}) =>
     http.post<PortfolioEvaluationPublicityListItemVO[]>(`${BASE}/publicity/list`, data),
+  exportPublicityExcel: (data: PortfolioEvaluationPublicityListRequest = {}) =>
+    http.post<PortfolioArchiveBagExportResultVO>(`${BASE}/publicity/export-excel`, data),
+  exportObjectionExcel: (
+    data: PortfolioEvaluationObjectionPageRequest = {
+      pageNum: 1,
+      pageSize: DEFAULT_LIST_PAGE_SIZE,
+    },
+  ) => http.post<PortfolioArchiveBagExportResultVO>(`${BASE}/objection/export-excel`, data),
   publishPublicity: (data: PortfolioEvaluationPublicityPublishRequest) =>
     http.post<string>(`${BASE}/publicity/publish`, data),
   submitObjection: (data: PortfolioEvaluationObjectionSubmitRequest) =>

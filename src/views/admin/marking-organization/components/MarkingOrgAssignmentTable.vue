@@ -95,7 +95,6 @@ import UiTableSummaryCell from '@/components/ui-guide/ui/UiTableSummaryCell.vue'
 import UiTableSummaryRow from '@/components/ui-guide/ui/UiTableSummaryRow.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
-import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingOrgAssignmentTable' })
@@ -152,10 +151,6 @@ function resolveGroupPolicy(groupId: string): AllocationPolicyResponse | undefin
   return props.allocationPolicies.find((item) => item.groupId == null)
 }
 
-function isEditable(status: QuestionMarkingGroupStatusCode): boolean {
-  return status !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
-}
-
 function resolveTypeLabel(group: QuestionMarkingGroupResponse): { label: string, tone: BadgeTone } {
   if (group.questions.length === 0) {
     return { label: '整卷', tone: 'gray' }
@@ -193,7 +188,8 @@ const rows = computed((): AssignmentRow[] =>
       reviewerCount: group.reviewers.length,
       anonymityLabel,
       anonymityTone,
-      editable: isEditable(group.groupStatus),
+      // MVR-406：与 BE canEditQuestionGroup 同源；禁止仅认非 CLOSED
+      editable: group.canEditQuestionGroup === true,
     }
   }),
 )

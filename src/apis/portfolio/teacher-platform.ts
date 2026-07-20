@@ -25,13 +25,10 @@ import type {
   PortfolioTeacherRecommendRunStatusCode,
   PortfolioTeacherRecommendSceneCode,
 } from '@/apis/portfolio/enums'
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PortfolioArchiveScoreRuleTypeCode } from '@/types/enums/portfolio-archive-score-rule-type-enum'
-import {
-  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
-  PortfolioArchiveScoreRuleTypeDescription,
-} from '@/types/enums/portfolio-archive-score-rule-type-enum'
 import type { PortfolioImportQualityGradeCode } from '@/types/enums/portfolio-import-quality-grade-enum'
 import type { PortfolioPlanningSyncConflictStrategyCode } from '@/types/enums/portfolio-planning-sync-conflict-strategy-enum'
 import type { PortfolioPlanningSyncOrgScopeCode } from '@/types/enums/portfolio-planning-sync-org-scope-enum'
@@ -39,6 +36,10 @@ import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfoli
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import {
+  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
+  PortfolioArchiveScoreRuleTypeDescription,
+} from '@/types/enums/portfolio-archive-score-rule-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const portfolioArchiveBagApi = {
@@ -138,13 +139,10 @@ export interface PortfolioDualTeacherApplicationVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
-}
-
-export interface PortfolioDualTeacherImportResultVO {
-  totalRows: number
-  successRows: number
-  failedRows: number
-  errorReport?: PortfolioImportErrorItemDto[]
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioDualTeacherPageRequest extends QueryDto {
@@ -177,16 +175,6 @@ export const portfolioDualTeacherApi = {
   page: (data: PortfolioDualTeacherPageRequest) =>
     http.post<PageResult<PortfolioDualTeacherApplicationVO>>(
       '/api/portfolio/dual-teacher/page',
-      data,
-    ),
-  contributionGet: (data: { id: string }) =>
-    http.post<PortfolioIndustryMentorContributionVO>(
-      '/api/portfolio/external-teacher/contribution/get',
-      data,
-    ),
-  contributionByTeacher: (data: { teacherId?: string }) =>
-    http.post<PortfolioIndustryMentorContributionVO>(
-      '/api/portfolio/external-teacher/contribution/by-teacher',
       data,
     ),
   get: (data: { id: string }) =>
@@ -244,6 +232,10 @@ export interface PortfolioIndustryMentorContributionVO {
   industryOutcomeScore: number
   assessmentScore: number
   evidenceNotes: string[]
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
   usableForCampusTitleEvaluation: boolean
 }
 
@@ -363,12 +355,14 @@ export const portfolioExternalTeacherApi = {
     http.post<PageResult<PortfolioExternalTeacherVO>>('/api/portfolio/external-teacher/page', data),
   stats: (data: PortfolioExternalTeacherStatsRequest = {}) =>
     http.post<PortfolioExternalTeacherStatsVO>('/api/portfolio/external-teacher/stats', data),
+  /** §8.42 按外聘台账主键计算产业导师贡献度 */
   contributionGet: (data: { id: string }) =>
     http.post<PortfolioIndustryMentorContributionVO>(
       '/api/portfolio/external-teacher/contribution/get',
       data,
     ),
-  contributionByTeacher: (data: { teacherId?: string }) =>
+  /** §8.42 按教师用户外部身份（产业导师）计算贡献度 */
+  contributionByTeacher: (data: { teacherId?: string } = {}) =>
     http.post<PortfolioIndustryMentorContributionVO>(
       '/api/portfolio/external-teacher/contribution/by-teacher',
       data,
@@ -410,6 +404,10 @@ export interface PortfolioDevelopmentPlanVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
   createTime?: string
 }
 
@@ -489,16 +487,6 @@ export interface PortfolioDevelopmentPlanHistoryImportBatchVO {
   fieldUsableRate?: number
   qualityGrade?: PortfolioImportQualityGradeCode
   createTime?: string
-}
-
-export interface PortfolioDevelopmentPlanHistoryImportResultVO {
-  batchId?: string
-  batchNo?: string
-  totalRows: number
-  successRows: number
-  failedRows: number
-  batchStatus?: PortfolioDevelopmentPlanHistoryImportBatchStatusCode
-  errorReport?: PortfolioImportErrorItemDto[]
 }
 
 export interface PortfolioDevelopmentPlanPageRequest extends QueryDto {
@@ -656,6 +644,10 @@ export interface PortfolioDevelopmentRecordVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
   /** 业务日命中的归属血缘段 */
   affiliationHistoryId?: string
   affiliationStaffNo?: string
@@ -801,6 +793,10 @@ export interface PortfolioKeyTeacherRegistryVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioKeyTeacherPageRequest extends QueryDto {
@@ -855,6 +851,10 @@ export interface PortfolioDoubleDutyRegistryVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
   createTime?: string
   updateTime?: string
 }
@@ -928,6 +928,10 @@ export interface PortfolioTeacherSalaryVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioTeacherSalaryPageRequest extends QueryDto {
@@ -982,6 +986,10 @@ export interface PortfolioTeacherLibraryBorrowVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioTeacherLibraryBorrowStatsVO {
@@ -1074,6 +1082,10 @@ export interface PortfolioTeacherRecommendCandidateVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioTeacherRecommendRunVO {
@@ -1263,16 +1275,6 @@ export interface PortfolioPortraitTemplateListRequest {
 export const portfolioPortraitTemplateApi = {
   list: (data: PortfolioPortraitTemplateListRequest = {}) =>
     http.post<PortfolioPortraitTemplateVO[]>('/api/portfolio/portrait-template/list', data),
-  contributionGet: (data: { id: string }) =>
-    http.post<PortfolioIndustryMentorContributionVO>(
-      '/api/portfolio/external-teacher/contribution/get',
-      data,
-    ),
-  contributionByTeacher: (data: { teacherId?: string }) =>
-    http.post<PortfolioIndustryMentorContributionVO>(
-      '/api/portfolio/external-teacher/contribution/by-teacher',
-      data,
-    ),
   get: (data: { id: string }) =>
     http.post<PortfolioPortraitTemplateVO>('/api/portfolio/portrait-template/get', data),
   save: (data: PortfolioPortraitTemplateSaveRequest) =>
@@ -1305,9 +1307,10 @@ export interface PortfolioEvaluationSubjectTeacherOptionVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
-
-  /** 评价参评 hold */
-  evaluationHeld?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioEvaluationIndicatorOptionVO {
@@ -1452,6 +1455,10 @@ export interface PortfolioEvaluationComprehensiveTaskItemVO {
 
 export interface PortfolioEvaluationComprehensiveTeacherRowVO {
   subjectTeacherUserId: string
+  /** 涉及业务场景编码（多场景 / 拼接） */
+  involvedSceneCodes?: string
+  /** 涉及业务场景名称（多场景 / 拼接） */
+  involvedSceneLabels?: string
   involvedTaskCount: number
   entryCount: number
   averageScore: number
@@ -1465,6 +1472,10 @@ export interface PortfolioEvaluationComprehensiveTeacherRowVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioEvaluationComprehensiveAnalysisVO {

@@ -164,6 +164,25 @@ usePortfolioScopedLoader(loadAll, () => targetTeacherId.value)
               <strong>{{ masterpieceContribution.topItemScore ?? 0 }}</strong>
             </p>
             <p class="masterpiece__hint">{{ masterpieceContribution.formulaLabel }}</p>
+            <div
+              v-if="masterpieceContribution.ownerIdentityLayers?.length"
+              class="masterpiece__identity-layers"
+            >
+              <UiTag
+                v-for="(layer, idx) in masterpieceContribution.ownerIdentityLayers"
+                :key="layer.identityId || `${layer.identityType}-${idx}`"
+                size="sm"
+                :tone="layer.externalIdentity ? 'orange' : 'blue'"
+              >
+                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+              </UiTag>
+            </div>
+            <p
+              v-if="masterpieceContribution.ownerMultiIdentityNote"
+              class="masterpiece__hint"
+            >
+              {{ masterpieceContribution.ownerMultiIdentityNote }}
+            </p>
             <p
               v-for="(note, idx) in masterpieceContribution.evidenceNotes || []"
               :key="`mp-note-${idx}`"

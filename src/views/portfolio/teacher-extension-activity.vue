@@ -122,6 +122,7 @@ const activityColumns: ColumnsType = [
   { title: '大类', key: 'activityKind', width: 88 },
   { title: '活动名称', dataIndex: 'activityName', key: 'activityName' },
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '时间', key: 'dateRange', width: 180 },
   { title: '学时/描述', key: 'summary', width: 140 },
   { title: '操作', key: 'actions', width: 120 },
@@ -550,6 +551,19 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'activityKind'">
               <UiTag tone="blue">{{ kindLabel(record.activityKind) }}</UiTag>
+            </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+                <UiTag
+                  v-for="(layer, idx) in record.ownerIdentityLayers"
+                  :key="`${record.id}-${layer.identityType}-${idx}`"
+                  size="sm"
+                  :tone="layer.externalIdentity ? 'orange' : 'blue'"
+                >
+                  {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+                </UiTag>
+              </div>
+              <span v-else>—</span>
             </template>
             <template v-else-if="column.key === 'dateRange'">
               {{ dateRangeText(record) }}

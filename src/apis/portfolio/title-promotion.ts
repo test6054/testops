@@ -1,3 +1,4 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import type { PortfolioTitleCriteriaChangeActionCode } from '@/types/enums/portfolio-title-criteria-change-action-enum'
 import type { PortfolioTitleCriteriaCheckTypeCode } from '@/types/enums/portfolio-title-criteria-check-type-enum'
@@ -124,6 +125,10 @@ export interface PortfolioTitlePromotionApplicationVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioTitleEvidenceItem {

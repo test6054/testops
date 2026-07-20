@@ -1914,14 +1914,18 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number |
 
 async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
-  // MVR-292：二次拦截，防止绕过行内 disabled
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('当前账号无本场评阅写权限，无法确认成绩')
-    return
-  }
-  if (record.finalScoreStatus === FinalScoreStatusCode.CORRECTED) {
+  // MVR-419：与 canConfirm(record) / 行内 disabled 同源二次闸（写权∧状态∧场级硬拦）
+  if (!canConfirm(record)) {
+    if (record.finalScoreStatus === FinalScoreStatusCode.CORRECTED) {
+      message.warning(
+        '成绩已更正，请直接重新发布；禁止确认覆盖官方更正分。如需再改请走成绩更正流程。',
+      )
+      return
+    }
     message.warning(
-      '成绩已更正，请直接重新发布；禁止确认覆盖官方更正分。如需再改请走成绩更正流程。',
+      canManageReviewerWrites.value !== true
+        ? '当前账号无本场评阅写权限，无法确认成绩'
+        : '当前答卷不可确认（状态不允许或场级硬拦未解除）',
     )
     return
   }
@@ -2056,8 +2060,13 @@ async function handleGoScorePublish(): Promise<void> {
 }
 
 async function handleConfirm(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员或主考可确认最终成绩')
+  // MVR-419：与 canConfirm / openConfirmModal 同源二次闸
+  if (!confirmCandidate.value || !canConfirm(confirmCandidate.value)) {
+    message.warning(
+      canManageReviewerWrites.value !== true
+        ? '仅本场阅卷组织成员或主考可确认最终成绩'
+        : '当前答卷不可确认（状态不允许或场级硬拦未解除）',
+    )
     return
   }
   if (confirming.value) {
@@ -2120,8 +2129,13 @@ async function handleConfirm(): Promise<void> {
 
 // ─── 发布成绩 ─────────────────────────────
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员或主考可发布最终成绩')
+  // MVR-419：与 canPublish(record) / 行内 disabled 同源二次闸
+  if (!canPublish(record)) {
+    message.warning(
+      canManageReviewerWrites.value !== true
+        ? '仅本场阅卷组织成员或主考可发布最终成绩'
+        : '当前答卷不可发布（状态不允许或场级硬拦未解除）',
+    )
     return
   }
   if (publishingPaperId.value) {
@@ -2161,9 +2175,13 @@ const withdrawModalTitle = computed(() =>
 )
 
 function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
-  // MVR-292：二次拦截，防止绕过行内 disabled
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('当前账号无本场评阅写权限，无法撤回成绩')
+  // MVR-419：与 canWithdraw(record) / 行内 disabled 同源二次闸
+  if (!canWithdraw(record)) {
+    message.warning(
+      canManageReviewerWrites.value !== true
+        ? '当前账号无本场评阅写权限，无法撤回成绩'
+        : '当前答卷不可撤回（状态不允许）',
+    )
     return
   }
   withdrawCandidate.value = record
@@ -2175,9 +2193,13 @@ async function handleWithdraw(): Promise<void> {
   if (withdrawing.value) {
     return
   }
-  // MVR-292：与 BE withdrawFinalScore 评阅写门禁二次拦截
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('当前账号无本场评阅写权限，无法撤回成绩')
+  // MVR-419：与 canWithdraw / openWithdrawModal 同源二次闸
+  if (!withdrawCandidate.value || !canWithdraw(withdrawCandidate.value)) {
+    message.warning(
+      canManageReviewerWrites.value !== true
+        ? '当前账号无本场评阅写权限，无法撤回成绩'
+        : '当前答卷不可撤回（状态不允许）',
+    )
     return
   }
   if (!selectedExamId.value || !withdrawCandidate.value?.paperInstanceId) return

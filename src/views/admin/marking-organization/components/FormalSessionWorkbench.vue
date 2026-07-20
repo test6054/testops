@@ -87,6 +87,12 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { FormalSessionResponse } from '@/apis/mark/marking-organization'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
+import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   AllocationUnitDescription,
   completeFormalSession,
@@ -96,12 +102,6 @@ import {
   resumeFormalSession,
   startFormalSession,
 } from '@/apis/mark/marking-organization'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
-import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -164,10 +164,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refresh: []
-  search: [model: Record<string, unknown>]
-  reset: []
-  'page-change': [page: { current: number; pageSize: number }]
+  "refresh": []
+  "search": [model: Record<string, unknown>]
+  "reset": []
+  'page-change': [page: { current: number, pageSize: number }]
   'open-lifecycle': [action: 'pauseFormal' | 'closeFormal', sessionId: string]
 }>()
 
@@ -248,9 +248,9 @@ watch(
 
 const hasActiveFilter = computed(
   () =>
-    Boolean(props.filterModel.keyword.trim()) ||
-    Boolean(props.filterModel.status) ||
-    Boolean(props.filterModel.groupId),
+    Boolean(props.filterModel.keyword.trim())
+    || Boolean(props.filterModel.status)
+    || Boolean(props.filterModel.groupId),
 )
 
 const sessionTableEmptyDescription = computed(() => {
@@ -274,7 +274,7 @@ function emitReset(): void {
   emit('reset')
 }
 
-function emitPageChange(page: { current: number; pageSize: number }): void {
+function emitPageChange(page: { current: number, pageSize: number }): void {
   emit('page-change', page)
 }
 
@@ -285,24 +285,25 @@ function isGroupStartable(groupId: string | undefined): boolean {
   const option = props.groupOptions.find((item) => item.value === groupId)
   // MVR-402：仅 ACTIVE/CONFIGURED 可启动；缺状态默认拒绝
   return (
-    option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE ||
-    option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED
+    option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
+    || option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED
   )
 }
 
 function canStart(record: FormalSessionResponse): boolean {
   return (
-    props.canManage === true &&
-    record.sessionStatus === FormalSessionStatusCode.SESSION_CREATED &&
-    isGroupStartable(record.groupId)
+    props.canManage === true
+    && record.sessionStatus === FormalSessionStatusCode.SESSION_CREATED
+    && isGroupStartable(record.groupId)
   )
 }
 
 function canComplete(record: FormalSessionResponse): boolean {
   return (
-    props.canManage === true &&
-    record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE &&
-    record.sessionTaskCompletionReady
+    props.canManage === true
+    && record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE
+    // MVR-407：仅认 BE sessionTaskCompletionReady===true，缺省拒绝
+    && record.sessionTaskCompletionReady === true
   )
 }
 
@@ -317,10 +318,10 @@ function canResume(status: FormalSessionStatusCode): boolean {
 function canClose(status: FormalSessionStatusCode): boolean {
   // MVR-398：关闭归档认 canCloseMarkingSessions（主考，不叠 ACTIVE）
   return (
-    props.canCloseMarkingSessions === true &&
-    (status === FormalSessionStatusCode.SESSION_ACTIVE ||
-      status === FormalSessionStatusCode.SESSION_PAUSED ||
-      status === FormalSessionStatusCode.SESSION_COMPLETED)
+    props.canCloseMarkingSessions === true
+    && (status === FormalSessionStatusCode.SESSION_ACTIVE
+      || status === FormalSessionStatusCode.SESSION_PAUSED
+      || status === FormalSessionStatusCode.SESSION_COMPLETED)
   )
 }
 
@@ -377,8 +378,8 @@ function buildRowActions(record: FormalSessionResponse): UiTableRowActionItem[] 
       ? 'complete'
       : canResume(record.sessionStatus)
         ? 'resume'
-        : canClose(record.sessionStatus) &&
-            record.sessionStatus === FormalSessionStatusCode.SESSION_COMPLETED
+        : canClose(record.sessionStatus)
+          && record.sessionStatus === FormalSessionStatusCode.SESSION_COMPLETED
           ? 'close'
           : undefined
   return actions.map((action) =>
@@ -400,10 +401,10 @@ function guardManageAction(): boolean {
 function handleFormalStartError(error: unknown): void {
   const detail = getUserErrorMessage(error, '')
   const isConflict = readBusinessResultCode(error) === ResultCode.CONFLICT
-  const isExperienceAssistBlock =
-    isConflict &&
-    (detail.includes(EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX) ||
-      detail.includes(EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX))
+  const isExperienceAssistBlock
+    = isConflict
+      && (detail.includes(EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX)
+        || detail.includes(EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX))
   if (isExperienceAssistBlock && props.examId) {
     void confirmAsync({
       title: '无法启动正评',
@@ -443,9 +444,13 @@ async function submitStart(record: FormalSessionResponse): Promise<void> {
   if (!guardManageAction()) {
     return
   }
-  // MVR-402：启动二次闸，禁 CLOSED/DRAFT 题组（缺状态默认拒绝）
-  if (!isGroupStartable(record.groupId)) {
-    showFormValidationMessage('题组已关闭或为草稿状态，不能启动正评会话')
+  // MVR-412：与 canStart 同源二次闸（主考∧ACTIVE∧SESSION_CREATED∧题组 ACTIVE/CONFIGURED）
+  if (!canStart(record)) {
+    showFormValidationMessage(
+      isGroupStartable(record.groupId)
+        ? '仅草稿正评会话可启动'
+        : '题组已关闭或为草稿状态，不能启动正评会话',
+    )
     return
   }
   if (startingId.value || completingId.value || resumingId.value || deletingId.value) {
@@ -463,16 +468,21 @@ async function submitStart(record: FormalSessionResponse): Promise<void> {
   }
 }
 
-async function submitComplete(sessionId: string): Promise<void> {
+async function submitComplete(record: FormalSessionResponse): Promise<void> {
   if (!guardManageAction()) {
+    return
+  }
+  // MVR-407：完成二次闸，与 canComplete / BE assertFormalSessionTasksReadyForCompletion 同源
+  if (!canComplete(record)) {
+    showFormValidationMessage('本场任务未全部定稿，不能完成正评会话')
     return
   }
   if (completingId.value || startingId.value || resumingId.value || deletingId.value) {
     return
   }
-  completingId.value = sessionId
+  completingId.value = record.id
   try {
-    await completeFormalSession(sessionId)
+    await completeFormalSession(record.id)
     message.success('本场正评任务已标记完成')
     emit('refresh')
   } catch (error) {
@@ -482,16 +492,21 @@ async function submitComplete(sessionId: string): Promise<void> {
   }
 }
 
-async function submitResume(sessionId: string): Promise<void> {
+async function submitResume(record: FormalSessionResponse): Promise<void> {
   if (!guardManageAction()) {
+    return
+  }
+  // MVR-408：恢复二次闸，与 canResume / BE SESSION_PAUSED 同源
+  if (!canResume(record.sessionStatus)) {
+    showFormValidationMessage('仅暂停中的正评会话可恢复')
     return
   }
   if (resumingId.value || startingId.value || completingId.value || deletingId.value) {
     return
   }
-  resumingId.value = sessionId
+  resumingId.value = record.id
   try {
-    await resumeFormalSession(sessionId)
+    await resumeFormalSession(record.id)
     message.success('正评会话已恢复')
     emit('refresh')
   } catch (error) {
@@ -501,16 +516,21 @@ async function submitResume(sessionId: string): Promise<void> {
   }
 }
 
-async function submitDelete(sessionId: string): Promise<void> {
+async function submitDelete(record: FormalSessionResponse): Promise<void> {
   if (!guardManageAction()) {
+    return
+  }
+  // MVR-408：删除二次闸，与 canDelete / BE SESSION_CREATED 同源
+  if (!canDelete(record.sessionStatus)) {
+    showFormValidationMessage('仅草稿正评会话可删除')
     return
   }
   if (deletingId.value || startingId.value || completingId.value || resumingId.value) {
     return
   }
-  deletingId.value = sessionId
+  deletingId.value = record.id
   try {
-    await deleteFormalSession(sessionId)
+    await deleteFormalSession(record.id)
     message.success('正评草稿会话已删除')
     emit('refresh')
   } catch (error) {
@@ -526,19 +546,20 @@ async function handleSessionRowAction(key: string, record: FormalSessionResponse
     return
   }
   if (key === 'complete') {
-    await submitComplete(record.id)
+    await submitComplete(record)
     return
   }
   if (key === 'pause') {
-    // MVR-397：打开暂停原因弹窗前叠主考闸，禁止仅靠行动作显隐
-    if (!guardManageAction()) {
+    // MVR-397/408：打开暂停原因弹窗前叠 canPause（主考∧ACTIVE∧SESSION_ACTIVE）
+    if (!canPause(record.sessionStatus)) {
+      showFormValidationMessage('仅进行中的正评会话可暂停')
       return
     }
     emit('open-lifecycle', 'pauseFormal', record.id)
     return
   }
   if (key === 'resume') {
-    await submitResume(record.id)
+    await submitResume(record)
     return
   }
   if (key === 'detail') {
@@ -556,8 +577,9 @@ async function handleSessionRowAction(key: string, record: FormalSessionResponse
     return
   }
   if (key === 'delete') {
-    // MVR-397：删除确认前叠主考闸
-    if (!guardManageAction()) {
+    // MVR-397/408：删除确认前叠 canDelete（主考∧ACTIVE∧SESSION_CREATED）
+    if (!canDelete(record.sessionStatus)) {
+      showFormValidationMessage('仅草稿正评会话可删除')
       return
     }
     if (
@@ -569,7 +591,7 @@ async function handleSessionRowAction(key: string, record: FormalSessionResponse
     ) {
       return
     }
-    await submitDelete(record.id)
+    await submitDelete(record)
   }
 }
 </script>

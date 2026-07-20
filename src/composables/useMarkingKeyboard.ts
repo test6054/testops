@@ -45,13 +45,15 @@ export function useMarkingKeyboard(options: UseMarkingKeyboardOptions) {
     }
     if (event.metaKey || event.ctrlKey || event.altKey || event.isComposing) return
     if (event.key === 'Enter') {
+      // MVR-413：Enter 提交叠 canSubmit ∧ !isReadOnly，与给分二次闸同源
       if (
         options.submitting.value
         || !options.canSubmit.value
+        || options.isReadOnly.value
         || isGradingEnterInputTarget(event.target)
       ) {
         return
-}
+      }
       event.preventDefault()
       void options.submit()
       return

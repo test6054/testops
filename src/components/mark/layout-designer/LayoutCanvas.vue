@@ -306,7 +306,8 @@ function syncTransformer(): void {
 }
 
 function patchBlockRect(blockId: string, node: Konva.Rect): void {
-  if (!props.document || !page.value) {
+  // MVR-417：与 readOnly / 父层 layoutCanvasReadonly 二次闸，禁止拖改/缩放绕过 disabled
+  if (props.readOnly || !props.document || !page.value) {
     return
   }
   const scaleX = node.scaleX()
@@ -369,7 +370,8 @@ function resetMarqueeDraft(): void {
 }
 
 function commitMarqueeDraft(): void {
-  if (!marqueeDraft.value || !props.document || !page.value) {
+  // MVR-417：框选落块叠 readOnly（识别中/关考只读漂移时不写入本地 document）
+  if (props.readOnly || !marqueeDraft.value || !props.document || !page.value) {
     resetMarqueeDraft()
     return
   }

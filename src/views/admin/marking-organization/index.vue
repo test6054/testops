@@ -158,7 +158,7 @@
         <UiButton size="sm" variant="outline" @click="goTrialSessions">试评定标</UiButton>
         <UiButton size="sm" variant="outline" @click="goFormalSessions">正评会话</UiButton>
         <UiButton
-          v-if="canManageExamOwner"
+          v-if="canDeleteOrganization === true"
           size="sm"
           variant="outline"
           status="danger"
@@ -267,12 +267,16 @@
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { RouteLocationRaw } from 'vue-router'
-import { useRoute, useRouter } from 'vue-router'
 import type {
   MarkingOrganizationResponse,
   OrganizationCreateRequest,
   OrganizationUpdateRequest,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   createOrganization,
   deleteOrganization,
@@ -282,10 +286,6 @@ import {
   requireMarkingOrganizationId,
   updateOrganization,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -328,8 +328,8 @@ defineOptions({ name: 'AdminMarkingOrganizationIndex' })
 const router = useRouter()
 const route = useRoute()
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
-  useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
+  = useOptionalExamJourneyContextBar('阅卷安排')
 
 const {
   examOptions,
@@ -352,6 +352,10 @@ const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organiz
 /** MVR-404：仅认 BE canUpdateOrganizationAnonymousMode===true；备注仍可在 canManageExamOwner 下更新 */
 const canUpdateOrganizationAnonymousMode = computed(
   () => organization.value?.canUpdateOrganizationAnonymousMode === true,
+)
+/** MVR-405：仅认 BE canDeleteOrganization===true；有试评/正评/任务时禁删 */
+const canDeleteOrganization = computed(
+  () => organization.value?.canDeleteOrganization === true,
 )
 const loading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
@@ -513,7 +517,7 @@ async function submitCreate(): Promise<void> {
       remark: createForm.remark?.trim() || undefined,
     }
     organization.value = await createOrganization(request)
-    message.success('阅卷组织已创建')
+    void message.success('阅卷组织已创建')
     createDrawerOpen.value = false
     await refreshSnapshot()
   } catch (error) {
@@ -538,8 +542,8 @@ async function submitUpdate(): Promise<void> {
   if (!guardExamOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
   // MVR-404：匿名模式变更须 canUpdateOrganizationAnonymousMode；仅改备注始终可走
-  const anonymityChanged =
-    Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
+  const anonymityChanged
+    = Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
   if (anonymityChanged && canUpdateOrganizationAnonymousMode.value !== true) {
     showFormValidationMessage('已进入试评/正评或任务后不可修改匿名模式')
     return
@@ -553,14 +557,13 @@ async function submitUpdate(): Promise<void> {
   try {
     const request: OrganizationUpdateRequest = {
       organizationId: requireMarkingOrganizationId(organization.value),
-      anonymousMode:
-        canUpdateOrganizationAnonymousMode.value === true
-          ? editForm.anonymousMode
-          : Boolean(organization.value.anonymousMode),
+      anonymousMode: canUpdateOrganizationAnonymousMode.value === true
+        ? editForm.anonymousMode
+        : Boolean(organization.value.anonymousMode),
       remark: editForm.remark?.trim() || undefined,
     }
     organization.value = await updateOrganization(request)
-    message.success('阅卷组织已更新')
+    void message.success('阅卷组织已更新')
     editDrawerOpen.value = false
     await refreshSnapshot()
   } catch (error) {
@@ -571,9 +574,15 @@ async function submitUpdate(): Promise<void> {
 }
 
 async function requestDeleteOrganization(): Promise<void> {
+  if (!guardExamOwnerAction()) return
+  // MVR-405：与 BE canDeleteOrganization / runtimeRefs 二次闸
+  if (canDeleteOrganization.value !== true) {
+    showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
+    return
+  }
   const ok = await confirmAsync({
     title: '确认删除该阅卷组织？',
-    content: '删除后不可恢复；请确认组织下无进行中的试评/正评会话。',
+    content: '删除后不可恢复；请确认组织下无试评/正评会话与阅卷任务。',
     type: 'error',
     okText: '删除',
   })
@@ -585,13 +594,17 @@ async function requestDeleteOrganization(): Promise<void> {
 
 async function submitDelete(): Promise<void> {
   if (!guardExamOwnerAction()) return
+  if (canDeleteOrganization.value !== true) {
+    showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
+    return
+  }
   if (!organization.value) return
   if (deleting.value) return
   deleting.value = true
   try {
     await deleteOrganization({ organizationId: requireMarkingOrganizationId(organization.value) })
     organization.value = null
-    message.success('阅卷组织已删除')
+    void message.success('阅卷组织已删除')
     await refreshSnapshot()
   } catch (error) {
     showUserError(error, '阅卷组织删除失败')

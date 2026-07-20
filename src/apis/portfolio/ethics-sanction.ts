@@ -1,3 +1,4 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import type { PortfolioEthicsEventTypeCode } from '@/types/enums/portfolio-ethics-event-type-enum'
 import type { PortfolioEthicsImpactScopeCode } from '@/types/enums/portfolio-ethics-impact-scope-enum'
@@ -29,6 +30,10 @@ export interface PortfolioEthicsSanctionVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 
 }
 
@@ -44,6 +49,10 @@ export interface PortfolioEthicsConstraintStatusVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份说明 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioEthicsReviewLogVO {

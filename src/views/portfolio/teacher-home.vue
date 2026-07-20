@@ -762,6 +762,25 @@ onUnmounted(() => {
                     {{ workbenchSummary.honorTotalCount ?? 0 }} · 拓展
                     {{ workbenchSummary.extensionActivityTotalCount ?? 0 }}
                   </p>
+                  <div
+                    v-if="workbenchSummary.ownerIdentityLayers?.length"
+                    class="teacher-home__meta flex flex-wrap gap-1"
+                  >
+                    <UiTag
+                      v-for="(layer, idx) in workbenchSummary.ownerIdentityLayers"
+                      :key="`wb-id-${layer.identityType}-${idx}`"
+                      size="sm"
+                      :tone="layer.externalIdentity ? 'orange' : 'blue'"
+                    >
+                      {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+                    </UiTag>
+                  </div>
+                  <p
+                    v-if="workbenchSummary.ownerMultiIdentityNote"
+                    class="teacher-home__meta"
+                  >
+                    {{ workbenchSummary.ownerMultiIdentityNote }}
+                  </p>
                   <p
                     v-if="(workbenchSummary.courseArchiveTaughtCourseCount ?? 0) > 0"
                     class="teacher-home__meta teacher-home__meta--link"

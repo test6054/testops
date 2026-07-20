@@ -68,6 +68,7 @@ import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWi
 import { useWholePaperGallery } from '@/composables/useWholePaperGallery'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useTenantStore } from '@/stores/modules/tenant'
+import { ExamStatusCode } from '@/types/enums/exam-status-enum'
 import { PaperInstanceDisplayModeCode } from '@/types/enums/paper-instance-display-mode-enum'
 import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
@@ -113,8 +114,13 @@ export function useMarkingTaskDetailState() {
   const tenantStore = useTenantStore()
   const markTaskStore = useMarkTaskStore()
   const { tasks: batchTasks } = storeToRefs(markTaskStore)
-  const { latestWithdrawable, recentList, canWithdrawEntry, withdrawEntry, withdrawLatest }
-    = useMarkingRecentSubmit()
+  const {
+    latestWithdrawable,
+    recentList,
+    canWithdrawEntry: canWithdrawEntryByWindow,
+    withdrawEntry,
+    withdrawLatest,
+  } = useMarkingRecentSubmit()
   const { withdrawWindowLabel, withdrawConfirmHint } = useTenantMarkingWithdrawPolicy()
 
   const taskId = computed(() => (route.params.taskId ? String(route.params.taskId) : ''))
@@ -142,7 +148,16 @@ export function useMarkingTaskDetailState() {
     () => task.value?.canManageOwnerIdentityReveal === true,
   )
   const isReadOnly = computed(() => task.value?.taskStatus === MarkingTaskStatusCode.FINALIZED)
-  const isScoreReadOnly = computed(() => isReadOnly.value || taskRecycledBlocked.value)
+  /**
+   * MVR-409/410：给分区只读 = 已定稿 ∨ 已回收 ∨ 考试非 ACTIVE。
+   * 缺 exam 状态默认只读，与 canSubmit / BE requireActiveExam 同源，禁止关考后假可编辑。
+   */
+  const isScoreReadOnly = computed(
+    () =>
+      isReadOnly.value
+      || taskRecycledBlocked.value
+      || examDetail.value?.status !== ExamStatusCode.ACTIVE,
+  )
   const isWholePaperTask = computed(() => task.value?.taskUnit === AllocationUnitCode.WHOLE_PAPER)
   const usesWholePaperWorkspace = computed(
     () =>
@@ -152,6 +167,10 @@ export function useMarkingTaskDetailState() {
   )
   const canSubmit = computed(() => {
     if (taskRecycledBlocked.value) return false
+    // MVR-409：关考后禁止给分提交；缺 exam 状态默认拒绝（与 BE requireActiveExam 同源）
+    if (examDetail.value?.status !== ExamStatusCode.ACTIVE) {
+      return false
+    }
     if (sessionPausedAlert.value) {
       return task.value?.taskStatus === MarkingTaskStatusCode.IN_PROGRESS
     }
@@ -160,6 +179,14 @@ export function useMarkingTaskDetailState() {
       status === MarkingTaskStatusCode.ALLOCATED || status === MarkingTaskStatusCode.IN_PROGRESS
     )
   })
+
+  /** MVR-410：撤回须考试 ACTIVE ∧ 时间窗；与 BE withdrawTask requireActiveExam 同源 */
+  function canWithdrawMarkingEntry(entry: (typeof recentList.value)[number]): boolean {
+    if (examDetail.value?.status !== ExamStatusCode.ACTIVE) {
+      return false
+    }
+    return canWithdrawEntryByWindow(entry)
+  }
 
   const paperInstanceId = computed(() => {
     if (!task.value) return undefined
@@ -311,6 +338,11 @@ export function useMarkingTaskDetailState() {
   })
 
   async function handleWithdrawLatest(): Promise<void> {
+    // MVR-410：撤回二次闸，与 canWithdrawMarkingEntry / BE requireActiveExam 同源
+    if (examDetail.value?.status !== ExamStatusCode.ACTIVE) {
+      showFormValidationMessage('考试已关闭，不能撤回给分')
+      return
+    }
     await withdrawLatest((withdrawnTask) => {
       task.value = withdrawnTask
       taskRecycledBlocked.value = false
@@ -326,6 +358,15 @@ export function useMarkingTaskDetailState() {
   }
 
   async function handleWithdrawEntry(entry: (typeof recentList.value)[number]): Promise<void> {
+    // MVR-410：撤回二次闸，与 canWithdrawMarkingEntry / BE requireActiveExam 同源
+    if (!canWithdrawMarkingEntry(entry)) {
+      showFormValidationMessage(
+        examDetail.value?.status !== ExamStatusCode.ACTIVE
+          ? '考试已关闭，不能撤回给分'
+          : '撤销窗口已过期，不能撤回给分',
+      )
+      return
+    }
     await withdrawEntry(entry, (withdrawnTask) => {
       if (withdrawnTask.id === taskId.value) {
         task.value = withdrawnTask
@@ -364,6 +405,8 @@ export function useMarkingTaskDetailState() {
     },
     scrollToWholePage,
     applyQuickScore: (score: number) => {
+      // MVR-414：键盘快捷给分二次闸，与 isScoreReadOnly / 面板 disabled 同源
+      if (isScoreReadOnly.value) return
       form.score = score
     },
     onWithdraw: () => {
@@ -626,12 +669,14 @@ export function useMarkingTaskDetailState() {
   const highlightExecutionTraceId = ref<string | null>(null)
 
   const canRescoreQuestionView = computed(() => {
-    if (isReadOnly.value || submitCtx.submitting.value || rescoringGradeResultId.value) return false
+    // MVR-410：智能复评与给分同源，关考/回收后只读
+    if (isScoreReadOnly.value || submitCtx.submitting.value || rescoringGradeResultId.value) return false
     return !!questionView.value?.gradeResultId && !!task.value?.examId
   })
 
   function canRescoreWholeQuestion(question: QuestionMarkingGroupQuestionResponse): boolean {
-    if (isReadOnly.value || submitCtx.submitting.value) return false
+    // MVR-410：智能复评与给分同源，关考/回收后只读
+    if (isScoreReadOnly.value || submitCtx.submitting.value) return false
     if (!question.gradeResultId || !task.value?.examId) return false
     return question.questionType === 'SUBJECTIVE'
   }
@@ -648,6 +693,11 @@ export function useMarkingTaskDetailState() {
     gradeResultId: string,
     refresh: () => Promise<void>,
   ): Promise<void> {
+    // MVR-410：与 isScoreReadOnly / BE rescore requireActiveExam 二次闸
+    if (isScoreReadOnly.value) {
+      showFormValidationMessage('当前任务不可智能复评（已定稿、已回收或考试已关闭）')
+      return
+    }
     rescoringGradeResultId.value = gradeResultId
     try {
       const result = await rescoreQuestionByAi({ examId, gradeResultId })
@@ -831,7 +881,8 @@ export function useMarkingTaskDetailState() {
   }
 
   function handleWholeQuestionScoreEnter(questionIndex: number): void {
-    if (submitCtx.submitting.value || !canSubmit.value) return
+    // MVR-414：整卷题号 Enter 推进/提交叠 canSubmit ∧ !isScoreReadOnly
+    if (submitCtx.submitting.value || !canSubmit.value || isScoreReadOnly.value) return
     const question = wholeQuestions.value[questionIndex]
     if (!question) return
     const questionForm = getWholeQuestionForm(question.layoutQuestionId)
@@ -848,6 +899,11 @@ export function useMarkingTaskDetailState() {
 
   function fillWholeQuestionAiScore(question: QuestionMarkingGroupQuestionResponse): void {
     if (question.aiScore == null) return
+    // MVR-414：仅改本地表单也须叠 isScoreReadOnly，禁止只读态假可写/草稿漂移
+    if (isScoreReadOnly.value) {
+      showFormValidationMessage('当前不可给分（已定稿/已回收或考试已关闭）')
+      return
+    }
     getWholeQuestionForm(question.layoutQuestionId).score = question.aiScore
     message.success(`已填入第 ${question.questionNo} 题智能建议分`)
   }
@@ -857,6 +913,13 @@ export function useMarkingTaskDetailState() {
     questionIndex: number,
   ): Promise<void> {
     if (question.aiScore == null || submitCtx.submitting.value) return
+    // MVR-413：与 canSubmit / isScoreReadOnly 二次闸；末题提交依赖 submit 内闸
+    if (isScoreReadOnly.value || !canSubmit.value) {
+      showFormValidationMessage(
+        isScoreReadOnly.value ? '当前不可给分（已定稿/已回收或考试已关闭）' : '当前任务状态不可提交给分',
+      )
+      return
+    }
     getWholeQuestionForm(question.layoutQuestionId).score = question.aiScore
     if (questionIndex < wholeQuestions.value.length - 1) {
       focusWholeQuestionScoreInput(questionIndex + 1)
@@ -870,8 +933,20 @@ export function useMarkingTaskDetailState() {
     question: QuestionMarkingGroupQuestionResponse,
     score: number,
   ): void {
+    // MVR-414：整卷快捷数字与 isScoreReadOnly 二次闸（非 UI 入口亦不可写）
+    if (isScoreReadOnly.value) return
     if (score > question.fullScore) return
     getWholeQuestionForm(question.layoutQuestionId).score = score
+  }
+
+  /**
+   * 单题快捷给分（满分/半分/零分/AI/数字键）
+   * MVR-414：与 isScoreReadOnly 同源二次闸，避免模板直写 form.score 绕过只读
+   */
+  function applyPrimaryQuickScore(score: number | undefined): void {
+    if (isScoreReadOnly.value) return
+    if (score === undefined || Number.isNaN(Number(score))) return
+    form.score = Number(score)
   }
 
   const revealOpen = ref(false)
@@ -985,7 +1060,7 @@ export function useMarkingTaskDetailState() {
     withdrawWindowLabel,
     withdrawConfirmHint,
     recentList,
-    canWithdrawEntry,
+    canWithdrawEntry: canWithdrawMarkingEntry,
     handleWithdrawLatest,
     handleWithdrawEntry,
     dismissWithdrawToast,
@@ -1055,6 +1130,7 @@ export function useMarkingTaskDetailState() {
     fillWholeQuestionAiScore,
     acceptWholeQuestionAiScore,
     applyQuickScoreToWholeQuestion,
+    applyPrimaryQuickScore,
     focusWholeQuestionPage,
     openRescoreConfirmForQuestionView,
     openRescoreConfirmForWholeQuestion,

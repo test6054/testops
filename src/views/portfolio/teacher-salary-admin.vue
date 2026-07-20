@@ -61,6 +61,13 @@ function endOperation(key: string) {
   if (operationKey.value === key) operationKey.value = ''
 }
 
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
   { title: '月份', dataIndex: 'salaryMonth', key: 'salaryMonth', width: 96 },
@@ -86,6 +93,8 @@ const columns: ColumnsType = [
     align: 'right',
   },
   { title: '来源', dataIndex: 'dataSource', key: 'dataSource', width: 100 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
 ]
 
 async function saveSalary() {
@@ -244,6 +253,25 @@ async function exportCsv() {
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
             {{ teacherLabel(record.teacherUserId) }}
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'identityLayers'">
+            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+              <UiTag
+                v-for="(layer, idx) in record.ownerIdentityLayers"
+                :key="`${record.id}-${layer.identityType}-${idx}`"
+                size="sm"
+                :tone="layer.externalIdentity ? 'orange' : 'blue'"
+              >
+                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+              </UiTag>
+            </div>
+            <span v-else>—</span>
           </template>
         </template>
       </UiDataTable>

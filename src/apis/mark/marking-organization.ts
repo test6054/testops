@@ -5,35 +5,35 @@ import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading
 import type { WorkflowBlockingItem } from '@/components/workbench/workflow-readiness/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { AllocationUnitCode } from '@/types/enums/allocation-unit-enum'
+import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
+import type { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
+import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
+import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
+import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
+import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
+import http from '@/config/axios'
 /** 阅卷组织列表默认分页大小（SessionListQuery / MarkingTaskQuery 缺省时使用） */
 import {
   ALL_ALLOCATION_UNIT_CODES,
   AllocationUnitDescription,
 } from '@/types/enums/allocation-unit-enum'
-import type { AnonymityModeCode } from '@/types/enums/anonymity-mode-enum'
-import type { AnonymousTokenPolicyCode } from '@/types/enums/anonymous-token-policy-enum'
 import {
   ALL_ANONYMOUS_TOKEN_POLICY_CODES,
   AnonymousTokenPolicyDescription,
 } from '@/types/enums/anonymous-token-policy-enum'
-import type { EffectiveStatusCode } from '@/types/enums/effective-status-enum'
-import type { MarkingAllocationModeCode } from '@/types/enums/marking-allocation-mode-enum'
-import {
-  ALL_MARKING_ALLOCATION_MODE_CODES,
-  MarkingAllocationModeDescription,
-} from '@/types/enums/marking-allocation-mode-enum'
-import type { MarkingReassignModeCode } from '@/types/enums/marking-reassign-mode-enum'
-import {
-  ALL_MARKING_REASSIGN_MODE_CODES,
-  MarkingReassignModeDescription,
-} from '@/types/enums/marking-reassign-mode-enum'
-import type { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
-import http from '@/config/axios'
 import {
   FormalSessionStatusCode,
   FormalSessionStatusDescription,
 } from '@/types/enums/formal-session-status-enum'
+import {
+  ALL_MARKING_ALLOCATION_MODE_CODES,
+  MarkingAllocationModeDescription,
+} from '@/types/enums/marking-allocation-mode-enum'
 import { MarkingOrganizationStatusCode } from '@/types/enums/marking-organization-status-enum'
+import {
+  ALL_MARKING_REASSIGN_MODE_CODES,
+  MarkingReassignModeDescription,
+} from '@/types/enums/marking-reassign-mode-enum'
 import {
   ALL_MARKING_TASK_STATUS_CODES,
   MarkingTaskStatusCode,
@@ -130,8 +130,8 @@ export const MARKING_ALLOCATION_MODE_OPTIONS: Array<{
   label: strictEnumLabel(MarkingAllocationModeDescription, value, '阅卷分配模式'),
 }))
 
-export const ALLOCATION_UNIT_OPTIONS: Array<{ value: AllocationUnitCode; label: string }> =
-  ALL_ALLOCATION_UNIT_CODES.map((value) => ({
+export const ALLOCATION_UNIT_OPTIONS: Array<{ value: AllocationUnitCode, label: string }>
+  = ALL_ALLOCATION_UNIT_CODES.map((value) => ({
     value,
     label: strictEnumLabel(AllocationUnitDescription, value, '批阅任务单元'),
   }))
@@ -403,6 +403,16 @@ export interface QuestionMarkingGroupResponse {
   reviewers: QuestionGroupReviewerResponse[]
   reviewerUserIds?: string[]
   createTime?: string
+  /**
+   * 是否可编辑题组 - 对应后端 canEditQuestionGroup
+   * （主考∧ACTIVE∧非关闭∧无试评/正评/任务运行态引用）
+   */
+  canEditQuestionGroup?: boolean
+  /**
+   * 是否可删除题组 - 对应后端 canDeleteQuestionGroup
+   * （主考∧ACTIVE∧草稿∧无运行态引用）
+   */
+  canDeleteQuestionGroup?: boolean
 }
 
 /** 阅卷组织详情响应 - 对应后端 MarkingOrganizationResponse */
@@ -437,6 +447,11 @@ export interface MarkingOrganizationResponse {
    * （主考∧ACTIVE∧无试评/正评/任务运行态引用；备注更新不依赖本字段）
    */
   canUpdateOrganizationAnonymousMode?: boolean
+  /**
+   * 是否可删除阅卷组织 - 对应后端 canDeleteOrganization
+   * （主考∧ACTIVE∧无试评/正评/任务运行态引用）
+   */
+  canDeleteOrganization?: boolean
   groups: QuestionMarkingGroupResponse[]
   /** 题组数量 - 对应后端 groupCount */
   groupCount?: number
@@ -1204,8 +1219,8 @@ export async function getMarkingScanPageDisplayBlobUrl(
     request,
   )
   const rawContentType = response.headers['content-type']
-  const contentType =
-    typeof rawContentType === 'string'
+  const contentType
+    = typeof rawContentType === 'string'
       ? rawContentType
       : Array.isArray(rawContentType)
         ? rawContentType.join(';')

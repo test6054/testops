@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {PortfolioTeacherLifecycleChangeTypeCode, PortfolioTeacherLifecycleEventVO, PortfolioTeacherLifecycleStateVO} from '@/apis/portfolio/teacher-lifecycle';
+import type {
+  PortfolioTeacherLifecycleChangeTypeCode,
+  PortfolioTeacherLifecycleEventVO,
+  PortfolioTeacherLifecycleStateVO,
+} from '@/apis/portfolio/teacher-lifecycle'
+import type { PortfolioIndustryMentorContributionVO } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioCompletenessLevelCode,
   PortfolioTeacherDetailVO,
@@ -29,12 +34,10 @@ import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
   PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
-  portfolioTeacherLifecycleApi
-  
-  
-  
+  portfolioTeacherLifecycleApi,
 } from '@/apis/portfolio/teacher-lifecycle'
 import {
+  portfolioExternalTeacherApi,
   portfolioTeacherLibraryApi,
   portfolioTeacherSalaryApi,
 } from '@/apis/portfolio/teacher-platform'
@@ -129,6 +132,7 @@ const listColumns = computed<ColumnsType>(() => {
     { title: '身份标签', key: 'identityTags', width: 160 },
     { title: '账号状态', key: 'userStatus', width: 100 },
     { title: '生命周期', key: 'lifecycleStatus', width: 110 },
+    { title: '身份层', key: 'identityLayers', width: 160 },
     { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 90 },
     { title: '主身份', key: 'primaryIdentityType', width: 120 },
     { title: '操作', key: 'actions', width: 240 },
@@ -222,6 +226,8 @@ const detail = ref<PortfolioTeacherDetailVO | null>(null)
 const salarySummary = ref('')
 const librarySummary = ref('')
 const extensionLoadError = ref(false)
+const industryMentorContribution = ref<PortfolioIndustryMentorContributionVO | null>(null)
+const industryMentorContributionError = ref('')
 const detailRequestToken = ref(0)
 const lifecycleState = ref<PortfolioTeacherLifecycleStateVO | null>(null)
 const lifecycleLoadError = ref('')
@@ -423,6 +429,28 @@ async function loadAffiliationHistory(userId: string, requestToken = detailReque
   }
 }
 
+const PORTFOLIO_EXTERNAL_IDENTITY_TYPES: ReadonlySet<PortfolioTeacherIdentityTypeCode> = new Set([
+  PortfolioTeacherIdentityTypeCode.INDUSTRY_MENTOR,
+  PortfolioTeacherIdentityTypeCode.INDUSTRY_PROFESSOR,
+  PortfolioTeacherIdentityTypeCode.ENTERPRISE_PART_TIME,
+  PortfolioTeacherIdentityTypeCode.SKILL_MASTER,
+  PortfolioTeacherIdentityTypeCode.CRAFTSMAN,
+  PortfolioTeacherIdentityTypeCode.OTHER_EXTERNAL,
+])
+
+function hasActiveExternalIdentity(
+  identities: PortfolioTeacherIdentityVO[] | undefined,
+): boolean {
+  if (!identities?.length) {
+    return false
+  }
+  return identities.some(
+    (item) =>
+      item.identityStatus === PortfolioTeacherIdentityStatusCode.ACTIVE
+      && PORTFOLIO_EXTERNAL_IDENTITY_TYPES.has(item.identityType),
+  )
+}
+
 async function openDetail(row: PortfolioTeacherSummaryVO) {
   const requestToken = detailRequestToken.value + 1
   detailRequestToken.value = requestToken
@@ -430,6 +458,8 @@ async function openDetail(row: PortfolioTeacherSummaryVO) {
   salarySummary.value = ''
   librarySummary.value = ''
   extensionLoadError.value = false
+  industryMentorContribution.value = null
+  industryMentorContributionError.value = ''
   try {
     const nextDetail = await portfolioTeacherApi.get(row.userId)
     if (detailRequestToken.value !== requestToken) {
@@ -441,12 +471,42 @@ async function openDetail(row: PortfolioTeacherSummaryVO) {
       loadTeacherExtensions(row.userId, requestToken),
       loadTeacherLifecycle(row.userId, requestToken),
       loadAffiliationHistory(row.userId, requestToken),
+      loadIndustryMentorContribution(row.userId, nextDetail.identities, requestToken),
     ])
   } catch (error) {
     if (detailRequestToken.value !== requestToken) {
       return
     }
     showUserError(error, '加载教师详情失败')
+  }
+}
+
+/** §8.42：仅在存在 ACTIVE 外部身份时按教师路径加载产业导师贡献度 */
+async function loadIndustryMentorContribution(
+  userId: string,
+  identities: PortfolioTeacherIdentityVO[] | undefined,
+  requestToken = detailRequestToken.value,
+) {
+  industryMentorContributionError.value = ''
+  industryMentorContribution.value = null
+  if (!hasActiveExternalIdentity(identities)) {
+    return
+  }
+  try {
+    const contribution = await portfolioExternalTeacherApi.contributionByTeacher({
+      teacherId: userId,
+    })
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
+    industryMentorContribution.value = contribution
+  } catch (error) {
+    if (detailRequestToken.value !== requestToken) {
+      return
+    }
+    industryMentorContribution.value = null
+    industryMentorContributionError.value
+      = error instanceof Error ? error.message : '加载产业导师贡献度失败'
   }
 }
 
@@ -579,11 +639,12 @@ async function submitIdentity() {
   }
   try {
     await portfolioTeacherApi.saveIdentity(request)
-    message.success(identityMode.value === 'edit' ? '身份已更新' : '身份已保存')
+    void message.success(identityMode.value === 'edit' ? '身份已更新' : '身份已保存')
     identityVisible.value = false
     await loadPage()
     if (detailVisible.value && detail.value?.userId === teacherUserId) {
       await reloadDetail()
+      await loadIndustryMentorContribution(teacherUserId, detail.value?.identities)
     }
   } catch (error) {
     showUserError(error, '保存身份失败')
@@ -919,12 +980,30 @@ watch(
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
-            
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else-if="!record.lifecycleStatus">—</span>
+          </template>
+          <template v-else-if="column.key === 'identityLayers'">
+            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+              <UiTag
+                v-for="(layer, i) in record.ownerIdentityLayers"
+                :key="`${record.userId}-${layer.identityType}-${i}`"
+                size="sm"
+                :tone="layer.externalIdentity ? 'orange' : 'blue'"
+              >
+                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+              </UiTag>
+            </div>
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
-            <span>{{ record.countsInCurrentFacultyStructure === true ? '是' : record.countsInCurrentFacultyStructure === false ? '否' : '—' }}</span>
+            <span>{{
+              record.countsInCurrentFacultyStructure === true
+                ? '是'
+                : record.countsInCurrentFacultyStructure === false
+                  ? '否'
+                  : '—'
+            }}</span>
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
@@ -1116,6 +1195,34 @@ watch(
           >
             新增身份
           </UiButton>
+        </div>
+        <div
+          v-if="industryMentorContribution || industryMentorContributionError"
+          class="teacher-directory__contribution"
+        >
+          <h5>§8.42 产业导师贡献度</h5>
+          <p v-if="industryMentorContributionError" class="teacher-directory__muted">
+            {{ industryMentorContributionError }}
+          </p>
+          <template v-else-if="industryMentorContribution">
+            <p>
+              综合 {{ industryMentorContribution.contributionScore }} · 聘任
+              {{ industryMentorContribution.appointmentValidityScore }} · 教学
+              {{ industryMentorContribution.teachingParticipationScore }} · 实践
+              {{ industryMentorContribution.practiceGuidanceScore }} · 成果
+              {{ industryMentorContribution.industryOutcomeScore }} · 考核
+              {{ industryMentorContribution.assessmentScore }}
+            </p>
+            <p class="teacher-directory__muted">{{ industryMentorContribution.formulaLabel }}</p>
+            <ul v-if="industryMentorContribution.evidenceNotes?.length">
+              <li
+                v-for="(note, idx) in industryMentorContribution.evidenceNotes"
+                :key="idx"
+              >
+                {{ note }}
+              </li>
+            </ul>
+          </template>
         </div>
         <UiDataTable
           pagination-mode="none"
@@ -1323,6 +1430,28 @@ watch(
   padding-left: 18px;
   color: var(--dp-text-secondary);
   font-size: 12px;
+}
+.teacher-directory__contribution {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--dp-border);
+  border-radius: 6px;
+  background: var(--dp-bg-subtle, #fafafa);
+  h5 {
+    margin: 0 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  p {
+    margin: 0 0 4px;
+    font-size: 12px;
+  }
+  ul {
+    margin: 4px 0 0;
+    padding-left: 18px;
+    color: var(--dp-text-secondary);
+    font-size: 12px;
+  }
 }
 .teacher-directory__muted {
   margin: 0;

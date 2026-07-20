@@ -156,14 +156,26 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     return undefined
   })
 
+  /**
+   * MVR-411：预览分闸。
+   * - 可写（layoutWritable）：携带本地 document 生成瞬时预览，须过保存校验。
+   * - 只读：不传 document，走 BE 已落库文档读路径（评阅读权限），不叠主考写/保存校验。
+   */
   const previewDisabled = computed(() => {
-    if (!options.examDetail()?.materialLayoutMode || !document.value) {
+    if (!options.examDetail()?.materialLayoutMode) {
       return true
     }
     if (detecting.value) {
       return true
     }
-    return saveBlockingReasons.value.length > 0
+    if (layoutWritable.value === true) {
+      if (!document.value) {
+        return true
+      }
+      return saveBlockingReasons.value.length > 0
+    }
+    // 只读：本地无 document 时仍允许点预览，由 BE load 已落库文档
+    return false
   })
 
   function goPhase(nextPhase: LayoutDesignPhaseCode): void {
@@ -445,23 +457,38 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
 
   async function handlePreview(): Promise<void> {
     const examId = options.examId()
-    if (!examId || !document.value) {
+    if (!examId) {
       return
     }
     if (detecting.value) {
       void message.warning('识别进行中，请等待完成后再预览')
       return
     }
-    if (saveBlockingReasons.value.length > 0) {
-      void message.warning(saveBlockingReasons.value[0])
-      return
+    // MVR-411：可写预览须本地 document + 保存校验；只读预览不传 document
+    const writablePreview = layoutWritable.value === true
+    if (writablePreview) {
+      if (!document.value) {
+        return
+      }
+      if (saveBlockingReasons.value.length > 0) {
+        void message.warning(saveBlockingReasons.value[0])
+        return
+      }
     }
     previewing.value = true
     try {
-      const res = await previewExamLayoutDesign({
-        examId,
-        document: { ...document.value, examId, previewPdfFileId: undefined },
-      })
+      const res = await previewExamLayoutDesign(
+        writablePreview && document.value
+          ? {
+              examId,
+              document: { ...document.value, examId, previewPdfFileId: undefined },
+            }
+          : { examId },
+      )
+      if (!res.previewPdfFileId) {
+        void message.warning('当前尚无可预览的制卷文档')
+        return
+      }
       previewPdfFileId.value = res.previewPdfFileId
       previewOpen.value = true
     } catch (error) {
@@ -549,7 +576,11 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
 
   async function handleCancelDetect(): Promise<void> {
     const examId = options.examId()
-    if (!examId || !activeDetectTaskId.value || cancellingDetect.value) {
+    // MVR-414：与 BE cancelDetect（owner+ACTIVE+assertLayoutWritable）二次闸；关考/只读漂移不发取消
+    if (!examId || !layoutWritable.value || !activeDetectTaskId.value || cancellingDetect.value) {
+      if (examId && !layoutWritable.value && activeDetectTaskId.value) {
+        message.warning(writeLockReason.value || '当前制卷只读，无法取消识别')
+      }
       return
     }
     const ok = await confirmAsync({

@@ -4,14 +4,14 @@ import type {
   PortfolioTeacherPkCompareVO,
   PortfolioTeacherRecommendPkCompareRequest,
 } from '@/apis/portfolio/teacher-platform'
-import type {
-  PortfolioCockpitSummaryVO,
+import type { PortfolioCockpitSummaryVO,
   PortfolioDigitalLiteracyVO,
   PortfolioEducatingOutcomeContributionVO,
   PortfolioGuidanceContributionVO,
   PortfolioIndustryEducationProjectContributionVO,
   PortfolioIndustryPackSceneScoreVO,
   PortfolioMasterpieceContributionVO,
+  PortfolioMultiIdentityLayerVO,
   PortfolioTeacherCompletenessGetRequest,
   PortfolioTeacherPortraitCohortCompareVO,
   PortfolioTeacherPortraitGetRequest,
@@ -25,8 +25,7 @@ import type {
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTeachingWorkloadByIdentityVO,
   PortfolioTextbookContributionVO,
-  PortfolioVirtualTeachingRoomContributionVO,
-} from '@/apis/portfolio/types'
+  PortfolioVirtualTeachingRoomContributionVO } from '@/apis/portfolio/types'
 import type { IdRequest, PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
 
@@ -241,6 +240,10 @@ export interface PortfolioAppointmentPeriodEvaluationVO {
   keyAchievements?: PortfolioAppointmentPeriodKeyAchievementVO[]
   riskItems?: PortfolioAppointmentPeriodRiskItemVO[]
   evidenceNotes?: string[]
+  /** 贡献教师多身份并列层 */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 贡献教师多身份口径说明 */
+  ownerMultiIdentityNote?: string
   lifecycleStatus?: string
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean

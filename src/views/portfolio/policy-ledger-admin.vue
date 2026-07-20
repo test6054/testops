@@ -74,6 +74,7 @@ const virtualColumns: ColumnsType = [
   { title: '活动', dataIndex: 'activityTitle', key: 'activityTitle' },
   { title: '类型', dataIndex: 'activityTypeLabel', key: 'activityTypeLabel', width: 160 },
   { title: '角色', dataIndex: 'roleLabel', key: 'roleLabel', width: 100 },
+  { title: '多身份', key: 'ownerIdentityLayers', width: 220 },
   { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   { title: '状态', key: 'reviewStatus', width: 100 },
 ]
@@ -311,7 +312,23 @@ onMounted(() => {
         row-key="id"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'lifecycleStatus'">
+          <template v-if="column.key === 'ownerIdentityLayers'">
+            <div v-if="record.ownerIdentityLayers?.length" class="policy-ledger__identities">
+              <UiTag
+                v-for="(layer, idx) in record.ownerIdentityLayers"
+                :key="layer.identityId || `${layer.identityType}-${idx}`"
+                tone="blue"
+                class="policy-ledger__identity-tag"
+              >
+                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
+              </UiTag>
+              <p v-if="record.ownerMultiIdentityNote" class="policy-ledger__identity-note">
+                {{ record.ownerMultiIdentityNote }}
+              </p>
+            </div>
+            <span v-else class="policy-ledger__muted">—</span>
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>

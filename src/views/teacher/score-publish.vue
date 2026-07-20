@@ -1014,9 +1014,13 @@ function openBulkPublishModal(): void {
 /** 调用后端全场发布入口，避免前端用当前分页候选误当全场候选。 */
 async function runBulkPublish(): Promise<void> {
   if (!selectedExamId.value || bulkRunning.value) return
-  // MVR-293：与 BE batchPublishFinalScores 评阅写门禁二次拦截
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('当前账号无本场评阅写权限，无法全场发布成绩')
+  // MVR-419：与 canBulkPublish / openBulkPublishModal 同源二次闸（写权∧可发数∧就绪∧无硬拦）
+  if (canBulkPublish.value !== true) {
+    message.warning(
+      canManageReviewerWrites.value !== true
+        ? '当前账号无本场评阅写权限，无法全场发布成绩'
+        : '当前考试没有可发布的最终成绩或不满足发布条件',
+    )
     return
   }
   const canContinue = await ensureScorePublishPreconditions()
@@ -1137,8 +1141,13 @@ function handlePublishRowAction(key: string, record: ExamScoreSummaryItemRespons
 }
 
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员或主考可发布最终成绩')
+  // MVR-419：与 canPublish(record) / 行内 disabled 同源二次闸
+  if (!canPublish(record)) {
+    message.warning(
+      canManageReviewerWrites.value !== true
+        ? '仅本场阅卷组织成员或主考可发布最终成绩'
+        : '当前答卷不可发布（状态不允许或场级硬拦未解除）',
+    )
     return
   }
   if (publishingPaperId.value) {
@@ -1182,8 +1191,13 @@ const withdrawModalTitle = computed(() =>
 )
 
 function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员或主考可撤回最终成绩')
+  // MVR-419：与 canWithdraw(record) / 行内 disabled 同源二次闸
+  if (!canWithdraw(record)) {
+    message.warning(
+      canManageReviewerWrites.value !== true
+        ? '仅本场阅卷组织成员或主考可撤回最终成绩'
+        : '当前答卷不可撤回（状态不允许）',
+    )
     return
   }
   withdrawCandidate.value = record
@@ -1192,8 +1206,13 @@ function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
 }
 
 async function handleWithdraw(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员或主考可撤回最终成绩')
+  // MVR-419：与 canWithdraw / openWithdrawModal 同源二次闸
+  if (!withdrawCandidate.value || !canWithdraw(withdrawCandidate.value)) {
+    message.warning(
+      canManageReviewerWrites.value !== true
+        ? '仅本场阅卷组织成员或主考可撤回最终成绩'
+        : '当前答卷不可撤回（状态不允许）',
+    )
     return
   }
   if (withdrawing.value) {

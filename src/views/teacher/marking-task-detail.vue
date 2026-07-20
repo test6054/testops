@@ -25,7 +25,6 @@ const {
   examConfidentialLabel,
   examWatermarkLines,
   canManageOwnerIdentityReveal,
-  isReadOnly,
   isScoreReadOnly,
   taskRecycledBlocked,
   sessionPausedAlert,
@@ -103,6 +102,7 @@ const {
   fillWholeQuestionAiScore,
   acceptWholeQuestionAiScore,
   applyQuickScoreToWholeQuestion,
+  applyPrimaryQuickScore,
   focusWholeQuestionPage,
   openRescoreConfirmForQuestionView,
   openRescoreConfirmForWholeQuestion,
@@ -238,7 +238,7 @@ const {
           :image-errors="wholePageImageErrors"
           :page-annotations="wholePageAnnotationForms"
           :show-page-annotations="isWholePaperTask"
-          :read-only="isReadOnly"
+          :read-only="isScoreReadOnly"
           :quality-label="scanPageQualityLabel"
           :quality-tone="scanPageQualityTone"
           :confidential="isExamConfidential"
@@ -249,6 +249,8 @@ const {
           @viewport-ready="handleGalleryViewportReady"
           @update:page-annotation="
             (pageId, value) => {
+              // MVR-415：页批注与 isScoreReadOnly 同源，禁止关考/回收后假可写
+              if (isScoreReadOnly) return
               wholePageAnnotationForms[pageId] = value
             }
           "
@@ -301,11 +303,11 @@ const {
           :experience-assist-match-mode="lastExperienceAssistMeta?.matchMode"
           @submit="submit"
           @accept-ai-submit="acceptAiScoreAndSubmit"
-          @quick-full-score="form.score = questionView?.fullScore"
-          @quick-half-score="form.score = calcHalfScore(questionView?.fullScore)"
-          @quick-zero-score="form.score = 0"
-          @quick-ai-score="form.score = questionView?.aiScore ?? undefined"
-          @quick-digit-score="form.score = $event"
+          @quick-full-score="applyPrimaryQuickScore(questionView?.fullScore)"
+          @quick-half-score="applyPrimaryQuickScore(calcHalfScore(questionView?.fullScore))"
+          @quick-zero-score="applyPrimaryQuickScore(0)"
+          @quick-ai-score="applyPrimaryQuickScore(questionView?.aiScore ?? undefined)"
+          @quick-digit-score="applyPrimaryQuickScore($event)"
           @whole-quick-score="applyQuickScoreToWholeQuestion"
           @rescore-question="openRescoreConfirmForQuestionView"
           @rescore-whole="openRescoreConfirmForWholeQuestion"

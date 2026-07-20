@@ -447,9 +447,13 @@ async function handleBatchOcr(): Promise<void> {
 }
 
 function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
-  // MVR-312：单条 OCR 触发二次拦截
-  if (props.canMaintainMaterial !== true) {
-    message.warning('当前账号无维护材料识别权限')
+  // MVR-421：与 canTriggerMaterialOcr 同源二次闸（维护权∧fileId∧PENDING/FAILED/空态）
+  if (!canTriggerMaterialOcr(material)) {
+    message.warning(
+      props.canMaintainMaterial !== true
+        ? '当前账号无维护材料识别权限'
+        : '当前材料不可触发文字识别（无文件或识别状态不允许）',
+    )
     return
   }
   if (triggeringMaterialIds.has(material.materialId)) return

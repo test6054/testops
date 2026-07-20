@@ -1087,9 +1087,14 @@ function handleSupervisionVolumeRowAction(key: string, volumeId: string) {
 }
 
 async function submitMarkProblem() {
-  // MVR-342：与 canViewSupervision / BE requireSupervisionInspector 二次拦截
+  // MVR-421：与 canMarkSupervisionProblemOnVolume / openMarkProblem 同源二次闸
   if (canViewSupervision.value !== true) {
     message.warning('当前账号无督导标记问题权限')
+    return
+  }
+  const target = volumes.value.find((item) => item.volumeId === markProblemVolumeId.value)
+  if (!target || !canMarkSupervisionProblemOnVolume(target)) {
+    message.warning('当前卷状态不可标记督导问题（需收材/待验收/已入库，非移交待验收，且无开放整改）')
     return
   }
   if (markProblemSubmitting.value) return

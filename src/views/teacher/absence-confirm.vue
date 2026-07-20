@@ -999,8 +999,14 @@ function openRevokeModal(record: AbsenceRecordResponse): void {
 
 async function handleRevoke(): Promise<void> {
   if (!selectedExamId.value || revoking.value) return
-  if (!canManageReviewerWrites.value) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可撤销缺考')
+  // MVR-420：与 canRevokeAbsenceRecord / openRevokeModal 同源二次闸（行级 BE canRevokeAbsence）
+  const target = records.value.find((item) => item.studentUserId === revokeForm.studentUserId)
+  if (!target || !canRevokeAbsenceRecord(target)) {
+    message.warning(
+      !canManageReviewerWrites.value
+        ? '仅本场阅卷组织成员、主考或管理员可撤销缺考'
+        : (target?.revokeBlockedReason || '当前缺考记录不可撤销（状态漂移或须先撤回成绩）'),
+    )
     return
   }
   const reason = revokeForm.revokeReason.trim()

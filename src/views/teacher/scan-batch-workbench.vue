@@ -504,8 +504,13 @@ async function retryBatchPageRegister(batch: ExamScannerBatchResponse): Promise<
   if (!selectedExamId.value || !batch.scanBatchId) {
     return
   }
-  if (!canManageOwnerBatchActions.value) {
-    message.warning('仅考试主考可重试扫描页登记')
+  // MVR-421：与 canRetryBatchPageRegister / 行内显隐同源二次闸（主考写∧可恢复/待重试登记态）
+  if (!canRetryBatchPageRegister(batch)) {
+    message.warning(
+      canManageOwnerBatchActions.value
+        ? '当前批次不可重试扫描页登记（状态不允许）'
+        : '仅考试主考可重试扫描页登记',
+    )
     return
   }
   if (pageRegisterRetryingBatchId.value) {

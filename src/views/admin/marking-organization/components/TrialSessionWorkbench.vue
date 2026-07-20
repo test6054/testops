@@ -90,17 +90,17 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TrialSessionResponse } from '@/apis/mark/marking-organization'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
+import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   deleteTrialSession,
   startTrialSession,
   TRIAL_SESSION_STATUS_TONE,
   TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
-import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -111,11 +111,11 @@ import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import WorkflowPrerequisiteEmpty from '@/components/workbench/workflow-readiness/WorkflowPrerequisiteEmpty.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
 import {
   ALL_TRIAL_SESSION_STATUS_CODES,
   TrialSessionStatusCode,
 } from '@/types/enums/trial-session-status-enum'
-import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -150,10 +150,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refresh: []
-  search: [model: Record<string, unknown>]
-  reset: []
-  'page-change': [page: { current: number; pageSize: number }]
+  "refresh": []
+  "search": [model: Record<string, unknown>]
+  "reset": []
+  'page-change': [page: { current: number, pageSize: number }]
   'open-lifecycle': [action: 'closeTrial', sessionId: string]
 }>()
 
@@ -228,9 +228,9 @@ const filterFields = computed((): FilterField[] => [
 
 const hasActiveFilter = computed(
   () =>
-    Boolean(props.filterModel.keyword.trim()) ||
-    Boolean(props.filterModel.status) ||
-    Boolean(props.filterModel.groupId),
+    Boolean(props.filterModel.keyword.trim())
+    || Boolean(props.filterModel.status)
+    || Boolean(props.filterModel.groupId),
 )
 
 const sessionTableEmptyDescription = computed(() => {
@@ -273,7 +273,7 @@ function emitReset(): void {
   emit('reset')
 }
 
-function emitPageChange(page: { current: number; pageSize: number }): void {
+function emitPageChange(page: { current: number, pageSize: number }): void {
   emit('page-change', page)
 }
 
@@ -284,34 +284,34 @@ function isGroupStartable(groupId: string | undefined): boolean {
   const option = props.groupOptions.find((item) => item.value === groupId)
   // MVR-402：仅 ACTIVE/CONFIGURED 可启动；缺状态默认拒绝
   return (
-    option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE ||
-    option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED
+    option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
+    || option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED
   )
 }
 
 function canStart(record: TrialSessionResponse): boolean {
   return (
-    props.canManage === true &&
-    record.sessionStatus === TrialSessionStatusCode.TRIAL_CREATED &&
-    isGroupStartable(record.groupId)
+    props.canManage === true
+    && record.sessionStatus === TrialSessionStatusCode.TRIAL_CREATED
+    && isGroupStartable(record.groupId)
   )
 }
 
 function canCalibrate(status: TrialSessionStatusCode): boolean {
   return (
-    props.canManage === true &&
-    (status === TrialSessionStatusCode.TRIAL_ASSIGNED ||
-      status === TrialSessionStatusCode.TRIAL_SUBMITTED)
+    props.canManage === true
+    && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
+      || status === TrialSessionStatusCode.TRIAL_SUBMITTED)
   )
 }
 
 function canClose(status: TrialSessionStatusCode): boolean {
   // MVR-398：关闭试评认 canCloseMarkingSessions（主考，不叠 ACTIVE）
   return (
-    props.canCloseMarkingSessions === true &&
-    (status === TrialSessionStatusCode.TRIAL_ASSIGNED ||
-      status === TrialSessionStatusCode.TRIAL_SUBMITTED ||
-      status === TrialSessionStatusCode.CALIBRATED)
+    props.canCloseMarkingSessions === true
+    && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
+      || status === TrialSessionStatusCode.TRIAL_SUBMITTED
+      || status === TrialSessionStatusCode.CALIBRATED)
   )
 }
 
@@ -360,9 +360,13 @@ async function submitStart(record: TrialSessionResponse): Promise<void> {
   if (!guardManageAction()) {
     return
   }
-  // MVR-402：启动二次闸，禁 CLOSED/DRAFT 题组（缺状态默认拒绝）
-  if (!isGroupStartable(record.groupId)) {
-    showFormValidationMessage('题组已关闭或为草稿状态，不能启动试评会话')
+  // MVR-412：与 canStart 同源二次闸（主考∧ACTIVE∧TRIAL_CREATED∧题组 ACTIVE/CONFIGURED）
+  if (!canStart(record)) {
+    showFormValidationMessage(
+      isGroupStartable(record.groupId)
+        ? '仅草稿试评会话可启动'
+        : '题组已关闭或为草稿状态，不能启动试评会话',
+    )
     return
   }
   if (startingId.value || deletingId.value) {
@@ -380,16 +384,21 @@ async function submitStart(record: TrialSessionResponse): Promise<void> {
   }
 }
 
-async function submitDelete(sessionId: string): Promise<void> {
+async function submitDelete(record: TrialSessionResponse): Promise<void> {
   if (!guardManageAction()) {
+    return
+  }
+  // MVR-408：删除二次闸，与 canDelete / BE TRIAL_CREATED 同源
+  if (!canDelete(record.sessionStatus)) {
+    showFormValidationMessage('仅草稿试评会话可删除')
     return
   }
   if (deletingId.value || startingId.value) {
     return
   }
-  deletingId.value = sessionId
+  deletingId.value = record.id
   try {
-    await deleteTrialSession(sessionId)
+    await deleteTrialSession(record.id)
     message.success('试评草稿会话已删除')
     emit('refresh')
   } catch (error) {
@@ -405,7 +414,9 @@ async function handleSessionRowAction(key: string, record: TrialSessionResponse)
     return
   }
   if (key === 'calibrate') {
-    if (!guardManageAction()) {
+    // MVR-408：校准打开闸与 canCalibrate 同源
+    if (!canCalibrate(record.sessionStatus)) {
+      showFormValidationMessage('当前试评会话状态不可提交校准')
       return
     }
     calibrateTarget.value = record
@@ -422,8 +433,9 @@ async function handleSessionRowAction(key: string, record: TrialSessionResponse)
     return
   }
   if (key === 'delete') {
-    // MVR-397：删除确认前叠主考闸
-    if (!guardManageAction()) {
+    // MVR-397/408：删除确认前叠 canDelete（主考∧ACTIVE∧TRIAL_CREATED）
+    if (!canDelete(record.sessionStatus)) {
+      showFormValidationMessage('仅草稿试评会话可删除')
       return
     }
     if (
@@ -435,7 +447,7 @@ async function handleSessionRowAction(key: string, record: TrialSessionResponse)
     ) {
       return
     }
-    await submitDelete(record.id)
+    await submitDelete(record)
   }
 }
 </script>
