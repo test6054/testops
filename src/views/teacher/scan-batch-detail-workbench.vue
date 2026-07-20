@@ -1,12 +1,7 @@
 <template>
   <StageWorkbenchShell class="scan-batch-detail-workbench">
     <template v-if="selectedExamId && scanBatchId" #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="扫描批次明细"
-        :subtitle="contextSubtitle"
-      >
+      <ContextBar layout="workbench" show-title title="扫描批次明细" :subtitle="contextSubtitle">
         <template #status>
           <UiTag v-if="workbench?.batch" :tone="batchStatusTone(workbench.batch)" size="sm">
             {{ batchStatusLabel(workbench.batch) }}
@@ -45,12 +40,7 @@
               )
             }}
           </UiButton>
-          <UiButton
-            v-if="!scanBatchPrimaryAction"
-            size="sm"
-            variant="outline"
-            @click="goBack"
-          >
+          <UiButton v-if="!scanBatchPrimaryAction" size="sm" variant="outline" @click="goBack">
             返回监控台
           </UiButton>
           <UiDropdownAction
@@ -68,20 +58,10 @@
       <SignalBand compact variant="panel" :metrics="workbenchSignalMetrics" />
     </template>
 
-    <ExamSelectGateStrip
-      v-if="!selectedExamId"
-      body="请先选择考试后再查看扫描批次明细"
-    />
-    <UiAlertStrip
-      v-else-if="!scanBatchId"
-      tone="info"
-      size="sm"
-      dense
-      inline
-      :show-icon="false"
-    >
+    <ExamSelectGateStrip v-if="!selectedExamId" body="请先选择考试后再查看扫描批次明细" />
+    <UiAlertStrip v-else-if="!scanBatchId" tone="info" size="sm" dense inline :show-icon="false">
       <template #default>
-        <span style="display:inline-flex;align-items:center;gap:8px">
+        <span style="display: inline-flex; align-items: center; gap: 8px">
           <UiTag tone="blue" size="sm">未选择批次</UiTag>
           <span>缺少扫描批次上下文，请从扫描监控或批次列表进入</span>
         </span>
@@ -172,6 +152,7 @@
       >
         <aside v-if="!isNarrowViewport" class="scan-batch-detail-workbench__rail">
           <ScanBatchPageRail
+            layout="strip"
             :page-items="pageItems"
             :selected-page-key="selectedPageKey"
             :loading="pagesLoading"
@@ -189,52 +170,54 @@
           </ScanBatchPageRail>
         </aside>
 
-        <section class="scan-batch-detail-workbench__stage">
-          <UiSectionTabs
-            v-if="showPreviewTabs"
-            v-model="previewTab"
-            :items="previewTabItems"
-            compact
-            class="scan-batch-detail-workbench__preview-tabs"
-          />
-          <UiSkeletonState v-if="previewLoading" variant="card" compact />
-          <ScanImageStage
-            v-else-if="previewImageUrl"
-            :src="previewImageUrl"
-            :caption="previewCaption"
-            :confidential="isExamConfidential"
-            :exam-label="examConfidentialLabel"
-            :watermark-lines="watermarkLines"
-            :min-height="480"
-            empty-text="预览加载失败"
-          />
-          <UiEmpty
-            size="sm"
-            v-else-if="previewLoadFailed"
-            description="影像预览加载失败"
-            class="scan-batch-detail-workbench__preview-empty"
-          />
-          <UiEmpty
-            size="sm"
-            v-else
-            :description="previewEmptyDescription"
-            class="scan-batch-detail-workbench__preview-empty"
-          />
-        </section>
+        <div class="scan-batch-detail-workbench__workspace">
+          <section class="scan-batch-detail-workbench__stage">
+            <UiSectionTabs
+              v-if="showPreviewTabs"
+              v-model="previewTab"
+              :items="previewTabItems"
+              compact
+              class="scan-batch-detail-workbench__preview-tabs"
+            />
+            <UiSkeletonState v-if="previewLoading" variant="card" compact />
+            <ScanImageStage
+              v-else-if="previewImageUrl"
+              :src="previewImageUrl"
+              :caption="previewCaption"
+              :confidential="isExamConfidential"
+              :exam-label="examConfidentialLabel"
+              :watermark-lines="watermarkLines"
+              :min-height="520"
+              empty-text="预览加载失败"
+            />
+            <UiEmpty
+              size="sm"
+              v-else-if="previewLoadFailed"
+              description="影像预览加载失败"
+              class="scan-batch-detail-workbench__preview-empty"
+            />
+            <UiEmpty
+              size="sm"
+              v-else
+              :description="previewEmptyDescription"
+              class="scan-batch-detail-workbench__preview-empty"
+            />
+          </section>
 
-        <aside v-if="!isNarrowViewport" class="scan-batch-detail-workbench__inspector">
-          <ScanBatchPageInspectorPanel
-            :inspector="pageInspector"
-            :loading="inspectorLoading"
-            :exam-id="selectedExamId"
-            :scan-batch-id="scanBatchId"
-            :attribution-items="workbench?.attributionItems ?? []"
-            :preferred-target-paper-instance-id="preferredTargetPaperInstanceId"
-            :can-manage-owner-writes="canManageOwnerBatchActions"
-            @bound="handleInspectorBound"
-            @reassigned="handleInspectorReassigned"
-          />
-        </aside>
+          <aside v-if="!isNarrowViewport" class="scan-batch-detail-workbench__inspector">
+            <ScanBatchPageInspectorPanel
+              :inspector="pageInspector"
+              :loading="inspectorLoading"
+              :exam-id="selectedExamId"
+              :scan-batch-id="scanBatchId"
+              :attribution-items="workbench?.attributionItems ?? []"
+              :preferred-target-paper-instance-id="preferredTargetPaperInstanceId"
+              :can-manage-owner-writes="canManageOwnerBatchActions"
+              @bound="handleInspectorBound"
+              @reassigned="handleInspectorReassigned"
+            />
+          </aside>
+        </div>
       </div>
     </UiSpin>
 
@@ -323,13 +306,6 @@ import type {
   ScanBatchOrderAuditIssueResponse,
   ScanBatchOrderAuditResponse,
 } from '@/apis/mark/exam-scan'
-import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { useWindowSize } from '@vueuse/core'
-import message from 'ant-design-vue/es/message'
-import { computed, h, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import {
   discardScanBatchByTeacher,
   dismissScanBatchCollateAttention,
@@ -348,6 +324,13 @@ import {
   ScanBatchWorkbenchTopActionDescription,
   sealScanBatchByTeacher,
 } from '@/apis/mark/exam-scan'
+import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { useWindowSize } from '@vueuse/core'
+import message from 'ant-design-vue/es/message'
+import { computed, h, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import ScanBatchDiscardDialog from '@/components/mark/ScanBatchDiscardDialog.vue'
 import ScanBatchPageInspectorPanel from '@/components/mark/ScanBatchPageInspectorPanel.vue'
 import ScanBatchPageRail from '@/components/mark/ScanBatchPageRail.vue'
@@ -394,8 +377,8 @@ const route = useRoute()
 const router = useRouter()
 const { selectedExamId } = useWorkspaceExamId()
 const { width: viewportWidth } = useWindowSize()
-const { isExamConfidential, examConfidentialLabel, watermarkLines }
-  = useWorkspaceConfidentialContext()
+const { isExamConfidential, examConfidentialLabel, watermarkLines } =
+  useWorkspaceConfidentialContext()
 
 const pageStatusFilter = ref<ScanBatchWorkbenchPageStatusFilterCode>(
   ScanBatchWorkbenchPageStatusFilterCode.ALL,
@@ -456,8 +439,8 @@ const pageRailEmptyDescription = computed(() => {
     return '原件待自动登记与身份识别'
   }
   if (
-    pageStatusFilter.value !== ScanBatchWorkbenchPageStatusFilterCode.ALL
-    || pageKeyword.value.trim()
+    pageStatusFilter.value !== ScanBatchWorkbenchPageStatusFilterCode.ALL ||
+    pageKeyword.value.trim()
   ) {
     return '当前筛选条件下无匹配页轨'
   }
@@ -508,8 +491,8 @@ const scanBatchPrimaryAction = computed((): ScanBatchWorkbenchTopActionCode | nu
   if (!actions.length) return null
   const preferred = actions.find(
     (action) =>
-      action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER
-      || action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES,
+      action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER ||
+      action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES,
   )
   return preferred || actions[0] || null
 })
@@ -528,8 +511,8 @@ const scanBatchMoreActionItems = computed(() => {
       key: `top-${action}`,
       label: strictEnumLabel(ScanBatchWorkbenchTopActionDescription, action, '扫描批次顶栏动作'),
       danger:
-        action === ScanBatchWorkbenchTopActionCode.DISCARD
-        || action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES,
+        action === ScanBatchWorkbenchTopActionCode.DISCARD ||
+        action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES,
     }))
   if (canViewOriginalImage.value) {
     items.push({ key: 'preview-original', label: '查看原始影像', danger: false })
@@ -543,15 +526,15 @@ const scanBatchMoreActionItems = computed(() => {
 
 function isScanBatchPrimaryVariant(action: ScanBatchWorkbenchTopActionCode): boolean {
   return (
-    action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER
-    || action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES
+    action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER ||
+    action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES
   )
 }
 
 function isScanBatchDangerAction(action: ScanBatchWorkbenchTopActionCode): boolean {
   return (
-    action === ScanBatchWorkbenchTopActionCode.DISCARD
-    || action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES
+    action === ScanBatchWorkbenchTopActionCode.DISCARD ||
+    action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES
   )
 }
 
@@ -569,8 +552,8 @@ function onScanBatchMoreAction(key: string): void {
     void handleTopAction(action)
   }
 }
-const canViewOriginalImage = computed(() =>
-  workbench.value?.canViewOriginalImage === true && Boolean(selectedPage.value?.pageId),
+const canViewOriginalImage = computed(
+  () => workbench.value?.canViewOriginalImage === true && Boolean(selectedPage.value?.pageId),
 )
 
 /** MVR-262/355：主考写动作能力位（与 BE canManageOwnerBatchActions = 主考∧ACTIVE 对齐） */
@@ -811,9 +794,9 @@ const selectedPage = computed(() => {
 
 const showPreviewTabs = computed(() =>
   Boolean(
-    canViewOriginalImage.value
-    && selectedPage.value?.identitySliceFileId
-    && selectedPage.value.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
+    canViewOriginalImage.value &&
+    selectedPage.value?.identitySliceFileId &&
+    selectedPage.value.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
   ),
 )
 
@@ -850,6 +833,9 @@ const previewEmptyDescription = computed(() => {
     return page.diagnostic.trim()
   }
   if (!page.previewUrl) {
+    if (canViewOriginalImage.value) {
+      return '匿名展示影像尚未生成，正在尝试加载原始影像…'
+    }
     return '匿名展示影像尚未生成，请使用顶栏「补跑脱敏」或检查制卷身份填涂区配置。'
   }
   return '请选择页轨条目预览'
@@ -899,8 +885,8 @@ function resolvePageKeyAfterRefresh(
   if (pendingFileOrder !== null) {
     const registered = items.find(
       (item) =>
-        item.fileOrder === pendingFileOrder
-        && item.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
+        item.fileOrder === pendingFileOrder &&
+        item.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
     )
     if (registered) {
       return registered.pageKey
@@ -952,8 +938,8 @@ async function loadWorkbench(): Promise<void> {
       scanBatchId: scanBatchId.value,
     })
     pageItems.value = workbench.value.initialPageItems ?? []
-    selectedPageKey.value
-      = preservedPageKey || workbench.value.initialPageKey || pageItems.value[0]?.pageKey || ''
+    selectedPageKey.value =
+      preservedPageKey || workbench.value.initialPageKey || pageItems.value[0]?.pageKey || ''
     pagesNextCursor.value = undefined
     await refreshPagesWindow()
 
@@ -1037,10 +1023,10 @@ async function refreshPagesWindow(): Promise<void> {
 
 async function loadMorePages(): Promise<void> {
   if (
-    !selectedExamId.value
-    || !scanBatchId.value
-    || !pagesNextCursor.value
-    || pagesLoadingMore.value
+    !selectedExamId.value ||
+    !scanBatchId.value ||
+    !pagesNextCursor.value ||
+    pagesLoadingMore.value
   ) {
     return
   }
@@ -1115,15 +1101,35 @@ async function loadPreview(): Promise<void> {
   if (!page) {
     return
   }
-  const previewPath
-    = previewTab.value === 'identity' ? page.identitySlicePreviewUrl : page.previewUrl
-  if (!previewPath) {
-    previewLoadFailed.value = true
+  if (previewTab.value === 'identity') {
+    if (!page.identitySlicePreviewUrl) {
+      return
+    }
+    previewLoading.value = true
+    try {
+      previewImageUrl.value = await fetchStoragePreviewBlobUrl(page.identitySlicePreviewUrl)
+    } catch (error) {
+      previewLoadFailed.value = true
+      showUserError(error, '身份切片加载失败')
+    } finally {
+      previewLoading.value = false
+    }
+    return
+  }
+  if (!page.previewUrl) {
+    // 脱敏影像未生成时，主考走原件看片（与顶栏「查看原始影像」同权）；非主考只展示诊断空态
+    if (
+      page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING &&
+      canViewOriginalImage.value &&
+      page.pageId
+    ) {
+      await loadOriginalPreview()
+    }
     return
   }
   previewLoading.value = true
   try {
-    previewImageUrl.value = await fetchStoragePreviewBlobUrl(previewPath)
+    previewImageUrl.value = await fetchStoragePreviewBlobUrl(page.previewUrl)
   } catch (error) {
     previewLoadFailed.value = true
     showUserError(error, '影像预览加载失败')
@@ -1170,7 +1176,7 @@ function locateAttributionItem(item: ExamScannerBatchAttributionItemVO): void {
   ensureSelectedPageInRail(pageKey)
   void loadInspector(pageKey)
   document
-    .querySelector('.scan-batch-detail-workbench__layout')
+    .querySelector('.scan-batch-detail-workbench__workspace')
     ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
@@ -1507,7 +1513,6 @@ onUnmounted(() => {
 }
 
 .scan-batch-detail-workbench__rail-summary {
-  padding: 8px 12px 0;
   color: var(--dp-text-tertiary);
   font-size: 12px;
 }
@@ -1519,27 +1524,42 @@ onUnmounted(() => {
 }
 
 .scan-batch-detail-workbench__layout {
-  display: grid;
-  grid-template-columns: minmax(240px, 24%) minmax(0, 52%) minmax(240px, 24%);
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  min-height: calc(100vh - 180px);
+  min-height: calc(100vh - 220px);
 
   &--narrow {
-    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
   }
 }
 
-.scan-batch-detail-workbench__rail,
-.scan-batch-detail-workbench__inspector {
-  min-height: 0;
+.scan-batch-detail-workbench__rail {
+  flex-shrink: 0;
   border: 1px solid var(--dp-border-subtle);
   border-radius: 8px;
   background: var(--dp-bg-container);
 }
 
+.scan-batch-detail-workbench__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.scan-batch-detail-workbench__layout--narrow .scan-batch-detail-workbench__workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .scan-batch-detail-workbench__inspector {
+  min-height: 0;
   padding: 12px;
   overflow-y: auto;
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: 8px;
+  background: var(--dp-bg-container);
 }
 
 .scan-batch-detail-workbench__stage {
@@ -1547,7 +1567,11 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  min-height: 0;
+  min-height: 520px;
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: 8px;
+  background: var(--dp-bg-container);
+  padding: 8px;
 }
 
 .scan-batch-detail-workbench__preview-tabs {
@@ -1555,8 +1579,8 @@ onUnmounted(() => {
 }
 
 .scan-batch-detail-workbench__preview-empty {
-  /* 空态不占满预览舞台；有影像时由 viewer 自行撑开 */
-  min-height: 96px;
+  flex: 1;
+  min-height: 240px;
   display: flex;
   align-items: center;
   justify-content: center;
