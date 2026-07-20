@@ -28,6 +28,10 @@ import type {
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PortfolioArchiveScoreRuleTypeCode } from '@/types/enums/portfolio-archive-score-rule-type-enum'
+import {
+  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
+  PortfolioArchiveScoreRuleTypeDescription,
+} from '@/types/enums/portfolio-archive-score-rule-type-enum'
 import type { PortfolioImportQualityGradeCode } from '@/types/enums/portfolio-import-quality-grade-enum'
 import type { PortfolioPlanningSyncConflictStrategyCode } from '@/types/enums/portfolio-planning-sync-conflict-strategy-enum'
 import type { PortfolioPlanningSyncOrgScopeCode } from '@/types/enums/portfolio-planning-sync-org-scope-enum'
@@ -35,10 +39,6 @@ import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfoli
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import {
-  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
-  PortfolioArchiveScoreRuleTypeDescription,
-} from '@/types/enums/portfolio-archive-score-rule-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const portfolioArchiveBagApi = {
@@ -180,9 +180,15 @@ export const portfolioDualTeacherApi = {
       data,
     ),
   contributionGet: (data: { id: string }) =>
-    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/get', data),
+    http.post<PortfolioIndustryMentorContributionVO>(
+      '/api/portfolio/external-teacher/contribution/get',
+      data,
+    ),
   contributionByTeacher: (data: { teacherId?: string }) =>
-    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/by-teacher', data),
+    http.post<PortfolioIndustryMentorContributionVO>(
+      '/api/portfolio/external-teacher/contribution/by-teacher',
+      data,
+    ),
   get: (data: { id: string }) =>
     http.post<PortfolioDualTeacherApplicationVO>('/api/portfolio/dual-teacher/get', data),
   saveDraft: (data: PortfolioDualTeacherSaveDraftRequest) =>
@@ -358,9 +364,15 @@ export const portfolioExternalTeacherApi = {
   stats: (data: PortfolioExternalTeacherStatsRequest = {}) =>
     http.post<PortfolioExternalTeacherStatsVO>('/api/portfolio/external-teacher/stats', data),
   contributionGet: (data: { id: string }) =>
-    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/get', data),
+    http.post<PortfolioIndustryMentorContributionVO>(
+      '/api/portfolio/external-teacher/contribution/get',
+      data,
+    ),
   contributionByTeacher: (data: { teacherId?: string }) =>
-    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/by-teacher', data),
+    http.post<PortfolioIndustryMentorContributionVO>(
+      '/api/portfolio/external-teacher/contribution/by-teacher',
+      data,
+    ),
   get: (data: { id: string }) =>
     http.post<PortfolioExternalTeacherVO>('/api/portfolio/external-teacher/get', data),
   save: (data: PortfolioExternalTeacherSaveRequest) =>
@@ -970,7 +982,6 @@ export interface PortfolioTeacherLibraryBorrowVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
-
 }
 
 export interface PortfolioTeacherLibraryBorrowStatsVO {
@@ -1085,7 +1096,6 @@ export interface PortfolioTeacherRecommendExplainCandidateItemVO {
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
 }
-
 
 export interface PortfolioTeacherRecommendExplainStatusVO {
   runId: string
@@ -1254,9 +1264,15 @@ export const portfolioPortraitTemplateApi = {
   list: (data: PortfolioPortraitTemplateListRequest = {}) =>
     http.post<PortfolioPortraitTemplateVO[]>('/api/portfolio/portrait-template/list', data),
   contributionGet: (data: { id: string }) =>
-    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/get', data),
+    http.post<PortfolioIndustryMentorContributionVO>(
+      '/api/portfolio/external-teacher/contribution/get',
+      data,
+    ),
   contributionByTeacher: (data: { teacherId?: string }) =>
-    http.post<PortfolioIndustryMentorContributionVO>('/api/portfolio/external-teacher/contribution/by-teacher', data),
+    http.post<PortfolioIndustryMentorContributionVO>(
+      '/api/portfolio/external-teacher/contribution/by-teacher',
+      data,
+    ),
   get: (data: { id: string }) =>
     http.post<PortfolioPortraitTemplateVO>('/api/portfolio/portrait-template/get', data),
   save: (data: PortfolioPortraitTemplateSaveRequest) =>
@@ -1293,7 +1309,6 @@ export interface PortfolioEvaluationSubjectTeacherOptionVO {
   /** 评价参评 hold */
   evaluationHeld?: boolean
 }
-
 
 export interface PortfolioEvaluationIndicatorOptionVO {
   indicatorCode: string
@@ -1418,6 +1433,8 @@ export interface PortfolioEvaluationEntrySummaryItemVO {
 export interface PortfolioEvaluationEntrySummaryVO {
   evaluationTaskId: string
   evaluationMode: PortfolioEvaluationModeCode
+  /** 业务场景（§8.48 多周期隔离） */
+  sceneCode?: PortfolioEvaluationSceneCode
   entryCount: number
   averageScore: number
   rows: PortfolioEvaluationEntrySummaryItemVO[]
@@ -1427,6 +1444,8 @@ export interface PortfolioEvaluationComprehensiveTaskItemVO {
   evaluationTaskId: string
   taskName: string
   evaluationMode: PortfolioEvaluationModeCode
+  /** 业务场景（§8.48 多周期隔离） */
+  sceneCode?: PortfolioEvaluationSceneCode
   entryCount: number
   averageScore: number
 }

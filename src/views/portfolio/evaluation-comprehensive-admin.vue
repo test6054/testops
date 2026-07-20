@@ -6,19 +6,20 @@ import type {
   PortfolioEvaluationComprehensiveTeacherRowVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
+import {
+  portfolioEvaluationEntryApi,
+  portfolioEvaluationTaskApi,
+} from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
   PortfolioEvaluationModeDescription,
+  PortfolioEvaluationSceneDescription,
 } from '@/apis/portfolio/enums'
-import {
-  portfolioEvaluationEntryApi,
-  portfolioEvaluationTaskApi,
-} from '@/apis/portfolio/teacher-platform'
-import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -92,12 +93,15 @@ const hasReadableTasks = computed(() => tasks.value.length > 0)
 
 const taskColumns: ColumnsType<PortfolioEvaluationComprehensiveTaskItemVO> = [
   { title: '任务', dataIndex: 'taskName', key: 'taskName' },
+  { title: '场景', dataIndex: 'sceneCode', key: 'sceneCode', width: 120 },
   { title: '模式', dataIndex: 'evaluationMode', key: 'evaluationMode', width: 120 },
   { title: '条目数', dataIndex: 'entryCount', key: 'entryCount', width: 88, align: 'right' },
   { title: '平均分', dataIndex: 'averageScore', key: 'averageScore', width: 88, align: 'right' },
 ]
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'neutral' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -123,6 +127,15 @@ function evaluationModeLabel(
   mode: PortfolioEvaluationComprehensiveTaskItemVO['evaluationMode'],
 ): string {
   return strictEnumLabel(PortfolioEvaluationModeDescription, mode, '多元评价模式')
+}
+
+function evaluationSceneLabel(
+  scene?: PortfolioEvaluationComprehensiveTaskItemVO['sceneCode'],
+): string {
+  if (!scene) {
+    return '—'
+  }
+  return strictEnumLabel(PortfolioEvaluationSceneDescription, scene, '评价任务场景')
 }
 
 function buildAnalysisParams() {
@@ -326,7 +339,10 @@ onMounted(async () => {
           flat
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'evaluationMode'">
+            <template v-if="column.key === 'sceneCode'">
+              {{ evaluationSceneLabel(record.sceneCode) }}
+            </template>
+            <template v-else-if="column.key === 'evaluationMode'">
               {{ evaluationModeLabel(record.evaluationMode) }}
             </template>
           </template>
