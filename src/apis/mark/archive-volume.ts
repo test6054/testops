@@ -1,4 +1,5 @@
 import type { ArchiveMaterialOcrStatusCode } from './archive-ocr-status'
+import type { ArchiveMaterialCatalogTemplateResponse } from '@/apis/mark/archive-platform-template'
 import type { ScanWorkOrderStatusCode } from '@/apis/mark/scanner-work-order'
 import type { WorkflowBlockingItem } from '@/components/workbench/workflow-readiness/types'
 import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
@@ -353,20 +354,25 @@ export interface ArchiveVolumeResponse {
   courseName?: string
   departmentId?: string
   departmentName?: string
+  teachingClassId?: string
   teachingClassName?: string
-  academicYear?: string
-  semester?: SemesterCode
+  academicYear: string
+  semester: SemesterCode
+  /** 考核形式 */
+  examForm?: ArchiveExamFormCode
   /** 考试性质（考次），ExamKind 枚举码 */
   examKind?: ExamKindCode
   templateSetCode?: string
+  /** 目录模板套名称（只读展示） */
+  templateSetName?: string
   sourceType: ArchiveVolumeSourceTypeCode
   volumeStatus: ArchiveVolumeStatusCode
   integrityStatus: ArchiveIntegrityStatusCode
   transferStatus: ArchiveTransferStatusCode
   appraisalStatus?: ArchiveAppraisalStatusCode
   destructionStatus?: ArchiveDestructionStatusCode
-  scoreSource?: ArchiveScoreSourceCode
-  securityLevel?: ArchiveSecurityLevelCode
+  scoreSource: ArchiveScoreSourceCode
+  securityLevel: ArchiveSecurityLevelCode
   securityLevelUpdatedAt?: string
   securityMarkConfirmedAt?: string
   securityMarkConfirmedUserId?: string
@@ -1512,13 +1518,27 @@ export function remindArchiveDue(volumeId: string): Promise<void> {
 
 export interface ArchiveVolumeTaskSettingsUpdateRequest {
   volumeId: string
-  /** 新归档标题；不传表示不改标题 */
-  archiveTitle?: string
-  /** 改截止时必传；原值为空时传 null */
+  archiveTitle: string
+  /** 空表示保持原编号 */
+  archiveNo?: string
+  courseId: string
+  teachingClassId: string
+  departmentId: string
+  academicYear: string
+  semester: SemesterCode
+  /** null 表示清除关联考试 */
+  relatedExamId?: string | null
+  templateSetCode: string
+  scoreSource: ArchiveScoreSourceCode
+  examForm?: ArchiveExamFormCode | null
+  securityLevel: ArchiveSecurityLevelCode
+  retentionYears?: number
+  permanentRetention?: boolean
+  responsibleUserId: string
+  /** 改截止时用于乐观锁；原值为空时传 null */
   expectedArchiveDueTime?: string | null
-  /** 新归档截止；不传表示不改截止 */
-  archiveDueTime?: string
-  /** 改截止时必填 */
+  archiveDueTime: string
+  /** 截止相对 expected 变化时必填 */
   reason?: string
 }
 
@@ -1536,6 +1556,13 @@ export interface ArchiveVolumeStartCollectingPrecheckResponse {
   canStart: boolean
   passedRequired: boolean
   items: ArchiveVolumeStartCollectingCheckItem[]
+  templateSetName?: string
+  examForm?: ArchiveExamFormCode
+  templateDescription?: string
+  requiredCatalogCount?: number
+  optionalCatalogCount?: number
+  selfCheckItemCount?: number
+  catalogPreviewItems?: ArchiveMaterialCatalogTemplateResponse[]
 }
 
 export function updateArchiveVolumeTaskSettings(

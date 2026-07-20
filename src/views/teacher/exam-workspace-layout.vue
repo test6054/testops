@@ -597,6 +597,7 @@ watch(isImmersiveWorkspace, (immersive) => {
     --sidebar-width: 260px;
     display: grid;
     grid-template-columns: var(--sidebar-width) auto minmax(0, 1fr) auto;
+    column-gap: 16px;
     align-items: center;
     height: 56px;
     padding: 0 24px 0 0;
@@ -615,11 +616,12 @@ watch(isImmersiveWorkspace, (immersive) => {
 
     &--immersive {
       --sidebar-width: auto;
-      grid-template-columns: auto auto minmax(0, 1fr) auto;
+      grid-template-columns: auto minmax(240px, 360px) minmax(0, 1fr) auto;
 
       .exam-detail-layout__logo {
         width: auto;
         padding-left: 16px;
+        padding-right: 4px;
       }
     }
   }

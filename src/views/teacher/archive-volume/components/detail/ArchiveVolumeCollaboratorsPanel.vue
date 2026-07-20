@@ -171,14 +171,14 @@ const treeRows = computed((): CollaboratorRoleGroupRow[] => {
     list.push(row)
     byRole.set(role, list)
   }
-  return ROLE_TREE_ORDER.map((role) => {
+  return ROLE_TREE_ORDER.flatMap((role) => {
     const children = byRole.get(role) ?? []
     const showEmpty = !keyword
     if (!showEmpty && children.length === 0) {
-      return null
+      return []
     }
-    return {
-      rowKind: 'role' as const,
+    const row: CollaboratorRoleGroupRow = {
+      rowKind: 'role',
       rowKey: `role:${role}`,
       memberRole: role,
       roleLabel: archiveVolumeMemberRoleLabel(role),
@@ -187,7 +187,8 @@ const treeRows = computed((): CollaboratorRoleGroupRow[] => {
       capabilityLabel: capabilitySummary(role),
       children: children.length > 0 ? children : undefined,
     }
-  }).filter((row): row is CollaboratorRoleGroupRow => row != null)
+    return [row]
+  })
 })
 
 const expandedRowKeys = ref<string[]>([])

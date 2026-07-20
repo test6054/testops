@@ -267,15 +267,15 @@ const antSize = computed<SizeType>(() => {
 .ui-select--lg :deep(.ant-select-selection-item),
 .ui-select--lg :deep(.ant-select-selection-placeholder) {
   position: absolute !important;
-  inset: 0 !important;
-  inset-inline-end: 0 !important;
+  inset-block: 0 !important;
+  inset-inline: 11px 28px !important;
   display: flex !important;
   align-items: center !important;
   margin: 0 !important;
   padding: 0 !important;
   transform: none !important;
   line-height: 22px !important;
-  max-width: 100%;
+  max-width: none;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

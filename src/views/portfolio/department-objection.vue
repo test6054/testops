@@ -146,11 +146,16 @@ const showCorrectedScore = computed(() => {
   )
 })
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
+}
+
+function peerScoreRowKey(record: unknown): string {
+  const row = record as PortfolioEvaluationObjectionPeerScoreItemVO
+  return `${row.anonymousExpertLabel || ''}-${row.indicatorCode || ''}-${row.score ?? ''}`
 }
 
 function evaluationSceneLabel(
@@ -549,8 +554,8 @@ void loadPage()
                 record.countsInCurrentFacultyStructure === true
                   ? 'green'
                   : record.countsInCurrentFacultyStructure === false
-                    ? 'neutral'
-                    : 'neutral'
+                    ? 'gray'
+                    : 'gray'
               "
             >
               {{
@@ -615,7 +620,7 @@ void loadPage()
             :columns="peerScoreColumns"
             :data-source="reviewPackage.peerScoreDistribution ?? []"
             :pagination="false"
-            :row-key="(row) => `${row.anonymousExpertLabel || ''}-${row.indicatorCode || ''}-${row.score ?? ''}`"
+            :row-key="peerScoreRowKey"
           />
           <div class="department-objection__materials">
             <span class="department-objection__materials-label">材料引用</span>
@@ -624,7 +629,7 @@ void loadPage()
                 v-for="item in reviewPackage.materialCategories"
                 :key="String(item.categoryId)"
                 size="sm"
-                :tone="item.completed ? 'success' : 'warning'"
+                :tone="item.completed ? 'green' : 'orange'"
               >
                 {{ item.categoryName || item.categoryId }}
               </UiTag>

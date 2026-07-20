@@ -49,7 +49,7 @@ export function useArchiveVolumeSelector(options?: {
         pageSize: ARCHIVE_VOLUME_SELECTOR_DEFAULT_PAGE_SIZE,
         excludeAutoCreateFailureStub: true,
       })
-      volumes.value = page.records ?? []
+      volumes.value = page.list
     } catch (error) {
       volumes.value = []
       showUserError(error, '归档卷列表加载失败')
@@ -72,7 +72,7 @@ export function useArchiveVolumeSelector(options?: {
         pageSize: ARCHIVE_VOLUME_SELECTOR_DEFAULT_PAGE_SIZE,
         excludeAutoCreateFailureStub: true,
       })
-      volumes.value = page.records ?? []
+      volumes.value = page.list
     } catch (error) {
       volumes.value = []
       showUserError(error, '归档卷搜索失败')

@@ -49,11 +49,11 @@ const {
   assertArchiveWritable,
 } = usePortfolioArchiveWriteGuard()
 
-function lifecycleTagTone(status?: string): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' {
   if (status === 'ACTIVE') return 'green'
   if (status === 'TEMP_HOLD') return 'orange'
   if (status === 'SEALED' || status === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 const loading = ref(false)
@@ -423,7 +423,7 @@ watch(
             <UiTag v-if="detail.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <UiTag
               v-if="detail.countsInCurrentFacultyStructure === false"
-              tone="neutral"
+              tone="gray"
             >
               非当前在岗
             </UiTag>

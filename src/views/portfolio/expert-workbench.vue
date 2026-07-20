@@ -45,8 +45,8 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 220 },
 ]
 
-function statusLabel(code?: string): string {
-  return strictEnumLabel(PortfolioExpertAssignmentStatusDescription, code as PortfolioExpertAssignmentStatusCode)
+function statusLabel(code?: PortfolioExpertAssignmentStatusCode): string {
+  return strictEnumLabel(PortfolioExpertAssignmentStatusDescription, code!, '专家授权状态')
 }
 
 function statusTone(code?: string): 'green' | 'gray' | 'orange' {

@@ -1,3 +1,4 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import http from '@/config/axios'
 
@@ -21,10 +22,11 @@ export interface PortfolioExpertAssignmentVO {
   createTime: string
 }
 
+/** 对齐后端 PortfolioExpertAssignmentSubjectTeacherVO；Long ID 对前端保持 string */
 export interface PortfolioExpertAssignmentSubjectTeacherVO {
   /** 脱敏稳定引用，如 T01；maskRequired 时作为行键 */
   subjectRef?: string
-  /** 脱敏时后端不返回 */
+  /** 被评教师用户 ID；脱敏时为空；后端 Long */
   teacherUserId?: string
   maskedDisplayName: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
@@ -37,23 +39,22 @@ export interface PortfolioExpertAssignmentSubjectTeacherVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
-
   /** 归属教师多身份并列层（US-MI-01 / §8.50） */
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 多身份贡献说明；层数大于 1 时非空 */
   ownerMultiIdentityNote?: string
-
 }
 
+/** 对齐后端 PortfolioExpertReviewMaterialItemVO；Long ID 对前端保持 string */
 export interface PortfolioExpertReviewMaterialItemVO {
   /** 脱敏材料稳定引用，如 M0001；maskRequired 时作为行键 */
   materialRef?: string
-  /** 脱敏时后端不返回 */
+  /** 被评教师用户 ID；脱敏时为空；后端 Long */
   teacherUserId?: string
   maskedTeacherLabel: string
-  /** 脱敏时后端不返回 */
+  /** 正式档案记录 ID；脱敏时为空；后端 Long */
   archiveRecordId?: string
-  /** 脱敏时后端不返回 */
+  /** 档案分类 ID；脱敏时为空；后端 Long */
   categoryId?: string
   categoryCode?: string
   categoryName?: string
@@ -61,6 +62,7 @@ export interface PortfolioExpertReviewMaterialItemVO {
   documentVersionNo?: number
   sourceType?: string
   hasPrimaryFile: boolean
+  /** 主附件文件节点；脱敏强制时不返回；后端 Long */
   fileNodeId?: string
   supportMaterialCount: number
   /** 是否关联正式 AI 初审结果 */
@@ -85,12 +87,10 @@ export interface PortfolioExpertReviewMaterialItemVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
-
   /** 归属教师多身份并列层（US-MI-01 / §8.50） */
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 多身份贡献说明；层数大于 1 时非空 */
   ownerMultiIdentityNote?: string
-
 }
 
 export interface PortfolioExpertAssignmentReviewBundleVO {

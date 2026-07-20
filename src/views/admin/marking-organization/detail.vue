@@ -796,7 +796,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { adminGetUserPage } from '@/apis/edu/admin-user'
 import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
-import { getExamDetail } from '@/apis/mark/exam'
+import { ExamStatusCode, getExamDetail } from '@/apis/mark/exam'
 import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import {

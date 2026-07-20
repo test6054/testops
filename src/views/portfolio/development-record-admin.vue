@@ -120,11 +120,11 @@ const tabLabel = computed(
 const importContext = computed(() => ({ defaultRecordType: activeType.value }))
 
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 function recordStatusLabel(status: PortfolioDevelopmentRecordStatusCode): string {

@@ -248,11 +248,11 @@ const appColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 280 },
 ]
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 /** 院审/人事读整袋：teacherUserId 即档案 teacherId */

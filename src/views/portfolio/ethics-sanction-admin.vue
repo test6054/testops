@@ -23,6 +23,7 @@ import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
@@ -225,11 +226,11 @@ function openReview(row: PortfolioEthicsSanctionVO) {
 }
 
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 async function openDetail(row: PortfolioEthicsSanctionVO) {

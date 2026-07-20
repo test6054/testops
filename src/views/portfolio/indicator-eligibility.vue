@@ -92,6 +92,7 @@ async function saveRule() {
       eligibilityName: requestName,
       sceneCode: requestScene,
       ruleTree: requestTree,
+      status: 'ACTIVE',
     })
     if (eligibilityCode.value !== requestCode) {
       return

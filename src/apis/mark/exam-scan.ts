@@ -206,6 +206,8 @@ export interface ExamScannerBatchResponse {
   batchExternalNo?: string
   scannerDeviceId?: string
   scannerStationId?: string
+  /** 主扫描设备名称（教师可读） */
+  scannerDeviceName?: string
   /** 来源文件引用集合 */
   sourceFiles: ExamFileRefVO[]
   /** 来源文件数量 */

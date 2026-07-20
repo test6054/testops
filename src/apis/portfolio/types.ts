@@ -492,7 +492,7 @@ export const PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE: Record<PortfolioEv
   [PortfolioEvaluationTeacherNoticeStatusCode.MATERIAL_CONFIRM]: 'blue',
   [PortfolioEvaluationTeacherNoticeStatusCode.RETURNED_SUPPLEMENT]: 'orange',
   [PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED]: 'green',
-  [PortfolioEvaluationTeacherNoticeStatusCode.LIFECYCLE_INVALIDATED]: 'default',
+  [PortfolioEvaluationTeacherNoticeStatusCode.LIFECYCLE_INVALIDATED]: 'gray',
 }
 
 export {
@@ -2699,14 +2699,10 @@ export interface PortfolioEvaluationTeacherNoticeVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
-  /** 评价参评 hold（封存/暂挂/迁出链路） */
-  evaluationHeld?: boolean
-
   /** 归属教师多身份并列层（US-MI-01 / §8.50） */
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 多身份贡献说明；层数大于 1 时非空 */
   ownerMultiIdentityNote?: string
-
 }
 
 export interface PortfolioEvaluationTeacherNoticePageRequest extends QueryDto {

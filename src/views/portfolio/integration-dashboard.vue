@@ -1052,12 +1052,7 @@ async function retransmitNationalReportIssues() {
 }
 
 async function loadChannelPathwayMatrix() {
-  const res = await portfolioIntegrationApi.channelPathwayMatrix()
-  if (!res.success) {
-    message.error(res.msg || '加载渠道通路矩阵失败')
-    return
-  }
-  channelPathwayMatrix.value = res.data ?? { channels: [] }
+  channelPathwayMatrix.value = await portfolioIntegrationApi.channelPathwayMatrix()
   // 当前渠道无通路时回落到矩阵首项
   const options = datasourcePathwayOptions.value
   if (options.length > 0 && !options.some((item) => item.value === dsForm.pathwayCode)) {
@@ -2890,7 +2885,7 @@ onMounted(async () => {
         v-else-if="!loadState.health && !health?.channels.length"
         description="暂无渠道健康数据"
       />
-      <ul v-else-if="!loadState.health" class="integration-dashboard__health-list">
+      <ul v-else-if="health && !loadState.health" class="integration-dashboard__health-list">
         <li v-for="item in health.channels" :key="`${item.channelCode}-${item.pathwayCode}`">
           <strong>{{ item.channelCode }}</strong> / {{ item.pathwayCode }}
           <UiTag :tone="item.healthStatus === 'HEALTHY' ? 'green' : 'orange'">

@@ -1372,7 +1372,7 @@ onMounted(async () => {
               :value="query.businessId || ''"
               placeholder="评价运行或院系编号"
               clearable
-              @update:value="handleQueryBusinessObjectChange"
+              @update:value="(value) => handleQueryBusinessObjectChange(value == null ? null : String(value))"
             />
           </template>
           <template #field-operatorUserId>
