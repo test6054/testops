@@ -105,7 +105,7 @@ export function buildScoresPublishedGateHint(gate: ArchiveVolumeExamGateResponse
   }
   const unpublished = gate.unpublishedBoundPaperCount ?? Math.max(0, total - published)
   if (unpublished > 0) {
-    return `尚有 ${unpublished} 份未发布，请前往成绩发布页完成发布`
+    return `尚有 ${unpublished} 份未发布，请前往成绩确认与发布页完成发布`
   }
   return total > 0 ? `成绩发布进度 ${published}/${total}` : '暂无可评阅试卷'
 }

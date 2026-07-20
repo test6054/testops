@@ -16,13 +16,16 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiCol from '@/components/ui-guide/ui/UiCol.vue'
+import UiForm from '@/components/ui-guide/ui/UiForm.vue'
+import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
 import { getSemesterDescription } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
-import ArchiveVolumeCollaboratorStrip from '@/views/teacher/archive-volume/components/ArchiveVolumeCollaboratorStrip.vue'
 
 const props = defineProps<{
   detail: ArchiveVolumeDetailResponse
@@ -31,7 +34,6 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'open-collaborators': []
   'open-materials': []
   "updated": []
 }>()
@@ -43,46 +45,39 @@ const dueEditValue = ref<string | undefined>()
 const dueReason = ref('')
 
 const volume = computed(() => props.detail.volume)
-const canEditTaskSettings = computed(
-  () => props.canManageCollaborators === true || props.canUpdateArchiveDueTime === true,
-)
+const labelCol = { style: { width: '112px' } }
+const wrapperCol = { flex: 1 }
 
-const identityRows = computed(() => {
-  const v = volume.value
-  const termParts = [
-    v.academicYear,
-    v.semester ? getSemesterDescription(v.semester) : undefined,
+const termLabel = computed(() => {
+  const parts = [
+    volume.value.academicYear,
+    volume.value.semester ? getSemesterDescription(volume.value.semester) : undefined,
   ].filter(Boolean)
-  return [
-    { key: 'no', label: '归档编号', value: v.archiveNo || '—' },
-    {
-      key: 'course',
-      label: '课程',
-      value: v.courseName || (v.courseId ? `课程 ${v.courseId}` : '—'),
-    },
-    { key: 'class', label: '教学班', value: v.teachingClassName || '—' },
-    { key: 'term', label: '学年学期', value: termParts.length ? termParts.join(' · ') : '—' },
-    { key: 'dept', label: '院系', value: v.departmentName || '—' },
-    {
-      key: 'source',
-      label: '建卷来源',
-      value: v.sourceType
-        ? strictEnumLabel(ArchiveVolumeSourceTypeDescription, v.sourceType, 'sourceType')
-        : '—',
-    },
-    {
-      key: 'score',
-      label: '成绩来源',
-      value: v.scoreSource
-        ? strictEnumLabel(ArchiveScoreSourceDescription, v.scoreSource, 'scoreSource')
-        : '—',
-    },
-    {
-      key: 'exam',
-      label: '关联考试',
-      value: v.relatedExamName || v.relatedExamNo || (v.examId ? `考试 ${v.examId}` : '未关联'),
-    },
-  ]
+  return parts.length ? parts.join(' · ') : '—'
+})
+
+const courseLabel = computed(() => {
+  const v = volume.value
+  return v.courseName || (v.courseId ? `课程 ${v.courseId}` : '—')
+})
+
+const sourceTypeLabel = computed(() => {
+  const source = volume.value.sourceType
+  return source
+    ? strictEnumLabel(ArchiveVolumeSourceTypeDescription, source, 'sourceType')
+    : '—'
+})
+
+const scoreSourceLabel = computed(() => {
+  const source = volume.value.scoreSource
+  return source
+    ? strictEnumLabel(ArchiveScoreSourceDescription, source, 'scoreSource')
+    : '—'
+})
+
+const relatedExamLabel = computed(() => {
+  const v = volume.value
+  return v.relatedExamName || v.relatedExamNo || (v.examId ? `考试 ${v.examId}` : '未关联')
 })
 
 const retentionLabel = computed(() => {
@@ -210,131 +205,177 @@ async function saveArchiveDueTime(): Promise<void> {
 
 <template>
   <WorkbenchSurfaceCard embedded class="av-task-settings">
-    <header class="av-task-settings__header">
-      <h3 class="av-task-settings__title">任务设置</h3>
-      <p class="av-task-settings__intro">
-        查看本卷建卷身份与任务参数。收材阶段可修改归档标题与截止；模板、密级与责任人流转不在本页变更。
-      </p>
-    </header>
-
-    <section class="av-task-settings__block">
-      <h4 class="av-task-settings__heading">卷身份</h4>
-      <div v-if="canManageCollaborators" class="av-task-settings__title-form">
-        <span class="av-task-settings__title-label">归档标题</span>
-        <UiInput
-          size="sm"
-          v-model="titleEditValue"
-          placeholder="归档标题"
-          :maxlength="200"
-        />
-        <UiButton size="sm" variant="primary" :loading="savingTitle" @click="saveArchiveTitle">
-          保存标题
-        </UiButton>
-      </div>
-      <p v-else class="av-task-settings__value">{{ volume.archiveTitle || '—' }}</p>
-      <dl class="av-task-settings__identity">
-        <div v-for="row in identityRows" :key="row.key" class="av-task-settings__identity-row">
-          <dt>{{ row.label }}</dt>
-          <dd>{{ row.value }}</dd>
+    <UiForm
+      layout="horizontal"
+      :label-col="labelCol"
+      :wrapper-col="wrapperCol"
+      class="create-form"
+    >
+      <div class="form-section">
+        <div class="section-header">
+          <h3 class="section-title">任务信息</h3>
         </div>
-      </dl>
-    </section>
-
-    <div class="av-task-settings__grid">
-      <section class="av-task-settings__section">
-        <h4 class="av-task-settings__heading">归档责任人</h4>
-        <p class="av-task-settings__value">{{ organizerName }}</p>
-        <p class="av-task-settings__hint">对应卷内 ORGANIZER；更换责任人走主链流转，不可在此删除。</p>
-      </section>
-
-      <section class="av-task-settings__section">
-        <h4 class="av-task-settings__heading">模板套</h4>
-        <p class="av-task-settings__value">{{ volume.templateSetCode || '—' }}</p>
-        <p class="av-task-settings__hint">创建时绑定，决定材料目录与自查项范围。</p>
-      </section>
-
-      <section class="av-task-settings__section">
-        <h4 class="av-task-settings__heading">密级</h4>
-        <p class="av-task-settings__value">{{ securityLevelLabel }}</p>
-        <p class="av-task-settings__hint">卷密级在「四性与定密」中确认，与考试涉密标记相互独立。</p>
-      </section>
-
-      <section class="av-task-settings__section">
-        <h4 class="av-task-settings__heading">保管期限</h4>
-        <p class="av-task-settings__value">{{ retentionLabel }}</p>
-        <p v-if="volume.retentionUntil" class="av-task-settings__hint">
-          到期日 {{ volume.retentionUntil }}
+        <p class="section-desc">
+          与创建页同构；收材阶段可改归档标题。课程、学年学期等建卷身份只读。
         </p>
-        <p v-else-if="volume.templateSetCode" class="av-task-settings__hint">
-          继承自模板套 {{ volume.templateSetCode }}
-        </p>
-      </section>
 
-      <section class="av-task-settings__section av-task-settings__section--wide">
-        <div class="av-task-settings__heading-row">
-          <h4 class="av-task-settings__heading">协作组</h4>
-          <UiButton
-            v-if="canManageCollaborators"
-            size="sm"
-            variant="outline"
-            @click="emit('open-collaborators')"
-          >
-            去协作管理
-          </UiButton>
-        </div>
-        <ArchiveVolumeCollaboratorStrip
-          v-if="detail.collaborators?.length"
-          :collaborators="detail.collaborators"
-          :can-manage="canManageCollaborators"
-          @manage="emit('open-collaborators')"
-        />
-        <p v-else class="av-task-settings__hint">尚未添加协作老师，可在协作管理页添加。</p>
-      </section>
-
-      <section class="av-task-settings__section av-task-settings__section--wide">
-        <h4 class="av-task-settings__heading">归档截止</h4>
-        <template v-if="canUpdateArchiveDueTime">
-          <div class="av-task-settings__due-form">
-            <UiDatePicker
-              v-model="dueEditValue"
-              show-time
-              format="YYYY-MM-DD HH:mm"
-              value-format="YYYY-MM-DD HH:mm:ss"
-            />
+        <UiFormItem label="归档标题" required>
+          <div v-if="canManageCollaborators" class="av-task-settings__inline-edit">
             <UiInput
               size="sm"
-              v-model="dueReason"
-              placeholder="覆盖原因（必填，写入审计）"
-              :maxlength="200"
+              v-model="titleEditValue"
+              placeholder="例如：2024-2025 高等数学期末考查"
+              :maxlength="512"
+              class="av-task-settings__control-grow"
             />
-            <UiButton size="sm" variant="primary" :loading="savingDue" @click="saveArchiveDueTime">
-              保存截止时刻
+            <UiButton size="sm" variant="primary" :loading="savingTitle" @click="saveArchiveTitle">
+              保存标题
             </UiButton>
           </div>
-          <p class="av-task-settings__hint">收材阶段归档责任人可手工覆盖；须晚于当前时刻，原因写入事件流水。</p>
-        </template>
-        <template v-else>
-          <p class="av-task-settings__value">{{ formatDateTime(volume.archiveDueTime) || '—' }}</p>
-          <p class="av-task-settings__hint">
-            {{
-              canEditTaskSettings
-                ? '按租户归档时限策略计算。'
-                : '按租户归档时限策略计算；收材完成后不可再改。'
-            }}
-          </p>
-        </template>
-      </section>
+          <UiInput v-else size="sm" :value="volume.archiveTitle || '—'" disabled />
+        </UiFormItem>
 
-      <section class="av-task-settings__section av-task-settings__section--wide">
-        <div class="av-task-settings__heading-row">
-          <h4 class="av-task-settings__heading">
-            材料清单（只读）
+        <UiFormItem label="档案编号">
+          <UiInput size="sm" :value="volume.archiveNo || '—'" disabled />
+        </UiFormItem>
+
+        <UiRow :gutter="24" class="create-form__split-row">
+          <UiCol :span="12">
+            <UiFormItem label="课程" :label-col="labelCol" :wrapper-col="wrapperCol">
+              <UiInput size="sm" :value="courseLabel" disabled />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="授课班级" :label-col="labelCol" :wrapper-col="wrapperCol">
+              <UiInput size="sm" :value="volume.teachingClassName || '—'" disabled />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+
+        <UiRow :gutter="24" class="create-form__split-row">
+          <UiCol :span="12">
+            <UiFormItem label="院系" :label-col="labelCol" :wrapper-col="wrapperCol">
+              <UiInput size="sm" :value="volume.departmentName || '—'" disabled />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="学年学期" :label-col="labelCol" :wrapper-col="wrapperCol">
+              <UiInput size="sm" :value="termLabel" disabled />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+
+        <UiRow :gutter="24" class="create-form__split-row">
+          <UiCol :span="12">
+            <UiFormItem label="建卷来源" :label-col="labelCol" :wrapper-col="wrapperCol">
+              <UiInput size="sm" :value="sourceTypeLabel" disabled />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="成绩来源" :label-col="labelCol" :wrapper-col="wrapperCol">
+              <UiInput size="sm" :value="scoreSourceLabel" disabled />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+
+        <UiFormItem label="关联考试">
+          <UiInput size="sm" :value="relatedExamLabel" disabled />
+        </UiFormItem>
+      </div>
+
+      <div class="form-section">
+        <div class="section-header">
+          <h3 class="section-title">归档方案</h3>
+        </div>
+        <p class="section-desc">
+          模板套、密级与责任人创建时绑定；收材阶段可覆盖归档截止（须填原因）。
+        </p>
+
+        <UiFormItem label="目录模板套">
+          <UiInput size="sm" :value="volume.templateSetCode || '—'" disabled />
+        </UiFormItem>
+
+        <UiRow :gutter="24" class="create-form__split-row">
+          <UiCol :span="12">
+            <UiFormItem label="密级" :label-col="labelCol" :wrapper-col="wrapperCol">
+              <UiInput size="sm" :value="securityLevelLabel" disabled />
+            </UiFormItem>
+          </UiCol>
+          <UiCol :span="12">
+            <UiFormItem label="保管期限" :label-col="labelCol" :wrapper-col="wrapperCol">
+              <UiInput
+                size="sm"
+                :value="
+                  volume.retentionUntil
+                    ? `${retentionLabel}（到期 ${volume.retentionUntil}）`
+                    : retentionLabel
+                "
+                disabled
+              />
+            </UiFormItem>
+          </UiCol>
+        </UiRow>
+
+        <UiFormItem label="归档责任人">
+          <UiInput size="sm" :value="organizerName" disabled />
+          <template #extra>
+            <span class="create-form__field-hint">对应卷内 ORGANIZER；更换责任人走主链流转。</span>
+          </template>
+        </UiFormItem>
+
+        <UiFormItem label="归档截止" :required="canUpdateArchiveDueTime">
+          <template v-if="canUpdateArchiveDueTime">
+            <div class="av-task-settings__due-stack">
+              <UiDatePicker
+                size="sm"
+                v-model="dueEditValue"
+                show-time
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                placeholder="选择归档截止时刻"
+                class="av-task-settings__control-grow"
+              />
+              <UiInput
+                size="sm"
+                v-model="dueReason"
+                placeholder="覆盖原因（必填，写入审计）"
+                :maxlength="200"
+                class="av-task-settings__control-grow"
+              />
+              <UiButton size="sm" variant="primary" :loading="savingDue" @click="saveArchiveDueTime">
+                保存截止时刻
+              </UiButton>
+            </div>
+          </template>
+          <UiInput
+            v-else
+            size="sm"
+            :value="formatDateTime(volume.archiveDueTime) || '—'"
+            disabled
+          />
+          <template #extra>
+            <span class="create-form__field-hint">
+              {{
+                canUpdateArchiveDueTime
+                  ? '须晚于当前时刻；覆盖原因写入事件流水。'
+                  : '按租户归档时限策略计算；收材完成后不可再改。'
+              }}
+            </span>
+          </template>
+        </UiFormItem>
+      </div>
+
+      <div class="form-section">
+        <div class="section-header">
+          <h3 class="section-title">
+            材料清单
             <span class="av-task-settings__count">
               {{ materialReadyCount }}/{{ materialChecklist.length }} 已登记
             </span>
-          </h4>
+          </h3>
           <UiButton size="sm" variant="ghost" @click="emit('open-materials')">去登记材料</UiButton>
         </div>
+        <p class="section-desc">只读预览模板套解析出的材料槽位；登记请到「材料收集」。</p>
         <ul v-if="materialChecklist.length > 0" class="av-task-settings__material-list">
           <li
             v-for="row in materialChecklist"
@@ -345,132 +386,90 @@ async function saveArchiveDueTime(): Promise<void> {
             <span class="av-task-settings__material-status">{{ materialRowStatus(row) }}</span>
           </li>
         </ul>
-        <p v-else class="av-task-settings__hint">暂无材料槽位，请确认任务已绑定模板套。</p>
-      </section>
-    </div>
+        <p v-else class="av-task-settings__empty">暂无材料槽位，请确认任务已绑定模板套。</p>
+      </div>
+    </UiForm>
   </WorkbenchSurfaceCard>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
+@use '@/styles/breakpoints' as bp;
+
 .av-task-settings {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dp-space-4);
   padding: var(--dp-space-4);
   max-width: 920px;
+  background: var(--dp-bg-container);
 }
 
-.av-task-settings__header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dp-space-2);
-}
+.form-section {
+  margin-bottom: var(--dp-space-6);
+  padding-bottom: var(--dp-space-4);
+  border-bottom: 1px solid var(--dp-border-subtle);
 
-.av-task-settings__title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--dp-text-primary);
-  text-wrap: balance;
-}
-
-.av-task-settings__intro {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--dp-text-secondary);
-  max-width: 72ch;
-}
-
-.av-task-settings__block {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dp-space-3);
-  padding: var(--dp-space-3);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: var(--dp-radius-control, 6px);
-  background: var(--dp-surface-subtle, var(--dp-bg-layout));
-}
-
-.av-task-settings__title-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--dp-space-2);
-  max-width: 560px;
-}
-
-.av-task-settings__title-label {
-  flex: 0 0 72px;
-  font-size: 13px;
-  color: var(--dp-text-muted);
-}
-
-.av-task-settings__identity {
-  margin: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 2px;
-}
-
-.av-task-settings__identity-row {
-  display: grid;
-  grid-template-columns: 88px 1fr;
-  gap: var(--dp-space-2);
-  padding: 8px 10px;
-  border-radius: 4px;
-  background: var(--dp-surface);
-  font-size: 13px;
-
-  dt {
-    margin: 0;
-    color: var(--dp-text-muted);
-  }
-
-  dd {
-    margin: 0;
-    color: var(--dp-text-primary);
-    word-break: break-word;
+  &:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
   }
 }
 
-.av-task-settings__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--dp-space-3);
-}
-
-.av-task-settings__section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: var(--dp-space-3);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: var(--dp-radius-control, 6px);
-  background: var(--dp-surface-subtle, var(--dp-bg-layout));
-
-  &--wide {
-    grid-column: 1 / -1;
-  }
-}
-
-.av-task-settings__heading-row {
+.section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-2);
 }
 
-.av-task-settings__heading {
+.section-title {
   margin: 0;
-  display: flex;
+  display: inline-flex;
   align-items: baseline;
-  flex-wrap: wrap;
   gap: 8px;
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--dp-text-primary);
+}
+
+.section-desc {
+  margin: 0 0 var(--dp-space-4);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dp-text-secondary);
+}
+
+.create-form {
+  width: 100%;
+}
+
+.create-form__split-row {
+  width: 100%;
+}
+
+.create-form__field-hint {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--dp-text-muted);
+}
+
+.av-task-settings__inline-edit,
+.av-task-settings__due-stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
+  width: 100%;
+}
+
+.av-task-settings__due-stack {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.av-task-settings__control-grow {
+  flex: 1;
+  min-width: 200px;
+  max-width: 480px;
 }
 
 .av-task-settings__count {
@@ -480,32 +479,11 @@ async function saveArchiveDueTime(): Promise<void> {
   font-variant-numeric: tabular-nums;
 }
 
-.av-task-settings__value {
-  margin: 0;
-  font-size: 14px;
-  color: var(--dp-text-primary);
-}
-
-.av-task-settings__hint {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--dp-text-muted);
-}
-
-.av-task-settings__due-form {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--dp-space-2);
-  max-width: 360px;
-}
-
 .av-task-settings__material-list {
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control, 6px);
   background: var(--dp-surface);
   overflow: hidden;
@@ -518,7 +496,7 @@ async function saveArchiveDueTime(): Promise<void> {
   gap: var(--dp-space-3);
   padding: 8px 12px;
   font-size: 13px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid var(--dp-border-subtle);
 
   &:last-child {
     border-bottom: none;
@@ -533,5 +511,18 @@ async function saveArchiveDueTime(): Promise<void> {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--dp-text-muted);
+}
+
+.av-task-settings__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dp-text-muted);
+}
+
+@media (max-width: bp.$ant-grid-md) {
+  .av-task-settings__control-grow {
+    max-width: none;
+    width: 100%;
+  }
 }
 </style>

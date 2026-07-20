@@ -87,6 +87,12 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { FormalSessionResponse } from '@/apis/mark/marking-organization'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
+import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   AllocationUnitDescription,
   completeFormalSession,
@@ -96,12 +102,6 @@ import {
   resumeFormalSession,
   startFormalSession,
 } from '@/apis/mark/marking-organization'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
-import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -164,10 +164,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refresh: []
-  search: [model: Record<string, unknown>]
-  reset: []
-  'page-change': [page: { current: number; pageSize: number }]
+  "refresh": []
+  "search": [model: Record<string, unknown>]
+  "reset": []
+  'page-change': [page: { current: number, pageSize: number }]
   'open-lifecycle': [action: 'pauseFormal' | 'closeFormal', sessionId: string]
 }>()
 
@@ -248,9 +248,9 @@ watch(
 
 const hasActiveFilter = computed(
   () =>
-    Boolean(props.filterModel.keyword.trim()) ||
-    Boolean(props.filterModel.status) ||
-    Boolean(props.filterModel.groupId),
+    Boolean(props.filterModel.keyword.trim())
+    || Boolean(props.filterModel.status)
+    || Boolean(props.filterModel.groupId),
 )
 
 const sessionTableEmptyDescription = computed(() => {
@@ -274,7 +274,7 @@ function emitReset(): void {
   emit('reset')
 }
 
-function emitPageChange(page: { current: number; pageSize: number }): void {
+function emitPageChange(page: { current: number, pageSize: number }): void {
   emit('page-change', page)
 }
 
@@ -285,24 +285,24 @@ function isGroupStartable(groupId: string | undefined): boolean {
   const option = props.groupOptions.find((item) => item.value === groupId)
   // MVR-402：仅 ACTIVE/CONFIGURED 可启动；缺状态默认拒绝
   return (
-    option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE ||
-    option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED
+    option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
+    || option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED
   )
 }
 
 function canStart(record: FormalSessionResponse): boolean {
   return (
-    props.canManage === true &&
-    record.sessionStatus === FormalSessionStatusCode.SESSION_CREATED &&
-    isGroupStartable(record.groupId)
+    props.canManage === true
+    && record.sessionStatus === FormalSessionStatusCode.SESSION_CREATED
+    && isGroupStartable(record.groupId)
   )
 }
 
 function canComplete(record: FormalSessionResponse): boolean {
   return (
-    props.canManage === true &&
-    record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE &&
-    record.sessionTaskCompletionReady
+    props.canManage === true
+    && record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE
+    && record.sessionTaskCompletionReady
   )
 }
 
@@ -317,10 +317,10 @@ function canResume(status: FormalSessionStatusCode): boolean {
 function canClose(status: FormalSessionStatusCode): boolean {
   // MVR-398：关闭归档认 canCloseMarkingSessions（主考，不叠 ACTIVE）
   return (
-    props.canCloseMarkingSessions === true &&
-    (status === FormalSessionStatusCode.SESSION_ACTIVE ||
-      status === FormalSessionStatusCode.SESSION_PAUSED ||
-      status === FormalSessionStatusCode.SESSION_COMPLETED)
+    props.canCloseMarkingSessions === true
+    && (status === FormalSessionStatusCode.SESSION_ACTIVE
+      || status === FormalSessionStatusCode.SESSION_PAUSED
+      || status === FormalSessionStatusCode.SESSION_COMPLETED)
   )
 }
 
@@ -377,8 +377,8 @@ function buildRowActions(record: FormalSessionResponse): UiTableRowActionItem[] 
       ? 'complete'
       : canResume(record.sessionStatus)
         ? 'resume'
-        : canClose(record.sessionStatus) &&
-            record.sessionStatus === FormalSessionStatusCode.SESSION_COMPLETED
+        : canClose(record.sessionStatus)
+          && record.sessionStatus === FormalSessionStatusCode.SESSION_COMPLETED
           ? 'close'
           : undefined
   return actions.map((action) =>
@@ -400,10 +400,10 @@ function guardManageAction(): boolean {
 function handleFormalStartError(error: unknown): void {
   const detail = getUserErrorMessage(error, '')
   const isConflict = readBusinessResultCode(error) === ResultCode.CONFLICT
-  const isExperienceAssistBlock =
-    isConflict &&
-    (detail.includes(EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX) ||
-      detail.includes(EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX))
+  const isExperienceAssistBlock
+    = isConflict
+      && (detail.includes(EXPERIENCE_ASSIST_BASELINE_BLOCKING_PREFIX)
+        || detail.includes(EXPERIENCE_ASSIST_BINDING_BLOCKING_PREFIX))
   if (isExperienceAssistBlock && props.examId) {
     void confirmAsync({
       title: '无法启动正评',

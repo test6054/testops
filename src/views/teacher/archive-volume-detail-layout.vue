@@ -18,8 +18,14 @@
           <template #icon><MenuOutlined /></template>
           <span class="archive-volume-detail-layout__menu-toggle-text">{{ activeTabLabel }}</span>
         </UiButton>
-        <div v-if="volumeHeaderLine" class="archive-volume-detail-layout__volume-pill">
-          <UiTag tone="blue" size="sm">{{ volumeHeaderLine }}</UiTag>
+        <div class="archive-volume-detail-layout__header-switcher">
+          <ArchiveVolumeSwitcher
+            :selected-volume-id="volumeId"
+            :options="volumeSwitcherOptions"
+            :loading="volumeSelectorLoading"
+            @change="onVolumeSwitch"
+            @search="onVolumeSearch"
+          />
         </div>
       </div>
       <div class="archive-volume-detail-layout__header-gap" />
@@ -36,18 +42,18 @@
       <ArchiveVolumeSubSidebar
         v-if="volumeId"
         :archive-title="sidebarArchiveTitle"
-        :archive-subtitle="sidebarArchiveSubtitle"
-        :organizer-line="sidebarOrganizerLine"
+        :archive-no="sidebarArchiveNo"
+        :archive-context-line="sidebarContextLine"
+        :volume-status-label="volumeStatusLabel"
         :volume-status-tone="volumeStatusTone"
         :active-tab="activeTab"
         :nav-groups="sidebarNavGroups"
-        :status-rows="sidebarStatusRows"
         :manage-actions="sidebarManageActions"
         :loading="loading"
         :collapsed="sidebarCollapsed"
         :mobile-open="mobileNavOpen"
         @tab-change="onTabChange"
-        @back-to-list="goArchiveList"
+        @journey-select="onJourneySelect"
         @toggle-collapse="sidebarCollapsed = !sidebarCollapsed"
         @manage-action="onManageAction"
       />
@@ -76,29 +82,38 @@
 </template>
 
 <script lang="ts" setup>
+import type { SelectValue } from 'ant-design-vue/es/select'
 import type { RouteLocationNormalized } from 'vue-router'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ArchiveVolumeSwitcherOption } from '@/components/workbench/ArchiveVolumeSwitcher.vue'
 import type {
   ArchiveVolumeManageActionKey,
   ArchiveVolumeSidebarManageAction,
 } from '@/composables/useArchiveVolumeWorkbenchContext'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ARCHIVE_VOLUME_STATUS_TONE,
-  ArchiveIntegrityStatusDescription,
-  ArchiveTransferStatusDescription,
+  ArchiveVolumeStatusDescription,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import ArchiveVolumeSubSidebar from '@/components/workbench/ArchiveVolumeSubSidebar.vue'
+import ArchiveVolumeSwitcher from '@/components/workbench/ArchiveVolumeSwitcher.vue'
+import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
+import { useArchiveVolumeSelector } from '@/composables/useArchiveVolumeSelector'
 import { provideArchiveVolumeWorkbenchContext } from '@/composables/useArchiveVolumeWorkbenchContext'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
-import { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
-import { buildArchiveVolumeSidebarNavGroups } from '@/utils/archive-volume-sidebar-navigation'
+import { formatSemester } from '@/types/enums/semester-enum'
+import {
+  formatArchiveVolumeOptionLabel,
+} from '@/utils/archive-volume-option'
+import {
+  buildArchiveVolumeSidebarNavGroups,
+  resolveArchiveVolumeJourneyLandingTab,
+} from '@/utils/archive-volume-sidebar-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveVolumeDetailLayout' })
@@ -113,6 +128,37 @@ const mobileNavOpen = ref(false)
 const { volumeId, detail, loading, detailLoadError, activeTab, sidebarTabs, setActiveTab, requestManageAction }
   = provideArchiveVolumeWorkbenchContext()
 
+const {
+  volumes,
+  volumeOptions,
+  loading: selectorLoading,
+  searching: selectorSearching,
+  resolvingPinned: selectorResolvingPinned,
+  onVolumeSearch,
+  pinFromVolume,
+  init: initVolumeSelector,
+} = useArchiveVolumeSelector({
+  currentVolumeId: () => volumeId.value,
+})
+
+const volumeSelectorLoading = computed(
+  () => selectorLoading.value || selectorSearching.value || selectorResolvingPinned.value,
+)
+
+onMounted(() => {
+  void initVolumeSelector()
+})
+
+watch(
+  () => detail.value?.volume,
+  (volume) => {
+    if (volume) {
+      pinFromVolume(volume)
+    }
+  },
+  { immediate: true },
+)
+
 const sidebarArchiveTitle = computed(() => {
   const volume = detail.value?.volume
   if (volume) {
@@ -124,41 +170,37 @@ const sidebarArchiveTitle = computed(() => {
   return loading.value ? '加载归档任务…' : '归档任务'
 })
 
-const sidebarArchiveSubtitle = computed(() => {
+const sidebarArchiveNo = computed(() => detail.value?.volume.archiveNo ?? volumeId.value)
+
+const sidebarContextLine = computed(() => {
   const volume = detail.value?.volume
   if (!volume) {
-    return volumeId.value
+    return ''
   }
-  const parts = [volume.archiveNo]
-  if (volume.teachingClassName) {
+  const parts: string[] = []
+  if (volume.courseName) {
+    parts.push(volume.courseName)
+  } else if (volume.teachingClassName) {
     parts.push(volume.teachingClassName)
   } else if (volume.departmentName) {
     parts.push(volume.departmentName)
   }
+  if (volume.academicYear || volume.semester) {
+    const term = [volume.academicYear, formatSemester(volume.semester)].filter(Boolean).join(' ')
+    if (term) {
+      parts.push(term)
+    }
+  }
   return parts.join(' · ')
 })
 
-const sidebarOrganizerLine = computed(() => {
-  const members = detail.value?.collaborators
-  if (!members?.length) {
+const volumeStatusLabel = computed(() => {
+  const status = detail.value?.volume.volumeStatus
+  if (!status) {
     return ''
   }
-  const organizers = members.filter(
-    (m) => m.memberRole === ArchiveVolumeMemberRoleCode.ORGANIZER,
-  )
-  if (!organizers.length) {
-    return ''
-  }
-  const names = organizers
-    .map((m) => m.userName || (m.userId ? `用户${m.userId}` : ''))
-    .filter(Boolean)
-  if (!names.length) {
-    return ''
-  }
-  return `责任人 ${names.join('、')}`
+  return strictEnumLabel(ArchiveVolumeStatusDescription, status, 'volumeStatus')
 })
-
-const volumeHeaderLine = computed(() => detail.value?.volume.archiveNo ?? '')
 
 const volumeStatusTone = computed((): BadgeTone => {
   const status = detail.value?.volume.volumeStatus
@@ -209,62 +251,39 @@ const activeTabLabel = computed(() => {
   return fallback?.label ?? '归档阶段'
 })
 
-const sidebarStatusRows = computed(() => {
-  const volume = detail.value?.volume
-  if (!volume) {
-    return []
+function toVolumeSwitcherOption(volume: {
+  volumeId: string
+  archiveTitle: string
+  archiveNo: string
+  volumeStatus?: ArchiveVolumeStatusCode
+}): ArchiveVolumeSwitcherOption {
+  const status = volume.volumeStatus
+  return {
+    value: volume.volumeId,
+    label: formatArchiveVolumeOptionLabel(volume),
+    statusLabel: status
+      ? strictEnumLabel(ArchiveVolumeStatusDescription, status, 'volumeStatus')
+      : undefined,
+    statusTone: status
+      ? strictEnumTone(ARCHIVE_VOLUME_STATUS_TONE, status, 'volumeStatus')
+      : undefined,
   }
-  const retention = volume.permanentRetention
-    ? '永久保管'
-    : volume.retentionYears
-      ? `${volume.retentionYears} 年`
-      : '—'
-  const location
-    = volume.physicalStorageLocation
-      || [volume.physicalBuilding, volume.physicalRoom, volume.physicalCabinet, volume.physicalSlot]
-      .filter(Boolean)
-      .join(' / ')
-      || volume.physicalLocationNote
-      || '—'
-  return [
-    {
-      key: 'integrity',
-      label: '完整性',
-      value: strictEnumLabel(
-        ArchiveIntegrityStatusDescription,
-        volume.integrityStatus,
-        'integrityStatus',
-      ),
-    },
-    ...(volume.securityLevel
-      ? [
-          {
-            key: 'security-mark',
-            label: '密级定密',
-            value: volume.securityMarkPending ? '待确认' : '已确认',
-          },
-        ]
-      : []),
-    {
-      key: 'transfer',
-      label: '移交',
-      value: strictEnumLabel(
-        ArchiveTransferStatusDescription,
-        volume.transferStatus,
-        'transferStatus',
-      ),
-    },
-    {
-      key: 'retention',
-      label: '保管期限',
-      value: retention,
-    },
-    {
-      key: 'location',
-      label: '存放位置',
-      value: location,
-    },
-  ]
+}
+
+const volumeSwitcherOptions = computed<ArchiveVolumeSwitcherOption[]>(() => {
+  const merged = new Map<string, ArchiveVolumeSwitcherOption>()
+  for (const item of volumes.value) {
+    merged.set(item.volumeId, toVolumeSwitcherOption(item))
+  }
+  if (detail.value?.volume) {
+    merged.set(detail.value.volume.volumeId, toVolumeSwitcherOption(detail.value.volume))
+  }
+  for (const item of volumeOptions.value) {
+    if (!merged.has(item.value)) {
+      merged.set(item.value, { ...item })
+    }
+  }
+  return Array.from(merged.values())
 })
 
 function goArchiveList(): void {
@@ -272,9 +291,32 @@ function goArchiveList(): void {
   void router.push({ name: 'TeacherArchiveVolumeList' })
 }
 
+function onVolumeSwitch(value: SelectValue): void {
+  const nextVolumeId = value != null ? String(value) : ''
+  if (!nextVolumeId || nextVolumeId === volumeId.value) {
+    return
+  }
+  mobileNavOpen.value = false
+  void router.push({
+    name: 'TeacherArchiveVolumeDetail',
+    params: { volumeId: nextVolumeId },
+    query: activeTab.value ? { tab: activeTab.value } : undefined,
+  })
+}
+
 function onTabChange(tabKey: string): void {
   mobileNavOpen.value = false
   setActiveTab(tabKey)
+}
+
+function onJourneySelect(journeyKey: string): void {
+  const group = sidebarNavGroups.value.find((item) => item.key === journeyKey)
+  const landingTab = resolveArchiveVolumeJourneyLandingTab(group)
+  if (!landingTab) {
+    return
+  }
+  mobileNavOpen.value = false
+  setActiveTab(landingTab)
 }
 
 function shouldCacheDetailRoute(childRoute: RouteLocationNormalized): boolean {
@@ -353,8 +395,11 @@ watch(volumeId, () => {
     gap: 12px;
   }
 
-  &__volume-pill {
+  &__header-switcher {
+    width: 320px;
+    max-width: 360px;
     min-width: 0;
+    flex-shrink: 0;
   }
 
   &__menu-toggle {
@@ -403,7 +448,7 @@ watch(volumeId, () => {
     flex: 1;
     overflow: auto;
     padding: var(--dp-space-3);
-    background: var(--dp-gray-50);
+    background: var(--dp-bg-layout);
 
     :deep(> *) {
       max-width: min(100%, 1680px);
@@ -434,6 +479,12 @@ watch(volumeId, () => {
     &__header-toolbar {
       grid-column: 2;
       min-width: 0;
+    }
+
+    &__header-switcher {
+      width: auto;
+      max-width: none;
+      flex: 1;
     }
 
     &__header-gap {

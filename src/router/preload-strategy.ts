@@ -93,7 +93,7 @@ const ROUTE_LOADERS: Record<string, () => Promise<unknown>> = {
   TeacherExamWorkspaceReviewTaskDetail: () => import('@/views/teacher/review-task-detail.vue'),
   TeacherExamWorkspaceMarkingTaskDetail: () => import('@/views/teacher/marking-task-detail.vue'),
   TeacherExamWorkspaceScoreSummary: () => import('@/views/teacher/score-finalize.vue'),
-  TeacherExamWorkspaceScoreRelease: () => import('@/views/teacher/score-publish.vue'),
+  TeacherExamWorkspaceScoreRelease: () => import('@/views/teacher/score-finalize.vue'),
   TeacherExamWorkspaceScoreAbsence: () => import('@/views/teacher/absence-confirm.vue'),
   TeacherExamWorkspaceScoreAppeal: () => import('@/views/teacher/appeal-handle.vue'),
   TeacherExamWorkspaceArchivePackage: () => import('@/views/teacher/archive-volume/archive-volume-exam-progress.vue'),

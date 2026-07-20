@@ -1,32 +1,22 @@
 <template>
   <StageWorkbenchShell class="score-finalize-page">
-    <template
-      v-if="
-        effectiveRiskOverview?.readyToPublish
-          || blockingRiskReasons.length > 0
-          || canBatchConfirmSafe
-          || unconfirmedQuestionGradeCount > 0
-      "
-      #context
-    >
-      <ContextBar layout="workbench" show-title title="成绩确认">
+    <template v-if="selectedExamId" #context>
+      <ContextBar layout="workbench" show-title title="成绩确认与发布">
         <template #status>
-          <UiTag v-if="effectiveRiskOverview?.readyToPublish" tone="green" size="sm">
-            可进入发布
-          </UiTag>
+          <UiTag v-if="scoresFullyPublished" tone="green" size="sm">已全部发布</UiTag>
           <UiTag v-else-if="blockingRiskReasons.length > 0" tone="orange" size="sm">
             存在阻塞风险
           </UiTag>
+          <UiTag
+            v-else-if="effectiveRiskOverview?.readyToPublish || canBulkPublish"
+            tone="green"
+            size="sm"
+          >
+            可全场发布
+          </UiTag>
+          <UiTag v-else-if="hasPendingAbsence" tone="orange" size="sm">缺考待确认</UiTag>
         </template>
         <template #actions>
-          <UiButton
-            v-if="effectiveRiskOverview?.readyToPublish"
-            variant="outline"
-            size="sm"
-            @click="handleGoScorePublish"
-          >
-            前往成绩发布
-          </UiButton>
           <UiButton
             v-if="unconfirmedQuestionGradeCount > 0"
             size="sm"
@@ -37,12 +27,21 @@
           </UiButton>
           <UiButton
             v-if="canBatchConfirmSafe === true"
-            variant="primary"
+            variant="outline"
             size="sm"
             :loading="batchConfirming"
             @click="handleBatchConfirmSafe"
           >
             批量确认无风险成绩
+          </UiButton>
+          <UiButton
+            variant="primary"
+            size="sm"
+            :disabled="!canBulkPublish"
+            @click="openBulkPublishModal"
+          >
+            <template #icon><ThunderboltOutlined /></template>
+            全场发布
           </UiButton>
         </template>
       </ContextBar>
@@ -56,13 +55,6 @@
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
-
-      <ScoreReleaseStepPipeline :overview="effectiveRiskOverview" />
-
-      <ScoreAnalyticsStatusFlow
-        v-if="scoreAnalyticsFlowSteps.length > 0"
-        :steps="scoreAnalyticsFlowSteps"
-      />
 
       <WorkbenchNoticeBanner
         v-if="panelNotice"
@@ -82,22 +74,56 @@
       </WorkbenchNoticeBanner>
 
       <UiAlertStrip
-        v-if="unconfirmedQuestionGradeCount > 0"
+        v-if="dailyScoreManualConfirmNotice"
         tone="warning"
-        title="题目成绩待教师确认"
-        :description="`有 ${unconfirmedQuestionGradeCount} 份答卷仍存在未确认题目分（含客观题硬判或智能建议）。请用顶栏「题目分待确认」进入批量确认；亦可单题复核。`"
+        title="日常分须手工确认"
+        :description="dailyScoreManualConfirmNotice"
+        dense
+        inline
+        class="score-finalize__alert"
+      />
+      <UiAlertStrip
+        v-if="delayedAutoConfirmNotice"
+        tone="info"
+        title="延迟自动确认进行中"
+        :description="delayedAutoConfirmNotice"
+        dense
+        inline
+        class="score-finalize__alert"
+      />
+
+      <UiAlertStrip
+        v-if="isPublishGateVisible('delayedAutoConfirm')"
+        tone="error"
+        title="延迟自动确认已失败"
+        :description="blockedDelayedAutoConfirmNotice"
         dense
         inline
         class="score-finalize__alert"
       >
         <template #actions>
-          <UiButton variant="ghost" size="sm" @click="goQuestionReviewSingle">
-            去单题复核
+          <UiButton variant="primary" size="sm" @click="goDelayedConfirmTasks">
+            查看失败任务
           </UiButton>
         </template>
       </UiAlertStrip>
+
       <UiAlertStrip
-        v-if="missingAbsenceScoreZeroFinalCount > 0"
+        v-if="isPublishGateVisible('pendingAbsence')"
+        tone="warning"
+        title="仍有缺考记录待确认"
+        :description="`当前还有 ${pendingAbsenceCountForDisplay} 条待确认缺考，发布前须完成核对。`"
+        dense
+        inline
+        class="score-finalize__alert"
+      >
+        <template #actions>
+          <UiButton variant="outline" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
+        </template>
+      </UiAlertStrip>
+
+      <UiAlertStrip
+        v-if="isPublishGateVisible('scoreZero')"
         tone="warning"
         title="缺考计零终分待补齐"
         :description="`本场有 ${missingAbsenceScoreZeroFinalCount} 名已确认计零的缺考生尚未写入正式零分终分，全场发布前须先补齐；补齐后列表会标记「缺考计零」，无扫描影像。`"
@@ -118,70 +144,62 @@
           <UiButton variant="ghost" size="sm" @click="goAbsenceConfirm"> 前往缺考确认 </UiButton>
         </template>
       </UiAlertStrip>
+
       <UiAlertStrip
-        v-if="blockingRiskReasons.length > 0"
+        v-if="isPublishGateVisible('risk')"
         tone="warning"
-        title="存在阻塞性成绩风险"
-        :description="`共 ${blockingRiskReasons.length} 类风险待处理，确认或发布前须完成处理。`"
+        title="仍有成绩风险未复核"
+        :description="`当前有 ${effectiveRiskOverview?.blockedCount ?? 0} 项成绩风险未处置，须先完成集中复核后再全场发布。`"
         dense
         inline
         class="score-finalize__alert"
       >
         <template #actions>
-          <UiButton
-            v-if="unconfirmedQuestionGradeCount > 0"
-            size="sm"
-            variant="outline"
-            @click="goQuestionReviewBatch"
-          >
-            去题目复核
-          </UiButton>
-          <UiButton variant="ghost" size="sm" @click="openRiskReviewDrawer">
-            集中复核风险
+          <UiButton variant="outline" size="sm" @click="openRiskReviewDrawer">
+            集中复核异常成绩
           </UiButton>
         </template>
       </UiAlertStrip>
+
       <UiAlertStrip
-        v-if="dailyScoreManualConfirmNotice"
+        v-if="isPublishGateVisible('corrected')"
         tone="warning"
-        title="日常分须手工确认"
-        :description="dailyScoreManualConfirmNotice"
-        dense
-        inline
-        class="score-finalize__alert"
-      />
-      <UiAlertStrip
-        v-if="delayedAutoConfirmNotice"
-        tone="info"
-        title="延迟自动确认进行中"
-        :description="delayedAutoConfirmNotice"
-        dense
-        inline
-        class="score-finalize__alert"
-      />
-      <UiAlertStrip
-        v-if="blockedDelayedAutoConfirmNotice"
-        tone="error"
-        title="延迟自动确认已失败"
-        :description="blockedDelayedAutoConfirmNotice"
+        title="存在已更正未重发布成绩"
+        :description="correctedRepublishNotice"
         dense
         inline
         class="score-finalize__alert"
       >
         <template #actions>
-          <UiButton variant="primary" size="sm" @click="goDelayedConfirmTasks">
-            查看失败任务
-          </UiButton>
+          <UiButton variant="outline" size="sm" @click="filterCorrectedOnly"> 仅看已更正 </UiButton>
         </template>
       </UiAlertStrip>
-      <UiAlertStrip
-        v-else-if="effectiveRiskOverview?.readyToPublish"
-        tone="success"
-        title="全场成绩已具备发布条件"
-        description="确认环节已完成，请用顶栏「前往成绩发布」面向学生侧下发。"
-        dense
-        inline
-        class="score-finalize__alert"
+
+      <div v-if="publishSecondaryGateKeys.length > 0" class="score-finalize__more-gates">
+        <button
+          type="button"
+          class="score-finalize__more-gates-toggle"
+          @click="publishSecondaryGatesExpanded = !publishSecondaryGatesExpanded"
+        >
+          {{
+            publishSecondaryGatesExpanded
+              ? '收起其余发布条件'
+              : `还有 ${publishSecondaryGateKeys.length} 项发布条件`
+          }}
+        </button>
+        <span v-if="!publishSecondaryGatesExpanded" class="score-finalize__more-gates-summary">
+          {{ publishSecondaryGateSummary }}
+        </span>
+      </div>
+
+      <ExamArchiveGateBanner
+        ref="gateBannerRef"
+        :exam-id="selectedExamId"
+        compact
+        show-class-progress-table
+        :scores-fully-published="scoresFullyPublished"
+        @go-close-exam="goExamListForClose"
+        @loaded="onExamArchiveGateLoaded"
       />
 
       <WorkbenchSurfaceCard flush class="score-finalize__table-section">
@@ -215,6 +233,18 @@
                 @search="handleSearch"
                 @reset="handleReset"
               />
+              <div v-if="showIncompleteClassChip" class="score-finalize__filter-chips">
+                <button
+                  type="button"
+                  class="score-finalize__filter-chip"
+                  :class="{
+                    'score-finalize__filter-chip--active': scoreFilterForm.unpublishedBoundOnly,
+                  }"
+                  @click="toggleIncompleteClassFilter"
+                >
+                  仅看未齐班级
+                </button>
+              </div>
               <UiButton variant="outline" size="sm" @click="goExportTasks"> 导出任务 </UiButton>
             </div>
           </div>
@@ -649,7 +679,7 @@
       </UiForm>
     </UiDrawer>
 
-    <!-- D-3 下一步动作：确认成功后引导继续核对或跳转成绩发布 -->
+    <!-- D-3 下一步动作：确认成功后引导继续核对或打开全场发布 -->
     <UiDrawer
       :open="nextStep.visible"
       :title="nextStep.title"
@@ -670,11 +700,12 @@
         <div class="score-finalize__next-step-actions">
           <UiButton
             v-if="nextStep.kind === 'all-confirmed'"
-            variant="outline"
+            variant="primary"
             size="md"
+            :disabled="!canBulkPublish"
             @click="handleNextStepGoPublish"
           >
-            前往成绩发布
+            全场发布
           </UiButton>
           <UiButton
             v-else-if="nextStep.kind === 'continue-next' && nextStep.nextCandidate"
@@ -688,6 +719,73 @@
         </div>
       </div>
     </UiDrawer>
+
+    <!-- 全场发布 Drawer：后端按考试全场口径筛选并逐卷发布 -->
+    <UiDrawer
+      :open="bulkOpen"
+      title="全场发布成绩"
+      :width="720"
+      :mask-closable="!bulkRunning"
+      :closable="!bulkRunning"
+      :hide-footer="false"
+      @update:open="
+        (v: boolean) => {
+          if (!bulkRunning) bulkOpen = v
+        }
+      "
+      @close="bulkOpen = false"
+    >
+      <div v-if="riskOverview" class="score-finalize__bulk-stats analytics-stats">
+        <div v-for="item in bulkModalStatItems" :key="item.key" class="analytics-stats__card">
+          <div class="analytics-stats__value" :class="bulkModalValueClass(item.valClass)">
+            {{ item.value }}
+          </div>
+          <div class="analytics-stats__label">{{ item.label }}</div>
+        </div>
+      </div>
+      <div v-if="bulkResult" class="score-finalize__bulk-result">
+        <UiProgressBar
+          :percent="bulkResultPercent"
+          :color="
+            bulkResult.failureCount > 0 || bulkResult.remainingCount > 0
+              ? 'var(--dp-error)'
+              : 'var(--dp-success)'
+          "
+        />
+        <div class="score-finalize__bulk-meta">
+          本次成功 {{ bulkResult.successCount }} 条 · 失败 {{ bulkResult.failureCount }} 条 ·
+          全场已发布 {{ bulkResult.alreadyPublishedCount }} / {{ bulkResult.totalCandidateCount }}
+        </div>
+      </div>
+      <UiList v-if="bulkResult?.failures.length" size="small" class="score-finalize__bulk-list">
+        <UiListItem v-for="(item, index) in bulkResult.failures" :key="item.paperInstanceId">
+          <UiListItemMeta>
+            <template #title> 试卷实例 {{ item.paperInstanceId }} </template>
+            <template #description>
+              <UiTag tone="red" size="sm" class="score-finalize__bulk-error-tag">
+                {{ item.code }}
+              </UiTag>
+              {{ item.message }}
+            </template>
+          </UiListItemMeta>
+          <UiTag tone="red" size="sm">失败 {{ index + 1 }}</UiTag>
+        </UiListItem>
+      </UiList>
+      <template #footer>
+        <UiButton variant="outline" size="md" :disabled="bulkRunning" @click="bulkOpen = false">
+          取消
+        </UiButton>
+        <UiButton
+          variant="primary"
+          size="md"
+          :loading="bulkRunning"
+          :disabled="!canBulkPublish"
+          @click="runBulkPublish"
+        >
+          确认全场发布
+        </UiButton>
+      </template>
+    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -696,11 +794,13 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TablePaginationConfig } from 'ant-design-vue/es/table/interface'
 import type { OperationLogResponse } from '@/apis/mark/admin-audit'
+import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type { ExamPaperScoreResponse, ExamQuestionScoreResponse } from '@/apis/mark/exam-grade'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type {
   ExamScoreSummaryItemResponse,
+  FinalScoreBatchPublishResponse,
   FinalScoreRiskOverviewResponse,
 } from '@/apis/mark/exam-score'
 import type { ScoreBiasLevelCode } from '@/apis/mark/score-bias'
@@ -712,6 +812,7 @@ import type {
 } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import type { ScoreStatusTabKey } from '@/utils/score-workbench-analytics'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref, watch } from 'vue'
@@ -728,6 +829,7 @@ import { getPaperScore } from '@/apis/mark/exam-grade'
 import { getScorePanel } from '@/apis/mark/exam-progress'
 import {
   batchConfirmSafeFinalScores,
+  batchPublishFinalScores,
   confirmFinalScore,
   FinalScoreRiskReasonCode,
   getFinalScoreRiskOverview,
@@ -749,6 +851,7 @@ import {
   SCORE_BIAS_LEVEL_TONE,
   ScoreBiasLevelDescription,
 } from '@/apis/mark/score-bias'
+import ExamArchiveGateBanner from '@/components/archive-volume/ExamArchiveGateBanner.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -767,6 +870,10 @@ import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiList from '@/components/ui-guide/ui/UiList.vue'
+import UiListItem from '@/components/ui-guide/ui/UiListItem.vue'
+import UiListItemMeta from '@/components/ui-guide/ui/UiListItemMeta.vue'
+import UiProgressBar from '@/components/ui-guide/ui/UiProgressBar.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -774,8 +881,6 @@ import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagrap
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
-import ScoreAnalyticsStatusFlow from '@/components/workbench/ScoreAnalyticsStatusFlow.vue'
-import ScoreReleaseStepPipeline from '@/components/workbench/ScoreReleaseStepPipeline.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchNoticeBanner from '@/components/workbench/WorkbenchNoticeBanner.vue'
@@ -796,8 +901,9 @@ import { formatDateTime, formatDateTimeWithSeconds } from '@/utils/format'
 import { formatTrendAriaLabel, MARK_CHART_EMPTY } from '@/utils/mark-chart-accessibility'
 import { buildTrendChartInsight } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
+import { isExamScoresFullyPublished } from '@/utils/score-release-readiness'
 import {
-  buildScoreAnalyticsFlowSteps,
+  buildScoreBulkPublishModalStatItems,
   buildScoreConfirmStatusTabItems,
   SCORE_STATUS_TAB_ALL,
 } from '@/utils/score-workbench-analytics'
@@ -817,13 +923,19 @@ function finalScoreStatusLabel(value: FinalScoreStatusCode): string {
 interface ScoreFilterForm {
   [key: string]: unknown
   keyword: string
+  classId?: string
+  unpublishedBoundOnly: boolean
 }
 
 const scoreFilterForm = reactive<ScoreFilterForm>({
   keyword: '',
+  classId: undefined,
+  unpublishedBoundOnly: false,
 })
 
 const statusTabKey = ref<ScoreStatusTabKey>(SCORE_STATUS_TAB_ALL)
+
+const examArchiveGate = ref<ArchiveVolumeExamGateResponse | null>(null)
 
 const scoreFilterModel = computed<Record<string, unknown>>({
   get: () => scoreFilterForm,
@@ -832,20 +944,41 @@ const scoreFilterModel = computed<Record<string, unknown>>({
   },
 })
 
-const scoreFilterFields: FilterField[] = [
-  {
-    key: 'keyword',
-    type: 'input',
-    placeholder: '按学号 / 姓名搜索',
-    allowClear: true,
-    width: 240,
-    inputPrefixIcon: 'search',
-    triggerSearchOnChange: false,
-  },
-]
+const scoreFilterFields = computed<FilterField[]>(() => {
+  const classOptions = (examArchiveGate.value?.classPublishProgress ?? []).map((item) => ({
+    label: item.className?.trim() || (item.classId ? `班级 ${item.classId}` : '未分班'),
+    value: item.classId,
+  }))
+  const fields: FilterField[] = [
+    {
+      key: 'keyword',
+      type: 'input',
+      placeholder: '按学号 / 姓名搜索',
+      allowClear: true,
+      width: 240,
+      inputPrefixIcon: 'search',
+      triggerSearchOnChange: false,
+    },
+  ]
+  if (classOptions.length > 0) {
+    fields.push({
+      key: 'classId',
+      type: 'select',
+      placeholder: '按班级过滤',
+      allowClear: true,
+      width: 200,
+      options: classOptions,
+    })
+  }
+  return fields
+})
+
+const showIncompleteClassChip = computed(
+  () => (examArchiveGate.value?.unpublishedBoundPaperCount ?? 0) > 0,
+)
 
 const router = useRouter()
-const { goScorePublish, goExportTasks } = useScoreReleaseNavigation()
+const { goExportTasks } = useScoreReleaseNavigation()
 
 function goLayoutDesigner(): void {
   if (!selectedExamId.value) {
@@ -855,6 +988,29 @@ function goLayoutDesigner(): void {
     name: 'TeacherExamWorkspaceLayoutDesigner',
     params: { examId: selectedExamId.value },
   })
+}
+
+const gateBannerRef = ref<InstanceType<typeof ExamArchiveGateBanner> | null>(null)
+
+async function refreshArchiveGate(): Promise<void> {
+  await gateBannerRef.value?.refresh()
+}
+
+function onExamArchiveGateLoaded(gate: ArchiveVolumeExamGateResponse): void {
+  examArchiveGate.value = gate
+}
+
+function toggleIncompleteClassFilter(): void {
+  scoreFilterForm.unpublishedBoundOnly = !scoreFilterForm.unpublishedBoundOnly
+  if (scoreFilterForm.unpublishedBoundOnly) {
+    scoreFilterForm.classId = undefined
+  }
+  pagination.current = 1
+  void loadCandidates()
+}
+
+function goExamListForClose(): void {
+  void router.push({ name: 'TeacherExamList' })
 }
 
 const { selectedExamId } = useMarkExamContext()
@@ -921,6 +1077,7 @@ const panelNotice = computed(() => {
 })
 
 const {
+  pendingAbsenceCount,
   refreshPendingAbsenceCount,
   hasFieldWideHardBlockForWrite,
   ensureScorePublishPreconditions,
@@ -931,6 +1088,35 @@ const {
   riskOverview: effectiveRiskOverview,
   scorePanel,
 })
+
+const pendingAbsenceCountForDisplay = computed(() => pendingAbsenceCount.value ?? 0)
+const hasPendingAbsence = computed(() => pendingAbsenceCountForDisplay.value > 0)
+
+const scoresFullyPublished = computed(() =>
+  isExamScoresFullyPublished(effectiveRiskOverview.value, examArchiveGate.value),
+)
+
+const correctedRepublishNotice = computed(() => {
+  const count = riskOverview.value?.correctedCount ?? 0
+  if (count <= 0) {
+    return undefined
+  }
+  return `有 ${count} 名考生成绩处于「已更正」状态，学生端不可见。请筛选后逐份重新发布。`
+})
+
+/** 全场可发布人数：已确认 + 已撤回 + 已更正（与 BE 全场发布筛选口径对齐） */
+const publishableOverviewCount = computed(() => {
+  const overview = effectiveRiskOverview.value
+  if (!overview) return 0
+  return overview.confirmedCount + overview.withdrawnCount + overview.correctedCount
+})
+
+function filterCorrectedOnly(): void {
+  statusTabKey.value = FinalScoreStatusCode.CORRECTED
+  scoreFilterForm.unpublishedBoundOnly = false
+  pagination.current = 1
+  void loadCandidates()
+}
 
 const batchConfirming = ref(false)
 const riskReviewDrawerOpen = ref(false)
@@ -969,6 +1155,8 @@ async function loadCandidates(): Promise<void> {
       keyword: scoreFilterForm.keyword.trim() || undefined,
       finalScoreStatus:
         statusTabKey.value === SCORE_STATUS_TAB_ALL ? undefined : statusTabKey.value,
+      classId: scoreFilterForm.classId,
+      unpublishedBoundOnly: scoreFilterForm.unpublishedBoundOnly || undefined,
       pageNum: pagination.current ?? 1,
       pageSize: pagination.pageSize ?? DEFAULT_LIST_PAGE_SIZE,
     })
@@ -1040,6 +1228,7 @@ async function refreshScoreFinalizeData(): Promise<void> {
 
 async function refreshAfterScoreWrite(): Promise<void> {
   await refreshScoreFinalizeData()
+  await refreshArchiveGate()
   try {
     await refreshSnapshot()
   } catch (error) {
@@ -1056,6 +1245,8 @@ function handleSearch(): void {
 function handleReset(): void {
   scoreFilterForm.keyword = ''
   statusTabKey.value = SCORE_STATUS_TAB_ALL
+  scoreFilterForm.classId = undefined
+  scoreFilterForm.unpublishedBoundOnly = false
   pagination.current = 1
   void loadCandidates()
 }
@@ -1321,6 +1512,8 @@ async function handleRepairScoreZero(): Promise<void> {
     await Promise.all([
       loadCandidates(),
       loadRiskOverview(),
+      refreshPendingAbsenceCount(),
+      refreshArchiveGate(),
       refreshSnapshot().catch((error) => {
         // 附属快照失败不阻断主流程，但不得静默；右上角 Message 告知教师
         showUserError(error, '成绩快照刷新失败')
@@ -1409,17 +1602,9 @@ const statMetrics = computed((): SignalMetric[] =>
     scorePanel.value,
     effectiveRiskOverview.value,
     hasDailyScoreConfig.value,
+    publishableOverviewCount.value,
   ),
 )
-
-/** 成绩确认页：分数状态流转（人数 + 当前阶段强调），UI 唯一真源 ScoreAnalyticsStatusFlow */
-const scoreAnalyticsFlowSteps = computed(() => {
-  const overview = effectiveRiskOverview.value
-  if (!overview) {
-    return []
-  }
-  return buildScoreAnalyticsFlowSteps(overview, 'confirm', 0)
-})
 
 const delayedAutoConfirmNotice = computed(() => {
   const panel = scorePanel.value
@@ -1453,6 +1638,146 @@ const blockedDelayedAutoConfirmNotice = computed(() => {
   return `有 ${blocked} 份答卷延迟自动确认连续失败，成绩仍停留在可确认态。请在本页逐份确认最终成绩，或前往批改进度查看任务诊断。`
 })
 
+// ─── 全场发布与发布门禁 ─────────────────────────────
+const publishRiskBlocked = computed(() => {
+  const overview = effectiveRiskOverview.value
+  return Boolean(overview && !overview.readyToPublish)
+})
+
+/** 发布闸门：只置顶一条阻断，其余折叠，避免告警墙淹没「全场发布」。 */
+type PublishGateKey = 'delayedAutoConfirm' | 'pendingAbsence' | 'scoreZero' | 'risk' | 'corrected'
+
+const PUBLISH_GATE_LABEL: Record<PublishGateKey, string> = {
+  delayedAutoConfirm: '延迟自动确认失败',
+  pendingAbsence: '缺考待确认',
+  scoreZero: '计零终分待补齐',
+  risk: '成绩风险未复核',
+  corrected: '已更正未重发布',
+}
+
+const publishGatePriorityKeys = computed((): PublishGateKey[] => {
+  const keys: PublishGateKey[] = []
+  if (blockedDelayedAutoConfirmNotice.value) keys.push('delayedAutoConfirm')
+  if (hasPendingAbsence.value) keys.push('pendingAbsence')
+  if (missingAbsenceScoreZeroFinalCount.value > 0) keys.push('scoreZero')
+  if (publishRiskBlocked.value) keys.push('risk')
+  if (correctedRepublishNotice.value) keys.push('corrected')
+  return keys
+})
+
+const publishPrimaryGateKey = computed(() => publishGatePriorityKeys.value[0] ?? null)
+const publishSecondaryGateKeys = computed(() => publishGatePriorityKeys.value.slice(1))
+const publishSecondaryGatesExpanded = ref(false)
+const publishSecondaryGateSummary = computed(() =>
+  publishSecondaryGateKeys.value.map((key) => PUBLISH_GATE_LABEL[key]).join(' · '),
+)
+
+function isPublishGateVisible(key: PublishGateKey): boolean {
+  if (publishPrimaryGateKey.value === key) return true
+  return publishSecondaryGatesExpanded.value && publishSecondaryGateKeys.value.includes(key)
+}
+
+const bulkModalStatItems = computed(() => {
+  const overview = effectiveRiskOverview.value
+  if (!overview) {
+    return []
+  }
+  return buildScoreBulkPublishModalStatItems(overview, publishableOverviewCount.value)
+})
+
+function bulkModalValueClass(valClass?: string): string | undefined {
+  if (valClass === 'stat-card__val--ok') {
+    return 'analytics-stats__value--green'
+  }
+  if (valClass === 'stat-card__val--warn') {
+    return 'analytics-stats__value--warn'
+  }
+  return undefined
+}
+
+const canBulkPublish = computed(
+  () =>
+    Boolean(selectedExamId.value)
+    // MVR-293：须叠 canManageReviewerWrites，避免非评阅写权用户顶栏假可点全场发布
+    && canManageReviewerWrites.value
+    && publishableOverviewCount.value > 0
+    && riskOverview.value?.readyToPublish === true
+    && (riskOverview.value?.blockedCount ?? 0) === 0
+    // MVR-207：readyToPublish 不含「待确认缺考记录」计数，须与 BE ensureNoPendingAbsenceRecords 对齐
+    && !hasFieldWideHardBlockForWrite.value,
+)
+
+const bulkOpen = ref(false)
+const bulkRunning = ref(false)
+const bulkResult = ref<FinalScoreBatchPublishResponse | null>(null)
+const bulkResultPercent = computed(() => {
+  const result = bulkResult.value
+  if (!result || result.totalCandidateCount <= 0) return 0
+  return Math.round((result.alreadyPublishedCount / result.totalCandidateCount) * 100)
+})
+
+function resetBulkState(): void {
+  bulkResult.value = null
+}
+
+function openBulkPublishModal(): void {
+  // MVR-293：与 BE requireExamReviewerPermission / canManageReviewerWrites 二次拦截
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('当前账号无本场评阅写权限，无法全场发布成绩')
+    return
+  }
+  if (canBulkPublish.value !== true) {
+    message.warning('当前考试没有可发布的最终成绩')
+    return
+  }
+  void (async () => {
+    await Promise.all([loadRiskOverview(), loadScorePanel()])
+    const canContinue = await ensureScorePublishPreconditions()
+    if (canContinue !== true) {
+      return
+    }
+    resetBulkState()
+    bulkOpen.value = true
+  })()
+}
+
+/** 调用后端全场发布入口，避免前端用当前分页候选误当全场候选。 */
+async function runBulkPublish(): Promise<void> {
+  if (!selectedExamId.value || bulkRunning.value) return
+  // MVR-293：与 BE batchPublishFinalScores 评阅写门禁二次拦截
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('当前账号无本场评阅写权限，无法全场发布成绩')
+    return
+  }
+  const canContinue = await ensureScorePublishPreconditions()
+  if (canContinue !== true) {
+    bulkOpen.value = false
+    return
+  }
+  bulkRunning.value = true
+  try {
+    bulkResult.value = await batchPublishFinalScores({ examId: selectedExamId.value })
+    riskOverview.value = bulkResult.value.afterOverview
+    if (bulkResult.value.failureCount === 0 && bulkResult.value.remainingCount === 0) {
+      message.success('全场成绩已发布，学生通知已下发')
+      bulkOpen.value = false
+    } else if (bulkResult.value.failureCount === 0) {
+      message.warning(
+        `全场发布完成：成功 ${bulkResult.value.successCount} 条，仍有 ${bulkResult.value.remainingCount} 条需处理`,
+      )
+    } else {
+      message.warning(
+        `全场发布完成：成功 ${bulkResult.value.successCount} 条，失败 ${bulkResult.value.failureCount} 条，请查看明细`,
+      )
+    }
+    await refreshAfterScoreWrite()
+  } catch (error) {
+    showUserError(error, '全场成绩发布失败')
+  } finally {
+    bulkRunning.value = false
+  }
+}
+
 function goDelayedConfirmTasks(): void {
   if (!selectedExamId.value) {
     return
@@ -1469,15 +1794,6 @@ function goQuestionReviewBatch(): void {
   if (!examId) return
   void router.push({
     name: 'TeacherExamWorkspaceReviewBatchConfirm',
-    params: { examId },
-  })
-}
-
-function goQuestionReviewSingle(): void {
-  const examId = selectedExamId.value
-  if (!examId) return
-  void router.push({
-    name: 'TeacherExamWorkspaceMarkingReview',
     params: { examId },
   })
 }
@@ -1989,7 +2305,7 @@ function closeNextStep(): void {
 
 /**
  * 根据最新状态推导下一步：
- * - 全部已确认（CONFIRMED + PUBLISHED + WITHDRAWN + CORRECTED == total）→ 引导跳转 score-publish
+ * - 全部已确认（CONFIRMED + PUBLISHED + WITHDRAWN + CORRECTED == total）→ 引导全场发布
  * - 否则在当前页找下一份未确认（PENDING / CALCULATED）的学生，提示继续核对
  * - 若当前页无待确认但全场仍有 PENDING/CALCULATED → 提示翻页
  */
@@ -2001,7 +2317,7 @@ function deriveNextStepSuggestion(): void {
       visible: true,
       kind: 'all-confirmed',
       title: '全场成绩已具备发布条件',
-      description: `共 ${overview.totalCandidateCount} 名考生：已确认 ${overview.confirmedCount} · 已发布 ${overview.publishedCount} · 已撤回 ${overview.withdrawnCount} · 已更正 ${overview.correctedCount}。进入「成绩发布」可推进到学生侧。`,
+      description: `共 ${overview.totalCandidateCount} 名考生：已确认 ${overview.confirmedCount} · 已发布 ${overview.publishedCount} · 已撤回 ${overview.withdrawnCount} · 已更正 ${overview.correctedCount}。可在本页执行「全场发布」推送到学生侧。`,
       nextCandidate: null,
     }
     return
@@ -2044,15 +2360,11 @@ function handleNextStepConfirmContinue(): void {
 
 function handleNextStepGoPublish(): void {
   closeNextStep()
-  void handleGoScorePublish()
-}
-
-async function handleGoScorePublish(): Promise<void> {
-  const canContinue = await ensureScorePublishPreconditions()
-  if (canContinue !== true) {
+  if (canBulkPublish.value) {
+    openBulkPublishModal()
     return
   }
-  goScorePublish()
+  message.info('请先完成发布条件，或使用顶栏「全场发布」')
 }
 
 async function handleConfirm(): Promise<void> {
@@ -2214,8 +2526,14 @@ watch(
     pagination.current = 1
     statusTabKey.value = SCORE_STATUS_TAB_ALL
     scoreFilterForm.keyword = ''
+    scoreFilterForm.classId = undefined
+    scoreFilterForm.unpublishedBoundOnly = false
+    examArchiveGate.value = null
     reviewedRiskReasonCodes.value = new Set()
     riskReviewDrawerOpen.value = false
+    bulkOpen.value = false
+    bulkResult.value = null
+    publishSecondaryGatesExpanded.value = false
     examDetail.value = null
     candidates.value = []
     riskOverview.value = null
@@ -2242,6 +2560,86 @@ watch(
 
   &__alert {
     margin-top: var(--dp-space-3);
+  }
+
+  &__more-gates {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--dp-space-2) var(--dp-space-3);
+    margin: 0 0 var(--dp-space-3);
+  }
+
+  &__more-gates-toggle {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: var(--dp-font-size-sm);
+    font-weight: var(--dp-font-weight-emphasis);
+    color: var(--dp-color-primary);
+    cursor: pointer;
+  }
+
+  &__more-gates-summary {
+    font-size: var(--dp-font-size-sm);
+    color: var(--dp-text-secondary);
+  }
+
+  &__filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--dp-space-2);
+  }
+
+  &__filter-chip {
+    padding: 2px 10px;
+    border: 1px solid var(--dp-border);
+    border-radius: var(--dp-radius-control);
+    background: var(--dp-surface);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--dp-text-secondary);
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      color 0.2s ease,
+      background-color 0.2s ease;
+
+    &:hover {
+      border-color: var(--dp-primary-light);
+      color: var(--dp-primary);
+    }
+
+    &--active {
+      border-color: var(--dp-primary);
+      background: color-mix(in srgb, var(--dp-primary) 8%, var(--dp-bg-container));
+      color: var(--dp-primary);
+      font-weight: 600;
+    }
+  }
+
+  &__bulk-result {
+    margin-top: var(--dp-space-3);
+  }
+
+  &__bulk-meta {
+    font-size: 12px;
+    color: var(--dp-text-secondary);
+    margin-top: 4px;
+  }
+
+  &__bulk-list {
+    max-height: 320px;
+    overflow-y: auto;
+    margin-top: var(--dp-space-2);
+    border: 1px solid var(--dp-border);
+    border-radius: var(--dp-radius-panel);
+    background: var(--dp-surface);
+  }
+
+  &__bulk-error-tag {
+    margin-left: var(--dp-space-2);
   }
 
   &__guide {

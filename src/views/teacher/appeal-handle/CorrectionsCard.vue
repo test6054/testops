@@ -582,13 +582,13 @@ async function submit(): Promise<void> {
     if (result.requiresRepublish) {
       void confirmAsync({
         title: '需重新发布成绩',
-        content: '成绩已更正（含撤回后改分），学生端暂不可见最新分数。请前往成绩发布页重新发布。',
-        okText: '前往发布',
+        content: '成绩已更正（含撤回后改分），学生端暂不可见最新分数。请前往成绩确认与发布页重新发布。',
+        okText: '前往确认与发布',
         cancelText: '稍后处理',
         type: 'warning',
         onOk: () => {
           void router.push({
-            name: 'TeacherExamWorkspaceScoreRelease',
+            name: 'TeacherExamWorkspaceScoreSummary',
             params: { examId: props.examId },
           })
         },

@@ -211,258 +211,258 @@
         />
       </div>
 
-      <ArchiveFlowContextBar
-        v-if="showWorkbenchToolbar"
-        variant="toolbar"
-        :stage-label="workbenchStageLabel"
-      >
-        <template #actions>
-          <UiButton
-            v-if="detailScope.canStartCollecting && !isQualityTab && !isManageTab"
-            variant="primary"
-            size="sm"
-            @click="setActiveTab('start-collecting')"
-          >
-            开始收材
-          </UiButton>
-          <UiButton
-            v-if="detailScope.showSubmitActions && !detailScope.canSubmitVolume && !isQualityTab"
-            variant="outline"
-            size="sm"
-            disabled
-            :title="detailScope.submitActionDisabledHint ?? submitBlockReason ?? undefined"
-          >
-            提交归档
-          </UiButton>
-          <UiButton
-            v-if="detailScope.canSubmitVolume && !isQualityTab"
-            variant="primary"
-            size="sm"
-            :loading="submitting"
-            @click="handleSubmit"
-          >
-            提交归档
-          </UiButton>
-          <UiButton
-            v-if="detailScope.showSelfCheckButton && !isQualityTab"
-            variant="outline"
-            size="sm"
-            @click="selfCheckModalOpen = true"
-          >
-            提交前自查
-          </UiButton>
+      <StageWorkbenchShell class="archive-volume-detail__shell">
+        <template #context>
+          <ContextBar layout="workbench" show-title :title="workbenchStageLabel">
+            <template v-if="showWorkbenchActions" #actions>
+              <UiButton
+                v-if="detailScope.canStartCollecting && !isQualityTab && !isManageTab"
+                variant="primary"
+                size="sm"
+                @click="setActiveTab('start-collecting')"
+              >
+                开始收材
+              </UiButton>
+              <UiButton
+                v-if="detailScope.showSubmitActions && !detailScope.canSubmitVolume && !isQualityTab"
+                variant="outline"
+                size="sm"
+                disabled
+                :title="detailScope.submitActionDisabledHint ?? submitBlockReason ?? undefined"
+              >
+                提交归档
+              </UiButton>
+              <UiButton
+                v-if="detailScope.canSubmitVolume && !isQualityTab"
+                variant="primary"
+                size="sm"
+                :loading="submitting"
+                @click="handleSubmit"
+              >
+                提交归档
+              </UiButton>
+              <UiButton
+                v-if="detailScope.showSelfCheckButton && !isQualityTab"
+                variant="outline"
+                size="sm"
+                @click="selfCheckModalOpen = true"
+              >
+                提交前自查
+              </UiButton>
+            </template>
+          </ContextBar>
         </template>
-      </ArchiveFlowContextBar>
 
-      <ArchiveVolumeQualityGuideStrip
-        v-if="qualityGuide"
-        :title="qualityGuide.title"
-        :description="qualityGuide.description"
-        :action-label="qualityGuide.actionLabel"
-        :action-loading="qualityGuideActionLoading"
-        @action="handleQualityGuideAction"
-      />
+        <template v-if="activeTabSignalMetrics.length" #signal>
+          <SignalBand
+            variant="panel"
+            :metrics="activeTabSignalMetrics"
+            class="archive-volume-detail__signal"
+            @metric-click="handleActiveTabSignalClick"
+          />
+        </template>
 
-      <ArchiveVolumeSubmitProgressBand
-        v-if="showSubmitProgressBand"
-        :progress="detail.submitProgress"
-        :can-submit-volume="detailScope.canSubmitVolume"
-        :blocking-items="submitBlockingItems"
-        @navigate="handleSubmitChecklistNavigate"
-      />
-
-      <SignalBand
-        v-if="activeTabSignalMetrics.length"
-        variant="panel"
-        :metrics="activeTabSignalMetrics"
-        class="archive-volume-detail__signal"
-        @metric-click="handleActiveTabSignalClick"
-      />
-
-      <WorkbenchSurfaceCard flush class="archive-volume-detail__panel-surface">
-        <DigitalMaterialConfirmPanel
-          v-if="detail && activeTab === 'materials'"
-          :volume-id="volumeId"
-          :detail="detail"
-          @refreshed="loadDetail"
+        <ArchiveVolumeQualityGuideStrip
+          v-if="qualityGuide"
+          :title="qualityGuide.title"
+          :description="qualityGuide.description"
+          :action-label="qualityGuide.actionLabel"
+          :action-loading="qualityGuideActionLoading"
+          @action="handleQualityGuideAction"
         />
-        <div v-if="activeTab === 'materials'" class="archive-volume-detail__panel">
-          <ArchiveVolumeCatalogEditor
+
+        <ArchiveVolumeSubmitProgressBand
+          v-if="showSubmitProgressBand"
+          :progress="detail.submitProgress"
+          :can-submit-volume="detailScope.canSubmitVolume"
+          :blocking-items="submitBlockingItems"
+          @navigate="handleSubmitChecklistNavigate"
+        />
+
+        <WorkbenchSurfaceCard flush class="archive-volume-detail__panel-surface">
+          <DigitalMaterialConfirmPanel
+            v-if="detail && activeTab === 'materials'"
             :volume-id="volumeId"
-            :catalog-status="detail.catalogStatus"
-            :readonly="!detailScope.canEditCatalog"
-            class="archive-volume-detail__catalog-editor"
+            :detail="detail"
             @refreshed="loadDetail"
           />
-          <div class="archive-volume-detail__catalog">
-            <ArchiveVolumeMaterialTreePanel
-              v-model:selected-keys="selectedCatalogKeys"
+          <div v-if="activeTab === 'materials'" class="archive-volume-detail__panel">
+            <ArchiveVolumeCatalogEditor
               :volume-id="volumeId"
-              :missing-items="detail.latestIntegrityCheck?.missingItems ?? []"
               :catalog-status="detail.catalogStatus"
+              :readonly="!detailScope.canEditCatalog"
+              class="archive-volume-detail__catalog-editor"
+              @refreshed="loadDetail"
             />
-            <ArchiveVolumeMaterialTablePanel
-              :volume-id="volumeId"
-              :detail="detail"
-              :selected-catalog-keys="selectedCatalogKeys"
-              :can-register-material="detailScope.canRegisterMaterial"
-              :can-maintain-material="detailScope.canMaintainMaterial"
-              :can-remove-shared-material-ref="detailScope.canRemoveSharedMaterialRef"
-              @refreshed="(opts) => loadDetail(opts)"
-              @ocr-completed-stale="handleMaterialOcrCompleted"
-              @stats-ready="onMaterialsStatsReady"
-            />
+            <div class="archive-volume-detail__catalog">
+              <ArchiveVolumeMaterialTreePanel
+                v-model:selected-keys="selectedCatalogKeys"
+                :volume-id="volumeId"
+                :missing-items="detail.latestIntegrityCheck?.missingItems ?? []"
+                :catalog-status="detail.catalogStatus"
+              />
+              <ArchiveVolumeMaterialTablePanel
+                :volume-id="volumeId"
+                :detail="detail"
+                :selected-catalog-keys="selectedCatalogKeys"
+                :can-register-material="detailScope.canRegisterMaterial"
+                :can-maintain-material="detailScope.canMaintainMaterial"
+                :can-remove-shared-material-ref="detailScope.canRemoveSharedMaterialRef"
+                @refreshed="(opts) => loadDetail(opts)"
+                @ocr-completed-stale="handleMaterialOcrCompleted"
+                @stats-ready="onMaterialsStatsReady"
+              />
+            </div>
           </div>
-        </div>
 
-        <ArchiveVolumeScoresPanel
-          v-else-if="activeTab === 'scores'"
+          <ArchiveVolumeScoresPanel
+            v-else-if="activeTab === 'scores'"
+            :volume-id="volumeId"
+            :detail="detail"
+            :can-confirm-score-completion="canConfirmScoreCompletion"
+            @refreshed="loadDetail"
+          />
+
+          <ArchiveVolumeOcrSearchPanel
+            v-else-if="activeTab === 'ocr-search'"
+            :volume-id="volumeId"
+            :can-register-material="detailScope.canRegisterMaterial"
+            :can-maintain-material="detailScope.canMaintainMaterial"
+            :can-remove-shared-material-ref="detailScope.canRemoveSharedMaterialRef"
+            @navigate-materials="setActiveTab('materials')"
+            @refreshed="loadDetail"
+          />
+
+          <ArchiveVolumeIntegrityPanel
+            v-else-if="activeTab === 'integrity'"
+            :volume-id="volumeId"
+            :detail="detail"
+            :displayed-integrity-result="displayedIntegrityResult"
+            :checking-integrity="checkingIntegrity"
+            :can-run-integrity="canRunIntegrityCheck"
+            :can-allow-material-delay="canAllowMaterialDelay"
+            :can-waive-material-missing="canWaiveMaterialMissing"
+            :can-waive-integrity="canWaiveIntegrity"
+            @run-integrity-check="runIntegrityCheck"
+            @refreshed="loadDetail"
+          />
+
+          <ArchiveVolumeSelfCheckList
+            v-else-if="activeTab === 'self-check'"
+            :volume-id="volumeId"
+            :self-check-status="detail.selfCheckStatus"
+            :readonly="!detailScope.canEditSelfCheck"
+            @refreshed="loadDetail"
+            @open-sign-off="selfCheckModalOpen = true"
+          />
+
+          <ArchiveVolumeFourPropertyPanel
+            v-else-if="activeTab === 'four-property'"
+            :volume-id="volumeId"
+            :detail="detail"
+            :displayed-four-property="displayedFourProperty"
+            :can-run-four-property="canRunFourPropertyCheck"
+            @refreshed="loadDetail"
+            @four-property-checked="fourPropertyResult = $event"
+          />
+
+          <DepartmentReviewPanel
+            v-else-if="activeTab === 'department-review'"
+            :volume-id="volumeId"
+            :detail="detail"
+            @refreshed="loadDetail"
+            @navigate-tab="setActiveTab"
+          />
+
+          <ArchiveVolumeTransferPanel
+            v-else-if="activeTab === 'transfer'"
+            :volume-id="volumeId"
+            :detail="detail"
+            :can-review-transfer="canReviewTransfer"
+            :can-reject-transfer="canRejectTransfer"
+            :current-user-id="currentUserId"
+            @refreshed="loadDetail"
+          />
+
+          <ArchiveVolumeAccessPanel
+            v-else-if="activeTab === 'access'"
+            :volume-id="volumeId"
+            :can-request-access="canRequestAccess"
+            :can-approve-access-record="canApproveAccessRecord"
+            :current-user-id="currentUserId"
+            :materials="detail.materials"
+          />
+
+          <ArchiveVolumeAppraisalPanel
+            v-else-if="activeTab === 'appraisal'"
+            :volume-id="volumeId"
+            :detail="detail"
+            :can-manage-appraisal="canManageAppraisal"
+            :can-approve-destruction="canApproveDestruction"
+            :current-user-id="currentUserId"
+            @refreshed="loadDetail"
+          />
+
+          <ArchiveVolumeEventsPanel
+            v-else-if="activeTab === 'events'"
+            :volume-id="volumeId"
+            :events="detail.events"
+          />
+
+          <ArchiveVolumePhysicalLocationPanel
+            v-else-if="activeTab === 'storage'"
+            :volume-id="volumeId"
+            :detail="detail"
+            :can-edit="canEditPhysicalLocation"
+            @refreshed="loadDetail"
+          />
+
+          <ArchiveScanBatchSnapshotPanel
+            v-else-if="activeTab === 'scan-batches'"
+            :volume-id="volumeId"
+          />
+
+          <ArchiveScanBatchReviewPanel
+            v-else-if="activeTab === 'scan-review'"
+            :volume-id="volumeId"
+            :can-review="canReviewScanBatches"
+            @refreshed="loadDetail"
+          />
+
+          <ArchiveVolumeTaskSettingsPanel
+            v-else-if="detail && activeTab === 'task-settings'"
+            :detail="detail"
+            :can-manage-collaborators="detailScope.canManageCollaborators"
+            :can-update-archive-due-time="detailScope.capabilities.canUpdateArchiveDueTime === true"
+            @open-materials="setActiveTab('materials')"
+            @updated="loadDetail"
+          />
+
+          <ArchiveVolumeCollaboratorsPanel
+            v-else-if="activeTab === 'collaborators'"
+            :volume-id="volumeId"
+            :collaborators="detail?.collaborators ?? []"
+            :can-manage-collaborators="detailScope.canManageCollaborators"
+            @changed="loadDetail"
+          />
+
+          <ArchiveVolumeStartCollectingPanel
+            v-else-if="detail && activeTab === 'start-collecting'"
+            :detail="detail"
+            :can-start-collecting="detailScope.canStartCollecting"
+            @started="handleStartCollectingStarted"
+            @navigate="setActiveTab"
+          />
+        </WorkbenchSurfaceCard>
+
+        <ArchiveVolumeNextStepsPanel
+          v-if="showNextStepsPanel"
+          :actions="hubNextStepActions"
+          :exam-id="detail.volume.examId"
           :volume-id="volumeId"
-          :detail="detail"
-          :can-confirm-score-completion="canConfirmScoreCompletion"
-          @refreshed="loadDetail"
+          @tab-change="setActiveTab"
         />
-
-        <ArchiveVolumeOcrSearchPanel
-          v-else-if="activeTab === 'ocr-search'"
-          :volume-id="volumeId"
-          :can-register-material="detailScope.canRegisterMaterial"
-          :can-maintain-material="detailScope.canMaintainMaterial"
-          :can-remove-shared-material-ref="detailScope.canRemoveSharedMaterialRef"
-          @navigate-materials="setActiveTab('materials')"
-          @refreshed="loadDetail"
-        />
-
-        <ArchiveVolumeIntegrityPanel
-          v-else-if="activeTab === 'integrity'"
-          :volume-id="volumeId"
-          :detail="detail"
-          :displayed-integrity-result="displayedIntegrityResult"
-          :checking-integrity="checkingIntegrity"
-          :can-run-integrity="canRunIntegrityCheck"
-          :can-allow-material-delay="canAllowMaterialDelay"
-          :can-waive-material-missing="canWaiveMaterialMissing"
-          :can-waive-integrity="canWaiveIntegrity"
-          @run-integrity-check="runIntegrityCheck"
-          @refreshed="loadDetail"
-        />
-
-        <ArchiveVolumeSelfCheckList
-          v-else-if="activeTab === 'self-check'"
-          :volume-id="volumeId"
-          :self-check-status="detail.selfCheckStatus"
-          :readonly="!detailScope.canEditSelfCheck"
-          @refreshed="loadDetail"
-          @open-sign-off="selfCheckModalOpen = true"
-        />
-
-        <ArchiveVolumeFourPropertyPanel
-          v-else-if="activeTab === 'four-property'"
-          :volume-id="volumeId"
-          :detail="detail"
-          :displayed-four-property="displayedFourProperty"
-          :can-run-four-property="canRunFourPropertyCheck"
-          @refreshed="loadDetail"
-          @four-property-checked="fourPropertyResult = $event"
-        />
-
-        <DepartmentReviewPanel
-          v-else-if="activeTab === 'department-review'"
-          :volume-id="volumeId"
-          :detail="detail"
-          @refreshed="loadDetail"
-          @navigate-tab="setActiveTab"
-        />
-
-        <ArchiveVolumeTransferPanel
-          v-else-if="activeTab === 'transfer'"
-          :volume-id="volumeId"
-          :detail="detail"
-          :can-review-transfer="canReviewTransfer"
-          :can-reject-transfer="canRejectTransfer"
-          :current-user-id="currentUserId"
-          @refreshed="loadDetail"
-        />
-
-        <ArchiveVolumeAccessPanel
-          v-else-if="activeTab === 'access'"
-          :volume-id="volumeId"
-          :can-request-access="canRequestAccess"
-          :can-approve-access-record="canApproveAccessRecord"
-          :current-user-id="currentUserId"
-          :materials="detail.materials"
-        />
-
-        <ArchiveVolumeAppraisalPanel
-          v-else-if="activeTab === 'appraisal'"
-          :volume-id="volumeId"
-          :detail="detail"
-          :can-manage-appraisal="canManageAppraisal"
-          :can-approve-destruction="canApproveDestruction"
-          :current-user-id="currentUserId"
-          @refreshed="loadDetail"
-        />
-
-        <ArchiveVolumeEventsPanel
-          v-else-if="activeTab === 'events'"
-          :volume-id="volumeId"
-          :events="detail.events"
-        />
-
-        <ArchiveVolumePhysicalLocationPanel
-          v-else-if="activeTab === 'storage'"
-          :volume-id="volumeId"
-          :detail="detail"
-          :can-edit="canEditPhysicalLocation"
-          @refreshed="loadDetail"
-        />
-
-        <ArchiveScanBatchSnapshotPanel
-          v-else-if="activeTab === 'scan-batches'"
-          :volume-id="volumeId"
-        />
-
-        <ArchiveScanBatchReviewPanel
-          v-else-if="activeTab === 'scan-review'"
-          :volume-id="volumeId"
-          :can-review="canReviewScanBatches"
-          @refreshed="loadDetail"
-        />
-
-        <ArchiveVolumeTaskSettingsPanel
-          v-else-if="detail && activeTab === 'task-settings'"
-          :detail="detail"
-          :can-manage-collaborators="detailScope.canManageCollaborators"
-          :can-update-archive-due-time="detailScope.capabilities.canUpdateArchiveDueTime === true"
-          @open-collaborators="setActiveTab('collaborators')"
-          @open-materials="setActiveTab('materials')"
-          @updated="loadDetail"
-        />
-
-        <ArchiveVolumeCollaboratorsPanel
-          v-else-if="activeTab === 'collaborators'"
-          :volume-id="volumeId"
-          :collaborators="detail?.collaborators ?? []"
-          :can-manage-collaborators="detailScope.canManageCollaborators"
-          @changed="loadDetail"
-        />
-
-        <ArchiveVolumeStartCollectingPanel
-          v-else-if="detail && activeTab === 'start-collecting'"
-          :detail="detail"
-          :can-start-collecting="detailScope.canStartCollecting"
-          @started="handleStartCollectingStarted"
-          @navigate="setActiveTab"
-        />
-      </WorkbenchSurfaceCard>
-
-      <ArchiveVolumeNextStepsPanel
-        v-if="showNextStepsPanel"
-        :actions="hubNextStepActions"
-        :exam-id="detail.volume.examId"
-        :volume-id="volumeId"
-        @tab-change="setActiveTab"
-      />
+      </StageWorkbenchShell>
     </template>
 
     <WorkbenchSurfaceCard v-else class="archive-volume-detail__load-error">
@@ -561,7 +561,9 @@ import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
+import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { resolveSubmitChecklistRoute } from '@/composables/useArchiveSubmitChecklistRouter'
@@ -593,7 +595,6 @@ import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveCollectionRejectDialog from '@/views/teacher/archive-volume/components/ArchiveCollectionRejectDialog.vue'
-import ArchiveFlowContextBar from '@/views/teacher/archive-volume/components/detail/ArchiveFlowContextBar.vue'
 import ArchiveScanBatchReviewPanel from '@/views/teacher/archive-volume/components/detail/ArchiveScanBatchReviewPanel.vue'
 import ArchiveScanBatchSnapshotPanel from '@/views/teacher/archive-volume/components/detail/ArchiveScanBatchSnapshotPanel.vue'
 import ArchiveVolumeAccessPanel from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeAccessPanel.vue'
@@ -670,7 +671,7 @@ const nextStepActions = workbench.nextStepActions
 const workbenchStageLabel = computed(() => {
   const tab = activeTab.value
   const fromNav = workbench.sidebarTabs.value.find((item) => item.key === tab)
-  return fromNav?.label ?? ''
+  return fromNav?.label || '归档任务'
 })
 
 const isQualityTab = computed(() => isArchiveVolumeQualityTab(activeTab.value))
@@ -759,7 +760,7 @@ const qualityGuide = computed((): {
   return null
 })
 
-const showWorkbenchToolbar = computed(() => {
+const showWorkbenchActions = computed(() => {
   if (!isArchiveVolumeWorkflowChromeTab(activeTab.value) || isQualityTab.value) {
     return false
   }
@@ -1882,6 +1883,10 @@ watch(
   margin-bottom: var(--dp-space-2);
 }
 
+.archive-volume-detail__shell {
+  margin-top: 0;
+}
+
 .archive-volume-detail__overdue-hint {
   margin: 0 0 12px;
   font-size: 13px;
@@ -1889,7 +1894,7 @@ watch(
 }
 
 .archive-volume-detail__signal {
-  margin-bottom: var(--dp-space-4);
+  margin-bottom: 0;
 }
 
 .archive-volume-detail__panel {

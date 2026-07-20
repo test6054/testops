@@ -35,8 +35,6 @@ export const ARCHIVE_VOLUME_SIDEBAR_NAV_GROUPS: ArchiveVolumeSidebarNavGroup[] =
     key: 'collect',
     label: '材料收齐',
     tabKeys: [
-      'task-settings',
-      'collaborators',
       'start-collecting',
       'materials',
       'scores',
@@ -73,6 +71,11 @@ export const ARCHIVE_VOLUME_SIDEBAR_NAV_GROUPS: ArchiveVolumeSidebarNavGroup[] =
     key: 'audit',
     label: '追溯审计',
     tabKeys: ['events'],
+  },
+  {
+    key: 'config',
+    label: '任务配置',
+    tabKeys: ['task-settings', 'collaborators'],
   },
 ]
 

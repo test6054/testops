@@ -137,8 +137,8 @@
   --dp-chart-height-sm: 200px;
   --dp-chart-empty-min-height: 180px;
 
-  /* SaaS 画布：略冷灰，与白 panel 形成清晰层级 */
-  --dp-bg-muted: #f0f2f5;
+  /* SaaS 画布：Cloudscape 中性灰，与白 panel 形成清晰层级 */
+  --dp-bg-muted: #f2f3f3;
   --dp-surface: var(--ant-color-bg-container);
   --dp-surface-subtle: var(--ant-color-fill-quaternary);
   /* 可感知 elevated：略深于白底，打破 head/toolbar 与 body 白对白 */
@@ -168,16 +168,16 @@
   --dp-button-height-md: 36px;
   --dp-button-height-lg: 40px;
 
-  /* SaaS 面板抬升：灰画布上的白板更清晰 */
-  --dp-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 4px rgba(15, 23, 42, 0.04);
-  --dp-shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --dp-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
-  --dp-shadow-card: 0 8px 24px rgba(15, 23, 42, 0.06);
-  --dp-shadow-card-hover: 0 12px 28px rgba(15, 23, 42, 0.08);
-  --dp-shadow-soft: 0 6px 16px rgba(15, 23, 42, 0.05);
-  --dp-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
-  --dp-shadow-dropdown: 0 18px 40px rgba(15, 23, 42, 0.12);
-  --dp-shadow-modal: 0 24px 60px rgba(15, 23, 42, 0.18);
+  /* SaaS 面板抬升：Cloudscape 克制阴影，不替代边框 */
+  --dp-shadow-xs: 0 1px 2px rgba(26, 35, 50, 0.04);
+  --dp-shadow-sm: 0 1px 3px rgba(26, 35, 50, 0.06), 0 1px 2px rgba(26, 35, 50, 0.04);
+  --dp-shadow-md: 0 4px 8px rgba(26, 35, 50, 0.06), 0 2px 4px rgba(26, 35, 50, 0.04);
+  --dp-shadow-card: 0 8px 24px rgba(26, 35, 50, 0.06);
+  --dp-shadow-card-hover: 0 12px 28px rgba(26, 35, 50, 0.08);
+  --dp-shadow-soft: 0 6px 16px rgba(26, 35, 50, 0.05);
+  --dp-shadow-lg: 0 12px 32px rgba(26, 35, 50, 0.10);
+  --dp-shadow-dropdown: 0 18px 40px rgba(26, 35, 50, 0.12);
+  --dp-shadow-modal: 0 24px 60px rgba(26, 35, 50, 0.16);
 
   --dp-z-sticky: 1020;
   --dp-z-fixed: 1030;
@@ -190,7 +190,7 @@
   --dp-table-header-bg: var(--dp-surface-elevated);
   --dp-table-header-height: 40px;
   --dp-table-header-padding: 0 16px;
-  --dp-table-cell-padding: 10px 16px;
+  --dp-table-cell-padding: 12px 16px;
   --dp-table-cell-padding-sm: 8px 12px;
   --dp-table-border: var(--ant-color-border-secondary);
   --dp-table-row-hover-bg: var(--dp-gray-50);

@@ -65,7 +65,7 @@
         class="absence-page__alert"
       >
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goScorePublish"> 前往成绩发布 </UiButton>
+          <UiButton variant="outline" size="sm" @click="goScorePublish"> 前往成绩确认与发布 </UiButton>
         </template>
       </UiAlertStrip>
 
@@ -235,8 +235,6 @@
           </template>
         </UiDataTable>
       </WorkbenchSurfaceCard>
-
-      <ScorePublishRelatedLinksCard variant="absence" />
     </template>
 
     <UiDrawer
@@ -434,7 +432,6 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
-import ScorePublishRelatedLinksCard from '@/components/workbench/ScorePublishRelatedLinksCard.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
@@ -782,7 +779,7 @@ function goScorePublish(): void {
     return
   }
   void router.push({
-    name: 'TeacherExamWorkspaceScoreRelease',
+    name: 'TeacherExamWorkspaceScoreSummary',
     params: { examId: selectedExamId.value },
   })
 }
@@ -953,7 +950,7 @@ async function handleConfirm(): Promise<void> {
     })
     message.success(
       policy === ScorePolicyCode.SCORE_ZERO
-        ? '已确认缺考并写入零分终分，可前往成绩发布'
+        ? '已确认缺考并写入零分终分，可前往成绩确认与发布'
         : '已确认缺考',
     )
     confirmModalOpen.value = false

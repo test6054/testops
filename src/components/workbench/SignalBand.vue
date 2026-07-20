@@ -20,17 +20,23 @@
       @click="metric.clickable ? emit('metric-click', metric.key) : undefined"
     >
       <span
-        v-if="variant === 'panel'"
+        v-if="variant === 'panel' && hasIconSlot(metric.key)"
         class="signal-band__icon"
         :class="iconToneClass(metric)"
         aria-hidden="true"
       >
-        <slot :name="`icon-${metric.key}`">
-          <span class="signal-band__icon-dot" />
-        </slot>
+        <slot :name="`icon-${metric.key}`" />
       </span>
       <div class="signal-band__body">
-        <span class="signal-band__label">{{ metric.label }}</span>
+        <span class="signal-band__label">
+          <span
+            v-if="variant === 'panel' && !hasIconSlot(metric.key)"
+            class="signal-band__dot"
+            :class="`signal-band__dot--${resolveIconTone(metric)}`"
+            aria-hidden="true"
+          />
+          {{ metric.label }}
+        </span>
         <div class="signal-band__value-row">
           <span class="signal-band__value" :class="toneClass(metric.tone)">
             {{ metric.value }}
@@ -69,6 +75,7 @@
 <script lang="ts" setup>
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, SignalMetricIconTone, SignalMetricTrendPolarity } from '@/types/workbench'
+import { useSlots } from 'vue'
 
 defineOptions({
   name: 'SignalBand',
@@ -93,6 +100,13 @@ const props = withDefaults(
 const emit = defineEmits<{
   'metric-click': [key: string]
 }>()
+
+const slots = useSlots()
+
+/** 判断调用方是否提供了自定义 icon-{key} 插槽（panel 默认改用行内色调点） */
+function hasIconSlot(key: string): boolean {
+  return typeof slots[`icon-${key}`] === 'function'
+}
 
 function toneClass(tone?: BadgeTone): string {
   return tone ? `signal-band__value--${tone}` : ''
@@ -144,7 +158,7 @@ function sparkPolyline(metric: SignalMetric): string {
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 @use '@/styles/breakpoints' as bp;
 
 .signal-band {
@@ -164,30 +178,24 @@ function sparkPolyline(metric: SignalMetric): string {
   padding: var(--dp-space-2) var(--dp-space-3);
 }
 
-/* panel：独立指标卡 + 图标区 + 副文案 */
+/* panel：Cloudscape 式统一 KPI 面板——单张白卡 + 发丝分隔线，取代独立小卡堆叠 */
 .signal-band--panel {
   flex-wrap: nowrap;
-  gap: var(--dp-space-3);
+  gap: 1px;
   padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  overflow-x: auto;
-}
-
-.signal-band--panel.signal-band--compact {
-  gap: var(--dp-space-3);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-panel);
+  background: var(--dp-border-subtle); /* 1px 间隙透出底色，形成发丝分隔线 */
+  box-shadow: var(--dp-shadow-xs);
+  overflow: hidden;
 }
 
 .signal-band--panel.signal-band--compact .signal-band__item {
-  padding: var(--dp-space-3);
+  padding: var(--dp-space-3) var(--dp-space-4);
 }
 
 .signal-band--panel .signal-band__item--active {
-  background: color-mix(in srgb, var(--dp-primary) 8%, var(--dp-surface));
-  border-color: color-mix(in srgb, var(--dp-primary) 32%, var(--dp-border));
-  box-shadow: var(--dp-shadow-sm);
+  background: color-mix(in srgb, var(--dp-primary) 6%, var(--dp-surface));
   color: var(--dp-primary);
 }
 
@@ -200,6 +208,7 @@ function sparkPolyline(metric: SignalMetric): string {
   flex-direction: column;
   min-width: 0;
   flex: 1;
+  gap: var(--dp-space-1);
 }
 
 .signal-band__item {
@@ -228,44 +237,38 @@ function sparkPolyline(metric: SignalMetric): string {
 
 .signal-band--panel .signal-band__item {
   flex: 1 1 0;
-  min-width: 140px;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: flex-start;
-  gap: var(--dp-space-3);
-  min-height: 88px;
-  padding: var(--dp-space-4);
-  padding-top: calc(var(--dp-space-4) + 3px);
+  min-width: 128px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0;
+  min-height: 0;
+  padding: var(--dp-space-4) var(--dp-space-5);
   background: var(--dp-surface);
-  border: 1px solid var(--dp-border-subtle);
-  border-top: 3px solid var(--dp-border-subtle);
-  border-radius: var(--dp-radius-panel);
-  box-shadow: var(--dp-shadow-xs);
-  transition:
-    background var(--dp-duration-normal) ease,
-    border-color var(--dp-duration-normal) ease,
-    box-shadow var(--dp-duration-normal) ease,
-    transform var(--dp-duration-fast) ease;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  transition: background var(--dp-duration-fast) ease;
 }
 
 .signal-band--panel .signal-band__item:hover {
-  box-shadow: var(--dp-shadow-sm);
-  transform: translateY(-1px);
+  background: var(--dp-surface-subtle);
+  transform: none;
 }
 
 .signal-band--panel .signal-band__item--clickable:hover {
   background: color-mix(in srgb, var(--dp-primary) 4%, var(--dp-surface));
-  border-color: var(--dp-color-primary-border);
+}
+
+/* 统一面板内焦点环用内描边，避免被 overflow:hidden 裁切 */
+.signal-band--panel .signal-band__item--clickable:focus-visible {
+  border-radius: 0;
+  box-shadow: inset 0 0 0 2px var(--dp-color-primary);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .signal-band--panel .signal-band__item {
     transition: none;
-  }
-
-  .signal-band--panel .signal-band__item:hover,
-  .signal-band--panel .signal-band__item--clickable:hover {
-    transform: none;
   }
 }
 
@@ -280,10 +283,10 @@ function sparkPolyline(metric: SignalMetric): string {
 }
 
 .signal-band--panel .signal-band__icon {
-  width: 40px;
-  height: 40px;
-  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  box-shadow: inset 0 1px 2px color-mix(in srgb, currentColor 8%, transparent);
+  width: 28px;
+  height: 28px;
+  border: none;
+  box-shadow: none;
 }
 
 .signal-band__icon-dot {
@@ -295,9 +298,9 @@ function sparkPolyline(metric: SignalMetric): string {
 }
 
 .signal-band--panel .signal-band__icon-dot {
-  width: 12px;
-  height: 12px;
-  box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 15%, transparent);
+  width: 8px;
+  height: 8px;
+  box-shadow: none;
 }
 
 .signal-band__icon--blue {
@@ -330,33 +333,41 @@ function sparkPolyline(metric: SignalMetric): string {
   background: var(--dp-purple-50);
 }
 
-/* panel 卡片顶部色调条 */
-.signal-band--panel .signal-band__item--tone-green {
-  border-top-color: var(--dp-green-500, var(--dp-success));
+/* panel 行内色调点：色彩收敛到小指示点，不再用顶部色条/大色块 */
+.signal-band__dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--dp-radius-full);
 }
 
-.signal-band--panel .signal-band__item--tone-blue {
-  border-top-color: var(--dp-blue-500, var(--dp-color-primary));
+.signal-band__dot--blue {
+  background: var(--dp-blue-500);
 }
 
-.signal-band--panel .signal-band__item--tone-orange {
-  border-top-color: var(--dp-orange-500, var(--dp-warning));
+.signal-band__dot--green {
+  background: var(--dp-green-500);
 }
 
-.signal-band--panel .signal-band__item--tone-red {
-  border-top-color: var(--dp-red-500, var(--dp-error));
+.signal-band__dot--orange {
+  background: var(--dp-orange-500);
 }
 
-.signal-band--panel .signal-band__item--tone-purple {
-  border-top-color: var(--dp-purple-500);
+.signal-band__dot--red {
+  background: var(--dp-red-500);
 }
 
-.signal-band--panel .signal-band__item--tone-gray {
-  border-top-color: var(--dp-gray-400, var(--dp-border));
+.signal-band__dot--purple {
+  background: var(--dp-purple-500);
 }
 
-.signal-band--panel .signal-band__item--tone-yellow {
-  border-top-color: var(--dp-yellow-600, var(--dp-warning));
+.signal-band__dot--yellow {
+  background: var(--dp-yellow-500);
+}
+
+.signal-band__dot--gray {
+  background: var(--dp-gray-400);
 }
 
 .signal-band--panel .signal-band__value-row {
@@ -367,6 +378,9 @@ function sparkPolyline(metric: SignalMetric): string {
 }
 
 .signal-band--panel .signal-band__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2);
   font-weight: var(--dp-type-label-weight);
 }
 
@@ -402,6 +416,21 @@ function sparkPolyline(metric: SignalMetric): string {
 .signal-band--compact .signal-band__value {
   font-size: var(--dp-type-metric-size);
   line-height: var(--dp-type-metric-line-height);
+}
+
+/* panel 数值克制化：24px 近黑中性色，色彩让位给行内色调点；仅保留红/橙警示色 */
+.signal-band--panel .signal-band__value {
+  font-size: var(--dp-font-size-3xl);
+  line-height: 1.25;
+  color: var(--dp-text-primary);
+}
+
+.signal-band--panel .signal-band__value--red {
+  color: var(--dp-error);
+}
+
+.signal-band--panel .signal-band__value--orange {
+  color: var(--dp-warning);
 }
 
 .signal-band__unit {
@@ -485,11 +514,10 @@ function sparkPolyline(metric: SignalMetric): string {
 @media (max-width: bp.$layout-mobile-max) {
   .signal-band--panel {
     flex-wrap: wrap;
-    overflow-x: visible;
   }
 
   .signal-band--panel .signal-band__item {
-    flex: 1 1 calc(50% - var(--dp-space-3));
+    flex: 1 1 calc(50% - 1px);
     min-width: 0;
   }
 }
