@@ -43,7 +43,6 @@
 </template>
 
 <script lang="ts" setup>
-import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioArchiveRecordStatusCode,
@@ -65,6 +64,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 defineOptions({ name: 'PortfolioTeacherReviewStatusTable' })
 

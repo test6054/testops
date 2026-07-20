@@ -1,12 +1,10 @@
-import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import type {
   PortfolioTeacherPkCompareVO,
   PortfolioTeacherRecommendPkCompareRequest,
 } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioCockpitSummaryVO,
-  PortfolioDigitalLiteracyVO,
+import type { PortfolioCockpitSummaryVO, PortfolioDigitalLiteracyVO,
   PortfolioEducatingOutcomeContributionVO,
   PortfolioGuidanceContributionVO,
   PortfolioIndustryEducationProjectContributionVO,

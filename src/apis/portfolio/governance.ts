@@ -1,7 +1,7 @@
 import type { PortfolioAnalysisComplianceAlertVO } from '@/apis/portfolio/analysis'
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import http from '@/config/axios'
-import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 
 /** 对齐后端 PortfolioExportBusinessRef */
 export interface PortfolioExportBusinessRef {

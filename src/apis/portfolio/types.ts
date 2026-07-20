@@ -1,4 +1,3 @@
-import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'

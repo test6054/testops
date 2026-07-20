@@ -1,8 +1,8 @@
 import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import http from '@/config/axios'
-import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 
 export enum PortfolioAchievementEvidenceTypeCode {
   DEV_RECORD_LEVEL = 'DEV_RECORD_LEVEL',
