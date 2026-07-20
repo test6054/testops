@@ -122,7 +122,7 @@ const hasAttention = computed(() => attentionItems.value.length > 0)
 async function loadOverview() {
   loading.value = true
   try {
-    // http.post 已解包 ResultInfo.data，直接得到 ScanOpsOverviewResponse
+    // http.post 已解包 ResultInfo，载荷即 ScanOpsOverviewResponse（无嵌套 data）
     overview.value = await loadArchiveScanOpsOverview()
   }
   catch {

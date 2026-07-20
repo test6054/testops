@@ -295,7 +295,7 @@ defineExpose({ loadCatalog })
             size="small"
             clearable
             :model-value="catalogCellInputValue(record, column.dataIndex)"
-            @update:model-value="(value) => updateCatalogLineValue(index, column.dataIndex, value)"
+            @update:model-value="(value: string | number | undefined) => updateCatalogLineValue(index, column.dataIndex, value)"
           />
         </template>
       </template>
