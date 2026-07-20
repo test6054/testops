@@ -1,5 +1,6 @@
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
 import type {
   PortfolioTeacherPkCompareVO,
   PortfolioTeacherRecommendPkCompareRequest,
@@ -10,7 +11,6 @@ import type { PortfolioCockpitSummaryVO, PortfolioDigitalLiteracyVO,
   PortfolioIndustryEducationProjectContributionVO,
   PortfolioIndustryPackSceneScoreVO,
   PortfolioMasterpieceContributionVO,
-  PortfolioMultiIdentityLayerVO,
   PortfolioTeacherCompletenessGetRequest,
   PortfolioTeacherPortraitCohortCompareVO,
   PortfolioTeacherPortraitGetRequest,

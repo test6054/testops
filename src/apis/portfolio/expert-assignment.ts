@@ -1,4 +1,4 @@
-import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
 import type { PageResult } from '@/types'
 import http from '@/config/axios'
 

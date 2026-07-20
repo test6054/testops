@@ -1,4 +1,5 @@
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioEvaluationObjectionHandleRequest,
@@ -13,7 +14,6 @@ import type {
   PortfolioEvaluationResultSummaryRequest,
   PortfolioEvaluationTaskAdvanceRequest,
   PortfolioEvaluationTeacherResultSummaryVO,
-  PortfolioMultiIdentityLayerVO,
 } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import http from '@/config/axios'

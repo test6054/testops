@@ -1,3 +1,6 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
+
+export type { PortfolioMultiIdentityLayerVO }
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -1873,17 +1876,6 @@ export interface PortfolioTeachingWorkloadByIdentityVO {
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
 
-}
-
-/** US-MI-01 多身份并列展示层（课程档案 / 双高责任人等） */
-export interface PortfolioMultiIdentityLayerVO {
-  identityId?: string
-  identityType: string
-  identityTypeLabel: string
-  externalIdentity: boolean
-  displayName?: string
-  workloadHours: number
-  taughtCourseCount?: number
 }
 
 /** §8.54 教学代表作贡献明细 */

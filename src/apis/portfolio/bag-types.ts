@@ -1,4 +1,4 @@
-import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
 import type { PortfolioArchiveBagSectionTypeCode } from '@/types/enums/portfolio-archive-bag-section-type-enum'
 import type { PortfolioArchiveBagSourceTypeCode } from '@/types/enums/portfolio-archive-bag-source-type-enum'
 import type { PortfolioCompletenessLevelCode } from '@/types/enums/portfolio-completeness-level-enum'
