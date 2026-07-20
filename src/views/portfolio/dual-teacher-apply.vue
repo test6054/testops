@@ -10,7 +10,9 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
+import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -384,6 +386,18 @@ watch(
         <div v-if="application" class="status-bar">
           <span>申请单号 {{ application.applicationNo }}</span>
           <span>状态 {{ statusLabel(application.applicationStatus) }}</span>
+          <UiTag
+            v-if="application.lifecycleStatus"
+            :tone="application.lifecycleStatus === 'ACTIVE' ? 'green' : application.lifecycleStatus === 'TEMP_HOLD' ? 'orange' : application.lifecycleStatus === 'SEALED' ? 'red' : 'gray'"
+          >
+            {{ application.lifecycleStatusLabel || application.lifecycleStatus }}
+          </UiTag>
+          <UiTag v-if="application.evaluationHeld" tone="orange">参评 hold</UiTag>
+          <PortfolioOwnerIdentityLayersCell
+            v-if="application.ownerIdentityLayers?.length"
+            :layers="application.ownerIdentityLayers"
+            :note="application.ownerMultiIdentityNote"
+          />
           <span v-if="reReviewDrafting" class="re-review-hint">正在填写复核申请（尚未保存）</span>
         </div>
         <UiForm layout="vertical" class="form">

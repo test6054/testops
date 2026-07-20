@@ -884,11 +884,11 @@ const repairingScoreZero = ref(false)
 const absenceMoreActionItems = computed(() => {
   const items: { key: string, label: string, disabled?: boolean }[] = []
   // MVR-326：派生补考仅主考；仅认 BE canManageOwnerAbsenceMakeup===true
-  if (canManageOwnerAbsenceMakeup.value && pendingMakeupCount.value > 0) {
+  if (canManageOwnerAbsenceMakeup.value === true && pendingMakeupCount.value > 0) {
     items.push({ key: 'deriveMakeup', label: `派生补考 ${pendingMakeupCount.value}` })
   }
-  // MVR-287：补齐计零与 BE requireExamReviewerPermission 对齐
-  if (canManageReviewerWrites.value) {
+  // MVR-287/430：补齐计零与 BE requireExamReviewerPermission 对齐；仅认 === true
+  if (canManageReviewerWrites.value === true) {
     items.push({
       key: 'repairScoreZero',
       label: '补齐计零',

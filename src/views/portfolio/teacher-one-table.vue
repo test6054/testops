@@ -23,6 +23,7 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -256,15 +257,24 @@ usePortfolioScopedLoader(
             {{ courseArchiveSummaryText(summary) }}
           </UiDescriptionsItem>
           <UiDescriptionsItem label="身份标签" :span="3">
-            <UiTag
-              v-for="tag in summary.identityTags"
-              :key="tag"
-              tone="blue"
-              style="margin-right: 4px"
-            >
-              {{ identityLabel(tag) }}
-            </UiTag>
-            <span v-if="!summary.identityTags.length">—</span>
+            <PortfolioOwnerIdentityLayersCell
+              v-if="summary.ownerIdentityLayers?.length"
+              :layers="summary.ownerIdentityLayers"
+              :note="summary.ownerMultiIdentityNote"
+              :row-key="summary.teacherUserId"
+              show-note
+            />
+            <template v-else>
+              <UiTag
+                v-for="tag in summary.identityTags"
+                :key="tag"
+                tone="blue"
+                style="margin-right: 4px"
+              >
+                {{ identityLabel(tag) }}
+              </UiTag>
+              <span v-if="!summary.identityTags.length">—</span>
+            </template>
           </UiDescriptionsItem>
         </UiDescriptions>
         <div class="actions">

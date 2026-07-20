@@ -29,6 +29,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
@@ -515,6 +516,12 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
                   </div>
                 </div>
                 <div class="process-journal__tags">
+                  <PortfolioOwnerIdentityLayersCell
+                    v-if="row.ownerIdentityLayers?.length"
+                    :layers="row.ownerIdentityLayers"
+                    :note="row.ownerMultiIdentityNote"
+                    :row-key="row.id"
+                  />
                   <UiTag :tone="row.sessionStatus === 'CONFIRMED' ? 'green' : 'blue'" size="sm">
                     {{ row.sessionStatus === 'CONFIRMED' ? '已确认' : '草稿' }}
                   </UiTag>

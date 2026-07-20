@@ -11,6 +11,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } = useQueryTable(
   (params) =>
@@ -22,6 +23,7 @@ const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handle
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
   { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
   { title: '状态', dataIndex: 'recordStatus', key: 'recordStatus', width: 88 },
@@ -55,7 +57,14 @@ function recordStatusLabel(status: PortfolioArchiveRecordStatusCode): string {
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'recordStatus'">
+          <template v-if="column.key === 'identityLayers'">
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+              :row-key="record.id"
+            />
+          </template>
+          <template v-else-if="column.key === 'recordStatus'">
             {{ recordStatusLabel(record.recordStatus) }}
           </template>
         </template>

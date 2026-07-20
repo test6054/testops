@@ -16,6 +16,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import { flattenTeachingGroupOptions, usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
@@ -112,6 +113,7 @@ const columns: ColumnsType = [
   { title: '院系', dataIndex: 'departmentName', key: 'departmentName', width: 160 },
   { title: '职称', dataIndex: 'title', key: 'title', width: 120 },
   { title: '完整度', key: 'completeness', width: 120 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '操作', key: 'actions', width: 280, fixed: 'right' },
 ]
 
@@ -273,6 +275,13 @@ onMounted(async () => {
               {{ record.completenessPercent ?? '—' }}%
             </UiTag>
             <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'identityLayers'">
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+              :row-key="record.id || record.teacherId || record.teacherUserId || record.userId"
+            />
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

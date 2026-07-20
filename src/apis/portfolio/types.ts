@@ -1,3 +1,4 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
@@ -1082,6 +1083,11 @@ export interface PortfolioCandidateFieldVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
+
 }
 
 
@@ -1126,6 +1132,10 @@ export interface PortfolioAiAnalysisSummaryVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 
 }
 
@@ -1236,6 +1246,10 @@ export interface PortfolioReviewTaskSummaryVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioReviewTaskEscalateRequest {
@@ -1309,6 +1323,10 @@ export interface PortfolioReviewArchiveRecordDetailVO {
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
 
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioTeacherCompletenessGetRequest {
@@ -1375,6 +1393,10 @@ export interface PortfolioTeacherOnboardingStateVO {
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
 
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioOnboardingFieldSpecSummaryVO {
@@ -1489,6 +1511,12 @@ export interface PortfolioTeacherProgressCockpitVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
+
 }
 
 export interface PortfolioTeacherReviewStatusPageRequest extends QueryDto {
@@ -1509,6 +1537,10 @@ export interface PortfolioTeacherReviewStatusRowVO {
   updateTime?: string
   latestRejectReason?: string
   latestReturnDeadline?: string
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioMaterialReassignCategoryResultVO {
@@ -2039,6 +2071,12 @@ export interface PortfolioTeacherPortraitVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
+
 }
 
 export interface PortfolioTeacherPortraitTrendGetRequest extends PortfolioTeacherPortraitGetRequest {
@@ -2070,6 +2108,10 @@ export interface PortfolioTeacherPortraitTrendVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioTeacherPortraitCohortDimensionVO {
@@ -2103,6 +2145,10 @@ export interface PortfolioTeacherPortraitCohortCompareVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioTeacherPortraitIndicatorDetailRequest {
@@ -2140,6 +2186,10 @@ export interface PortfolioTeacherPortraitIndicatorDetailVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioArchiveRecordPageRequest extends QueryDto {
@@ -2176,6 +2226,11 @@ export interface PortfolioArchiveRecordSummaryVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 
 }
 
@@ -2246,6 +2301,10 @@ export interface PortfolioArchiveSupportMaterialVO {
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
 
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioArchiveRecordDetailVO {
@@ -2276,6 +2335,11 @@ export interface PortfolioArchiveRecordDetailVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 
 }
 
@@ -2338,6 +2402,10 @@ export interface PortfolioTeacherOneTableVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 
 }
 
@@ -2431,6 +2499,12 @@ export interface PortfolioCorrectionSummaryVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
+
 }
 
 export interface PortfolioCorrectionDetailVO {
@@ -2462,6 +2536,11 @@ export interface PortfolioCorrectionDetailVO {
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
 
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
+
 }
 
 /** 纠错关闭后生成的影响范围与派生数据重算报告 */
@@ -2489,6 +2568,10 @@ export interface PortfolioCorrectionImpactVO {
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
 
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioGapMissingFieldVO {
@@ -2526,6 +2609,12 @@ export interface PortfolioGapTaskDetailVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
+
 }
 
 export interface PortfolioGapTaskSubmitRequest {
@@ -2559,6 +2648,12 @@ export interface PortfolioGapTaskSummaryVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
+
 }
 
 export interface PortfolioGapTaskPageRequest extends QueryDto {
@@ -2607,6 +2702,11 @@ export interface PortfolioEvaluationTeacherNoticeVO {
   countsInCurrentFacultyStructure?: boolean
   /** 评价参评 hold（封存/暂挂/迁出链路） */
   evaluationHeld?: boolean
+
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 
 }
 
@@ -2746,6 +2846,11 @@ export interface PortfolioEvaluationPublicityListItemVO {
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
 
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
+
 }
 
 export interface PortfolioEvaluationObjectionPageRequest extends QueryDto {
@@ -2784,6 +2889,11 @@ export interface PortfolioEvaluationObjectionSummaryVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 
 }
 
@@ -2864,6 +2974,12 @@ export interface PortfolioEvaluationTeacherResultSummaryVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
+
 }
 
 export interface PortfolioEvaluationPublicityPublishRequest {
@@ -3027,6 +3143,10 @@ export interface PortfolioSourceFixEventItemVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 
@@ -3111,6 +3231,10 @@ export interface PortfolioTeacherAffiliationHistoryVO {
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
 
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioTeacherAffiliationHistoryListRequest {

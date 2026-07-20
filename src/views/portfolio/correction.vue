@@ -33,6 +33,7 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
@@ -58,6 +59,7 @@ const columns: ColumnsType<PortfolioCorrectionSummaryVO> = [
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 120, fixed: 'left' },
   { title: '字段', dataIndex: 'fieldLabel', key: 'fieldLabel', width: 120 },
   { title: '状态', key: 'requestStatus', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
   { title: '操作', key: 'actions', width: 72 },
@@ -562,6 +564,13 @@ watch(
               <UiTag :tone="correctionRequestStatusTone(record.requestStatus)">
                 {{ correctionRequestStatusLabel(record.requestStatus) }}
               </UiTag>
+            </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+                :row-key="record.id || record.teacherId || record.teacherUserId || record.subjectTeacherUserId || record.userId"
+              />
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions

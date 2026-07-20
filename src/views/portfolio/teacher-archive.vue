@@ -54,6 +54,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
@@ -160,6 +161,7 @@ const recordColumns: ColumnsType = [
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 140, fixed: 'left' },
   { title: '版本', key: 'documentVersionNo', width: 72 },
   { title: '状态', key: 'recordStatus', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '来源', key: 'sourceType', width: 100 },
   { title: '参与评价', key: 'evaluationIncluded', width: 96 },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
@@ -1235,6 +1237,13 @@ watch(
               <UiTag :tone="archiveRecordStatusTone(record.recordStatus)">
                 {{ archiveRecordStatusLabel(record.recordStatus) }}
               </UiTag>
+            </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+                :row-key="record.id || record.teacherId || record.teacherUserId || record.subjectTeacherUserId || record.userId"
+              />
             </template>
             <template v-else-if="column.key === 'documentVersionNo'">
               v{{ record.documentVersionNo ?? 1 }}

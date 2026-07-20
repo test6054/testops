@@ -12,6 +12,7 @@ import { PortfolioGapTaskStatusCode, PortfolioGapTaskStatusDescription } from '@
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -426,6 +427,12 @@ watch(
             >
               非当前在岗
             </UiTag>
+            <PortfolioOwnerIdentityLayersCell
+              v-if="detail.ownerIdentityLayers?.length"
+              class="teacher-gap__identity"
+              :layers="detail.ownerIdentityLayers"
+              :note="detail.ownerMultiIdentityNote"
+            />
             <span v-if="detail.categoryName">{{ detail.categoryName }}</span>
             <span v-if="courseScopeText">课程 {{ courseScopeText }}</span>
             <span v-if="detail.dueTime">截止 {{ detail.dueTime }}</span>

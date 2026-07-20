@@ -38,6 +38,11 @@ export interface PortfolioExpertAssignmentSubjectTeacherVO {
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
 
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
+
 }
 
 export interface PortfolioExpertReviewMaterialItemVO {
@@ -80,6 +85,11 @@ export interface PortfolioExpertReviewMaterialItemVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
+
+  /** 归属教师多身份并列层（US-MI-01 / §8.50） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 
 }
 

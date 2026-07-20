@@ -19,6 +19,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
@@ -105,6 +106,7 @@ const columns = computed<ColumnsType>(() => {
     { title: '分类', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
     { title: '级别', dataIndex: 'levelCode', key: 'levelCode', width: 88 },
     { title: '状态', dataIndex: 'recordStatus', key: 'recordStatus', width: 88 },
+    { title: '身份层', key: 'identityLayers', width: 160 },
     { title: '操作', key: 'actions', width: 120 },
   )
   return base
@@ -274,6 +276,13 @@ watch(
           </template>
           <template v-else-if="column.key === 'recordStatus'">
             {{ recordStatusLabel(record.recordStatus) }}
+          </template>
+          <template v-else-if="column.key === 'identityLayers'">
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+              :row-key="record.id || record.teacherId || record.teacherUserId || record.subjectTeacherUserId || record.userId"
+            />
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

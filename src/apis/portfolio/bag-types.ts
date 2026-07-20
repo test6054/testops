@@ -1,3 +1,4 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveBagSectionTypeCode } from '@/types/enums/portfolio-archive-bag-section-type-enum'
 import type { PortfolioArchiveBagSourceTypeCode } from '@/types/enums/portfolio-archive-bag-source-type-enum'
 import type { PortfolioCompletenessLevelCode } from '@/types/enums/portfolio-completeness-level-enum'
@@ -28,6 +29,10 @@ export interface PortfolioArchiveBagAssembleVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 
@@ -103,6 +108,10 @@ export interface PortfolioArchiveBagPreviewVO {
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
 
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioArchiveBagExportResultVO {
@@ -139,6 +148,10 @@ export interface PortfolioArchiveScoreResultVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 

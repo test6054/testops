@@ -185,8 +185,8 @@ async function loadPlatformSets() {
 }
 
 async function submitSave() {
-  // MVR-317：与 BE requireSuperAdminPermission 二次拦截
-  if (!isSuperAdmin.value) {
+  // MVR-317/429：与 BE requireSuperAdminPermission 二次拦截；仅认 isSuperAdmin === true
+  if (isSuperAdmin.value !== true) {
     message.warning('仅平台超级管理员可维护平台归档模板库')
     return
   }

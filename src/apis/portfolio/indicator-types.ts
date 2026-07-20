@@ -1,3 +1,4 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
 import type {
   PfCurrentTaskRuleStrategyCode} from '@/types/enums/pf-current-task-rule-strategy-enum';
@@ -575,6 +576,10 @@ export interface PortfolioIndicatorAutoCollectSummaryResponse {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 

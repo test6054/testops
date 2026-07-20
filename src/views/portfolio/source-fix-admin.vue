@@ -15,6 +15,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   PORTFOLIO_SOURCE_FIX_ALERT_STATUS_LABEL,
@@ -120,6 +121,7 @@ const itemColumns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
   { title: '状态', dataIndex: 'itemStatus', key: 'itemStatus', width: 100 },
   { title: '生命周期', key: 'lifecycleStatus', width: 140 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '前值', dataIndex: 'beforeValue', key: 'beforeValue', ellipsis: true },
   { title: '后值', dataIndex: 'afterValue', key: 'afterValue', ellipsis: true },
   { title: '结果', dataIndex: 'recomputeResult', key: 'recomputeResult', ellipsis: true },
@@ -146,7 +148,7 @@ function alertLabel(code?: string) {
 function alertTone(code?: string) {
   if (code === PortfolioSourceFixAlertStatusCode.OPEN) return 'red' as const
   if (code === PortfolioSourceFixAlertStatusCode.ACKED) return 'orange' as const
-  if (code === PortfolioSourceFixAlertStatusCode.NONE) return 'neutral' as const
+  if (code === PortfolioSourceFixAlertStatusCode.NONE) return 'gray' as const
   return 'blue' as const
 }
 
@@ -155,15 +157,15 @@ function statusTone(code?: string) {
   if (code === PortfolioSourceFixEventStatusCode.FAILED) return 'red' as const
   if (code === PortfolioSourceFixEventStatusCode.PARTIAL) return 'orange' as const
   if (code === PortfolioSourceFixEventStatusCode.RUNNING) return 'blue' as const
-  return 'neutral' as const
+  return 'gray' as const
 }
 
 /** 明细行生命周期 Tag 色（US-MI：读模型仅标注，不默认过滤）。 */
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 async function loadPage() {
@@ -438,6 +440,13 @@ watch(
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!record.lifecycleStatus">-</span>
+            </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+                :row-key="record.id || record.teacherId || record.teacherUserId || record.userId"
+              />
             </template>
           </template>
         </UiDataTable>

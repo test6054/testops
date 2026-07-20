@@ -30,6 +30,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
@@ -112,6 +113,7 @@ const teacherColumns: ColumnsType<PortfolioEvaluationComprehensiveTeacherRowVO> 
   { title: '被评教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 160 },
   { title: '涉及场景', dataIndex: 'involvedSceneLabels', key: 'involvedSceneLabels', width: 160 },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   {
     title: '涉及任务',
@@ -369,6 +371,13 @@ onMounted(async () => {
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!record.lifecycleStatus">-</span>
+            </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+                :row-key="record.subjectTeacherUserId"
+              />
             </template>
             <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
               <UiTag :tone="record.countsInCurrentFacultyStructure === true ? 'green' : 'gray'">

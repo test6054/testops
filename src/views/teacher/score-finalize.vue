@@ -2364,7 +2364,8 @@ function handleNextStepConfirmContinue(): void {
 
 function handleNextStepGoPublish(): void {
   closeNextStep()
-  if (canBulkPublish.value) {
+  // MVR-429：仅认 canBulkPublish === true，与 openBulkPublishModal 二次闸同源
+  if (canBulkPublish.value === true) {
     openBulkPublishModal()
     return
   }

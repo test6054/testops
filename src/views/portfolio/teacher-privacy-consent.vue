@@ -13,6 +13,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { portfolioPrivacyConsentApi } from '@/apis/portfolio/privacy-consent'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -185,6 +186,14 @@ watch(
         当前为目标教师范围：隐私授权仅本人可签，管理员不可代签同意或撤回。
       </span>
       <UiButton size="sm" variant="outline" @click="goHome">返回工作台</UiButton>
+    </div>
+    <div v-if="state?.ownerIdentityLayers?.length" class="privacy-consent__identity" role="status">
+      <span class="privacy-consent__identity-label">当前身份层</span>
+      <PortfolioOwnerIdentityLayersCell
+        :layers="state.ownerIdentityLayers"
+        :note="state.ownerMultiIdentityNote"
+        show-note
+      />
     </div>
     <UiCard title="教师数据采集与使用说明" style="margin-top: 16px">
       <p v-if="errorMode" class="privacy-consent__warn">

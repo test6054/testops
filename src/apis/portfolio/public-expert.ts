@@ -1,3 +1,4 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import http from '@/config/axios'
 
 const PUBLIC_EXPERT = '/api/public/portfolio/expert-assignment'
@@ -14,6 +15,10 @@ export interface PortfolioPublicExpertReviewSubjectVO {
   countsInCurrentFacultyStructure?: boolean
   /** 评价参评 hold（与档案写禁分离） */
   evaluationHeld?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioPublicExpertReviewMaterialVO {
@@ -35,6 +40,10 @@ export interface PortfolioPublicExpertReviewMaterialVO {
   archiveWriteForbidden?: boolean
   countsInCurrentFacultyStructure?: boolean
   evaluationHeld?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioPublicExpertReviewBundleVO {

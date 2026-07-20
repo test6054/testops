@@ -179,11 +179,16 @@ const participableSubjectTeacherOptions = computed(() => {
 })
 function subjectTeacherOptionLabel(teacher: PortfolioEvaluationSubjectTeacherOptionVO): string {
   const name = teacher.fullName || teacher.teacherUserId
-  if (!isCorrectionReviewTask.value || !teacher.evaluationHeld) {
-    return name
+  const layers = teacher.ownerIdentityLayers ?? []
+  const layerText = layers
+    .map((layer) => layer.identityTypeLabel || layer.displayName || layer.identityType)
+    .filter(Boolean)
+    .join('/')
+  if (teacher.evaluationHeld) {
+    const status = teacher.lifecycleStatusLabel || teacher.lifecycleStatus || '参评hold'
+    return layerText ? `${name}（${layerText} · ${status}）` : `${name}（${status}）`
   }
-  const status = teacher.lifecycleStatusLabel || teacher.lifecycleStatus || '参评hold'
-  return `${name}（${status}）`
+  return layerText ? `${name}（${layerText}）` : name
 }
 const isByIndicator = computed(() => selectedTask.value?.evaluationMode === 'BY_INDICATOR')
 const entryWritableStatuses = computed(() =>

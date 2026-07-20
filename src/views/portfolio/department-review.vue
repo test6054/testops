@@ -47,6 +47,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
@@ -129,6 +130,7 @@ const listColumns: ColumnsType = [
   { title: '审核状态', key: 'reviewStatus', width: 100 },
   { title: '关联健康', key: 'associationBroken', width: 100 },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '提交时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '操作', key: 'actions', width: 200 },
@@ -157,11 +159,11 @@ const hasSensitiveRows = computed(() => rows.value.some((item) => item.riskLevel
 const showReviewActions = computed(() => Boolean(activeRow.value?.reviewActionAllowed))
 const activeAssociationBroken = computed(() => Boolean(activeRow.value?.associationBroken))
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 
@@ -953,6 +955,13 @@ watch(
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else-if="!record.lifecycleStatus" class="text-neutral-400">—</span>
+          </template>
+          <template v-else-if="column.key === 'identityLayers'">
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+              :row-key="record.id || record.teacherId || record.teacherUserId || record.userId"
+            />
           </template>
           <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
             {{

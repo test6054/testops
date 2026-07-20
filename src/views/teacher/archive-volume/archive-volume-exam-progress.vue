@@ -744,7 +744,13 @@ async function createPackage() {
 }
 
 async function retryPackaging() {
-  if (!canManageOwnerArchivePackageWrites.value) {
+  // MVR-424：与 showRetryPackagingAction / 按钮显隐同源二次闸（主考写∧双门禁开∧PACKAGING_FAILED）
+  if (!showRetryPackagingAction.value) {
+    message.warning(
+      canManageOwnerArchivePackageWrites.value
+        ? '当前不可重新打包（门禁未开或归档包非失败态）'
+        : '当前账号无归档打包写权限',
+    )
     return
   }
   if (!examId.value || packagingActionLoading.value) {

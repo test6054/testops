@@ -2,6 +2,7 @@ import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-plat
 import type { PageResult } from '@/types'
 import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import http from '@/config/axios'
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 
 export enum PortfolioAchievementEvidenceTypeCode {
   DEV_RECORD_LEVEL = 'DEV_RECORD_LEVEL',
@@ -78,6 +79,11 @@ export interface PortfolioPlanningAchievementLinkVO {
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
   evaluationHeld?: boolean
   countsInCurrentFacultyStructure?: boolean
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
+
 }
 
 

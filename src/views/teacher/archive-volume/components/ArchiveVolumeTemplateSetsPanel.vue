@@ -711,7 +711,7 @@ async function submitCopy() {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -748,7 +748,7 @@ async function submitCopyAll() {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -883,7 +883,8 @@ async function submitRestoreFromAudit(auditId: string): Promise<void> {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  // MVR-431：恢复写闸与 canManageArchiveConfig 严格叠闸
+  if (canManageArchiveConfig.value !== true) {
     message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -917,7 +918,7 @@ async function submitResync() {
     return
   }
   // MVR-314/421：模板配置写 ∧ 可重同步源版本二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -948,7 +949,7 @@ async function saveTenantSet() {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }

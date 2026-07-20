@@ -95,6 +95,18 @@
       <p v-if="status?.ocrStatus" class="portfolio-intake-panel__meta">
         文字识别状态：{{ status.ocrStatus }}
       </p>
+      <div
+        v-if="status?.ownerIdentityLayers?.length"
+        class="portfolio-intake-panel__identity"
+        role="status"
+      >
+        <span class="portfolio-intake-panel__identity-label">当前身份层</span>
+        <PortfolioOwnerIdentityLayersCell
+          :layers="status.ownerIdentityLayers"
+          :note="status.ownerMultiIdentityNote"
+          show-note
+        />
+      </div>
     </section>
 
     <section class="portfolio-intake-panel__section">
@@ -218,6 +230,7 @@ import {
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioAiCandidateConfirmPanel from '@/components/portfolio/PortfolioAiCandidateConfirmPanel.vue'
 import PortfolioCategoryTreePicker from '@/components/portfolio/PortfolioCategoryTreePicker.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

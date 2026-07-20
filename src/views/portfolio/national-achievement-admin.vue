@@ -30,6 +30,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
@@ -110,6 +111,7 @@ const recordColumns: ColumnsType = [
   { title: '分类', dataIndex: 'categoryCode', key: 'categoryCode', width: 130 },
   { title: '级别', key: 'levelCode', width: 90 },
   { title: '状态', dataIndex: 'recordStatus', key: 'recordStatus', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
 ]
 const evidenceTypeOptions = Object.values(PortfolioAchievementEvidenceTypeCode).map((value) => ({
   value,
@@ -491,6 +493,13 @@ void loadCatalogs()
               {{
                 levelLabel(record.levelCode)
               }}
+            </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+                :row-key="record.id || record.teacherUserId"
+              />
             </template>
           </template>
         </UiDataTable>

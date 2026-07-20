@@ -14,7 +14,14 @@
     @page-change="handlePageChange"
   >
     <template #bodyCell="{ column, record }">
-      <template v-if="column.key === 'recordStatus'">
+      <template v-if="column.key === 'identityLayers'">
+        <PortfolioOwnerIdentityLayersCell
+          :layers="record.ownerIdentityLayers"
+          :note="record.ownerMultiIdentityNote"
+          :row-key="record.archiveRecordId"
+        />
+      </template>
+      <template v-else-if="column.key === 'recordStatus'">
         <UiTag :tone="archiveRecordStatusTone(record.recordStatus)">
           {{ archiveRecordStatusLabel(record.recordStatus) }}
         </UiTag>
@@ -36,6 +43,7 @@
 </template>
 
 <script lang="ts" setup>
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioArchiveRecordStatusCode,
@@ -69,6 +77,7 @@ const props = defineProps<{
 
 const columns: ColumnsType = [
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName' },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '档案状态', key: 'recordStatus', width: 110, align: 'center' },
   { title: '审核状态', key: 'reviewTaskStatus', width: 110, align: 'center' },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170, align: 'right' },

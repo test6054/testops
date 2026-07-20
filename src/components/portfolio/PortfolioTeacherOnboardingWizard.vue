@@ -40,6 +40,19 @@
       </template>
     </UiAlertStrip>
 
+    <div
+      v-if="onboardingState?.ownerIdentityLayers?.length"
+      class="portfolio-onboarding-wizard__identity"
+      role="status"
+    >
+      <span class="portfolio-onboarding-wizard__identity-label">当前身份层</span>
+      <PortfolioOwnerIdentityLayersCell
+        :layers="onboardingState.ownerIdentityLayers"
+        :note="onboardingState.ownerMultiIdentityNote"
+        show-note
+      />
+    </div>
+
     <template v-if="effectiveReadonly">
       <UiCard title="档案分类树" class="portfolio-onboarding-wizard__card">
         <UiTree
@@ -137,6 +150,7 @@ import { useRouter } from 'vue-router'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioOnboardingApi } from '@/apis/portfolio/onboarding'
 import PortfolioCategoryTreePicker from '@/components/portfolio/PortfolioCategoryTreePicker.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

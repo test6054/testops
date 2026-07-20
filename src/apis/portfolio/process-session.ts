@@ -1,3 +1,4 @@
+import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import http from '@/config/axios'
 
 export interface PortfolioProcessSessionVO {
@@ -28,6 +29,10 @@ export interface PortfolioProcessSessionVO {
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
 
+  /** 归属教师多身份并列层（ACTIVE 身份；§8.50 / US-MI-01） */
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  /** 多身份贡献说明；层数大于 1 时非空 */
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioProcessSessionListRequest {

@@ -8,7 +8,7 @@ import type {
   PortfolioTeacherTaughtCourseSaveRequest,
   PortfolioTeacherTaughtCourseVO,
 } from '@/apis/portfolio/teacher-profile'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
@@ -16,6 +16,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeacherCohortProfileApi } from '@/apis/portfolio/teacher-cohort-profile'
 import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -50,6 +51,14 @@ const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
+
+function lifecycleTagTone(status?: string): BadgeTone {
+  if (status === 'ACTIVE') return 'green'
+  if (status === 'TEMP_HOLD') return 'orange'
+  if (status === 'SEALED') return 'red'
+  return 'gray'
+}
+
 const profileActiveTab = ref('education')
 const profileTabItems = [
   { key: 'education', label: '主要学历' },
@@ -712,6 +721,31 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
 
     <template v-else>
       <UiCard title="人事主数据" :loading="loading">
+        <div
+          v-if="profile?.lifecycleStatus || profile?.ownerIdentityLayers?.length"
+          class="profile-status-band"
+          role="status"
+        >
+          <UiTag
+            v-if="profile?.lifecycleStatus"
+            :tone="lifecycleTagTone(profile.lifecycleStatus)"
+          >
+            {{ profile.lifecycleStatusLabel || profile.lifecycleStatus }}
+          </UiTag>
+          <UiTag v-if="profile?.evaluationHeld" tone="orange">参评 hold</UiTag>
+          <UiTag
+            v-if="profile?.countsInCurrentFacultyStructure === false"
+            tone="gray"
+          >
+            非当前在岗
+          </UiTag>
+          <PortfolioOwnerIdentityLayersCell
+            v-if="profile?.ownerIdentityLayers?.length"
+            :layers="profile.ownerIdentityLayers"
+            :note="profile.ownerMultiIdentityNote"
+            show-note
+          />
+        </div>
         <div class="profile-readonly-grid">
           <div><span class="label">工号</span>{{ profile?.teacherNumber || '—' }}</div>
           <div><span class="label">院系</span>{{ profile?.departmentName || '—' }}</div>

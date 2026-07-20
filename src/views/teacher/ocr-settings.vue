@@ -422,7 +422,8 @@ async function loadConfig(): Promise<void> {
 
 /** MVR-371：超管保存租户 OCR 渠道；与 BE saveConfig / requireOcrConfigWritePermission 二次拦截。 */
 async function handleSaveTenantChannel(): Promise<void> {
-  if (!canManageOcrTenantChannel.value) {
+  // MVR-430：仅认 canManageOcrTenantChannel === true，与 BE 超管写闸同源
+  if (canManageOcrTenantChannel.value !== true) {
     message.warning('仅平台超级管理员可配置租户文字识别渠道')
     return
   }
@@ -563,6 +564,11 @@ async function handleHealthCheck(): Promise<void> {
 }
 
 async function handleRecognize(): Promise<void> {
+  // MVR-423：与 canRecognize / 按钮 disabled 同源二次闸（配置就绪∧启用∧已选试卷/切片）
+  if (!canRecognize.value) {
+    message.warning('当前不可发起调试识别（配置未就绪、渠道未启用或未选试卷/切片）')
+    return
+  }
   await debugFormRef.value?.validate()
   if (!currentPaperSlice.value) {
     message.error('当前卷面的正式作答切片不存在，请重新选择')

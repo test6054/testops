@@ -24,6 +24,7 @@ import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
@@ -116,6 +117,7 @@ const columns: ColumnsType = [
   { title: '年度', dataIndex: 'planYear', key: 'planYear', width: 88 },
   { title: '科室编号', dataIndex: 'portfolioOrgId', key: 'portfolioOrgId', width: 120 },
   { title: '状态', key: 'planStatus', width: 120 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '操作', key: 'actions', width: 120 },
 ]
 
@@ -325,6 +327,13 @@ watch(
             <UiTag :tone="planStatusTone(record.planStatus)">
               {{ planStatusLabel(record.planStatus) }}
             </UiTag>
+          </template>
+          <template v-else-if="column.key === 'identityLayers'">
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+              :row-key="record.id || record.teacherId || record.teacherUserId || record.userId"
+            />
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

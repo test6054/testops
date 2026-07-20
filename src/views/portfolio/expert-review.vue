@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioExpertAssignmentReviewBundleVO } from '@/apis/portfolio/expert-assignment'
+import type {
+  PortfolioExpertAssignmentReviewBundleVO,
+  PortfolioExpertAssignmentSubjectTeacherVO,
+  PortfolioExpertReviewMaterialItemVO,
+} from '@/apis/portfolio/expert-assignment'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
@@ -11,6 +15,7 @@ import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { showUserError } from '@/utils/error-handler'
 
@@ -55,6 +60,7 @@ const subjectTeacherColumns = computed<ColumnsType>(() => {
   const cols: ColumnsType = [
     { title: '被评教师', dataIndex: 'maskedDisplayName', key: 'maskedDisplayName' },
     { title: '生命周期', key: 'lifecycleStatus', width: 160 },
+    { title: '身份层', key: 'identityLayers', width: 160 },
   ]
   // 脱敏审阅不暴露 teacherUserId，也不提供读整袋深链
   if (!bundle.value?.maskRequired) {
@@ -65,6 +71,20 @@ const subjectTeacherColumns = computed<ColumnsType>(() => {
   }
   return cols
 })
+
+function subjectRowKey(record: unknown): string {
+  const row = record as PortfolioExpertAssignmentSubjectTeacherVO
+  return row.subjectRef || row.teacherUserId || row.maskedDisplayName || ''
+}
+
+function materialRowKey(record: unknown): string {
+  const row = record as PortfolioExpertReviewMaterialItemVO
+  return (
+    row.materialRef
+    || row.archiveRecordId
+    || `${row.maskedTeacherLabel}-${row.categoryCode}-${row.academicYear}`
+  )
+}
 
 const materialColumns: ColumnsType = [
   { title: '教师', dataIndex: 'maskedTeacherLabel', key: 'maskedTeacherLabel', width: 140 },
@@ -78,6 +98,7 @@ const materialColumns: ColumnsType = [
   { title: '校内硬性', key: 'usableForCampusHardCriteria', width: 110 },
   { title: '支撑材料', dataIndex: 'supportMaterialCount', key: 'supportMaterialCount', width: 100 },
   { title: '生命周期', key: 'lifecycleStatus', width: 160 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: 'AI 初审', key: 'aiPreReview', width: 220 },
 ]
 
@@ -185,7 +206,7 @@ watch(
           :data-source="bundle.subjectTeachers"
           :show-pagination="false"
           :total="bundle.subjectTeachers.length"
-          :row-key="(record) => record.subjectRef || record.teacherUserId || record.maskedDisplayName"
+          :row-key="subjectRowKey"
           size="small"
           flat
           empty-kind="first-run"
@@ -198,6 +219,13 @@ watch(
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!record.lifecycleStatus">—</span>
+            </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+                :row-key="record.teacherUserId || record.maskedDisplayName || record.maskedTeacherLabel || ''"
+              />
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton
@@ -214,7 +242,7 @@ watch(
         <h4 class="expert-review__section-title">授权材料清单</h4>
         <UiDataTable
           :load-error="loadError"
-          :row-key="(record) => record.materialRef || record.archiveRecordId || `${record.maskedTeacherLabel}-${record.categoryCode}-${record.academicYear}`"
+          :row-key="materialRowKey"
           :columns="materialColumns"
           :data-source="bundle.materials"
           :pagination="false"
@@ -226,6 +254,13 @@ watch(
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else-if="!record.lifecycleStatus">—</span>
+            </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+                :row-key="record.teacherUserId || record.maskedDisplayName || record.maskedTeacherLabel || ''"
+              />
             </template>
             <template v-else-if="column.key === 'hasPrimaryFile'">
               {{ record.hasPrimaryFile ? '有' : '无' }}

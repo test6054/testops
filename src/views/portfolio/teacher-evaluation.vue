@@ -198,6 +198,7 @@ const selectedNotice = computed(
 const noticeColumns: ColumnsType<PortfolioEvaluationTeacherNoticeVO> = [
   { title: '评价任务', dataIndex: 'taskTitle', key: 'taskTitle', fixed: 'left' },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '状态', key: 'noticeStatus', width: 120 },
   { title: '截止', dataIndex: 'dueTime', key: 'dueTime', width: 170 },
@@ -291,6 +292,7 @@ const publicityColumns: ColumnsType<PortfolioEvaluationPublicityListItemVO> = [
   { title: '场景', dataIndex: 'sceneCode', key: 'sceneCode', width: 120 },
   { title: '公示标题', dataIndex: 'publicityTitle', key: 'publicityTitle' },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '公示状态', key: 'publicityStatus', width: 100 },
   { title: '公示期', key: 'publicityWindow', width: 200 },
@@ -912,6 +914,18 @@ watch(
               </UiTag>
               <span v-else>-</span>
             </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+                <UiTag
+                  v-for="(layer, i) in record.ownerIdentityLayers"
+                  :key="`${layer.identityType || 'id'}-${i}`"
+                  tone="neutral"
+                >
+                  {{ layer.identityTypeLabel || layer.identityType }}
+                </UiTag>
+              </div>
+              <span v-else class="text-neutral-400">—</span>
+            </template>
             <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
               <UiTag :tone="record.countsInCurrentFacultyStructure === true ? 'green' : 'neutral'">
                 {{
@@ -1065,6 +1079,18 @@ watch(
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
               <span v-else>-</span>
+            </template>
+            <template v-else-if="column.key === 'identityLayers'">
+              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
+                <UiTag
+                  v-for="(layer, i) in record.ownerIdentityLayers"
+                  :key="`${layer.identityType || 'id'}-${i}`"
+                  tone="neutral"
+                >
+                  {{ layer.identityTypeLabel || layer.identityType }}
+                </UiTag>
+              </div>
+              <span v-else class="text-neutral-400">—</span>
             </template>
             <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
               <UiTag
