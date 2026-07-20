@@ -4,15 +4,21 @@ import type {
   PortfolioAnalysisAlertVO,
   PortfolioAnalysisComplianceAlertVO,
 } from '@/apis/portfolio/analysis'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioAlertTypeCode } from '@/types/enums/portfolio-alert-type-enum'
+import {
+  ALL_PORTFOLIO_ALERT_TYPE_CODES,
+  PortfolioAlertTypeDescription,
+} from '@/types/enums/portfolio-alert-type-enum'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -26,11 +32,6 @@ import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
-import {
-  ALL_PORTFOLIO_ALERT_TYPE_CODES,
-  PortfolioAlertTypeDescription,
-} from '@/types/enums/portfolio-alert-type-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import {
   PortfolioComplianceScopeTypeCode,
   PortfolioComplianceScopeTypeDescription,
@@ -57,8 +58,8 @@ const portraitTotal = ref(0)
 const complianceTotal = ref(0)
 const loading = computed(
   () =>
-    Boolean(actionId.value)
-    || (activeTab.value === 'portrait' ? portraitLoading.value : complianceLoading.value),
+    Boolean(actionId.value) ||
+    (activeTab.value === 'portrait' ? portraitLoading.value : complianceLoading.value),
 )
 
 const portraitFilter = reactive({
@@ -234,13 +235,13 @@ function reloadActiveTab() {
   void loadComplianceAlerts()
 }
 
-function onPortraitPageChange(page: { current: number, pageSize: number }) {
+function onPortraitPageChange(page: { current: number; pageSize: number }) {
   portraitFilter.pageNum = page.current
   portraitFilter.pageSize = page.pageSize
   void loadPortraitAlerts()
 }
 
-function onCompliancePageChange(page: { current: number, pageSize: number }) {
+function onCompliancePageChange(page: { current: number; pageSize: number }) {
   complianceFilter.pageNum = page.current
   complianceFilter.pageSize = page.pageSize
   void loadComplianceAlerts()
@@ -391,6 +392,34 @@ onMounted(() => {
                   {{ record.teacherNumber || record.teacherId }}
                   <template v-if="record.departmentName"> · {{ record.departmentName }} </template>
                 </span>
+                <div
+                  v-if="record.lifecycleStatus || record.ownerIdentityLayers?.length"
+                  class="alert-center__identity"
+                >
+                  <UiTag
+                    v-if="record.lifecycleStatus"
+                    size="sm"
+                    :tone="
+                      record.lifecycleStatus === 'ACTIVE'
+                        ? 'green'
+                        : record.lifecycleStatus === 'TEMP_HOLD'
+                          ? 'orange'
+                          : record.lifecycleStatus === 'SEALED' ||
+                              record.lifecycleStatus === 'TRANSFERRED'
+                            ? 'red'
+                            : 'gray'
+                    "
+                  >
+                    {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                  </UiTag>
+                  <UiTag v-if="record.evaluationHeld" size="sm" tone="orange">参评 hold</UiTag>
+                  <PortfolioOwnerIdentityLayersCell
+                    v-if="record.ownerIdentityLayers?.length"
+                    :layers="record.ownerIdentityLayers"
+                    :note="record.ownerMultiIdentityNote"
+                    :row-key="record.id"
+                  />
+                </div>
               </div>
             </template>
             <template v-else-if="column.key === 'alertType'">
@@ -425,7 +454,10 @@ onMounted(() => {
             </template>
           </template>
           <template #emptyText>
-            <UiEmpty size="sm" :description="portraitLoadFailed ? '画像预警加载失败' : '暂无画像预警'" />
+            <UiEmpty
+              size="sm"
+              :description="portraitLoadFailed ? '画像预警加载失败' : '暂无画像预警'"
+            />
           </template>
         </UiDataTable>
       </UiCard>
@@ -467,8 +499,8 @@ onMounted(() => {
             </template>
             <template v-else-if="column.key === 'department'">
               {{
-                record.departmentName
-                  || (record.departmentId ? `院系 ${record.departmentId}` : '全校')
+                record.departmentName ||
+                (record.departmentId ? `院系 ${record.departmentId}` : '全校')
               }}
             </template>
             <template v-else-if="column.key === 'alertType'">
@@ -503,7 +535,10 @@ onMounted(() => {
             </template>
           </template>
           <template #emptyText>
-            <UiEmpty size="sm" :description="complianceLoadFailed ? '合规预警加载失败' : '暂无合规预警'" />
+            <UiEmpty
+              size="sm"
+              :description="complianceLoadFailed ? '合规预警加载失败' : '暂无合规预警'"
+            />
           </template>
         </UiDataTable>
       </UiCard>

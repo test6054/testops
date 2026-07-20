@@ -15,6 +15,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -142,8 +143,11 @@ function onHistoryTableChange(changeEvent: UiDataTableChangeEvent) {
 }
 
 const historyColumns = [
+  // 身份层列在 bodyCell 渲染
+
   { title: '任务编号', dataIndex: 'id', key: 'id', width: 120 },
   { title: '教师', key: 'teacher', width: 180 },
+  { title: '身份层', key: 'ownerIdentityLayers', width: 200 },
   { title: '报告年度', dataIndex: 'reportYear', key: 'reportYear', width: 100 },
   { title: '状态', key: 'taskStatus', width: 100 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
@@ -343,6 +347,26 @@ watch(
             <template v-if="latestTask.teacherNumber">
               （{{ latestTask.teacherNumber }}）
             </template>
+            <div
+              v-if="latestTask.lifecycleStatus || latestTask.ownerIdentityLayers?.length"
+              class="annual-report__identity"
+            >
+              <UiTag
+                v-if="latestTask.lifecycleStatus"
+                size="sm"
+                :tone="latestTask.lifecycleStatus === 'ACTIVE' ? 'green' : latestTask.lifecycleStatus === 'TEMP_HOLD' ? 'orange' : latestTask.lifecycleStatus === 'SEALED' || latestTask.lifecycleStatus === 'TRANSFERRED' ? 'red' : 'gray'"
+              >
+                {{ latestTask.lifecycleStatusLabel || latestTask.lifecycleStatus }}
+              </UiTag>
+              <UiTag v-if="latestTask.evaluationHeld" size="sm" tone="orange">参评 hold</UiTag>
+              <PortfolioOwnerIdentityLayersCell
+                v-if="latestTask.ownerIdentityLayers?.length"
+                :layers="latestTask.ownerIdentityLayers"
+                :note="latestTask.ownerMultiIdentityNote"
+                :row-key="latestTask.id"
+                show-note
+              />
+            </div>
           </dd>
         </div>
         <div>
@@ -387,7 +411,14 @@ watch(
         @change="onHistoryTableChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'taskStatus'">
+          <template v-if="column.key === 'ownerIdentityLayers'">
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+              :row-key="record.id"
+            />
+          </template>
+          <template v-else-if="column.key === 'taskStatus'">
             <UiTag :tone="taskStatusTone(record.taskStatus)">
               {{ taskStatusLabel(record.taskStatus) }}
             </UiTag>

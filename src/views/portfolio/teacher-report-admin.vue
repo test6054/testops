@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
-import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   PORTFOLIO_REPORT_SCENE_OPTIONS,
   PortfolioAiTaskTypeCode,
   PortfolioReportSceneCode,
   PortfolioReportSceneDescription,
 } from '@/apis/portfolio/types'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
+import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
@@ -18,6 +18,8 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -388,7 +390,8 @@ watch(
           >
             {{ resolvedReportScene
             }}<template v-if="reportDetail.reportPeriodLabel">
-              · {{ reportDetail.reportPeriodLabel }}</template>
+              · {{ reportDetail.reportPeriodLabel }}</template
+            >
           </span>
           <span
             v-if="
@@ -398,10 +401,41 @@ watch(
           >
             {{ reportDetail.teacherName || `教师编号 ${reportDetail.teacherId}` }}
             <template v-if="reportDetail.teacherNumber">
-              · {{ reportDetail.teacherNumber }}</template>
+              · {{ reportDetail.teacherNumber }}</template
+            >
             <template v-if="reportDetail.departmentName">
-              · {{ reportDetail.departmentName }}</template>
+              · {{ reportDetail.departmentName }}</template
+            >
           </span>
+          <div
+            v-if="reportDetail.lifecycleStatus || reportDetail.ownerIdentityLayers?.length"
+            class="report-meta__identity"
+          >
+            <UiTag
+              v-if="reportDetail.lifecycleStatus"
+              size="sm"
+              :tone="
+                reportDetail.lifecycleStatus === 'ACTIVE'
+                  ? 'green'
+                  : reportDetail.lifecycleStatus === 'TEMP_HOLD'
+                    ? 'orange'
+                    : reportDetail.lifecycleStatus === 'SEALED' ||
+                        reportDetail.lifecycleStatus === 'TRANSFERRED'
+                      ? 'red'
+                      : 'gray'
+              "
+            >
+              {{ reportDetail.lifecycleStatusLabel || reportDetail.lifecycleStatus }}
+            </UiTag>
+            <UiTag v-if="reportDetail.evaluationHeld" size="sm" tone="orange">参评 hold</UiTag>
+            <PortfolioOwnerIdentityLayersCell
+              v-if="reportDetail.ownerIdentityLayers?.length"
+              :layers="reportDetail.ownerIdentityLayers"
+              :note="reportDetail.ownerMultiIdentityNote"
+              :row-key="reportDetail.id || reportDetail.teacherId"
+              show-note
+            />
+          </div>
         </div>
         <UiButton size="sm" @click="downloadMarkdown"> 下载文稿 </UiButton>
       </div>

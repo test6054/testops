@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherPkSessionVO } from '@/apis/portfolio/analysis'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type {
   PortfolioTeacherPkCompareTeacherVO,
   PortfolioTeacherPkCompareVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
@@ -17,7 +18,6 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -27,6 +27,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -70,6 +71,13 @@ const historyColumns: ColumnsType = [
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '操作', key: 'actions', width: 130 },
 ]
+
+function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' {
+  if (status === 'ACTIVE') return 'green'
+  if (status === 'TEMP_HOLD') return 'orange'
+  if (status === 'SEALED' || status === 'TRANSFERRED') return 'red'
+  return 'gray'
+}
 
 function resolveTeacherTitle(teacher: PortfolioTeacherPkCompareTeacherVO): string {
   if (teacher.displayName?.trim()) {
@@ -345,14 +353,7 @@ onUnmounted(() => {
       <UiSpin
         :spinning="operation === 'preview' || operation === 'create' || operation === 'detail'"
       >
-        <UiAlertStrip
-          v-if="!pkResult"
-          tone="info"
-          size="sm"
-          dense
-          inline
-          :show-icon="false"
-        >
+        <UiAlertStrip v-if="!pkResult" tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
             <span style="display: inline-flex; align-items: center; gap: 8px">
               <UiTag tone="blue" size="sm">待生成</UiTag>
@@ -376,6 +377,31 @@ onUnmounted(() => {
               :key="teacher.teacherUserId"
               :title="resolveTeacherTitle(teacher)"
             >
+              <div
+                v-if="
+                  teacher.lifecycleStatus ||
+                  teacher.evaluationHeld ||
+                  teacher.ownerIdentityLayers?.length
+                "
+                class="teacher-pk__identity-bar"
+              >
+                <UiTag
+                  v-if="teacher.lifecycleStatus"
+                  :tone="lifecycleTagTone(teacher.lifecycleStatus)"
+                  size="sm"
+                >
+                  {{ teacher.lifecycleStatusLabel || teacher.lifecycleStatus }}
+                </UiTag>
+                <UiTag v-if="teacher.evaluationHeld" tone="orange" size="sm">参评 hold</UiTag>
+                <UiTag v-if="teacher.archiveWriteForbidden" tone="red" size="sm">写禁</UiTag>
+                <PortfolioOwnerIdentityLayersCell
+                  v-if="teacher.ownerIdentityLayers?.length"
+                  :layers="teacher.ownerIdentityLayers"
+                  :note="teacher.ownerMultiIdentityNote"
+                  :row-key="teacher.teacherUserId"
+                  show-note
+                />
+              </div>
               <div class="teacher-pk__archive-count">
                 正式档案 {{ teacher.officialArchiveCount }} 份
               </div>
@@ -503,6 +529,14 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 12px;
+}
+
+.teacher-pk__identity-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .teacher-pk__archive-count {

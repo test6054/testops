@@ -4,12 +4,12 @@ import type {
   PortfolioAchievementStatsVO,
   PortfolioDevelopmentRecordVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import { onMounted, reactive, ref } from 'vue'
 import {
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDevelopmentRecordTypeDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -22,6 +22,8 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 
 const recordTypeKeys: PortfolioDevelopmentRecordTypeCode[] = [
   PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
@@ -53,7 +55,8 @@ const columns: ColumnsType = [
   { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
   { title: '级别', dataIndex: 'levelCode', key: 'levelCode', width: 88 },
   { title: '日期', dataIndex: 'recordDate', key: 'recordDate', width: 110 },
-  { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
+  { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 180 },
+  { title: '身份层', key: 'ownerIdentityLayers', width: 200 },
   { title: '业务日工号', dataIndex: 'affiliationStaffNo', key: 'affiliationStaffNo', width: 120 },
   { title: '业务日归属', dataIndex: 'affiliationSnapshot', key: 'affiliationSnapshot', width: 160 },
 ]
@@ -141,7 +144,32 @@ onMounted(loadPage)
             {{ recordTypeLabel(record.recordType) }}
           </template>
           <template v-else-if="column.key === 'teacherUserId'">
-            {{ teacherLabel(record.teacherUserId) }}
+            <div class="achievement-comprehensive__teacher">
+              <span>{{ teacherLabel(record.teacherUserId) }}</span>
+              <UiTag
+                v-if="record.lifecycleStatus"
+                size="sm"
+                :tone="
+                  record.lifecycleStatus === 'ACTIVE'
+                    ? 'green'
+                    : record.lifecycleStatus === 'TEMP_HOLD'
+                      ? 'orange'
+                      : record.lifecycleStatus === 'SEALED' ||
+                          record.lifecycleStatus === 'TRANSFERRED'
+                        ? 'red'
+                        : 'gray'
+                "
+              >
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+            </div>
+          </template>
+          <template v-else-if="column.key === 'ownerIdentityLayers'">
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+              :row-key="record.id"
+            />
           </template>
           <template v-else-if="column.key === 'affiliationStaffNo'">
             {{ record.affiliationStaffNo || '—' }}
