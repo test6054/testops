@@ -598,8 +598,18 @@
           <UiInput size="sm" :value="organizationExamLabel" disabled />
         </UiFormItem>
         <UiFormItem label="是否启用匿名阅卷" name="anonymousMode">
-          <UiSwitch size="sm" v-model="editForm.anonymousMode" />
-          <span class="org-detail__switch-hint">启用后阅卷教师不可见考生身份</span>
+          <UiSwitch
+            size="sm"
+            v-model="editForm.anonymousMode"
+            :disabled="canUpdateOrganizationAnonymousMode !== true"
+          />
+          <span class="org-detail__switch-hint">
+            {{
+              canUpdateOrganizationAnonymousMode === true
+                ? '启用后阅卷教师不可见考生身份'
+                : '已进入试评/正评或任务后不可修改匿名模式；备注仍可保存'
+            }}
+          </span>
         </UiFormItem>
         <UiFormItem label="备注" name="remark">
           <UiTextarea
@@ -762,9 +772,13 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
+import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import type {
   AllocationPolicyResponse,
   AllocationPolicySaveRequest,
@@ -776,19 +790,6 @@ import type {
   RecyclePolicyResponse,
   RecyclePolicySaveRequest,
 } from '@/apis/mark/marking-organization'
-import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
-import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
-import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
-import { getExamDetail } from '@/apis/mark/exam'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
-import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import {
   ALLOCATION_UNIT_OPTIONS,
   ANONYMOUS_TOKEN_POLICY_OPTIONS,
@@ -810,7 +811,16 @@ import {
   saveRecyclePolicy,
   updateOrganization,
 } from '@/apis/mark/marking-organization'
+import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
 import { listReviewerMetrics } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
 import UiInfoGridItem from '@/components/ui-guide/ui/InfoGridItem.vue'
@@ -874,8 +884,8 @@ defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 const MARKING_TEACHER_OPTION_PAGE_SIZE = 20
 const TEACHER_SEARCH_DEBOUNCE_MS = 300
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷安排')
 
 const route = useRoute()
 const router = useRouter()
@@ -937,16 +947,16 @@ function matchesGroupSearch(group: QuestionMarkingGroupResponse, keyword: string
   if (
     group.reviewers.some(
       (reviewer) =>
-        reviewer.reviewerUserName?.toLowerCase().includes(keyword)
-        || reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
+        reviewer.reviewerUserName?.toLowerCase().includes(keyword) ||
+        reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
     )
   ) {
     return true
   }
   return group.questions.some(
     (question) =>
-      String(question.questionNo).includes(keyword)
-      || question.questionTypeMessage?.toLowerCase().includes(keyword),
+      String(question.questionNo).includes(keyword) ||
+      question.questionTypeMessage?.toLowerCase().includes(keyword),
   )
 }
 
@@ -987,8 +997,8 @@ const orgSignalMetrics = computed((): SignalMetric[] => {
     return []
   }
   const summary = markingProgressPanel.value?.markingTaskSummary
-  const overallPercent
-    = summary && summary.totalTaskCount > 0
+  const overallPercent =
+    summary && summary.totalTaskCount > 0
       ? Math.round((summary.finalizedTaskCount * 100) / summary.totalTaskCount)
       : null
   const metrics: SignalMetric[] = [
@@ -1069,6 +1079,10 @@ const examCreateUserId = computed(
   () => examDetail.value?.createUser ?? organization.value?.examCreateUserId,
 )
 const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organization)
+/** MVR-404：仅认 BE canUpdateOrganizationAnonymousMode===true；备注仍可在 canManageExamOwner 下更新 */
+const canUpdateOrganizationAnonymousMode = computed(
+  () => organization.value?.canUpdateOrganizationAnonymousMode === true,
+)
 
 function guardExamOwnerAction(): boolean {
   if (canManageExamOwner.value) return true
@@ -1139,7 +1153,10 @@ const canReassignRecycledTasks = computed(() => {
   if (examDetail.value?.status !== ExamStatusCode.ACTIVE) {
     return false
   }
-  if (organization.value.leaderUserId != null && String(organization.value.leaderUserId) === String(userId)) {
+  if (
+    organization.value.leaderUserId != null &&
+    String(organization.value.leaderUserId) === String(userId)
+  ) {
     return true
   }
   return groups.value.some((group) => String(group.leaderUserId) === String(userId))
@@ -1262,11 +1279,11 @@ const groupColumns: ColumnType<QuestionMarkingGroupResponse>[] = [
 ]
 
 const teacherList = ref<UserListItemDto[]>([])
-const teacherOptions = ref<Array<{ value: string, label: string }>>([])
+const teacherOptions = ref<Array<{ value: string; label: string }>>([])
 const teacherLoading = ref(false)
 let teacherSearchTimer: ReturnType<typeof setTimeout> | undefined
 
-function buildTeacherOption(item: UserListItemDto): { value: string, label: string } {
+function buildTeacherOption(item: UserListItemDto): { value: string; label: string } {
   return {
     value: item.id,
     label: item.identifierNumber ? `${item.nickName} (${item.identifierNumber})` : item.nickName,
@@ -1565,9 +1582,9 @@ function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
 
 function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
   return (
-    canManageExamOwner.value
-    && (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
-      || record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
+    canManageExamOwner.value &&
+    (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE ||
+      record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
   )
 }
 
@@ -1660,6 +1677,13 @@ async function submitUpdate(): Promise<void> {
   }
   if (!guardExamOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
+  // MVR-404：匿名模式变更须 canUpdateOrganizationAnonymousMode；仅改备注始终可走
+  const anonymityChanged =
+    Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
+  if (anonymityChanged && canUpdateOrganizationAnonymousMode.value !== true) {
+    showFormValidationMessage('已进入试评/正评或任务后不可修改匿名模式')
+    return
+  }
   try {
     await editFormRef.value.validate()
   } catch {
@@ -1669,7 +1693,10 @@ async function submitUpdate(): Promise<void> {
   try {
     const request: OrganizationUpdateRequest = {
       organizationId: requireMarkingOrganizationId(organization.value),
-      anonymousMode: editForm.anonymousMode,
+      anonymousMode:
+        canUpdateOrganizationAnonymousMode.value === true
+          ? editForm.anonymousMode
+          : Boolean(organization.value.anonymousMode),
       remark: editForm.remark?.trim() || undefined,
     }
     organization.value = await updateOrganization(request)
@@ -1847,9 +1874,20 @@ watch(effectiveAnonymityMode, (mode) => {
   policyForm.anonymityMode = mode
 })
 
-const groupSelectOptions = computed(() => [
-  ...groups.value.map((g) => ({ value: g.id, label: g.groupName })),
-])
+// MVR-403：策略作用域下拉排除已关闭题组；组织级默认（清空）仍可配
+const groupSelectOptions = computed(() =>
+  groups.value
+    .filter((g) => g.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED)
+    .map((g) => ({ value: g.id, label: g.groupName })),
+)
+
+function isPolicyGroupWritable(groupId?: string): boolean {
+  if (!groupId) {
+    return true
+  }
+  const group = groups.value.find((item) => item.id === groupId)
+  return group != null && group.groupStatus !== QuestionMarkingGroupStatusCode.GROUP_CLOSED
+}
 
 const groupAllocationUnitMap = computed(() => {
   const map: Record<string, AllocationUnitCode> = {}
@@ -1867,7 +1905,7 @@ const groupAllocationUnitMap = computed(() => {
 })
 
 function policyOptionLabel(
-  options: Array<{ value: string, label: string }>,
+  options: Array<{ value: string; label: string }>,
   value?: string | null,
 ): string {
   if (!value) {
@@ -1890,6 +1928,11 @@ async function submitAllocation(): Promise<void> {
   }
   if (!guardExamOwnerAction()) return
   if (!organizationId.value) return
+  // MVR-403：题组级分配策略禁 CLOSED（与 BE validateAllocationPolicySave 同源）
+  if (!isPolicyGroupWritable(policyForm.allocationGroupId)) {
+    showFormValidationMessage('已关闭题组不能修改分配策略')
+    return
+  }
   savingAllocation.value = true
   try {
     const request: AllocationPolicySaveRequest = {
@@ -1922,6 +1965,11 @@ async function submitRecycle(): Promise<void> {
   }
   if (!guardExamOwnerAction()) return
   if (!organizationId.value) return
+  // MVR-403：题组级回收策略禁 CLOSED（与 BE assertGroupWritableForPolicySave 同源）
+  if (!isPolicyGroupWritable(policyForm.recycleGroupId)) {
+    showFormValidationMessage('已关闭题组不能修改回收策略')
+    return
+  }
   savingRecycle.value = true
   try {
     const request: RecyclePolicySaveRequest = {

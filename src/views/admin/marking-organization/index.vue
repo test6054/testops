@@ -196,9 +196,7 @@
     >
       <UiForm ref="createFormRef" :model="createForm" :rules="createRules" layout="vertical">
         <UiFormItem label="关联考试">
-          <UiInput
-            size="sm" :value="organizationExamLabel" disabled
-          />
+          <UiInput size="sm" :value="organizationExamLabel" disabled />
         </UiFormItem>
         <UiFormItem label="是否启用匿名阅卷" name="anonymousMode">
           <UiSwitch size="sm" v-model="createForm.anonymousMode" />
@@ -228,13 +226,21 @@
     >
       <UiForm ref="editFormRef" :model="editForm" :rules="editRules" layout="vertical">
         <UiFormItem label="关联考试">
-          <UiInput
-            size="sm" :value="organizationExamLabel" disabled
-          />
+          <UiInput size="sm" :value="organizationExamLabel" disabled />
         </UiFormItem>
         <UiFormItem label="是否启用匿名阅卷" name="anonymousMode">
-          <UiSwitch size="sm" v-model="editForm.anonymousMode" />
-          <span class="org-index__switch-hint">启用后阅卷教师不可见考生身份</span>
+          <UiSwitch
+            size="sm"
+            v-model="editForm.anonymousMode"
+            :disabled="canUpdateOrganizationAnonymousMode !== true"
+          />
+          <span class="org-index__switch-hint">
+            {{
+              canUpdateOrganizationAnonymousMode === true
+                ? '启用后阅卷教师不可见考生身份'
+                : '已进入试评/正评或任务后不可修改匿名模式；备注仍可保存'
+            }}
+          </span>
         </UiFormItem>
         <UiFormItem label="备注" name="remark">
           <UiTextarea
@@ -261,16 +267,12 @@
  */
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { RouteLocationRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type {
   MarkingOrganizationResponse,
   OrganizationCreateRequest,
   OrganizationUpdateRequest,
 } from '@/apis/mark/marking-organization'
-import type { SignalMetric } from '@/types/workbench'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   createOrganization,
   deleteOrganization,
@@ -280,6 +282,10 @@ import {
   requireMarkingOrganizationId,
   updateOrganization,
 } from '@/apis/mark/marking-organization'
+import type { SignalMetric } from '@/types/workbench'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -322,8 +328,8 @@ defineOptions({ name: 'AdminMarkingOrganizationIndex' })
 const router = useRouter()
 const route = useRoute()
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷安排')
 
 const {
   examOptions,
@@ -343,6 +349,10 @@ const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const organization = ref<MarkingOrganizationResponse | null>(null)
 const examCreateUserId = computed(() => selectedExam.value?.createUser)
 const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organization)
+/** MVR-404：仅认 BE canUpdateOrganizationAnonymousMode===true；备注仍可在 canManageExamOwner 下更新 */
+const canUpdateOrganizationAnonymousMode = computed(
+  () => organization.value?.canUpdateOrganizationAnonymousMode === true,
+)
 const loading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
 
@@ -522,8 +532,18 @@ function openEditDrawer(): void {
 }
 
 async function submitUpdate(): Promise<void> {
+  if (updating.value) {
+    return
+  }
   if (!guardExamOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
+  // MVR-404：匿名模式变更须 canUpdateOrganizationAnonymousMode；仅改备注始终可走
+  const anonymityChanged =
+    Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
+  if (anonymityChanged && canUpdateOrganizationAnonymousMode.value !== true) {
+    showFormValidationMessage('已进入试评/正评或任务后不可修改匿名模式')
+    return
+  }
   try {
     await editFormRef.value.validate()
   } catch {
@@ -533,7 +553,10 @@ async function submitUpdate(): Promise<void> {
   try {
     const request: OrganizationUpdateRequest = {
       organizationId: requireMarkingOrganizationId(organization.value),
-      anonymousMode: editForm.anonymousMode,
+      anonymousMode:
+        canUpdateOrganizationAnonymousMode.value === true
+          ? editForm.anonymousMode
+          : Boolean(organization.value.anonymousMode),
       remark: editForm.remark?.trim() || undefined,
     }
     organization.value = await updateOrganization(request)

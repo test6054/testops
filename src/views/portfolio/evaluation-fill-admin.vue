@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioEvaluationModeCode } from '@/apis/portfolio/enums'
+import type {
+  PortfolioEvaluationModeCode,
+  PortfolioEvaluationSceneCode,
+} from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
+  PORTFOLIO_EVALUATION_ENTRY_WRITABLE_STATUSES,
+  PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES,
+  PortfolioEvaluationModeDescription,
+  PortfolioEvaluationSceneDescription,
+  PortfolioEvaluationTaskStatusCode,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -9,21 +20,14 @@ import type {
   PortfolioEvaluationSubjectTeacherOptionVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import {
-  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
-  PORTFOLIO_EVALUATION_ENTRY_WRITABLE_STATUSES,
-  PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES,
-  PortfolioEvaluationModeDescription,
-  PortfolioEvaluationTaskStatusCode,
-} from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
   portfolioEvaluationTaskApi,
 } from '@/apis/portfolio/teacher-platform'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -53,7 +57,7 @@ const route = useRoute()
 const isExternalExpertFill = computed(() => route.name === 'PortfolioExpertEvaluationFill')
 const activeTab = ref('fill')
 const fillTabItems = computed(() => {
-  const items: Array<{ key: string, label: string }> = [{ key: 'fill', label: '在线填报' }]
+  const items: Array<{ key: string; label: string }> = [{ key: 'fill', label: '在线填报' }]
   if (!isExternalExpertFill.value) {
     items.push({ key: 'summary', label: '汇总分析' })
   }
@@ -117,19 +121,17 @@ const fillSubjectTeacherId = computed(() => {
   const raw = fillForm.subjectTeacherUserId
   return raw != null && String(raw).trim() !== '' ? String(raw).trim() : undefined
 })
-const {
-  lifecycleState,
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  reloadLifecycleState,
-} = usePortfolioArchiveWriteGuard({ teacherId: fillSubjectTeacherId })
+const { lifecycleState, archiveWriteForbidden, archiveWriteBlockMessage, reloadLifecycleState } =
+  usePortfolioArchiveWriteGuard({ teacherId: fillSubjectTeacherId })
 /** 更正复核允许 hold 教师改结论；进行中评价仍 hard 拦参评 hold（PF-P0-264/265）。 */
 const evaluationParticipationForbidden = computed(() => {
   const task = tasks.value.find((item) => item.id === selectedTaskId.value)
   if (task?.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW) {
     return false
   }
-  return Boolean(lifecycleState.value?.evaluationHeld || lifecycleState.value?.archiveWriteForbidden)
+  return Boolean(
+    lifecycleState.value?.evaluationHeld || lifecycleState.value?.archiveWriteForbidden,
+  )
 })
 const evaluationParticipationBlockMessage = computed(() => {
   if (!evaluationParticipationForbidden.value) {
@@ -138,7 +140,8 @@ const evaluationParticipationBlockMessage = computed(() => {
   if (archiveWriteForbidden.value) {
     return archiveWriteBlockMessage.value
   }
-  const status = lifecycleState.value?.lifecycleStatusLabel || lifecycleState.value?.lifecycleStatus || '非在职'
+  const status =
+    lifecycleState.value?.lifecycleStatusLabel || lifecycleState.value?.lifecycleStatus || '非在职'
   return `教师生命周期为「${status}」，禁止作为被评对象写入评价。`
 })
 const correctionHeldSubjectHint = computed(() => {
@@ -149,7 +152,8 @@ const correctionHeldSubjectHint = computed(() => {
   if (!lifecycleState.value?.evaluationHeld) {
     return ''
   }
-  const status = lifecycleState.value.lifecycleStatusLabel || lifecycleState.value.lifecycleStatus || '参评hold'
+  const status =
+    lifecycleState.value.lifecycleStatusLabel || lifecycleState.value.lifecycleStatus || '参评hold'
   return `当前为归档更正复核：被评教师生命周期「${status}」仍可按开放复核工单改结论（不套用进行中参评 hold）。`
 })
 function assertEvaluationParticipable(actionLabel?: string): boolean {
@@ -234,6 +238,11 @@ const taskSummaryItems = computed<UiStatPanelItem[]>(() => {
     },
     { key: 'avg', label: '加权综合分', value: summary.value.averageScore, unit: '分' },
     { key: 'mode', label: '评价模式', value: evaluationModeLabel(summary.value.evaluationMode) },
+    {
+      key: 'scene',
+      label: '业务场景',
+      value: evaluationSceneLabel(summary.value.sceneCode),
+    },
   ]
 })
 
@@ -241,7 +250,12 @@ const entryColumns: ColumnsType<PortfolioEvaluationEntryVO> = [
   { title: '被评教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 100 },
   { title: '指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
   { title: '得分', dataIndex: 'score', key: 'score', width: 72 },
-  { title: '来源', dataIndex: 'evaluatorSourceTypeLabel', key: 'evaluatorSourceTypeLabel', width: 110 },
+  {
+    title: '来源',
+    dataIndex: 'evaluatorSourceTypeLabel',
+    key: 'evaluatorSourceTypeLabel',
+    width: 110,
+  },
   { title: '评语', dataIndex: 'commentText', key: 'commentText' },
   { title: '评价人', dataIndex: 'evaluatorUserId', key: 'evaluatorUserId', width: 100 },
 ]
@@ -270,6 +284,13 @@ const summaryColumns = computed<ColumnsType<PortfolioEvaluationEntrySummaryItemV
   ]
 })
 
+function evaluationSceneLabel(scene?: PortfolioEvaluationSceneCode): string {
+  if (!scene) {
+    return '—'
+  }
+  return strictEnumLabel(PortfolioEvaluationSceneDescription, scene, '评价任务场景')
+}
+
 function evaluationModeLabel(mode: PortfolioEvaluationModeCode): string {
   return strictEnumLabel(PortfolioEvaluationModeDescription, mode, '多元评价模式')
 }
@@ -292,9 +313,7 @@ function subjectTeacherLabel(teacherUserId: string): string {
 
 const selectableTasks = computed(() => {
   if (activeTab.value === 'fill') {
-    return tasks.value.filter((item) =>
-      entryWritableStatuses.value.includes(item.taskStatus),
-    )
+    return tasks.value.filter((item) => entryWritableStatuses.value.includes(item.taskStatus))
   }
   return tasks.value.filter((item) =>
     PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES.includes(item.taskStatus),
@@ -536,10 +555,12 @@ onMounted(async () => {
           style="width: 280px"
           size="sm"
           :loading="loading"
-          :options="selectableTasks.map((task) => ({
-            value: task.id,
-            label: `${task.taskName}（${evaluationModeLabel(task.evaluationMode)}）`,
-          }))"
+          :options="
+            selectableTasks.map((task) => ({
+              value: task.id,
+              label: `${task.taskName}（${evaluationModeLabel(task.evaluationMode)}）`,
+            }))
+          "
         />
         <UiButton size="sm" @click="loadTasks"> 刷新任务 </UiButton>
         <span v-if="fillWindowBlockedReason" class="fill-window-hint">{{
@@ -554,12 +575,7 @@ onMounted(async () => {
         compact
         style="margin-bottom: 16px"
       />
-      <UiSectionTabs
-        v-model="activeTab"
-        :items="fillTabItems"
-        compact
-        divided
-      />
+      <UiSectionTabs v-model="activeTab" :items="fillTabItems" compact divided />
       <template v-if="activeTab === 'fill'">
         <div class="form-grid">
           <UiSelect
@@ -568,9 +584,13 @@ onMounted(async () => {
             style="width: 220px"
             allow-search
             option-filter-prop="label"
-            
             size="sm"
-            :options="participableSubjectTeacherOptions.map((teacher) => ({ value: teacher.teacherUserId, label: subjectTeacherOptionLabel(teacher) }))"
+            :options="
+              participableSubjectTeacherOptions.map((teacher) => ({
+                value: teacher.teacherUserId,
+                label: subjectTeacherOptionLabel(teacher),
+              }))
+            "
           />
           <UiSelect
             v-if="isByIndicator"
@@ -579,9 +599,13 @@ onMounted(async () => {
             style="width: 200px"
             allow-search
             option-filter-prop="label"
-            
             size="sm"
-            :options="indicatorOptions.map((indicator) => ({ value: indicator.indicatorCode, label: indicator.indicatorName }))"
+            :options="
+              indicatorOptions.map((indicator) => ({
+                value: indicator.indicatorCode,
+                label: indicator.indicatorName,
+              }))
+            "
           />
           <UiInputNumber
             size="sm"
@@ -596,9 +620,7 @@ onMounted(async () => {
             size="sm"
             :options="PortfolioMultiSourceEvaluatorTypeOptions"
           />
-          <UiInput
-            size="sm" v-model="fillForm.commentText" placeholder="评语" style="flex: 1"
-          />
+          <UiInput size="sm" v-model="fillForm.commentText" placeholder="评语" style="flex: 1" />
           <UiButton
             size="sm"
             variant="primary"
@@ -639,7 +661,10 @@ onMounted(async () => {
           <span>条目 {{ summary.entryCount }}</span>
           <span>平均分 {{ summary.averageScore }}</span>
           <span>模式 {{ evaluationModeLabel(summary.evaluationMode) }}</span>
-          <UiButton size="sm" variant="primary" :loading="exporting" @click="exportSummaryCsv"> 导出表格文件 </UiButton>
+          <span>场景 {{ evaluationSceneLabel(summary.sceneCode) }}</span>
+          <UiButton size="sm" variant="primary" :loading="exporting" @click="exportSummaryCsv">
+            导出表格文件
+          </UiButton>
         </div>
         <UiDataTable
           pagination-mode="none"
