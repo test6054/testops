@@ -127,7 +127,10 @@
           :class="{ 'scan-batch-detail-workbench__immersion--narrow': isNarrowViewport }"
         >
           <aside v-if="!isNarrowViewport" class="scan-batch-detail-workbench__queue">
-            <div v-if="browseAllPages || !hasAttributionItems" class="scan-batch-detail-workbench__browse">
+            <div
+              v-if="browseAllPages || !hasAttributionItems"
+              class="scan-batch-detail-workbench__browse"
+            >
               <UiSectionTabs
                 v-model="pageStatusFilter"
                 :items="pageStatusTabItems"
@@ -242,8 +245,7 @@
             />
             <UiSkeletonState
               v-if="
-                previewLoading
-                  || (Boolean(selectedPageKey) && inspectorLoading && !previewImageUrl)
+                previewLoading || (Boolean(selectedPageKey) && inspectorLoading && !previewImageUrl)
               "
               variant="card"
               compact
@@ -291,7 +293,10 @@
     </UiSpin>
 
     <UiDrawer v-model:open="leftDrawerOpen" title="归卷列表" width="360" hide-footer>
-      <div v-if="browseAllPages || !hasAttributionItems" class="scan-batch-detail-workbench__browse">
+      <div
+        v-if="browseAllPages || !hasAttributionItems"
+        class="scan-batch-detail-workbench__browse"
+      >
         <ScanBatchPageRail
           :page-items="pageItems"
           :selected-page-key="selectedPageKey"
@@ -1003,10 +1008,10 @@ async function loadWorkbench(): Promise<void> {
       }
     }
     if (!pageKey && attributionItems.length) {
-      const preferredBucket
-        = attributionItems.find((item) => item.bucketKey === preservedBucketKey)
-          ?? attributionItems.find((item) => item.manualReviewRequired)
-          ?? attributionItems[0]
+      const preferredBucket =
+        attributionItems.find((item) => item.bucketKey === preservedBucketKey) ??
+        attributionItems.find((item) => item.manualReviewRequired) ??
+        attributionItems[0]
       pageKey = preferredBucket?.pages[0]?.pageKey || ''
       if (preferredBucket) {
         selectedBucketKey.value = preferredBucket.bucketKey
@@ -1195,9 +1200,9 @@ async function loadPreview(): Promise<void> {
   }
   if (!page.previewUrl) {
     if (
-      page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
-      && canViewOriginalImage.value
-      && page.pageId
+      page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING &&
+      canViewOriginalImage.value &&
+      page.pageId
     ) {
       await loadOriginalPreview(requestSeq)
     }
@@ -1307,7 +1312,7 @@ function setPreferredReassignTarget(paperInstanceId: string): void {
 
 async function openOrderAudit(): Promise<void> {
   // MVR-393：「人工合并」属主考写路径入口，打开前叠 canManageOwnerBatchActions===true
-  if (canManageOwnerBatchActions.value !== true) {
+  if (!canManageOwnerBatchActions.value) {
     message.warning('仅本场主考可打开人工合并')
     return
   }
@@ -1521,7 +1526,7 @@ async function handleSupplementSuccess(): Promise<void> {
 
 async function confirmDiscardBatch(reason: string): Promise<void> {
   // MVR-322/376：与 canManageOwnerBatchActions / BE 主考写门禁二次拦截
-  if (canManageOwnerBatchActions.value !== true) {
+  if (!canManageOwnerBatchActions.value) {
     message.warning('当前账号不可废弃扫描批次')
     discardModalOpen.value = false
     return
