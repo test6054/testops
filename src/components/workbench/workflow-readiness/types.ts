@@ -17,6 +17,7 @@ export const WorkflowBlockingItemCode = {
   SCORE_NOT_PUBLISHED: 'SCORE_NOT_PUBLISHED',
   EXAM_NOT_CLOSED: 'EXAM_NOT_CLOSED',
   EXAM_NOT_ACTIVE: 'EXAM_NOT_ACTIVE',
+  GROUP_CLOSED: 'GROUP_CLOSED',
 } as const
 
 export type WorkflowBlockingItemCodeValue

@@ -56,7 +56,6 @@
                 ? 'var(--dp-success)'
                 : 'var(--dp-color-primary)'
             "
-          
             :show-label="false"
           />
         </template>
@@ -91,17 +90,17 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { TrialSessionResponse } from '@/apis/mark/marking-organization'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
-import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   deleteTrialSession,
   startTrialSession,
   TRIAL_SESSION_STATUS_TONE,
   TrialSessionStatusDescription,
 } from '@/apis/mark/marking-organization'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { WorkflowPrerequisiteEmptyViewModel } from '@/components/workbench/workflow-readiness/types'
+import type { MarkingOrgSessionFilterModel } from '@/composables/useMarkingOrgSessionWorkspace'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -116,6 +115,7 @@ import {
   ALL_TRIAL_SESSION_STATUS_CODES,
   TrialSessionStatusCode,
 } from '@/types/enums/trial-session-status-enum'
+import { QuestionMarkingGroupStatusCode } from '@/types/enums/question-marking-group-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -124,6 +124,8 @@ import TrialSessionCalibrateDrawer from './TrialSessionCalibrateDrawer.vue'
 interface GroupOption {
   value: string
   label: string
+  /** MVR-402：题组状态，CLOSED/DRAFT 不可启动会话 */
+  groupStatus?: string
 }
 
 interface SessionPaginationState {
@@ -148,10 +150,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refresh": []
-  "search": [model: Record<string, unknown>]
-  "reset": []
-  'page-change': [page: { current: number, pageSize: number }]
+  refresh: []
+  search: [model: Record<string, unknown>]
+  reset: []
+  'page-change': [page: { current: number; pageSize: number }]
   'open-lifecycle': [action: 'closeTrial', sessionId: string]
 }>()
 
@@ -226,9 +228,9 @@ const filterFields = computed((): FilterField[] => [
 
 const hasActiveFilter = computed(
   () =>
-    Boolean(props.filterModel.keyword.trim())
-    || Boolean(props.filterModel.status)
-    || Boolean(props.filterModel.groupId),
+    Boolean(props.filterModel.keyword.trim()) ||
+    Boolean(props.filterModel.status) ||
+    Boolean(props.filterModel.groupId),
 )
 
 const sessionTableEmptyDescription = computed(() => {
@@ -271,29 +273,45 @@ function emitReset(): void {
   emit('reset')
 }
 
-function emitPageChange(page: { current: number, pageSize: number }): void {
+function emitPageChange(page: { current: number; pageSize: number }): void {
   emit('page-change', page)
 }
 
-function canStart(status: TrialSessionStatusCode): boolean {
-  return props.canManage === true && status === TrialSessionStatusCode.TRIAL_CREATED
+function isGroupStartable(groupId: string | undefined): boolean {
+  if (!groupId) {
+    return false
+  }
+  const option = props.groupOptions.find((item) => item.value === groupId)
+  // MVR-402：仅 ACTIVE/CONFIGURED 可启动；缺状态默认拒绝
+  return (
+    option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE ||
+    option?.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED
+  )
+}
+
+function canStart(record: TrialSessionResponse): boolean {
+  return (
+    props.canManage === true &&
+    record.sessionStatus === TrialSessionStatusCode.TRIAL_CREATED &&
+    isGroupStartable(record.groupId)
+  )
 }
 
 function canCalibrate(status: TrialSessionStatusCode): boolean {
   return (
-    props.canManage === true
-    && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
-      || status === TrialSessionStatusCode.TRIAL_SUBMITTED)
+    props.canManage === true &&
+    (status === TrialSessionStatusCode.TRIAL_ASSIGNED ||
+      status === TrialSessionStatusCode.TRIAL_SUBMITTED)
   )
 }
 
 function canClose(status: TrialSessionStatusCode): boolean {
   // MVR-398：关闭试评认 canCloseMarkingSessions（主考，不叠 ACTIVE）
   return (
-    props.canCloseMarkingSessions === true
-    && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
-      || status === TrialSessionStatusCode.TRIAL_SUBMITTED
-      || status === TrialSessionStatusCode.CALIBRATED)
+    props.canCloseMarkingSessions === true &&
+    (status === TrialSessionStatusCode.TRIAL_ASSIGNED ||
+      status === TrialSessionStatusCode.TRIAL_SUBMITTED ||
+      status === TrialSessionStatusCode.CALIBRATED)
   )
 }
 
@@ -306,7 +324,7 @@ function buildRowActions(record: TrialSessionResponse): UiTableRowActionItem[] {
     {
       key: 'start',
       label: '启动试评',
-      hidden: !canStart(record.sessionStatus),
+      hidden: !canStart(record),
       disabled: startingId.value === record.id,
     },
     {
@@ -338,16 +356,21 @@ function guardManageAction(): boolean {
   return false
 }
 
-async function submitStart(sessionId: string): Promise<void> {
+async function submitStart(record: TrialSessionResponse): Promise<void> {
   if (!guardManageAction()) {
+    return
+  }
+  // MVR-402：启动二次闸，禁 CLOSED/DRAFT 题组（缺状态默认拒绝）
+  if (!isGroupStartable(record.groupId)) {
+    showFormValidationMessage('题组已关闭或为草稿状态，不能启动试评会话')
     return
   }
   if (startingId.value || deletingId.value) {
     return
   }
-  startingId.value = sessionId
+  startingId.value = record.id
   try {
-    await startTrialSession(sessionId)
+    await startTrialSession(record.id)
     message.success('试评会话已启动，教师可在试评任务池领取样本卷')
     emit('refresh')
   } catch (error) {
@@ -378,7 +401,7 @@ async function submitDelete(sessionId: string): Promise<void> {
 
 async function handleSessionRowAction(key: string, record: TrialSessionResponse): Promise<void> {
   if (key === 'start') {
-    await submitStart(record.id)
+    await submitStart(record)
     return
   }
   if (key === 'calibrate') {
