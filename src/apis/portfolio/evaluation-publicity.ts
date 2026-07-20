@@ -13,6 +13,7 @@ import type {
   PortfolioEvaluationResultSummaryRequest,
   PortfolioEvaluationTaskAdvanceRequest,
   PortfolioEvaluationTeacherResultSummaryVO,
+  PortfolioMultiIdentityLayerVO,
 } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import http from '@/config/axios'

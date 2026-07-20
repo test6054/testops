@@ -41,6 +41,7 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const HANDLE_ACTION_OPTIONS: PortfolioEvaluationObjectionHandleActionCode[] = [
   PortfolioEvaluationObjectionHandleActionCode.MAINTAIN,
@@ -537,16 +538,11 @@ void loadPage()
             <span v-else>-</span>
           </template>
           <template v-else-if="column.key === 'identityLayers'">
-            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-              <UiTag
-                v-for="(layer, i) in record.ownerIdentityLayers"
-                :key="`${layer.identityType || 'id'}-${i}`"
-                tone="neutral"
-              >
-                {{ layer.identityTypeLabel || layer.identityType }}
-              </UiTag>
-            </div>
-            <span v-else class="text-neutral-400">—</span>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+              :row-key="record.objectionId || record.teacherId"
+            />
           </template>
           <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
             <UiTag

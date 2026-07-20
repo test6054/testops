@@ -56,6 +56,7 @@ import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAcce
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): string {
   return strictEnumLabel(PortfolioEvaluationTeacherNoticeStatusDescription, status, '评价通知状态')
@@ -915,16 +916,11 @@ watch(
               <span v-else>-</span>
             </template>
             <template v-else-if="column.key === 'identityLayers'">
-              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-                <UiTag
-                  v-for="(layer, i) in record.ownerIdentityLayers"
-                  :key="`${layer.identityType || 'id'}-${i}`"
-                  tone="neutral"
-                >
-                  {{ layer.identityTypeLabel || layer.identityType }}
-                </UiTag>
-              </div>
-              <span v-else class="text-neutral-400">—</span>
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+                :row-key="record.id || record.teacherId || ''"
+              />
             </template>
             <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
               <UiTag :tone="record.countsInCurrentFacultyStructure === true ? 'green' : 'gray'">
@@ -1081,16 +1077,11 @@ watch(
               <span v-else>-</span>
             </template>
             <template v-else-if="column.key === 'identityLayers'">
-              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-                <UiTag
-                  v-for="(layer, i) in record.ownerIdentityLayers"
-                  :key="`${layer.identityType || 'id'}-${i}`"
-                  tone="neutral"
-                >
-                  {{ layer.identityTypeLabel || layer.identityType }}
-                </UiTag>
-              </div>
-              <span v-else class="text-neutral-400">—</span>
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+                :row-key="record.publicityId || record.teacherId || ''"
+              />
             </template>
             <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
               <UiTag
