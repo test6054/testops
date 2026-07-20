@@ -37,6 +37,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -44,6 +45,7 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -103,6 +105,11 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const {
+  evaluationHeld,
+  evaluationHoldBlockMessage,
+  assertEvaluationParticipable,
+} = usePortfolioArchiveWriteGuard()
 const { currentUserId, canPickTeachers } = usePortfolioTeacherAccess()
 
 const loading = ref(false)
@@ -157,6 +164,20 @@ const showObjectionIndicatorSelect = computed(
 const deepLinkedEvaluationTaskId = computed(() =>
   typeof route.query.evaluationTaskId === 'string' ? route.query.evaluationTaskId : '',
 )
+/** PF-P0-292：站内信公示 publicityId 深链 */
+const deepLinkedPublicityId = computed(() =>
+  typeof route.query.publicityId === 'string' ? route.query.publicityId.trim() : '',
+)
+/** PF-P0-291/292：异议结论 objectionId 深链（教师侧结果行） */
+const deepLinkedObjectionId = computed(() =>
+  typeof route.query.objectionId === 'string' ? route.query.objectionId.trim() : '',
+)
+/** PF-P0-294：规则变更影响报告 impactReportId 深链（只读提示，教师无报告详情 API） */
+const deepLinkedImpactReportId = computed(() =>
+  typeof route.query.impactReportId === 'string' ? route.query.impactReportId.trim() : '',
+)
+/** 深链命中的公示行 key，用于表格高亮 */
+const highlightedPublicityKey = ref('')
 
 const selectedNotice = computed(
   () => notices.value.find((item) => item.id === selectedNoticeId.value) ?? null,
@@ -164,6 +185,8 @@ const selectedNotice = computed(
 
 const noticeColumns: ColumnsType<PortfolioEvaluationTeacherNoticeVO> = [
   { title: '评价任务', dataIndex: 'taskTitle', key: 'taskTitle', fixed: 'left' },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '状态', key: 'noticeStatus', width: 120 },
   { title: '截止', dataIndex: 'dueTime', key: 'dueTime', width: 170 },
   { title: '操作', key: 'actions', width: 160 },
@@ -244,9 +267,18 @@ function evaluationMaterialRowKey(record: unknown): string {
   ].join(':')
 }
 
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 const publicityColumns: ColumnsType<PortfolioEvaluationPublicityListItemVO> = [
   { title: '任务', dataIndex: 'taskName', key: 'taskName', fixed: 'left' },
   { title: '公示标题', dataIndex: 'publicityTitle', key: 'publicityTitle' },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '公示状态', key: 'publicityStatus', width: 100 },
   { title: '公示期', key: 'publicityWindow', width: 200 },
   { title: '异议 / 复核', key: 'objectionStatus', width: 140 },
@@ -282,6 +314,7 @@ function resetEvaluationContext() {
   notices.value = []
   pageTotal.value = 0
   publicityRows.value = []
+  highlightedPublicityKey.value = ''
   resultSummary.value = null
   preview.value = null
   selectedNoticeId.value = ''
@@ -309,6 +342,14 @@ function publicityRowKey(record: unknown): string {
   const row = record as PortfolioEvaluationPublicityListItemVO
   return `${row.publicityId}-${row.teacherId ?? ''}`
 }
+
+/** PF-P0-292：深链命中公示行高亮。 */
+function publicityRowClassName(record: PortfolioEvaluationPublicityListItemVO): string {
+  return publicityRowKey(record) === highlightedPublicityKey.value
+    ? 'teacher-evaluation__publicity-row--active'
+    : ''
+}
+
 
 async function loadNotices() {
   const scopeToken = evaluationRequestToken.value
@@ -369,10 +410,20 @@ async function loadPublicity() {
   }
   publicityLoading.value = true
   resultSummary.value = null
+  highlightedPublicityKey.value = ''
   try {
-    const rows = await portfolioEvaluationPublicityApi.listPublicity(
-      targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
-    )
+    const listRequest: {
+      teacherId?: string
+      evaluationTaskId?: string
+    } = {}
+    if (targetTeacherId.value) {
+      listRequest.teacherId = targetTeacherId.value
+    }
+    // 深链任务过滤：减少多任务公示噪音，对齐站内信 evaluationTaskId
+    if (deepLinkedEvaluationTaskId.value) {
+      listRequest.evaluationTaskId = deepLinkedEvaluationTaskId.value
+    }
+    const rows = await portfolioEvaluationPublicityApi.listPublicity(listRequest)
     if (
       evaluationRequestToken.value !== scopeToken
       || publicityRequestToken.value !== requestToken
@@ -380,12 +431,21 @@ async function loadPublicity() {
       return
     }
     publicityRows.value = rows
-    const matchedRow = deepLinkedEvaluationTaskId.value
-      ? publicityRows.value.find(
-          (item) => item.evaluationTaskId === deepLinkedEvaluationTaskId.value,
-        )
-      : null
+    // PF-P0-292：publicityId > objectionId > evaluationTaskId 定位目标公示行
+    const matchedRow
+      = (deepLinkedPublicityId.value
+        ? publicityRows.value.find((item) => item.publicityId === deepLinkedPublicityId.value)
+        : undefined)
+      || (deepLinkedObjectionId.value
+        ? publicityRows.value.find((item) => item.objectionId === deepLinkedObjectionId.value)
+        : undefined)
+      || (deepLinkedEvaluationTaskId.value
+        ? publicityRows.value.find(
+            (item) => item.evaluationTaskId === deepLinkedEvaluationTaskId.value,
+          )
+        : undefined)
     if (matchedRow) {
+      highlightedPublicityKey.value = publicityRowKey(matchedRow)
       await loadResultSummary(matchedRow.evaluationTaskId)
     }
   } catch (error) {
@@ -479,6 +539,12 @@ async function confirmSelected() {
   if (!selectedNotice.value) {
     return
   }
+  if (
+    selectedNotice.value.evaluationHeld
+    || !assertEvaluationParticipable('确认评价材料')
+  ) {
+    return
+  }
   const requestToken = evaluationRequestToken.value
   const noticeId = selectedNotice.value.id
   confirming.value = true
@@ -514,6 +580,9 @@ function openObjectionModal(row: PortfolioEvaluationPublicityListItemVO) {
 
 async function submitObjection() {
   if (submittingObjection.value) {
+    return
+  }
+  if (!assertEvaluationParticipable('提交异议')) {
     return
   }
   if (!(await confirmProxyWrite('提交评价异议'))) {
@@ -570,6 +639,16 @@ async function submitObjection() {
   }
 }
 
+/** PF-P0-294：规则变更后引导教师复核资格评估（双师等硬门槛）。 */
+function goTeacherIndicator() {
+  void router.push({
+    path: '/portfolio/teacher/indicator',
+    query: deepLinkedImpactReportId.value
+      ? { impactReportId: deepLinkedImpactReportId.value }
+      : undefined,
+  })
+}
+
 function goArchive() {
   void router.push({
     path: '/portfolio/teacher/archive',
@@ -591,7 +670,11 @@ function buildNoticeRowActions(record: PortfolioEvaluationTeacherNoticeVO): UiTa
       key: 'confirm',
       label: '确认材料',
       tone: 'primary',
-      disabled: confirming.value || previewLoading.value,
+      disabled:
+        confirming.value
+        || previewLoading.value
+        || Boolean(record.evaluationHeld)
+        || evaluationHeld.value,
     })
   }
   return actions
@@ -621,7 +704,16 @@ function buildPublicityRowActions(
     },
   ]
   if (canViewerSubmitObjection(record)) {
-    actions.push({ key: 'submitObjection', label: '提交异议' })
+    actions.push({
+      key: 'submitObjection',
+      label: '提交异议',
+      disabled:
+        evaluationHeld.value
+        || record.lifecycleStatus === 'SEALED'
+        || record.lifecycleStatus === 'TEMP_HOLD'
+        || record.lifecycleStatus === 'TRANSFER_FROZEN'
+        || record.lifecycleStatus === 'TRANSFERRED',
+    })
   }
   return actions
 }
@@ -689,9 +781,11 @@ watch(
 )
 
 watch(
-  () => route.query.evaluationTaskId,
-  (evaluationTaskId, previousEvaluationTaskId) => {
-    if (evaluationTaskId === previousEvaluationTaskId) {
+  () => [route.query.evaluationTaskId, route.query.publicityId, route.query.objectionId],
+  (current, previous) => {
+    const curr = current?.join('|') ?? ''
+    const prev = previous?.join('|') ?? ''
+    if (curr === prev) {
       return
     }
     void loadPublicity()
@@ -734,6 +828,26 @@ watch(
       </ContextBar>
     </template>
 
+    <UiAlertStrip
+      v-if="evaluationHeld"
+      tone="warning"
+      title="评价参评已 hold"
+      :description="evaluationHoldBlockMessage"
+      class="mb-3"
+    />
+    <UiAlertStrip
+      v-if="deepLinkedImpactReportId"
+      tone="info"
+      title="评价规则已变更"
+      :description="`学校已发布规则变更（影响报告 #${deepLinkedImpactReportId}）。已公示/已归档结论不因本次变更重算；请核对进行中评价待办与结果公示，并按需复核资格评估。`"
+      class="mb-3"
+      :closable="false"
+    >
+      <template #actions>
+        <UiButton size="sm" variant="ghost" @click="goTeacherIndicator">去资格评估</UiButton>
+      </template>
+    </UiAlertStrip>
+
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <template v-else>
@@ -751,7 +865,24 @@ watch(
           @page-change="() => void loadNotices()"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'noticeStatus'">
+            <template v-if="column.key === 'lifecycleStatus'">
+              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+              <span v-else>-</span>
+            </template>
+            <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+              <UiTag :tone="record.countsInCurrentFacultyStructure === true ? 'green' : 'neutral'">
+                {{
+                  record.countsInCurrentFacultyStructure === true
+                    ? '是'
+                    : record.countsInCurrentFacultyStructure === false
+                      ? '否'
+                      : '-'
+                }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'noticeStatus'">
               <UiTag :tone="noticeStatusTone(record.noticeStatus)">
                 {{ noticeStatusLabel(record.noticeStatus) }}
               </UiTag>
@@ -874,9 +1005,33 @@ watch(
           :data-source="publicityRows"
           :loading="publicityLoading"
           :row-key="publicityRowKey"
+          :row-class-name="publicityRowClassName"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'publicityStatus'">
+            <template v-if="column.key === 'lifecycleStatus'">
+              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+              <span v-else>-</span>
+            </template>
+            <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+              <UiTag
+                :tone="
+                  record.countsInCurrentFacultyStructure === true
+                    ? 'green'
+                    : 'neutral'
+                "
+              >
+                {{
+                  record.countsInCurrentFacultyStructure === true
+                    ? '是'
+                    : record.countsInCurrentFacultyStructure === false
+                      ? '否'
+                      : '-'
+                }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'publicityStatus'">
               <UiTag :tone="publicityStatusTone(record.publicityStatus)">
                 {{ publicityStatusLabel(record.publicityStatus) }}
               </UiTag>
@@ -932,6 +1087,36 @@ watch(
                 {{ resultSummary.requiredCategoryTotal }}
               </template>
             </p>
+            <!-- US-MI / PF-P0-270：结果汇总读模型仅标注结构态，不默认过滤 -->
+            <div
+              v-if="resultSummary.lifecycleStatus || resultSummary.evaluationHeld != null || resultSummary.countsInCurrentFacultyStructure != null"
+              class="teacher-evaluation__meta teacher-evaluation__result-lifecycle"
+            >
+              <UiTag
+                v-if="resultSummary.lifecycleStatus"
+                :tone="lifecycleTagTone(resultSummary)"
+              >
+                {{ resultSummary.lifecycleStatusLabel || resultSummary.lifecycleStatus }}
+              </UiTag>
+              <UiTag
+                v-if="resultSummary.countsInCurrentFacultyStructure != null"
+                :tone="resultSummary.countsInCurrentFacultyStructure ? 'green' : 'neutral'"
+              >
+                {{ resultSummary.countsInCurrentFacultyStructure ? '计入当前在岗' : '不计入当前在岗' }}
+              </UiTag>
+              <UiTag
+                v-if="resultSummary.evaluationHeld"
+                tone="orange"
+              >
+                参评 hold
+              </UiTag>
+              <UiTag
+                v-if="resultSummary.archiveWriteForbidden"
+                tone="red"
+              >
+                档案写禁
+              </UiTag>
+            </div>
             <UiDataTable
               v-if="resultSummary.entries?.length"
               row-key="entryId"

@@ -15,6 +15,7 @@
     </span>
     <input
       ref="inputRef"
+      v-bind="inputAttrs"
       :value="displayValue"
       class="dp-input"
       :type="type"
@@ -22,7 +23,6 @@
       :disabled="disabled"
       :readonly="readonly"
       :maxlength="maxlength"
-      v-bind="$attrs"
       @input="handleInput"
       @change="handleChange"
       @keyup.enter="handleEnter"
@@ -49,7 +49,7 @@
 
 <script lang="ts" setup>
 import type { UiComponentSize, UiFieldStatus } from './types'
-import { computed, ref } from 'vue'
+import { computed, ref, useAttrs } from 'vue'
 
 defineOptions({
   name: 'UiInput',
@@ -81,10 +81,21 @@ const {
 const emit = defineEmits<{
   (e: 'focus', event: FocusEvent): void
   (e: 'blur', event: FocusEvent): void
-  (e: 'change', value: string | number | undefined, event: Event): void
+  (e: 'change', value: string | number | undefined, event?: Event): void
+  (e: 'update:value', value: string | number | undefined): void
   (e: 'enter', event: KeyboardEvent): void
   (e: 'clear'): void
 }>()
+
+const attrs = useAttrs()
+
+/** 排除 Form 注入的 value，避免与 displayValue 抢绑定 */
+const inputAttrs = computed(() => {
+  const next: Record<string, unknown> = { ...attrs }
+  delete next.value
+  delete next['onUpdate:value']
+  return next
+})
 
 // 中文输入法组合状态
 const inputRef = ref<HTMLInputElement | null>(null)
@@ -104,14 +115,20 @@ const handleCompositionStart = () => {
   isComposing.value = true
 }
 
+/** 同步 modelValue，并通知 a-form（change / update:value）清除校验 */
+function commitValue(nextValue: string | number | undefined, event?: Event): void {
+  modelValue.value = nextValue
+  emit('update:value', nextValue)
+  emit('change', nextValue, event)
+}
+
 const handleCompositionEnd = (event: CompositionEvent) => {
   isComposing.value = false
   // 组合结束后手动更新值
   if (!(event.target instanceof HTMLInputElement)) {
     return
   }
-  const nextValue = event.target.value
-  modelValue.value = normalizeValue(nextValue)
+  commitValue(normalizeValue(event.target.value), event)
 }
 
 const handleInput = (event: Event) => {
@@ -120,8 +137,7 @@ const handleInput = (event: Event) => {
   if (!(event.target instanceof HTMLInputElement)) {
     return
   }
-  const nextValue = event.target.value
-  modelValue.value = normalizeValue(nextValue)
+  commitValue(normalizeValue(event.target.value), event)
 }
 
 const handleChange = (event: Event) => {
@@ -143,7 +159,7 @@ const handleBlur = (event: FocusEvent) => {
 }
 
 const handleClear = () => {
-  modelValue.value = undefined
+  commitValue(undefined)
   emit('clear')
   inputRef.value?.focus()
 }
@@ -155,27 +171,33 @@ const handleClear = () => {
   align-items: center;
   gap: var(--dp-space-2, 8px);
   width: 100%;
+  box-sizing: border-box;
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
   background-color: var(--dp-bg-control);
   font-size: 14px;
+  line-height: 22px;
   color: var(--dp-text-primary);
+  font-family: var(--dp-font-family);
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease,
     background-color 0.2s ease;
-  font-family: var(--dp-font-family);
-  box-sizing: border-box;
 }
 
 .dp-input {
+  flex: 1 1 auto;
   width: 100%;
+  min-width: 0;
   height: 100%;
+  margin: 0;
   padding: 0 var(--dp-space-3, 12px);
   border: none;
   background: transparent;
-  font-size: inherit;
+  font-size: 14px;
+  line-height: 22px;
   color: inherit;
+  font-family: inherit;
   outline: none;
 }
 
@@ -186,15 +208,18 @@ const handleClear = () => {
 }
 
 .dp-input-wrap--sm {
-  min-height: var(--dp-control-height-sm);
+  height: var(--dp-control-height-sm, 32px);
+  min-height: var(--dp-control-height-sm, 32px);
 }
 
 .dp-input-wrap--md {
-  min-height: var(--dp-control-height-md);
+  height: var(--dp-control-height-md, 36px);
+  min-height: var(--dp-control-height-md, 36px);
 }
 
 .dp-input-wrap--lg {
-  min-height: var(--dp-control-height-lg);
+  height: var(--dp-control-height-lg, 40px);
+  min-height: var(--dp-control-height-lg, 40px);
 }
 
 .dp-input-wrap:hover {
@@ -208,6 +233,7 @@ const handleClear = () => {
 
 .dp-input::placeholder {
   color: var(--dp-text-muted);
+  line-height: inherit;
 }
 
 .dp-input-wrap--error {

@@ -44,6 +44,10 @@ const router = useRouter()
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const { selectedExamId } = useMarkExamContext()
 const { examDetail, examDetailLoading } = useExamJourneyContextBar('考试准备', 'hub')
+/** MVR-326/354：仅认 BE examDetail.canManageOwnerExamPrepWrites===true（主考+ACTIVE） */
+const canManageOwnerExamPrepWrites = computed(
+  () => examDetail.value?.canManageOwnerExamPrepWrites === true,
+)
 
 const layoutSaving = ref(false)
 const layoutModalOpen = ref(false)
@@ -152,7 +156,13 @@ const contextPrimaryAction = computed(() => {
       loading: false,
     }
   }
-  if (layoutDirty.value && !layoutModeLocked.value && draftLayoutMode.value) {
+  // MVR-267：保存制卷形态仅主考；与 BE requireExamOwnerPermission 对齐
+  if (
+    canManageOwnerExamPrepWrites.value
+    && layoutDirty.value
+    && !layoutModeLocked.value
+    && draftLayoutMode.value
+  ) {
     return {
       label: '保存制卷形态',
       disabled: false,
@@ -208,6 +218,9 @@ async function loadExamFullScore(examId: string): Promise<void> {
 
 async function handleSaveLayoutMode(): Promise<void> {
   if (layoutSaving.value) {
+    return
+  }
+  if (!canManageOwnerExamPrepWrites.value) {
     return
   }
   if (!selectedExamId.value || !draftLayoutMode.value) {
@@ -440,6 +453,7 @@ watch(
           :layout-dirty="layoutDirty"
           :layout-saving="layoutSaving"
           :material-layout-saved="Boolean(examDetail.materialLayoutMode)"
+          :can-manage-owner-writes="canManageOwnerExamPrepWrites"
           :description="materialLayoutStep.description"
           :advisory-reason="materialLayoutStep.advisoryReason"
           @save="handleSaveLayoutMode"

@@ -19,7 +19,7 @@ const activation = useKioskDeviceActivation()
     <div class="gate__panel">
       <KioskDeviceActivationPanel
         compact
-        :can-activate="canActivate ?? true"
+        :can-activate="canActivate === true"
         :submit-loading="submitLoading"
         show-manual-cancel
         @submit="emit('submit')"

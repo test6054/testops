@@ -15,9 +15,20 @@
       :class="{
         'signal-band__item--clickable': metric.clickable,
         'signal-band__item--active': metric.active,
+        [`signal-band__item--tone-${metric.tone ?? 'gray'}`]: variant === 'panel',
       }"
       @click="metric.clickable ? emit('metric-click', metric.key) : undefined"
     >
+      <span
+        v-if="variant === 'panel'"
+        class="signal-band__icon"
+        :class="iconToneClass(metric)"
+        aria-hidden="true"
+      >
+        <slot :name="`icon-${metric.key}`">
+          <span class="signal-band__icon-dot" />
+        </slot>
+      </span>
       <div class="signal-band__body">
         <span class="signal-band__label">{{ metric.label }}</span>
         <div class="signal-band__value-row">
@@ -57,7 +68,7 @@
 
 <script lang="ts" setup>
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric, SignalMetricTrendPolarity } from '@/types/workbench'
+import type { SignalMetric, SignalMetricIconTone, SignalMetricTrendPolarity } from '@/types/workbench'
 
 defineOptions({
   name: 'SignalBand',
@@ -87,6 +98,20 @@ function toneClass(tone?: BadgeTone): string {
   return tone ? `signal-band__value--${tone}` : ''
 }
 
+function resolveIconTone(metric: SignalMetric): SignalMetricIconTone {
+  if (metric.iconTone) return metric.iconTone
+  const tone = metric.tone
+  if (tone === 'green') return 'green'
+  if (tone === 'red') return 'red'
+  if (tone === 'orange') return 'orange'
+  if (tone === 'blue') return 'blue'
+  if (tone === 'purple') return 'purple'
+  return 'gray'
+}
+
+function iconToneClass(metric: SignalMetric): string {
+  return `signal-band__icon--${resolveIconTone(metric)}`
+}
 
 function trendClass(metric: SignalMetric): string {
   const trend = metric.trend
@@ -139,7 +164,7 @@ function sparkPolyline(metric: SignalMetric): string {
   padding: var(--dp-space-2) var(--dp-space-3);
 }
 
-/* panel：独立指标卡 + 真实间距，禁止 1px 连体条 */
+/* panel：独立指标卡 + 图标区 + 副文案 */
 .signal-band--panel {
   flex-wrap: nowrap;
   gap: var(--dp-space-3);
@@ -162,12 +187,9 @@ function sparkPolyline(metric: SignalMetric): string {
 .signal-band--panel .signal-band__item--active {
   background: color-mix(in srgb, var(--dp-primary) 8%, var(--dp-surface));
   border-color: color-mix(in srgb, var(--dp-primary) 32%, var(--dp-border));
-  box-shadow: var(--dp-shadow-xs);
+  box-shadow: var(--dp-shadow-sm);
   color: var(--dp-primary);
 }
-
-
-
 
 .signal-band__body {
   display: contents;
@@ -176,6 +198,8 @@ function sparkPolyline(metric: SignalMetric): string {
 .signal-band--panel .signal-band__body {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  flex: 1;
 }
 
 .signal-band__item {
@@ -204,27 +228,135 @@ function sparkPolyline(metric: SignalMetric): string {
 
 .signal-band--panel .signal-band__item {
   flex: 1 1 0;
-  min-width: 120px;
-  flex-direction: column;
+  min-width: 140px;
+  flex-direction: row;
   align-items: flex-start;
-  justify-content: center;
-  gap: var(--dp-space-1);
-  min-height: 72px;
-  padding: var(--dp-space-3) var(--dp-space-4);
+  justify-content: flex-start;
+  gap: var(--dp-space-3);
+  min-height: 88px;
+  padding: var(--dp-space-4);
+  padding-top: calc(var(--dp-space-4) + 3px);
   background: var(--dp-surface);
-  border: 1px solid var(--dp-border);
+  border: 1px solid var(--dp-border-subtle);
+  border-top: 3px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
   box-shadow: var(--dp-shadow-xs);
   transition:
     background var(--dp-duration-normal) ease,
     border-color var(--dp-duration-normal) ease,
-    box-shadow var(--dp-duration-normal) ease;
+    box-shadow var(--dp-duration-normal) ease,
+    transform var(--dp-duration-fast) ease;
+}
+
+.signal-band--panel .signal-band__item:hover {
+  box-shadow: var(--dp-shadow-sm);
+  transform: translateY(-1px);
 }
 
 .signal-band--panel .signal-band__item--clickable:hover {
   background: color-mix(in srgb, var(--dp-primary) 4%, var(--dp-surface));
   border-color: var(--dp-color-primary-border);
-  box-shadow: var(--dp-shadow-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signal-band--panel .signal-band__item {
+    transition: none;
+  }
+
+  .signal-band--panel .signal-band__item:hover,
+  .signal-band--panel .signal-band__item--clickable:hover {
+    transform: none;
+  }
+}
+
+.signal-band__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--dp-radius-control);
+}
+
+.signal-band--panel .signal-band__icon {
+  width: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.signal-band__icon-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--dp-radius-full);
+  background: currentColor;
+  opacity: 0.9;
+}
+
+.signal-band--panel .signal-band__icon-dot {
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.signal-band__icon--blue {
+  color: var(--dp-blue-500);
+  background: var(--dp-blue-50);
+}
+
+.signal-band__icon--green {
+  color: var(--dp-green-600);
+  background: var(--dp-green-50);
+}
+
+.signal-band__icon--orange {
+  color: var(--dp-orange-600);
+  background: var(--dp-orange-50);
+}
+
+.signal-band__icon--red {
+  color: var(--dp-red-600);
+  background: var(--dp-red-50);
+}
+
+.signal-band__icon--gray {
+  color: var(--dp-gray-600);
+  background: var(--dp-gray-100);
+}
+
+.signal-band__icon--purple {
+  color: var(--dp-purple-700);
+  background: var(--dp-purple-50);
+}
+
+/* panel 卡片顶部色调条 */
+.signal-band--panel .signal-band__item--tone-green {
+  border-top-color: var(--dp-green-500, var(--dp-success));
+}
+
+.signal-band--panel .signal-band__item--tone-blue {
+  border-top-color: var(--dp-blue-500, var(--dp-color-primary));
+}
+
+.signal-band--panel .signal-band__item--tone-orange {
+  border-top-color: var(--dp-orange-500, var(--dp-warning));
+}
+
+.signal-band--panel .signal-band__item--tone-red {
+  border-top-color: var(--dp-red-500, var(--dp-error));
+}
+
+.signal-band--panel .signal-band__item--tone-purple {
+  border-top-color: var(--dp-purple-500);
+}
+
+.signal-band--panel .signal-band__item--tone-gray {
+  border-top-color: var(--dp-gray-400, var(--dp-border));
+}
+
+.signal-band--panel .signal-band__item--tone-yellow {
+  border-top-color: var(--dp-yellow-600, var(--dp-warning));
 }
 
 .signal-band--panel .signal-band__value-row {
@@ -330,7 +462,6 @@ function sparkPolyline(metric: SignalMetric): string {
   color: var(--dp-text-secondary);
 }
 
-
 .signal-band__spark {
   display: block;
   width: 100%;
@@ -352,7 +483,6 @@ function sparkPolyline(metric: SignalMetric): string {
 }
 
 @media (max-width: bp.$layout-mobile-max) {
-
   .signal-band--panel {
     flex-wrap: wrap;
     overflow-x: visible;

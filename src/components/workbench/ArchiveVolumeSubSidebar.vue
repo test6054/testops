@@ -18,6 +18,9 @@
         <h2 class="archive-volume-sub-sidebar__title">{{ archiveTitle }}</h2>
       </div>
       <p class="archive-volume-sub-sidebar__subtitle">{{ archiveSubtitle }}</p>
+      <p v-if="organizerLine" class="archive-volume-sub-sidebar__organizer">
+        {{ organizerLine }}
+      </p>
     </div>
 
     <div v-if="!collapsed" class="archive-volume-sub-sidebar__section-label">归档阶段</div>
@@ -53,6 +56,22 @@
       </template>
     </nav>
 
+    <template v-if="!collapsed && manageActions.length">
+      <div class="archive-volume-sub-sidebar__section-label">其他操作</div>
+      <div class="archive-volume-sub-sidebar__manage">
+        <button
+          v-for="action in manageActions"
+          :key="action.key"
+          type="button"
+          class="archive-volume-sub-sidebar__manage-item"
+          :class="{ 'archive-volume-sub-sidebar__manage-item--danger': action.danger }"
+          @click="emit('manage-action', action.key)"
+        >
+          {{ action.label }}
+        </button>
+      </div>
+    </template>
+
     <template v-if="!collapsed && statusRows.length">
       <div
         class="archive-volume-sub-sidebar__section-label archive-volume-sub-sidebar__section-label--meta"
@@ -83,29 +102,42 @@
 <script lang="ts" setup>
 import type { ArchiveVolumeNavigationChainStatusCode } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { ArchiveVolumeSidebarTab } from '@/composables/useArchiveVolumeWorkbenchContext'
+import type {
+  ArchiveVolumeManageActionKey,
+  ArchiveVolumeSidebarManageAction,
+  ArchiveVolumeSidebarTab,
+} from '@/composables/useArchiveVolumeWorkbenchContext'
 import type { ArchiveVolumeSidebarNavGroupView } from '@/utils/archive-volume-sidebar-navigation'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
 
 defineOptions({ name: 'ArchiveVolumeSubSidebar' })
 
-const props = defineProps<{
-  archiveTitle: string
-  archiveSubtitle: string
-  volumeStatusTone: BadgeTone
-  activeTab: string
-  navGroups: ArchiveVolumeSidebarNavGroupView[]
-  statusRows: Array<{ key: string, label: string, value: string }>
-  collapsed: boolean
-  mobileOpen: boolean
-  loading?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    archiveTitle: string
+    archiveSubtitle: string
+    /** 归档责任人一行，主区不再重复展示 */
+    organizerLine?: string
+    volumeStatusTone: BadgeTone
+    activeTab: string
+    navGroups: ArchiveVolumeSidebarNavGroupView[]
+    statusRows: Array<{ key: string, label: string, value: string }>
+    manageActions?: ArchiveVolumeSidebarManageAction[]
+    collapsed: boolean
+    mobileOpen: boolean
+    loading?: boolean
+  }>(),
+  {
+    manageActions: () => [],
+  },
+)
 
 const emit = defineEmits<{
   'tab-change': [tabKey: string]
   'back-to-list': []
   'toggle-collapse': []
+  'manage-action': [key: ArchiveVolumeManageActionKey]
 }>()
 
 function dotClass(tab: ArchiveVolumeSidebarTab): string {
@@ -217,6 +249,13 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     word-break: break-all;
   }
 
+  &__organizer {
+    margin: 4px 0 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--dp-text-secondary);
+  }
+
   &__section-label {
     padding: var(--dp-space-2, 8px) var(--dp-space-4, 16px) var(--dp-space-1, 4px);
     font-size: 11px;
@@ -246,6 +285,45 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     display: flex;
     flex-direction: column;
     gap: 2px;
+  }
+
+  &__manage {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 var(--dp-space-2, 8px) var(--dp-space-2, 8px);
+    flex-shrink: 0;
+  }
+
+  &__manage-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+    border: none;
+    border-radius: var(--dp-radius-panel);
+    background: transparent;
+    color: var(--dp-text-secondary);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      color 0.2s;
+
+    &:hover {
+      background: var(--dp-fill-tertiary);
+      color: var(--dp-text-primary);
+    }
+
+    &--danger {
+      color: var(--dp-danger);
+
+      &:hover {
+        background: color-mix(in srgb, var(--dp-danger) 8%, var(--dp-surface));
+        color: var(--dp-danger);
+      }
+    }
   }
 
   &__nav-item {

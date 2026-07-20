@@ -57,6 +57,10 @@ export interface ExamGradingExperienceAssistPolicyResponse {
   effectiveMaxExperienceItems?: number
   enabledTime?: string
   frozenTime?: string
+  /** MVR-277：阅卷写权限能力位；与 BE requireExamReviewerPermission 对齐 */
+  canManageReviewerWrites?: boolean
+  /** 是否可禁用本场经验辅助（评阅写，不叠 ACTIVE） */
+  canDisableExperienceAssist?: boolean
 }
 
 export interface ExamGradingExperienceAssistPolicyEnableRequest {

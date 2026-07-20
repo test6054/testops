@@ -362,12 +362,10 @@ watch(
   flex-wrap: wrap;
   gap: var(--dp-space-3) var(--dp-space-4);
   padding: var(--dp-space-3) var(--dp-space-4);
-  border: 1px solid var(--dp-border);
+  border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
-  box-shadow:
-    var(--dp-shadow-xs),
-    inset 3px 0 0 color-mix(in srgb, var(--dp-blue-500) 55%, transparent);
+  box-shadow: var(--dp-shadow-xs);
 }
 
 .portfolio-scope-header__field {

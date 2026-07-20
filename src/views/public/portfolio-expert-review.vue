@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioPublicExpertReviewBundleVO } from '@/apis/portfolio/public-expert'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { portfolioPublicExpertApi } from '@/apis/portfolio/public-expert'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
@@ -17,12 +17,18 @@ const bundle = ref<PortfolioPublicExpertReviewBundleVO | null>(null)
 const errorMessage = ref('')
 const requestToken = ref(0)
 
+/** 被评教师中处于评价参评 hold 的人数。 */
+const heldSubjectCount = computed(() =>
+  (bundle.value?.subjectTeachers ?? []).filter((item) => Boolean(item.evaluationHeld)).length,
+)
+
 const publicLinkParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
 const tenantId = publicLinkParams.get('tenantId') || undefined
 const accessToken = publicLinkParams.get('accessToken') || undefined
 
 const subjectTeacherColumns: ColumnsType = [
   { title: '被评教师', dataIndex: 'maskedDisplayName', key: 'maskedDisplayName' },
+  { title: '生命周期', key: 'lifecycleStatus', width: 160 },
 ]
 
 const materialColumns: ColumnsType = [
@@ -33,7 +39,10 @@ const materialColumns: ColumnsType = [
   { title: '版本', dataIndex: 'documentVersionNo', key: 'documentVersionNo', width: 80 },
   { title: '来源', dataIndex: 'sourceType', key: 'sourceType', width: 100 },
   { title: '主附件', key: 'hasPrimaryFile', width: 90 },
+  { title: '身份切片', key: 'identityScope', width: 100 },
+  { title: '校内硬性', key: 'usableForCampusHardCriteria', width: 110 },
   { title: '支撑材料', dataIndex: 'supportMaterialCount', key: 'supportMaterialCount', width: 100 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 160 },
 ]
 
 async function loadBundle() {
@@ -88,7 +97,13 @@ onMounted(() => {
             {{ bundle.maskRequired ? '已脱敏' : '未脱敏' }}
           </UiTag>
           <span>过期：{{ bundle.expireTime }}</span>
+          <UiTag v-if="heldSubjectCount > 0" tone="orange">
+            参评 hold {{ heldSubjectCount }}/{{ bundle.subjectTeachers.length }}
+          </UiTag>
         </div>
+        <p v-if="heldSubjectCount > 0" class="public-expert-review__hold-hint">
+          封存 / 暂挂 / 迁出链路教师处于评价参评 hold：材料只读可查，禁止对其填报；后端会硬拦。
+        </p>
         <UiDataTable
           pagination-mode="none"
           class="public-expert-review__teachers"
@@ -101,7 +116,17 @@ onMounted(() => {
           flat
           empty-kind="first-run"
           empty-description="当前审阅包无被评教师，请核对租户与访问令牌。"
-        />
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'lifecycleStatus'">
+              <UiTag v-if="record.lifecycleStatus" :tone="record.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'">
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-else-if="!record.lifecycleStatus">—</span>
+            </template>
+          </template>
+        </UiDataTable>
         <h4 class="public-expert-review__section-title">授权材料清单</h4>
         <UiDataTable
           :load-error="loadError"
@@ -111,8 +136,33 @@ onMounted(() => {
           :pagination="false"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'hasPrimaryFile'">
+            <template v-if="column.key === 'lifecycleStatus'">
+              <UiTag v-if="record.lifecycleStatus" :tone="record.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'">
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-else-if="!record.lifecycleStatus">—</span>
+            </template>
+            <template v-else-if="column.key === 'hasPrimaryFile'">
               {{ record.hasPrimaryFile ? '有' : '无' }}
+            </template>
+            <template v-else-if="column.key === 'identityScope'">
+              <UiTag :tone="record.identityScope === 'EXTERNAL' ? 'orange' : record.identityScope === 'SHARED' ? 'green' : 'blue'">
+                {{
+                  record.identityScope === 'CAMPUS'
+                    ? '校内'
+                    : record.identityScope === 'EXTERNAL'
+                      ? '仅外部'
+                      : record.identityScope === 'SHARED'
+                        ? '共享'
+                        : (record.identityScope || '—')
+                }}
+              </UiTag>
+            </template>
+            <template v-else-if="column.key === 'usableForCampusHardCriteria'">
+              <UiTag :tone="record.usableForCampusHardCriteria ? 'green' : 'orange'">
+                {{ record.usableForCampusHardCriteria ? '可用' : '不可用' }}
+              </UiTag>
             </template>
           </template>
           <template #emptyText>

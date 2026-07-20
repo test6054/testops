@@ -8,7 +8,12 @@
           </UiTag>
         </template>
         <template #actions>
-          <UiButton size="sm" variant="primary" @click="handleCreate">
+          <UiButton
+            v-if="canManageScannerDeviceWrites"
+            size="sm"
+            variant="primary"
+            @click="handleCreate"
+          >
             <template #icon><PlusOutlined /></template>
             新增设备
           </UiButton>
@@ -373,11 +378,21 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useAuthStore } from '@/stores/modules/auth'
+import { RoleEnum } from '@/types/enums'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PrinterManagement' })
+
+const authStore = useAuthStore()
+/** MVR-316：对齐 BE requireTeacherMarkOpsPermission（教师/超管运维写） */
+const canManageScannerDeviceWrites = computed(
+  () =>
+    authStore.userRole === RoleEnum.SCH_TECH
+    || authStore.userRole === RoleEnum.SUPER_ADMIN,
+)
 
 const { refreshSnapshot } = useWorkspaceExamId()
 const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('扫描设备')
@@ -489,12 +504,18 @@ const columns: ColumnsType<ExamScannerDeviceResponse> = [
 ]
 
 function buildDeviceActions(record: ExamScannerDeviceResponse): UiTableRowActionItem[] {
+  // MVR-316：无运维写权仅保留详情，避免行内假可写
   const actions: UiTableRowActionItem[] = [
     { key: 'detail', label: '详情' },
+  ]
+  if (canManageScannerDeviceWrites.value !== true) {
+    return actions
+  }
+  actions.push(
     { key: 'edit', label: '编辑' },
     { key: 'rebind', label: '重新绑定' },
     { key: 'activation', label: '激活码' },
-  ]
+  )
   if (record.endpointMachineCode) {
     actions.push({ key: 'unbind', label: '解绑扫描组件', tone: 'danger' })
   }
@@ -667,12 +688,22 @@ function resetForm(): void {
 }
 
 function handleCreate(): void {
+  // MVR-316：与 BE requireTeacherMarkOpsPermission 二次拦截
+  if (canManageScannerDeviceWrites.value !== true) {
+    message.warning('当前账号无扫描设备运维权限')
+    return
+  }
   formMode.value = 'create'
   resetForm()
   showFormModal.value = true
 }
 
 function handleEdit(record: ExamScannerDeviceResponse): void {
+  // MVR-316：编辑设备与教师运维写闸同源
+  if (canManageScannerDeviceWrites.value !== true) {
+    message.warning('当前账号无扫描设备运维权限')
+    return
+  }
   formMode.value = 'edit'
   resetForm()
   Object.assign(formData, {
@@ -693,6 +724,11 @@ function handleEdit(record: ExamScannerDeviceResponse): void {
 }
 
 async function handleFormSubmit(): Promise<void> {
+  // MVR-316：保存设备与 BE requireTeacherMarkOpsPermission 二次拦截
+  if (canManageScannerDeviceWrites.value !== true) {
+    message.warning('当前账号无扫描设备运维权限')
+    return
+  }
   if (formSubmitting.value) {
     return
   }
@@ -784,6 +820,11 @@ function scannerDeviceDiagnosticText(
 }
 
 async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<void> {
+  // MVR-316：重新绑定与教师运维写闸同源
+  if (canManageScannerDeviceWrites.value !== true) {
+    message.warning('当前账号无扫描设备运维权限')
+    return
+  }
   void confirmAsync({
     title: '重新绑定',
     content: `将重置服务端接入密钥并生成新激活码。原一体机需使用新激活码重新绑定。设备：${record.deviceName}`,
@@ -808,6 +849,11 @@ async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<voi
 }
 
 async function handleCreateActivationCode(record: ExamScannerDeviceResponse): Promise<void> {
+  // MVR-316：激活码与 BE requireTeacherMarkOpsPermission 二次拦截
+  if (canManageScannerDeviceWrites.value !== true) {
+    message.warning('当前账号无扫描设备运维权限')
+    return
+  }
   if (deviceActionLoading.value) {
     return
   }
@@ -825,6 +871,11 @@ async function handleCreateActivationCode(record: ExamScannerDeviceResponse): Pr
 }
 
 function handleUnbindAgent(record: ExamScannerDeviceResponse): void {
+  // MVR-316：解绑与教师运维写闸同源
+  if (canManageScannerDeviceWrites.value !== true) {
+    message.warning('当前账号无扫描设备运维权限')
+    return
+  }
   void confirmAsync({
     title: '解绑扫描组件',
     content: `确定解绑设备"${record.deviceName}"当前扫描组件吗？解绑后原一体机需要重新使用激活码绑定。`,
@@ -883,6 +934,11 @@ async function handleViewDetail(record: ExamScannerDeviceResponse): Promise<void
 
 // ─── 删除 ────────────────────────────────────────────
 function handleDelete(record: ExamScannerDeviceResponse): void {
+  // MVR-316：删除与教师运维写闸同源
+  if (canManageScannerDeviceWrites.value !== true) {
+    message.warning('当前账号无扫描设备运维权限')
+    return
+  }
   void confirmAsync({
     title: '删除扫描设备',
     content: `确定删除设备"${record.deviceName}"吗？历史扫描事件保持引用，仅当前设备记录被逻辑删除。`,

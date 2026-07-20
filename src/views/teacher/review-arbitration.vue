@@ -402,7 +402,7 @@ function formatAssignedTeacher(record: ReviewTaskItemResponse): string {
 function buildArbitrationActions(record: ReviewTaskItemResponse): UiTableRowActionItem[] {
   return [
     { key: 'detail', label: '详情' },
-    { key: 'workspace', label: '进入仲裁', tone: 'primary', hidden: !isActionableTask(record) },
+    { key: 'workspace', label: '进入仲裁', tone: 'primary', hidden: !isActionableTask(record) || record.canManageReviewerWrites !== true },
   ]
 }
 

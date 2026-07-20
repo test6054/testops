@@ -1,23 +1,17 @@
 import type { Ref } from 'vue'
 import type { MarkingOrganizationResponse } from '@/apis/mark/marking-organization'
 import { computed } from 'vue'
-import { useUserStore } from '@/stores/modules/user'
 
-/** 阅卷组织权限：与后端 ExamMarkPermissionService.isExamOwner 对齐，仅考试主考老师可写。 */
+/**
+ * 阅卷组织权限：与后端 canManageExamOwner（主考 ∧ ACTIVE）对齐。
+ * MVR-324/358：仅认 BE 下发 canManageExamOwner===true；禁止本地 createUser 回退。
+ * examCreateUserId 参数保留调用签名，不再参与门禁判定。
+ */
 export function useMarkingOrgPermission(
-  examCreateUserId: Ref<string | undefined>,
+  _examCreateUserId: Ref<string | undefined>,
   organization: Ref<MarkingOrganizationResponse | null | undefined>,
 ) {
-  const userStore = useUserStore()
-  const currentUserId = computed(() => userStore.userInfo.userId)
-
-  const canManageExamOwner = computed(() => {
-    const org = organization.value
-    if (org?.canManageExamOwner != null) {
-      return org.canManageExamOwner
-    }
-    return !!examCreateUserId.value && examCreateUserId.value === currentUserId.value
-  })
+  const canManageExamOwner = computed(() => organization.value?.canManageExamOwner === true)
 
   function guardExamOwnerAction(): boolean {
     return canManageExamOwner.value

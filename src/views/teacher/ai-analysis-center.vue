@@ -63,36 +63,51 @@ const activeTab = computed<AiAnalysisTab>({
 
 const headerSignalMetrics = computed<SignalMetric[]>(() => {
   const metrics: SignalMetric[] = []
+
   if (overview.value?.scopedExamCount != null) {
     metrics.push({
       key: 'scoped-exams',
       label: '范围内考试',
       value: overview.value.scopedExamCount,
+      unit: '场',
       tone: 'green',
+      iconTone: 'green',
+      helper: examId.value
+        ? `已选定：${selectedExamLabel.value ?? '单场分析'}`
+        : '当前筛选范围合计',
     })
   }
+
   if (overview.value?.scopedCourseCount != null) {
     metrics.push({
       key: 'scoped-courses',
       label: '涉及课程',
       value: overview.value.scopedCourseCount,
+      unit: '门',
       tone: 'blue',
+      iconTone: 'blue',
+      helper: (overview.value.scopedCourseCount ?? 0) > 1
+        ? '跨课程汇总分析'
+        : '单课程深度分析',
     })
   }
-  if (examId.value) {
+
+  const signal = overview.value?.clusterSignal
+  const analyzed = signal?.questionQualityAnalyzedCount
+  const total = signal?.totalLayoutQuestionCount
+  if (analyzed != null && total != null && total > 0) {
+    const rate = Math.round((analyzed / total) * 100)
     metrics.push({
-      key: 'scope-exam',
-      label: '选定考试',
-      value: selectedExamLabel.value ?? '已选定',
-      tone: 'green',
+      key: 'quality-coverage',
+      label: '质量分析覆盖',
+      value: rate,
+      unit: '%',
+      tone: rate >= 80 ? 'green' : rate >= 50 ? 'orange' : 'red',
+      iconTone: rate >= 80 ? 'green' : rate >= 50 ? 'orange' : 'red',
+      helper: `${analyzed}/${total} 题已完成分析`,
     })
   }
-  metrics.push({
-    key: 'active-tab',
-    label: '当前视图',
-    value: tabItems.find((item) => item.key === activeTab.value)?.label ?? '—',
-    tone: 'blue',
-  })
+
   return metrics
 })
 

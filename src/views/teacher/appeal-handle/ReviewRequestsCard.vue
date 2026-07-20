@@ -185,6 +185,8 @@ const emit = defineEmits<{
 const rows = ref<GradeReviewRequestItemResponse[]>([])
 const loading = ref(false)
 const pendingCount = ref(0)
+/** MVR-279：默认拒绝假可写；仅 BE summary.canManageReviewerWrites 为 true 时可领取/处理 */
+const canManageReviewerWrites = ref(false)
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo.userId || '')
 
@@ -282,6 +284,10 @@ function canHandleReviewRequest(record: GradeReviewRequestItemResponse): boolean
 }
 
 function buildReviewRequestActions(record: GradeReviewRequestItemResponse): UiTableRowActionItem[] {
+  // MVR-279：无阅卷写能力位时不展示领取/处理动作
+  if (!canManageReviewerWrites.value) {
+    return []
+  }
   // 行内仅 1 个 primary：领取 / 通过
   if (canClaimReviewRequest(record)) {
     return [{ key: 'claim', label: '领取', tone: 'primary' }]
@@ -300,6 +306,10 @@ async function handleReviewRequestAction(
   record: GradeReviewRequestItemResponse,
 ): Promise<void> {
   if (key === 'claim') {
+    if (!canManageReviewerWrites.value) {
+      message.warning('当前账号无复核申请处理权限')
+      return
+    }
     if (!record.id || claimingId.value) {
       return
     }
@@ -326,6 +336,10 @@ function openHandleModal(
   record: GradeReviewRequestItemResponse,
   conclusion: GradeReviewRequestStatusCode,
 ): void {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无复核申请处理权限')
+    return
+  }
   if (!canHandleReviewRequest(record)) {
     return
   }
@@ -342,15 +356,18 @@ function openHandleModal(
 async function loadPendingCount(): Promise<void> {
   if (!props.examId) {
     pendingCount.value = 0
+    canManageReviewerWrites.value = false
     emit('pending-change', 0)
     return
   }
   try {
     const summary = await getReviewSummary(props.examId)
+    canManageReviewerWrites.value = summary.canManageReviewerWrites === true
     pendingCount.value = summary.pendingRequestCount + summary.inReviewRequestCount + summary.approvedRequestCount
     emit('pending-change', pendingCount.value)
   } catch (error) {
     pendingCount.value = 0
+    canManageReviewerWrites.value = false
     emit('pending-change', 0)
     showUserError(error, '复核待处理数量加载失败')
   }
@@ -406,6 +423,10 @@ async function submitHandle(): Promise<void> {
     return
   }
   if (handling.value) {
+    return
+  }
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无复核申请处理权限')
     return
   }
   if (!canHandleReviewRequest(targetRequest.value)) {

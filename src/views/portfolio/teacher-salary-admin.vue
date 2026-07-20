@@ -7,12 +7,14 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -31,6 +33,13 @@ const form = reactive<{
   performanceAmount: undefined,
   allowanceAmount: undefined,
 })
+
+const formTeacherId = computed(() => form.teacherUserId || undefined)
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
 const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
@@ -80,6 +89,9 @@ const columns: ColumnsType = [
 ]
 
 async function saveSalary() {
+  if (!assertArchiveWritable('录入薪酬')) {
+    return
+  }
   if (!form.teacherUserId || !form.salaryMonth.trim()) {
     showFormValidationMessage('请选择教师并填写薪酬月份')
     return
@@ -148,6 +160,13 @@ async function exportCsv() {
     <template #context>
       <ContextBar show-title layout="workbench" title="教师工资" />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
     <UiCard>
       <div class="form-row">
         <UiSelect
@@ -194,7 +213,7 @@ async function exportCsv() {
           size="sm"
           variant="primary"
           :loading="operationKey === 'salary:save'"
-          :disabled="operating"
+          :disabled="operating || archiveWriteForbidden"
           @click="saveSalary"
         >
           录入

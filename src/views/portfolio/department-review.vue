@@ -48,6 +48,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { isPortfolioCourseFrameworkCategoryCode } from '@/constants/portfolio-archive-category-codes'
@@ -126,6 +127,9 @@ const listColumns: ColumnsType = [
   { title: '来源', key: 'sourceType', width: 100 },
   { title: '档案状态', key: 'recordStatus', width: 100 },
   { title: '审核状态', key: 'reviewStatus', width: 100 },
+  { title: '关联健康', key: 'associationBroken', width: 100 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '提交时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '操作', key: 'actions', width: 200 },
 ]
@@ -151,6 +155,15 @@ const filterForm = reactive<ReviewFilterModel>({
 
 const hasSensitiveRows = computed(() => rows.value.some((item) => item.riskLevel === 'SENSITIVE'))
 const showReviewActions = computed(() => Boolean(activeRow.value?.reviewActionAllowed))
+const activeAssociationBroken = computed(() => Boolean(activeRow.value?.associationBroken))
+
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm,
@@ -224,6 +237,42 @@ const batchRejectSubmitting = ref(false)
 
 const drawerOpen = ref(false)
 const activeRow = ref<PortfolioReviewTaskSummaryVO | null>(null)
+
+/** 当前审核目标教师；封存写禁预检 */
+const actionTeacherId = ref<string | undefined>()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: actionTeacherId })
+
+async function bindActionTeacherAndAssert(
+  teacherId: string | number | undefined | null,
+  actionLabel: string,
+): Promise<boolean> {
+  actionTeacherId.value = teacherId != null && String(teacherId).trim() !== ''
+    ? String(teacherId)
+    : undefined
+  await reloadLifecycleState()
+  return assertArchiveWritable(actionLabel)
+}
+
+async function assertTaskIdsArchiveWritable(taskIds: string[], actionLabel: string): Promise<boolean> {
+  const teacherIds = new Set<string>()
+  for (const id of taskIds) {
+    const row = rows.value.find((item) => item.id === id)
+    if (row?.teacherId != null && String(row.teacherId).trim() !== '') {
+      teacherIds.add(String(row.teacherId))
+    }
+  }
+  for (const teacherId of teacherIds) {
+    if (!(await bindActionTeacherAndAssert(teacherId, actionLabel))) {
+      return false
+    }
+  }
+  return true
+}
 const recordDetail = ref<PortfolioReviewArchiveRecordDetailVO | null>(null)
 const aiPreReview = ref<PortfolioAiAnalysisDetailVO | null>(null)
 const aiPreReviewAbsent = ref(false)
@@ -250,7 +299,9 @@ const escalateReason = ref('')
 const router = useRouter()
 
 const batchSelectableKeys = computed(() =>
-  rows.value.filter((item) => item.batchApproveAllowed).map((item) => item.id),
+  rows.value
+    .filter((item) => item.batchApproveAllowed && !item.associationBroken)
+    .map((item) => item.id),
 )
 
 /** 列表或筛选变化后，若当前审核任务已失效，必须关闭抽屉并清空旧复核上下文。 */
@@ -490,6 +541,11 @@ function handleLogPageChange(event: { current: number, pageSize: number }) {
 }
 
 async function openDetail(row: PortfolioReviewTaskSummaryVO) {
+  actionTeacherId.value = row.teacherId != null && String(row.teacherId).trim() !== ''
+    ? String(row.teacherId)
+    : undefined
+  void reloadLifecycleState()
+
   if (actionSubmitting.value || batchSubmitting.value || batchRejectSubmitting.value) {
     showFormValidationMessage('审核操作处理中，请稍后查看其他任务')
     return
@@ -569,6 +625,9 @@ async function handleApprove() {
   ) {
     return
   }
+  if (!(await bindActionTeacherAndAssert(activeRow.value.teacherId, '档案审核通过'))) {
+    return
+  }
   actionSubmitting.value = true
   try {
     await portfolioReviewApi.approve({
@@ -595,6 +654,9 @@ async function handleReject() {
     || !returnDeadline.value.trim()
   ) {
     showFormValidationMessage('请填写退回原因与重提期限')
+    return
+  }
+  if (!(await bindActionTeacherAndAssert(activeRow.value.teacherId, '档案审核退回'))) {
     return
   }
   actionSubmitting.value = true
@@ -633,6 +695,9 @@ async function handleDismiss() {
   if (!ok) {
     return
   }
+  if (!(await bindActionTeacherAndAssert(activeRow.value.teacherId, '档案审核驳回'))) {
+    return
+  }
   actionSubmitting.value = true
   try {
     await portfolioReviewApi.dismiss({
@@ -655,6 +720,9 @@ async function handleBatchApprove() {
   }
   if (!selectedRowKeys.value.length) {
     showFormValidationMessage('请选择可批量通过的待审任务')
+    return
+  }
+  if (!(await assertTaskIdsArchiveWritable(selectedRowKeys.value.map(String), '批量审核通过'))) {
     return
   }
   batchSubmitting.value = true
@@ -680,6 +748,9 @@ async function handleBatchReject() {
   }
   if (!batchRejectReason.value.trim() || !batchReturnDeadline.value.trim()) {
     showFormValidationMessage('请填写批量退回原因与重提期限')
+    return
+  }
+  if (!(await assertTaskIdsArchiveWritable(selectedRowKeys.value.map(String), '批量审核退回'))) {
     return
   }
   batchRejectSubmitting.value = true
@@ -718,6 +789,9 @@ async function handleEscalate() {
     type: 'warning',
   })
   if (!ok) {
+    return
+  }
+  if (!(await bindActionTeacherAndAssert(activeRow.value.teacherId, '档案转复审'))) {
     return
   }
   actionSubmitting.value = true
@@ -759,6 +833,14 @@ watch(
     <template #context>
       <ContextBar layout="workbench" show-title title="院系审核台" />
     </template>
+
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+    />
+
     <UiFilterBar
       variant="plain"
       v-model="filterModel"
@@ -827,7 +909,7 @@ watch(
             selectedRowKeys = keys
           },
           getCheckboxProps: (record: PortfolioReviewTaskSummaryVO) => ({
-            disabled: reviewWriting || !record.batchApproveAllowed,
+            disabled: reviewWriting || !record.batchApproveAllowed || Boolean(record.associationBroken),
           }),
         }"
       >
@@ -858,6 +940,28 @@ watch(
             <UiTag :tone="reviewTaskStatusTone(record.reviewStatus)">
               {{ reviewTaskStatusLabel(record.reviewStatus) }}
             </UiTag>
+          </template>
+          <template v-else-if="column.key === 'associationBroken'">
+            <span v-if="record.associationBroken" :title="record.associationBrokenReason || '关联数据断裂'">
+              <UiTag tone="red">断裂</UiTag>
+            </span>
+            <UiTag v-else tone="green">正常</UiTag>
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else-if="!record.lifecycleStatus" class="text-neutral-400">—</span>
+          </template>
+          <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+            {{
+              record.countsInCurrentFacultyStructure === true
+                ? '是'
+                : record.countsInCurrentFacultyStructure === false
+                  ? '否'
+                  : '—'
+            }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
@@ -964,6 +1068,19 @@ watch(
         <p v-if="activeRow.singleReviewRequired" class="review-sensitive-hint">
           敏感材料：须单条复核，禁止批量操作。
         </p>
+        <div v-if="activeAssociationBroken" class="review-broken-alert" role="alert">
+          <strong>关联数据断裂，禁止审核动作</strong>
+          <p>{{ activeRow.associationBrokenReason || '档案/分类/教师关联缺失' }}</p>
+        </div>
+        <div v-if="activeRow.lifecycleStatus && activeRow.lifecycleStatus !== 'ACTIVE'" class="review-lifecycle-hint">
+          教师生命周期：
+          <UiTag :tone="lifecycleTagTone(activeRow)">
+            {{ activeRow.lifecycleStatusLabel || activeRow.lifecycleStatus }}
+          </UiTag>
+          <span v-if="activeRow.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>
+          <span v-if="activeRow.archiveWriteForbidden">（档案写禁）</span>
+          <span v-if="activeRow.evaluationHeld">（参评 hold）</span>
+        </div>
         <UiDataTable
           v-if="fieldTotal > 0"
           row-key="fieldCode"
@@ -1075,6 +1192,28 @@ watch(
   flex-wrap: wrap;
   gap: 4px 8px;
   margin-bottom: 12px;
+}
+.review-broken-alert {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--dp-danger-border, #ffccc7);
+  background: var(--dp-danger-bg, #fff2f0);
+  color: var(--dp-danger, #cf1322);
+}
+.review-broken-alert p {
+  margin: 6px 0 0;
+  color: var(--dp-text-secondary, #595959);
+  word-break: break-word;
+}
+.review-lifecycle-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 12px;
+  color: var(--dp-text-secondary, #595959);
+  font-size: 13px;
 }
 .review-ai-summary {
   margin: 0 0 8px;

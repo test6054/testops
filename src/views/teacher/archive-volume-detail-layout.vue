@@ -37,16 +37,19 @@
         v-if="volumeId"
         :archive-title="sidebarArchiveTitle"
         :archive-subtitle="sidebarArchiveSubtitle"
+        :organizer-line="sidebarOrganizerLine"
         :volume-status-tone="volumeStatusTone"
         :active-tab="activeTab"
         :nav-groups="sidebarNavGroups"
         :status-rows="sidebarStatusRows"
+        :manage-actions="sidebarManageActions"
         :loading="loading"
         :collapsed="sidebarCollapsed"
         :mobile-open="mobileNavOpen"
         @tab-change="onTabChange"
         @back-to-list="goArchiveList"
         @toggle-collapse="sidebarCollapsed = !sidebarCollapsed"
+        @manage-action="onManageAction"
       />
 
       <main class="archive-volume-detail-layout__main">
@@ -75,6 +78,10 @@
 <script lang="ts" setup>
 import type { RouteLocationNormalized } from 'vue-router'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type {
+  ArchiveVolumeManageActionKey,
+  ArchiveVolumeSidebarManageAction,
+} from '@/composables/useArchiveVolumeWorkbenchContext'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -89,6 +96,8 @@ import ArchiveVolumeSubSidebar from '@/components/workbench/ArchiveVolumeSubSide
 import { provideArchiveVolumeWorkbenchContext } from '@/composables/useArchiveVolumeWorkbenchContext'
 import HeaderRightBar from '@/layout/components/HeaderRightBar/index.vue'
 import { useAppStore } from '@/stores/modules/app'
+import { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
+import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
 import { buildArchiveVolumeSidebarNavGroups } from '@/utils/archive-volume-sidebar-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -101,15 +110,18 @@ const appTitle = computed(() => appStore.getTitle())
 const sidebarCollapsed = ref(false)
 const mobileNavOpen = ref(false)
 
-const { volumeId, detail, loading, activeTab, sidebarTabs, setActiveTab }
+const { volumeId, detail, loading, detailLoadError, activeTab, sidebarTabs, setActiveTab, requestManageAction }
   = provideArchiveVolumeWorkbenchContext()
 
 const sidebarArchiveTitle = computed(() => {
   const volume = detail.value?.volume
-  if (!volume) {
-    return '加载归档任务…'
+  if (volume) {
+    return volume.archiveTitle || volume.archiveNo
   }
-  return volume.archiveTitle || volume.archiveNo
+  if (detailLoadError.value) {
+    return '归档任务加载失败'
+  }
+  return loading.value ? '加载归档任务…' : '归档任务'
 })
 
 const sidebarArchiveSubtitle = computed(() => {
@@ -124,6 +136,26 @@ const sidebarArchiveSubtitle = computed(() => {
     parts.push(volume.departmentName)
   }
   return parts.join(' · ')
+})
+
+const sidebarOrganizerLine = computed(() => {
+  const members = detail.value?.collaborators
+  if (!members?.length) {
+    return ''
+  }
+  const organizers = members.filter(
+    (m) => m.memberRole === ArchiveVolumeMemberRoleCode.ORGANIZER,
+  )
+  if (!organizers.length) {
+    return ''
+  }
+  const names = organizers
+    .map((m) => m.userName || (m.userId ? `用户${m.userId}` : ''))
+    .filter(Boolean)
+  if (!names.length) {
+    return ''
+  }
+  return `责任人 ${names.join('、')}`
 })
 
 const volumeHeaderLine = computed(() => detail.value?.volume.archiveNo ?? '')
@@ -143,6 +175,28 @@ const sidebarNavGroups = computed(() =>
     detail.value?.capabilities?.departmentReviewEnabled,
   ),
 )
+
+/** 页签型卷务入口走侧栏导航；此处仅保留非页签操作。 */
+const sidebarManageActions = computed((): ArchiveVolumeSidebarManageAction[] => {
+  const caps = detail.value?.capabilities
+  if (!caps) {
+    return []
+  }
+  const actions: ArchiveVolumeSidebarManageAction[] = []
+  const status = detail.value?.volume.volumeStatus
+  if (status === ArchiveVolumeStatusCode.SUBMITTED || status === ArchiveVolumeStatusCode.STORED) {
+    actions.push({ key: 'export', label: '导出 manifest' })
+  }
+  if (caps.canRejectCollection === true) {
+    actions.push({ key: 'reject', label: '驳回收材', danger: true })
+  }
+  return actions
+})
+
+function onManageAction(key: ArchiveVolumeManageActionKey): void {
+  mobileNavOpen.value = false
+  requestManageAction(key)
+}
 
 const activeTabLabel = computed(() => {
   for (const group of sidebarNavGroups.value) {

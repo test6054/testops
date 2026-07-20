@@ -130,6 +130,13 @@ export interface PortfolioDualTeacherApplicationVO {
   updateTime?: string
   attachmentFileIds?: string[]
   eligibilityFreeze?: PortfolioDualTeacherEligibilityFreezeVO
+  /** 生命周期状态编码 ACTIVE/SEALED/... */
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
 
 export interface PortfolioDualTeacherImportResultVO {
@@ -144,6 +151,7 @@ export interface PortfolioDualTeacherPageRequest extends QueryDto {
   applicationStatus?: PortfolioDualTeacherApplicationStatusCode
   certYear?: string
   searchText?: string
+  locateApplicationId?: string
 }
 
 export interface PortfolioDualTeacherWorkflowRequest {
@@ -383,6 +391,12 @@ export interface PortfolioDevelopmentPlanVO {
   portfolioOrgId?: string
   ownerUserId?: string
   planSummary?: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
   createTime?: string
 }
 
@@ -623,6 +637,12 @@ export interface PortfolioDevelopmentRecordVO {
   descriptionText?: string
   fileId?: string
   createTime?: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
   /** 业务日命中的归属血缘段 */
   affiliationHistoryId?: string
   affiliationStaffNo?: string
@@ -761,6 +781,13 @@ export interface PortfolioKeyTeacherRegistryVO {
   registryStatus: PortfolioKeyTeacherRegistryStatusCode
   createTime?: string
   updateTime?: string
+  /** 生命周期状态编码 ACTIVE/SEALED/... */
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
 
 export interface PortfolioKeyTeacherPageRequest extends QueryDto {
@@ -809,6 +836,12 @@ export interface PortfolioDoubleDutyRegistryVO {
   dutyScope?: string
   remark?: string
   registryStatus: PortfolioKeyTeacherRegistryStatusCode
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
   createTime?: string
   updateTime?: string
 }
@@ -876,6 +909,12 @@ export interface PortfolioTeacherSalaryVO {
   dataSource?: string
   remark?: string
   createTime?: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
 
 export interface PortfolioTeacherSalaryPageRequest extends QueryDto {
@@ -920,6 +959,17 @@ export interface PortfolioTeacherLibraryBorrowVO {
   dataSource?: string
   remark?: string
   createTime?: string
+  /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
+  lifecycleStatus?: string
+  /** 生命周期状态中文标签 */
+  lifecycleStatusLabel?: string
+  /** 是否禁止档案写 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
+
 }
 
 export interface PortfolioTeacherLibraryBorrowStatsVO {
@@ -1006,6 +1056,12 @@ export interface PortfolioTeacherRecommendCandidateVO {
   ruleScore?: number
   reasonText?: string
   evidenceSummary?: PortfolioTeacherRecommendEvidenceSummary
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
 
 export interface PortfolioTeacherRecommendRunVO {
@@ -1021,7 +1077,14 @@ export interface PortfolioTeacherRecommendRunVO {
 export interface PortfolioTeacherRecommendExplainCandidateItemVO {
   teacherUserId: string
   reasonText: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
+
 
 export interface PortfolioTeacherRecommendExplainStatusVO {
   runId: string
@@ -1056,6 +1119,17 @@ export interface PortfolioTeacherPkCompareTeacherVO {
   officialArchiveCount: number
   materialRefs: PortfolioTeacherPkMaterialRefVO[]
   dimensionRows: PortfolioTeacherPkCompareDimensionRowVO[]
+
+  /** 归属教师生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
+  lifecycleStatus?: string
+  /** 归属教师生命周期状态标签 */
+  lifecycleStatusLabel?: string
+  /** 档案写禁 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
 }
 
 export interface PortfolioTeacherPkCompareVO {
@@ -1204,7 +1278,21 @@ export interface PortfolioEvaluationWorkgroupMemberOptionVO {
 export interface PortfolioEvaluationSubjectTeacherOptionVO {
   teacherUserId: string
   fullName: string
+  /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
+  lifecycleStatus?: string
+  /** 生命周期状态中文标签 */
+  lifecycleStatusLabel?: string
+  /** 是否禁止档案写 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
+
+  /** 评价参评 hold */
+  evaluationHeld?: boolean
 }
+
 
 export interface PortfolioEvaluationIndicatorOptionVO {
   indicatorCode: string
@@ -1246,6 +1334,8 @@ export interface PortfolioEvaluationTaskVO {
 
 export interface PortfolioEvaluationTaskPageRequest extends QueryDto {
   taskStatus?: PortfolioEvaluationTaskStatusCode
+  /** PF-P0-293：站内信/待办深链定位评价任务 */
+  locateTaskId?: string
 }
 
 export interface PortfolioEvaluationTaskCreateRequest {
@@ -1339,6 +1429,16 @@ export interface PortfolioEvaluationComprehensiveTeacherRowVO {
   involvedTaskCount: number
   entryCount: number
   averageScore: number
+  /** 归属教师生命周期状态编码 */
+  lifecycleStatus?: string
+  /** 归属教师生命周期状态标签 */
+  lifecycleStatusLabel?: string
+  /** 档案写禁 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
 }
 
 export interface PortfolioEvaluationComprehensiveAnalysisVO {

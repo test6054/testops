@@ -4,11 +4,11 @@ import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
 import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
-import { ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import ArchiveMaterialTagSelect from '@/views/teacher/archive-volume/components/ArchiveMaterialTagSelect.vue'
 
@@ -21,6 +21,8 @@ const props = defineProps<{
   archiveTitle?: string
   physicalStorageLocation?: string
   initialMaterialTags?: string[]
+  /** MVR-318：与父 canRegisterMaterial / BE requireCanScan 同源 */
+  canRegisterMaterial?: boolean
   /** PC 详情页回跳路径，写入 Kiosk 派单 URL 供 commit 后返回 */
   returnTo?: string
 }>()
@@ -34,6 +36,7 @@ const emit = defineEmits<{
       traceLabelFileId?: string
       traceLabelCode?: string
       status?: ScanDispatchTicketStatusCode
+      canCancelTicket?: boolean
     },
   ]
 }>()
@@ -60,6 +63,11 @@ watch(
 )
 
 async function handleSubmit() {
+  // MVR-318：创建派单与 canRegisterMaterial / BE requireCanScan 二次拦截
+  if (props.canRegisterMaterial !== true) {
+    showFormValidationMessage('当前账号无扫描派单权限')
+    return
+  }
   if (submitting.value) return
   if (!props.physicalStorageLocation?.trim()) {
     showFormValidationMessage('请先登记归档卷柜位')
@@ -92,6 +100,7 @@ async function handleSubmit() {
       traceLabelFileId: ticket.traceLabelFileId,
       traceLabelCode: ticket.traceLabelCode,
       status: ticket.status,
+      canCancelTicket: ticket.canCancelTicket,
     })
     emit('update:open', false)
   } catch (error) {

@@ -62,21 +62,50 @@ const { isDesktop } = useDevice()
 
 .asider {
   z-index: 1000;
-  width: 230px;
+  width: 240px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   position: relative;
-  border-right: 1px solid var(--dp-border);
+  border-right: 1px solid var(--dp-border-subtle);
   box-sizing: border-box;
   color: var(--dp-text);
-  background-color: var(--dp-bg-container);
+  background-color: var(--dp-surface);
   box-shadow: var(--dp-shadow-xs);
 
   &.collapsed {
-    width: 80px;
+    width: 72px;
+  }
+
+  :deep(.ant-menu) {
+    background: transparent;
+    border-inline-end: none !important;
+    padding: var(--dp-space-2) var(--dp-space-2) 0;
+  }
+
+  :deep(.ant-menu-item),
+  :deep(.ant-menu-submenu-title) {
+    border-radius: var(--dp-radius-control);
+    margin-inline: 0;
+    width: 100%;
+    transition:
+      background var(--dp-duration-fast, 150ms) ease,
+      color var(--dp-duration-fast, 150ms) ease,
+      box-shadow var(--dp-duration-fast, 150ms) ease;
+  }
+
+  :deep(.ant-menu-item-selected) {
+    background: var(--dp-blue-50) !important;
+    color: var(--dp-color-primary);
+    font-weight: var(--dp-type-sidebar-weight-active);
+    box-shadow: inset 2px 0 0 var(--dp-color-primary);
+  }
+
+  :deep(.ant-menu-item:hover),
+  :deep(.ant-menu-submenu-title:hover) {
+    background: var(--dp-fill-quaternary) !important;
   }
 
   .menu-scroll-view {
@@ -110,9 +139,9 @@ const { isDesktop } = useDevice()
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 56px;
-    border-top: 1px solid var(--dp-border);
-    background-color: var(--dp-surface-elevated);
+    height: 52px;
+    border-top: 1px solid var(--dp-border-subtle);
+    background-color: var(--dp-surface);
   }
 }
 </style>

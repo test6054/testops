@@ -30,7 +30,7 @@
     </UiForm>
     <template #footer>
       <UiButton size="sm" variant="outline" @click="handleOpenChange(false)">取消</UiButton>
-      <UiButton variant="primary" size="sm" :loading="submitting" :disabled="!canManage" @click="confirm">提交</UiButton>
+      <UiButton variant="primary" size="sm" :loading="submitting" :disabled="canManage !== true" @click="confirm">提交</UiButton>
     </template>
   </UiDrawer>
 </template>
@@ -118,7 +118,7 @@ async function confirm(): Promise<void> {
     showUserError(null, '会话状态调整失败')
     return
   }
-  if (!props.canManage) {
+  if (props.canManage !== true) {
     showFormValidationMessage('仅考试主考老师可管理试评 / 正评会话')
     return
   }

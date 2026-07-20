@@ -133,6 +133,7 @@
             :groups="groups"
             :view-all-recycled="canViewAllRecycledTasks"
             :leader-group-ids="leaderGroupIds"
+            :can-reassign="canReassignRecycledTasks"
           />
         </WorkbenchSurfaceCard>
       </template>
@@ -509,6 +510,7 @@
             :groups="groups"
             :view-all-recycled="canViewAllRecycledTasks"
             :leader-group-ids="leaderGroupIds"
+            :can-reassign="canReassignRecycledTasks"
           />
         </template>
       </WorkbenchSurfaceCard>

@@ -28,6 +28,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   flattenPortfolioOrgOptionsUnderDepartment,
   usePortfolioOrgTree,
@@ -60,6 +61,16 @@ interface CreateStageFormItem {
 
 const route = useRoute()
 const userStore = useUserStore()
+const currentUserIdForGuard = computed(() => {
+  const id = userStore.userInfo?.userId
+  return id != null && String(id).trim() !== '' ? String(id) : undefined
+})
+const {
+  archiveWriteForbidden: operatorArchiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: currentUserIdForGuard })
 const { loadTree, departmentOptions: loadDepartmentOptions, treeRoots } = usePortfolioOrgTree()
 const departmentOptions = computed(() => loadDepartmentOptions())
 const loading = ref(false)
@@ -176,6 +187,9 @@ const evidenceOptions = computed(() =>
       item.categoryName || '分类',
       item.recordTitle || item.archiveRecordId,
       item.academicYear,
+      item.lifecycleStatusLabel || item.lifecycleStatus,
+      item.evaluationHeld ? '参评 hold' : undefined,
+      item.archiveWriteForbidden ? '档案写禁' : undefined,
       item.hasDownloadableFile ? undefined : '缺附件',
     ]
       .filter(Boolean)
@@ -191,6 +205,13 @@ const reviewOptions = [
 
 const query = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 const columns: ColumnsType = [
   { title: '任务编码', dataIndex: 'taskCode', key: 'taskCode', width: 140 },
   { title: '任务标题', dataIndex: 'taskTitle', key: 'taskTitle', ellipsis: true },
@@ -204,6 +225,8 @@ const columns: ColumnsType = [
   { title: '阶段', key: 'stageProgress', width: 90 },
   { title: '验收包', key: 'acceptancePackage', width: 120 },
   { title: '责任人身份', key: 'responsibleIdentity', width: 180 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '操作', key: 'actions', width: 220 },
 ]
 
@@ -241,13 +264,26 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
   ]
   const responsible = isTaskResponsible(row)
   if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.PUBLISHED) {
-    items.push({ key: 'claim', label: '认领' })
+    items.push({
+      key: 'claim',
+      label: operatorArchiveWriteForbidden.value ? '认领（写禁）' : '认领',
+    })
   }
   if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.CLAIMED && responsible) {
-    items.push({ key: 'start', label: '开始建设' })
+    items.push({
+      key: 'start',
+      label: (row.archiveWriteForbidden || operatorArchiveWriteForbidden.value)
+        ? '开始建设（写禁）'
+        : '开始建设',
+    })
   }
   if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.IN_PROGRESS && responsible) {
-    items.push({ key: 'submit', label: '提交阶段' })
+    items.push({
+      key: 'submit',
+      label: (row.archiveWriteForbidden || operatorArchiveWriteForbidden.value)
+        ? '提交阶段（写禁）'
+        : '提交阶段',
+    })
   }
   if (
     (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED
@@ -271,7 +307,14 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
   ) {
     items.push({ key: 'void', label: '作废', tone: 'danger' })
   }
-  return items.map((item) => ({ ...item, disabled: busy.value }))
+  return items.map((item) => {
+    const writeAction = item.key === 'claim' || item.key === 'start' || item.key === 'submit'
+    const writeBlocked = writeAction && (
+      operatorArchiveWriteForbidden.value
+      || (item.key !== 'claim' && Boolean(row.archiveWriteForbidden))
+    )
+    return { ...item, disabled: busy.value || writeBlocked }
+  })
 }
 
 async function loadPage() {
@@ -394,6 +437,12 @@ function removeCreateStage(index: number) {
 async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
   if (busy.value) {
     return
+  }
+  if (key === 'claim' || key === 'start' || key === 'submit') {
+    await reloadLifecycleState()
+    if (!(await assertArchiveWritable(key === 'claim' ? '认领双高任务' : key === 'start' ? '开始双高建设' : '提交双高阶段'))) {
+      return
+    }
   }
   actionLoading.value = true
   try {
@@ -684,6 +733,23 @@ watch(
             </template>
             <span v-else class="shuanggao-tasks__cell-muted">—</span>
           </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else class="text-neutral-400">—</span>
+          </template>
+          <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+            {{
+              record.countsInCurrentFacultyStructure === true
+                ? '是'
+                : record.countsInCurrentFacultyStructure === false
+                  ? '否'
+                  : '—'
+            }}
+          </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               v-if="rowActions(record).length"
@@ -800,6 +866,14 @@ watch(
               · {{ detailTask.periodStartDate || '—' }} ~ {{ detailTask.periodEndDate || '—' }}
             </template>
           </p>
+          <div v-if="detailTask.lifecycleStatus" class="shuanggao-tasks__lifecycle">
+            责任人生命周期：
+            <UiTag :tone="lifecycleTagTone(detailTask)">
+              {{ detailTask.lifecycleStatusLabel || detailTask.lifecycleStatus }}
+            </UiTag>
+            <span v-if="detailTask.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>
+            <span v-if="detailTask.archiveWriteForbidden">（档案写禁，禁止认领/实施/阶段提交）</span>
+          </div>
           <div
             v-if="detailTask.responsibleIdentityLayers?.length"
             class="shuanggao-tasks__detail-meta shuanggao-tasks__detail-meta--spaced"

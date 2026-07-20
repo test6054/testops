@@ -22,7 +22,7 @@ import { getExamDetail } from '@/apis/mark/exam'
 import { BindingStatusCode, BindingStatusDescription } from '@/apis/mark/exam-binding'
 import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
-import { checkMarkOcrHealth, getCurrentMarkOcrConfig } from '@/apis/mark/ocr-config'
+import { checkMarkOcrHealth, getCurrentMarkOcrConfig, saveMarkOcrConfig } from '@/apis/mark/ocr-config'
 import { pagePaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
 import {
   checkMarkOcrPlatformProviderHealth,
@@ -34,6 +34,7 @@ import {
   MARK_OCR_HEALTH_STATUS_TONE,
   MARK_OCR_PAPER_CUT_CAPABILITY,
   MARK_OCR_PROVIDER_DESCRIPTION,
+  MARK_OCR_PROVIDER_OPTIONS,
   MarkOcrHealthStatusDescription,
   MarkOcrProviderTypeCode,
   MarkOcrProviderTypeDescription,
@@ -68,6 +69,8 @@ import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useAuthStore } from '@/stores/modules/auth'
+import { useTenantStore } from '@/stores/modules/tenant'
+import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
 import { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
 import { MarkOcrHealthStatusCode } from '@/types/enums/mark-ocr-health-status-enum'
@@ -98,13 +101,57 @@ const debugForm = ref<DebugFormState>({})
 const { selectedExamId } = useMarkExamContext()
 const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('文字识别配置')
 const authStore = useAuthStore()
+const userStore = useUserStore()
+const tenantStore = useTenantStore()
 
 /** 同步调试仅平台管理员可用，教师工作台路径不暴露识别试跑入口。 */
 const ocrDebugAllowed = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
 
-/** OCR 渠道健康检查会写入租户配置状态，仅超级管理员可执行。 */
-const ocrHealthCheckAllowed = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
-const ocrPlatformProviderManageAllowed = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
+/**
+ * MVR-371：租户 OCR 渠道写 / 健康检查写状态 / 平台供应商维护均仅超级管理员。
+ * 与 BE requireOcrConfigWritePermission / requireSuperAdminPermission 同源；禁止租户侧假可写。
+ */
+const canManageOcrTenantChannel = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
+const ocrHealthCheckAllowed = canManageOcrTenantChannel
+const ocrPlatformProviderManageAllowed = canManageOcrTenantChannel
+
+/** 解析 OCR 配置目标租户：当前配置 → 用户会话 → 租户 store。超管无租户上下文时拒绝假写。 */
+function resolveOcrTenantId(): string | undefined {
+  const fromConfig = currentConfig.value?.tenantId?.trim()
+  if (fromConfig) {
+    return fromConfig
+  }
+  const fromUser = userStore.userInfo.tenantId?.trim()
+  if (fromUser) {
+    return fromUser
+  }
+  const fromTenant = tenantStore.tenantId?.trim()
+  if (fromTenant) {
+    return fromTenant
+  }
+  return undefined
+}
+
+const channelSaving = ref(false)
+const channelForm = reactive<{
+  providerType: MarkOcrProviderTypeCode
+  enabled: boolean
+}>({
+  providerType: MarkOcrProviderTypeCode.BAIDU,
+  enabled: true,
+})
+
+function syncChannelFormFromConfig(): void {
+  channelForm.providerType = currentConfig.value?.providerType ?? MarkOcrProviderTypeCode.BAIDU
+  channelForm.enabled = currentConfig.value?.enabled === true
+}
+
+const ocrChannelEmptyBody = computed(() => {
+  if (canManageOcrTenantChannel.value) {
+    return '租户尚未配置文字识别渠道；请在下方选择渠道并保存（仅超级管理员可写）。'
+  }
+  return '租户尚未配置文字识别渠道，请联系平台超级管理员完成配置。'
+})
 
 // 仅 PADDLE 渠道相关：展示后端已注册的 PaddleOCR 服务实例列表。
 // 用 watch(currentConfig.providerType) 自动开关加载，无需手动触发。
@@ -348,19 +395,62 @@ function ocrHealthMessageText(messageText?: string): string {
 
 function applyConfig(config: MarkOcrConfigResponse): void {
   currentConfig.value = config
+  syncChannelFormFromConfig()
 }
 
 async function loadConfig(): Promise<void> {
   loading.value = true
   loadFailed.value = false
   try {
-    applyConfig(await getCurrentMarkOcrConfig())
+    // MVR-371：超管查询必须显式 tenantId，与 BE resolveOcrConfigTenantId 同源
+    const tenantId = resolveOcrTenantId()
+    if (canManageOcrTenantChannel.value && !tenantId) {
+      currentConfig.value = null
+      loadFailed.value = true
+      message.error('超级管理员查询 OCR 配置须先具备租户上下文（用户/租户会话）')
+      return
+    }
+    applyConfig(await getCurrentMarkOcrConfig(tenantId))
   } catch (error) {
     currentConfig.value = null
     loadFailed.value = true
     showUserError(error, '文字识别配置加载失败')
   } finally {
     loading.value = false
+  }
+}
+
+/** MVR-371：超管保存租户 OCR 渠道；与 BE saveConfig / requireOcrConfigWritePermission 二次拦截。 */
+async function handleSaveTenantChannel(): Promise<void> {
+  if (!canManageOcrTenantChannel.value) {
+    message.warning('仅平台超级管理员可配置租户文字识别渠道')
+    return
+  }
+  if (channelSaving.value) {
+    return
+  }
+  const tenantId = resolveOcrTenantId()
+  if (!tenantId) {
+    message.error('缺少目标租户 ID，无法保存文字识别渠道')
+    return
+  }
+  if (!channelForm.providerType) {
+    message.warning('请选择文字识别渠道')
+    return
+  }
+  channelSaving.value = true
+  try {
+    await saveMarkOcrConfig({
+      tenantId,
+      providerType: channelForm.providerType,
+      enabled: channelForm.enabled,
+    })
+    message.success('租户文字识别渠道已保存')
+    await loadConfig()
+  } catch (error) {
+    showUserError(error, '租户文字识别渠道保存失败')
+  } finally {
+    channelSaving.value = false
   }
 }
 
@@ -381,6 +471,11 @@ async function loadPlatformProviders(): Promise<void> {
 }
 
 function openPlatformProviderEditor(record: MarkOcrPlatformProviderResponse): void {
+  // MVR-316：平台供应商编辑仅超级管理员
+  if (!ocrPlatformProviderManageAllowed.value) {
+    message.warning('仅平台超级管理员可维护平台文字识别供应商配置')
+    return
+  }
   platformProviderEditor.id = record.id
   platformProviderEditor.providerType = record.providerType
   platformProviderEditor.enabled = record.enabled
@@ -400,6 +495,11 @@ function openPlatformProviderEditor(record: MarkOcrPlatformProviderResponse): vo
 }
 
 async function handlePlatformProviderSave(): Promise<void> {
+  // MVR-316：与 ocrPlatformProviderManageAllowed / BE 超管门禁二次拦截
+  if (!ocrPlatformProviderManageAllowed.value) {
+    message.warning('仅平台超级管理员可维护平台文字识别供应商配置')
+    return
+  }
   if (platformProviderSubmitting.value) {
     return
   }
@@ -419,6 +519,11 @@ async function handlePlatformProviderSave(): Promise<void> {
 async function handlePlatformProviderHealthCheck(
   providerType: MarkOcrProviderTypeCode,
 ): Promise<void> {
+  // MVR-316：平台健康检查仅超级管理员
+  if (!ocrPlatformProviderManageAllowed.value) {
+    message.warning('仅平台超级管理员可执行平台文字识别健康检查')
+    return
+  }
   platformProviderHealthLoading.value = providerType
   try {
     await checkMarkOcrPlatformProviderHealth({ providerType })
@@ -433,7 +538,12 @@ async function handlePlatformProviderHealthCheck(
 
 /** 触发当前租户 OCR 渠道健康探活，并刷新只读配置展示。 */
 async function handleHealthCheck(): Promise<void> {
-  const tenantId = currentConfig.value?.tenantId
+  // MVR-371：健康检查写状态仅超管；与 ocrHealthCheckAllowed / BE 同源
+  if (!ocrHealthCheckAllowed.value) {
+    message.warning('仅平台超级管理员可执行文字识别渠道健康检查')
+    return
+  }
+  const tenantId = resolveOcrTenantId()
   if (!tenantId) {
     message.error('当前文字识别配置缺少租户信息，不能执行健康检查')
     return
@@ -719,7 +829,7 @@ onBeforeUnmount(() => {
           <WorkbenchContextGateStrip
             v-if="!currentConfig.providerType"
             tag="未配置"
-            body="租户尚未配置文字识别渠道，请在下方选择并保存渠道"
+            :body="ocrChannelEmptyBody"
             hide-cta
           />
           <template v-else>
@@ -761,6 +871,49 @@ onBeforeUnmount(() => {
           </UiDescriptions>
         </WorkbenchSurfaceCard>
       </div>
+
+      <WorkbenchSurfaceCard
+        v-if="canManageOcrTenantChannel"
+        class="ocr-settings__panel"
+      >
+        <template #head>
+          <h3 class="ocr-settings__panel-title">
+            <ApiOutlined />
+            <span>配置本租户文字识别渠道</span>
+          </h3>
+        </template>
+        <UiAlertStrip
+          tone="info"
+          dense
+          inline
+          title="仅平台超级管理员可写"
+          description="渠道在百度 OCR 与 PaddleOCR 之间互斥；保存后请执行健康检查确认平台供应商已就绪。"
+          class="ocr-settings__channel-alert"
+        />
+        <UiForm layout="vertical" class="ocr-settings__channel-form">
+          <UiFormItem label="识别渠道" required>
+            <UiSelect
+              size="sm"
+              v-model="channelForm.providerType"
+              :options="MARK_OCR_PROVIDER_OPTIONS"
+              placeholder="选择租户 OCR 渠道"
+            />
+          </UiFormItem>
+          <UiFormItem label="启用渠道">
+            <UiSwitch size="sm" v-model="channelForm.enabled" />
+          </UiFormItem>
+          <UiFormItem>
+            <UiButton
+              variant="primary"
+              size="sm"
+              :loading="channelSaving"
+              @click="handleSaveTenantChannel"
+            >
+              保存渠道
+            </UiButton>
+          </UiFormItem>
+        </UiForm>
+      </WorkbenchSurfaceCard>
 
       <WorkbenchSurfaceCard
         v-if="isPaddleProvider"
@@ -1224,5 +1377,13 @@ onBeforeUnmount(() => {
   color: var(--dp-text-secondary);
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.ocr-settings__channel-alert {
+  margin-bottom: 12px;
+}
+
+.ocr-settings__channel-form {
+  max-width: 420px;
 }
 </style>

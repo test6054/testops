@@ -120,6 +120,10 @@ export interface FinalScoreRiskOverviewResponse {
   readyToPublish: boolean
   riskReasons: FinalScoreRiskReasonResponse[]
   reviewedReasonCodes: FinalScoreRiskReasonCode[]
+  /** MVR-278：成绩确认/发布等阅卷写能力位 */
+  canManageReviewerWrites?: boolean
+  /** 是否可补齐缺考计零终分（评阅写、不叠 ACTIVE；关考后仍可） */
+  canRepairAbsenceScoreZeroFinal?: boolean
 }
 
 /** 最终成绩风险复核保存请求 - 对应 FinalScoreRiskReviewSaveRequest */

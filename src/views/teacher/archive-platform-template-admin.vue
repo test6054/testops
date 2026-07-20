@@ -110,6 +110,11 @@ function resetEditor() {
 }
 
 function openCreateEditor() {
+  // MVR-381：与 isSuperAdmin / BE requireSuperAdminPermission 二次拦截
+  if (isSuperAdmin.value !== true) {
+    message.warning('仅平台超级管理员可维护平台归档模板库')
+    return
+  }
   if (loadFailed.value) return
   resetEditor()
   editorDrawerOpen.value = true
@@ -133,6 +138,11 @@ function mapMaterialRow(
 }
 
 async function openEditEditor(setCode: string) {
+  // MVR-381：与 isSuperAdmin / BE requireSuperAdminPermission 二次拦截
+  if (isSuperAdmin.value !== true) {
+    message.warning('仅平台超级管理员可维护平台归档模板库')
+    return
+  }
   editorDrawerOpen.value = true
   detailLoading.value = true
   editorSetCode.value = setCode
@@ -175,6 +185,11 @@ async function loadPlatformSets() {
 }
 
 async function submitSave() {
+  // MVR-317：与 BE requireSuperAdminPermission 二次拦截
+  if (!isSuperAdmin.value) {
+    message.warning('仅平台超级管理员可维护平台归档模板库')
+    return
+  }
   if (saving.value) {
     return
   }

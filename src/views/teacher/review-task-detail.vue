@@ -367,7 +367,11 @@ const currentAiSourceTone = computed<BadgeTone>(() => {
   return strictEnumTone(AI_ABILITY_TONE, abilityCode, 'AI 能力编码')
 })
 
+const canManageReviewerWrites = computed(() => detail.value?.canManageReviewerWrites === true)
+
 const canRescoreByAi = computed(() => {
+  // MVR-282：无阅卷写能力位不得暴露 AI 复评
+  if (!canManageReviewerWrites.value) return false
   if (rescoring.value || loading.value || !detail.value?.gradeResultId) return false
   return (
     detail.value.status === ReviewTaskStatusCode.PENDING
@@ -426,6 +430,10 @@ function openRescoreConfirm(): void {
 }
 
 async function doRescoreByAi(): Promise<void> {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无阅卷写权限')
+    return
+  }
   if (!canRescoreByAi.value || !examId.value || !detail.value) return
   rescoring.value = true
   try {

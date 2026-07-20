@@ -29,7 +29,14 @@
         </template>
         <template #actions>
           <UiButton size="sm" variant="outline" @click="goScanLedger"> 影像账本 </UiButton>
-          <UiButton size="sm" variant="primary" @click="openFileImportWizard"> 文件补入 </UiButton>
+          <UiButton
+            v-if="canManageOwnerSupplementWrites"
+            size="sm"
+            variant="primary"
+            @click="openFileImportWizard"
+          >
+            文件补入
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -92,6 +99,7 @@
           />
 
           <ManualSupplementCandidateTable
+            :can-manage-owner-writes="canManageOwnerSupplementWrites"
             v-if="activeTab === 'candidates'"
             v-model:current="candidateQuery.pageNum"
             v-model:page-size="candidateQuery.pageSize"
@@ -201,7 +209,7 @@ interface RecordRow extends ExamManualSupplementRecordItemResponse {
 
 const router = useRouter()
 const route = useRoute()
-const { selectedExamId } = useMarkExamContext()
+const { selectedExamId, selectedExam } = useMarkExamContext()
 const { contextBarSubtitle } = useExamJourneyContextBar('手动补录')
 
 const activeTab = ref<ManualEntryTab>('candidates')
@@ -211,6 +219,10 @@ const tabItems = [
 ]
 
 const workbench = ref<ExamManualSupplementWorkbenchResponse | null>(null)
+/** MVR-265/324：仅认 BE canManageOwnerSupplementWrites===true；禁止缺省回退 isExamOwner */
+const canManageOwnerSupplementWrites = computed(
+  () => workbench.value?.canManageOwnerSupplementWrites === true,
+)
 const workbenchLoadFailed = ref(false)
 const declaredClassIds = ref<string[]>([])
 const classOptions = ref<Array<{ value: string, label: string }>>([])
@@ -525,6 +537,9 @@ function openMissingPageWizard(
   record: ExamManualSupplementCandidateItemResponse,
   targetPageNo?: number,
 ): void {
+  if (!canManageOwnerSupplementWrites.value) {
+    return
+  }
   if (!record.supplementEligible) {
     return
   }
@@ -536,6 +551,9 @@ function openMissingPageWizard(
 }
 
 function openReplaceWizard(record: ExamManualSupplementCandidateItemResponse): void {
+  if (!canManageOwnerSupplementWrites.value) {
+    return
+  }
   if (!record.replaceEligible) {
     return
   }
@@ -544,6 +562,9 @@ function openReplaceWizard(record: ExamManualSupplementCandidateItemResponse): v
 }
 
 function openFileImportWizard(): void {
+  if (!canManageOwnerSupplementWrites.value) {
+    return
+  }
   if (!selectedExamId.value) return
   wizardContext.value = {
     scenario: 'file-import',
@@ -576,6 +597,10 @@ function parseScenario(value: unknown): ManualSupplementScenario | null {
 function applyRouteDeepLink(): void {
   const scenario = parseScenario(route.query.scenario)
   if (!scenario || !selectedExamId.value) return
+  // MVR-265：写场景 deep link 非主考不打开向导
+  if (!canManageOwnerSupplementWrites.value) {
+    return
+  }
   pendingDeepLink.value = true
   if (scenario === 'file-import') {
     wizardContext.value = { scenario, examId: selectedExamId.value }

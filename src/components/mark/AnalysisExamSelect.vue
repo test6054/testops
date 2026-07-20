@@ -22,11 +22,16 @@ const props = withDefaults(
   },
 )
 
+const emit = defineEmits<{
+  (e: 'selected-exam-change', value: ExamSummaryResponse | null): void
+}>()
+
 const ANALYSIS_EXAM_SEARCH_PAGE_SIZE = 50
 const ANALYSIS_EXAM_LIST_PAGE_SIZE = 100
 
 const loading = ref(false)
 const examOptions = ref<{ label: string, value: string }[]>([])
+const exams = ref<ExamSummaryResponse[]>([])
 
 function buildOrgScopeQuery() {
   const query: {
@@ -74,6 +79,7 @@ async function loadExamOptions(keyword?: string): Promise<void> {
         keyword: trimmedKeyword,
         ...orgScope,
       })
+      exams.value = result.list
       examOptions.value = mapExamOptions(result.list)
       return
     }
@@ -82,7 +88,8 @@ async function loadExamOptions(keyword?: string): Promise<void> {
       pageSize: ANALYSIS_EXAM_LIST_PAGE_SIZE,
       ...orgScope,
     })
-    examOptions.value = mapExamOptions(result.list)
+    exams.value = result.list
+      examOptions.value = mapExamOptions(result.list)
   } catch (error) {
     showUserError(error, '考试列表加载失败')
   } finally {
@@ -99,6 +106,18 @@ watch(
   () => {
     selectedExamId.value = undefined
     void loadExamOptions()
+  },
+)
+
+
+watch(
+  selectedExamId,
+  (examId) => {
+    if (!examId) {
+      emit('selected-exam-change', null)
+      return
+    }
+    emit('selected-exam-change', exams.value.find((item) => item.examId === examId) ?? null)
   },
 )
 

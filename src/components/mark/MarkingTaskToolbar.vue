@@ -10,7 +10,7 @@
       </UiTag>
       <template v-if="task?.anonymousToken && !revealedIdentity">
         <UiTooltip
-          v-if="!isExamOwner"
+          v-if="canManageOwnerIdentityReveal !== true"
           title="当前为匿名阅卷模式，仅考试主考老师可解匿名查看学生身份"
         >
           <UiTag tone="blue" size="sm">匿名保护中</UiTag>
@@ -57,7 +57,7 @@
             </div>
           </dl>
         </template>
-        <template v-if="task.anonymousToken && !revealedIdentity && isExamOwner" #footer>
+        <template v-if="task.anonymousToken && !revealedIdentity && canManageOwnerIdentityReveal === true" #footer>
           <UiButton size="sm" variant="outline" @click="emit('reveal')">
             <template #icon><UnlockOutlined /></template>
             解匿名
@@ -157,7 +157,7 @@ const props = defineProps<{
   task: MarkingTaskResponse | null
   loading: boolean
   isReadOnly: boolean
-  isExamOwner: boolean
+  canManageOwnerIdentityReveal?: boolean
   revealedIdentity: AnonymousRevealResponse | null
   navigation: ReturnType<typeof useMarkingTaskNavigation>
   taskStatusTone: (status: MarkingTaskStatusCode) => BadgeTone

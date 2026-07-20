@@ -163,8 +163,9 @@ import type { Key } from 'ant-design-vue/es/_util/type'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ExamPaperAnalysisResponse } from '@/apis/mark/question-analysis'
 import type { SignalMetric } from '@/types/workbench'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getTeacherClaimContext } from '@/apis/mark/marking-organization'
 import { getExamPaperAnalysis } from '@/apis/mark/question-analysis'
 import MarkQualitySyncChip from '@/components/quality/MarkQualitySyncChip.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -178,6 +179,7 @@ import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJour
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY } from '@/composables/useAiAnalysisScope'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useMarkExamRoster } from '@/composables/useMarkExamRoster'
@@ -238,6 +240,31 @@ const { selectedExamId, selectedExam } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
 const { isExamConfidential } = useWorkspaceConfidentialContext()
 const currentExamId = computed(() => selectedExamId.value || '')
+
+/** MVR-285：统计页卡片与 AI 中心共用阅卷写能力位；默认拒绝假可写 */
+const canManageReviewerWrites = ref(false)
+provide(
+  AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY,
+  computed(() => canManageReviewerWrites.value),
+)
+
+async function loadReviewerWriteCapability(examId: string): Promise<void> {
+  if (!examId) {
+    canManageReviewerWrites.value = false
+    return
+  }
+  try {
+    // MVR-337：claim-context 合同强制 markingPhase；统计/AI 写闸与 hasExamReviewerWritePermission 同源，取 FORMAL
+    const claim = await getTeacherClaimContext({
+      examId,
+      markingPhase: MarkingSessionPhaseCode.FORMAL,
+    })
+    canManageReviewerWrites.value = claim.canManageReviewerWrites === true
+  } catch {
+    canManageReviewerWrites.value = false
+  }
+}
+
 
 // B-12 联动：考试切换后统一加载考生名册，派生班级 / 学生选项交给子卡片，避免教师手输 ID
 const {
@@ -429,6 +456,7 @@ async function exportTeachingLecture(): Promise<void> {
 watch(
   selectedExamId,
   (v) => {
+    void loadReviewerWriteCapability(v || '')
     // 切换考试时清空联动上下文，避免跨考试串号
     clearLinkage()
     if (v) {

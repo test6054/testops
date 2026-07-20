@@ -49,6 +49,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   ALL_PORTFOLIO_SCIENTIFIC_RESEARCH_FACT_KIND_CODES,
@@ -74,6 +75,25 @@ const tabItems = [
 
 const operationKey = ref('')
 const writing = computed(() => Boolean(operationKey.value))
+
+/** 冲突/身份处置目标教师：封存写禁预检 */
+const actionTeacherId = ref<string | undefined>()
+const {
+  assertArchiveWritable,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: actionTeacherId, autoLoad: false })
+
+async function bindActionTeacherAndAssert(
+  teacherId: string | number | undefined | null,
+  actionLabel: string,
+): Promise<boolean> {
+  actionTeacherId.value = teacherId != null && String(teacherId).trim() !== ''
+    ? String(teacherId)
+    : undefined
+  await reloadLifecycleState()
+  return assertArchiveWritable(actionLabel)
+}
+
 const loadState = reactive({
   datasources: false,
   mappings: false,
@@ -1366,6 +1386,16 @@ async function resolveConflict(row: PortfolioConflictTicketVO, action: string) {
   const conflictTicketId = row.id
   const operation = `conflict:${conflictTicketId}:${action}`
   if (!beginOperation(operation)) return
+  const actionLabel
+    = action === 'RESOLVED_USE_EXTERNAL'
+      ? '冲突采用外部'
+      : action === 'RESOLVED_USE_LOCAL'
+        ? '冲突保留本地'
+        : '忽略冲突单'
+  if (!(await bindActionTeacherAndAssert(row.teacherId, actionLabel))) {
+    endOperation(operation)
+    return
+  }
   if (
     action === 'IGNORED'
     && !(await confirmAsync({
@@ -1412,6 +1442,12 @@ async function resolveIdentityUnmatched(
   }
   const operation = `identity:${identityUnmatchedId}:${action}`
   if (!beginOperation(operation)) return
+  if (action === 'RESOLVED') {
+    if (!(await bindActionTeacherAndAssert(identityResolveTeacherId.value, '身份绑定本地教师'))) {
+      endOperation(operation)
+      return
+    }
+  }
   if (
     action === 'IGNORED'
     && !(await confirmAsync({

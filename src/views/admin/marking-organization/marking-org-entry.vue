@@ -121,7 +121,9 @@ const { refreshSnapshot } = useWorkspaceExamId()
 const { selectedExamId, selectedExamLabel, selectedExam } = useMarkExamContext()
 
 const examCreateUserId = computed(() => selectedExam.value?.createUser)
-const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, ref(null))
+/** MVR-324：用 getOrganization 空壳/详情下发的 canManageExamOwner，禁止 ref(null)+createUser 回退 */
+const organizationGate = ref<Awaited<ReturnType<typeof getOrganization>> | null>(null)
+const { canManageExamOwner } = useMarkingOrgPermission(examCreateUserId, organizationGate)
 
 const resolving = ref(true)
 const examLabel = computed(() => selectedExamLabel.value || '未选择考试')
@@ -157,6 +159,7 @@ async function redirectToDetailIfConfigured(): Promise<void> {
   resolving.value = true
   try {
     const org = await getOrganization({ examId })
+    organizationGate.value = org
     if (org.configured && org.id) {
       if (route.query.setupTab === 'launch') {
         await router.replace(resolveMarkingOrganizationFormalHubRoute(examId))
@@ -168,6 +171,7 @@ async function redirectToDetailIfConfigured(): Promise<void> {
       await router.replace(typeof target === 'string' ? target : { ...target, query })
     }
   } catch (error) {
+    organizationGate.value = null
     showUserError(error, '阅卷组织加载失败')
   } finally {
     resolving.value = false

@@ -169,6 +169,12 @@ function lightenColor(hex: string, percent: number): string {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .ui-progress-bar__fill--striped {
+    animation: none;
+  }
+}
+
 .ui-progress-bar__right {
   display: flex;
   align-items: center;

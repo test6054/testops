@@ -12,12 +12,15 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -41,6 +44,8 @@ const columns: ColumnsType = [
   { title: '日期', dataIndex: 'recordDate', key: 'recordDate', width: 110 },
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
   { title: '业务日工号', dataIndex: 'affiliationStaffNo', key: 'affiliationStaffNo', width: 120 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '操作', key: 'actions', width: 80 },
 ]
 
@@ -53,6 +58,12 @@ const form = reactive({
   categoryCode: '',
   descriptionText: '',
 })
+const formTeacherId = computed(() => form.teacherUserId || undefined)
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
 const {
@@ -104,6 +115,14 @@ const {
   },
 )
 
+
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 async function saveRecord() {
   if (writing.value) return
   if (!form.recordTitle.trim()) {
@@ -112,6 +131,9 @@ async function saveRecord() {
   }
   if (!form.teacherUserId) {
     showFormValidationMessage('荣誉条目须选择所属教师')
+    return
+  }
+  if (!assertArchiveWritable('保存荣誉记录')) {
     return
   }
   operationKey.value = 'save'
@@ -191,6 +213,12 @@ async function exportHonor() {
       <ContextBar show-title layout="workbench" title="荣誉库" />
     </template>
     <UiCard>
+      <UiAlertStrip
+        v-if="archiveWriteForbidden"
+        tone="warning"
+        :message="archiveWriteBlockMessage || '该教师档案当前禁止写入，无法保存荣誉记录'"
+        class="mb-3"
+      />
       <div v-if="stats" class="stats">
         <span v-for="item in stats.levelCounts" :key="item.levelCode">
           {{ item.levelCode || '未分级' }}：{{ item.count }}
@@ -246,7 +274,7 @@ async function exportHonor() {
           size="sm"
           variant="primary"
           :loading="operationKey === 'save'"
-          :disabled="writing"
+          :disabled="writing || archiveWriteForbidden"
           @click="saveRecord"
         >
           新增
@@ -276,6 +304,25 @@ async function exportHonor() {
           </template>
           <template v-else-if="column.key === 'affiliationStaffNo'">
             {{ record.affiliationStaffNo || '—' }}
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else class="text-neutral-400">—</span>
+          </template>
+          <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+            <span>
+              {{
+                record.countsInCurrentFacultyStructure === true
+                  ? '是'
+                  : record.countsInCurrentFacultyStructure === false
+                    ? '否'
+                    : '—'
+              }}
+            </span>
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

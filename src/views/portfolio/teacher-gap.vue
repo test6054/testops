@@ -48,6 +48,13 @@ const {
   assertArchiveWritable,
 } = usePortfolioArchiveWriteGuard()
 
+function lifecycleTagTone(status?: string): 'green' | 'orange' | 'neutral' | 'red' {
+  if (status === 'ACTIVE') return 'green'
+  if (status === 'TEMP_HOLD') return 'orange'
+  if (status === 'SEALED' || status === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 const loading = ref(false)
 const submitting = ref(false)
 const saving = ref(false)
@@ -318,6 +325,7 @@ async function openPortfolioGapScan() {
       taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
       contextLabel: ticket.portfolioSnapshot?.gapTaskTitle ?? detail.value.taskTitle,
       gapTaskId: detail.value.id,
+      canCancelTicket: ticket.canCancelTicket,
     }
     dispatchResultOpen.value = true
   } catch (error) {
@@ -407,6 +415,16 @@ watch(
           <p class="teacher-gap__meta">
             <UiTag tone="blue">
               {{ statusLabel }}
+            </UiTag>
+            <UiTag v-if="detail.lifecycleStatus" :tone="lifecycleTagTone(detail.lifecycleStatus)">
+              {{ detail.lifecycleStatusLabel || detail.lifecycleStatus }}
+            </UiTag>
+            <UiTag v-if="detail.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <UiTag
+              v-if="detail.countsInCurrentFacultyStructure === false"
+              tone="neutral"
+            >
+              非当前在岗
             </UiTag>
             <span v-if="detail.categoryName">{{ detail.categoryName }}</span>
             <span v-if="courseScopeText">课程 {{ courseScopeText }}</span>

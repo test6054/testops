@@ -100,6 +100,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { StudentExamItemVO, StudentExamStatsResponse } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import message from 'ant-design-vue/es/message'
 import { onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -280,6 +281,11 @@ function handleExamHistoryAction(key: string, record: StudentExamItemVO): void {
   if (key === 'detail') {
     goDetail(record.examId)
   } else if (key === 'appeal') {
+    // MVR-320：与 canSubmitReview / BE canSubmitReviewRequest 二次拦截
+    if (!canSubmitReview(record)) {
+      message.warning('当前暂不能提交复核申请')
+      return
+    }
     goAppeal(record.examId)
   }
 }

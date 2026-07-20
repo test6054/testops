@@ -464,6 +464,7 @@
                 查询最新
               </UiButton>
               <UiButton
+                v-if="canManageQualityMonitorWrites"
                 variant="primary"
                 size="sm"
                 :disabled="!scopeValid"
@@ -545,8 +546,9 @@
           <WorkbenchContextGateStrip
             v-else
             tag="无快照"
-            body="暂无进度快照，请先生成当前进度"
+            :body="canManageQualityMonitorWrites ? '暂无进度快照，请先生成当前进度' : '暂无进度快照；生成快照需考试主考或阅卷组织负责人'"
             cta-label="立即快照"
+            :hide-cta="!canManageQualityMonitorWrites"
             class="quality-dashboard__alert"
             @cta="handleSnapshot"
           />
@@ -581,6 +583,7 @@
           </template>
           <template #toolbar>
             <UiButton
+              v-if="canManageQualityMonitorWrites"
               variant="primary"
               size="sm"
               :disabled="!scopeValid"
@@ -657,7 +660,13 @@
       </template>
 
       <template v-else-if="activeTab === 'spotcheck'">
-        <WorkbenchSurfaceCard class="quality-dashboard__inner-panel">
+        <WorkbenchSurfaceCard v-if="!canManageQualityMonitorWrites" class="quality-dashboard__inner-panel">
+          <UiEmpty
+            size="sm"
+            description="创建抽检任务仅考试主考或阅卷组织负责人可操作；主考/组织负责人/题组负责人请在「我的待处理抽检」结案。"
+          />
+        </WorkbenchSurfaceCard>
+        <WorkbenchSurfaceCard v-else class="quality-dashboard__inner-panel">
           <template #head>
             <span class="quality-dashboard__panel-title">创建抽检任务</span>
           </template>
@@ -842,7 +851,13 @@
       </template>
 
       <template v-else-if="activeTab === 'reprocess'">
-        <WorkbenchSurfaceCard class="quality-dashboard__inner-panel">
+        <WorkbenchSurfaceCard v-if="!canManageOwnerBatchReprocess" class="quality-dashboard__inner-panel">
+          <UiEmpty
+            size="sm"
+            description="异常批次重处理仅考试主考可操作；如需重处理请联系主考老师。"
+          />
+        </WorkbenchSurfaceCard>
+        <WorkbenchSurfaceCard v-else class="quality-dashboard__inner-panel">
           <template #head>
             <span class="quality-dashboard__panel-title">触发异常批次重处理</span>
           </template>
@@ -1029,6 +1044,12 @@ const {
   init: initExamSelector,
 } = useMarkExamContext()
 
+// MVR-326：异常批次重处理仅主考；仅认 quality-panel.canManageOwnerBatchReprocess===true
+const canManageOwnerBatchReprocess = computed(
+  () => examQualityPanel.value?.canManageOwnerBatchReprocess === true,
+)
+
+
 type QualityTabKey = 'overview' | 'progress' | 'reviewer' | 'spotcheck' | 'reprocess'
 
 function resolveInitialTab(): QualityTabKey {
@@ -1047,6 +1068,12 @@ function resolveInitialTab(): QualityTabKey {
 
 const activeTab = ref<QualityTabKey>(resolveInitialTab())
 
+watch(canManageOwnerBatchReprocess, (allowed) => {
+  if (!allowed && activeTab.value === 'reprocess') {
+    activeTab.value = isExamWorkspaceRoute.value ? 'overview' : 'progress'
+  }
+})
+
 const qualityTabItems = computed((): UiSectionTabItem[] => {
   const items: UiSectionTabItem[] = []
   if (isExamWorkspaceRoute.value) {
@@ -1056,8 +1083,11 @@ const qualityTabItems = computed((): UiSectionTabItem[] => {
     { key: 'progress', label: '进度监控' },
     { key: 'reviewer', label: '教师质量' },
     { key: 'spotcheck', label: '抽检' },
-    { key: 'reprocess', label: '异常批次重处理' },
   )
+  // MVR-273：非主考不展示重处理页签，避免假可写
+  if (canManageOwnerBatchReprocess.value) {
+    items.push({ key: 'reprocess', label: '异常批次重处理' })
+  }
   return items
 })
 
@@ -1068,6 +1098,15 @@ const selectedGroupId = ref<string | undefined>(
   route.query.groupId ? String(route.query.groupId) : undefined,
 )
 const organizationDetail = ref<MarkingOrganizationResponse | null>(null)
+
+/**
+ * MVR-275/326/361：抽检创建 / 进度快照 / 指标重算。
+ * 仅认组织详情 canManageQualityMonitorWrites===true（主考或本组织负责人）；禁止 leaderUserId/createUser 本地回退。
+ * 异常批次重处理仍仅认 quality-panel.canManageOwnerBatchReprocess（主考∧ACTIVE）。
+ */
+const canManageQualityMonitorWrites = computed(
+  () => organizationDetail.value?.canManageQualityMonitorWrites === true,
+)
 const organizationLoading = ref(false)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const scannerBatches = ref<ExamScannerBatchResponse[]>([])
@@ -1452,6 +1491,10 @@ async function loadProgress(): Promise<void> {
 }
 
 async function handleSnapshot(): Promise<void> {
+  if (!canManageQualityMonitorWrites.value) {
+    message.warning('仅考试主考或阅卷组织负责人可生成进度快照')
+    return
+  }
   if (!scopeValid.value) return
   if (snapshotting.value) return
   snapshotting.value = true
@@ -1585,6 +1628,10 @@ function handleReviewerFilterReset(): void {
 }
 
 async function handleRefreshMetrics(): Promise<void> {
+  if (!canManageQualityMonitorWrites.value) {
+    message.warning('仅考试主考或阅卷组织负责人可重算教师质量指标')
+    return
+  }
   if (!scopeValid.value) return
   if (refreshing.value) return
   refreshing.value = true
@@ -1616,6 +1663,10 @@ const spotForm = reactive<{
 })
 
 async function handleCreateSpotCheck(): Promise<void> {
+  if (!canManageQualityMonitorWrites.value) {
+    message.warning('仅考试主考或阅卷组织负责人可创建抽检任务')
+    return
+  }
   if (!scopeValid.value || !spotForm.sampleRate) return
   if (creatingSpot.value) return
   creatingSpot.value = true
@@ -1650,7 +1701,12 @@ const reprocessForm = reactive<{
 })
 
 const reprocessValid = computed(() =>
-  Boolean(selectedExamId.value && reprocessForm.scanBatchId && reprocessForm.reason.trim()),
+  Boolean(
+    canManageOwnerBatchReprocess.value
+    && selectedExamId.value
+    && reprocessForm.scanBatchId
+    && reprocessForm.reason.trim(),
+  ),
 )
 
 async function requestReprocess(): Promise<void> {
@@ -1667,6 +1723,10 @@ async function requestReprocess(): Promise<void> {
 }
 
 async function handleReprocess(): Promise<void> {
+  if (!canManageOwnerBatchReprocess.value) {
+    message.warning('仅考试主考可触发异常批次重处理')
+    return
+  }
   if (!reprocessValid.value) return
   if (reprocessing.value) return
   reprocessing.value = true

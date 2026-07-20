@@ -3,7 +3,14 @@
     <template #context>
       <ContextBar layout="workbench" show-title title="复核任务中心">
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goBatchConfirm"> 批量复核确认 </UiButton>
+          <UiButton
+            v-if="canManageReviewerWrites"
+            variant="outline"
+            size="sm"
+            @click="goBatchConfirm"
+          >
+            批量复核确认
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -130,6 +137,7 @@ import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
@@ -167,6 +175,8 @@ const { refreshing: workbenchRefreshing, snapshot } = useMarkWorkbenchContext()
 
 const loading = ref(false)
 const rows = ref<ReviewTaskItemResponse[]>([])
+// MVR-332：列表/制卷摘要下发 canManageReviewerWrites，缺声明会导致写闸 ReferenceError
+const canManageReviewerWrites = ref(false)
 const statusFilter = ref<ReviewTaskStatusCode>(ReviewTaskStatusCode.PENDING)
 
 const pagination = reactive({
@@ -307,18 +317,28 @@ async function loadTasks(): Promise<void> {
   }
   loading.value = true
   try {
-    const result = await listReviewTasks({
-      examId: examId.value,
-      status: statusFilter.value,
-      excludeArbitration: true,
-      pageNum: pagination.current,
-      pageSize: pagination.pageSize,
-    })
-    rows.value = result.list
+    const [result, layoutSummary] = await Promise.all([
+      listReviewTasks({
+        examId: examId.value,
+        status: statusFilter.value,
+        excludeArbitration: true,
+        pageNum: pagination.current,
+        pageSize: pagination.pageSize,
+      }),
+      // MVR-291：空列表时 list 项无能力位，用制卷摘要 canManageReviewerWrites 补齐
+      getExamLayoutQuestionSummary(examId.value).catch(() => null),
+    ])
+    const records = result.list
+    rows.value = records
     pagination.total = result.total
+    // MVR-328：列表有项时仅认行级 can===true；空列表用制卷摘要 can===true 补齐
+    canManageReviewerWrites.value = records.length > 0
+      ? records[0].canManageReviewerWrites === true
+      : layoutSummary?.canManageReviewerWrites === true
   } catch (error) {
     rows.value = []
     pagination.total = 0
+    canManageReviewerWrites.value = false
     showUserError(error, '复核任务列表加载失败')
   } finally {
     loading.value = false
@@ -369,6 +389,10 @@ function goBatchConfirm(): void {
   if (!examId.value) {
     return
   }
+  // MVR-291：无写能力不得导航进批量确认页（页内虽叠闸，避免假入口）
+  if (!canManageReviewerWrites.value) {
+    return
+  }
   void router.push({
     name: 'TeacherExamWorkspaceReviewBatchConfirm',
     params: { examId: examId.value },
@@ -384,6 +408,7 @@ watch(
     } else {
       rows.value = []
       pagination.total = 0
+      canManageReviewerWrites.value = false
     }
   },
   { immediate: true },

@@ -157,21 +157,32 @@ function handleChange(value: number | string | null) {
   box-shadow: 0 0 0 3px var(--dp-focus-ring) !important;
 }
 
-.ui-input-number :deep(.ant-input-number-input) {
-  color: var(--dp-text-primary) !important;
-  font-variant-numeric: tabular-nums;
-}
-
 .ui-input-number--sm :deep(.ant-input-number) {
-  min-height: var(--dp-control-height-sm, 32px);
+  height: var(--dp-control-height-sm, 32px) !important;
+  min-height: var(--dp-control-height-sm, 32px) !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
 .ui-input-number--md :deep(.ant-input-number) {
-  min-height: var(--dp-control-height-md, 36px);
+  height: var(--dp-control-height-md, 36px) !important;
+  min-height: var(--dp-control-height-md, 36px) !important;
+  display: flex !important;
+  align-items: center !important;
 }
 
 .ui-input-number--lg :deep(.ant-input-number) {
-  min-height: 40px;
+  height: 40px !important;
+  min-height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.ui-input-number :deep(.ant-input-number-input) {
+  height: 100% !important;
+  line-height: 22px !important;
+  color: var(--dp-text-primary) !important;
+  font-variant-numeric: tabular-nums;
 }
 
 .ui-input-number--error :deep(.ant-input-number) {

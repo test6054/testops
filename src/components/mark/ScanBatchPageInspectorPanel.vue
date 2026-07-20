@@ -288,7 +288,7 @@ import {
 import { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import { ScanBatchWorkbenchBindingStatusCode } from '@/types/enums/scan-batch-workbench-binding-status-enum'
 import { ScanBatchWorkbenchRegisterStatusCode } from '@/types/enums/scan-batch-workbench-register-status-enum'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ScanBatchPageInspectorPanel' })
@@ -300,6 +300,8 @@ const props = defineProps<{
   scanBatchId?: string
   attributionItems?: ExamScannerBatchAttributionItemVO[]
   preferredTargetPaperInstanceId?: string
+  /** MVR-262：主考写权限；false 时隐藏绑定/归卷写区 */
+  canManageOwnerWrites?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -444,6 +446,10 @@ const boundIdentityLine = computed(() => {
 })
 
 const showBindForm = computed(() => {
+  // MVR-376：仅认 BE canManageOwnerBatchActions===true
+  if (props.canManageOwnerWrites !== true) {
+    return false
+  }
   const page = props.inspector?.page
   if (
     !page
@@ -522,6 +528,10 @@ const currentPaperLabel = computed(() => {
 
 const showReassignSection = computed(() => {
   const page = props.inspector?.page
+  // MVR-376：仅认 BE canManageOwnerBatchActions===true
+  if (props.canManageOwnerWrites !== true) {
+    return false
+  }
   if (!page || !props.examId || !props.scanBatchId || !page.pageId) {
     return false
   }
@@ -568,6 +578,11 @@ function syncBindFormFromPage(): void {
 }
 
 async function submitBind(): Promise<void> {
+  // MVR-376：与 canManageOwnerWrites / BE requireExamOwnerPermission 二次拦截
+  if (props.canManageOwnerWrites !== true) {
+    showFormValidationMessage('当前账号无主考扫描写权限，无法绑定身份')
+    return
+  }
   const page = props.inspector?.page
   if (!page?.paperInstanceId || !props.examId || !props.scanBatchId) {
     return
@@ -604,6 +619,11 @@ async function submitBind(): Promise<void> {
 }
 
 async function submitReassign(): Promise<void> {
+  // MVR-376：与 canManageOwnerWrites / BE requireExamOwnerPermission 二次拦截
+  if (props.canManageOwnerWrites !== true) {
+    showFormValidationMessage('当前账号无主考扫描写权限，无法人工调卷')
+    return
+  }
   const page = props.inspector?.page
   if (!page?.pageId || !props.examId || !props.scanBatchId || !targetPaperInstanceId.value) {
     return

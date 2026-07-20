@@ -18,6 +18,7 @@
           @change="reload"
         />
         <UiButton
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
           :disabled="!selectedQuestionForCorrection"
@@ -26,6 +27,7 @@
           修正答案并生效
         </UiButton>
         <UiButton
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
           :loading="generating && !generatingAllMode"
@@ -34,7 +36,9 @@
         >
           生成当前题
         </UiButton>
-        <UiButton variant="outline" size="sm" :loading="generating" @click="handleGenerateAll">
+        <UiButton
+          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating" @click="handleGenerateAll"
+        >
           全量生成
         </UiButton>
         <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
@@ -62,6 +66,7 @@
           @change="reload"
         />
         <UiButton
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
           :disabled="!selectedQuestionForCorrection"
@@ -70,6 +75,7 @@
           修正答案并生效
         </UiButton>
         <UiButton
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
           :loading="generating && !generatingAllMode"
@@ -78,7 +84,9 @@
         >
           生成当前题
         </UiButton>
-        <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerateAll">
+        <UiButton
+          v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerateAll"
+        >
           全量生成
         </UiButton>
         <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 刷新 </UiButton>
@@ -174,6 +182,7 @@
           <template #empty-action>
             <div class="dp-space" v-if="tableEmptyKind === 'first-run'" style="--dp-space-gap: 8px">
               <UiButton
+                v-if="canManageReviewerWrites === true"
                 variant="outline"
                 size="sm"
                 :loading="generating"
@@ -184,6 +193,7 @@
             </div>
             <div class="dp-space" v-else-if="tableEmptyKind === 'no-result'" style="--dp-space-gap: 8px">
               <UiButton
+                v-if="canManageReviewerWrites === true"
                 variant="outline"
                 size="sm"
                 :loading="generating && !generatingAllMode"
@@ -227,8 +237,12 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 :items="[
-                  { key: 'correct-answer', label: '修正答案并生效' },
-                  { key: 'regenerate', label: '重新生成' },
+                  ...(canManageReviewerWrites
+                    ? [
+                      { key: 'correct-answer', label: '修正答案并生效' },
+                      { key: 'regenerate', label: '重新生成' },
+                    ]
+                    : []),
                 ]"
                 split
                 @action="(key) => handleRowAction(key, item)"
@@ -243,6 +257,7 @@
       :open="correctionDialogOpen"
       :exam-id="props.examId"
       :question="editingQuestion"
+      :can-manage-reviewer-writes="canManageReviewerWrites"
       @close="closeCorrectionDialog"
       @corrected="handleAnswerCorrected"
     />
@@ -260,6 +275,7 @@ import type {
 } from '@/apis/mark/question-analysis'
 import type { UiDataTableColumn } from '@/components/ui-guide/ui/data-table'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
 import { computed, ref, watch } from 'vue'
 import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
@@ -333,6 +349,8 @@ const questionOptions = ref<
   Array<{ value: string, label: string, disabled?: boolean, title?: string }>
 >([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
+/** MVR-277：修正答案等写动作；与 BE requireExamReviewerPermission 对齐 */
+const canManageReviewerWrites = computed(() => layoutSummary.value?.canManageReviewerWrites === true)
 const layoutRoiGap = computed(() => {
   if (!layoutSummary.value?.configured) {
     return 0
@@ -557,6 +575,10 @@ async function reloadCurrentScope(): Promise<void> {
 }
 
 async function handleGenerateAll(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
+    return
+  }
   if (generating.value) return
   generationSummary.value = ''
   generatingAllMode.value = true
@@ -579,6 +601,10 @@ async function handleGenerateAll(): Promise<void> {
 }
 
 async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
+    return
+  }
   if (!layoutQuestionId || generating.value) return
   generationSummary.value = ''
   generatingAllMode.value = false
@@ -608,6 +634,10 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
 }
 
 async function handleGenerateSelected(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
+    return
+  }
   if (!selectedLayoutQuestionId.value) {
     showUserError(null, '请先选择需要生成分析的题目')
     return
@@ -616,7 +646,15 @@ async function handleGenerateSelected(): Promise<void> {
 }
 
 function handleRowAction(actionKey: string, item: ExamQuestionAnalysisRecordResponse): void {
+  if (actionKey === 'correct-answer' && !canManageReviewerWrites.value) {
+    message.warning('仅本场阅卷组织成员或主考可修正答案并生效')
+    return
+  }
   if (actionKey === 'regenerate') {
+    if (canManageReviewerWrites.value !== true) {
+      message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
+      return
+    }
     void handleGenerateOne(item.layoutQuestionId)
     return
   }
@@ -626,6 +664,10 @@ function handleRowAction(actionKey: string, item: ExamQuestionAnalysisRecordResp
 }
 
 function handleOpenSelectedQuestionCorrection(): void {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员或主考可修正答案并生效')
+    return
+  }
   if (!selectedQuestionForCorrection.value) {
     showUserError(null, '请先选择需要修正答案的题目')
     return

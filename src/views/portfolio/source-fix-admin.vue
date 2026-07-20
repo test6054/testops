@@ -5,7 +5,8 @@ import type {
   PortfolioSourceFixEventVO,
 } from '@/apis/portfolio/types'
 import { message } from 'ant-design-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { portfolioSourceFixApi } from '@/apis/portfolio/source-fix'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -28,6 +29,8 @@ import {
   PortfolioSourceFixTriggerTypeCode,
 } from '@/types/enums/portfolio-source-fix-trigger-type-enum'
 import { showUserError } from '@/utils/error-handler'
+
+const route = useRoute()
 
 const loading = ref(false)
 const acting = ref(false)
@@ -104,6 +107,7 @@ const columns: ColumnsType = [
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '触发', key: 'triggerType', width: 110 },
   { title: '原因', dataIndex: 'triggerReason', key: 'triggerReason', ellipsis: true },
+  { title: '字段', dataIndex: 'fieldCode', key: 'fieldCode', width: 100, ellipsis: true },
   { title: '前值', dataIndex: 'beforeValue', key: 'beforeValue', width: 120, ellipsis: true },
   { title: '后值', dataIndex: 'afterValue', key: 'afterValue', width: 120, ellipsis: true },
   { title: '状态', key: 'eventStatus', width: 100 },
@@ -115,6 +119,7 @@ const columns: ColumnsType = [
 const itemColumns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
   { title: '状态', dataIndex: 'itemStatus', key: 'itemStatus', width: 100 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 140 },
   { title: '前值', dataIndex: 'beforeValue', key: 'beforeValue', ellipsis: true },
   { title: '后值', dataIndex: 'afterValue', key: 'afterValue', ellipsis: true },
   { title: '结果', dataIndex: 'recomputeResult', key: 'recomputeResult', ellipsis: true },
@@ -153,6 +158,14 @@ function statusTone(code?: string) {
   return 'neutral' as const
 }
 
+/** 明细行生命周期 Tag 色（US-MI：读模型仅标注，不默认过滤）。 */
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 async function loadPage() {
   const currentToken = ++requestToken.value
   loading.value = true
@@ -180,6 +193,33 @@ async function loadPage() {
 function onSearch() {
   query.pageNum = 1
   void loadPage()
+}
+
+
+function readRouteStringParam(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0].trim()
+  }
+  return ''
+}
+
+/**
+ * PF-P0-285 / §8.52：源修复重算站内信 jumpUrl 携带 eventId 时打开对应事件详情。
+ */
+async function applyEventIdDeepLink() {
+  const eventId = readRouteStringParam(route.query.eventId)
+  if (!eventId) {
+    return
+  }
+  const matched = rows.value.find((row) => String(row.id) === eventId)
+  if (matched) {
+    await openDetail(matched)
+    return
+  }
+  await openDetail({ id: eventId } as PortfolioSourceFixEventVO)
 }
 
 async function openDetail(row: PortfolioSourceFixEventVO) {
@@ -266,9 +306,22 @@ async function submitBatch() {
   }
 }
 
-onMounted(() => {
-  void loadPage()
+onMounted(async () => {
+  await loadPage()
+  await applyEventIdDeepLink()
 })
+
+watch(
+  () => route.query.eventId,
+  (eventId, previousEventId) => {
+    if (eventId === previousEventId) {
+      return
+    }
+    if (typeof eventId === 'string' && eventId) {
+      void applyEventIdDeepLink()
+    }
+  },
+)
 </script>
 
 <template>
@@ -356,7 +409,9 @@ onMounted(() => {
         <div class="mb-4 space-y-2 text-sm">
           <div>触发：{{ triggerLabel(detail.triggerType) }} · {{ detail.triggerSource }}</div>
           <div>原因：{{ detail.triggerReason }}</div>
+          <div>字段：{{ detail.fieldLabel || detail.fieldCode || '—' }}（{{ detail.fieldCode || '—' }}）</div>
           <div>变更：{{ detail.beforeValue || '空' }} → {{ detail.afterValue || '空' }}</div>
+          <div v-if="detail.dataSourceCode">数据源：{{ detail.dataSourceCode }}</div>
           <div>
             状态：
             <UiTag :tone="statusTone(detail.eventStatus)">{{ statusLabel(detail.eventStatus) }}</UiTag>
@@ -375,7 +430,17 @@ onMounted(() => {
           :pagination="false"
           row-key="id"
           size="small"
-        />
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'lifecycleStatus'">
+              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-else-if="!record.lifecycleStatus">-</span>
+            </template>
+          </template>
+        </UiDataTable>
       </template>
     </a-drawer>
 

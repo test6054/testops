@@ -18,6 +18,8 @@ export interface ExamManualSupplementWorkbenchResponse {
   pendingAttentionCount: number
   webSupplementDeviceCount: number
   recentSupplements: ExamManualSupplementRecordItemResponse[]
+  /** MVR-265：主考补录写能力位；与 BE isExamOwner 对齐 */
+  canManageOwnerSupplementWrites?: boolean
 }
 
 export interface ExamManualSupplementCandidatePageQueryRequest extends QueryDto {

@@ -29,12 +29,14 @@
           :ledger="ledger"
           :loading="loadingDetail"
           :balancing="balancing"
+          :can-manage-owner-ledger-writes="canManageOwnerLedgerWrites"
           @balance="handleBalance"
         />
         <DuplicateResolutionCard
           ref="duplicateCardRef"
           :exam-id="selectedExamId"
           :pending-duplicate-count="ledger?.pendingDuplicateCount ?? 0"
+          :can-manage-owner-ledger-writes="canManageOwnerLedgerWrites"
           @resolve="openResolve"
         />
       </WorkbenchSurfaceCard>
@@ -45,6 +47,7 @@
     v-model:open="resolveOpen"
     :exam-id="selectedExamId || ''"
     :resolution="resolveTarget"
+    :can-manage-owner-ledger-writes="canManageOwnerLedgerWrites"
     @submitted="onChildSubmitted"
   />
 </template>
@@ -82,7 +85,7 @@ import LedgerSummaryCard from './image-ledger/LedgerSummaryCard.vue'
 
 defineOptions({ name: 'TeacherImageLedger' })
 
-const { selectedExamId } = useMarkExamContext()
+const { selectedExamId, selectedExam } = useMarkExamContext()
 const router = useRouter()
 const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('影像账本')
 const { refreshSnapshot } = useWorkspaceExamId()
@@ -91,6 +94,11 @@ const ledger = ref<ImageLedgerDetailResponse | null>(null)
 const duplicateCardRef = ref<InstanceType<typeof DuplicateResolutionCard> | null>(null)
 const loadingDetail = ref(false)
 const balancing = ref(false)
+
+/** MVR-264/324：仅认 BE canManageOwnerLedgerWrites===true；禁止缺省回退 isExamOwner */
+const canManageOwnerLedgerWrites = computed(
+  () => ledger.value?.canManageOwnerLedgerWrites === true,
+)
 
 const ledgerSignalMetrics = computed((): SignalMetric[] => {
   const data = ledger.value
@@ -160,6 +168,9 @@ async function loadAll(): Promise<void> {
 
 async function handleBalance(): Promise<void> {
   if (!selectedExamId.value) return
+  if (!canManageOwnerLedgerWrites.value) {
+    return
+  }
   if (balancing.value) {
     return
   }
@@ -196,6 +207,9 @@ const resolveOpen = ref(false)
 const resolveTarget = ref<ExamPaperDuplicateResolutionVO | null>(null)
 
 function openResolve(record: ExamPaperDuplicateResolutionVO): void {
+  if (!canManageOwnerLedgerWrites.value) {
+    return
+  }
   resolveTarget.value = record
   resolveOpen.value = true
 }

@@ -175,6 +175,7 @@ import type { StudentExamItemVO, StudentExamStatsResponse } from '@/apis/mark/st
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -443,6 +444,11 @@ function handleExamScoreAction(key: string, record: StudentExamItemVO): void {
   if (key === 'detail') {
     goDetail(record.examId)
   } else if (key === 'appeal') {
+    // MVR-320：与 canSubmitReview / BE canSubmitReviewRequest 二次拦截
+    if (!canSubmitReview(record)) {
+      message.warning('当前暂不能提交复核申请')
+      return
+    }
     goAppeal(record.examId)
   }
 }
@@ -452,6 +458,15 @@ function goDetail(examId: string) {
 }
 
 function goAppeal(examId: string) {
+  // MVR-320：若本地已有列表/最新成绩缓存，二次认 canSubmitReview
+  const cached
+    = (latestPublished.value?.examId === examId ? latestPublished.value : null)
+      ?? rows.value.find((e) => e.examId === examId)
+      ?? publishedTopExams.value.find((e) => e.examId === examId)
+  if (cached && !canSubmitReview(cached)) {
+    message.warning('当前暂不能提交复核申请')
+    return
+  }
   router.push({ name: 'StudentAppeal', query: { examId } })
 }
 

@@ -2,7 +2,14 @@
   <WorkbenchSurfaceCard flush class="appeal-section">
     <template #head>
       <div class="appeal-section__header">
-        <UiButton size="sm" variant="primary" @click="openCreateModal"> 新建纠正 </UiButton>
+        <UiButton
+          v-if="canManageReviewerWrites"
+          size="sm"
+          variant="primary"
+          @click="openCreateModal"
+        >
+          新建纠正
+        </UiButton>
       </div>
     </template>
 
@@ -152,6 +159,7 @@ import { useRouter } from 'vue-router'
 import {
   computeSingleQuestionCorrectionCompositeTotal,
   createCorrection,
+  getReviewSummary,
   GradeReviewRequestStatusCode,
   isMakeupCap60SingleQuestionCorrectionExceeded,
   listCorrections,
@@ -173,6 +181,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useUserStore } from '@/stores/modules/user'
 import { ExamScorePolicyCode } from '@/types/enums/exam-score-policy-enum'
 import { FinalScoreStatusCode } from '@/types/enums/final-score-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -186,6 +195,11 @@ const props = defineProps<{
   scorePolicy?: ExamScorePolicyCode
 }>()
 const emit = defineEmits<{ (e: 'created'): void }>()
+const userStore = useUserStore()
+const currentUserId = computed(() => userStore.userInfo.userId || '')
+
+/** MVR-279：默认拒绝假可写；仅 BE summary.canManageReviewerWrites 为 true 时可新建更正 */
+const canManageReviewerWrites = ref(false)
 const router = useRouter()
 
 const APPROVED_REVIEW_REQUEST_PAGE_SIZE = 20
@@ -271,10 +285,10 @@ function cacheReviewRequests(requests: GradeReviewRequestItemResponse[]): void {
 
 /** 撤回/已确认/已发布/已更正卷可执行成绩更正；CALCULATED/PENDING 不可改官方分。 */
 function isFinalScoreCorrectable(request: GradeReviewRequestItemResponse): boolean {
+  // MVR-321：禁止缺省 finalScoreStatus 时放行假可更正；仅认 BE 下发终态
   const status = request.finalScoreStatus
   if (!status) {
-    // 兼容旧后端未回填状态：交由服务端门禁裁决
-    return true
+    return false
   }
   return (
     status === FinalScoreStatusCode.CONFIRMED
@@ -284,10 +298,21 @@ function isFinalScoreCorrectable(request: GradeReviewRequestItemResponse): boole
   )
 }
 
+/** MVR-194/208：与 BE assertGradeReviewOperatorSeparatedFromStudent 同源 */
+function isGradeReviewApplicantSelf(request: GradeReviewRequestItemResponse): boolean {
+  return Boolean(
+    currentUserId.value
+    && request.studentUserId
+    && String(request.studentUserId) === String(currentUserId.value),
+  )
+}
+
 function filterCorrectableReviewRequests(
   requests: GradeReviewRequestItemResponse[],
 ): GradeReviewRequestItemResponse[] {
-  return requests.filter((request) => isFinalScoreCorrectable(request))
+  return requests.filter(
+    (request) => isFinalScoreCorrectable(request) && !isGradeReviewApplicantSelf(request),
+  )
 }
 
 const selectedReviewQuestionOptions = computed(
@@ -351,6 +376,10 @@ const totalCorrectionScoreMax = computed(() =>
 )
 
 async function openCreateModal(): Promise<void> {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无成绩更正写权限')
+    return
+  }
   form.layoutQuestionId = ''
   form.afterScore = 0
   form.reason = ''
@@ -412,9 +441,19 @@ function onReviewRequestSearch(keyword: string): void {
 }
 
 async function reload(): Promise<void> {
-  if (!props.examId) return
+  if (!props.examId) {
+    canManageReviewerWrites.value = false
+    return
+  }
   loading.value = true
   try {
+    // MVR-279：汇总下发写能力位，与新建纠正按钮闸对齐
+    try {
+      const summary = await getReviewSummary(props.examId)
+      canManageReviewerWrites.value = summary.canManageReviewerWrites === true
+    } catch {
+      canManageReviewerWrites.value = false
+    }
     const keyword = filterForm.keyword.trim() || undefined
     const result = await listCorrections({
       examId: props.examId,
@@ -462,6 +501,11 @@ function handleReviewRequestChange(): void {
 }
 
 async function submit(): Promise<void> {
+  // MVR-318：成绩更正写权限前置，避免仅靠表单校验后拦截
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无成绩更正写权限')
+    return
+  }
   const request = selectedReviewRequest.value
   if (!request) {
     showFormValidationMessage('请选择已通过的复核申请')
@@ -469,6 +513,11 @@ async function submit(): Promise<void> {
   }
   if (!isFinalScoreCorrectable(request)) {
     message.warning('当前卷成绩状态不允许更正（仅已确认/已发布/已更正/已撤回待重发可更正）')
+    return
+  }
+  // MVR-208：申请人不得对本人复核申请执行成绩更正
+  if (isGradeReviewApplicantSelf(request)) {
+    message.warning('不能对本人的复核申请执行成绩更正，请由其他教师处理')
     return
   }
   if (!form.reason.trim()) {

@@ -117,6 +117,14 @@ const handleClick = (evt: MouseEvent) => {
 
 .ui-metric-card--clickable:hover {
   border-color: color-mix(in srgb, var(--metric-text) 20%, var(--dp-border));
+  box-shadow: var(--dp-shadow-sm);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-metric-card--clickable:hover {
+    transform: none;
+  }
 }
 
 .ui-metric-card--compact {

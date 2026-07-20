@@ -342,7 +342,11 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 defineOptions({ name: 'TeacherReviewProgress' })
 
 const route = useRoute()
-const { selectedExamId } = useMarkExamContext()
+const { selectedExamId, selectedExam } = useMarkExamContext()
+/** MVR-289：默认拒绝假可写；与 BE requireExamReviewerPermission 对齐 */
+const canManageReviewerWrites = computed(
+  () => selectedExam.value?.canManageReviewerWrites === true,
+)
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 
 const successColor = toneToColor('green')
@@ -402,6 +406,7 @@ function processingTaskStatusTone(value: TaskStatusCode) {
 }
 
 function canRetryPaperGrade(record: ExamProcessingTaskItemResponse): boolean {
+  if (!canManageReviewerWrites.value) return false
   if (!record.paperInstanceId) return false
   if (
     record.taskType !== ProcessingTaskTypeCode.SUBJECTIVE_AI_REVIEW
@@ -484,6 +489,10 @@ function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: 
 
 async function retryPaperGradeForTask(record: ExamProcessingTaskItemResponse): Promise<void> {
   if (retryingPaperInstanceId.value || !selectedExamId.value || !record.paperInstanceId) return
+  if (!canManageReviewerWrites.value) {
+    message.warning('仅本场阅卷组织成员、主考或管理员可重试整卷 AI 批阅')
+    return
+  }
   retryingPaperInstanceId.value = record.paperInstanceId
   try {
     await retryPaperGradeSuggestion({

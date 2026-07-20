@@ -43,11 +43,11 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
 
     if (placeholder) {
       return [
-        { key: 'active', label: '进行中考试', value: '—', tone: 'gray' },
-        { key: 'marking-progress', label: '阅卷进度', value: '—', tone: 'gray' },
-        { key: 'exceptions', label: '待处理事项', value: '—', tone: 'gray' },
-        { key: 'unpublished', label: '待发布成绩', value: '—', tone: 'gray' },
-        { key: 'scan-attention', label: '扫描关注', value: '—', tone: 'gray' },
+        { key: 'active', label: '进行中考试', value: '—', tone: 'gray', iconTone: 'gray' },
+        { key: 'marking-progress', label: '阅卷进度', value: '—', tone: 'gray', iconTone: 'gray' },
+        { key: 'exceptions', label: '待处理事项', value: '—', tone: 'gray', iconTone: 'gray' },
+        { key: 'unpublished', label: '待发布成绩', value: '—', tone: 'gray', iconTone: 'gray' },
+        { key: 'scan-attention', label: '扫描关注', value: '—', tone: 'gray', iconTone: 'gray' },
       ]
     }
 
@@ -69,6 +69,8 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: activeExamCount,
         unit: '场',
         tone: activeExamCount > 0 ? 'blue' : 'gray',
+        iconTone: activeExamCount > 0 ? 'blue' : 'gray',
+        helper: activeExamCount > 0 ? '点击查看进行中列表' : '当前筛选无进行中',
         clickable: true,
       },
       {
@@ -77,6 +79,7 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: markingPercent,
         unit: '%',
         tone: totalQuestions > 0 ? 'blue' : 'gray',
+        iconTone: totalQuestions > 0 ? 'blue' : 'gray',
         trendPolarity: 'positive',
         helper:
           totalQuestions > 0
@@ -91,6 +94,8 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: pendingTodoRowCount,
         unit: '项',
         tone: pendingTodoRowCount > 0 ? 'red' : 'gray',
+        iconTone: pendingTodoRowCount > 0 ? 'red' : 'gray',
+        helper: pendingTodoRowCount > 0 ? '优先推进阻塞项' : '暂无待办',
         trendPolarity: 'negative',
         clickable: pendingTodoRowCount > 0,
       },
@@ -100,6 +105,8 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: unpublishedCount,
         unit: '份',
         tone: unpublishedCount > 0 ? 'orange' : 'gray',
+        iconTone: unpublishedCount > 0 ? 'orange' : 'gray',
+        helper: unpublishedCount > 0 ? '成绩已确认待发布' : '暂无待发布',
         trendPolarity: 'negative',
         clickable: unpublishedCount > 0,
       },
@@ -109,6 +116,8 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: scanAttentionCount,
         unit: '项',
         tone: scanAttentionCount > 0 ? 'orange' : 'gray',
+        iconTone: scanAttentionCount > 0 ? 'orange' : 'gray',
+        helper: scanAttentionCount > 0 ? '扫描异常待处理' : '扫描状态正常',
         trendPolarity: 'negative',
         clickable: scanAttentionCount > 0,
       },
@@ -121,6 +130,8 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: arbitrationCount,
         unit: '项',
         tone: 'red',
+        iconTone: 'red',
+        helper: '需仲裁确认',
         trendPolarity: 'negative',
         clickable: true,
       })
@@ -133,6 +144,8 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: spotCheckCount,
         unit: '项',
         tone: 'orange',
+        iconTone: 'orange',
+        helper: '抽检队列待处理',
         trendPolarity: 'negative',
         clickable: true,
       })
@@ -149,6 +162,8 @@ export function useMarkingOverviewSignals(options: UseMarkingOverviewSignalsOpti
         value: filterContext?.filteredExamCount ?? 0,
         unit: '场',
         tone: 'gray',
+        iconTone: 'gray',
+        helper: '当前筛选范围内',
         clickable: true,
       }
     }

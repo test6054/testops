@@ -83,8 +83,8 @@
   --dp-type-context-line-height: 18px;
   --dp-type-context-weight: 400;
 
-  --dp-type-h1-size: 18px;
-  --dp-type-h1-line-height: 26px;
+  --dp-type-h1-size: 20px;
+  --dp-type-h1-line-height: 28px;
   --dp-type-h1-weight: 600;
 
   --dp-type-table-body-size: 13px;
@@ -100,8 +100,8 @@
   --dp-type-hint-weight: 400;
 
   /* KPI / 大数字角色字阶 */
-  --dp-type-metric-size: 24px;
-  --dp-type-metric-line-height: 32px;
+  --dp-type-metric-size: 28px;
+  --dp-type-metric-line-height: 36px;
   --dp-type-metric-weight: var(--dp-font-weight-metric);
 
   /* 标签角色字阶（表单 label、卡片副标题、元信息 key） */
@@ -137,11 +137,15 @@
   --dp-chart-height-sm: 200px;
   --dp-chart-empty-min-height: 180px;
 
-  --dp-bg-muted: var(--ant-color-bg-layout);
+  /* SaaS 画布：略冷灰，与白 panel 形成清晰层级 */
+  --dp-bg-muted: #f0f2f5;
   --dp-surface: var(--ant-color-bg-container);
   --dp-surface-subtle: var(--ant-color-fill-quaternary);
   /* 可感知 elevated：略深于白底，打破 head/toolbar 与 body 白对白 */
   --dp-surface-elevated: #f6f8fb;
+  /* Brand 面氛围光（仅登录/公开；禁止 Trust 沉浸滥用） */
+  --dp-brand-glow-primary: color-mix(in srgb, var(--dp-blue-500) 18%, transparent);
+  --dp-brand-glow-soft: color-mix(in srgb, var(--dp-blue-500) 8%, transparent);
   --dp-bg-control: var(--ant-color-fill-tertiary);
   --dp-bg-control-disabled: var(--ant-color-fill-quaternary);
   --dp-bg-button-disabled: var(--ant-color-fill-tertiary);
@@ -164,12 +168,12 @@
   --dp-button-height-md: 36px;
   --dp-button-height-lg: 40px;
 
-  /* xs：面板抬升；略加强以区分灰画布上的白板 */
-  --dp-shadow-xs: 0 1px 3px rgba(15, 23, 42, 0.055);
-  --dp-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.07);
+  /* SaaS 面板抬升：灰画布上的白板更清晰 */
+  --dp-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 4px rgba(15, 23, 42, 0.04);
+  --dp-shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
   --dp-shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
-  --dp-shadow-card: 0 10px 30px rgba(15, 23, 42, 0.06);
-  --dp-shadow-card-hover: 0 16px 36px rgba(15, 23, 42, 0.08);
+  --dp-shadow-card: 0 8px 24px rgba(15, 23, 42, 0.06);
+  --dp-shadow-card-hover: 0 12px 28px rgba(15, 23, 42, 0.08);
   --dp-shadow-soft: 0 6px 16px rgba(15, 23, 42, 0.05);
   --dp-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
   --dp-shadow-dropdown: 0 18px 40px rgba(15, 23, 42, 0.12);

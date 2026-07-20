@@ -27,6 +27,8 @@ import ArchiveVolumeSubmitTaskList from '@/views/teacher/archive-volume/componen
 const props = defineProps<{
   open: boolean
   volumeId: string
+  /** MVR-305：与 capabilities.canSelfCheck 对齐 */
+  canConfirmSelfCheck?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -142,6 +144,11 @@ function close() {
 
 async function handleConfirm() {
   if (submitting.value) return
+  // MVR-305：权限闸优先于表单就绪 canConfirm
+  if (props.canConfirmSelfCheck !== true) {
+    message.warning('当前账号无提交前自查确认权限')
+    return
+  }
   if (!canConfirm.value) return
   if (!checklist.value?.checklistVersion) {
     message.error('清单版本缺失，请重新打开')
@@ -245,7 +252,7 @@ async function handleConfirm() {
     </template>
     <template #footer>
       <UiButton size="sm" variant="outline" @click="close">取消</UiButton>
-      <UiButton size="sm" variant="primary" :loading="submitting" :disabled="loading || loadFailed || !canConfirm" @click="handleConfirm">
+      <UiButton size="sm" variant="primary" :loading="submitting" :disabled="loading || loadFailed || !canConfirm || canConfirmSelfCheck !== true" @click="handleConfirm">
         确认自查
       </UiButton>
     </template>

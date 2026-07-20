@@ -33,6 +33,7 @@
           刷新
         </UiButton>
         <UiButton
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
           :loading="generating"
@@ -60,6 +61,7 @@
           @change="handleClassSelectChange"
         />
         <UiButton
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
           :loading="generating"
@@ -128,7 +130,7 @@ import type {
   TeachingAnalysisRecordResponse,
 } from '@/apis/mark/teaching-analysis'
 import type { MarkClassOption } from '@/composables/useMarkExamRoster'
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   generateClassWeaknessAnalysis,
@@ -142,6 +144,7 @@ import AiWeaknessRow from '@/components/mark/analysis/AiWeaknessRow.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
+import { AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY } from '@/composables/useAiAnalysisScope'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { deriveWeaknessLevel } from '@/utils/ai-analysis-display'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -170,6 +173,16 @@ const emit = defineEmits<{ (e: 'class-change', classId?: string): void }>()
 const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
+
+/** MVR-285：默认拒绝假可写；依赖 AI 分析中心 overview 或页面 provide 的能力位 */
+const injectedCanManageReviewerWrites = inject(
+  AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY,
+  null,
+)
+const canManageReviewerWrites = computed(
+  () => injectedCanManageReviewerWrites?.value === true,
+)
+
 
 const emptyDescription = computed(() =>
   props.classId ? '暂无薄弱题型分析，可点击重新生成' : '请选择班级后查看薄弱题型',
@@ -212,6 +225,10 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
+    return
+  }
   const classId = props.classId
   if (!classId) {
     showFormValidationMessage('请先选择班级')

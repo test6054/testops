@@ -24,10 +24,12 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -47,6 +49,11 @@ function readRouteStringParam(value: unknown): string {
 const route = useRoute()
 const { targetTeacherId, scopeReady } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard()
 const { canPickTeachers, canManageTeacherAi } = usePortfolioTeacherAccess()
 
 const activeTab = ref<'ask' | 'policy'>(
@@ -334,6 +341,9 @@ async function pollAnalysis(taskId: string, taskToken = orchestrationToken.value
 }
 
 async function submitAsk() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('提交 AI 问答'))) {
     return
   }
@@ -392,6 +402,9 @@ async function submitAsk() {
 }
 
 async function submitPolicyCheck() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('提交政策核验'))) {
     return
   }
@@ -528,6 +541,13 @@ usePortfolioScopedLoader(
         subtitle="材料须先登记材料库，再提交智能问数或政策核验编排任务"
       />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
     <template v-else>
       <UiCard title="材料上下文">

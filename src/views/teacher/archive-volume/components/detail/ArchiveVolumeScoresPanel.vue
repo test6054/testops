@@ -1,5 +1,5 @@
 <template>
-  <WorkbenchSurfaceCard flush class="archive-volume-scores-panel">
+  <WorkbenchSurfaceCard flush embedded class="archive-volume-scores-panel">
     <template #head>
       <div class="archive-volume-scores-panel__head">
         <h3 class="archive-volume-scores-panel__title">成绩完成度确认</h3>
@@ -258,6 +258,11 @@ async function loadExamGate() {
 
 async function handleConfirmScoreCompletion() {
   if (!props.volumeId || scoreConfirmSubmitting.value) {
+    return
+  }
+  // MVR-299：与工具栏 canConfirmScoreCompletion 同源二次拦截
+  if (props.canConfirmScoreCompletion !== true) {
+    message.warning('当前账号无成绩完成确认权限')
     return
   }
   scoreConfirmSubmitting.value = true

@@ -4,7 +4,7 @@
       <ContextBar
         layout="workbench"
         show-title
-        title="课程考核归档任务"
+        title="课程考核归档"
         :subtitle="contextBarSubtitle"
       >
         <template #status>
@@ -12,19 +12,18 @@
         </template>
         <template #actions>
           <UiButton variant="primary" size="sm" @click="goCreateArchiveTask">
-            新建归档任务
+            新建课程考核袋
           </UiButton>
-          <UiButton v-if="canViewGlobalAudit" variant="outline" size="sm" @click="goAudit">
-            审计查询
+          <UiButton variant="outline" size="sm" @click="goCreateHistorySupplement">
+            历史补录
           </UiButton>
-          <UiButton
-            v-if="canViewArchiveDepartmentQueue"
-            variant="outline"
-            size="sm"
-            @click="goSuspectedMixedScan"
-          >
-            {{ suspectedMixedScanButtonLabel }}
-          </UiButton>
+          <UiDropdownAction
+            v-if="listMoreActionItems.length"
+            trigger-style="button"
+            button-text="更多"
+            :items="listMoreActionItems"
+            @select="onListMoreAction"
+          />
         </template>
       </ContextBar>
     </template>
@@ -32,7 +31,6 @@
     <template v-if="showSignalBand" #signal>
       <SignalBand
         :metrics="activeSignalMetrics"
-        compact
         variant="panel"
         @metric-click="handleSignalMetricClick"
       />
@@ -45,6 +43,43 @@
         :load-failed="archiveSetupReadinessLoadFailed"
         @retry="loadArchiveSetupReadiness"
       />
+
+      <UiAlertStrip
+        v-if="s1TipVisible"
+        class="archive-volume-list__s1-tip"
+        :tone="s1TipTone"
+        :title="s1TipTitle"
+        :description="s1TipDescription"
+        dense
+      >
+        <template #actions>
+          <UiButton
+            v-if="s1PrimaryActionLabel"
+            size="sm"
+            :variant="s1TipTone === 'warning' ? 'primary' : 'outline'"
+            @click="goS1PrimaryAction"
+          >
+            {{ s1PrimaryActionLabel }}
+          </UiButton>
+          <UiButton
+            v-if="s1ShowExamListSecondary"
+            size="sm"
+            variant="outline"
+            @click="goExamListForArchive"
+          >
+            考试列表
+          </UiButton>
+          <UiButton
+            v-if="s1AttentionLoadFailed"
+            size="sm"
+            variant="outline"
+            :loading="s1AttentionLoading"
+            @click="loadS1AutoCreateAttention"
+          >
+            重试
+          </UiButton>
+        </template>
+      </UiAlertStrip>
 
       <UiSectionTabs
         v-if="showRoleTabs"
@@ -69,11 +104,11 @@
       >
         <template #toolbar>
           <UiBatchActionBar
-            v-if="listTab === 'college' && selectedVolumeIds.length > 0 && canRejectTransfer"
+            v-if="listTab === 'college' && selectedVolumeIds.length > 0 && canRejectAnyOnPage"
             :selected-count="selectedVolumeIds.length"
             class="archive-volume-list__batch"
           >
-            <UiButton v-if="canRejectTransfer" size="sm" variant="outline" @click="openBatchReject">
+            <UiButton v-if="canRejectAnyOnPage" size="sm" variant="outline" @click="openBatchReject">
               批量退回
             </UiButton>
           </UiBatchActionBar>
@@ -88,25 +123,6 @@
               @search="handleSearch"
               @reset="handleReset"
             />
-          </div>
-
-          <div v-if="showVolumeFilter" class="archive-volume-list__filter-actions">
-            <UiButton
-              v-if="hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR)"
-              size="sm"
-              variant="outline"
-              @click="importDrawerOpen = true"
-            >
-              外部导入
-            </UiButton>
-            <UiButton
-              v-if="canViewStatisticsKpi || canViewDestructionLedger"
-              size="sm"
-              variant="outline"
-              @click="goStatistics"
-            >
-              统计与清册
-            </UiButton>
           </div>
 
           <div v-if="archiveListQuickFilter" class="archive-volume-list__quick-filter">
@@ -293,14 +309,6 @@
       @completed="handleDeptReviewDrawerCompleted"
       @open-detail="goDetailWithTab"
     />
-
-    <UiDrawer v-model:open="importDrawerOpen" title="外部批量导入" width="580">
-      <ArchiveVolumeExternalImportPanel @imported="handleImportCompleted" />
-      <ArchiveVolumeHistoryImportPanel
-        class="archive-volume-list__history-import"
-        @imported="handleImportCompleted"
-      />
-    </UiDrawer>
   </StageWorkbenchShell>
 </template>
 
@@ -322,7 +330,6 @@ import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import {
   ARCHIVE_VOLUME_SOURCE_TYPE_OPTIONS,
   ARCHIVE_VOLUME_SOURCE_TYPE_TONE,
@@ -347,9 +354,11 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiBatchActionBar from '@/components/ui-guide/ui/UiBatchActionBar.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
@@ -360,6 +369,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
+import { useArchiveS1AutoCreateAttention } from '@/composables/useArchiveS1AutoCreateAttention'
 import { resolveSubmitChecklistRoute } from '@/composables/useArchiveSubmitChecklistRouter'
 import { useArchiveTenantSetupReadiness } from '@/composables/useArchiveTenantSetupReadiness'
 import { useArchiveVolumeFilterPresets } from '@/composables/useArchiveVolumeFilterPresets'
@@ -390,8 +400,6 @@ import {
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import ArchiveVolumeExternalImportPanel from '@/views/teacher/archive-volume/archive-volume-external-import-panel.vue'
-import ArchiveVolumeHistoryImportPanel from '@/views/teacher/archive-volume/archive-volume-history-import-panel.vue'
 import ArchiveVolumeRemediationPanel from '@/views/teacher/archive-volume/archive-volume-remediation-panel.vue'
 import ArchiveVolumeSupervisionPanel from '@/views/teacher/archive-volume/archive-volume-supervision-panel.vue'
 import ArchiveSetupGuideBanner from '@/views/teacher/archive-volume/components/ArchiveSetupGuideBanner.vue'
@@ -433,14 +441,10 @@ const {
   canViewCollegeBoard,
   canViewArchiveReviewer,
   canViewSupervision,
-  canRejectTransfer,
   canViewStatisticsKpi,
   canViewGlobalAudit,
   canViewDestructionLedger,
   canViewArchiveDepartmentQueue,
-  canRemindArchiveDue,
-  hasDuty,
-  hasDutyForDepartment,
   isDepartmentArchivistOnly,
   grants,
   loadGrants,
@@ -471,11 +475,27 @@ const requestingDepartmentReviewVolumeId = ref<string | null>(null)
 const remindingVolumeId = ref<string | null>(null)
 const deptReviewDrawerOpen = ref(false)
 const deptReviewVolumeId = ref<string | null>(null)
-const importDrawerOpen = ref(false)
 const batchRejectReason = ref('')
 const volumes = ref<ArchiveVolumeResponse[]>([])
+
+// MVR-333/343/352：仅认 BE 列表行 canRejectTransfer===true（职责+待验收+双人制）；禁止全局 hasDuty 假可写
+// isTransferSubmitterSelf 为 FE 防御叠闸，与 BE applyVolumePageTransferRejectDualControl 同源
+const canRejectAnyOnPage = computed(() =>
+  volumes.value.some((row) => rowCanRejectTransfer(row) && !isTransferSubmitterSelf(row)),
+)
+
+function rowCanRejectTransfer(row: ArchiveVolumeResponse): boolean {
+  return (
+    row.canRejectTransfer === true
+    && row.volumeStatus === ArchiveVolumeStatusCode.SUBMITTED
+    && row.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
+  )
+}
+
 const openRemediationTasks = ref<ArchiveRemediationTaskResponse[]>([])
 const openRemediationTaskTotal = ref(0)
+// MVR-339：仅认 BE open-stats canViewRemediationTab===true
+const canViewRemediationTabFromStats = ref(false)
 const remediationLoading = ref(false)
 const openRemediationVolumeIdSet = computed(
   () => new Set(openRemediationTasks.value.map((task) => task.volumeId)),
@@ -495,6 +515,20 @@ const kpiDueAppraisalCount = ref<number | string>('—')
 const remediationTabCount = ref(0)
 const suspectedMixedPendingTotal = ref<number | null>(null)
 const listOverviewKpisFailed = ref(false)
+const {
+  loading: s1AttentionLoading,
+  loadFailed: s1AttentionLoadFailed,
+  attentionExamCount: s1AttentionExamCount,
+  tipVisible: s1TipVisible,
+  tipTone: s1TipTone,
+  tipTitle: s1TipTitle,
+  tipDescription: s1TipDescription,
+  primaryActionLabel: s1PrimaryActionLabel,
+  showExamListSecondary: s1ShowExamListSecondary,
+  load: loadS1AutoCreateAttention,
+  goExamList: goExamListForArchive,
+  goPrimaryAction: goS1PrimaryAction,
+} = useArchiveS1AutoCreateAttention()
 const filterExtras = reactive({
   integrityFailedOnly: false,
   archiveOverdueOnly: false,
@@ -541,7 +575,7 @@ const visibleListTabs = computed(() => {
   const tabs: Array<{ key: ListTabKey, label: string, count?: number, badgeTone?: BadgeTone }> = [
     {
       key: 'mine',
-      label: '我的归档任务',
+      label: '我的课程考核袋',
       count: Number(kpiTotalCount.value) > 0 ? Number(kpiTotalCount.value) : undefined,
     },
   ]
@@ -563,7 +597,8 @@ const visibleListTabs = computed(() => {
   if (canViewSupervision.value) {
     tabs.push({ key: 'supervision', label: '督导抽查' })
   }
-  if (canViewCollegeBoard.value || hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)) {
+  // MVR-339：仅认 BE open-stats canViewRemediationTab===true；禁止 hasDuty 回退
+  if (canViewRemediationTabFromStats.value) {
     tabs.push({
       key: 'remediation',
       label: '迎评整改',
@@ -575,7 +610,7 @@ const visibleListTabs = computed(() => {
 })
 
 const currentListTabLabel = computed(() => {
-  return visibleListTabs.value.find((item) => item.key === listTab.value)?.label ?? '归档任务'
+  return visibleListTabs.value.find((item) => item.key === listTab.value)?.label ?? '课程考核袋'
 })
 
 const suspectedMixedScanButtonLabel = computed(() => {
@@ -643,10 +678,14 @@ const archiveQuickFilterLabel = computed(() => {
 
 const emptyDescription = computed(() => {
   if (listTab.value === 'mine' && volumeScope.value === 'mine') {
-    return '尚无我的归档任务，线上考试关考后将自动创建'
+    const attention = s1AttentionExamCount.value
+    if (!s1AttentionLoadFailed.value && attention > 0) {
+      return `有 ${attention} 场线上考试待自动建袋，请先到考试工作台「归档复盘」处理；线下考核请点「新建课程考核袋」`
+    }
+    return '尚无课程考核袋。线上考试关考后将自动建袋；线下考核请点「新建课程考核袋」'
   }
   if (listTab.value === 'mine' && volumeScope.value === 'all') {
-    return '当前筛选无归档任务'
+    return '当前筛选无课程考核袋'
   }
   if (archiveListQuickFilter.value === 'pending-transfer') {
     return '暂无待验收入库任务'
@@ -655,7 +694,7 @@ const emptyDescription = computed(() => {
     return '暂无到期鉴定任务'
   }
   if (archiveListQuickFilter.value === 'overdue') {
-    return '暂无逾期归档任务'
+    return '暂无逾期课程考核袋'
   }
   return '当前筛选无结果'
 })
@@ -712,12 +751,24 @@ function buildListOverviewMetric(
 ): SignalMetric {
   const failed = listOverviewKpisFailed.value
   const isActive = activeArchiveSignalKey.value === key
+  const iconTone
+    = tone === 'green'
+      ? 'green'
+      : tone === 'red'
+        ? 'red'
+        : tone === 'orange'
+          ? 'orange'
+          : tone === 'blue'
+            ? 'blue'
+            : 'gray'
   return {
     key,
     label,
     value: failed ? '—' : value,
     unit: '卷',
     tone,
+    iconTone,
+    helper: failed ? '计数暂不可用' : isActive ? '当前筛选' : '点击筛选',
     clickable:
       !failed && (countForClick > 0 || isActive || (key === 'total' && hasActiveListFilters.value)),
     active: isActive,
@@ -728,7 +779,7 @@ const listOverviewSignalMetrics = computed<SignalMetric[]>(() => {
   const metrics: SignalMetric[] = [
     buildListOverviewMetric(
       'total',
-      '归档任务总数',
+      '课程考核袋总数',
       kpiTotalCount.value,
       'blue',
       Number(kpiTotalCount.value),
@@ -793,7 +844,36 @@ const listOverviewSignalMetrics = computed<SignalMetric[]>(() => {
       ),
     )
   }
-  return metrics.map((metric) => (metric.key === 'missing' ? { ...metric, unit: '项' } : metric))
+
+  // S1 待自动建袋：真源 PENDING+MANUAL_REQUIRED；单位「场」；点击跳考试列表/归档复盘
+  const s1Failed = s1AttentionLoadFailed.value
+  const s1Count = s1AttentionExamCount.value
+  const s1HasAttention = !s1Failed && s1Count > 0
+  metrics.splice(1, 0, {
+    key: 's1AutoCreate',
+    label: '待自动建袋',
+    value: s1Failed ? '—' : s1Count,
+    unit: '场',
+    tone: s1Failed || s1HasAttention ? 'orange' : 'gray',
+    iconTone: s1Failed || s1HasAttention ? 'orange' : 'gray',
+    helper: s1Failed
+      ? '计数暂不可用，点击重试'
+      : s1HasAttention
+        ? '点击前往处理'
+        : '暂无待建袋考试',
+    clickable: s1Failed || s1HasAttention,
+    active: false,
+  })
+
+  return metrics.map((metric) => {
+    if (metric.key === 'missing') {
+      return { ...metric, unit: '项' }
+    }
+    if (metric.key === 's1AutoCreate') {
+      return { ...metric, unit: '场' }
+    }
+    return metric
+  })
 })
 
 const activeSignalMetrics = computed(() => listOverviewSignalMetrics.value)
@@ -812,17 +892,16 @@ const departmentFilterDisabled = computed(
 )
 
 const rowSelection = computed<TableProps['rowSelection']>(() => {
-  if (listTab.value !== 'college' || !canRejectTransfer.value) return undefined
+  if (listTab.value !== 'college' || !canRejectAnyOnPage.value) return undefined
   return {
     selectedRowKeys: selectedVolumeIds.value,
     onChange: (keys: (string | number)[]) => {
       selectedVolumeIds.value = keys.map(String)
     },
     getCheckboxProps: (record: ArchiveVolumeResponse) => ({
-      // MVR-196：与 BE assertTransferApproverSeparatedFromSubmitter 同源，禁止提交人自选
+      // MVR-196/333/343：状态+能力+双人制均收口到 rowCanRejectTransfer / isTransferSubmitterSelf
       disabled:
-        record.volumeStatus !== ArchiveVolumeStatusCode.SUBMITTED
-        || record.transferStatus !== ArchiveTransferStatusCode.PENDING_REVIEW
+        !rowCanRejectTransfer(record)
         || isTransferSubmitterSelf(record),
     }),
   }
@@ -923,14 +1002,25 @@ function isSubmitBlockedByRemediation(record: ArchiveVolumeResponse) {
 }
 
 function shouldRemindVolume(record: ArchiveVolumeResponse) {
-  if (listTab.value !== 'college' || !canRemindArchiveDue.value) return false
+  // MVR-319：与 BE resolveCapabilities.canRemindArchiveDue / requireDepartmentReviewApprovalPermission 同源
+  if (listTab.value !== 'college') {
+    return false
+  }
+  // 禁止兼容回退全局 hasDuty；仅认 BE 列表行级能力位
+  if (record.canRemindArchiveDue !== true) {
+    return false
+  }
   const remindable
     = record.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
       || record.volumeStatus === ArchiveVolumeStatusCode.DRAFT
-      || record.volumeStatus === 'DEPARTMENT_REVIEW_PENDING'
-      || record.volumeStatus === 'DEPARTMENT_REVIEWED'
-  if (!remindable) return false
-  if (!record.archiveDueTime) return false
+      || record.volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
+      || record.volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
+  if (!remindable) {
+    return false
+  }
+  if (!record.archiveDueTime) {
+    return false
+  }
   return (
     isArchiveDueOverdue(record.archiveDueTime)
     || isArchiveDueSoon(record.archiveDueTime, record.archiveDueReminderLeadDays)
@@ -946,9 +1036,10 @@ function buildVolumeActions(record: ArchiveVolumeResponse): UiTableRowActionItem
     {
       key: 'appraisal',
       label: '鉴定',
+      // MVR-329：仅认 BE 行级 canManageAppraisal===true；禁止 hasDutyForDepartment 回退
       hidden:
         record.appraisalStatus !== ArchiveAppraisalStatusCode.REMINDER_SENT
-        || !hasDutyForDepartment(ArchiveDutyTypeCode.ARCHIVE_ADMIN, record.departmentId),
+        || record.canManageAppraisal !== true,
     },
     {
       key: 'remediation',
@@ -994,7 +1085,7 @@ function handleVolumeAction(key: string, record: ArchiveVolumeResponse): void {
       goDetail(record.volumeId)
       break
     case 'appraisal':
-      goAppraisal(record.volumeId)
+      goAppraisal(record)
       break
     case 'remediation':
       goRemediationVolumeByVolumeId(record.volumeId)
@@ -1003,6 +1094,11 @@ function handleVolumeAction(key: string, record: ArchiveVolumeResponse): void {
       void requestDepartmentReviewFromList(record)
       break
     case 'dept-audit':
+      // MVR-379：与行级 canApproveDepartmentReview / 抽屉 canApprove 二次拦截
+      if (record.canApproveDepartmentReview !== true) {
+        message.warning('当前账号不可进行院系审核')
+        return
+      }
       openDeptReviewDrawer(record.volumeId)
       break
     case 'dept-withdraw':
@@ -1155,19 +1251,14 @@ async function loadListOverviewKpis(): Promise<void> {
 }
 
 async function loadRemediationTabCount(): Promise<void> {
-  if (
-    !canViewCollegeBoard.value
-    && !canViewSupervision.value
-    && !hasDuty(ArchiveDutyTypeCode.ARCHIVE_ADMIN)
-  ) {
-    remediationTabCount.value = 0
-    return
-  }
   try {
     const stats = await getOpenRemediationStats()
     remediationTabCount.value = stats.openTaskCount
+    // MVR-339：Tab 显隐与创建能力改由 BE stats 下发
+    canViewRemediationTabFromStats.value = stats.canViewRemediationTab === true
   } catch (error) {
     remediationTabCount.value = 0
+    canViewRemediationTabFromStats.value = false
     showUserError(error, '待整改任务数加载失败')
   }
 }
@@ -1293,9 +1384,10 @@ async function loadVolumes() {
     listLoadFailed.value = false
     if (showVolumeListPanel.value) {
       void loadListOverviewKpis()
+      void loadS1AutoCreateAttention()
     }
   } catch (error) {
-    showUserError(error, '加载归档任务列表失败')
+    showUserError(error, '加载课程考核袋列表失败')
     listLoadFailed.value = true
     selectedVolumeIds.value = []
   } finally {
@@ -1325,10 +1417,6 @@ function handleSearch() {
   void loadVolumes()
 }
 
-function handleImportCompleted() {
-  void loadVolumes()
-  void loadListOverviewKpis()
-}
 
 function clearArchiveQuickFilter() {
   archiveListQuickFilter.value = null
@@ -1362,18 +1450,23 @@ function handleReset() {
 }
 
 function openBatchReject() {
-  // MVR-196：批量退回前剔除本人提交的待验收卷，避免假可写
+  // MVR-333：与行级 canRejectTransfer 同源二次拦截
+  if (!canRejectAnyOnPage.value) {
+    message.warning('当前账号无移交退回权限')
+    return
+  }
+  // MVR-196/333：批量退回前剔除本人提交或无行级退回权的卷
   const selectableIds = selectedVolumeIds.value.filter((volumeId) => {
     const row = volumes.value.find((item) => item.volumeId === volumeId)
-    return row != null && !isTransferSubmitterSelf(row)
+    return row != null && rowCanRejectTransfer(row) && !isTransferSubmitterSelf(row)
   })
   if (selectableIds.length === 0) {
-    message.warning('所选卷均为本人提交的移交，不能自驳，请改选他人提交的卷')
+    message.warning('所选卷均不可退回（无权限或本人提交），请改选')
     return
   }
   if (selectableIds.length !== selectedVolumeIds.value.length) {
     message.warning(
-      `已排除 ${selectedVolumeIds.value.length - selectableIds.length} 条本人提交的移交`,
+      `已排除 ${selectedVolumeIds.value.length - selectableIds.length} 条不可退回的卷`,
     )
     selectedVolumeIds.value = selectableIds
   }
@@ -1383,12 +1476,27 @@ function openBatchReject() {
 
 async function submitBatchReject() {
   if (batchRejecting.value) return
+  // MVR-333：与行级 canRejectTransfer 同源二次拦截
+  if (!canRejectAnyOnPage.value) {
+    message.warning('当前账号无移交退回权限')
+    return
+  }
+  // 提交前再过滤无行级权或本人提交的卷
+  const selectableIds = selectedVolumeIds.value.filter((volumeId) => {
+    const row = volumes.value.find((item) => item.volumeId === volumeId)
+    return row != null && rowCanRejectTransfer(row) && !isTransferSubmitterSelf(row)
+  })
+  if (selectableIds.length === 0) {
+    message.warning('所选卷不可退回，请重新选择')
+    return
+  }
+  selectedVolumeIds.value = selectableIds
   if (!batchRejectReason.value.trim()) {
     showFormValidationMessage('请填写退回原因')
     return
   }
   if (selectedVolumeIds.value.length === 0) {
-    showFormValidationMessage('请选择归档任务')
+    showFormValidationMessage('请选择课程考核袋')
     return
   }
   batchRejecting.value = true
@@ -1448,10 +1556,19 @@ function goDetailWithSubmitIntent(volumeId: string) {
   })
 }
 
-function goAppraisal(volumeId: string): void {
+function goAppraisal(record: ArchiveVolumeResponse): void {
+  // MVR-329：与 buildVolumeActions / BE canManageAppraisal 二次拦截
+  if (record.canManageAppraisal !== true) {
+    message.warning('仅本卷所属院系档案管理员可进入鉴定')
+    return
+  }
+  if (record.appraisalStatus !== ArchiveAppraisalStatusCode.REMINDER_SENT) {
+    message.warning('当前鉴定状态不可从列表进入鉴定')
+    return
+  }
   void router.push({
     name: 'TeacherArchiveVolumeDetail',
-    params: { volumeId },
+    params: { volumeId: record.volumeId },
     query: { tab: 'appraisal' },
   })
 }
@@ -1496,6 +1613,11 @@ async function requestDepartmentReviewFromList(record: ArchiveVolumeResponse) {
   if (requestingDepartmentReviewVolumeId.value) {
     return
   }
+  // MVR-307：与行级 canRequestDepartmentReview 同源二次拦截
+  if (record.canRequestDepartmentReview !== true) {
+    message.warning('当前账号无发起院系审核权限')
+    return
+  }
   const confirmed = await confirmAsync({
     title: '发起院系审核？',
     content: '发起后系统会停止在途归档扫描并冻结材料补录，审核退回或主动撤回后才能继续补件。',
@@ -1533,6 +1655,11 @@ async function goDetailForSubmitBlocker(volumeId: string) {
 
 async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
   if (withdrawingVolumeId.value) return
+  // MVR-307：与行级 canWithdrawDepartmentReview 同源二次拦截
+  if (record.canWithdrawDepartmentReview !== true) {
+    message.warning('当前账号无撤回院系审核权限')
+    return
+  }
   const confirmed = await confirmAsync({
     title: '撤回院系审核？',
     content: '撤回后归档卷回到材料收集状态，原审核通过结果失效；补件完成后需要重新发起院系审核。',
@@ -1553,6 +1680,11 @@ async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
 }
 
 function remindVolume(record: ArchiveVolumeResponse) {
+  // MVR-319：与 shouldRemindVolume / BE requireDepartmentReviewApprovalPermission 二次拦截
+  if (!shouldRemindVolume(record)) {
+    message.warning('当前账号不可催办该归档卷')
+    return
+  }
   if (remindingVolumeId.value) {
     return
   }
@@ -1605,8 +1737,46 @@ function goSuspectedMixedScan() {
   void router.push({ name: 'TeacherArchiveVolumeSuspectedMixedScan' })
 }
 
+const listMoreActionItems = computed(() => {
+  const items: Array<{ key: string, label: string }> = []
+  if (canViewStatisticsKpi.value || canViewDestructionLedger.value) {
+    items.push({ key: 'statistics', label: '统计与清册' })
+  }
+  if (canViewGlobalAudit.value) {
+    items.push({ key: 'audit', label: '审计查询' })
+  }
+  if (canViewArchiveDepartmentQueue.value) {
+    items.push({ key: 'mixed-scan', label: suspectedMixedScanButtonLabel.value })
+  }
+  return items
+})
+
+function onListMoreAction(key: string): void {
+  if (key === 'statistics') {
+    goStatistics()
+    return
+  }
+  if (key === 'audit') {
+    goAudit()
+    return
+  }
+  if (key === 'mixed-scan') {
+    goSuspectedMixedScan()
+  }
+}
+
 function goCreateArchiveTask() {
-  void router.push({ name: 'TeacherCreateArchiveTask' })
+  void router.push({
+    name: 'TeacherCreateArchiveTask',
+    query: { provenance: 'CURRENT_TERM_OFFLINE' },
+  })
+}
+
+function goCreateHistorySupplement() {
+  void router.push({
+    name: 'TeacherCreateArchiveTask',
+    query: { provenance: 'HISTORICAL_DIGITIZE' },
+  })
 }
 
 function clearArchiveListStatusFilters() {
@@ -1627,6 +1797,18 @@ function reloadArchiveListAfterSignalFilter() {
 }
 
 function handleSignalMetricClick(key: string) {
+  if (key === 's1AutoCreate') {
+    if (s1AttentionLoadFailed.value) {
+      void loadS1AutoCreateAttention()
+      return
+    }
+    if (s1AttentionExamCount.value <= 0) {
+      return
+    }
+    goS1PrimaryAction()
+    return
+  }
+
   pagination.pageNum = 1
   selectedVolumeIds.value = []
 
@@ -1785,19 +1967,15 @@ onMounted(async () => {
   // loadSuspectedMixedPendingTotal 内会 loadGrants，避免与 initPage 并行重复弹错
   void loadSuspectedMixedPendingTotal()
   applyRouteQuery()
-  if (route.query.openHistoryImport === '1') {
-    importDrawerOpen.value = true
-    const nextQuery: LocationQueryRaw = { ...route.query }
-    delete nextQuery.openHistoryImport
-    void router.replace({ query: nextQuery })
-  }
   if (listTab.value === 'mine' && volumeScope.value === 'mine') {
     await loadOpenRemediationTasks()
   }
   if (showVolumeListPanel.value) {
     await loadVolumes()
-    await loadListOverviewKpis()
+    await Promise.all([loadListOverviewKpis(), loadS1AutoCreateAttention()])
     await loadRemediationTabCount()
+  } else {
+    void loadS1AutoCreateAttention()
   }
 })
 </script>
@@ -1872,11 +2050,6 @@ onMounted(async () => {
   font-weight: 600;
 }
 
-.archive-volume-list__history-import {
-  margin-top: var(--dp-space-4);
-  padding-top: var(--dp-space-4);
-  border-top: 1px solid var(--dp-border-light);
-}
 
 :deep(.archive-volume-list__table) {
   .ant-table-tbody > tr.archive-volume-list__row--error > td {

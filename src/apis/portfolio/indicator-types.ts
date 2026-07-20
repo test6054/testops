@@ -398,7 +398,14 @@ export interface PortfolioIndicatorComputeLogVO {
   auditRequired?: boolean
   explainText?: string
   computedTime?: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
+
 
 export interface PortfolioTenantConfigAuditLogVO {
   id: string
@@ -418,7 +425,14 @@ export interface PortfolioEligibilityEvalLogVO {
   eligible?: boolean
   explainText?: string
   evaluatedTime?: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
+
 
 export interface PortfolioTenantSceneIndicatorItem {
   indicatorCode: string
@@ -555,7 +569,14 @@ export interface PortfolioIndicatorAutoCollectSummaryResponse {
   teacherId: string
   collectedCount: number
   skippedCount: number
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
+
 
 export interface PortfolioIndicatorAutoCollectPageRequest extends QueryDto {
   teacherId: string

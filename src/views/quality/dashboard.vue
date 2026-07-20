@@ -906,11 +906,21 @@ function handleTodoAction(key: string) {
     background: var(--dp-surface-elevated);
     transition:
       border-color var(--dp-duration-normal) ease,
-      background var(--dp-duration-normal) ease;
+      background var(--dp-duration-normal) ease,
+      box-shadow var(--dp-duration-normal) ease,
+      transform var(--dp-duration-fast) ease;
 
     &:hover {
       border-color: var(--dp-color-primary-border);
       background: var(--dp-surface);
+      box-shadow: var(--dp-shadow-sm);
+      transform: translateY(-1px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &__todo-item:hover {
+      transform: none;
     }
   }
 

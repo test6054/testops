@@ -12,6 +12,9 @@
             <p v-if="subtitle" class="create-form-page__subtitle">{{ subtitle }}</p>
           </div>
         </div>
+        <div v-if="$slots.actions" class="create-form-page__header-actions">
+          <slot name="actions" />
+        </div>
       </div>
     </div>
 
@@ -60,7 +63,7 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "back": []
+  'back': []
   'nav-select': [sectionKey: string]
 }>()
 

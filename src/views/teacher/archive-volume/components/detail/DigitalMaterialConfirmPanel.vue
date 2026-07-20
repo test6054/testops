@@ -74,6 +74,11 @@ function toggleAll(checked: boolean) {
 
 async function handleConfirm() {
   if (confirming.value) return
+  // MVR-299：与 showPanel/canConfirmDigitalMaterials 同源二次拦截
+  if (canConfirm.value !== true) {
+    message.warning('当前账号无电子材料确认权限')
+    return
+  }
   if (selectedIds.value.length === 0) {
     showFormValidationMessage('请勾选待确认电子材料')
     return
@@ -96,7 +101,7 @@ async function handleConfirm() {
 </script>
 
 <template>
-  <WorkbenchSurfaceCard v-if="showPanel" flush class="digital-confirm-panel">
+  <WorkbenchSurfaceCard v-if="showPanel" flush embedded class="digital-confirm-panel">
     <template #head>
       <span>电子材料确认归档</span>
     </template>

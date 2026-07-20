@@ -119,6 +119,8 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 const props = defineProps<{
   open: boolean
   volumeId: string
+  /** MVR-377：与父 canRegisterMaterial / BE requireCanManageMaterials 同源 */
+  canRegisterMaterial?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -215,6 +217,11 @@ async function onRowFileChange(event: Event) {
 }
 
 async function handleSubmit() {
+  // MVR-377：与 canRegisterMaterial / BE requireCanManageMaterials 二次拦截
+  if (props.canRegisterMaterial !== true) {
+    showFormValidationMessage('当前账号无材料登记权限，无法同步课程平台材料')
+    return
+  }
   if (submitting.value) return
   if (!props.volumeId) return
   if (!form.value.sourceSystem.trim()) {

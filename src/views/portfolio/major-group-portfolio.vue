@@ -127,6 +127,7 @@ const sectionColumns: ColumnsType = [
   { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
   { title: '周期', dataIndex: 'periodLabel', key: 'periodLabel', width: 120 },
   { title: '状态', dataIndex: 'statusLabel', key: 'statusLabel', width: 100 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 160 },
 ]
 
 /** OVERVIEW：同人多身份并列（US-MI-01 / §8.50） */
@@ -136,6 +137,7 @@ const overviewIdentityColumns: ColumnsType = [
   { title: '外部身份', key: 'externalIdentity', width: 100 },
   { title: '身份切片分', dataIndex: 'identityCompositeScore', key: 'identityCompositeScore', width: 110 },
   { title: '教学学时', dataIndex: 'workloadHours', key: 'workloadHours', width: 100 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   { title: '说明', dataIndex: 'contributionNote', key: 'contributionNote' },
 ]
 
@@ -491,7 +493,7 @@ watch(
               </li>
             </ul>
             <p class="major-group-portfolio__overview-hint">
-              同人多身份并列：一人多身份不合并为单一角色，外部身份单独切片展示（§8.50 / US-MI-01）
+              同人多身份并列：一人多身份不合并为单一角色，外部身份单独切片展示（§8.50 / US-MI-01）；生命周期/参评 hold/档案写禁仅标注，台账不默认过滤封存
             </p>
           </template>
           <UiDataTable
@@ -510,6 +512,24 @@ watch(
                 <UiTag :tone="record.externalIdentity ? 'orange' : 'blue'">
                   {{ record.externalIdentity ? '外部' : '校内' }}
                 </UiTag>
+              </template>
+              <template v-else-if="column.key === 'lifecycleStatus'">
+                <UiTag
+                  v-if="record.lifecycleStatus"
+                  :tone="record.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'"
+                >
+                  {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                </UiTag>
+                <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+                <UiTag v-if="record.archiveWriteForbidden" tone="red" class="ml-1">档案写禁</UiTag>
+                <UiTag
+                  v-if="record.countsInCurrentFacultyStructure === false"
+                  tone="neutral"
+                  class="ml-1"
+                >
+                  不计入在岗结构
+                </UiTag>
+                <span v-else-if="!record.lifecycleStatus">—</span>
               </template>
             </template>
           </UiDataTable>

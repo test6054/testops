@@ -10,12 +10,14 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -30,6 +32,14 @@ const form = reactive({
   borrowTime: '',
   dueTime: '',
 })
+
+const formTeacherId = computed(() => form.teacherUserId || undefined)
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
 const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
@@ -111,6 +121,9 @@ function editBorrow(row: (typeof rows.value)[number]) {
 }
 
 async function saveBorrow() {
+  if (!assertArchiveWritable('登记借阅')) {
+    return
+  }
   if (!form.teacherUserId || !form.bookTitle.trim()) {
     showFormValidationMessage('请选择教师并填写书名')
     return
@@ -151,6 +164,12 @@ async function saveBorrow() {
 }
 
 async function returnBorrow(row: (typeof rows.value)[number]) {
+  // 归还目标教师与表单可能不同：先切到该教师生命周期再预检
+  form.teacherUserId = row.teacherUserId
+  await reloadLifecycleState()
+  if (!assertArchiveWritable('登记归还')) {
+    return
+  }
   if (row.returnTime) {
     showFormValidationMessage('该记录已归还，不可重复登记')
     return
@@ -219,6 +238,13 @@ void loadStats()
     <template #context>
       <ContextBar show-title layout="workbench" title="图书借阅" />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
     <UiCard>
       <div v-if="stats" class="stats">
         在借 {{ stats.activeBorrowCount }} 册 · 逾期 {{ stats.overdueCount }} 册
@@ -272,7 +298,7 @@ void loadStats()
           size="sm"
           variant="primary"
           :loading="operationKey.startsWith('borrow:save:')"
-          :disabled="operating"
+          :disabled="operating || archiveWriteForbidden"
           @click="saveBorrow"
         >
           {{ form.id ? '保存修改' : '登记借阅' }}

@@ -75,7 +75,9 @@ defineOptions({ name: 'ManualSupplementCandidateTable' })
 const currentPage = defineModel<number>('current', { required: true })
 const currentPageSize = defineModel<number>('pageSize', { required: true })
 
-defineProps<{
+const props = defineProps<{
+  /** MVR-265：主考写能力；非主考不展示补扫/替换 */
+  canManageOwnerWrites?: boolean
   items: ExamManualSupplementCandidateItemResponse[]
   loading: boolean
   total: number
@@ -119,35 +121,45 @@ function scanProgressTone(status: CandidateScanProgressStatusCode): BadgeTone {
 
 function buildActions(record: ExamManualSupplementCandidateItemResponse): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
+  // 处理异常为导航，非主考可读；补扫/替换为主考写（MVR-265）
   if (
     record.scanProgressStatus === CandidateScanProgressStatusCode.ATTENTION_OPEN
     || record.scanProgressStatus === CandidateScanProgressStatusCode.CONFLICT
   ) {
     actions.push({ key: 'handle-attention', label: '处理异常', tone: 'danger' })
   }
-  if (record.supplementEligible && record.missingTemplatePageNos.length > 0) {
-    actions.push({
-      key: 'supplement-missing',
-      label: record.missingTemplatePageNos.length === 1 ? '补扫缺页' : '补扫首缺页',
-    })
-  }
-  if (record.replaceEligible && record.paperInstanceId && record.scannedPageCount > 0) {
-    actions.push({ key: 'replace-page', label: '替换页' })
+  if (props.canManageOwnerWrites === true) {
+    if (record.supplementEligible && record.missingTemplatePageNos.length > 0) {
+      actions.push({
+        key: 'supplement-missing',
+        label: record.missingTemplatePageNos.length === 1 ? '补扫缺页' : '补扫首缺页',
+      })
+    }
+    if (record.replaceEligible && record.paperInstanceId && record.scannedPageCount > 0) {
+      actions.push({ key: 'replace-page', label: '替换页' })
+    }
   }
   if (actions.length > 0) {
     return actions
+  }
+  if (props.canManageOwnerWrites !== true) {
+    return [{ key: 'readonly', label: '仅主考可补录', disabled: true }]
   }
   const blockReason = record.blockReason || record.replaceBlockReason
   return blockReason ? [{ key: 'blocked', label: '不可补扫', disabled: true }] : []
 }
 
 function handleAction(key: string, record: ExamManualSupplementCandidateItemResponse): void {
-  if (key === 'supplement-missing') {
-    emit('supplement-missing', record, record.missingTemplatePageNos[0])
-    return
-  }
   if (key === 'handle-attention') {
     emit('handle-attention', record)
+    return
+  }
+  // MVR-376：主考写动作仅认 canManageOwnerWrites===true
+  if (props.canManageOwnerWrites !== true) {
+    return
+  }
+  if (key === 'supplement-missing') {
+    emit('supplement-missing', record, record.missingTemplatePageNos[0])
     return
   }
   if (key === 'replace-page') {

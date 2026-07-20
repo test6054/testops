@@ -1,6 +1,6 @@
 import type { UiOptionValue } from '@/components/ui-guide/ui/types'
 
-/** UiSelect 空值为 undefined；归档任务表单可选 string 字段使用 null */
+/** UiSelect 空值为 undefined；课程考核袋表单可选 string 字段使用 null */
 export function nullableStringToSelectValue(
   value: string | null | undefined,
 ): UiOptionValue | undefined {

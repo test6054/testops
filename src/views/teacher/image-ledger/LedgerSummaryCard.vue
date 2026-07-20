@@ -45,6 +45,7 @@
       </div>
       <div class="ledger-summary__hero-right">
         <UiButton
+          v-if="canManageOwnerLedgerWrites === true"
           variant="primary"
           size="sm"
           :loading="balancing"
@@ -100,6 +101,8 @@ const props = defineProps<{
   ledger: ImageLedgerDetailResponse | null
   loading: boolean
   balancing: boolean
+  /** MVR-264：主考写能力；非主考隐藏对账按钮 */
+  canManageOwnerLedgerWrites?: boolean
 }>()
 defineEmits<{ (e: 'balance'): void }>()
 

@@ -118,6 +118,12 @@ export interface PortfolioTitlePromotionApplicationVO {
   publicityEndTime?: string
   publicityRemark?: string
   updateTime?: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
 
 export interface PortfolioTitleEvidenceItem {
@@ -229,6 +235,7 @@ export const portfolioTitlePromotionApi = {
     pageSize?: number
     taskStatus?: PortfolioTitlePromotionTaskStatusCode
     reviewYear?: string
+    locateTaskId?: string
   }) =>
     http.post<PageResult<PortfolioTitlePromotionTaskVO>>(
       '/api/portfolio/title-promotion/task/page',
@@ -250,6 +257,7 @@ export const portfolioTitlePromotionApi = {
     taskId?: string
     teacherUserId?: string
     applicationStatus?: PortfolioTitlePromotionApplicationStatusCode
+    locateApplicationId?: string
   }) =>
     http.post<PageResult<PortfolioTitlePromotionApplicationVO>>(
       '/api/portfolio/title-promotion/application/page',

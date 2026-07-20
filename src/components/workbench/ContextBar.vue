@@ -3,6 +3,7 @@ import { computed } from 'vue'
 
 /**
  * 工作台上下文条：页标题 + #status 状态标签 + #toolbar 范围筛选 + #actions 操作。
+ * workbench：标题左、筛选与操作右；整行垂直居中（筛选不得贴顶）。
  * 范围筛选禁止塞进 #status（status 在标题下竖排，配合 UiSelect 100% 宽会变成三层大下拉）。
  * 默认只展示 title；subtitle 仅用于动态范围摘要，禁止功能罗列说明。
  */
@@ -14,7 +15,7 @@ const props = withDefaults(
     showTitle?: boolean
     title?: string
     subtitle?: string
-    /** stack：标题在上、操作在下；workbench：原型横向标题 + 工具区 */
+    /** stack：标题在上、操作在下；workbench：横向标题左 + 工具区右，垂直居中 */
     layout?: 'stack' | 'workbench'
   }>(),
   {
@@ -79,6 +80,7 @@ const isCompactToolbar = computed(
   flex-wrap: wrap;
 
   &--workbench {
+    width: 100%;
     align-items: center;
     flex-wrap: nowrap;
     margin-bottom: 0;
@@ -152,8 +154,10 @@ const isCompactToolbar = computed(
   }
 
   &--workbench &__end {
-    flex: 1 1 auto;
+    flex: 0 1 auto;
+    margin-left: auto;
     justify-content: flex-end;
+    align-items: center;
     flex-wrap: nowrap;
     min-width: 0;
   }
@@ -166,11 +170,11 @@ const isCompactToolbar = computed(
     flex-wrap: wrap;
     flex-shrink: 0;
     min-width: 0;
-    /* 调用方约束：1 主动作 + ≤2 次动作；范围筛选放 toolbar，身份/KPI 不进本栏 */
   }
 
-  &--workbench &__toolbar {
-    justify-content: flex-end;
+  &--workbench &__toolbar,
+  &--workbench &__actions {
+    align-items: center;
     flex-wrap: nowrap;
     min-width: 0;
   }
@@ -183,6 +187,7 @@ const isCompactToolbar = computed(
 
   .context-bar--workbench .context-bar__end {
     width: 100%;
+    margin-left: 0;
     justify-content: flex-start;
   }
 }

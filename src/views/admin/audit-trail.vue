@@ -359,6 +359,7 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExam,
   init: initExams,
   onExamChange: onSelectorChange,
   onExamSearch,
@@ -498,6 +499,13 @@ function handleLogPageChange(pageInfo: { current: number, pageSize: number }) {
 // ─── 重大事件 ──────────────────────────────────
 const incidentLoading = ref(false)
 const incidents = ref<ExamIncidentRecord[]>([])
+/** MVR-288：默认拒绝假可写；详情/列表能力位同源 hasExamReviewerWritePermission */
+const canManageReviewerWrites = computed(() => {
+  if (selectedExam.value?.canManageReviewerWrites === true) {
+    return true
+  }
+  return incidents.value.some(item => item.canManageReviewerWrites === true)
+})
 const incidentFilter = reactive({ unresolvedOnly: false })
 const incidentPagination = reactive<TablePaginationConfig>({
   current: 1,
@@ -580,6 +588,9 @@ const resolvingIncident = ref<ExamIncidentRecord | null>(null)
 const resolveNote = ref('')
 
 function buildIncidentActions(record: ExamIncidentRecord): UiTableRowActionItem[] {
+  if (!canManageReviewerWrites.value) {
+    return []
+  }
   return [
     {
       key: 'resolve',
@@ -597,6 +608,10 @@ function handleIncidentAction(key: string, record: ExamIncidentRecord): void {
 }
 
 function openResolveModal(incident: ExamIncidentRecord) {
+  if (!canManageReviewerWrites.value) {
+    message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
+    return
+  }
   resolvingIncident.value = incident
   resolveNote.value = ''
   resolveModalOpen.value = true
@@ -604,6 +619,10 @@ function openResolveModal(incident: ExamIncidentRecord) {
 
 async function submitResolve() {
   if (resolving.value || !resolvingIncident.value) return
+  if (!canManageReviewerWrites.value) {
+    message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
+    return
+  }
   const note = resolveNote.value.trim()
   if (note.length < 5) {
     message.warning('处置说明至少 5 个字')

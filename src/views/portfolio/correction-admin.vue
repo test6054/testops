@@ -24,12 +24,14 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -76,14 +78,42 @@ const impactRequestToken = ref(0)
 
 const operationPending = computed(() => Boolean(handlingId.value) || impactRecomputing.value)
 
+/** 当前操作目标教师；封存写禁预检 */
+const actionTeacherId = ref<string | undefined>()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: actionTeacherId })
+
+async function bindActionTeacherAndAssert(
+  teacherId: string | number | undefined | null,
+  actionLabel: string,
+): Promise<boolean> {
+  actionTeacherId.value = teacherId != null && String(teacherId).trim() !== ''
+    ? String(teacherId)
+    : undefined
+  await reloadLifecycleState()
+  return assertArchiveWritable(actionLabel)
+}
+
 const columns: ColumnsType<PortfolioCorrectionSummaryVO> = [
   { title: '教师', key: 'teacherName', width: 120, fixed: 'left' },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 120 },
   { title: '字段', dataIndex: 'fieldLabel', key: 'fieldLabel', width: 120 },
   { title: '状态', key: 'requestStatus', width: 110 },
   { title: '原因', dataIndex: 'reason', key: 'reason' },
   { title: '操作', key: 'actions', width: 260 },
 ]
+
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
 
 /** 列表刷新或处理完成后必须清空失效的驳回上下文，避免继续操作旧工单。 */
 function resetRejectContext() {
@@ -127,6 +157,9 @@ async function handleRow(
   handleOpinion?: string,
 ) {
   if (operationPending.value) {
+    return
+  }
+  if (!(await bindActionTeacherAndAssert(row.teacherId, '纠错处理'))) {
     return
   }
   handlingId.value = row.id
@@ -230,6 +263,9 @@ async function recomputeImpact() {
   if (!impactDetail.value.retryAllowed) {
     return
   }
+  if (!(await bindActionTeacherAndAssert(target.teacherId, '纠错影响重算'))) {
+    return
+  }
   impactRecomputing.value = true
   try {
     impactDetail.value = await portfolioCorrectionApi.recomputeImpact(target.id)
@@ -291,6 +327,13 @@ void loadPage()
       </ContextBar>
     </template>
 
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+    />
+
     <UiCard title="纠错工单">
       <UiDataTable
         v-if="rows.length || loading"
@@ -307,6 +350,14 @@ void loadPage()
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherName'">
             {{ record.teacherName }}
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'requestStatus'">
             <UiTag :tone="statusTone(record.requestStatus)">

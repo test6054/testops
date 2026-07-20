@@ -6,6 +6,7 @@ export enum PortfolioReviewTaskStatusCode {
   RETURNED = 'RETURNED',
   DISMISSED = 'DISMISSED',
   CLOSED = 'CLOSED',
+  SUSPENDED = 'SUSPENDED',
 }
 
 export const ALL_PORTFOLIO_REVIEW_TASK_STATUS_CODES: readonly PortfolioReviewTaskStatusCode[] = [
@@ -15,6 +16,7 @@ export const ALL_PORTFOLIO_REVIEW_TASK_STATUS_CODES: readonly PortfolioReviewTas
   PortfolioReviewTaskStatusCode.RETURNED,
   PortfolioReviewTaskStatusCode.DISMISSED,
   PortfolioReviewTaskStatusCode.CLOSED,
+  PortfolioReviewTaskStatusCode.SUSPENDED,
 ]
 
 export const PortfolioReviewTaskStatusDescription: Record<PortfolioReviewTaskStatusCode, string> = {
@@ -24,4 +26,5 @@ export const PortfolioReviewTaskStatusDescription: Record<PortfolioReviewTaskSta
   [PortfolioReviewTaskStatusCode.RETURNED]: '退回',
   [PortfolioReviewTaskStatusCode.DISMISSED]: '驳回',
   [PortfolioReviewTaskStatusCode.CLOSED]: '已关闭',
+  [PortfolioReviewTaskStatusCode.SUSPENDED]: '已挂起',
 }

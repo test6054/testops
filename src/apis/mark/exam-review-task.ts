@@ -109,6 +109,8 @@ export interface ReviewTaskItemResponse {
   /** 批改来源编码，便于前端按通道筛选与显示颜色标签 */
   gradeSource: GradeSourceCode
   updateTime?: string
+  /** MVR-282：是否可批量确认等写操作；与 BE requireExamReviewerPermission 对齐 */
+  canManageReviewerWrites?: boolean
 }
 
 /** 匿名批阅任务动作请求 - 对应 ReviewTaskActionRequest */
@@ -173,6 +175,10 @@ export interface ReviewTaskDetailResponse {
   comparePolicy?: ObjectiveComparePolicyCode
   /** 评分细则/采分点说明 */
   evaluationCriteria?: string
+  /** MVR-282：是否可 AI 复评等写操作；与 BE requireExamReviewerPermission 对齐 */
+  canManageReviewerWrites?: boolean
+  /** MVR-327：主考代办接管；与 BE isExamOwner 同源 */
+  canManageOwnerReviewOverride?: boolean
 }
 
 /** 批改来源徽标色调 */

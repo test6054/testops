@@ -100,6 +100,11 @@ async function loadLocationHistory() {
 
 async function handleSave() {
   if (submitting.value) return
+  // MVR-303：与 canEdit 同源二次拦截
+  if (props.canEdit !== true) {
+    message.warning('当前账号无柜位维护权限')
+    return
+  }
   const building = form.building.trim()
   const cabinet = form.cabinet.trim()
   if (!building || !cabinet) {
@@ -165,7 +170,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <WorkbenchSurfaceCard class="archive-volume-physical-location">
+  <WorkbenchSurfaceCard embedded class="archive-volume-physical-location">
     <template #head>
       <div class="archive-volume-physical-location__head">
         <h3 class="archive-volume-physical-location__title">物理存放位置</h3>

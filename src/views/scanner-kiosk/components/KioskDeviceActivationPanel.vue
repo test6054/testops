@@ -11,7 +11,7 @@ const props = withDefaults(
     showManualCancel?: boolean
   }>(),
   {
-    canActivate: true,
+    canActivate: false, // MVR-321：缺省拒绝激活假可写
     submitLoading: false,
     showManualCancel: false,
   },
@@ -34,7 +34,8 @@ const agentOfflineHint = computed(() =>
 )
 
 function handleActivate() {
-  if (submitDisabled.value) return
+  // MVR-321：与 canActivate 二次拦截，禁止缺省放行
+  if (!props.canActivate || submitDisabled.value) return
   emit('submit')
 }
 </script>

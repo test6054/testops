@@ -22,7 +22,14 @@ export interface PortfolioArchiveBagAssembleVO {
   openGapTaskCount: number
   latestMaterialPackageExport?: PortfolioArchiveBagLatestExportVO
   preview?: PortfolioArchiveBagPreviewVO
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
+
 
 export interface PortfolioArchiveBagLatestExportVO {
   exportLogId: string
@@ -85,6 +92,17 @@ export interface PortfolioArchiveBagPreviewVO {
   latestMaterialPackageExport?: PortfolioArchiveBagLatestExportVO
   sections: PortfolioArchiveBagSectionVO[]
   catalogItems: PortfolioArchiveBagItemVO[]
+  /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
+  lifecycleStatus?: string
+  /** 生命周期状态中文标签 */
+  lifecycleStatusLabel?: string
+  /** 是否禁止档案写 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
+
 }
 
 export interface PortfolioArchiveBagExportResultVO {
@@ -115,7 +133,14 @@ export interface PortfolioArchiveScoreResultVO {
   totalScore: number
   breakdown: PortfolioArchiveScoreBreakdownItemVO[]
   computedTime?: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
+
 
 export interface PortfolioArchiveBagTeacherRequest {
   teacherId?: string

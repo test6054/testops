@@ -26,6 +26,17 @@ export interface PortfolioVirtualTeachingRoomActivityVO {
   fileId?: string
   createTime?: string
   updateTime?: string
+  /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
+  lifecycleStatus?: string
+  /** 生命周期状态中文标签 */
+  lifecycleStatusLabel?: string
+  /** 是否禁止档案写 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
+
 }
 
 export interface PortfolioVirtualTeachingRoomActivitySaveRequest {
@@ -80,6 +91,17 @@ export interface PortfolioIndustryEducationProjectVO {
   /** US-MI-01 贡献教师多身份并列层 */
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   ownerMultiIdentityNote?: string
+
+  /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
+  lifecycleStatus?: string
+  /** 生命周期状态中文标签 */
+  lifecycleStatusLabel?: string
+  /** 是否禁止档案写 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
 
 }
 

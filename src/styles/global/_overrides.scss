@@ -166,11 +166,59 @@
   width: max-content;
   max-width: min(420px, calc(100vw - 48px));
 
+  .ant-message-notice {
+    padding: 0;
+  }
+
   .ant-message-notice-content {
-    border-radius: var(--dp-radius-control) !important;
-    box-shadow: var(--dp-shadow-md) !important;
-    padding: 10px 16px !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 10px 14px !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(0, 0, 0, 0.06) !important;
+    background: color-mix(in srgb, var(--ant-color-bg-container) 92%, var(--dp-bg-layout)) !important;
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 8px 24px rgba(15, 23, 42, 0.08) !important;
+    font-size: 13px;
     font-weight: 500;
+    line-height: 1.4;
+    color: var(--ant-color-text) !important;
+  }
+
+  .ant-message-custom-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .anticon {
+    font-size: 15px;
+  }
+
+  .ant-message-notice-content:has(.ant-message-error) {
+    border-color: color-mix(in srgb, var(--ant-color-error) 28%, transparent) !important;
+    background: color-mix(in srgb, var(--ant-color-error) 6%, var(--ant-color-bg-container)) !important;
+    color: color-mix(in srgb, var(--ant-color-error) 72%, #1f1f1f) !important;
+  }
+
+  .ant-message-notice-content:has(.ant-message-success) {
+    border-color: color-mix(in srgb, var(--ant-color-success) 28%, transparent) !important;
+    background: color-mix(in srgb, var(--ant-color-success) 6%, var(--ant-color-bg-container)) !important;
+    color: color-mix(in srgb, var(--ant-color-success) 65%, #1f1f1f) !important;
+  }
+
+  .ant-message-notice-content:has(.ant-message-warning) {
+    border-color: color-mix(in srgb, var(--ant-color-warning) 32%, transparent) !important;
+    background: color-mix(in srgb, var(--ant-color-warning) 8%, var(--ant-color-bg-container)) !important;
+    color: color-mix(in srgb, var(--ant-color-warning) 55%, #1f1f1f) !important;
+  }
+
+  .ant-message-notice-content:has(.ant-message-info) {
+    border-color: color-mix(in srgb, var(--ant-color-primary) 24%, transparent) !important;
+    background: color-mix(in srgb, var(--ant-color-primary) 5%, var(--ant-color-bg-container)) !important;
   }
 }
 

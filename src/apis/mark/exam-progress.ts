@@ -171,6 +171,8 @@ export interface ExamWorkbenchQualityPanelResponse {
   arbitrationPendingCount: number
   reviewerWarningCount: number
   reviewerSuspendedCount: number
+  /** MVR-326：异常批次重处理主考写能力位；与 BE isExamOwner 同源 */
+  canManageOwnerBatchReprocess?: boolean
 }
 
 /** 概览仪表盘面板 - 对应 ExamWorkbenchDashboardPanelResponse */
@@ -291,6 +293,8 @@ export interface ExamWorkbenchCandidateRosterPanelResponse {
   attentionOpenCount: number
   discardedCount: number
   filterScopeApplied: boolean
+  /** MVR-280：是否可维护名册；与 BE requireExamRosterWritePermission 对齐 */
+  canManageRosterWrites?: boolean
 }
 
 /** 查询考生名册看板（名册页 Signal 与扫描进度 chip 计数真源）。 */
@@ -312,6 +316,8 @@ export interface ExamWorkbenchPrintPackagePanelResponse {
   totalItemCount: number
   printPackageReady: boolean
   coverageRate: number | null
+  /** MVR-266：主考印刷包写能力位 */
+  canManageOwnerPrintPackageWrites?: boolean
 }
 
 /** 查询印刷包看板（印刷包页 Signal 真源）。 */
@@ -392,6 +398,8 @@ export interface ExamWorkbenchScanMonitorPanelResponse {
   abnormalAttentionCount: number
   duplicateAttentionCount: number
   orphanPendingEventCount: number
+  /** MVR-326：主考扫描写能力位；与 BE isExamOwner 同源 */
+  canManageOwnerBatchActions?: boolean
   ledgerStatus?: LedgerStatusCode
   progressPercent?: number | null
   progressDisplay?: string

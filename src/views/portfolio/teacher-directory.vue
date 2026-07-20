@@ -12,7 +12,7 @@ import type {
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
@@ -128,6 +128,8 @@ const listColumns = computed<ColumnsType>(() => {
   columns.push(
     { title: '身份标签', key: 'identityTags', width: 160 },
     { title: '账号状态', key: 'userStatus', width: 100 },
+    { title: '生命周期', key: 'lifecycleStatus', width: 110 },
+    { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 90 },
     { title: '主身份', key: 'primaryIdentityType', width: 120 },
     { title: '操作', key: 'actions', width: 240 },
   )
@@ -267,6 +269,13 @@ function identityStatusLabel(status?: PortfolioTeacherIdentityVO['identityStatus
     return '—'
   }
   return strictEnumLabel(PortfolioTeacherIdentityStatusDescription, status, '教师身份状态')
+}
+
+function lifecycleTagTone(record: PortfolioTeacherSummaryVO): 'green' | 'red' | 'orange' | 'gray' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.archiveWriteForbidden) return 'red'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  return 'gray'
 }
 
 function completenessRowLabel(record: PortfolioTeacherSummaryVO): string {
@@ -495,6 +504,7 @@ async function reloadDetail() {
 
 function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
   if (interactionLocked.value) return
+  if (!assertCurrentTeacherArchiveWritable('新增教师身份')) return
   identityMode.value = 'create'
   identityEditor.teacherUserId = context.userId
   identityEditor.id = undefined
@@ -516,6 +526,7 @@ function openIdentityEdit(identity: PortfolioTeacherIdentityVO) {
   if (!detail.value || interactionLocked.value) {
     return
   }
+  if (!assertCurrentTeacherArchiveWritable('编辑教师身份')) return
   identityMode.value = 'edit'
   identityEditor.teacherUserId = detail.value.userId
   identityEditor.id = identity.id
@@ -548,6 +559,7 @@ async function submitIdentity() {
     return
   }
   const targetId = identityEditor.id || 'new'
+  if (!assertCurrentTeacherArchiveWritable('保存教师身份')) return
   const operation = `identity:save:${targetId}`
   if (!beginOperation(operation)) return
   const request: PortfolioTeacherIdentitySaveRequest = {
@@ -627,6 +639,19 @@ const lifecycleStatusLabel = computed(() => {
     || status
   )
 })
+
+/** 详情抽屉已加载的生命周期写禁预检；后端 assertArchiveWritable 仍是权威 */
+function assertCurrentTeacherArchiveWritable(actionLabel: string): boolean {
+  if (!lifecycleState.value?.archiveWriteForbidden) {
+    return true
+  }
+  const status = lifecycleStatusLabel.value || '非在职'
+  showFormValidationMessage(
+    `教师生命周期为「${status}」，禁止档案填报与改写。历史档案只读可查。（${actionLabel}）`,
+  )
+  return false
+}
+
 
 async function loadTeacherLifecycle(userId: string, requestToken = detailRequestToken.value) {
   lifecycleState.value = null
@@ -748,6 +773,10 @@ async function importTransferPackageFromFile(event: Event) {
   if (!file) {
     return
   }
+  if (!assertCurrentTeacherArchiveWritable('导入迁出包')) {
+    input.value = ''
+    return
+  }
   const operation = `lifecycle:import:${detail.value.userId}`
   if (!beginOperation(operation)) {
     input.value = ''
@@ -787,6 +816,22 @@ async function exportRoster() {
   }
 }
 
+/**
+ * PF-P0-281 / US-MI：生命周期站内信 jumpUrl 携带 teacherUserId 时打开对应教师详情，禁止只落到名册首页。
+ */
+async function applyTeacherUserIdDeepLink() {
+  const teacherUserId = readRouteStringParam(route.query.teacherUserId)
+  if (!teacherUserId) {
+    return
+  }
+  const matched = list.value.find((row) => row.userId === teacherUserId)
+  if (matched) {
+    await openDetail(matched)
+    return
+  }
+  await openDetail({ userId: teacherUserId } as PortfolioTeacherSummaryVO)
+}
+
 onMounted(async () => {
   await loadTree(false)
   const routeLevel = readCompletenessLevelParam(route.query.completenessLevel)
@@ -795,7 +840,20 @@ onMounted(async () => {
     query.completenessLevel = routeLevel
   }
   await loadPage()
+  await applyTeacherUserIdDeepLink()
 })
+
+watch(
+  () => route.query.teacherUserId,
+  (teacherUserId, previousTeacherUserId) => {
+    if (teacherUserId === previousTeacherUserId) {
+      return
+    }
+    if (typeof teacherUserId === 'string' && teacherUserId) {
+      void applyTeacherUserIdDeepLink()
+    }
+  },
+)
 </script>
 
 <template>
@@ -856,6 +914,17 @@ onMounted(async () => {
               {{ getUserStatusLabel(record.status) }}
             </span>
             <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+            <span>{{ record.countsInCurrentFacultyStructure === true ? '是' : record.countsInCurrentFacultyStructure === false ? '否' : '—' }}</span>
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
@@ -1074,7 +1143,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
-                :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked }]"
+                :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked || Boolean(lifecycleState?.archiveWriteForbidden) }]"
                 split
                 @action="() => openIdentityEdit(record)"
               />

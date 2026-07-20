@@ -53,16 +53,19 @@ const { isMobile } = useDevice()
 }
 
 .ant-layout-header {
-  padding: 0 var(--dp-space-4);
-  height: 56px;
-  background: var(--dp-surface);
-  border-bottom: 1px solid var(--dp-border);
-  box-shadow: var(--dp-shadow-xs);
+  padding: 0 var(--dp-space-5);
+  height: 60px;
+  background: color-mix(in srgb, var(--dp-surface) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--dp-border-subtle);
+  box-shadow: none;
 
   // 移动端适配
   @media (max-width: bp.$layout-mobile-max) {
     padding: 0 12px;
     height: 48px;
+    backdrop-filter: none;
+    background: var(--dp-surface);
 
     .fold-btn-wrapper {
       display: none; // 移动端隐藏折叠按钮

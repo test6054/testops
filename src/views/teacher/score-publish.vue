@@ -83,6 +83,7 @@
       >
         <template #actions>
           <UiButton
+            v-if="canRepairAbsenceScoreZeroFinal === true"
             variant="primary"
             size="sm"
             :loading="repairingScoreZero"
@@ -717,6 +718,18 @@ const finalScoreOverviewLoading = ref(false)
 const effectiveFinalScoreOverview = computed(
   () => finalScoreOverview.value ?? scorePanel.value?.riskOverview ?? null,
 )
+/** MVR-278/355：发布/撤回写动作；与 BE requireActiveExam + requireExamReviewerPermission 同源 */
+const canManageReviewerWrites = computed(
+  () => effectiveFinalScoreOverview.value?.canManageReviewerWrites === true,
+)
+
+/**
+ * MVR-369：补齐缺考计零终分不叠 ACTIVE；仅认 overview.canRepairAbsenceScoreZeroFinal===true。
+ * 与 BE repairScoreZeroFinalScores / score-finalize MVR-368 同源。
+ */
+const canRepairAbsenceScoreZeroFinal = computed(
+  () => effectiveFinalScoreOverview.value?.canRepairAbsenceScoreZeroFinal === true,
+)
 
 const statusTabItems = computed(() =>
   buildScoreConfirmStatusTabItems(effectiveFinalScoreOverview.value),
@@ -729,6 +742,7 @@ const scoresFullyPublished = computed(() =>
 const {
   pendingAbsenceCount,
   refreshPendingAbsenceCount,
+  hasFieldWideHardBlockForWrite,
   ensureScorePublishPreconditions,
   ensureSinglePaperPublishPreconditions,
   goToAbsenceConfirm: goAbsenceConfirm,
@@ -749,6 +763,11 @@ const repairingScoreZero = ref(false)
 
 async function handleRepairScoreZero(): Promise<void> {
   if (!selectedExamId.value || repairingScoreZero.value) return
+  // MVR-296/369：与 BE repairScoreZeroFinalScores（评阅写、不叠 ACTIVE）二次拦截
+  if (canRepairAbsenceScoreZeroFinal.value !== true) {
+    message.warning('当前账号无本场评阅写权限，无法补齐计零终分')
+    return
+  }
   repairingScoreZero.value = true
   try {
     const result = await repairScoreZeroFinalScores({ examId: selectedExamId.value })
@@ -947,9 +966,13 @@ function bulkModalValueClass(valClass?: string): string | undefined {
 const canBulkPublish = computed(
   () =>
     Boolean(selectedExamId.value)
+    // MVR-293：须叠 canManageReviewerWrites，避免非评阅写权用户顶栏假可点全场发布
+    && canManageReviewerWrites.value
     && publishableOverviewCount.value > 0
     && finalScoreOverview.value?.readyToPublish === true
-    && (finalScoreOverview.value?.blockedCount ?? 0) === 0,
+    && (finalScoreOverview.value?.blockedCount ?? 0) === 0
+    // MVR-207：readyToPublish 不含「待确认缺考记录」计数，须与 BE ensureNoPendingAbsenceRecords 对齐
+    && !hasFieldWideHardBlockForWrite.value,
 )
 
 const bulkOpen = ref(false)
@@ -968,14 +991,19 @@ function resetBulkState(): void {
 }
 
 function openBulkPublishModal(): void {
-  if (!canBulkPublish.value) {
+  // MVR-293：与 BE requireExamReviewerPermission / canManageReviewerWrites 二次拦截
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('当前账号无本场评阅写权限，无法全场发布成绩')
+    return
+  }
+  if (canBulkPublish.value !== true) {
     message.warning('当前考试没有可发布的最终成绩')
     return
   }
   void (async () => {
     await loadFinalScoreOverview()
     const canContinue = await ensureScorePublishPreconditions()
-    if (!canContinue) {
+    if (canContinue !== true) {
       return
     }
     resetBulkState()
@@ -986,8 +1014,13 @@ function openBulkPublishModal(): void {
 /** 调用后端全场发布入口，避免前端用当前分页候选误当全场候选。 */
 async function runBulkPublish(): Promise<void> {
   if (!selectedExamId.value || bulkRunning.value) return
+  // MVR-293：与 BE batchPublishFinalScores 评阅写门禁二次拦截
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('当前账号无本场评阅写权限，无法全场发布成绩')
+    return
+  }
   const canContinue = await ensureScorePublishPreconditions()
-  if (!canContinue) {
+  if (canContinue !== true) {
     bulkOpen.value = false
     return
   }
@@ -1037,15 +1070,14 @@ const publishSignalMetrics = computed(() =>
 // ─── 状态机按钮 ─────────────────────────────
 function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
-  // MVR-204：场级硬拦（阻塞事件/重复影像）禁用按钮，与 BE ensureFinalScoreSourceFactsReady 同源
-  const overview = effectiveFinalScoreOverview.value
-  if (
-    overview
-    && ((overview.blockingIncidentCount ?? 0) > 0 || (overview.pendingDuplicateImageCount ?? 0) > 0)
-  ) {
+  if (canManageReviewerWrites.value !== true) {
     return false
   }
-  // 单卷发布不要求全场 readyToPublish；软风险集中复核与缺考等在 handlePublish 门禁校验。
+  // MVR-207：缺考待确认/未核对 + 阻塞事件/重复影像 禁用按钮，与 BE 发布硬拦同源
+  if (hasFieldWideHardBlockForWrite.value) {
+    return false
+  }
+  // 单卷发布不要求全场 readyToPublish；软风险集中复核在 handlePublish 门禁校验。
   const s = record.finalScoreStatus
   return (
     s === FinalScoreStatusCode.CONFIRMED
@@ -1062,6 +1094,9 @@ function publishButtonLabel(record: ExamScoreSummaryItemResponse): string {
 }
 function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
+  if (canManageReviewerWrites.value !== true) {
+    return false
+  }
   const s = record.finalScoreStatus
   // MVR-184：与 BE withdrawFinalScore 对齐，CONFIRMED 可直接撤销确认，无需先发布再撤回
   return (
@@ -1102,12 +1137,16 @@ function handlePublishRowAction(key: string, record: ExamScoreSummaryItemRespons
 }
 
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员或主考可发布最终成绩')
+    return
+  }
   if (publishingPaperId.value) {
     return
   }
   if (!selectedExamId.value || !record.paperInstanceId) return
   const canContinue = await ensureSinglePaperPublishPreconditions()
-  if (!canContinue) {
+  if (canContinue !== true) {
     return
   }
   publishingPaperId.value = record.paperInstanceId
@@ -1143,12 +1182,20 @@ const withdrawModalTitle = computed(() =>
 )
 
 function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员或主考可撤回最终成绩')
+    return
+  }
   withdrawCandidate.value = record
   withdrawReason.value = ''
   withdrawOpen.value = true
 }
 
 async function handleWithdraw(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员或主考可撤回最终成绩')
+    return
+  }
   if (withdrawing.value) {
     return
   }

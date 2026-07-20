@@ -23,10 +23,11 @@
               <UiTag :tone="policyTone" size="sm">{{ policyStatusLabel }}</UiTag>
             </div>
             <div
-              v-if="policy?.tenantExperienceAssistEnabled"
+              v-if="policy?.tenantExperienceAssistEnabled && (canManageReviewerWrites || canDisableExperienceAssist)"
               class="experience-assist-policy__head-actions"
             >
               <UiButton
+                v-if="canManageReviewerWrites"
                 variant="primary"
                 size="sm"
                 :disabled="!canEnable || policy?.enabled"
@@ -43,6 +44,7 @@
                 编辑配置
               </UiButton>
               <UiButton
+                v-if="canDisableExperienceAssist"
                 size="sm"
                 variant="outline"
                 :disabled="!canDisable"
@@ -159,6 +161,7 @@
       :exam-id="examId"
       :layout-question-id="bindingTarget?.layoutQuestionId"
       :question-no="bindingTarget?.questionNo"
+      :can-manage-reviewer-writes="canManageReviewerWrites"
       @saved="handleBindingSaved"
     />
     <ExamExperienceAssistPolicyEnableModal
@@ -168,6 +171,7 @@
       :effective-min-consistency-rate="policy?.effectiveMinConsistencyRate"
       :effective-max-hamming-distance="policy?.effectiveMaxHammingDistance"
       :effective-max-experience-items="policy?.effectiveMaxExperienceItems"
+      :can-manage-reviewer-writes="canManageReviewerWrites"
       @saved="handlePolicySaved"
     />
   </StageWorkbenchShell>
@@ -377,9 +381,17 @@ const policyTone = computed((): BadgeTone => {
   return policy.value?.enabled ? 'green' : 'orange'
 })
 
+/**
+ * MVR-277/362：启用/改阈/绑定仅认 canManageReviewerWrites===true（评阅写 ∧ ACTIVE）。
+ * 禁用仅认 canDisableExperienceAssist===true（评阅写，关考后仍可关）。
+ */
+const canManageReviewerWrites = computed(() => policy.value?.canManageReviewerWrites === true)
+const canDisableExperienceAssist = computed(() => policy.value?.canDisableExperienceAssist === true)
+
 const canEnable = computed(() =>
   Boolean(
-    policy.value?.tenantExperienceAssistEnabled
+    canManageReviewerWrites.value
+    && policy.value?.tenantExperienceAssistEnabled
     && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN
     && !bindingsLoading.value
     && unresolvedSubjectiveCount.value === 0,
@@ -388,14 +400,16 @@ const canEnable = computed(() =>
 
 const canDisable = computed(() =>
   Boolean(
-    policy.value?.enabled
+    canDisableExperienceAssist.value
+    && policy.value?.enabled
     && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
   ),
 )
 
 const canEditConfig = computed(() =>
   Boolean(
-    policy.value?.tenantExperienceAssistEnabled
+    canManageReviewerWrites.value
+    && policy.value?.tenantExperienceAssistEnabled
     && policy.value?.enabled
     && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
   ),
@@ -502,6 +516,10 @@ function formatRate(rate?: number): string {
 }
 
 function openPolicyConfigModal(mode: ExamExperienceAssistPolicyConfigMode): void {
+  if (!canManageReviewerWrites.value) {
+    message.warning('仅本场阅卷组织成员或主考可配置经验辅助评阅')
+    return
+  }
   policyConfigModalMode.value = mode
   policyConfigModalOpen.value = true
 }
@@ -567,6 +585,11 @@ async function handlePolicySaved(
 
 async function handleDisable(): Promise<void> {
   if (!examId.value || saving.value) return
+  // MVR-362：禁用与 canDisableExperienceAssist 同源（关考后仍可关）
+  if (!canDisableExperienceAssist.value) {
+    message.warning('仅本场阅卷组织成员或主考可禁用经验辅助评阅')
+    return
+  }
   saving.value = true
   try {
     policy.value = await disableExamGradingExperienceAssistPolicy(examId.value)
@@ -584,11 +607,12 @@ function buildBindingRowActions(
   row: ExamQuestionExperienceAssistBindingResponse,
 ): UiTableRowActionItem[] {
   const frozen = policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
+  const writeBlocked = !canManageReviewerWrites.value
   const actions: UiTableRowActionItem[] = [
     {
       key: 'bind',
       label: row.experienceCaseId ? '更换' : '绑定',
-      disabled: frozen,
+      disabled: frozen || writeBlocked,
     },
   ]
   if (row.experienceCaseId) {
@@ -596,7 +620,7 @@ function buildBindingRowActions(
       key: 'unbind',
       label: '解除绑定',
       tone: 'danger',
-      disabled: frozen || unbindingQuestionId.value === row.layoutQuestionId,
+      disabled: frozen || writeBlocked || unbindingQuestionId.value === row.layoutQuestionId,
     })
   }
   return actions
@@ -616,6 +640,10 @@ function handleBindingRowAction(
 }
 
 function openBindingModal(row: ExamQuestionExperienceAssistBindingResponse): void {
+  if (!canManageReviewerWrites.value) {
+    message.warning('仅本场阅卷组织成员或主考可绑定题目经验')
+    return
+  }
   bindingTarget.value = row
   bindingModalOpen.value = true
 }
@@ -625,6 +653,10 @@ function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
     !examId.value
     || policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
   ) {
+    return
+  }
+  if (!canManageReviewerWrites.value) {
+    message.warning('仅本场阅卷组织成员或主考可解除题目经验绑定')
     return
   }
   void confirmAsync({
@@ -639,6 +671,10 @@ function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
 
 async function handleUnbind(row: ExamQuestionExperienceAssistBindingResponse): Promise<void> {
   if (!examId.value || unbindingQuestionId.value != null) return
+  if (!canManageReviewerWrites.value) {
+    message.warning('仅本场阅卷组织成员或主考可解除题目经验绑定')
+    return
+  }
   unbindingQuestionId.value = row.layoutQuestionId
   try {
     await saveExamExperienceAssistBinding({

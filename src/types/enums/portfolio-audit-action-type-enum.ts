@@ -10,6 +10,10 @@ export enum PortfolioAuditActionTypeCode {
   MASK_RULE_SAVE = 'MASK_RULE_SAVE',
   NATIONAL_TEACHER_REPORT = 'NATIONAL_TEACHER_REPORT',
   NATIONAL_TEACHER_INBOUND = 'NATIONAL_TEACHER_INBOUND',
+  SOURCE_FIX_RECOMPUTE = 'SOURCE_FIX_RECOMPUTE',
+  EVALUATION_REREVIEW_CREATE = 'EVALUATION_REREVIEW_CREATE',
+  EVALUATION_REREVIEW_COMPLETE = 'EVALUATION_REREVIEW_COMPLETE',
+  EVALUATION_REREVIEW_CANCEL = 'EVALUATION_REREVIEW_CANCEL',
 }
 
 export const ALL_PORTFOLIO_AUDIT_ACTION_TYPE_CODES: readonly PortfolioAuditActionTypeCode[] = [
@@ -23,6 +27,10 @@ export const ALL_PORTFOLIO_AUDIT_ACTION_TYPE_CODES: readonly PortfolioAuditActio
   PortfolioAuditActionTypeCode.MASK_RULE_SAVE,
   PortfolioAuditActionTypeCode.NATIONAL_TEACHER_REPORT,
   PortfolioAuditActionTypeCode.NATIONAL_TEACHER_INBOUND,
+  PortfolioAuditActionTypeCode.SOURCE_FIX_RECOMPUTE,
+  PortfolioAuditActionTypeCode.EVALUATION_REREVIEW_CREATE,
+  PortfolioAuditActionTypeCode.EVALUATION_REREVIEW_COMPLETE,
+  PortfolioAuditActionTypeCode.EVALUATION_REREVIEW_CANCEL,
 ]
 
 export const PortfolioAuditActionTypeDescription: Record<PortfolioAuditActionTypeCode, string> = {
@@ -36,4 +44,8 @@ export const PortfolioAuditActionTypeDescription: Record<PortfolioAuditActionTyp
   [PortfolioAuditActionTypeCode.MASK_RULE_SAVE]: '脱敏规则保存',
   [PortfolioAuditActionTypeCode.NATIONAL_TEACHER_REPORT]: '全国教师系统上报',
   [PortfolioAuditActionTypeCode.NATIONAL_TEACHER_INBOUND]: '全国教师系统回流',
+  [PortfolioAuditActionTypeCode.SOURCE_FIX_RECOMPUTE]: '源修复影响重算',
+  [PortfolioAuditActionTypeCode.EVALUATION_REREVIEW_CREATE]: '评价更正复核工单创建',
+  [PortfolioAuditActionTypeCode.EVALUATION_REREVIEW_COMPLETE]: '评价更正复核完成回写',
+  [PortfolioAuditActionTypeCode.EVALUATION_REREVIEW_CANCEL]: '评价更正复核撤销',
 }

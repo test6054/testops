@@ -10,12 +10,12 @@
       }"
     >
       <router-view v-slot="{ Component, route: childRoute }">
-        <template v-if="Component">
+        <transition name="page-fade" mode="out-in">
           <keep-alive v-if="shouldCacheRoute(childRoute)">
             <component :is="Component" :key="getRouteKey(childRoute)" />
           </keep-alive>
           <component v-else :is="Component" :key="getRouteKey(childRoute)" />
-        </template>
+        </transition>
       </router-view>
     </div>
   </UiLayout>
@@ -139,6 +139,25 @@ function shouldCacheRoute(childRoute: RouteLocationNormalized): boolean {
   // 平板适配
   @media (min-width: bp.$shell-tablet-min) and (max-width: bp.$shell-tablet-max) {
     padding: var(--dp-space-3, 12px);
+  }
+}
+
+// 页面切换过渡：150ms 淡入淡出
+.page-fade-enter-active,
+.page-fade-leave-active {
+  transition: opacity var(--dp-duration-fast, 150ms) ease;
+}
+
+.page-fade-enter-from,
+.page-fade-leave-to {
+  opacity: 0;
+}
+
+// 尊重用户减少动效偏好
+@media (prefers-reduced-motion: reduce) {
+  .page-fade-enter-active,
+  .page-fade-leave-active {
+    transition: none;
   }
 }
 </style>

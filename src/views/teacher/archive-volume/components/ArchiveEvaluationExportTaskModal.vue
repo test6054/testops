@@ -32,6 +32,10 @@ const canCancel = computed(() => {
 })
 
 async function handleCancel(): Promise<void> {
+  // MVR-318：仅排队/生成中可取消（与 canCancel 可见性同源）
+  if (!canCancel.value) {
+    return
+  }
   await cancelArchiveEvaluationExportTask()
 }
 </script>

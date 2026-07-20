@@ -16,7 +16,7 @@
     </template>
 
     <template #signal>
-      <SignalBand compact variant="panel" :metrics="evalCampaignSignalMetrics" />
+      <SignalBand variant="panel" :metrics="evalCampaignSignalMetrics" />
     </template>
 
     <WorkbenchSurfaceCard flush>
@@ -342,9 +342,9 @@ import type {
 } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { ArchiveDutyTypeCode } from '@/apis/mark/archive-config'
 import {
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ArchiveEvaluationCampaignStatusCode,
@@ -400,7 +400,7 @@ type EvalCampaignTabKey = 'list' | 'readiness' | 'mixed-review'
 
 const router = useRouter()
 const route = useRoute()
-const { hasDuty, loadGrants, listScopedDepartmentIds } = useArchiveDutyAccess()
+const { loadGrants, listScopedDepartmentIds, isTenantWideCollegeCoordinator } = useArchiveDutyAccess()
 
 const activeTab = ref<EvalCampaignTabKey>('list')
 const campaignLoading = ref(false)
@@ -444,7 +444,8 @@ const readinessFocusVolumeId = computed(() =>
 
 const mixedDepartmentDisabled = computed(() => listScopedDepartmentIds.value.length === 1)
 
-const canExportCampaign = computed(() => hasDuty(ArchiveDutyTypeCode.COLLEGE_COORDINATOR))
+/** MVR-318：与 BE requireTenantWideCollegeCoordinator 对齐；院系级协调人不可导出假可点 */
+const canExportCampaign = computed(() => isTenantWideCollegeCoordinator.value)
 
 const backButtonLabel = computed(() => {
   const volumeId = route.query.volumeId
@@ -583,6 +584,11 @@ function buildCampaignActions(_record: ArchiveEvaluationCampaignResponse): UiTab
 }
 
 function handleCampaignAction(key: string, record: ArchiveEvaluationCampaignResponse): void {
+  // MVR-318：行动作入口与 canExportCampaign 同源
+  if (!canExportCampaign.value) {
+    message.warning('仅全校学院协调人可导出迎评材料包')
+    return
+  }
   if (key === 'export-catalog') {
     void handleExportArchive(record)
     return
@@ -936,6 +942,11 @@ watch(onlyOpenRemediation, () => {
 })
 
 async function handleExportArchive(record: ArchiveEvaluationCampaignResponse): Promise<void> {
+  // MVR-318：与 canExportCampaign / BE requireTenantWideCollegeCoordinator 二次拦截
+  if (!canExportCampaign.value) {
+    message.warning('仅全校学院协调人可导出迎评材料包')
+    return
+  }
   if (exportingCampaignId.value) {
     return
   }
@@ -965,6 +976,11 @@ async function handleExportArchive(record: ArchiveEvaluationCampaignResponse): P
 }
 
 async function handleExportEntity(record: ArchiveEvaluationCampaignResponse): Promise<void> {
+  // MVR-318：与 canExportCampaign / BE requireTenantWideCollegeCoordinator 二次拦截
+  if (!canExportCampaign.value) {
+    message.warning('仅全校学院协调人可导出迎评材料包')
+    return
+  }
   if (exportingCampaignId.value) {
     return
   }

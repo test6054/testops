@@ -325,6 +325,7 @@ import {
   exportEvaluationArchivePackage,
   exportEvaluationPackage,
   getArchiveVolumeDetail,
+  getOpenRemediationStats,
   pageEvaluationCampaigns,
   pageRemediationTasksByCampaign,
   saveEvaluationCampaign,
@@ -378,10 +379,10 @@ defineOptions({ name: 'ArchiveVolumeRemediationPanel' })
 const router = useRouter()
 const {
   isTenantWideCollegeCoordinator,
-  scopedDepartmentIds,
-  canManageRemediationAsCoordinator,
   loadGrants,
 } = useArchiveDutyAccess()
+// MVR-339：创建整改仅认 BE open-stats canCreateRemediationTask===true
+const canCreateRemediationTask = ref(false)
 
 const campaignLoading = ref(false)
 const taskLoading = ref(false)
@@ -474,7 +475,7 @@ function handleCampaignChange(value: SelectValue): void {
 
 const canShowCreateRemediationTask = computed(
   () =>
-    (isTenantWideCollegeCoordinator.value || scopedDepartmentIds.value.length > 0)
+    canCreateRemediationTask.value
     && selectedCampaign.value?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
 )
 
@@ -547,6 +548,11 @@ function handleTaskPageChange(pageNum: number, pageSize: number): void {
 }
 
 function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
+  // MVR-317：评估批次维护仅租户级学院协调人
+  if (!isTenantWideCollegeCoordinator.value) {
+    message.warning('仅租户级学院协调人可维护评估批次')
+    return
+  }
   campaignForm.campaignId = campaign?.campaignId
   campaignForm.campaignName = campaign?.campaignName ?? ''
   const triple = parseTripleFromAcademicYear(campaign?.academicYear, campaign?.semester)
@@ -562,6 +568,11 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
 }
 
 async function submitCampaign() {
+  // MVR-317：与 isTenantWideCollegeCoordinator 二次拦截
+  if (!isTenantWideCollegeCoordinator.value) {
+    message.warning('仅租户级学院协调人可维护评估批次')
+    return
+  }
   if (campaignSaving.value) return
   if (!campaignForm.campaignName.trim()) {
     showFormValidationMessage('请填写批次名称')
@@ -606,6 +617,11 @@ async function submitCampaign() {
 }
 
 async function handleExportCampaign() {
+  // MVR-318：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
+  if (!isTenantWideCollegeCoordinator.value) {
+    message.warning('仅全校学院协调人可导出评估材料包')
+    return
+  }
   if (!selectedCampaignId.value || exporting.value) return
   exporting.value = true
   try {
@@ -624,6 +640,11 @@ async function handleExportCampaign() {
 }
 
 async function handleExportArchiveCampaign() {
+  // MVR-318：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
+  if (!isTenantWideCollegeCoordinator.value) {
+    message.warning('仅全校学院协调人可导出评估材料包')
+    return
+  }
   if (!selectedCampaignId.value || exportingArchive.value) return
   exportingArchive.value = true
   try {
@@ -642,6 +663,12 @@ async function handleExportArchiveCampaign() {
 }
 
 function openCreateTaskModal() {
+  // MVR-339：与 canCreateRemediationTask / BE createRemediationTask 二次拦截
+  if (!canCreateRemediationTask.value) {
+    message.warning('仅学院协调人可创建整改任务')
+    return
+  }
+
   createTaskForm.campaignId = selectedCampaignId.value
   createTaskForm.volumeId = ''
   createTaskForm.taskTitle = ''
@@ -653,6 +680,11 @@ function openCreateTaskModal() {
 }
 
 async function submitCreateTask() {
+  // MVR-342/353：入口与 open-stats canCreateRemediationTask 二次拦截（卷级再校验 detail canCreateRemediationTask）
+  if (canCreateRemediationTask.value !== true) {
+    message.warning('仅学院协调人可创建整改任务')
+    return
+  }
   if (createTaskSubmitting.value) return
   if (!createTaskForm.volumeId.trim()) {
     showFormValidationMessage('请填写归档卷编号')
@@ -669,8 +701,11 @@ async function submitCreateTask() {
   createTaskSubmitting.value = true
   try {
     const volumeDetail = await getArchiveVolumeDetail(createTaskForm.volumeId.trim())
-    if (!canManageRemediationAsCoordinator(volumeDetail.volume)) {
-      showFormValidationMessage('缺少该卷所属院系的学院协调人职责，无法创建整改任务')
+    // MVR-353：仅认 BE getDetail canCreateRemediationTask===true（职责+状态+移交/开放整改互斥）
+    if (volumeDetail.canCreateRemediationTask !== true) {
+      showFormValidationMessage(
+        '当前卷不可新建整改（需学院协调职责，且卷为收材/待验收/已入库、非移交待验收、无开放整改）',
+      )
       return
     }
     await createRemediationTask({
@@ -703,7 +738,14 @@ async function openTask(taskId: string) {
 }
 
 onMounted(() => {
-  void loadGrants()
+  void loadGrants().then(async () => {
+    try {
+      const stats = await getOpenRemediationStats()
+      canCreateRemediationTask.value = stats.canCreateRemediationTask === true
+    } catch {
+      canCreateRemediationTask.value = false
+    }
+  })
   void loadCampaigns()
 })
 

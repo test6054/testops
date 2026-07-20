@@ -3,7 +3,6 @@
     <SignalBand
       :metrics="panelSignalMetrics"
       variant="panel"
-      compact
       class="archive-supervision-panel__top-signal"
     />
     <UiAlertStrip
@@ -102,10 +101,7 @@
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
-                :items="[
-                  { key: 'detail', label: '详情' },
-                  { key: 'mark', label: '标记问题' },
-                ]"
+                :items="supervisionVolumeRowActions(record)"
                 split
                 @action="(key) => handleSupervisionVolumeRowAction(key, record.volumeId)"
               />
@@ -489,6 +485,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { ArchiveTransferStatusCode } from '@/types/enums/archive-transfer-status-enum'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
@@ -512,8 +509,41 @@ import ArchiveEvaluationExportTaskModal from '@/views/teacher/archive-volume/com
 defineOptions({ name: 'ArchiveVolumeSupervisionPanel' })
 
 const router = useRouter()
-const { isTenantWideCollegeCoordinator, loadGrants } = useArchiveDutyAccess()
+const { isTenantWideCollegeCoordinator, canViewSupervision, loadGrants } = useArchiveDutyAccess()
 const activeTab = ref('statistics')
+/** MVR-353：标记问题叠状态/移交待验收/开放整改互斥，与 BE markSupervisionProblem 同源 */
+function canMarkSupervisionProblemOnVolume(record: ArchiveVolumeResponse): boolean {
+  if (canViewSupervision.value !== true) {
+    return false
+  }
+  if (record.hasOpenRemediationTask === true) {
+    return false
+  }
+  const status = record.volumeStatus
+  if (
+    status !== ArchiveVolumeStatusCode.COLLECTING
+    && status !== ArchiveVolumeStatusCode.SUBMITTED
+    && status !== ArchiveVolumeStatusCode.STORED
+  ) {
+    return false
+  }
+  if (
+    status === ArchiveVolumeStatusCode.SUBMITTED
+    && record.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
+  ) {
+    return false
+  }
+  return true
+}
+
+function supervisionVolumeRowActions(record: ArchiveVolumeResponse): Array<{ key: string, label: string }> {
+  const items: Array<{ key: string, label: string }> = [{ key: 'detail', label: '详情' }]
+  if (canMarkSupervisionProblemOnVolume(record)) {
+    items.push({ key: 'mark', label: '标记问题' })
+  }
+  return items
+}
+
 const supervisionTabItems = [
   { key: 'statistics', label: '就绪矩阵' },
   { key: 'volumes', label: '归档任务' },
@@ -771,6 +801,11 @@ function goReadinessMatrix() {
 }
 
 async function handleExportManifest() {
+  // MVR-330：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
+  if (!isTenantWideCollegeCoordinator.value) {
+    message.warning('仅全校学院协调人可导出评估材料包')
+    return
+  }
   if (!exportCampaignId.value || exportingManifest.value) return
   exportingManifest.value = true
   try {
@@ -789,6 +824,11 @@ async function handleExportManifest() {
 }
 
 async function handleExportArchive() {
+  // MVR-330：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
+  if (!isTenantWideCollegeCoordinator.value) {
+    message.warning('仅全校学院协调人可导出评估材料包')
+    return
+  }
   if (!exportCampaignId.value || exportingArchive.value) return
   exportingArchive.value = true
   try {
@@ -1022,6 +1062,16 @@ async function openDetail(volumeId: string) {
 }
 
 function openMarkProblem(volumeId: string) {
+  // MVR-342/353：与 canViewSupervision / BE markSupervisionProblem 二次拦截
+  if (canViewSupervision.value !== true) {
+    message.warning('当前账号无督导标记问题权限')
+    return
+  }
+  const row = volumes.value.find((item) => item.volumeId === volumeId)
+  if (row && !canMarkSupervisionProblemOnVolume(row)) {
+    message.warning('当前卷状态不可标记督导问题（需收材/待验收/已入库，非移交待验收，且无开放整改）')
+    return
+  }
   markProblemVolumeId.value = volumeId
   markProblemDescription.value = ''
   markProblemCampaignId.value = undefined
@@ -1037,6 +1087,11 @@ function handleSupervisionVolumeRowAction(key: string, volumeId: string) {
 }
 
 async function submitMarkProblem() {
+  // MVR-342：与 canViewSupervision / BE requireSupervisionInspector 二次拦截
+  if (canViewSupervision.value !== true) {
+    message.warning('当前账号无督导标记问题权限')
+    return
+  }
   if (markProblemSubmitting.value) return
   const description = markProblemDescription.value.trim()
   if (!description) {

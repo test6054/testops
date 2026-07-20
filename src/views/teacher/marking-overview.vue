@@ -496,6 +496,7 @@ const publishedExamInsights = computed(() => overview.value?.publishedExamInsigh
 const hasPendingTodos = computed(
   () => (overview.value?.signalMetrics?.pendingTodoRowCount ?? 0) > 0,
 )
+
 const showTodoFocusLayout = computed(
   () => !signalLoadFailed.value && (hasPendingTodos.value || (todosLoading.value && !!overview.value)),
 )

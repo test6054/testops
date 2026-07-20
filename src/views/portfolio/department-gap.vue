@@ -56,12 +56,21 @@ function gapCourseScopeLabel(row: PortfolioGapTaskSummaryVO): string {
   return parts.join(' · ')
 }
 
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 const columns: ColumnsType<PortfolioGapTaskSummaryVO> = [
   { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 100, fixed: 'left' },
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 140 },
   { title: '课程维度', key: 'courseScope', width: 160 },
   { title: '任务', dataIndex: 'taskTitle', key: 'taskTitle' },
   { title: '状态', key: 'taskStatus', width: 100 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '截止', dataIndex: 'dueTime', key: 'dueTime', width: 170 },
   { title: '操作', key: 'actions', width: 140 },
 ]
@@ -196,6 +205,23 @@ void loadPage()
           </template>
           <template v-else-if="column.key === 'taskStatus'">
             <UiTag>{{ gapStatusLabel(record.taskStatus) }}</UiTag>
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+            {{
+              record.countsInCurrentFacultyStructure === true
+                ? '是'
+                : record.countsInCurrentFacultyStructure === false
+                  ? '否'
+                  : '—'
+            }}
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

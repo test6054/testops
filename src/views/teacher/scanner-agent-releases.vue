@@ -125,12 +125,17 @@ function resetRegisterForm() {
 }
 
 function openRegisterModal() {
+  // MVR-316：注册入口与 canManage 同源
+  if (canManage.value !== true) {
+    message.warning('仅平台超级管理员可维护扫描端发布包')
+    return
+  }
   resetRegisterForm()
   registerOpen.value = true
 }
 
 async function loadReleases() {
-  if (!canManage.value) {
+  if (canManage.value !== true) {
     return
   }
   loading.value = true
@@ -158,6 +163,11 @@ async function loadReleases() {
 }
 
 async function submitRegister() {
+  // MVR-316：与 BE 超管发布包门禁二次拦截
+  if (canManage.value !== true) {
+    message.warning('仅平台超级管理员可维护扫描端发布包')
+    return
+  }
   if (saving.value) return
   const version = registerForm.version.trim()
   if (!version) {
@@ -204,12 +214,22 @@ function handleReleaseRowAction(key: string, record: ScannerAgentReleaseResponse
 }
 
 function openPublishModal(record: ScannerAgentReleaseResponse) {
+  // MVR-316：发布入口与 canManage 同源
+  if (canManage.value !== true) {
+    message.warning('仅平台超级管理员可维护扫描端发布包')
+    return
+  }
   publishTarget.value = record
   publishPushEnabled.value = isMsiPackage(record)
   publishOpen.value = true
 }
 
 async function submitPublish() {
+  // MVR-316：与 BE 超管发布包门禁二次拦截
+  if (canManage.value !== true) {
+    message.warning('仅平台超级管理员可维护扫描端发布包')
+    return
+  }
   if (!publishTarget.value) {
     return
   }
@@ -232,6 +252,11 @@ async function submitPublish() {
 }
 
 async function confirmDelete(record: ScannerAgentReleaseResponse) {
+  // MVR-316：删除与 canManage 二次拦截
+  if (canManage.value !== true) {
+    message.warning('仅平台超级管理员可维护扫描端发布包')
+    return
+  }
   if (record.published) {
     showFormValidationMessage('当前发布版本不能删除')
     return

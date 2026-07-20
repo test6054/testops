@@ -2,7 +2,7 @@
 
 ## Register
 
-product
+product（工作台）+ brand（登录/公开面）分层；驾驶舱页走 cockpit 叙事。
 
 ## Product Purpose
 
@@ -18,9 +18,16 @@ product
 
 ## Brand And Tone
 
-界面气质应当是严谨、秩序化、可追溯的阅卷工作台。阅卷场景涉及成绩、身份、评分和复核，任何视觉表达都必须让责任链、状态、证据和下一步动作清楚可查。
+界面气质是**营销感现代教学 SaaS 平台**：登录与公开面传达品牌专业；进入工作台后利落高效，摆脱「老旧后台管理」观感。阅卷场景涉及成绩、身份、评分和复核，责任链、状态、证据和下一步动作必须清楚可查。
 
-文案使用中文阅卷业务语言，避免泛化后台模板词。状态名、操作名和异常提示要贴近考试、答题卡、扫描影像、OCR、批阅、仲裁、成绩发布和复核语境。
+视觉分层：
+
+- **Brand**：登录、公开查询、关键空态 — 品牌名英雄级、氛围构图、少表。
+- **Product**：壳层、列表、组织/名册 — Linear/Stripe 式现代 SaaS（层级、轻材质、双行 KPI）。
+- **Cockpit**：阅卷概览、AI 分析 L0、质量驾驶舱 — 对齐 web-vue 作答管理式多栏叙事。
+- **Trust**：批阅/仲裁沉浸 — 证据优先，禁止 Hero 与营销文案。
+
+文案使用中文阅卷业务语言。状态名、操作名和异常提示贴近考试、答题卡、扫描影像、OCR、批阅、仲裁、成绩发布和复核语境。
 
 ## Strategic Principles
 
@@ -30,14 +37,16 @@ product
 - 高频批处理友好：教师需要快速筛选、批量处理、回到任务队列和查看详情。
 - 学生视角克制：学生端重点是成绩、题目维度回看和复核申请，不展示管理端噪声。
 - 前后端合同一致：所有请求遵守 GET / POST、`ResultInfo<T>` 自动解包、`Long` ID 字符串语义和分页合同。
+- 营销感落在 Brand/Product/Cockpit 分层，不得把落地页堆进批阅表与沉浸评分。
 
 ## Anti References
 
-- 不要做成通用考试营销页或培训平台首页。
+- 不要把表格/批阅页做成多卖点长滚动落地页。
 - 不要用炫技视觉表现替代阅卷证据链。
 - 不要用大面积深色监控风格掩盖表格、队列和影像处理效率。
 - 不要在未知枚举、缺少影像、缺少评分记录时显示成“暂无数据”。
 - 不要把 AI 分析写成确定性裁决；阅卷责任链和人工复核边界必须清楚。
+- 不要紫靛渐变、玻璃拟态、渐变字、粗左侧色条、不可点装饰 KPI。
 
 ## Core Surfaces
 
@@ -48,4 +57,6 @@ product
 - `src/apis/mark/exam-mark-scanner.ts`：扫描录入与识别 API。
 - `src/apis/mark/grade-review.ts`：评分批阅与仲裁 API。
 - `src/components/ui-guide/ui`：阅卷端统一设计语言组件。
-
+- `src/views/login/index.vue`：Brand 登录面。
+- `src/views/teacher/marking-overview.vue`：Cockpit 样板。
+- `src/views/teacher/exam-list.vue`：Product 列表样板。

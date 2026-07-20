@@ -1,0 +1,105 @@
+<!--
+  归档门禁操作条：紧凑横排操作芯片，避免大空卡占首屏。
+-->
+<script setup lang="ts">
+interface ArchiveGateOpsItem {
+  key: string
+  title: string
+  description?: string
+  actionLabel: string
+  tone?: 'blue' | 'orange' | 'red' | 'gray'
+}
+
+defineOptions({ name: 'ArchiveVolumeGateOpsStrip' })
+
+defineProps<{
+  items: ArchiveGateOpsItem[]
+}>()
+
+const emit = defineEmits<{
+  action: [key: string]
+}>()
+</script>
+
+<template>
+  <div v-if="items.length" class="archive-gate-ops" role="list">
+    <button
+      v-for="item in items"
+      :key="item.key"
+      type="button"
+      class="archive-gate-ops__item"
+      :class="`archive-gate-ops__item--${item.tone ?? 'orange'}`"
+      role="listitem"
+      :title="item.description || item.title"
+      @click="emit('action', item.key)"
+    >
+      <span class="archive-gate-ops__title">{{ item.title }}</span>
+      <span class="archive-gate-ops__cta">{{ item.actionLabel }}</span>
+    </button>
+  </div>
+</template>
+
+<style scoped lang="scss">
+.archive-gate-ops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2);
+  margin-bottom: var(--dp-space-3);
+}
+
+.archive-gate-ops__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+  max-width: 100%;
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, var(--dp-orange-500) 28%, var(--dp-border));
+  border-radius: var(--dp-radius-control);
+  background: color-mix(in srgb, var(--dp-orange-500) 8%, var(--dp-surface));
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--dp-color-primary) 40%, var(--dp-border));
+    background: color-mix(in srgb, var(--dp-color-primary) 6%, var(--dp-surface));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--dp-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.archive-gate-ops__item--blue {
+  border-color: color-mix(in srgb, var(--dp-blue-500) 28%, var(--dp-border));
+  background: color-mix(in srgb, var(--dp-blue-500) 8%, var(--dp-surface));
+}
+
+.archive-gate-ops__item--red {
+  border-color: color-mix(in srgb, var(--dp-red-500) 28%, var(--dp-border));
+  background: color-mix(in srgb, var(--dp-red-500) 8%, var(--dp-surface));
+}
+
+.archive-gate-ops__item--gray {
+  border-color: var(--dp-border);
+  background: var(--dp-gray-50);
+}
+
+.archive-gate-ops__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dp-text-primary);
+  line-height: 1.2;
+}
+
+.archive-gate-ops__cta {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dp-color-primary);
+  white-space: nowrap;
+}
+</style>

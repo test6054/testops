@@ -496,7 +496,6 @@ import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import { isExamConfidentialFlag, useExamConfidential } from '@/composables/useConfidentialWatermark'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import {
   EXAM_WORKSPACE_CHROME_KEY,
   MARK_WORKBENCH_CONTEXT_KEY,
@@ -537,8 +536,10 @@ const chrome = inject(EXAM_WORKSPACE_CHROME_KEY, null)
 const workbench = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 const { refreshSnapshot } = useWorkspaceExamId()
 const userStore = useUserStore()
-const examOwnerSource = computed(() => workbench?.examDetail?.value ?? null)
-const { isExamOwner } = useExamOwnerPermission(examOwnerSource)
+/** MVR-327：仅认 BE ReviewTaskDetail.canManageOwnerReviewOverride===true */
+const canManageOwnerReviewOverride = computed(
+  () => detail.value?.canManageOwnerReviewOverride === true,
+)
 
 const examId = computed(() => (route.params.examId ? String(route.params.examId) : ''))
 const {
@@ -622,8 +623,14 @@ const immersionSubtitle = computed(() => {
 
 const canSubmit = computed(() => !!examId.value && !!taskId.value)
 
-/** 当前任务是否允许提交复核（活跃态且具备写权限） */
+/** MVR-283：与 getReviewTaskDetail 下发的 canManageReviewerWrites 对齐（Service 门禁优先）。 */
+const canManageReviewerWrites = computed(() => detail.value?.canManageReviewerWrites === true)
+
 const canConfirm = computed(() => {
+  // MVR-283：无阅卷写能力位不得暴露确认/采纳/快捷给分
+  if (!canManageReviewerWrites.value) {
+    return false
+  }
   const status = detail.value?.status
   if (status !== ReviewTaskStatusCode.PENDING && status !== ReviewTaskStatusCode.IN_PROGRESS) {
     return false
@@ -834,6 +841,8 @@ function syncExperienceAssistMetaFromDetail(taskDetail: ReviewTaskDetailResponse
 
 /** 是否可以调用单题 AI 复评，需同时满足：存在 gradeResultId、状态为 PENDING/IN_PROGRESS、未提交中 */
 const canRescoreByAi = computed<boolean>(() => {
+  // MVR-283：无阅卷写能力位不得暴露 AI 复评
+  if (!canManageReviewerWrites.value) return false
   if (rescoring.value || submitting.value) return false
   if (!examId.value) return false
   if (!detail.value) return false
@@ -931,7 +940,7 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
       = preview.status === ReviewTaskStatusCode.IN_PROGRESS
         && !!preview.assignedTeacherUserId
         && preview.assignedTeacherUserId !== currentUserId.value
-    if (heldByOther && isExamOwner.value) {
+    if (heldByOther && canManageOwnerReviewOverride.value) {
       ownerOverrideMode.value = true
       claimBlockedByOther.value = false
       return preview
@@ -1018,6 +1027,11 @@ function openRescoreConfirm(): void {
 
 /** 实际发起调用，成功后由 loadTask 重拉全量详情以同步重写后的 AI 评分和诊断 */
 async function doRescoreByAi(): Promise<void> {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无阅卷写权限')
+    return
+  }
+
   if (rescoring.value) return
   if (!canRescoreByAi.value || !examId.value || !detail.value) return
   rescoring.value = true
@@ -1197,6 +1211,11 @@ function timelineColor(status: AiExecutionStatusCode): string {
  * advanceToNext=true 时进入"提交并取下一份"流水线，提示文案会区分。
  */
 async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无阅卷写权限')
+    return
+  }
+
   if (!examId.value || !detail.value) return
   if (!gradeFormRef.value) return
   try {
@@ -1229,6 +1248,10 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
 
 /** 提交核心：仅提交教师复核给分，成功返回 true；失败已提示并返回 false */
 async function submitGrade(): Promise<boolean> {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无阅卷写权限')
+    return false
+  }
   if (!examId.value || !detail.value) return false
   if (submitting.value || rejecting.value) {
     return false
@@ -1271,8 +1294,8 @@ async function submitGrade(): Promise<boolean> {
       return false
     }
     if (isBusinessConflict(error) && getUserErrorMessage(error, '').includes('已被其他教师领取')) {
-      claimBlockedByOther.value = !isExamOwner.value
-      ownerOverrideMode.value = isExamOwner.value
+      claimBlockedByOther.value = !canManageOwnerReviewOverride.value
+      ownerOverrideMode.value = canManageOwnerReviewOverride.value
       message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
       return false
     }
@@ -1284,6 +1307,10 @@ async function submitGrade(): Promise<boolean> {
 }
 
 function openRejectConfirm(): void {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无阅卷写权限')
+    return
+  }
   if (!examId.value || !detail.value?.gradeResultId) return
   void confirmAsync({
     title: '确认驳回复核？',
@@ -1296,6 +1323,10 @@ function openRejectConfirm(): void {
 }
 
 async function handleReject(): Promise<void> {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无阅卷写权限')
+    return
+  }
   if (!examId.value || !detail.value?.gradeResultId) return
   if (rejecting.value || submitting.value) {
     return
@@ -1337,8 +1368,8 @@ async function handleReject(): Promise<void> {
       return
     }
     if (isBusinessConflict(error) && getUserErrorMessage(error, '').includes('已被其他教师领取')) {
-      claimBlockedByOther.value = !isExamOwner.value
-      ownerOverrideMode.value = isExamOwner.value
+      claimBlockedByOther.value = !canManageOwnerReviewOverride.value
+      ownerOverrideMode.value = canManageOwnerReviewOverride.value
       message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
       return
     }
@@ -1369,6 +1400,11 @@ async function handleSubmitAndNext(): Promise<void> {
  * 找不到下一份时返回考试工作台，提示教师本题复核已完成。
  */
 async function takeNextTask(): Promise<void> {
+  // MVR-317：领取下一份复核与 canManageReviewerWrites / BE 评阅写门禁同源
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无阅卷写权限，无法领取复核任务')
+    return
+  }
   if (!examId.value) return
   try {
     // 重新拉一次队列，确保不包含刚提交的任务（后端可能已变状态）

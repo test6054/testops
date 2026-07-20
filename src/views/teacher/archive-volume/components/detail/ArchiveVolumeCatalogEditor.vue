@@ -5,13 +5,13 @@ import type {
   ArchiveVolumeCatalogLineVO,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted } from 'vue'
 import {
   ARCHIVE_CATALOG_STATUS_TONE,
   ArchiveCatalogStatusDescription,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -24,11 +24,17 @@ import ArchiveVolumeCatalogPreview from '@/views/teacher/archive-volume/componen
 
 defineOptions({ name: 'ArchiveVolumeCatalogEditor' })
 
-const props = defineProps<{
-  volumeId: string
-  catalogStatus?: ArchiveCatalogStatusCode
-  readonly?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    volumeId: string
+    catalogStatus?: ArchiveCatalogStatusCode
+    readonly?: boolean
+  }>(),
+  {
+    // MVR-380：默认拒绝假可写；仅父级显式 :readonly="false"（canEditCatalog）可写
+    readonly: true,
+  },
+)
 
 const emit = defineEmits<{
   refreshed: []
@@ -91,6 +97,10 @@ function catalogCellInputValue(record: ArchiveVolumeCatalogLineVO, dataIndex: un
 }
 
 function updateCatalogLineValue(index: number, dataIndex: unknown, value: string): void {
+  // MVR-380：单元格编辑二次拦截，仅 readonly===false 可改
+  if (props.readonly !== false) {
+    return
+  }
   if (dataIndex === 'archiveCode') {
     updateLine(index, { archiveCode: value })
     return
@@ -119,16 +129,31 @@ function updateCatalogLineValue(index: number, dataIndex: unknown, value: string
 }
 
 async function handleGenerateDraft() {
+  // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）；仅 readonly===false 可写
+  if (props.readonly !== false) {
+    message.warning('当前账号无目录编辑权限')
+    return
+  }
   await generateDraft()
   emit('refreshed')
 }
 
 async function handleSave() {
+  // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）；仅 readonly===false 可写
+  if (props.readonly !== false) {
+    message.warning('当前账号无目录编辑权限')
+    return
+  }
   await saveCatalog()
   emit('refreshed')
 }
 
 async function handleConfirm() {
+  // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）；仅 readonly===false 可写
+  if (props.readonly !== false) {
+    message.warning('当前账号无目录编辑权限')
+    return
+  }
   await confirmCatalog()
   emit('refreshed')
 }
@@ -153,7 +178,7 @@ defineExpose({ loadCatalog })
         </UiTag>
       </div>
     </template>
-    <template v-if="!readonly" #toolbar>
+    <template v-if="readonly === false && editableLines.length > 0" #toolbar>
       <div class="archive-volume-catalog-editor__actions">
         <UiButton
           size="sm"
@@ -210,7 +235,22 @@ defineExpose({ loadCatalog })
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
-    <UiEmpty size="sm" v-else-if="editableLines.length === 0" description="尚未生成目录草稿" />
+    <div
+      v-else-if="editableLines.length === 0"
+      class="archive-volume-catalog-editor__empty-strip"
+    >
+      <span class="archive-volume-catalog-editor__empty-text">尚未生成目录草稿</span>
+      <UiButton
+        v-if="readonly === false"
+        size="sm"
+        variant="primary"
+        :loading="saving"
+        :disabled="loadFailed"
+        @click="handleGenerateDraft"
+      >
+        生成草稿
+      </UiButton>
+    </div>
 
     <ArchiveVolumeCatalogPreview
       v-else-if="readonly || isConfirmed"
@@ -283,5 +323,22 @@ defineExpose({ loadCatalog })
   display: flex;
   flex-wrap: wrap;
   gap: var(--dp-space-2);
+}
+
+.archive-volume-catalog-editor__empty-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+  min-height: 48px;
+  padding: var(--dp-space-3) var(--dp-space-4);
+  border: 1px dashed var(--dp-border);
+  border-radius: var(--dp-radius-panel);
+  background: color-mix(in srgb, var(--dp-gray-50) 80%, var(--dp-surface));
+}
+
+.archive-volume-catalog-editor__empty-text {
+  font-size: 13px;
+  color: var(--dp-text-secondary);
 }
 </style>

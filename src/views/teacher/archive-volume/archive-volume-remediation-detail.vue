@@ -40,7 +40,7 @@
     </template>
 
     <template v-if="taskDetail" #signal>
-      <SignalBand :metrics="signalMetrics" variant="panel" compact />
+      <SignalBand :metrics="signalMetrics" variant="panel" />
     </template>
 
     <UiEmpty
@@ -445,7 +445,7 @@ defineOptions({ name: 'TeacherArchiveVolumeRemediationDetail' })
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-const { canManageRemediationAsCoordinator, loadGrants } = useArchiveDutyAccess()
+const { loadGrants } = useArchiveDutyAccess()
 
 const loading = ref(false)
 const loadFailed = ref(false)
@@ -563,10 +563,9 @@ const lifecycleSteps = computed(() => {
 
 const campaignName = computed(() => campaignSummary.value?.campaignName)
 
-const showCoordinatorActions = computed(() =>
-  !isSupervisionRead.value && taskVolumeDepartmentId.value
-    ? canManageRemediationAsCoordinator({ departmentId: taskVolumeDepartmentId.value })
-    : false,
+// MVR-338：仅认 BE getRemediationTask can*===true；禁止 hasDuty 本地回退（督导详情 BE 下发 false）
+const showCoordinatorActions = computed(
+  () => !isSupervisionRead.value && taskDetail.value?.canManageAsCoordinator === true,
 )
 
 const isCurrentAssignee = computed(
@@ -575,22 +574,18 @@ const isCurrentAssignee = computed(
 
 const showAssigneeActions = computed(() => !isSupervisionRead.value && isCurrentAssignee.value)
 
-/** MVR-192：与 BE 复检关闭双人制同源，责任人兼协调人时不可自关 */
-const canCloseRemediationAsCoordinator = computed(() => {
-  const task = taskDetail.value
-  if (!task || !showCoordinatorActions.value) return false
-  if (task.taskStatus !== ArchiveRemediationStatusCode.RESUBMITTED) return false
-  if (isCurrentAssignee.value) return false
-  return true
-})
+/** MVR-192/338：与 BE canCloseWithVerification 同源 */
+const canCloseRemediationAsCoordinator = computed(
+  () => !isSupervisionRead.value && taskDetail.value?.canCloseWithVerification === true,
+)
 
-const canActOnTask = computed(() => showCoordinatorActions.value || showAssigneeActions.value)
+const canActOnTask = computed(
+  () => !isSupervisionRead.value && taskDetail.value?.canUpdateTask === true,
+)
 
-const canUploadEvidence = computed(() => {
-  const task = taskDetail.value
-  if (!task || task.taskStatus === ArchiveRemediationStatusCode.CLOSED) return false
-  return canActOnTask.value
-})
+const canUploadEvidence = computed(
+  () => !isSupervisionRead.value && taskDetail.value?.canUploadEvidence === true,
+)
 
 const evidenceColumns: ColumnsType<ArchiveRemediationEvidenceResponse> = [
   { title: '文件名', key: 'fileName', dataIndex: 'fileName', fixed: 'left' },
@@ -602,7 +597,8 @@ const evidenceColumns: ColumnsType<ArchiveRemediationEvidenceResponse> = [
 
 const canSaveAssigneeReassign = computed(() => {
   const task = taskDetail.value
-  if (!task || task.taskStatus === ArchiveRemediationStatusCode.CLOSED) return false
+  if (!task || showCoordinatorActions.value !== true) return false
+  if (task.taskStatus === ArchiveRemediationStatusCode.CLOSED) return false
   if (!editAssigneeUserId.value) return false
   return editAssigneeUserId.value !== task.assigneeUserId
 })
@@ -652,6 +648,11 @@ function openEvidenceUploadModal() {
 
 async function submitEvidenceUpload() {
   if (evidenceUploadSubmitting.value) return
+  // MVR-310：与 canUploadEvidence / BE assertRemediationEvidenceRegisterAllowed 同源
+  if (!canUploadEvidence.value) {
+    showFormValidationMessage('当前账号不可上传整改证据')
+    return
+  }
   if (!taskDetail.value || !evidenceUploadFileId.value) {
     showFormValidationMessage('请选择证据文件')
     return
@@ -727,6 +728,11 @@ async function loadTask() {
 
 async function advanceStatus(status: ArchiveRemediationStatusCode) {
   if (!taskDetail.value || updating.value) return
+  // MVR-310：与 canActOnTask / BE updateRemediationTask 协调人|责任人闸同源
+  if (!canActOnTask.value) {
+    showFormValidationMessage('当前账号无权更新整改任务状态')
+    return
+  }
   updating.value = true
   try {
     taskDetail.value = await updateRemediationTask({
@@ -746,6 +752,11 @@ async function advanceStatus(status: ArchiveRemediationStatusCode) {
 
 async function reassignAssignee() {
   if (!taskDetail.value || !editAssigneeUserId.value || reassigning.value) return
+  // MVR-310：改派仅协调人；与 showCoordinatorActions / BE coordinator 分支同源
+  if (!showCoordinatorActions.value || !canSaveAssigneeReassign.value) {
+    showFormValidationMessage('当前账号无权改派整改责任人')
+    return
+  }
   reassigning.value = true
   try {
     taskDetail.value = await updateRemediationTask({

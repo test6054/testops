@@ -48,6 +48,8 @@ export const portfolioEvaluationPublicityApi = {
   }) => http.post<PortfolioEvaluationRereviewOrderVO>(`${BASE}/rereview/create`, data),
   completeRereview: (data: { orderId: string | number, conclusionSummary: string }) =>
     http.post<PortfolioEvaluationTaskVO>(`${BASE}/rereview/complete`, data),
+  cancelRereview: (data: { orderId: string | number, reasonText: string }) =>
+    http.post<PortfolioEvaluationTaskVO>(`${BASE}/rereview/cancel`, data),
   listRereview: (data: { evaluationTaskId: string | number }) =>
     http.post<PortfolioEvaluationRereviewOrderVO[]>(`${BASE}/rereview/list`, data),
 }
@@ -64,5 +66,11 @@ export interface PortfolioEvaluationRereviewOrderVO {
   conclusionSummary?: string
   completedTime?: string
   createTime?: string
+  /** 被评教师生命周期状态编码；整任务工单可空 */
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  countsInCurrentFacultyStructure?: boolean
+  evaluationHeld?: boolean
 }
 

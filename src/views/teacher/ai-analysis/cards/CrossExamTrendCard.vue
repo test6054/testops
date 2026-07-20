@@ -11,7 +11,9 @@
         ]"
       />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
-      <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
+      <UiButton
+        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+      >
         生成分析
       </UiButton>
     </template>
@@ -128,9 +130,10 @@ import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
+import { useExamSummariesReviewerWriteCapability } from '@/composables/useExamIdsReviewerWriteCapability'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { ensureRequiredAcademicYearSemester } from '@/utils/academic-year-semester-query'
-import { showFormValidationMessage } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { buildTrendChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
 import { buildTrendLineChartOption } from '@/utils/mark-echarts-options'
@@ -503,7 +506,18 @@ async function reload(): Promise<void> {
   }
 }
 
+
+/** MVR-286：默认拒绝假可写；所选考试均须 canManageReviewerWrites */
+const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
+  computed(() => form.examIds),
+  computed(() => selectedExams.value),
+)
+
 async function handleGenerate(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
+    return
+  }
   if (generating.value) return
   if (!ensureRequiredAcademicYearSemester(form.academicYear, form.semester)) {
     return

@@ -1,5 +1,5 @@
 <template>
-  <WorkbenchSurfaceCard class="archive-volume-events-panel">
+  <WorkbenchSurfaceCard embedded class="archive-volume-events-panel">
     <template #head>
       <div class="archive-volume-events-panel__head">
         <h3 class="archive-volume-events-panel__title">审计事件</h3>
@@ -42,6 +42,11 @@ const props = defineProps<{
 const exporting = ref(false)
 
 async function handleExport() {
+  // MVR-341：详情壳已可读才挂载；空事件列表不导出（与按钮 disabled 一致）
+  if (props.events.length === 0) {
+    message.warning('暂无审计事件可导出')
+    return
+  }
   if (exporting.value) return
   exporting.value = true
   try {

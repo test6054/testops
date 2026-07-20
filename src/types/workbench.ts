@@ -52,6 +52,9 @@ export const WORKBENCH_STAGE_TO_TIMELINE: Record<WorkbenchStageStatus, UiArrowTi
 /** 趋势箭头颜色极性：positive=上升为好，negative=上升为坏，neutral=中性蓝 */
 export type SignalMetricTrendPolarity = 'positive' | 'negative' | 'neutral'
 
+/** SignalBand 图标区色调（仅 UI 装饰映射，不承载业务数） */
+export type SignalMetricIconTone = 'blue' | 'green' | 'orange' | 'red' | 'gray' | 'purple'
+
 /** 信号指标项 */
 export interface SignalMetric {
   key: string
@@ -70,6 +73,8 @@ export interface SignalMetric {
   active?: boolean
   /** 可选 spark 序列（仅绑 Live 趋势字段，禁止编造） */
   sparkValues?: number[]
+  /** panel 模式图标区色调；缺省按 tone 推导 */
+  iconTone?: SignalMetricIconTone
 }
 
 // ─── 任务结果面板（TaskResultPanel）──────────────────────

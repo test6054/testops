@@ -47,6 +47,13 @@ import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
+
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard()
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -155,6 +162,8 @@ const historyBatchColumns: ColumnsType = [
   { title: '成功', dataIndex: 'successRows', key: 'successRows', width: 72 },
   { title: '失败', dataIndex: 'failedRows', key: 'failedRows', width: 72 },
   { title: '状态', dataIndex: 'batchStatus', key: 'batchStatus', width: 96 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '操作', key: 'actions', width: 128 },
 ]
 
@@ -181,6 +190,14 @@ function historyBatchStatusTone(status: PortfolioDevelopmentPlanHistoryImportBat
     default:
       return 'blue' as const
   }
+}
+
+
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
 }
 
 async function openHistoryBatchDetail(id: string) {
@@ -681,6 +698,9 @@ function scrollToHighlightedPlan() {
   })
 }
 
+/**
+ * PF-P0-288：消费 planId 深链；若 BE 已按目标规划对齐年度，同步表单 planYear，避免 UI 仍停在默认当年。
+ */
 async function openPlanFromQuery() {
   const planId = typeof route.query.planId === 'string' ? route.query.planId : ''
   if (!planId) {
@@ -691,6 +711,9 @@ async function openPlanFromQuery() {
   const target = rows.value.find((item) => item.id === planId)
   if (target) {
     selectedPlanId.value = planId
+    if (target.planYear && target.planYear !== form.planYear) {
+      form.planYear = target.planYear
+    }
     if (activeTab.value === 'items') {
       await loadPlanItems()
     }
@@ -704,6 +727,9 @@ async function openPlanFromQuery() {
 }
 
 async function createPlan() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   const planYear = Number(form.planYear)
   if (!/^\d{4}$/.test(form.planYear) || planYear < minimumPlanYear || planYear > maximumPlanYear) {
     showFormValidationMessage(`规划年度须在 ${minimumPlanYear} 年至 ${maximumPlanYear} 年之间`)
@@ -758,6 +784,9 @@ function handleDevelopmentPlanAction(key: string, record: PortfolioDevelopmentPl
 }
 
 async function submitPlan(id: string) {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (submitting.value) {
     return
   }
@@ -879,6 +908,9 @@ function removePlanItemRow(index: number) {
 }
 
 async function savePlanItems() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (itemSaving.value) {
     return
   }
@@ -921,6 +953,9 @@ async function savePlanItems() {
 }
 
 async function linkAchievement(item: DevelopmentPlanItemEditorRow) {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!item.id) {
     showFormValidationMessage('请先保存规划明细，再建立成果关联')
     return
@@ -1002,6 +1037,13 @@ watch(
         <template v-if="showAdminStats" #actions>
           <UiButton size="sm" variant="ghost" :loading="exporting" :disabled="exporting" @click="exportPlans"> 导出表格文件 </UiButton>
         </template>
+        <UiAlertStrip
+          v-if="archiveWriteForbidden"
+          tone="warning"
+          title="档案已封存写禁"
+          :description="archiveWriteBlockMessage"
+          class="mb-3"
+        />
       </ContextBar>
     </template>
     <UiCard>
@@ -1067,6 +1109,25 @@ watch(
               <UiTag :tone="planStatusTone(record.planStatus)">
                 {{ planStatusLabel(record.planStatus) }}
               </UiTag>
+            </template>
+            <template v-else-if="column.key === 'lifecycleStatus'">
+              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+            
+              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-else class="text-neutral-400">—</span>
+            </template>
+            <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+              <span>
+                {{
+                  record.countsInCurrentFacultyStructure === true
+                    ? '是'
+                    : record.countsInCurrentFacultyStructure === false
+                      ? '否'
+                      : '—'
+                }}
+              </span>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions

@@ -3,7 +3,14 @@
     <template #head>
       <div class="appeal-section__header">
         <span class="appeal-section__flow-hint">{{ BATCH_CORRECTION_FLOW_HINT }}</span>
-        <UiButton size="sm" variant="primary" @click="openCreateModal"> 新建计划 </UiButton>
+        <UiButton
+          v-if="canManageReviewerWrites"
+          size="sm"
+          variant="primary"
+          @click="openCreateModal"
+        >
+          新建计划
+        </UiButton>
       </div>
     </template>
 
@@ -235,6 +242,7 @@ import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   approveBatchCorrectionPlan,
   BATCH_CORRECTION_FLOW_HINT,
@@ -289,6 +297,8 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'changed'): void }>()
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo?.userId || '')
+/** MVR-278：批量更正写能力位 */
+const canManageReviewerWrites = ref(false)
 
 const router = useRouter()
 
@@ -466,9 +476,10 @@ function cacheReviewRequests(requests: GradeReviewRequestItemResponse[]): void {
 
 /** 撤回/已确认/已发布/已更正卷可纳入批量更正；与后端 applyGradeCorrection 门禁一致。 */
 function isFinalScoreCorrectable(request: GradeReviewRequestItemResponse): boolean {
+  // MVR-323：禁止缺省 finalScoreStatus 时纳入批量更正假可写（对齐 CorrectionsCard MVR-321）
   const status = request.finalScoreStatus
   if (!status) {
-    return true
+    return false
   }
   return (
     status === FinalScoreStatusCode.CONFIRMED
@@ -478,10 +489,21 @@ function isFinalScoreCorrectable(request: GradeReviewRequestItemResponse): boole
   )
 }
 
+/** MVR-194/208/209：与 BE assertGradeReviewOperatorSeparatedFromStudent 同源 */
+function isGradeReviewApplicantSelf(request: GradeReviewRequestItemResponse): boolean {
+  return Boolean(
+    currentUserId.value
+    && request.studentUserId
+    && String(request.studentUserId) === String(currentUserId.value),
+  )
+}
+
 function filterCorrectableReviewRequests(
   requests: GradeReviewRequestItemResponse[],
 ): GradeReviewRequestItemResponse[] {
-  return requests.filter((request) => isFinalScoreCorrectable(request))
+  return requests.filter(
+    (request) => isFinalScoreCorrectable(request) && !isGradeReviewApplicantSelf(request),
+  )
 }
 
 const columns: ColumnType<ExamBatchGradeCorrectionPlan>[] = [
@@ -503,10 +525,24 @@ const columns: ColumnType<ExamBatchGradeCorrectionPlan>[] = [
   { title: '操作', key: 'actions', width: 210 },
 ]
 
+async function loadWriteCapability(): Promise<void> {
+  if (!props.examId) {
+    canManageReviewerWrites.value = false
+    return
+  }
+  try {
+    const summary = await getExamLayoutQuestionSummary(props.examId)
+    canManageReviewerWrites.value = summary.canManageReviewerWrites === true
+  } catch {
+    canManageReviewerWrites.value = false
+  }
+}
+
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
   try {
+    await loadWriteCapability()
     const keyword = filterForm.keyword.trim() || undefined
     const result = await listBatchCorrectionPlans({
       examId: props.examId,
@@ -547,6 +583,10 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 }
 
 async function openCreateModal(): Promise<void> {
+  if (!canManageReviewerWrites.value) {
+    message.warning('仅本场阅卷组织成员或主考可创建批量更正计划')
+    return
+  }
   form.planName = ''
   form.correctionType = GradeCorrectionTypeCode.SINGLE_QUESTION
   form.layoutQuestionId = ''
@@ -698,6 +738,11 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
       message.warning('更正明细请选择已通过的复核申请')
       return null
     }
+    // MVR-209：申请人不得将本人复核申请写入批量更正计划
+    if (isGradeReviewApplicantSelf(request)) {
+      message.warning('不能将本人的复核申请加入批量更正计划，请由其他教师处理')
+      return null
+    }
     if (
       form.correctionType === GradeCorrectionTypeCode.SINGLE_QUESTION
       && !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
@@ -755,6 +800,11 @@ function buildCreateRequest(): BatchCorrectionPlanCreateRequest | null {
 }
 
 async function handleCreate(): Promise<void> {
+  // MVR-313：与 openCreateModal / canManageReviewerWrites 同源二次拦截
+  if (!canManageReviewerWrites.value) {
+    message.warning('仅本场阅卷组织成员或主考可创建批量更正计划')
+    return
+  }
   const request = buildCreateRequest()
   if (!request) return
   if (creating.value || operatingId.value) {
@@ -776,6 +826,12 @@ async function handleCreate(): Promise<void> {
 
 async function handleSubmitPlan(planId: string): Promise<void> {
   if (operatingId.value || creating.value) {
+    return
+  }
+  // MVR-313：与 canSubmit / BE 提交门禁同源
+  const row = rows.value.find((item) => item.id === planId)
+  if (!row || !canSubmit(row)) {
+    message.warning('当前账号不可提交该批量更正计划')
     return
   }
   operatingId.value = planId
@@ -833,6 +889,12 @@ async function handleReject(): Promise<void> {
   if (operatingId.value || creating.value) {
     return
   }
+  // MVR-313：与 canDecideBatchCorrectionPlan 同源二次拦截
+  const row = rows.value.find((item) => item.id === rejectPlanId.value)
+  if (!row || !canDecideBatchCorrectionPlan(row)) {
+    message.warning('当前账号不可驳回该批量更正计划')
+    return
+  }
   operatingId.value = rejectPlanId.value
   operatingAction.value = 'reject'
   try {
@@ -851,7 +913,13 @@ async function handleReject(): Promise<void> {
 
 function openExecuteModal(planId: string): void {
   const row = rows.value.find((item) => item.id === planId)
-  if (!row || row.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED) {
+  // MVR-380：与 handleExecute / canManageReviewerWrites 二次拦截
+  if (
+    !canManageReviewerWrites.value
+    || !row
+    || row.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED
+  ) {
+    message.warning('当前账号不可执行该批量更正计划')
     return
   }
   executePlanId.value = planId
@@ -868,6 +936,16 @@ async function handleExecute(): Promise<void> {
   const planId = executePlanId.value
   if (!planId) return
   if (operatingId.value || creating.value) {
+    return
+  }
+  // MVR-313：执行写二次拦截，与行动作 hidden 条件同源
+  const row = rows.value.find((item) => item.id === planId)
+  if (
+    !canManageReviewerWrites.value
+    || !row
+    || row.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED
+  ) {
+    message.warning('当前账号不可执行该批量更正计划')
     return
   }
   operatingId.value = planId
@@ -909,8 +987,11 @@ function isOperating(planId: string, action: OperationAction): boolean {
 
 function canSubmit(row: ExamBatchGradeCorrectionPlan): boolean {
   return (
-    row.approvalStatus === BatchCorrectionApprovalStatusCode.DRAFT
-    || row.approvalStatus === BatchCorrectionApprovalStatusCode.REJECTED
+    canManageReviewerWrites.value
+    && (
+      row.approvalStatus === BatchCorrectionApprovalStatusCode.DRAFT
+      || row.approvalStatus === BatchCorrectionApprovalStatusCode.REJECTED
+    )
   )
 }
 
@@ -925,7 +1006,8 @@ function isBatchCorrectionSubmitterSelf(row: ExamBatchGradeCorrectionPlan): bool
 
 function canDecideBatchCorrectionPlan(row: ExamBatchGradeCorrectionPlan): boolean {
   return (
-    row.approvalStatus === BatchCorrectionApprovalStatusCode.PENDING_APPROVAL
+    canManageReviewerWrites.value
+    && row.approvalStatus === BatchCorrectionApprovalStatusCode.PENDING_APPROVAL
     && !isBatchCorrectionSubmitterSelf(row)
   )
 }
@@ -959,7 +1041,7 @@ function buildBatchCorrectionPlanActions(
     {
       key: 'execute',
       label: '执行',
-      hidden: row.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED,
+      hidden: !canManageReviewerWrites.value || row.approvalStatus !== BatchCorrectionApprovalStatusCode.APPROVED,
       disabled: operating('execute'),
     },
   ]

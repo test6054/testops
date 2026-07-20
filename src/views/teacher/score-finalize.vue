@@ -36,7 +36,7 @@
             题目分待确认 {{ unconfirmedQuestionGradeCount }}
           </UiButton>
           <UiButton
-            v-if="canBatchConfirmSafe"
+            v-if="canBatchConfirmSafe === true"
             variant="primary"
             size="sm"
             :loading="batchConfirming"
@@ -107,6 +107,7 @@
       >
         <template #actions>
           <UiButton
+            v-if="canRepairAbsenceScoreZeroFinal === true"
             variant="primary"
             size="sm"
             :loading="repairingScoreZero"
@@ -584,7 +585,8 @@
           </UiButton>
           <UiButton
             v-else-if="
-              reason.reasonCode === FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
+              canManageReviewerWrites
+                && reason.reasonCode === FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
             "
             size="sm"
             variant="primary"
@@ -595,7 +597,8 @@
           </UiButton>
           <UiButton
             v-if="
-              !isHardBlockingRiskReason(reason.reasonCode)
+              canManageReviewerWrites
+                && !isHardBlockingRiskReason(reason.reasonCode)
                 && !isQuestionConfirmRiskReason(reason.reasonCode)
                 && reason.reasonCode !== FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
             "
@@ -877,6 +880,16 @@ const candidates = ref<ExamScoreSummaryItemResponse[]>([])
 const loading = ref(false)
 let candidatesRequestSequence = 0
 const riskOverview = ref<FinalScoreRiskOverviewResponse | null>(null)
+/** MVR-278：确认/发布写动作；与 BE requireExamReviewerPermission 对齐 */
+const canManageReviewerWrites = computed(() => riskOverview.value?.canManageReviewerWrites === true)
+
+/**
+ * MVR-368：补齐缺考计零终分不叠 ACTIVE；仅认 riskOverview.canRepairAbsenceScoreZeroFinal===true。
+ * 与 BE repairScoreZeroFinalScores / Absence 页 stats.canManageReviewerWrites 同源。
+ */
+const canRepairAbsenceScoreZeroFinal = computed(
+  () => riskOverview.value?.canRepairAbsenceScoreZeroFinal === true,
+)
 const scorePanel = ref<ExamWorkbenchScorePanelResponse | null>(null)
 const riskOverviewLoading = ref(false)
 const panelLoadError = ref('')
@@ -908,6 +921,8 @@ const panelNotice = computed(() => {
 })
 
 const {
+  refreshPendingAbsenceCount,
+  hasFieldWideHardBlockForWrite,
   ensureScorePublishPreconditions,
   ensureSinglePaperPublishPreconditions,
   ensureScoreConfirmPreconditions,
@@ -1020,7 +1035,7 @@ async function loadScorePanel(): Promise<void> {
 
 async function refreshScoreFinalizeData(): Promise<void> {
   await loadScorePanel()
-  await Promise.all([loadCandidates(), loadRiskOverview()])
+  await Promise.all([loadCandidates(), loadRiskOverview(), refreshPendingAbsenceCount()])
 }
 
 async function refreshAfterScoreWrite(): Promise<void> {
@@ -1070,6 +1085,13 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 // ─── 状态机按钮可用性 ─────────────────────────────
 function canConfirm(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
+  if (canManageReviewerWrites.value !== true) {
+    return false
+  }
+  // MVR-207：场级硬拦（缺考待确认/未核对、阻塞事件、重复影像）禁用确认，与 BE confirm 硬拦同源
+  if (hasFieldWideHardBlockForWrite.value) {
+    return false
+  }
   const s = record.finalScoreStatus
   // CORRECTED 官方更正分已落账，禁止再走 confirm 重算；只允许发布页/本页「重新发布」。
   if (s === FinalScoreStatusCode.WITHDRAWN) {
@@ -1085,8 +1107,13 @@ function confirmButtonLabel(record: ExamScoreSummaryItemResponse): string {
 }
 function canPublish(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
-  // 仅缺考硬阻断禁用按钮；绑定异常等软风险在点击发布时集中复核，不整场灰掉已确认卷。
-  if (hasHardBlockingRisks.value) return false
+  if (canManageReviewerWrites.value !== true) {
+    return false
+  }
+  // MVR-207：缺考待确认/未核对 + 阻塞事件/重复影像；软风险仍在点击时集中复核。
+  if (hasFieldWideHardBlockForWrite.value || hasHardBlockingRisks.value) {
+    return false
+  }
   const s = record.finalScoreStatus
   return (
     s === FinalScoreStatusCode.CONFIRMED
@@ -1180,6 +1207,11 @@ function goScanBindingAttention(): void {
 }
 
 async function toggleRiskReasonReviewed(reasonCode: FinalScoreRiskReasonCode): Promise<void> {
+  // MVR-295/363：与 BE saveFinalScoreRiskReview / requireActiveExam + requireExamReviewerPermission 对齐
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('当前账号无本场评阅写权限，无法标记风险复核')
+    return
+  }
   if (HARD_BLOCKING_RISK_REASON_CODES.has(reasonCode)) return
   // ABNORMAL_PAPER 可标记已复核（允许先发其它已确认卷），但引导去扫描处置，不能当缺考。
   if (
@@ -1273,6 +1305,11 @@ const repairingScoreZero = ref(false)
 
 async function handleRepairScoreZero(): Promise<void> {
   if (!selectedExamId.value || repairingScoreZero.value) return
+  // MVR-295/368：与 BE repairScoreZeroFinalScores（评阅写、不叠 ACTIVE）二次拦截
+  if (canRepairAbsenceScoreZeroFinal.value !== true) {
+    message.warning('当前账号无本场评阅写权限，无法补齐计零终分')
+    return
+  }
   repairingScoreZero.value = true
   try {
     const result = await repairScoreZeroFinalScores({ examId: selectedExamId.value })
@@ -1299,11 +1336,13 @@ async function handleRepairScoreZero(): Promise<void> {
 /**
  * 安全批量确认卷级最终成绩：仅依赖 safeConfirmableCount + 全场级硬阻塞。
  * 未确认题目分由后端按卷过滤，不应因场内仍有待复核卷而禁用「已全题确认」卷的批量确认。
+ * MVR-292：必须叠 canManageReviewerWrites，避免非评阅写权用户顶栏假可点。
  */
 const canBatchConfirmSafe = computed(() => {
   const overview = effectiveRiskOverview.value
   return Boolean(
     overview
+    && canManageReviewerWrites.value
     && overview.safeConfirmableCount > 0
     && !hasHardBlockingRisks.value
     && !hasFieldWideSafeBatchBlockers.value
@@ -1330,10 +1369,15 @@ async function handleBatchConfirmSafe(): Promise<void> {
   if (batchConfirming.value) {
     return
   }
+  // MVR-292：与 BE requireExamReviewerPermission / canManageReviewerWrites 二次拦截
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('当前账号无本场评阅写权限，无法批量确认成绩')
+    return
+  }
   if (!selectedExamId.value || !effectiveRiskOverview.value) return
   if (warnFieldWideSafeBatchBlockers()) return
   const canContinue = await ensureScoreConfirmPreconditions()
-  if (!canContinue) {
+  if (canContinue !== true) {
     return
   }
   batchConfirming.value = true
@@ -1522,6 +1566,10 @@ function handleFinalizeRowAction(key: string, record: ExamScoreSummaryItemRespon
 
 function canWithdraw(record: ExamScoreSummaryItemResponse): boolean {
   if (!record.paperInstanceId) return false
+  // MVR-292：撤回/撤销确认须评阅写权，与 BE withdrawFinalScore 门禁对齐
+  if (canManageReviewerWrites.value !== true) {
+    return false
+  }
   const s = record.finalScoreStatus
   // MVR-184：与 BE withdrawFinalScore 对齐，CONFIRMED 可直接撤销确认，无需先发布再撤回
   return (
@@ -1866,6 +1914,11 @@ function resolveConfirmExamScorePreview(score: ExamPaperScoreResponse): number |
 
 async function openConfirmModal(record: ExamScoreSummaryItemResponse): Promise<void> {
   if (!selectedExamId.value || !record.paperInstanceId) return
+  // MVR-292：二次拦截，防止绕过行内 disabled
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('当前账号无本场评阅写权限，无法确认成绩')
+    return
+  }
   if (record.finalScoreStatus === FinalScoreStatusCode.CORRECTED) {
     message.warning(
       '成绩已更正，请直接重新发布；禁止确认覆盖官方更正分。如需再改请走成绩更正流程。',
@@ -1996,13 +2049,17 @@ function handleNextStepGoPublish(): void {
 
 async function handleGoScorePublish(): Promise<void> {
   const canContinue = await ensureScorePublishPreconditions()
-  if (!canContinue) {
+  if (canContinue !== true) {
     return
   }
   goScorePublish()
 }
 
 async function handleConfirm(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员或主考可确认最终成绩')
+    return
+  }
   if (confirming.value) {
     return
   }
@@ -2039,7 +2096,7 @@ async function handleConfirm(): Promise<void> {
         return
       }
       const canContinue = await ensureSinglePaperPublishPreconditions()
-      if (!canContinue) {
+      if (canContinue !== true) {
         message.success('成绩已确认，发布前请先完成缺考核对或风险处置')
         confirmOpen.value = false
         await refreshAfterScoreWrite()
@@ -2063,13 +2120,17 @@ async function handleConfirm(): Promise<void> {
 
 // ─── 发布成绩 ─────────────────────────────
 async function handlePublish(record: ExamScoreSummaryItemResponse): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员或主考可发布最终成绩')
+    return
+  }
   if (publishingPaperId.value) {
     return
   }
   if (!selectedExamId.value || !record.paperInstanceId) return
   if (warnUnreviewedBlockingRisks()) return
   const canContinue = await ensureSinglePaperPublishPreconditions()
-  if (!canContinue) {
+  if (canContinue !== true) {
     return
   }
   publishingPaperId.value = record.paperInstanceId
@@ -2100,6 +2161,11 @@ const withdrawModalTitle = computed(() =>
 )
 
 function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
+  // MVR-292：二次拦截，防止绕过行内 disabled
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('当前账号无本场评阅写权限，无法撤回成绩')
+    return
+  }
   withdrawCandidate.value = record
   withdrawReason.value = ''
   withdrawOpen.value = true
@@ -2107,6 +2173,11 @@ function openWithdrawModal(record: ExamScoreSummaryItemResponse): void {
 
 async function handleWithdraw(): Promise<void> {
   if (withdrawing.value) {
+    return
+  }
+  // MVR-292：与 BE withdrawFinalScore 评阅写门禁二次拦截
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('当前账号无本场评阅写权限，无法撤回成绩')
     return
   }
   if (!selectedExamId.value || !withdrawCandidate.value?.paperInstanceId) return

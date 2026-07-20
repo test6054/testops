@@ -99,6 +99,8 @@ export interface ExportTaskStatusSummaryResponse {
   generatingCount: number
   completedCount: number
   failedCount: number
+  /** MVR-325：与 BE isExamOwner / 影像归档包主考写同源 */
+  canManageOwnerImageArchiveExport?: boolean
 }
 
 /** 导出任务详情请求 - 对应 ExportDetailRequest */

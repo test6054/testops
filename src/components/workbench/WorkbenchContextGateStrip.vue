@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 /**
  * 缺上下文 / 权限 / 未配置 B 钉条门禁：Tag + 说明 + 唯一 CTA，禁大 Empty 英雄区。
- * - listPath / listRouteName：导航返回
+ * - listPath / listRouteName：导航返回（listRouteName 优先，examId 可选附加）
+ * - fallbackRouteName：仅历史兼容默认值；有 listRouteName 时不再误用（MVR-247）
  * - 无导航时 emit('cta') 供页内动作（如新建数据源）
  * - hideCta：同页 Scope 已提供入口时仅展示状态钉条
  * 真无数据仍用紧凑 UiEmpty。
@@ -52,13 +53,15 @@ const route = useRoute()
 
 
 function onCta() {
+  // MVR-247：listRouteName 有值时始终跳该路由；examId 仅作可选 params。
+  // 无 examId 时不得误落到 fallback（默认 TeacherExamList），否则归档列表/配置 CTA 假导航。
   if (props.listRouteName) {
     const examId = route.params.examId
     if (typeof examId === 'string' && examId) {
       void router.push({ name: props.listRouteName, params: { examId } })
       return
     }
-    void router.push({ name: props.fallbackRouteName })
+    void router.push({ name: props.listRouteName })
     return
   }
   if (props.listPath) {

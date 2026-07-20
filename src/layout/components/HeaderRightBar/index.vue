@@ -5,6 +5,8 @@
       <div class="tenant-type">{{ tenantDisplayInfo.tenantTypeText }}</div>
     </div>
 
+    <ScanHealthBadge v-if="variant === 'default'" />
+
     <UiPopover
       v-model:open="messagePopoverVisible"
       :arrow="false"
@@ -110,6 +112,7 @@ import { useAuthStore, useUserStore } from '@/stores'
 import { useExportTaskStore } from '@/stores/exportTask'
 import { useNotificationStore } from '@/stores/modules/notification'
 import mittBus from '@/utils/mitt'
+import ScanHealthBadge from '../ScanHealthBadge.vue'
 import Message from './Message.vue'
 
 defineOptions({ name: 'HeaderRight', inheritAttrs: false })

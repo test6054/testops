@@ -56,6 +56,7 @@
         :exam-id="selectedExamId"
         :orphan-pending-event-count="summary?.orphanPendingEventCount ?? 0"
         :orphan-pending-page-count="summary?.orphanPendingPageCount ?? 0"
+        :can-manage-owner-batch-actions="canManageOwnerBatchActions"
         class="scan-batch-workbench__orphan-alert"
         @recovered="handleOrphanRecovered"
       />
@@ -256,6 +257,10 @@ const { refreshSnapshot } = useWorkspaceExamId()
 
 const summary = ref<ExamScannerBatchWorkbenchSummaryResponse | null>(null)
 const summaryLoadFailed = ref(false)
+/** MVR-289：默认拒绝假可写；仅 KPI 明确下发 true 后开放页登记重试 */
+const canManageOwnerBatchActions = computed(
+  () => summary.value?.canManageOwnerBatchActions === true,
+)
 const batchListLoadFailed = ref(false)
 const markingProgress = ref<MarkingProgressResponse | null>(null)
 const orphanAlertRef = ref<InstanceType<typeof ScanOrphanRecoveryAlert> | null>(null)
@@ -465,6 +470,9 @@ function batchPageRegisterTone(batch: ExamScannerBatchResponse): BadgeTone {
 }
 
 function canRetryBatchPageRegister(batch: ExamScannerBatchResponse): boolean {
+  if (!canManageOwnerBatchActions.value) {
+    return false
+  }
   const state = batch.pageRegisterState
   if (
     state === PageRegisterStateCode.BLOCKED_RECOVERABLE
@@ -494,6 +502,10 @@ function batchRowActions(batch: ExamScannerBatchResponse): UiTableRowActionItem[
 
 async function retryBatchPageRegister(batch: ExamScannerBatchResponse): Promise<void> {
   if (!selectedExamId.value || !batch.scanBatchId) {
+    return
+  }
+  if (!canManageOwnerBatchActions.value) {
+    message.warning('仅考试主考可重试扫描页登记')
     return
   }
   if (pageRegisterRetryingBatchId.value) {

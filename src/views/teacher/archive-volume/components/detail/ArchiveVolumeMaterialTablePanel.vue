@@ -9,28 +9,13 @@
     <template v-if="canRegisterMaterial" #toolbar>
       <div class="archive-volume-material-table__actions">
         <UiButton size="sm" variant="primary" @click="openUploadModal">登记材料</UiButton>
-        <UiButton
-          v-if="canGenerateExamReports"
-          size="sm"
-          variant="outline"
-          :loading="generatingExamAnalysis"
-          @click="handleGenerateExamAnalysis"
-        >
-          生成试卷分析
-        </UiButton>
-        <UiButton
-          v-if="canGenerateExamReports"
-          size="sm"
-          variant="outline"
-          :loading="generatingCourseObjective"
-          @click="handleGenerateCourseObjective"
-        >
-          生成达成度报告
-        </UiButton>
-        <UiButton size="sm" variant="outline" @click="openArchiveScan">一体机扫描</UiButton>
-        <UiButton size="sm" variant="outline" @click="batchRegisterOpen = true">批量登记</UiButton>
-        <UiButton size="sm" variant="outline" @click="courseSyncOpen = true">课程平台同步</UiButton>
-        <UiButton size="sm" variant="outline" @click="openSharedRefModal">引用合用材料</UiButton>
+        <UiDropdownAction
+          v-if="materialMoreActionItems.length"
+          trigger-style="button"
+          button-text="更多"
+          :items="materialMoreActionItems"
+          @select="onMaterialMoreAction"
+        />
       </div>
     </template>
     <p
@@ -130,7 +115,7 @@
           >
             下载
           </UiTextAction>
-          <UiTextAction v-if="canMaintainMaterial" tone="primary" @click="openTagModal(record)">
+          <UiTextAction v-if="canMaintainMaterial === true" tone="primary" @click="openTagModal(record)">
             编辑标签
           </UiTextAction>
           <UiTextAction
@@ -302,11 +287,13 @@
       :catalog-code="selectedCatalogContext.catalogCode"
       :catalog-name="selectedCatalogContext.catalogName"
       :initial-material-type="selectedCatalogContext.materialType"
+      :can-register-material="canRegisterMaterial"
       @success="emitRefreshed"
     />
     <ArchiveVolumeCourseSyncModal
       v-model:open="courseSyncOpen"
       :volume-id="volumeId"
+      :can-register-material="canRegisterMaterial"
       @success="emitRefreshed"
     />
     <ArchiveVolumeMaterialOcrDetailModal
@@ -319,10 +306,12 @@
       :volume-id="volumeId"
       :file-name="tagEditMaterial?.fileName"
       :initial-tags="tagEditMaterial?.tags"
+      :can-maintain-material="canMaintainMaterial"
       @success="emitRefreshed"
     />
     <ScanDispatchDialog
       v-model:open="scanDispatchOpen"
+      :can-register-material="canRegisterMaterial"
       :volume-id="volumeId"
       :catalog-code="scanDispatchQuery?.catalogCode"
       :material-type="scanDispatchMaterialType"
@@ -391,6 +380,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
+import UiDropdownAction from '@/components/ui-guide/ui/UiDropdownAction.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -427,6 +417,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   "refreshed": [options?: { silent?: boolean }]
   'ocr-completed-stale': []
+  'stats-ready': [stats: ArchiveVolumeMaterialStatsResponse | null]
 }>()
 
 const route = useRoute()
@@ -538,6 +529,53 @@ const materialReadySummary = computed(() => {
   return `${summary.readyCount}/${summary.totalCount} 就绪`
 })
 
+const materialMoreActionItems = computed(() => {
+  const items: Array<{ key: string, label: string }> = [
+    { key: 'scan', label: '一体机扫描' },
+    { key: 'batch', label: '批量登记' },
+    { key: 'course-sync', label: '课程平台同步' },
+    { key: 'shared-ref', label: '引用合用材料' },
+  ]
+  if (canGenerateExamReports.value) {
+    items.push(
+      { key: 'exam-analysis', label: '生成试卷分析' },
+      { key: 'course-objective', label: '生成达成度报告' },
+    )
+  }
+  return items
+})
+
+function onMaterialMoreAction(key: string): void {
+  if (key === 'scan') {
+    openArchiveScan()
+    return
+  }
+  if (key === 'batch') {
+    batchRegisterOpen.value = true
+    return
+  }
+  if (key === 'course-sync') {
+    // MVR-377：与 canRegisterMaterial / BE requireCanManageMaterials 二次拦截
+    if (props.canRegisterMaterial !== true) {
+      showFormValidationMessage('当前账号无材料登记权限')
+      return
+    }
+    courseSyncOpen.value = true
+    return
+  }
+  if (key === 'shared-ref') {
+    openSharedRefModal()
+    return
+  }
+  if (key === 'exam-analysis') {
+    void handleGenerateExamAnalysis()
+    return
+  }
+  if (key === 'course-objective') {
+    void handleGenerateCourseObjective()
+  }
+}
+
 async function loadMaterials(): Promise<void> {
   if (!props.volumeId) {
     materials.value = []
@@ -568,13 +606,17 @@ async function loadMaterialStats(): Promise<void> {
   if (!props.volumeId) {
     materialStats.value = null
     materialStatsLoadFailed.value = false
+    emit('stats-ready', null)
     return
   }
   try {
     materialStats.value = await getArchiveVolumeMaterialStats({ volumeId: props.volumeId })
     materialStatsLoadFailed.value = false
+    emit('stats-ready', materialStats.value)
   } catch (error) {
     materialStatsLoadFailed.value = true
+    materialStats.value = null
+    emit('stats-ready', null)
     showUserError(error, '加载材料统计失败')
   }
 }
@@ -610,7 +652,10 @@ function sharedRefTypeLabel(refType?: ArchiveSharedMaterialRefTypeCode): string 
 }
 
 async function confirmRemoveSharedRef(record: ArchiveVolumeSharedMaterialRefResponse): Promise<void> {
-  if (removingSharedRefId.value || !props.canRemoveSharedMaterialRef) {
+  if (removingSharedRefId.value || props.canRemoveSharedMaterialRef !== true) {
+    if (props.canRemoveSharedMaterialRef !== true) {
+      message.warning('当前账号无解除合用材料引用权限')
+    }
     return
   }
   void confirmAsync({
@@ -625,6 +670,11 @@ async function confirmRemoveSharedRef(record: ArchiveVolumeSharedMaterialRefResp
 
 async function removeSharedRef(record: ArchiveVolumeSharedMaterialRefResponse): Promise<void> {
   if (removingSharedRefId.value) {
+    return
+  }
+  // MVR-302：与 canRemoveSharedMaterialRef 同源二次拦截
+  if (props.canRemoveSharedMaterialRef !== true) {
+    message.warning('当前账号无解除合用材料引用权限')
     return
   }
   removingSharedRefId.value = record.refId
@@ -650,7 +700,10 @@ const effectiveExamId = computed(
   () => props.detail.volume?.examId ?? props.detail.volume?.relatedExamId,
 )
 
-const canGenerateExamReports = computed(() => Boolean(effectiveExamId.value))
+/** MVR-294/374：与 BE requireCanManageMaterials 对齐，仅认 canRegisterMaterial===true */
+const canGenerateExamReports = computed(
+  () => Boolean(effectiveExamId.value) && props.canRegisterMaterial === true,
+)
 
 const courseObjectiveMappingPath = computed(() => {
   const examId = effectiveExamId.value
@@ -707,6 +760,11 @@ const courseObjectiveMappingHint = computed(() => {
 
 async function handleGenerateExamAnalysis(): Promise<void> {
   if (generatingExamAnalysis.value || generatingCourseObjective.value) return
+  // MVR-294：与 BE requireCanManageMaterials 二次拦截
+  if (props.canRegisterMaterial !== true) {
+    message.warning('当前账号无权登记本卷材料，无法生成试卷分析报告')
+    return
+  }
   generatingExamAnalysis.value = true
   try {
     const expectedMaterialId = props.detail.materials.find(
@@ -724,6 +782,11 @@ async function handleGenerateExamAnalysis(): Promise<void> {
 
 async function handleGenerateCourseObjective(): Promise<void> {
   if (generatingExamAnalysis.value || generatingCourseObjective.value) return
+  // MVR-294：与 BE requireCanManageMaterials 二次拦截
+  if (props.canRegisterMaterial !== true) {
+    message.warning('当前账号无权登记本卷材料，无法生成课程目标达成报告')
+    return
+  }
   if (props.detail.courseObjectiveReportReady === false) {
     showFormValidationMessage(courseObjectiveMappingHint.value ?? '请先完成试题-课程目标映射')
     return
@@ -764,7 +827,7 @@ function materialOcrStatusTone(code: ArchiveMaterialOcrStatusCode): BadgeTone {
 
 function canRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   // MVR-185：OCR 重试与收材窗口解耦
-  if (!props.canMaintainMaterial) return false
+  if (props.canMaintainMaterial !== true) return false
   return material.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED && Boolean(material.fileId)
 }
 
@@ -803,7 +866,7 @@ function openMaterialOcrDetail(material: ArchiveVolumeMaterialResponse): void {
 }
 
 function openTagModal(material: ArchiveVolumeMaterialResponse): void {
-  if (!props.canMaintainMaterial) return
+  if (props.canMaintainMaterial !== true) return
   tagEditMaterial.value = material
   tagModalOpen.value = true
 }
@@ -814,7 +877,7 @@ function emitRefreshed(options?: { silent?: boolean }) {
 }
 
 function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void {
-  if (!props.canMaintainMaterial) return
+  if (props.canMaintainMaterial !== true) return
   if (retryingMaterialIds.has(material.materialId)) return
   void confirmAsync({
     title: '重试文字识别？',
@@ -914,6 +977,11 @@ function resolveSelectedCatalogContext(): {
 }
 
 function openUploadModal() {
+  // MVR-302：与 canRegisterMaterial 同源二次拦截
+  if (props.canRegisterMaterial !== true) {
+    message.warning('当前账号无材料登记权限')
+    return
+  }
   const context = resolveSelectedCatalogContext()
   uploadForm.materialType = context.materialType
   uploadForm.catalogCode = context.catalogCode
@@ -954,6 +1022,11 @@ function resolveArchiveScanQuery(): Record<string, string> | null {
 }
 
 function openArchiveScan() {
+  // MVR-302：扫描收材登记与 canRegisterMaterial 对齐
+  if (props.canRegisterMaterial !== true) {
+    message.warning('当前账号无材料登记权限')
+    return
+  }
   const query = resolveArchiveScanQuery()
   if (!query) {
     showFormValidationMessage('请先在左侧目录选择可登记的材料项')
@@ -969,6 +1042,11 @@ function handleDispatchCreated(payload: ScanDispatchResultPayload) {
 }
 
 function openSharedRefModal() {
+  // MVR-302：合用引用登记与 canRegisterMaterial 对齐
+  if (props.canRegisterMaterial !== true) {
+    message.warning('当前账号无材料登记权限')
+    return
+  }
   sharedRefForm.refType = ArchiveSharedMaterialRefTypeCode.MERGED_CLASS_SHARED
   sharedRefForm.targetVolumeId = ''
   sharedRefForm.targetMaterialId = ''
@@ -978,6 +1056,11 @@ function openSharedRefModal() {
 
 async function submitMaterial() {
   if (uploading.value) {
+    return
+  }
+  // MVR-302：与 canRegisterMaterial 同源二次拦截
+  if (props.canRegisterMaterial !== true) {
+    message.warning('当前账号无材料登记权限')
     return
   }
   if (!uploadForm.materialType || !uploadForm.fileNodeId) {
@@ -1021,6 +1104,11 @@ async function submitSharedRef() {
   if (sharedRefSubmitting.value) {
     return
   }
+  // MVR-302：与 canRegisterMaterial 同源二次拦截
+  if (props.canRegisterMaterial !== true) {
+    message.warning('当前账号无材料登记权限')
+    return
+  }
   if (!sharedRefForm.targetVolumeId.trim() || !sharedRefForm.targetMaterialId.trim()) {
     showFormValidationMessage('请填写目标卷与材料编号')
     return
@@ -1058,6 +1146,10 @@ async function submitSharedRef() {
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-3);
+  padding: var(--dp-space-3);
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-panel, 8px);
+  background: var(--dp-surface-subtle, var(--dp-bg-layout));
 }
 
 .archive-volume-material-table__shared-head {
@@ -1094,6 +1186,9 @@ async function submitSharedRef() {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--dp-text-secondary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dp-text-muted) 7%, transparent);
 }
 
 .archive-volume-material-table__actions {
@@ -1111,8 +1206,12 @@ async function submitSharedRef() {
 
 .archive-volume-material-table__mapping-hint {
   margin: 0;
+  padding: var(--dp-space-2) var(--dp-space-3);
   font-size: 13px;
   color: var(--dp-text-secondary);
+  border-left: 3px solid color-mix(in srgb, var(--dp-primary) 40%, transparent);
+  border-radius: 0 var(--dp-radius-control-inner, 4px) var(--dp-radius-control-inner, 4px) 0;
+  background: color-mix(in srgb, var(--dp-primary) 4%, transparent);
 }
 
 .archive-volume-material-table__mapping-link {
@@ -1154,5 +1253,20 @@ async function submitSharedRef() {
 
 .archive-volume-material-table__status-icon--purple {
   background: var(--dp-purple-700);
+}
+
+.archive-volume-material-table__tip {
+  margin: 0 var(--dp-space-4) var(--dp-space-3);
+}
+
+.material-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-1);
+}
+
+.material-status-icon {
+  font-size: 12px;
+  line-height: 1;
 }
 </style>

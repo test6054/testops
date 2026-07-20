@@ -5,7 +5,7 @@
     :rules="basicRules"
     layout="horizontal"
     :label-col="labelCol"
-    :wrapper-col="{ flex: 1 }"
+    :wrapper-col="wrapperCol"
     class="create-form"
   >
     <div id="archive-task-basic" class="form-section">
@@ -17,6 +17,7 @@
       <UiFormItem label="课程" name="courseId" required>
         <CatalogCourseSelector
           v-model:value="basicForm.courseId"
+          class="create-form__control-wide"
           placeholder="请选择课程"
           :allow-clear="false"
           @change="handleCourseChange"
@@ -27,22 +28,47 @@
         <UiInput
           size="sm"
           v-model="basicForm.archiveTitle"
-          placeholder="如 2024-2025 高等数学期末考查"
+          placeholder="例如：2024-2025 高等数学期末考查"
           :maxlength="512"
         />
       </UiFormItem>
 
       <UiRow :gutter="24" class="create-form__split-row">
         <UiCol :span="12">
-          <UiFormItem label="档案编号" :label-col="labelCol" :wrapper-col="wrapperCol">
-            <UiInput
+          <UiFormItem label="院系" name="departmentId" :label-col="labelCol" :wrapper-col="wrapperCol">
+            <UiSelect
               size="sm"
-              v-model="basicForm.archiveNo"
-              placeholder="不填则自动生成"
-              :maxlength="64"
+              v-model="departmentIdSelectValue"
+              :options="departmentOptions"
+              :loading="departmentLoading"
+              placeholder="请选择院系"
+              allow-search
+              option-filter-prop="label"
+              allow-clear
+              @change="handleDepartmentChange"
             />
           </UiFormItem>
         </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
+            label="授课班级"
+            required
+            name="teachingClassId"
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
+            <ClassSelector
+              v-model:value="basicForm.teachingClassId"
+              :department-id="basicForm.departmentId"
+              :disabled="!basicForm.departmentId"
+              placeholder="请选择授课班级"
+              @change="handleClassChange"
+            />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
+
+      <UiRow :gutter="24" class="create-form__split-row">
         <UiCol :span="12">
           <UiFormItem
             label="学年起始年"
@@ -59,16 +85,14 @@
             />
           </UiFormItem>
         </UiCol>
+        <UiCol :span="12">
+          <UiFormItem label="学年结束年" :label-col="labelCol" :wrapper-col="wrapperCol">
+            <UiInput size="sm" :value="academicYearEndYear" disabled />
+          </UiFormItem>
+        </UiCol>
       </UiRow>
 
       <UiRow :gutter="24" class="create-form__split-row">
-        <UiCol :span="12">
-          <UiFormItem label="学年结束年" :label-col="labelCol" :wrapper-col="wrapperCol">
-            <UiInput
-              size="sm" :value="academicYearEndYear" disabled
-            />
-          </UiFormItem>
-        </UiCol>
         <UiCol :span="12">
           <UiFormItem
             label="学期"
@@ -85,71 +109,36 @@
             />
           </UiFormItem>
         </UiCol>
-      </UiRow>
-
-      <UiRow :gutter="24" class="create-form__split-row">
         <UiCol :span="12">
-          <UiFormItem
-            label="院系"
-            name="departmentId"
-            :label-col="labelCol"
-            :wrapper-col="wrapperCol"
-          >
-            <UiSelect
+          <UiFormItem label="档案编号" :label-col="labelCol" :wrapper-col="wrapperCol">
+            <UiInput
               size="sm"
-              v-model="departmentIdSelectValue"
-              :options="departmentOptions"
-              :loading="departmentLoading"
-              placeholder="请选择院系"
-              allow-search
-              option-filter-prop="label"
-              allow-clear
-              @change="handleDepartmentChange"
+              v-model="basicForm.archiveNo"
+              placeholder="不填则自动生成"
+              :maxlength="64"
             />
           </UiFormItem>
         </UiCol>
       </UiRow>
 
-      <UiRow :gutter="24" class="create-form__split-row">
-        <UiCol :span="12">
-          <UiFormItem
-            label="授课班级"
-            name="teachingClassId"
-            :label-col="labelCol"
-            :wrapper-col="wrapperCol"
-          >
-            <ClassSelector
-              v-model:value="basicForm.teachingClassId"
-              :department-id="basicForm.departmentId"
-              :disabled="!basicForm.departmentId"
-              placeholder="请选择授课班级"
-              @change="handleClassChange"
-            />
-          </UiFormItem>
-        </UiCol>
-        <UiCol :span="12">
-          <UiFormItem
-            label="关联考试"
-            tooltip="可选项，用于挂接线上考试记录。"
-            :label-col="labelCol"
-            :wrapper-col="wrapperCol"
-          >
-            <UiSelect
-              size="sm"
-              v-model="relatedExamIdSelectValue"
-              :options="relatedExamOptions"
-              :loading="relatedExamLoading"
-              :disabled="!canLoadRelatedExams"
-              :placeholder="relatedExamPlaceholder"
-              allow-search
-              allow-clear
-              option-filter-prop="label"
-              @search="handleRelatedExamSearch"
-              @change="handleRelatedExamChange"
-            />
-          </UiFormItem>
-        </UiCol>
-      </UiRow>
+      <UiFormItem
+        v-if="showRelatedExamField"
+        label="关联考试"
+        tooltip="仅作备查引用，不会自动收阅卷材料；若该考试已有线上归档卷将被拒绝。"
+      >
+        <UiSelect
+          size="sm"
+          v-model="relatedExamIdSelectValue"
+          :options="relatedExamOptions"
+          :loading="relatedExamLoading"
+          placeholder="可选，选择关联考试"
+          allow-search
+          allow-clear
+          option-filter-prop="label"
+          @search="handleRelatedExamSearch"
+          @change="handleRelatedExamChange"
+        />
+      </UiFormItem>
     </div>
   </UiForm>
 </template>
@@ -171,10 +160,14 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-provenance-enum'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { composeAcademicYear, generateAcademicYearStartOptions } from '@/utils/academic-year'
 import { showUserError } from '@/utils/error-handler'
-import { useInjectedArchiveTaskCreateBasicForm } from './archive-task-create-context'
+import {
+  useInjectedArchiveTaskCreateBasicForm,
+  useInjectedArchiveTaskCreateWizardState,
+} from './archive-task-create-context'
 import { nullableStringToSelectValue, selectValueToNullableString } from './select-value-bridge'
 
 defineProps<{
@@ -193,11 +186,16 @@ const emit = defineEmits<{
   'update:basic-form-ref': [form: FormInstance | undefined]
 }>()
 
-const labelCol = { style: { width: '88px' } }
+const labelCol = { style: { width: '112px' } }
 const wrapperCol = { flex: 1 }
 
 const basicForm = useInjectedArchiveTaskCreateBasicForm()
+const wizardState = useInjectedArchiveTaskCreateWizardState()
 const formRef = ref<FormInstance>()
+/** S2 可关联考试；S3 历史补录不展示 */
+const isCurrentTermOffline = computed(
+  () => wizardState.provenance === ArchiveTaskProvenanceCode.CURRENT_TERM_OFFLINE,
+)
 const departmentIdSelectValue = computed({
   get: () => nullableStringToSelectValue(basicForm.departmentId),
   set: (value: UiOptionValue | UiOptionValue[] | undefined) => {
@@ -215,13 +213,15 @@ const departmentLoading = ref(false)
 const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 const relatedExamLoading = ref(false)
 const relatedExamOptions = ref<Array<{ value: string, label: string }>>([])
+/** 无关键字查询时该课程/学年/学期下是否存在可选考试 */
+const relatedExamAvailable = ref(false)
 
 const academicYearStartOptions = generateAcademicYearStartOptions().map((year) => ({
   value: year,
   label: `${year} 年`,
 }))
 
-const academicYearEndYear = computed(() => basicForm.academicYearStartYear + 1)
+const academicYearEndYear = computed(() => String(basicForm.academicYearStartYear + 1))
 
 const resolvedAcademicYear = computed(() => composeAcademicYear(basicForm.academicYearStartYear))
 
@@ -230,14 +230,13 @@ let relatedExamSearchTimer: ReturnType<typeof setTimeout> | undefined
 
 const canLoadRelatedExams = computed(() => Boolean(basicForm.courseId && basicForm.semester))
 
-const relatedExamPlaceholder = computed(() => {
-  if (!basicForm.courseId) return '请先选择课程'
-  if (!basicForm.semester) return '请先选择学期'
-  return '可选，选择关联考试'
-})
+/** 选课且该条件有考试数据时才展示；默认展开，无折叠 */
+const showRelatedExamField = computed(
+  () => isCurrentTermOffline.value && relatedExamAvailable.value,
+)
 
 function handleCourseChange(courseId: string | null, option?: CourseListVO) {
-  clearRelatedExamSelection()
+  resetRelatedExamOptions()
   emit('course-change', courseId, option?.courseName?.trim() ?? '')
   void loadRelatedExamOptions()
 }
@@ -270,9 +269,15 @@ function clearRelatedExamSelection(): void {
   basicForm.relatedExamName = ''
 }
 
+function resetRelatedExamOptions(): void {
+  clearRelatedExamSelection()
+  relatedExamOptions.value = []
+  relatedExamAvailable.value = false
+}
+
 async function loadRelatedExamOptions(keyword?: string): Promise<void> {
-  if (!canLoadRelatedExams.value) {
-    relatedExamOptions.value = []
+  if (!isCurrentTermOffline.value || !canLoadRelatedExams.value) {
+    resetRelatedExamOptions()
     return
   }
   relatedExamLoading.value = true
@@ -289,6 +294,12 @@ async function loadRelatedExamOptions(keyword?: string): Promise<void> {
       label: formatRelatedExamLabel(exam),
       value: exam.examId,
     }))
+    if (!keyword?.trim()) {
+      relatedExamAvailable.value = relatedExamOptions.value.length > 0
+      if (!relatedExamAvailable.value) {
+        clearRelatedExamSelection()
+      }
+    }
     if (basicForm.relatedExamId) {
       const selected = relatedExamOptions.value.find(
         (item) => item.value === basicForm.relatedExamId,
@@ -300,6 +311,10 @@ async function loadRelatedExamOptions(keyword?: string): Promise<void> {
   } catch (error) {
     showUserError(error, '关联考试列表加载失败')
     relatedExamOptions.value = []
+    if (!keyword?.trim()) {
+      relatedExamAvailable.value = false
+      clearRelatedExamSelection()
+    }
   } finally {
     relatedExamLoading.value = false
   }
@@ -340,9 +355,18 @@ async function loadDepartments() {
 }
 
 watch(
+  () => wizardState.provenance,
+  (provenance) => {
+    if (provenance !== ArchiveTaskProvenanceCode.CURRENT_TERM_OFFLINE) {
+      resetRelatedExamOptions()
+    }
+  },
+)
+
+watch(
   () => [basicForm.academicYearStartYear, basicForm.semester],
   () => {
-    clearRelatedExamSelection()
+    resetRelatedExamOptions()
     void loadRelatedExamOptions()
   },
 )

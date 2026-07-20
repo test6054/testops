@@ -165,7 +165,7 @@ onMounted(() => {
   </ul>
   <div v-if="showNavigateActions" class="dept-review-summary__actions">
     <UiTextAction @click="emit('navigate', 'materials')">查看材料收集</UiTextAction>
-    <UiTextAction @click="emit('navigate', 'integrity')">完整性与四性</UiTextAction>
+    <UiTextAction @click="emit('navigate', 'integrity')">完整性自检</UiTextAction>
   </div>
 </template>
 

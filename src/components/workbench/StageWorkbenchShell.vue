@@ -39,6 +39,8 @@ defineOptions({
 }
 
 .stage-workbench-shell__context {
+  display: flex;
+  align-items: center;
   padding: var(--dp-space-3) var(--dp-space-4);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
@@ -47,6 +49,10 @@ defineOptions({
   box-shadow:
     var(--dp-shadow-xs),
     inset 3px 0 0 color-mix(in srgb, var(--dp-blue-500) 55%, transparent);
+}
+
+.stage-workbench-shell__context > :deep(.context-bar) {
+  width: 100%;
 }
 
 .stage-workbench-shell__rail {

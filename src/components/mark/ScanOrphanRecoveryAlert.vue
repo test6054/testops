@@ -8,7 +8,7 @@
       title="存在未绑定批次的扫描事件"
       :description="description"
     >
-      <template v-if="isExamOwner" #actions>
+      <template v-if="canManageOwnerBatchActions" #actions>
         <UiButton
           size="sm"
           variant="primary"
@@ -48,24 +48,23 @@ import { recoverOrphanScanEvents } from '@/apis/mark/exam-scan'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
-import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ScanOrphanRecoveryAlert' })
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   examId: string
   orphanPendingEventCount: number
   orphanPendingPageCount: number
-}>()
+  /** MVR-326：仅认 BE canManageOwnerBatchActions===true */
+  canManageOwnerBatchActions?: boolean
+}>(), {
+  canManageOwnerBatchActions: false,
+})
 
 const emit = defineEmits<{
   recovered: []
 }>()
-
-const { selectedExam } = useMarkExamContext()
-const { isExamOwner } = useExamOwnerPermission(selectedExam)
 
 const recovering = ref(false)
 const failureItems = ref<ExamScannerBatchRecoverOrphanFailureItem[]>([])
@@ -73,12 +72,14 @@ const failureItems = ref<ExamScannerBatchRecoverOrphanFailureItem[]>([])
 const visible = computed(() => props.orphanPendingEventCount > 0)
 
 const canRecover = computed(() =>
-  Boolean(props.examId) && props.orphanPendingEventCount > 0 && isExamOwner.value,
+  Boolean(props.examId)
+  && props.orphanPendingEventCount > 0
+  && props.canManageOwnerBatchActions === true,
 )
 
 const description = computed(() => {
   const scope = `${props.orphanPendingEventCount} 条事件、${props.orphanPendingPageCount} 页尚未归入扫描批次`
-  if (isExamOwner.value) {
+  if (props.canManageOwnerBatchActions === true) {
     return `${scope}，可按扫描设备自动聚合补救。`
   }
   return `${scope}，请联系考试主考老师执行补救。`

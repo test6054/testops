@@ -84,6 +84,10 @@ export interface GradingExperienceStatsResponse {
   confirmedCount: number
   pendingAnalysisCount: number
   assistReadyCount: number
+  /** 是否可执行经验库 ACTIVE 写（生成签名/提炼/聚类）；评阅写 ∧ ACTIVE */
+  canManageReviewerWrites?: boolean
+  /** 是否可确认/废弃经验案例；评阅写、不叠 ACTIVE（关考后知识库治理） */
+  canManageExperienceCaseLifecycle?: boolean
 }
 
 /** 题目签名 VO - 对应 QuestionSignatureResponse */

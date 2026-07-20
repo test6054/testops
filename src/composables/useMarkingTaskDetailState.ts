@@ -53,7 +53,6 @@ import {
   isExamConfidentialFlag,
 } from '@/composables/useConfidentialWatermark'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import { useExamOwnerPermission } from '@/composables/useExamOwnerPermission'
 import {
   buildGradingDraftKey,
   loadGradingDraft,
@@ -138,7 +137,10 @@ export function useMarkingTaskDetailState() {
   const examWatermarkLines = computed(() =>
     buildConfidentialWatermarkLines({ examLabel: examConfidentialLabel.value }),
   )
-  const { isExamOwner } = useExamOwnerPermission(examDetail)
+  /** MVR-327：仅认 BE MarkingTaskResponse.canManageOwnerIdentityReveal===true */
+  const canManageOwnerIdentityReveal = computed(
+    () => task.value?.canManageOwnerIdentityReveal === true,
+  )
   const isReadOnly = computed(() => task.value?.taskStatus === MarkingTaskStatusCode.FINALIZED)
   const isScoreReadOnly = computed(() => isReadOnly.value || taskRecycledBlocked.value)
   const isWholePaperTask = computed(() => task.value?.taskUnit === AllocationUnitCode.WHOLE_PAPER)
@@ -877,6 +879,11 @@ export function useMarkingTaskDetailState() {
   let revealExpireTimer: ReturnType<typeof window.setTimeout> | null = null
 
   function openRevealDialog(): void {
+    // MVR-375：与 BE canManageOwnerIdentityReveal 二次拦截，禁止仅入口隐藏
+    if (canManageOwnerIdentityReveal.value !== true) {
+      showFormValidationMessage('当前账号无解匿名权限')
+      return
+    }
     revealOpen.value = true
   }
 
@@ -968,7 +975,7 @@ export function useMarkingTaskDetailState() {
     isExamConfidential,
     examConfidentialLabel,
     examWatermarkLines,
-    isExamOwner,
+    canManageOwnerIdentityReveal,
     isReadOnly,
     isScoreReadOnly,
     taskRecycledBlocked,

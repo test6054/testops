@@ -14,16 +14,25 @@ import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImp
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
+
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard()
 
 const RECORD_TAB_KEYS: PortfolioDevelopmentRecordTypeCode[] = [
   PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
@@ -96,6 +105,8 @@ const columns = computed<ColumnsType>(() => {
   base.push(
     { title: '分类', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
     { title: '状态', dataIndex: 'recordStatus', key: 'recordStatus', width: 88 },
+    { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+    { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
     { title: '操作', key: 'actions', width: 120 },
   )
   return base
@@ -106,6 +117,14 @@ const tabLabel = computed(
 )
 
 const importContext = computed(() => ({ defaultRecordType: activeType.value }))
+
+
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
 
 function recordStatusLabel(status: PortfolioDevelopmentRecordStatusCode): string {
   return strictEnumLabel(PortfolioDevelopmentRecordStatusDescription, status, '发展档案条目状态')
@@ -118,6 +137,9 @@ function resetForm() {
 }
 
 async function saveRecord() {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (saving.value) {
     return
   }
@@ -148,6 +170,9 @@ async function saveRecord() {
 }
 
 async function removeRecord(id: string) {
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (removingId.value || saving.value) {
     return
   }
@@ -191,6 +216,13 @@ function switchTab(type: RecordType) {
     <template #context>
       <ContextBar layout="workbench" show-title :title="tabLabel" />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
     <div class="tabs">
       <UiButton
         size="sm"
@@ -263,6 +295,25 @@ function switchTab(type: RecordType) {
           </template>
           <template v-else-if="column.key === 'recordStatus'">
             {{ recordStatusLabel(record.recordStatus) }}
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else class="text-neutral-400">—</span>
+          </template>
+          <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+            <span>
+              {{
+                record.countsInCurrentFacultyStructure === true
+                  ? '是'
+                  : record.countsInCurrentFacultyStructure === false
+                    ? '否'
+                    : '—'
+              }}
+            </span>
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

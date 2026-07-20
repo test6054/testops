@@ -160,7 +160,28 @@ const canCreateCycle = computed(
 const signalMetrics = computed(() => {
   const base = metrics.value
   if (!base.length) return base
-  return [...base, { key: 'evidence', label: '专家材料证据', value: String(evidenceCount.value) }]
+  return [
+    ...base.map((item) => ({
+      ...item,
+      iconTone: item.tone === 'green'
+        ? 'green' as const
+        : item.tone === 'red'
+          ? 'red' as const
+          : item.tone === 'orange'
+            ? 'orange' as const
+            : item.tone === 'blue'
+              ? 'blue' as const
+              : 'gray' as const,
+      helper: item.helper ?? '认证驾驶舱',
+    })),
+    {
+      key: 'evidence',
+      label: '专家材料证据',
+      value: String(evidenceCount.value),
+      iconTone: 'blue' as const,
+      helper: '证据条目',
+    },
+  ]
 })
 
 const annualCourseCoverages = computed(() => cockpit.value?.annualCourseCoverages || [])

@@ -5,7 +5,8 @@ import type {
   PortfolioAiJobContext,
 } from '@/apis/portfolio/types'
 import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
@@ -21,6 +22,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -85,8 +87,14 @@ const tabItems: UiSectionTabItem[] = ASSISTANTS.map((item) => ({
   helper: item.helper,
 }))
 
+const route = useRoute()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard()
 const { canManageTeacherAi } = usePortfolioTeacherAccess()
 const activeKey = ref<AssistantKey>('generate')
 const submitting = ref(false)
@@ -256,6 +264,48 @@ async function openDetail(row: PortfolioAiAnalysisSummaryVO): Promise<void> {
   }
 }
 
+
+function readRouteStringParam(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0].trim()
+  }
+  return ''
+}
+
+function isAssistantKey(value: string): value is AssistantKey {
+  return ASSISTANTS.some((item) => item.key === value)
+}
+
+/**
+ * PF-P0-286：站内信 jumpUrl 的 tab/taskId 深链；对齐四能力助手页，禁止落到编排页丢结果。
+ */
+async function applyAiAssistantDeepLink() {
+  const tab = readRouteStringParam(route.query.tab)
+  if (tab && isAssistantKey(tab)) {
+    activeKey.value = tab
+  }
+  const taskId = readRouteStringParam(route.query.taskId)
+  if (!taskId) {
+    return
+  }
+  const token = ++pollToken.value
+  submitting.value = true
+  try {
+    await pollTask(taskId, token)
+  } catch (error) {
+    if (pollToken.value === token) {
+      showUserError(error, '加载智能助手任务结果失败')
+    }
+  } finally {
+    if (pollToken.value === token) {
+      submitting.value = false
+    }
+  }
+}
+
 async function pollTask(taskId: string, token: number): Promise<void> {
   for (let attempt = 0; attempt < 60; attempt++) {
     if (pollToken.value !== token) {
@@ -283,6 +333,9 @@ async function pollTask(taskId: string, token: number): Promise<void> {
 
 async function submitTask(): Promise<void> {
   if (!validateSubmit()) {
+    return
+  }
+  if (!assertArchiveWritable()) {
     return
   }
   if (!(await confirmProxyWrite('提交 AI 草稿任务'))) {
@@ -313,6 +366,12 @@ async function submitTask(): Promise<void> {
 
 async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): Promise<void> {
   if (!activeDetail.value || !pendingReview.value || reviewLoading.value) {
+    return
+  }
+  if (
+    reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED
+    && archiveWriteForbidden.value
+  ) {
     return
   }
   if (
@@ -384,6 +443,21 @@ watch(activeKey, () => {
   void loadHistory()
 })
 watch(targetTeacherId, resetTeacherContext)
+
+onMounted(() => {
+  void applyAiAssistantDeepLink()
+})
+
+watch(
+  () => [route.query.taskId, route.query.tab],
+  (next, prev) => {
+    if (prev && next[0] === prev[0] && next[1] === prev[1]) {
+      return
+    }
+    void applyAiAssistantDeepLink()
+  },
+)
+
 usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
 </script>
 
@@ -397,6 +471,13 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
         subtitle="AI 只出草稿 · 教师本人确认后才写入档案或发展规划"
       />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
@@ -517,6 +598,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
               size="sm"
               variant="primary"
               :loading="reviewLoading"
+              :disabled="archiveWriteForbidden"
               @click="reviewResult(PortfolioAiAnalysisReviewStatusCode.APPROVED)"
             >
               {{

@@ -123,6 +123,7 @@ import type {
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
@@ -162,6 +163,8 @@ const emit = defineEmits<{ changed: [] }>()
 
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo?.userId || '')
+/** MVR-278：审批/执行写能力位；与 BE requireExamReviewerPermission 对齐 */
+const canManageReviewerWrites = ref(false)
 
 const rows = ref<ExamRejudgePlan[]>([])
 const loading = ref(false)
@@ -237,10 +240,25 @@ const columns: ColumnType<ExamRejudgePlan>[] = [
   { title: '操作', key: 'actions', width: 180 },
 ]
 
+async function loadWriteCapability(): Promise<void> {
+  if (!props.examId) {
+    canManageReviewerWrites.value = false
+    return
+  }
+  try {
+    const summary = await getExamLayoutQuestionSummary(props.examId)
+    canManageReviewerWrites.value = summary.canManageReviewerWrites === true
+  } catch {
+    // 能力位加载失败时默认只读，避免假可写
+    canManageReviewerWrites.value = false
+  }
+}
+
 async function reload(): Promise<void> {
   if (!props.examId) return
   loading.value = true
   try {
+    await loadWriteCapability()
     const result = await listRejudgePlans({
       examId: props.examId,
       planStatus: filterForm.status,
@@ -278,6 +296,10 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 }
 
 async function handleApprove(planId: string): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员或主考可审批重判计划')
+    return
+  }
   if (operatingId.value) return
   operatingId.value = planId
   operatingAction.value = 'approve'
@@ -305,6 +327,10 @@ function openRejectModal(planId: string): void {
 }
 
 async function handleReject(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员或主考可驳回重判计划')
+    return
+  }
   if (operatingId.value) return
   const reason = rejectReason.value.trim()
   if (!reason) {
@@ -339,6 +365,10 @@ function openExecuteModal(planId: string): void {
 }
 
 async function handleExecute(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员或主考可执行重判计划')
+    return
+  }
   if (operatingId.value) return
   const reason = executeReason.value.trim()
   if (reason.length < 5) {
@@ -401,7 +431,11 @@ function isRejudgePlanSubmitterSelf(row: ExamRejudgePlan): boolean {
 }
 
 function canDecideRejudgePlan(row: ExamRejudgePlan): boolean {
-  return row.planStatus === 'PENDING_APPROVAL' && !isRejudgePlanSubmitterSelf(row)
+  return (
+    canManageReviewerWrites.value
+    && row.planStatus === 'PENDING_APPROVAL'
+    && !isRejudgePlanSubmitterSelf(row)
+  )
 }
 
 function buildRejudgePlanActions(row: ExamRejudgePlan): UiTableRowActionItem[] {
@@ -424,7 +458,7 @@ function buildRejudgePlanActions(row: ExamRejudgePlan): UiTableRowActionItem[] {
     {
       key: 'execute',
       label: '执行',
-      hidden: row.planStatus !== 'APPROVED',
+      hidden: !canManageReviewerWrites.value || row.planStatus !== 'APPROVED',
       disabled: operating('execute'),
     },
   ]

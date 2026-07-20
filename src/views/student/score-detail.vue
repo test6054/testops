@@ -787,6 +787,11 @@ async function loadDetail() {
 }
 
 function goAppeal(id: string) {
+  // MVR-320：与 canSubmitReview / BE canSubmitReviewRequest 二次拦截
+  if (!detail.value || !canSubmitReview(detail.value)) {
+    message.warning('当前暂不能提交复核申请')
+    return
+  }
   router.push({ name: 'StudentAppeal', query: { examId: id } })
 }
 
@@ -796,6 +801,11 @@ function canApplyReviewOnQuestion(q: StudentQuestionScoreVO): boolean {
 }
 
 function goAppealForQuestion(q: StudentQuestionScoreVO): void {
+  // MVR-320：与 canApplyReviewOnQuestion / BE canSubmitReviewRequest 二次拦截
+  if (!canApplyReviewOnQuestion(q)) {
+    message.warning('当前暂不能提交复核申请')
+    return
+  }
   if (!detail.value?.examId || !q.layoutQuestionId) return
   router.push({
     name: 'StudentAppeal',

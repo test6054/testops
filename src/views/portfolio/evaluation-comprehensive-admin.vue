@@ -97,8 +97,17 @@ const taskColumns: ColumnsType<PortfolioEvaluationComprehensiveTaskItemVO> = [
   { title: '平均分', dataIndex: 'averageScore', key: 'averageScore', width: 88, align: 'right' },
 ]
 
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 const teacherColumns: ColumnsType<PortfolioEvaluationComprehensiveTeacherRowVO> = [
   { title: '被评教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 160 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   {
     title: '涉及任务',
     dataIndex: 'involvedTaskCount',
@@ -336,6 +345,24 @@ onMounted(async () => {
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'subjectTeacherUserId'">
               {{ teacherLabel(record.subjectTeacherUserId) }}
+            </template>
+            <template v-else-if="column.key === 'lifecycleStatus'">
+              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-else-if="!record.lifecycleStatus">-</span>
+            </template>
+            <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+              <UiTag :tone="record.countsInCurrentFacultyStructure === true ? 'green' : 'neutral'">
+                {{
+                  record.countsInCurrentFacultyStructure === true
+                    ? '是'
+                    : record.countsInCurrentFacultyStructure === false
+                      ? '否'
+                      : '-'
+                }}
+              </UiTag>
             </template>
           </template>
         </UiDataTable>

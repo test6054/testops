@@ -29,7 +29,13 @@
           />
         </template>
         <template #actions>
-          <UiButton variant="primary" size="sm" :disabled="!selectedExamId" @click="openCreateModal">
+          <UiButton
+            v-if="canManageOwnerTeachingAffairsWrites"
+            variant="primary"
+            size="sm"
+            :disabled="!selectedExamId"
+            @click="openCreateModal"
+          >
             <template #icon><PlusOutlined /></template>
             新建同步任务
           </UiButton>
@@ -227,6 +233,7 @@
         />
         <div class="hint-text" style="margin-top: 4px">
           当前仅开放成绩回写；名单导入、成绩更正与撤销将在后端能力开放后启用。
+          {{ GRADE_EXPORT_PASSBACK_PRECONDITION_HINT }}
         </div>
       </UiFormItem>
       <UiFormItem label="外部课程编号">
@@ -338,7 +345,7 @@
       <UiDescriptionsItem label="操作" :span="1">
         <div class="dp-space" style="--dp-space-gap: 8px">
           <UiButton
-            v-if="detailTask.id"
+            v-if="detailTask.id && canManageOwnerTeachingAffairsWrites"
             size="sm"
             variant="outline"
             :loading="reconciling"
@@ -381,6 +388,7 @@ import {
   ExternalSystemTypeCode,
   ExternalSystemTypeDescription,
   getPassbackProgress,
+  GRADE_EXPORT_PASSBACK_PRECONDITION_HINT,
   listPassbackRecords,
   pageSyncTasks,
   PASSBACK_STATUS_OPTIONS,
@@ -452,6 +460,8 @@ const {
   resolvingPinned,
   init: initExamSelector,
 } = useMarkExamContext()
+// MVR-326：仅认 BE page.canManageOwnerTeachingAffairsWrites===true；禁止 createUser 本地回退
+const canManageOwnerTeachingAffairsWrites = ref(false)
 const loading = ref(false)
 const loadFailed = ref(false)
 
@@ -494,7 +504,10 @@ const syncColumns: ColumnType<ExamTeachingAffairsSyncTask>[] = [
 ]
 
 async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
-  if (!selectedExamId.value) return
+  if (!selectedExamId.value) {
+    canManageOwnerTeachingAffairsWrites.value = false
+    return
+  }
   if (!options?.quiet) {
     syncLoading.value = true
     loadFailed.value = false
@@ -514,6 +527,7 @@ async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
     syncTaskTotal.value = page.total
     syncPagination.pageNum = page.pageNum ?? syncPagination.pageNum
     syncPagination.pageSize = page.pageSize ?? syncPagination.pageSize
+    canManageOwnerTeachingAffairsWrites.value = page.canManageOwnerTeachingAffairsWrites === true
     const syncingPage = await pageSyncTasks(
       {
         examId: selectedExamId.value,
@@ -529,6 +543,7 @@ async function loadSyncTasks(options?: { quiet?: boolean }): Promise<void> {
       syncTasks.value = []
       syncTaskTotal.value = 0
       syncingTaskTotal.value = 0
+      canManageOwnerTeachingAffairsWrites.value = false
       loadFailed.value = true
       showUserError(error, '教务同步任务加载失败')
     }
@@ -591,10 +606,11 @@ async function loadAllQuietly(): Promise<void> {
 }
 
 function canExecute(record: ExamTeachingAffairsSyncTask): boolean {
-  // 后端 executeGradePassback 仅允许首次 PENDING 且无回写记录；重试后任务虽回到 PENDING 但记录已存在
+  // 首次 PENDING 且从未重试：生成回写记录；MVR-206 重试走 reset FAILED→PENDING 并回 SYNCING，不再二次 execute
   return record.taskStatus === SyncTaskStatusCode.PENDING && record.retryCount === 0
 }
 
+/** MVR-206：FAILED/PARTIAL 可重试；后端重置 FAILED 回写并推进 SYNCING */
 function canRetry(status: SyncTaskStatusCode): boolean {
   return status === SyncTaskStatusCode.FAILED || status === SyncTaskStatusCode.PARTIAL_SUCCESS
 }
@@ -605,25 +621,26 @@ function canCancel(status: SyncTaskStatusCode): boolean {
 
 function buildSyncTaskActions(record: ExamTeachingAffairsSyncTask): UiTableRowActionItem[] {
   const loading = actionLoadingId.value === record.id
+  const canWrite = canManageOwnerTeachingAffairsWrites.value
   return [
     {
       key: 'execute',
       label: '执行回写',
       tone: 'primary',
-      hidden: !canExecute(record),
+      hidden: !canWrite || !canExecute(record),
       disabled: loading,
     },
     {
       key: 'retry',
       label: '重试',
-      hidden: !canRetry(record.taskStatus),
+      hidden: !canWrite || !canRetry(record.taskStatus),
       disabled: loading,
     },
     {
       key: 'cancel',
       label: '取消',
       tone: 'danger',
-      hidden: !canCancel(record.taskStatus),
+      hidden: !canWrite || !canCancel(record.taskStatus),
       disabled: loading,
     },
     { key: 'detail', label: '详情' },
@@ -652,6 +669,9 @@ async function withTaskAction(
   action: () => Promise<void>,
   hint: string,
 ): Promise<void> {
+  if (!canManageOwnerTeachingAffairsWrites.value) {
+    return
+  }
   if (!record.id) return
   if (actionLoadingId.value) return
   actionLoadingId.value = record.id
@@ -699,6 +719,9 @@ const createValid = computed(() =>
 )
 
 function openCreateModal(): void {
+  if (!canManageOwnerTeachingAffairsWrites.value) {
+    return
+  }
   createForm.externalSystemType = ExternalSystemTypeCode.SIS
   createForm.syncType = TeachingAffairsSyncTypeCode.GRADE_EXPORT
   createForm.externalCourseId = ''
@@ -707,6 +730,9 @@ function openCreateModal(): void {
 }
 
 async function handleCreate(): Promise<void> {
+  if (!canManageOwnerTeachingAffairsWrites.value) {
+    return
+  }
   if (!selectedExamId.value || !createValid.value) return
   if (creating.value) return
   creating.value = true
@@ -794,6 +820,9 @@ async function handleRefreshProgress(): Promise<void> {
 }
 
 async function handleReconcile(record: ExamTeachingAffairsSyncTask): Promise<void> {
+  if (!canManageOwnerTeachingAffairsWrites.value) {
+    return
+  }
   if (!record.id) return
   reconciling.value = true
   try {

@@ -219,7 +219,7 @@
             >
               <template #toolbar-right>
                 <UiButton
-                  v-if="activeTab === 'abnormal'"
+                  v-if="activeTab === 'abnormal' && canManageOwnerBatchActions"
                   variant="primary"
                   size="sm"
                   :disabled="selectedRowKeys.length === 0"
@@ -743,6 +743,10 @@ const scannerDevices = ref<ExamScanMonitorDeviceResponse[]>([])
 const scannerDevicesLoading = ref(false)
 const scanMonitorPanel = ref<ExamWorkbenchScanMonitorPanelResponse | null>(null)
 const scanMonitorPanelLoadFailed = ref(false)
+/** MVR-326：仅认 BE scan-monitor-panel.canManageOwnerBatchActions===true */
+const canManageOwnerBatchActions = computed(
+  () => scanMonitorPanel.value?.canManageOwnerBatchActions === true,
+)
 const SCANNER_DEVICE_POLL_INTERVAL_MS = 60_000
 const ATTENTION_FALLBACK_POLL_INTERVAL_MS = 15_000
 let monitorFallbackPollTimer: ReturnType<typeof setInterval> | null = null
@@ -1772,6 +1776,9 @@ function closePageDiscardModal(): void {
 }
 
 async function confirmDiscardPage(): Promise<void> {
+  if (canManageOwnerBatchActions.value !== true) {
+    return
+  }
   const record = pageDiscardTarget.value
   if (!record?.pageId) {
     closePageDiscardModal()
@@ -2002,6 +2009,9 @@ async function loadBindSourcePageImage(): Promise<void> {
 }
 
 function openBindDrawer(record: ScanAttentionItemResponse): void {
+  if (canManageOwnerBatchActions.value !== true) {
+    return
+  }
   if (!record.paperInstanceId || !record.scanBatchId) {
     message.warning('该异常缺少答题卡或扫描批次信息，无法进行身份绑定')
     return
@@ -2024,6 +2034,11 @@ function openBindDrawer(record: ScanAttentionItemResponse): void {
 }
 
 async function handleBind(): Promise<void> {
+  // MVR-316：与 BE requireExamOwnerPermission / canManageOwnerBatchActions 二次拦截
+  if (canManageOwnerBatchActions.value !== true) {
+    message.warning('当前账号非本场主考，无法进行身份绑定')
+    return
+  }
   if (!selectedExamId.value) return
   if (!bindFormRef.value) return
   if (binding.value) {
@@ -2085,28 +2100,38 @@ function handleMonitorBatchAction(key: string, batch: ExamScannerBatchResponse):
 
 function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
+  // MVR-263：主考写动作与 BE requireExamOwnerPermission 对齐，非主考仅保留导航/查看
+  const canOwnerWrite = canManageOwnerBatchActions.value === true
   if (record.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT) {
-    actions.push({
-      key: 'bind',
-      label: '身份绑定',
-      tone: 'primary',
-      disabled: !record.paperInstanceId || !record.scanBatchId,
-    })
+    if (canOwnerWrite) {
+      actions.push({
+        key: 'bind',
+        label: '身份绑定',
+        tone: 'primary',
+        disabled: !record.paperInstanceId || !record.scanBatchId,
+      })
+    } else {
+      actions.push({
+        key: 'workbench',
+        label: '查看批次',
+        disabled: !record.scanBatchId,
+      })
+    }
   } else if (record.attentionType === ScanAttentionTypeCode.UNASSIGNED_PAGE) {
     actions.push({
       key: 'workbench',
-      label: '去归卷工作台',
-      tone: 'primary',
+      label: canOwnerWrite ? '去归卷工作台' : '查看批次',
+      tone: canOwnerWrite ? 'primary' : undefined,
       disabled: !record.scanBatchId,
     })
   } else if (record.attentionType === ScanAttentionTypeCode.BOUND_INCOMPLETE) {
     actions.push({
       key: 'workbench',
-      label: '去归卷工作台',
-      tone: 'primary',
+      label: canOwnerWrite ? '去归卷工作台' : '查看批次',
+      tone: canOwnerWrite ? 'primary' : undefined,
       disabled: !record.scanBatchId,
     })
-    if (record.paperInstanceId && record.scanBatchId) {
+    if (canOwnerWrite && record.paperInstanceId && record.scanBatchId) {
       actions.push({ key: 'supplement', label: '去补扫' })
     }
   } else if (record.attentionType === ScanAttentionTypeCode.RECOGNITION_REVIEW) {
@@ -2118,11 +2143,15 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
     || record.attentionType === ScanAttentionTypeCode.PROCESSING_BLOCK
   ) {
     actions.push({ key: 'dispose', label: '查看处置', tone: 'primary' })
-    if (record.paperInstanceId && record.scanBatchId) {
+    if (canOwnerWrite && record.paperInstanceId && record.scanBatchId) {
       actions.push({ key: 'supplement', label: '去补扫' })
     }
   }
-  if (record.sourceType === ScanAttentionSourceTypeCode.SCANNED_PAGE && record.pageId) {
+  if (
+    canOwnerWrite
+    && record.sourceType === ScanAttentionSourceTypeCode.SCANNED_PAGE
+    && record.pageId
+  ) {
     actions.push({
       key: 'discard',
       label: '废弃此页',
@@ -2217,6 +2246,11 @@ const rowSelection = computed(() => ({
 }))
 
 async function handleBatchBind(): Promise<void> {
+  // MVR-316：批量身份绑定与主考写闸同源
+  if (canManageOwnerBatchActions.value !== true) {
+    message.warning('当前账号非本场主考，无法批量身份绑定')
+    return
+  }
   if (!selectedExamId.value) {
     message.error('请先选择考试')
     return
@@ -2262,6 +2296,11 @@ function closeBatchBindDrawer(): void {
 }
 
 async function submitBatchBind(): Promise<void> {
+  // MVR-316：批量提交与 BE requireExamOwnerPermission 二次拦截
+  if (canManageOwnerBatchActions.value !== true) {
+    message.warning('当前账号非本场主考，无法批量身份绑定')
+    return
+  }
   if (!selectedExamId.value) {
     message.error('请先选择考试')
     return
@@ -2766,6 +2805,12 @@ onBeforeUnmount(() => {
 
   50% {
     opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-monitor__connection--pulse {
+    animation: none;
   }
 }
 </style>

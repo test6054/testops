@@ -148,10 +148,11 @@ const tabItems = computed((): UiSectionTabItem[] => [
 
 const appealSignalMetrics = computed((): SignalMetric[] => {
   const policy = windowPolicy.value
-  const statusLabel = policy
+  // MVR-279：get 可能返回仅含能力位的壳，无 policyStatus 时按未配置展示
+  const statusLabel = policy?.policyStatus
     ? strictEnumLabel(ReviewWindowPolicyStatusDescription, policy.policyStatus, '复核窗口状态')
     : '未配置'
-  const statusTone = policy
+  const statusTone = policy?.policyStatus
     ? strictEnumTone(REVIEW_WINDOW_STATUS_TONE, policy.policyStatus, '复核窗口状态')
     : 'gray'
   return [
@@ -211,7 +212,9 @@ async function loadWindowPolicy(): Promise<void> {
     return
   }
   try {
-    windowPolicy.value = await getReviewWindowPolicy(currentExamId.value)
+    const data = await getReviewWindowPolicy(currentExamId.value)
+    // MVR-279：能力位壳（无 id/policyStatus）不当作已配置策略
+    windowPolicy.value = data?.id || data?.policyStatus ? data : null
   } catch (error) {
     windowPolicy.value = null
     showUserError(error, '复核窗口策略加载失败')

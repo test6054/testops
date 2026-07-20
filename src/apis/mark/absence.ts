@@ -40,7 +40,7 @@ export const ABSENCE_STATUS_TONE: Record<AbsenceStatusCode, BadgeTone> = {
   [AbsenceStatusCode.MAKEUP_COMPLETED]: 'green',
 }
 
-export const ABSENCE_STATUS_FLOW_HINT = '待确认 → 已确认 → 已安排补考 → 已完成补考；已确认可撤销回待确认'
+export const ABSENCE_STATUS_FLOW_HINT = '待确认 → 已确认 → 已安排补考 → 已完成补考；已确认可撤销（计零已发布须先撤回成绩）'
 
 export const ABSENCE_REASON_TONE: Record<AbsenceReasonCode, BadgeTone> = {
   [AbsenceReasonCode.ABSENT]: 'red',
@@ -113,6 +113,12 @@ export interface AbsenceRecordResponse {
   revokedUserId?: string
   revokedTime?: string
   revokeReason?: string
+  /** 计零缺考关联终分状态；已发布时须先撤回成绩再撤销缺考 */
+  linkedFinalScoreStatus?: string
+  /** 与 BE revokeAbsence 写门禁同源；已确认且可撤销时为 true */
+  canRevokeAbsence?: boolean
+  /** 不可撤销时的阻断说明 */
+  revokeBlockedReason?: string
 }
 
 export function confirmAbsence(request: AbsenceConfirmRequest): Promise<AbsenceRecordResponse> {
@@ -160,6 +166,10 @@ export interface AbsenceExamStatsRequest {
 export interface AbsenceExamStatsResponse {
   pendingAbsenceCount: number
   confirmedAbsenceCount: number
+  /** 是否可管理本场阅卷写操作；与 hasExamReviewerWritePermission 同源 */
+  canManageReviewerWrites?: boolean
+  /** MVR-326：是否可派生补考；与 BE isExamOwner 同源 */
+  canManageOwnerAbsenceMakeup?: boolean
 }
 
 export function getAbsenceExamStats(

@@ -32,6 +32,17 @@ export interface PortfolioTeacherOneTableSummaryVO {
   courseArchiveFullyCompleteCount?: number
   courseArchiveFrameworkSlotDone?: number
   courseArchiveFrameworkSlotTotal?: number
+  /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
+  lifecycleStatus?: string
+  /** 生命周期状态中文标签 */
+  lifecycleStatusLabel?: string
+  /** 是否禁止档案写 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
+
 }
 
 export interface PortfolioDeptOneTableSummaryVO {
@@ -84,6 +95,17 @@ export interface PortfolioDeptOneTableTeacherRowVO {
   courseArchiveFullyCompleteCount?: number
   courseArchiveFrameworkSlotDone?: number
   courseArchiveFrameworkSlotTotal?: number
+  /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
+  lifecycleStatus?: string
+  /** 生命周期状态中文标签 */
+  lifecycleStatusLabel?: string
+  /** 是否禁止档案写 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
+
 }
 
 export interface PortfolioDeptTeacherSegmentItemVO {

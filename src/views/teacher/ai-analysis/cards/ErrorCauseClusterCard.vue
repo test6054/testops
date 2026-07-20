@@ -5,7 +5,9 @@
     </template>
     <template v-if="!embedded" #toolbar>
       <div class="ai-analysis-card-toolbar">
-        <UiButton variant="outline" size="sm" :loading="generating" @click="handleGenerate">
+        <UiButton
+          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating" @click="handleGenerate"
+        >
           重新生成
         </UiButton>
         <UiButton variant="outline" size="sm" :loading="loading" @click="reload">
@@ -16,7 +18,9 @@
 
     <template v-if="embedded" #actions>
       <div class="ai-analysis-card-toolbar">
-        <UiButton variant="outline" size="sm" :loading="generating" @click="handleGenerate">
+        <UiButton
+          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating" @click="handleGenerate"
+        >
           重新生成
         </UiButton>
       </div>
@@ -76,7 +80,7 @@ import type {
   ErrorCauseClusterResponse,
 } from '@/apis/mark/error-cause-cluster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import {
   generateErrorCauseCluster,
@@ -90,6 +94,7 @@ import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCol
 import AiClusterTile from '@/components/mark/analysis/AiClusterTile.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
+import { AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY } from '@/composables/useAiAnalysisScope'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showUserError } from '@/utils/error-handler'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
@@ -115,6 +120,16 @@ const emit = defineEmits<{ changed: [] }>()
 const record = ref<ErrorCauseClusterResponse | null>(null)
 const loading = ref(false)
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
+
+/** MVR-285：默认拒绝假可写；依赖 AI 分析中心 overview 或页面 provide 的能力位 */
+const injectedCanManageReviewerWrites = inject(
+  AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY,
+  null,
+)
+const canManageReviewerWrites = computed(
+  () => injectedCanManageReviewerWrites?.value === true,
+)
+
 
 const clusterBarItems = computed(() => errorCauseToBarItems(record.value?.clusterItems ?? []))
 
@@ -171,6 +186,10 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
+    return
+  }
   await runGeneration(
     () =>
       generateErrorCauseCluster({

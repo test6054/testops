@@ -10,13 +10,12 @@
         </template>
         <template v-if="examId" #actions>
           <UiButton
+            v-if="primaryOpenVolumeId"
             variant="primary"
             size="sm"
-            :disabled="!canCreatePackage"
-            :loading="packagingActionLoading"
-            @click="createPackage"
+            @click="goDetail(primaryOpenVolumeId)"
           >
-            创建归档包
+            打开课程考核袋
           </UiButton>
           <UiButton
             v-if="showRetryPackagingAction"
@@ -39,7 +38,7 @@
     </template>
 
     <template v-if="examId && reviewSignals.length > 0" #signal>
-      <SignalBand compact variant="panel" :metrics="reviewSignals" />
+      <SignalBand variant="panel" :metrics="reviewSignals" />
     </template>
 
     <ExamSelectGateStrip
@@ -103,6 +102,7 @@
               ref="exportTasksRef"
               :exam-id="examId"
               :can-create="gateOpen"
+              :can-manage-owner-image-archive-export="canManageOwnerArchivePackageWrites"
             />
           </div>
 
@@ -118,7 +118,7 @@
                 tone="error"
                 dense
                 inline
-                title="归档任务列表加载失败"
+                title="课程考核袋列表加载失败"
                 description="当前保留最后一次成功加载的数据，请重试列表查询。"
                 class="archive-exam-review__volume-error"
               >
@@ -267,8 +267,16 @@ const showGateCloseExamAction = computed(() => {
   return Boolean(gate && !gate.gateOpen && gate.allScoresPublished && !gate.examClosed)
 })
 
+const primaryOpenVolumeId = computed(() => {
+  const first = healthyVolumes.value[0]
+  return first?.volumeId ? String(first.volumeId) : ''
+})
+
 const archiveGateMoreItems = computed(() => {
   const items: { key: string, label: string }[] = []
+  if (canManageOwnerArchivePackageWrites.value && canCreatePackage.value) {
+    items.push({ key: 'createExportPackage', label: '创建导出归档包' })
+  }
   if (showGateScorePublishAction.value) {
     items.push({ key: 'scorePublish', label: '前往成绩发布' })
   }
@@ -279,6 +287,10 @@ const archiveGateMoreItems = computed(() => {
 })
 
 function onArchiveGateMoreAction(key: string) {
+  if (key === 'createExportPackage') {
+    void createPackage()
+    return
+  }
   if (key === 'scorePublish') {
     goScorePublish()
     return
@@ -300,7 +312,7 @@ const volumesLoadFailed = ref(false)
 const retrying = ref(false)
 const packagingActionLoading = ref(false)
 const pollTimedOut = ref(false)
-const volumeCollapseActiveKeys = ref<string[]>([])
+const volumeCollapseActiveKeys = ref<string[]>(['volumes'])
 const exportTasksRef = ref<InstanceType<typeof ArchiveExamExportTasksCard> | null>(null)
 let packagingPollTimer: ReturnType<typeof setInterval> | null = null
 let reviewRequestSequence = 0
@@ -340,7 +352,15 @@ const lifecycleSteps = computed(() =>
   buildArchivePackageLifecycleSteps(archivePackage.value?.archiveStatus),
 )
 
+/** MVR-268：优先 BE 能力位；缺省 false 失败关闭 */
+const canManageOwnerArchivePackageWrites = computed(() =>
+  review.value?.canManageOwnerArchivePackageWrites === true,
+)
+
 const canCreatePackage = computed(() => {
+  if (!canManageOwnerArchivePackageWrites.value) {
+    return false
+  }
   if (!gateOpen.value || packagingActionLoading.value) {
     return false
   }
@@ -356,7 +376,8 @@ const canCreatePackage = computed(() => {
 
 const showRetryPackagingAction = computed(
   () =>
-    gateOpen.value
+    canManageOwnerArchivePackageWrites.value
+    && gateOpen.value
     && archivePackage.value?.archiveStatus === ArchivePackageStatusCode.PACKAGING_FAILED,
 )
 
@@ -374,7 +395,10 @@ const reviewStatusLabel = computed(() => {
   if (!gate.gateOpen) {
     return '双门禁未满足'
   }
-  return '待创建归档包'
+  if (primaryOpenVolumeId.value) {
+    return '课程考核袋已就绪'
+  }
+  return '待自动建袋'
 })
 
 const reviewStatusTone = computed(() => {
@@ -460,12 +484,12 @@ const volumeCollapseHeader = computed(() => {
   const expected = expectedAutoCreateVolumeCount.value
   const healthy = gate?.healthyAutoCreateVolumeCount ?? volumePagination.total
   if (expected != null && expected > 0) {
-    return `院系归档任务（${healthy}/${expected}）`
+    return `课程考核袋（${healthy}/${expected}）`
   }
   if (volumePagination.total > 0) {
-    return `院系归档任务（${healthy} 个）`
+    return `课程考核袋（${healthy} 个）`
   }
-  return '院系归档任务'
+  return '课程考核袋'
 })
 
 const showVolumeAutoCreateStatus = computed(
@@ -530,7 +554,7 @@ const showNonOwnerHint = computed(() => {
 const pendingRetryDescription = computed(() => {
   const gate = examGate.value
   if (gate?.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED) {
-    return gate.autoCreateLastError || '自动创建归档任务多次失败，请修复问题后重新触发'
+    return gate.autoCreateLastError || '自动创建课程考核袋多次失败，请修复问题后重新触发'
   }
   if (gate?.autoCreateFailureCategory === ArchiveAutoCreateFailureCategoryCode.PACKAGE_PENDING) {
     return gate.autoCreateLastError
@@ -542,7 +566,7 @@ const pendingRetryDescription = computed(() => {
       ? `${gate.autoCreateLastError}；系统仍将自动重试`
       : '系统正在自动重试创建，也可手动立即触发'
   }
-  return '双门禁已满足但归档任务尚未生成'
+  return '双门禁已满足但课程考核袋尚未生成'
 })
 
 const autoCreateFailedDescription = computed(() => {
@@ -695,6 +719,9 @@ function stopPackagingPoll() {
 }
 
 async function createPackage() {
+  if (!canManageOwnerArchivePackageWrites.value) {
+    return
+  }
   if (!examId.value || !canCreatePackage.value || packagingActionLoading.value) {
     return
   }
@@ -717,6 +744,9 @@ async function createPackage() {
 }
 
 async function retryPackaging() {
+  if (!canManageOwnerArchivePackageWrites.value) {
+    return
+  }
   if (!examId.value || packagingActionLoading.value) {
     return
   }
@@ -776,6 +806,11 @@ function goExamListForClose() {
 
 async function retryAutoCreate() {
   if (!examId.value || retrying.value || polling.value) {
+    return
+  }
+  // MVR-313：与 showRetryAutoCreate / BE requireExamOwnerPermission 同源
+  if (!showRetryAutoCreate.value) {
+    message.warning('当前不可重新触发自动建卷')
     return
   }
   retrying.value = true

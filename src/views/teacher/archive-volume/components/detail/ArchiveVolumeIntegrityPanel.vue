@@ -1,43 +1,66 @@
 <template>
-  <WorkbenchSurfaceCard class="archive-volume-integrity-panel">
-    <template #toolbar>
-      <div class="archive-volume-integrity-panel__actions">
+  <WorkbenchSurfaceCard embedded class="archive-quality-panel">
+    <section class="archive-quality-panel__section">
+      <div class="archive-quality-panel__section-head">
+        <h3 class="archive-quality-panel__section-title">完整性自检</h3>
+        <UiTag
+          v-if="displayedIntegrityResult || detail.volume.integrityStatus"
+          :tone="
+            integrityStatusTone(
+              displayedIntegrityResult?.integrityStatus ?? detail.volume.integrityStatus,
+            )
+          "
+          size="sm"
+        >
+          {{
+            integrityStatusLabel(
+              displayedIntegrityResult?.integrityStatus ?? detail.volume.integrityStatus,
+            )
+          }}
+        </UiTag>
+        <div class="archive-quality-panel__section-actions">
+          <UiButton
+            v-if="canRunIntegrity"
+            size="sm"
+            variant="primary"
+            :loading="checkingIntegrity"
+            @click="emit('run-integrity-check')"
+          >
+            执行完整性自检
+          </UiButton>
+          <UiButton
+            v-if="canWaiveIntegrity"
+            size="sm"
+            variant="outline"
+            :loading="waivingIntegrity"
+            @click="openWaiveIntegrityModal"
+          >
+            授权豁免
+          </UiButton>
+        </div>
+      </div>
+
+      <div
+        v-if="!displayedIntegrityResult"
+        class="archive-quality-panel__empty"
+      >
+        <p class="archive-quality-panel__empty-title">尚未执行完整性自检</p>
+        <p class="archive-quality-panel__empty-desc">
+          对照必交材料清单检查缺件，通过后方可继续自检清单与四性检测。
+        </p>
         <UiButton
           v-if="canRunIntegrity"
           size="sm"
+          variant="primary"
           :loading="checkingIntegrity"
           @click="emit('run-integrity-check')"
         >
-          完整性自检
-        </UiButton>
-        <UiButton
-          v-if="canWaiveIntegrity"
-          size="sm"
-          variant="outline"
-          :loading="waivingIntegrity"
-          @click="openWaiveIntegrityModal"
-        >
-          授权完整性豁免
+          执行完整性自检
         </UiButton>
       </div>
-    </template>
-    <div v-if="displayedIntegrityResult" class="archive-volume-integrity-panel__result">
-      <UiTag
-        :tone="
-          integrityStatusTone(
-            displayedIntegrityResult.integrityStatus ?? detail.volume.integrityStatus,
-          )
-        "
-        size="sm"
-      >
-        {{
-          integrityStatusLabel(
-            displayedIntegrityResult.integrityStatus ?? detail.volume.integrityStatus,
-          )
-        }}
-      </UiTag>
+
       <UiDataTable
-        v-if="displayedIntegrityResult.missingItems?.length"
+        v-else-if="displayedIntegrityResult.missingItems?.length"
         pagination-mode="none"
         :columns="missingColumns"
         :data-source="displayedIntegrityResult.missingItems"
@@ -45,7 +68,7 @@
         flat
         :row-key="missingRowKey"
         size="small"
-        class="archive-volume-integrity-panel__missing-table"
+        class="archive-quality-panel__table"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'materialType'">
@@ -69,92 +92,11 @@
           </template>
         </template>
       </UiDataTable>
-    </div>
 
-    <section v-if="detail.volume.securityLevel" class="archive-volume-integrity-panel__security">
-      <div class="archive-volume-integrity-panel__section-head">
-        <h3 class="archive-volume-integrity-panel__section-title">密级与定密</h3>
-        <UiTag :tone="detail.volume.securityMarkPending ? 'orange' : 'green'" size="sm">
-          {{ detail.volume.securityMarkPending ? '待确认' : '已确认' }}
-        </UiTag>
-      </div>
-      <p class="archive-volume-integrity-panel__security-level">
-        当前密级：{{ securityLevelLabel(detail.volume.securityLevel) }}
+      <p v-else class="archive-quality-panel__pass-hint">
+        完整性自检已通过，无缺项材料。
       </p>
-      <div class="archive-volume-integrity-panel__actions">
-        <UiButton
-          v-if="detail.canConfirmSecurityMark"
-          size="sm"
-          variant="outline"
-          :loading="confirmingSecurityMark"
-          @click="openConfirmSecurityMarkModal"
-        >
-          确认密级定密
-        </UiButton>
-        <UiButton
-          v-if="detail.canUpdateSecurityLevel"
-          size="sm"
-          variant="outline"
-          :loading="updatingSecurityLevel"
-          @click="openUpdateSecurityLevelModal"
-        >
-          变更密级
-        </UiButton>
-      </div>
     </section>
-
-    <section class="archive-volume-integrity-panel__four-property">
-      <div class="archive-volume-integrity-panel__section-head">
-        <h3 class="archive-volume-integrity-panel__section-title">四性检测</h3>
-        <UiTag
-          v-if="displayedFourProperty && !detail.fourPropertyStale"
-          :tone="fourPropertySummary.passed === fourPropertySummary.total ? 'green' : 'orange'"
-          size="sm"
-        >
-          {{ fourPropertySummary.passed }}/{{ fourPropertySummary.total }} 通过
-        </UiTag>
-        <p v-if="detail.fourPropertyStale" class="archive-volume-integrity-panel__stale-hint">
-          结论已失效，请重新检测
-        </p>
-        <p
-          v-else-if="!detail.latestFourPropertyCheck"
-          class="archive-volume-integrity-panel__stale-hint"
-        >
-          尚未执行四性检测
-        </p>
-        <div class="archive-volume-integrity-panel__section-actions">
-          <UiButton
-            v-if="canRunFourProperty"
-            size="sm"
-            variant="ghost"
-            :loading="checkingFourProperty"
-            @click="runFourPropertyCheck"
-          >
-            重新检测
-          </UiButton>
-          <UiButton
-            v-if="canWaiveIntegrity"
-            size="sm"
-            variant="ghost"
-            :loading="waivingIntegrity"
-            @click="openWaiveIntegrityModal"
-          >
-            豁免
-          </UiButton>
-        </div>
-      </div>
-      <ArchiveFourPropertyGrid :check="displayedFourProperty" />
-    </section>
-
-    <ArchiveVolumeSelfCheckList
-      :volume-id="volumeId"
-      :self-check-status="detail.selfCheckStatus"
-      :readonly="!canEditSelfCheck"
-      embedded
-      class="archive-volume-integrity-panel__self-check"
-      @refreshed="emit('refreshed')"
-      @open-sign-off="emit('open-sign-off')"
-    />
 
     <UiDrawer
       :open="delayAllowOpen"
@@ -233,66 +175,6 @@
         </UiFormItem>
       </UiForm>
     </UiDrawer>
-
-    <UiDrawer
-      :open="confirmSecurityMarkOpen"
-      title="密级定密确认"
-      :width="520"
-      :confirm-loading="confirmingSecurityMark"
-      ok-text="确认定密"
-      :hide-footer="false"
-      @update:open="(v: boolean) => (confirmSecurityMarkOpen = v)"
-      @close="confirmSecurityMarkOpen = false"
-      @confirm="submitConfirmSecurityMark"
-    >
-      <UiForm layout="vertical">
-        <UiFormItem label="当前密级">
-          {{ securityLevelLabel(detail.volume.securityLevel!) }}
-        </UiFormItem>
-        <UiFormItem label="确认说明" required>
-          <UiTextarea
-            size="sm"
-            v-model="confirmSecurityMarkReason"
-            :maxlength="500"
-            :rows="3"
-            placeholder="如：教学档案内部定密，卷内材料密级一致"
-            :show-count="true"
-          />
-        </UiFormItem>
-      </UiForm>
-    </UiDrawer>
-
-    <UiDrawer
-      :open="updateSecurityLevelOpen"
-      title="变更卷密级"
-      :width="520"
-      :confirm-loading="updatingSecurityLevel"
-      ok-text="保存"
-      :hide-footer="false"
-      @update:open="(v: boolean) => (updateSecurityLevelOpen = v)"
-      @close="updateSecurityLevelOpen = false"
-      @confirm="submitUpdateSecurityLevel"
-    >
-      <UiForm layout="vertical">
-        <UiFormItem label="新密级" required>
-          <UiSelect
-            size="sm"
-            v-model="updateSecurityLevelForm.securityLevel"
-            :options="ARCHIVE_SECURITY_LEVEL_OPTIONS"
-            placeholder="选择密级"
-          />
-        </UiFormItem>
-        <UiFormItem label="变更原因" required>
-          <UiTextarea
-            size="sm"
-            v-model="updateSecurityLevelForm.reason"
-            :maxlength="500"
-            :rows="3"
-            :show-count="true"
-          />
-        </UiFormItem>
-      </UiForm>
-    </UiDrawer>
   </WorkbenchSurfaceCard>
 </template>
 
@@ -301,22 +183,16 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   ArchiveIntegrityMissingItemVO,
   ArchiveMaterialTypeCode,
-  ArchiveSecurityLevelCode,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
+import { reactive, ref } from 'vue'
 import {
   allowArchiveMaterialDelay,
   ARCHIVE_INTEGRITY_STATUS_TONE,
-  ARCHIVE_SECURITY_LEVEL_OPTIONS,
   ArchiveIntegrityStatusDescription,
   ArchiveMaterialTypeDescription,
-  ArchiveSecurityLevelDescription,
-  checkArchiveVolumeFourProperty,
-  confirmArchiveVolumeSecurityMark,
-  updateArchiveVolumeSecurityLevel,
   waiveArchiveMaterialMissing,
   waiveArchiveVolumeIntegrity,
 } from '@/apis/mark/archive-volume'
@@ -329,17 +205,10 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
-import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import {
-  buildFourPropertyDimensionViews,
-  countFourPropertyPassed,
-} from '@/utils/archive-four-property-diagnostic'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import ArchiveFourPropertyGrid from '@/views/teacher/archive-volume/components/detail/ArchiveFourPropertyGrid.vue'
-import ArchiveVolumeSelfCheckList from '@/views/teacher/archive-volume/components/detail/ArchiveVolumeSelfCheckList.vue'
 
 defineOptions({ name: 'ArchiveVolumeIntegrityPanel' })
 
@@ -347,47 +216,29 @@ const props = defineProps<{
   volumeId: string
   detail: ArchiveVolumeDetailResponse
   displayedIntegrityResult: NonNullable<ArchiveVolumeDetailResponse['latestIntegrityCheck']> | null
-  displayedFourProperty: NonNullable<ArchiveVolumeDetailResponse['latestFourPropertyCheck']> | null
   checkingIntegrity: boolean
   canRunIntegrity: boolean
-  canRunFourProperty: boolean
   canAllowMaterialDelay: boolean
   canWaiveMaterialMissing: boolean
   canWaiveIntegrity: boolean
-  canEditSelfCheck: boolean
 }>()
 
 const emit = defineEmits<{
-  "refreshed": []
-  'four-property-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeFourProperty>>]
+  'refreshed': []
   'run-integrity-check': []
-  'open-sign-off': []
 }>()
 
-const checkingFourProperty = ref(false)
 const waivingIntegrity = ref(false)
 const delayAllowOpen = ref(false)
 const delayAllowSubmitting = ref(false)
 const waiveMissingOpen = ref(false)
 const waiveMissingSubmitting = ref(false)
 const waiveIntegrityOpen = ref(false)
-const confirmSecurityMarkOpen = ref(false)
-const updateSecurityLevelOpen = ref(false)
-const confirmingSecurityMark = ref(false)
-const updatingSecurityLevel = ref(false)
 const waiveMissingReason = ref('')
 const waiveIntegrityReason = ref('')
-const confirmSecurityMarkReason = ref('')
-interface UpdateSecurityLevelForm {
-  securityLevel?: ArchiveSecurityLevelCode
-  reason: string
-}
-
-const updateSecurityLevelForm = reactive<UpdateSecurityLevelForm>({
-  reason: '',
-})
 const delayAllowTarget = ref<ArchiveIntegrityMissingItemVO | null>(null)
 const waiveMissingTarget = ref<ArchiveIntegrityMissingItemVO | null>(null)
+
 interface ArchiveIntegrityDelayAllowForm {
   deadline: string | undefined
   responsibleUserId: string | undefined
@@ -399,10 +250,6 @@ const delayAllowForm = reactive<ArchiveIntegrityDelayAllowForm>({
   responsibleUserId: undefined,
   missingReason: '',
 })
-
-const fourPropertySummary = computed(() =>
-  countFourPropertyPassed(buildFourPropertyDimensionViews(props.displayedFourProperty)),
-)
 
 const missingColumns: ColumnsType<ArchiveIntegrityMissingItemVO> = [
   { title: '缺项材料', key: 'materialType' },
@@ -445,96 +292,12 @@ function integrityStatusTone(
   return strictEnumTone(ARCHIVE_INTEGRITY_STATUS_TONE, code, 'integrityStatus')
 }
 
-function securityLevelLabel(code: ArchiveSecurityLevelCode) {
-  return strictEnumLabel(ArchiveSecurityLevelDescription, code, 'securityLevel')
-}
-
-function openConfirmSecurityMarkModal() {
-  confirmSecurityMarkReason.value = ''
-  confirmSecurityMarkOpen.value = true
-}
-
-async function submitConfirmSecurityMark() {
-  if (confirmingSecurityMark.value) {
-    return
-  }
-  if (!confirmSecurityMarkReason.value.trim()) {
-    showFormValidationMessage('请填写定密确认说明')
-    return
-  }
-  confirmingSecurityMark.value = true
-  try {
-    await confirmArchiveVolumeSecurityMark({
-      volumeId: props.volumeId,
-      securityLevel: props.detail.volume.securityLevel!,
-      reason: confirmSecurityMarkReason.value.trim(),
-    })
-    message.success('密级定密已确认')
-    confirmSecurityMarkOpen.value = false
-    emit('refreshed')
-  } catch (error) {
-    showUserError(error, '确认定密失败')
-  } finally {
-    confirmingSecurityMark.value = false
-  }
-}
-
-function openUpdateSecurityLevelModal() {
-  updateSecurityLevelForm.securityLevel = props.detail.volume.securityLevel
-  updateSecurityLevelForm.reason = ''
-  updateSecurityLevelOpen.value = true
-}
-
-async function submitUpdateSecurityLevel() {
-  if (updatingSecurityLevel.value) {
-    return
-  }
-  if (!updateSecurityLevelForm.securityLevel) {
-    showFormValidationMessage('请选择新密级')
-    return
-  }
-  if (updateSecurityLevelForm.securityLevel === props.detail.volume.securityLevel) {
-    showFormValidationMessage('新密级不能与当前密级相同')
-    return
-  }
-  if (!updateSecurityLevelForm.reason.trim()) {
-    showFormValidationMessage('请填写变更原因')
-    return
-  }
-  updatingSecurityLevel.value = true
-  try {
-    await updateArchiveVolumeSecurityLevel({
-      volumeId: props.volumeId,
-      expectedSecurityLevel: props.detail.volume.securityLevel!,
-      securityLevel: updateSecurityLevelForm.securityLevel,
-      reason: updateSecurityLevelForm.reason.trim(),
-    })
-    message.success('密级已变更，请重新确认定密并执行四性检测')
-    updateSecurityLevelOpen.value = false
-    emit('refreshed')
-  } catch (error) {
-    showUserError(error, '变更密级失败')
-  } finally {
-    updatingSecurityLevel.value = false
-  }
-}
-
-async function runFourPropertyCheck() {
-  if (!props.canRunFourProperty || checkingFourProperty.value) return
-  checkingFourProperty.value = true
-  try {
-    const result = await checkArchiveVolumeFourProperty(props.volumeId)
-    emit('four-property-checked', result)
-    message.success('四性检测完成')
-    emit('refreshed')
-  } catch (error) {
-    showUserError(error, '四性检测失败')
-  } finally {
-    checkingFourProperty.value = false
-  }
-}
-
 function openDelayAllowModal(item: ArchiveIntegrityMissingItemVO) {
+  // MVR-348：与 canAllowMaterialDelay 同源二次拦截
+  if (props.canAllowMaterialDelay !== true) {
+    message.warning('当前账号无延迟补交登记权限')
+    return
+  }
   delayAllowTarget.value = item
   delayAllowForm.deadline = undefined
   delayAllowForm.responsibleUserId = props.detail.volume.responsibleUserId
@@ -544,6 +307,10 @@ function openDelayAllowModal(item: ArchiveIntegrityMissingItemVO) {
 
 async function submitDelayAllow() {
   if (delayAllowSubmitting.value) {
+    return
+  }
+  if (props.canAllowMaterialDelay !== true) {
+    message.warning('当前账号无延迟补交登记权限')
     return
   }
   if (!delayAllowTarget.value) return
@@ -580,6 +347,11 @@ async function submitDelayAllow() {
 }
 
 function openWaiveMissingModal(item: ArchiveIntegrityMissingItemVO) {
+  // MVR-348：与 canWaiveMaterialMissing 同源二次拦截
+  if (props.canWaiveMaterialMissing !== true) {
+    message.warning('当前账号无材料缺失豁免权限')
+    return
+  }
   waiveMissingTarget.value = item
   waiveMissingReason.value = ''
   waiveMissingOpen.value = true
@@ -587,6 +359,10 @@ function openWaiveMissingModal(item: ArchiveIntegrityMissingItemVO) {
 
 async function submitWaiveMissing() {
   if (waiveMissingSubmitting.value) {
+    return
+  }
+  if (props.canWaiveMaterialMissing !== true) {
+    message.warning('当前账号无材料缺失豁免权限')
     return
   }
   if (!waiveMissingTarget.value) return
@@ -613,12 +389,21 @@ async function submitWaiveMissing() {
 }
 
 function openWaiveIntegrityModal() {
+  // MVR-348：与 canWaiveIntegrity 同源二次拦截
+  if (props.canWaiveIntegrity !== true) {
+    message.warning('当前账号无完整性豁免权限')
+    return
+  }
   waiveIntegrityReason.value = ''
   waiveIntegrityOpen.value = true
 }
 
 async function submitWaiveIntegrity() {
   if (waivingIntegrity.value) {
+    return
+  }
+  if (props.canWaiveIntegrity !== true) {
+    message.warning('当前账号无完整性豁免权限')
     return
   }
   if (!waiveIntegrityReason.value.trim()) {
@@ -642,68 +427,73 @@ async function submitWaiveIntegrity() {
 }
 </script>
 
-<style scoped>
-.archive-volume-integrity-panel {
+<style scoped lang="scss">
+.archive-quality-panel {
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-4);
+  padding: var(--dp-space-3) var(--dp-space-4);
 }
 
-.archive-volume-integrity-panel__actions {
+.archive-quality-panel__section {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--dp-space-2);
+  flex-direction: column;
+  gap: var(--dp-space-3);
 }
 
-.archive-volume-integrity-panel__missing-table {
-  margin-top: var(--dp-space-3);
-}
-
-.archive-volume-integrity-panel__section-head {
+.archive-quality-panel__section-head {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--dp-space-2);
-  margin-bottom: var(--dp-space-3);
 }
 
-.archive-volume-integrity-panel__section-actions {
+.archive-quality-panel__section-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--dp-space-2);
   margin-left: auto;
 }
 
-.archive-volume-integrity-panel__section-title {
+.archive-quality-panel__section-title {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-.archive-volume-integrity-panel__stale-hint {
+.archive-quality-panel__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dp-space-2);
+  padding: var(--dp-space-4);
+  border: 1px dashed var(--dp-border);
+  border-radius: var(--dp-radius-control);
+  background: var(--dp-surface-subtle);
+}
+
+.archive-quality-panel__empty-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dp-text-primary);
+}
+
+.archive-quality-panel__empty-desc {
   margin: 0;
   font-size: 13px;
-  color: var(--dp-orange-700);
-}
-
-.archive-volume-integrity-panel__four-property {
-  margin-top: var(--dp-space-4);
-}
-
-.archive-volume-integrity-panel__security {
-  margin-top: var(--dp-space-4);
-  padding-top: var(--dp-space-4);
-  border-top: 1px solid var(--dp-border-light);
-}
-
-.archive-volume-integrity-panel__security-level {
-  margin: 0 0 var(--dp-space-3);
-  font-size: 14px;
+  line-height: 1.5;
   color: var(--dp-text-secondary);
 }
 
-.archive-volume-integrity-panel__self-check {
-  border-top: 1px solid var(--dp-border-light);
-  padding-top: var(--dp-space-4);
+.archive-quality-panel__pass-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dp-text-secondary);
+}
+
+.archive-quality-panel__table {
+  min-width: 0;
 }
 </style>

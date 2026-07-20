@@ -18,11 +18,13 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -101,6 +103,13 @@ const reviewModalOpen = ref(false)
 const reviewTargetId = ref('')
 const reviewAction = ref<'approve' | 'return'>('approve')
 const auditOpinion = ref('')
+const reviewOwnerTeacherId = ref<string | undefined>(undefined)
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: reviewOwnerTeacherId })
 
 const columns: ColumnsType = [
   { title: '标题', dataIndex: 'planTitle', key: 'planTitle' },
@@ -149,6 +158,9 @@ function resetReviewContext() {
   auditOpinion.value = ''
 }
 
+/**
+ * PF-P0-288：审核页消费 planId 深链；同步筛选年度到目标规划，避免默认当年过滤致弹窗打不开。
+ */
 function openPlanFromQuery() {
   const planId = typeof route.query.planId === 'string' ? route.query.planId : ''
   if (!planId) {
@@ -160,8 +172,11 @@ function openPlanFromQuery() {
     resetReviewContext()
     return
   }
+  if (target.planYear && target.planYear !== filterForm.planYear) {
+    filterForm.planYear = target.planYear
+  }
   if (target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_PENDING) {
-    openReview(planId, 'approve')
+    void openReview(planId, 'approve')
     return
   }
   resetReviewContext()
@@ -180,16 +195,21 @@ function handlePageChange(event: { current: number, pageSize: number }) {
   void loadPage()
 }
 
-function openReview(id: string, action: 'approve' | 'return') {
+async function openReview(id: string, action: 'approve' | 'return') {
   reviewTargetId.value = id
   reviewAction.value = action
   auditOpinion.value = ''
+  const plan = rows.value.find((item) => item.id === id)
+  reviewOwnerTeacherId.value = plan?.ownerUserId ? String(plan.ownerUserId) : undefined
+  if (reviewOwnerTeacherId.value) {
+    await reloadLifecycleState()
+  }
   reviewModalOpen.value = true
 }
 
 function handlePlanReviewRowAction(key: string, planId: string) {
-  if (key === 'approve') openReview(planId, 'approve')
-  else if (key === 'return') openReview(planId, 'return')
+  if (key === 'approve') void openReview(planId, 'approve')
+  else if (key === 'return') void openReview(planId, 'return')
 }
 
 async function confirmReview() {
@@ -199,6 +219,13 @@ async function confirmReview() {
   if (reviewAction.value === 'return' && !auditOpinion.value.trim()) {
     showFormValidationMessage('请填写退回意见')
     return
+  }
+  if (reviewOwnerTeacherId.value) {
+    await reloadLifecycleState()
+    const actionLabel = reviewAction.value === 'approve' ? '发展规划院系通过' : '发展规划院系退回'
+    if (!assertArchiveWritable(actionLabel)) {
+      return
+    }
   }
   try {
     if (reviewAction.value === 'approve') {
@@ -325,16 +352,30 @@ watch(
     <UiDialog
       v-model:open="reviewModalOpen"
       :title="reviewAction === 'approve' ? '科室审核通过' : '科室审核退回'"
-      ok-text="确认"
-      cancel-text="取消"
-      @ok="confirmReview"
     >
+      <UiAlertStrip
+        v-if="reviewOwnerTeacherId && archiveWriteForbidden"
+        tone="warning"
+        :message="archiveWriteBlockMessage || '该教师档案当前禁止审核跃迁'"
+        class="mb-3"
+      />
       <UiTextarea
         size="sm"
         v-model="auditOpinion"
         :placeholder="reviewAction === 'return' ? '请填写退回意见' : '审核意见（可选）'"
         :rows="3"
       />
+      <template #footer>
+        <UiButton size="sm" variant="outline" @click="reviewModalOpen = false">取消</UiButton>
+        <UiButton
+          size="sm"
+          variant="primary"
+          :disabled="Boolean(reviewOwnerTeacherId && archiveWriteForbidden)"
+          @click="confirmReview"
+        >
+          {{ reviewAction === 'approve' ? '确认通过' : '确认退回' }}
+        </UiButton>
+      </template>
     </UiDialog>
   </StageWorkbenchShell>
 </template>

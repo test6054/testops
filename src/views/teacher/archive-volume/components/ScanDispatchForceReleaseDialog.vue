@@ -12,6 +12,8 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 const props = defineProps<{
   open: boolean
   ticket?: ScanDispatchTicketVO | null
+  /** MVR-317：父层已按 canForceReleaseTicket 过滤；handler 二次拦截 */
+  canForceRelease?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -34,6 +36,11 @@ watch(
 )
 
 async function handleSubmit() {
+  // MVR-317：与 BE/父层 canForceReleaseTicket 二次拦截
+  if (props.canForceRelease !== true) {
+    showFormValidationMessage('当前账号无权强制解锁该派单')
+    return
+  }
   if (submitting.value) {
     return
   }

@@ -17,7 +17,6 @@
       <SignalBand
         :metrics="signalMetrics"
         variant="panel"
-        compact
         @metric-click="handleSignalMetricClick"
       />
     </template>
@@ -204,6 +203,7 @@ import type {
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
@@ -664,6 +664,11 @@ function goList() {
 }
 
 async function exportOverviewExcel() {
+  // MVR-340：与 canViewStatisticsKpi / BE requireStatisticsViewer 二次拦截
+  if (canViewStatisticsKpi.value !== true) {
+    message.warning('当前账号无导出迎评统计权限')
+    return
+  }
   if (!ensureTriplePeriodPair(filterForm)) {
     return
   }
@@ -683,6 +688,11 @@ async function exportOverviewExcel() {
 }
 
 async function exportDestructionExcel() {
+  // MVR-340：与 canViewDestructionLedger / BE requireDestructionLedgerViewer 二次拦截
+  if (canViewDestructionLedger.value !== true) {
+    message.warning('当前账号无导出销毁清册权限')
+    return
+  }
   if (exportDestructionLoading.value) return
   exportDestructionLoading.value = true
   try {

@@ -90,6 +90,10 @@ export interface ScanDispatchTicketVO {
   kioskDispatchUrl?: string
   archiveSnapshot?: ScanDispatchArchiveSnapshotVO
   portfolioSnapshot?: ScanDispatchPortfolioSnapshotVO
+  /** 强制释放派单（PROCESSING/SUSPENDED）；归档 ARCHIVE_ADMIN，档案袋 scanAllowed */
+  canForceReleaseTicket?: boolean
+  /** 取消派单（PENDING）；归档 canManageMaterials，档案袋 scanAllowed */
+  canCancelTicket?: boolean
 }
 
 export interface ScanDispatchCreateRequest {
@@ -194,6 +198,12 @@ export interface ScannerExceptionDashboardItemVO {
   workOrderBatchExternalNo?: string
   /** 页登记状态（PAGE_REGISTER_BLOCKED 条目） */
   pageRegisterState?: PageRegisterStateCode | null
+  /** 主考考试写动作（重试页登记/忽略 collate/手工绑定） */
+  canManageOwnerExamWrites?: boolean
+  /** 强制释放派单（PROCESSING/SUSPENDED）；归档 ARCHIVE_ADMIN，档案袋 scanAllowed */
+  canForceReleaseTicket?: boolean
+  /** 取消派单（PENDING）；归档 canManageMaterials，档案袋 scanAllowed */
+  canCancelTicket?: boolean
 }
 
 export interface ScannerExceptionDashboardPageRequest extends QueryDto {

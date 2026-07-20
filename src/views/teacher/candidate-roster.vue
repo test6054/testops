@@ -374,6 +374,8 @@ const classScopeHydrating = ref(false)
 const lastSavedClassIds = ref<string[]>([])
 const rosterLocked = ref(false)
 const rosterWriteForbidden = ref(false)
+/** MVR-280：默认拒绝假可写；仅 BE 名册看板 canManageRosterWrites=true 时可写 */
+const canManageRosterWrites = ref(false)
 const rosterScopeMode = ref<ExamRosterScopeModeCode | undefined>(undefined)
 const referenceDepartmentName = ref<string | undefined>(undefined)
 const candidateTotal = ref(0)
@@ -524,6 +526,10 @@ const singleAddStudentUserId = ref<string | null>(null)
 const singleAddStudent = ref<UserDto | null>(null)
 
 const classScopeReadOnly = computed(() => {
+  // MVR-280：无 BE 名册写能力位时整页只读（含班级范围保存）
+  if (!canManageRosterWrites.value) {
+    return true
+  }
   if (rosterWriteForbidden.value) {
     return true
   }
@@ -539,7 +545,10 @@ const showRosterContextBar = computed(
 
 const candidateRosterWriteAllowed = computed(
   () =>
-    examStatus.value !== ExamStatusCode.CLOSED && !classScopeReadOnly.value && !rosterLocked.value,
+    canManageRosterWrites.value
+    && examStatus.value !== ExamStatusCode.CLOSED
+    && !classScopeReadOnly.value
+    && !rosterLocked.value,
 )
 
 const allowsManualCandidateEdit = computed(
@@ -803,9 +812,13 @@ async function reloadExamContext(): Promise<void> {
 
 async function loadRosterPanel(examId: string): Promise<void> {
   try {
-    rosterPanel.value = await getCandidateRosterPanel(buildRosterPanelQuery(examId))
+    const panel = await getCandidateRosterPanel(buildRosterPanelQuery(examId))
+    rosterPanel.value = panel
+    // MVR-280：缺省拒绝假可写
+    canManageRosterWrites.value = panel.canManageRosterWrites === true
   } catch (error) {
     rosterPanel.value = null
+    canManageRosterWrites.value = false
     showUserError(error, '名册看板加载失败')
   }
 }
@@ -818,6 +831,7 @@ async function loadExamContext(): Promise<void> {
   const seq = ++loadContextSeq
   contextLoading.value = true
   rosterWriteForbidden.value = false
+  canManageRosterWrites.value = false
   classScopeHydrating.value = true
   try {
     const detail = await getExamDetail(examId)
@@ -867,6 +881,11 @@ async function loadExamContext(): Promise<void> {
 }
 
 async function persistInferredClassScope(): Promise<void> {
+  // MVR-316：与 BE requireExamRosterWritePermission / canManageRosterWrites 二次拦截
+  if (!canManageRosterWrites.value) {
+    message.warning('当前账号无名册维护权限')
+    return
+  }
   if (!selectedExamId.value || !classIds.value.length || classScopeReadOnly.value
     || persistClassScopeSaving.value) {
     return
@@ -902,6 +921,11 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 }
 
 function openSelectDrawer(): void {
+  // MVR-316：批量纳入考生与名册写能力位同源
+  if (!candidateRosterWriteAllowed.value) {
+    message.warning('当前账号无考生名册写权限')
+    return
+  }
   if (!classIds.value.length) {
     showFormValidationMessage('请先选择班级范围')
     return
@@ -910,6 +934,10 @@ function openSelectDrawer(): void {
 }
 
 function openImportModal(): void {
+  if (!canManageRosterWrites.value) {
+    message.warning('当前账号无名册维护权限')
+    return
+  }
   showImportModal.value = true
 }
 
@@ -921,6 +949,11 @@ async function handleRosterImportSuccess(): Promise<void> {
 async function mergeCandidatesWithPreview(
   candidates: ExamCandidateRosterRequest[],
 ): Promise<number> {
+  // MVR-318：内部合并入口与 candidateRosterWriteAllowed 同源
+  if (!candidateRosterWriteAllowed.value) {
+    message.warning('当前账号无考生名册写权限')
+    return 0
+  }
   if (!selectedExamId.value || !candidates.length) {
     return 0
   }
@@ -934,6 +967,11 @@ async function mergeCandidatesWithPreview(
 }
 
 async function confirmSaveFullScope(): Promise<void> {
+  // MVR-316：与 candidateRosterWriteAllowed / BE requireExamRosterWritePermission 二次拦截
+  if (!candidateRosterWriteAllowed.value) {
+    message.warning('当前账号无考生名册写权限')
+    return
+  }
   if (!selectedExamId.value || !classIds.value.length) {
     showFormValidationMessage('请先选择班级范围')
     return
@@ -969,6 +1007,11 @@ async function confirmSaveFullScope(): Promise<void> {
 }
 
 async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload): Promise<void> {
+  // MVR-316：抽屉确认纳入须二次拦截，避免绕过工具栏可见性
+  if (!candidateRosterWriteAllowed.value) {
+    message.warning('当前账号无考生名册写权限')
+    return
+  }
   if (!selectedExamId.value) {
     return
   }
@@ -996,6 +1039,10 @@ async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload)
 }
 
 function openSingleAddModal(): void {
+  if (!canManageRosterWrites.value) {
+    message.warning('当前账号无名册维护权限')
+    return
+  }
   singleAddClassId.value = classIds.value[0]
   singleAddStudentUserId.value = null
   singleAddStudent.value = null
@@ -1007,6 +1054,11 @@ function handleSingleStudentChange(_userId: string | null, option?: UserDto): vo
 }
 
 async function handleSingleAddSubmit(): Promise<void> {
+  // MVR-316：单人加入名册与 candidateRosterWriteAllowed 同源二次拦截
+  if (!candidateRosterWriteAllowed.value) {
+    message.warning('当前账号无考生名册写权限')
+    return
+  }
   if (!selectedExamId.value) {
     return
   }
@@ -1085,6 +1137,10 @@ function handleWorkbenchAction(
     return
   }
   if (key === 'remove') {
+    // MVR-313：与 candidateRosterWriteAllowed / BE requireExamRosterWritePermission 同源
+    if (!candidateRosterWriteAllowed.value) {
+      return
+    }
     void confirmAsync({
       title: '确认移除该考生？',
       content: '移除后需重新加入名册。',
@@ -1096,6 +1152,11 @@ function handleWorkbenchAction(
 
 async function removeCandidate(studentUserId: string): Promise<void> {
   if (!selectedExamId.value) {
+    return
+  }
+  // MVR-313：写 handler 二次拦截
+  if (!candidateRosterWriteAllowed.value) {
+    message.warning('当前账号无考生名册写权限')
     return
   }
   if (removingStudentUserId.value) {

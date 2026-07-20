@@ -173,6 +173,11 @@ const props = defineProps<{
     ExamQuestionAnalysisRecordResponse,
     'layoutQuestionId' | 'questionNo' | 'questionType' | 'questionStem' | 'fullScore'
   > | null
+  /**
+   * MVR-372：与 BE canManageReviewerWrites / requireActiveExam 同源。
+   * 仅认 ===true；禁止缺声明默认放行。
+   */
+  canManageReviewerWrites?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -407,6 +412,11 @@ function validateForm(): boolean {
 
 async function handleSubmit(): Promise<void> {
   if (submitting.value) {
+    return
+  }
+  // MVR-372：写 handler 二次拦截；父卡仅隐藏入口不能替代
+  if (props.canManageReviewerWrites !== true) {
+    showUserError(null, '仅本场阅卷组织成员或主考可修正答案并生效')
     return
   }
   if (!props.question || !validateForm()) {

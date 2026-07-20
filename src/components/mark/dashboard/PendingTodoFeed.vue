@@ -147,7 +147,7 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
 }
 
 .todo-feed__row:hover {
-  background: var(--dp-surface);
+  background: color-mix(in srgb, var(--dp-color-primary) 4%, var(--dp-surface));
 }
 
 .todo-feed__dot {

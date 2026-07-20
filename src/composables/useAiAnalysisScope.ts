@@ -56,6 +56,9 @@ export const AI_ANALYSIS_SEMESTER_KEY: InjectionKey<Ref<SemesterCode>> = Symbol(
 /** 是否处于考试工作台锁定上下文 */
 export const AI_ANALYSIS_EXAM_LOCKED_KEY: InjectionKey<ComputedRef<boolean>> = Symbol('aiAnalysisExamLocked')
 
+/** MVR-285：当前选定考试是否可生成 AI 分析（阅卷写能力） */
+export const AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY: InjectionKey<ComputedRef<boolean>> = Symbol('aiAnalysisCanManageReviewerWrites')
+
 /** 教学/聚类 Tab 选定考试 */
 export const AI_ANALYSIS_EXAM_ID_KEY: InjectionKey<Ref<string | undefined>> = Symbol('aiAnalysisExamId')
 
@@ -163,6 +166,11 @@ export function useAiAnalysisScope() {
       || selectedExam.value?.examName
       || examOptions.value.find(item => item.value === examId.value)?.label
   })
+  /** MVR-285：默认拒绝假可写；仅 overview.canManageReviewerWrites 为 true 时开放生成 */
+  const canManageReviewerWrites = computed(
+    () => overview.value?.canManageReviewerWrites === true,
+  )
+
 
   const scopeSummary = computed(() => {
     const semesterLabel = semesterOptions.value.find(item => item.value === semester.value)?.label ?? semester.value
@@ -521,6 +529,7 @@ export function useAiAnalysisScope() {
   provide(AI_ANALYSIS_EXAM_OPTIONS_KEY, filteredExamOptions)
   provide(AI_ANALYSIS_EXAM_LOCKED_KEY, examLocked)
   provide(AI_ANALYSIS_SCOPE_PANEL_ACTIONS_KEY, scopePanelActions)
+  provide(AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY, canManageReviewerWrites)
 
   return {
     academicYear,
@@ -537,6 +546,7 @@ export function useAiAnalysisScope() {
     overview,
     overviewLoading,
     overviewLoadFailed,
+    canManageReviewerWrites,
     reloadToken,
     academicYearOptions,
     semesterOptions,
@@ -570,6 +580,7 @@ export function useAiAnalysisScopeContext() {
   const examOptions = inject(AI_ANALYSIS_EXAM_OPTIONS_KEY, null)
   const examLocked = inject(AI_ANALYSIS_EXAM_LOCKED_KEY, null)
   const actions = inject(AI_ANALYSIS_SCOPE_PANEL_ACTIONS_KEY, null)
+  const canManageReviewerWrites = inject(AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY, null)
 
   if (
     !academicYear
@@ -588,6 +599,7 @@ export function useAiAnalysisScopeContext() {
     || !examOptions
     || !examLocked
     || !actions
+    || !canManageReviewerWrites
   ) {
     throw new Error('AI 分析中心未提供 scope 上下文')
   }
@@ -608,6 +620,7 @@ export function useAiAnalysisScopeContext() {
     semesterOptions,
     examOptions,
     examLocked,
+    canManageReviewerWrites,
     setExamFilterCourse: actions.setExamFilterCourse,
     setOrgDepartmentLabel: actions.setOrgDepartmentLabel,
     setOrgCourseLabel: actions.setOrgCourseLabel,

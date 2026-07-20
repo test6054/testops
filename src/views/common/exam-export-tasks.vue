@@ -365,12 +365,15 @@ const {
   examOptions,
   loading: examLoading,
   selectedExamId,
+  selectedExam,
   onExamChange,
   onExamSearch,
   searching,
   resolvingPinned,
   init: initExamSelector,
 } = useMarkExamContext()
+// MVR-271/325：影像归档包导出仅主考；仅认 BE status-summary.canManageOwnerImageArchiveExport
+const canManageOwnerImageArchiveExport = ref(false)
 
 const {
   classOptions,
@@ -458,6 +461,7 @@ function resetStatusCounts(): void {
   counts.generating = 0
   counts.completed = 0
   counts.failed = 0
+  canManageOwnerImageArchiveExport.value = false
 }
 
 const exportFilterFields: FilterField[] = [
@@ -602,6 +606,8 @@ function applyStatusSummary(summary: ExportTaskStatusSummaryResponse): void {
   counts.generating = summary.generatingCount
   counts.completed = summary.completedCount
   counts.failed = summary.failedCount
+  // MVR-325：禁止 FE createUser 本地回退主考写
+  canManageOwnerImageArchiveExport.value = summary.canManageOwnerImageArchiveExport === true
 }
 
 async function loadStatusCounts(examId: string): Promise<void> {
@@ -650,10 +656,15 @@ function statusTone(status: ExportTaskStatusCode): BadgeTone {
   return strictEnumTone(EXPORT_STATUS_TONE, status, '导出任务状态')
 }
 
-const exportTypeOptions = ALL_EXPORT_TYPE_CODES.map((code) => ({
-  value: code,
-  label: exportTypeLabel(code),
-}))
+const exportTypeOptions = computed(() =>
+  ALL_EXPORT_TYPE_CODES.map((code) => ({
+    value: code,
+    label: exportTypeLabel(code),
+    // 非主考禁用影像归档包，避免点后 BE 主考拒收
+    disabled:
+      code === ExportTypeCode.IMAGE_ARCHIVE && !canManageOwnerImageArchiveExport.value,
+  })),
+)
 
 const EXPORT_SCOPE_SUPPORT_MATRIX: Record<ExportTypeCode, ExportScopeCode[]> = {
   [ExportTypeCode.SCORE_EXCEL]: [
@@ -925,6 +936,20 @@ function resetCreateForm(): void {
   createForm.studentUserIds = []
 }
 
+watch(
+  [canManageOwnerImageArchiveExport, () => createForm.exportType],
+  () => {
+    if (
+      createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE
+      && !canManageOwnerImageArchiveExport.value
+    ) {
+      createForm.exportType = ExportTypeCode.SCORE_EXCEL
+      createForm.exportScope = firstSupportedExportScope(createForm.exportType)
+    }
+  },
+)
+
+
 async function loadQuestionOptions(examId: string | undefined): Promise<void> {
   if (!examId) {
     questionOptions.value = []
@@ -966,6 +991,13 @@ async function openCreateModal(): Promise<void> {
 async function handleCreate(): Promise<void> {
   if (!selectedExamId.value || !createValid.value) return
   if (creating.value) return
+  if (
+    createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE
+    && !canManageOwnerImageArchiveExport.value
+  ) {
+    message.warning('仅考试主考可创建影像归档包导出任务')
+    return
+  }
   creating.value = true
   try {
     const request: ExportCreateRequest = {

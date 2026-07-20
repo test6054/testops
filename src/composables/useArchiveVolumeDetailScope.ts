@@ -45,13 +45,13 @@ export function useArchiveVolumeDetailScope(
   const capabilities = computed(() => detail.value?.capabilities ?? EMPTY_CAPABILITIES)
 
   const canSubmitVolume = computed(() => {
-    if (!capabilities.value.canSubmitVolume) return false
+    if (capabilities.value.canSubmitVolume !== true) return false
     return detail.value ? canSubmitArchiveVolumeDetail(detail.value, currentUserId.value) : false
   })
 
   const showSelfCheckButton = computed(() => {
     const d = detail.value
-    if (!capabilities.value.canSelfCheck || !d) return false
+    if (capabilities.value.canSelfCheck !== true || !d) return false
     if (d.volume.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING) return false
     return d.volume.requireSelfCheckConfirm === true
   })
@@ -82,16 +82,17 @@ export function useArchiveVolumeDetailScope(
 
   const canEditSelfCheck = computed(() => {
     const d = detail.value
-    if (!capabilities.value.canSelfCheck || !d) return false
+    if (capabilities.value.canSelfCheck !== true || !d) return false
     if (d.volume.volumeStatus !== ArchiveVolumeStatusCode.COLLECTING) return false
     return d.catalogStatus === ArchiveCatalogStatusCode.CONFIRMED
   })
 
   const canRegisterMaterial = computed(() => {
     const d = detail.value
-    if (!d?.canManageMaterials) return false
-    if (d.hasOpenRemediationTask) return true
-    if (!capabilities.value.canManageMaterials) return false
+    // MVR-374：布尔能力位仅认 === true；与 BE canManageMaterials / requireCanScan 同源
+    if (d?.canManageMaterials !== true) return false
+    if (d.hasOpenRemediationTask === true) return true
+    if (capabilities.value.canManageMaterials !== true) return false
     const status = d.volume.volumeStatus
     return status === ArchiveVolumeStatusCode.DRAFT || status === ArchiveVolumeStatusCode.COLLECTING
   })

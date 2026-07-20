@@ -10,15 +10,55 @@
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goArchiveList"> 返回归档列表 </UiButton>
           <UiButton variant="primary" size="sm" @click="goCreateArchiveTask">
-            新建归档任务
+            新建课程考核袋
+          </UiButton>
+          <UiButton variant="outline" size="sm" @click="goCreateHistorySupplement">
+            历史补录
           </UiButton>
         </template>
       </ContextBar>
     </template>
 
     <template #signal>
-      <SignalBand compact variant="panel" :metrics="settingsSignalMetrics" />
+      <SignalBand variant="panel" :metrics="settingsSignalMetrics" />
     </template>
+
+    <UiAlertStrip
+      v-if="s1TipVisible"
+      class="archive-volume-settings__s1-tip"
+      :tone="s1TipTone"
+      :title="s1TipTitle"
+      :description="s1TipDescription"
+      dense
+    >
+      <template #actions>
+        <UiButton
+          v-if="s1PrimaryActionLabel"
+          size="sm"
+          :variant="s1TipTone === 'warning' ? 'primary' : 'outline'"
+          @click="goS1PrimaryAction"
+        >
+          {{ s1PrimaryActionLabel }}
+        </UiButton>
+        <UiButton
+          v-if="s1ShowExamListSecondary"
+          size="sm"
+          variant="outline"
+          @click="goExamListForArchive"
+        >
+          考试列表
+        </UiButton>
+        <UiButton
+          v-if="s1AttentionLoadFailed"
+          size="sm"
+          variant="outline"
+          :loading="s1AttentionLoading"
+          @click="loadS1AutoCreateAttention"
+        >
+          重试
+        </UiButton>
+      </template>
+    </UiAlertStrip>
 
     <WorkbenchSurfaceCard flush class="archive-volume-settings__surface">
       <template #head>
@@ -363,6 +403,10 @@
           </WorkbenchSurfaceCard>
         </UiForm>
       </section>
+
+      <section v-else-if="settingsTab === 'externalFonds'" class="archive-volume-settings__panel">
+        <ArchiveExternalFondsRetryPanel />
+      </section>
     </WorkbenchSurfaceCard>
   </StageWorkbenchShell>
 </template>
@@ -397,6 +441,7 @@ import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -408,6 +453,10 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useArchiveS1AutoCreateAttention } from '@/composables/useArchiveS1AutoCreateAttention'
+import { useAuthStore } from '@/stores/modules/auth'
+import { useUserStore } from '@/stores/modules/user'
+import { RoleEnum } from '@/types/enums'
 import {
   ARCHIVE_DEADLINE_TIER_OPTIONS,
   ArchiveDeadlineTierCode,
@@ -423,6 +472,7 @@ import {
 } from '@/types/enums/archive-submit-mode-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import ArchiveExternalFondsRetryPanel from './components/ArchiveExternalFondsRetryPanel.vue'
 import ArchiveVolumeTemplateSetsPanel from './components/ArchiveVolumeTemplateSetsPanel.vue'
 
 defineOptions({ name: 'ArchiveVolumeSettings' })
@@ -432,7 +482,27 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
+const authStore = useAuthStore()
+const userStore = useUserStore()
+/** MVR-314：与路由 requireTenantAdmin / BE requireTenantAdminForConfig 同源 */
+const canManageArchiveConfig = computed(
+  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin === true,
+)
+
 const router = useRouter()
+const {
+  loading: s1AttentionLoading,
+  loadFailed: s1AttentionLoadFailed,
+  tipVisible: s1TipVisible,
+  tipTone: s1TipTone,
+  tipTitle: s1TipTitle,
+  tipDescription: s1TipDescription,
+  primaryActionLabel: s1PrimaryActionLabel,
+  showExamListSecondary: s1ShowExamListSecondary,
+  load: loadS1AutoCreateAttention,
+  goExamList: goExamListForArchive,
+  goPrimaryAction: goS1PrimaryAction,
+} = useArchiveS1AutoCreateAttention()
 
 type DutyRow = ArchiveDutyGrantItemRequest & { rowKey: string }
 interface PolicyRow {
@@ -489,7 +559,17 @@ function goArchiveList() {
 }
 
 function goCreateArchiveTask() {
-  void router.push({ name: 'TeacherCreateArchiveTask' })
+  void router.push({
+    name: 'TeacherCreateArchiveTask',
+    query: { provenance: 'CURRENT_TERM_OFFLINE' },
+  })
+}
+
+function goCreateHistorySupplement() {
+  void router.push({
+    name: 'TeacherCreateArchiveTask',
+    query: { provenance: 'HISTORICAL_DIGITIZE' },
+  })
 }
 
 const settingsSignalMetrics = computed((): SignalMetric[] => [
@@ -537,6 +617,7 @@ const settingsTabs = [
   { key: 'security', label: '密级访问矩阵' },
   { key: 'collaboration', label: '协作策略' },
   { key: 'deadline', label: '归档时限' },
+  { key: 'externalFonds', label: '外部全宗重试' },
 ]
 
 function resolveSettingsTab(raw?: string) {
@@ -713,6 +794,11 @@ async function loadCollaborationPolicy() {
 
 async function saveCollaborationPolicyForm() {
   if (collaborationLoadFailed.value || saving.value) return
+  // MVR-314：配置写二次拦截
+  if (!canManageArchiveConfig.value) {
+    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    return
+  }
   saving.value = true
   try {
     await saveArchiveCollaborationPolicy({ ...collaborationForm.value })
@@ -757,6 +843,11 @@ async function loadDeadlinePolicy() {
 async function saveDeadlinePolicyRows() {
   if (deadlineLoadFailed.value || departmentLoadFailed.value || saving.value) return
   if (!validateDeadlineRows()) return
+  // MVR-314：配置写二次拦截
+  if (!canManageArchiveConfig.value) {
+    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    return
+  }
   saving.value = true
   try {
     await saveArchiveDeadlinePolicy(
@@ -818,6 +909,11 @@ async function loadPolicy() {
 async function saveDutyGrants() {
   if (dutyLoadFailed.value || departmentLoadFailed.value || saving.value) return
   if (!validateDutyRows()) return
+  // MVR-314：配置写二次拦截
+  if (!canManageArchiveConfig.value) {
+    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    return
+  }
   saving.value = true
   try {
     await saveArchiveDutyGrants(
@@ -839,6 +935,11 @@ async function saveDutyGrants() {
 
 async function saveSecurityPolicyRows() {
   if (policyLoadFailed.value || saving.value) return
+  // MVR-314：配置写二次拦截
+  if (!canManageArchiveConfig.value) {
+    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    return
+  }
   if (policyRows.value.length === 0) {
     showFormValidationMessage('至少保留一条密级策略')
     return
@@ -888,6 +989,7 @@ onActivated(() => {
 })
 
 onMounted(() => {
+  void loadS1AutoCreateAttention()
   settingsTab.value = readTabFromRoute()
   void loadDepartments()
   void loadTemplateSetStats()
@@ -899,6 +1001,9 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.archive-volume-settings__s1-tip {
+  margin-bottom: var(--dp-space-4);
+}
 .archive-volume-settings__panel {
   display: flex;
   flex-direction: column;

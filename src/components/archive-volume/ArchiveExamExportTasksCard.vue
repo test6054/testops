@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import type { ExportTaskResponse } from '@/apis/mark/exam-export'
-import type { ExportTypeCode } from '@/types/enums/export-type-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -16,20 +15,23 @@ import {
   ExportTaskStatusCode,
   ExportTaskStatusDescription,
 } from '@/types/enums/export-task-status-enum'
-import { ALL_EXPORT_TYPE_CODES, ExportTypeDescription } from '@/types/enums/export-type-enum'
+import { ALL_EXPORT_TYPE_CODES, ExportTypeCode, ExportTypeDescription } from '@/types/enums/export-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatFileSize } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveExamExportTasksCard' })
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   examId: string
-
   /** 双门禁已满足时才允许创建导出任务 */
-
   canCreate?: boolean
-}>()
+  /** MVR-271：影像归档包仅主考；与 BE requireExamOwnerPermission 对齐 */
+  canManageOwnerImageArchiveExport?: boolean
+}>(), {
+  canCreate: false,
+  canManageOwnerImageArchiveExport: false,
+})
 
 const router = useRouter()
 
@@ -76,7 +78,10 @@ const selectableExportTypes = computed(() =>
 
     label: exportTypeLabel(exportType),
 
-    disabled: busyExportTypes.value.has(exportType),
+    disabled:
+      busyExportTypes.value.has(exportType)
+      || (exportType === ExportTypeCode.IMAGE_ARCHIVE
+        && !props.canManageOwnerImageArchiveExport),
 
     checked: selectedTypes.value.includes(exportType),
   })),
@@ -168,7 +173,17 @@ async function createSelectedTasks(): Promise<void> {
   creating.value = true
 
   try {
-    for (const exportType of selectedTypes.value) {
+      const blockedImageArchive = selectedTypes.value.some(
+    (exportType) =>
+      exportType === ExportTypeCode.IMAGE_ARCHIVE
+      && !props.canManageOwnerImageArchiveExport,
+  )
+  if (blockedImageArchive) {
+    message.warning('仅考试主考可创建影像归档包导出任务')
+    return
+  }
+
+  for (const exportType of selectedTypes.value) {
       await createExportTask({
         examId: props.examId,
 

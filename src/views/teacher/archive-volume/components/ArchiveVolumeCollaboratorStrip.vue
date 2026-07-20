@@ -39,35 +39,35 @@ function joinNames(items: ArchiveVolumeMemberDisplayVO[]) {
 </script>
 
 <template>
-  <div v-if="collaborators.length" class="collab-strip">
-    <span v-if="organizers.length">归档责任人：{{ joinNames(organizers) }}</span>
-    <span v-if="scanOperators.length"> · 协作老师：{{ joinNames(scanOperators) }}</span>
-    <span v-if="catalogEditors.length"> · 编目老师：{{ joinNames(catalogEditors) }}</span>
-    <span v-if="submitters.length"> · 提交老师：{{ joinNames(submitters) }}</span>
-    <span v-if="viewers.length"> · 只读：{{ joinNames(viewers) }}</span>
+  <span v-if="collaborators.length" class="collab-strip">
+    <span v-if="organizers.length">归档责任人 {{ joinNames(organizers) }}</span>
+    <span v-if="scanOperators.length"> · 协作 {{ joinNames(scanOperators) }}</span>
+    <span v-if="catalogEditors.length"> · 编目 {{ joinNames(catalogEditors) }}</span>
+    <span v-if="submitters.length"> · 提交 {{ joinNames(submitters) }}</span>
+    <span v-if="viewers.length"> · 只读 {{ joinNames(viewers) }}</span>
     <UiButton
-      v-if="canManage"
+      v-if="canManage === true"
       size="sm"
       variant="ghost"
       class="collab-strip__manage"
       @click="emit('manage')"
     >
-      管理协作老师
+      管理
     </UiButton>
-  </div>
+  </span>
 </template>
 
 <style scoped lang="scss">
 .collab-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  color: var(--dp-text-secondary);
-  margin-bottom: 8px;
+  display: inline;
+  font-size: inherit;
+  color: inherit;
+  margin: 0;
 }
 .collab-strip__manage {
   margin-left: 4px;
+  vertical-align: baseline;
+  height: auto;
+  padding-inline: 4px;
 }
 </style>

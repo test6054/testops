@@ -34,6 +34,8 @@ export interface AiAnalysisCenterOverviewResponse {
   examSelected?: boolean
   selectedExamName?: string
   clusterSignal?: AiAnalysisClusterSignalResponse
+  /** MVR-285：选定考试后下发；与 hasExamReviewerWritePermission 口径一致 */
+  canManageReviewerWrites?: boolean
 }
 
 export function loadAiAnalysisCenterOverview(request: AiAnalysisCenterOverviewRequest) {

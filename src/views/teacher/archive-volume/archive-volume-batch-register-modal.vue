@@ -111,6 +111,8 @@ const props = defineProps<{
   catalogCode?: string
   catalogName?: string
   initialMaterialType?: ArchiveMaterialTypeCode
+  /** MVR-317：与父面板 canRegisterMaterial / BE 收材登记门禁同源 */
+  canRegisterMaterial?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -187,6 +189,11 @@ function removeRow(uid: string) {
 }
 
 async function handleSubmit() {
+  // MVR-317：批量登记与 canRegisterMaterial 二次拦截
+  if (props.canRegisterMaterial !== true) {
+    showFormValidationMessage('当前账号无材料登记权限')
+    return
+  }
   if (submitting.value) return
   if (!props.volumeId) return
   if (rows.value.length === 0) {

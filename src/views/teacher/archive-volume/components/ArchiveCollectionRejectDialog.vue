@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
 import { rejectArchiveVolumeCollection } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -10,6 +11,8 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 const props = defineProps<{
   open: boolean
   volumeId: string
+  /** MVR-305：与 detailScope.canRejectCollection 对齐 */
+  canRejectCollection?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -29,6 +32,11 @@ watch(
 
 async function submit() {
   if (submitting.value) return
+  // MVR-305：与 canRejectCollection 同源二次拦截
+  if (props.canRejectCollection !== true) {
+    message.warning('当前账号无驳回收材权限')
+    return
+  }
   const trimmed = reason.value.trim()
   if (!trimmed) {
     showFormValidationMessage('请填写驳回原因')

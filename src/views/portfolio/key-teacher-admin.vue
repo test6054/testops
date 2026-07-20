@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import message from 'ant-design-vue/es/message'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import {
   PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS,
   PortfolioKeyTeacherRegistryStatusCode,
@@ -13,12 +13,15 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -43,6 +46,13 @@ const form = reactive({
   appointYear: '',
   dutyScope: '',
 })
+const formTeacherId = computed(() => form.teacherUserId || undefined)
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
 const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, search, handlePageChange }
@@ -65,8 +75,17 @@ const columns: ColumnsType = [
   { title: '专业群', dataIndex: 'majorGroupName', key: 'majorGroupName', width: 120 },
   { title: '聘任年份', dataIndex: 'appointYear', key: 'appointYear', width: 96 },
   { title: '状态', dataIndex: 'registryStatus', key: 'registryStatus', width: 88 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '操作', key: 'actions', width: 80 },
 ]
+
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
 
 function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): string {
   return strictEnumLabel(PortfolioKeyTeacherRegistryStatusDescription, status, '重点教师名录状态')
@@ -74,6 +93,9 @@ function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): str
 
 async function saveRegistry() {
   if (saving.value) {
+    return
+  }
+  if (!assertArchiveWritable('登记重点教师')) {
     return
   }
   if (!form.teacherUserId) {
@@ -104,8 +126,15 @@ async function saveRegistry() {
   }
 }
 
-async function revokeRegistry(id: string) {
+async function revokeRegistry(id: string, teacherUserId?: string) {
   if (revokingId.value || saving.value) {
+    return
+  }
+  if (teacherUserId) {
+    form.teacherUserId = teacherUserId
+    await reloadLifecycleState()
+  }
+  if (!assertArchiveWritable('作废重点教师登记')) {
     return
   }
   revokingId.value = id
@@ -154,6 +183,13 @@ function switchType(key: string | number) {
     <template #context>
       <ContextBar layout="workbench" show-title title="骨干/带头人登记" />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
     <UiCard>
       <UiSectionTabs
         v-model="activeType"
@@ -187,7 +223,7 @@ function switchType(key: string | number) {
         <UiInput
           size="sm" v-model="form.dutyScope" placeholder="职责范围" style="width: 180px"
         />
-        <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving || !!revokingId" @click="saveRegistry"> 登记 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving || !!revokingId || archiveWriteForbidden" @click="saveRegistry"> 登记 </UiButton>
         <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster"> 导出台账 </UiButton>
       </div>
       <UiEmpty size="sm" v-if="!loadError && !loading && rows.length === 0" description="当前筛选无骨干教师记录" />
@@ -211,12 +247,29 @@ function switchType(key: string | number) {
           <template v-else-if="column.key === 'registryStatus'">
             {{ registryStatusLabel(record.registryStatus) }}
           </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+            <span>{{
+              record.countsInCurrentFacultyStructure === true
+                ? '是'
+                : record.countsInCurrentFacultyStructure === false
+                  ? '否'
+                  : '—'
+            }}</span>
+          </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               v-if="record.registryStatus === PortfolioKeyTeacherRegistryStatusCode.ACTIVE"
               :items="[{ key: 'revoke', label: '作废', tone: 'danger' }]"
               split
-              @action="() => revokeRegistry(record.id)"
+              @action="() => revokeRegistry(record.id, record.teacherUserId)"
             />
           </template>
         </template>

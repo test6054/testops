@@ -79,6 +79,7 @@ const submitReady = computed(() => props.canSubmitVolume)
     <ArchiveVolumeSubmitTaskList
       v-if="expanded && blockingItems?.length"
       :items="blockingItems"
+      :readonly="false"
       class="archive-volume-submit-progress-band__tasks"
       @navigate="emit('navigate', $event)"
     />
@@ -88,6 +89,7 @@ const submitReady = computed(() => props.canSubmitVolume)
 <style scoped>
 .archive-volume-submit-progress-band {
   margin-bottom: var(--dp-space-4);
+  border-left: 3px solid color-mix(in srgb, var(--dp-primary) 50%, transparent);
 }
 
 .archive-volume-submit-progress-band__head {
@@ -114,6 +116,9 @@ const submitReady = computed(() => props.canSubmitVolume)
   font-size: 15px;
   font-weight: 600;
   color: var(--dp-text-primary);
+  padding: 1px 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dp-primary) 7%, transparent);
 }
 
 .archive-volume-submit-progress-band__tasks {

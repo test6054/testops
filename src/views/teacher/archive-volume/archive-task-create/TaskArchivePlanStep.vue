@@ -5,7 +5,7 @@
     :rules="planRules"
     layout="horizontal"
     :label-col="labelCol"
-    :wrapper-col="{ flex: 1 }"
+    :wrapper-col="wrapperCol"
     class="create-form"
   >
     <div id="archive-task-plan" class="form-section">
@@ -25,10 +25,20 @@
           v-model="templateSetCodeSelectValue"
           :options="templateSetOptions"
           :loading="templateLoading"
-          placeholder="选择模板套"
+          placeholder="请选择模板套"
           allow-search
           option-filter-prop="label"
           @change="handleTemplateChange"
+        />
+      </UiFormItem>
+
+      <UiFormItem label="成绩事实源" name="scoreSource" required>
+        <UiRadioGroup
+          size="sm"
+          block
+          :model-value="planForm.scoreSource"
+          :options="scoreSourceRadioOptions"
+          @update:model-value="onScoreSourceSelect"
         />
       </UiFormItem>
 
@@ -46,25 +56,6 @@
         </UiCol>
         <UiCol :span="12">
           <UiFormItem
-            label="成绩事实源"
-            name="scoreSource"
-            required
-            :label-col="labelCol"
-            :wrapper-col="wrapperCol"
-          >
-            <UiSelect
-              size="sm"
-              :model-value="planForm.scoreSource"
-              :options="scoreSourceOptions"
-              @change="handleScoreSourceChange"
-            />
-          </UiFormItem>
-        </UiCol>
-      </UiRow>
-
-      <UiRow :gutter="24" class="create-form__split-row">
-        <UiCol :span="12">
-          <UiFormItem
             label="密级"
             name="securityLevel"
             required
@@ -78,47 +69,56 @@
             />
           </UiFormItem>
         </UiCol>
+      </UiRow>
+
+      <UiFormItem
+        label="归档责任人"
+        name="responsibleUserId"
+        required
+        tooltip="缺省为当前用户；责任人可登记材料并提交本任务。"
+      >
+        <TeacherSelector
+          :value="planForm.responsibleUserId"
+          placeholder="默认当前用户"
+          @change="handleResponsibleChange"
+        />
+      </UiFormItem>
+
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem label="保管年限" :label-col="labelCol" :wrapper-col="wrapperCol">
+            <div class="retention-field">
+              <UiInputNumber
+                size="sm"
+                :width="120"
+                v-model="planForm.retentionYears"
+                :min="1"
+                :max="100"
+                :disabled="planForm.permanentRetention"
+              />
+              <span class="retention-field__unit">年</span>
+              <UiCheckbox v-model="planForm.permanentRetention">永久保管</UiCheckbox>
+            </div>
+          </UiFormItem>
+        </UiCol>
         <UiCol :span="12">
           <UiFormItem
-            label="归档责任人"
-            name="responsibleUserId"
-            required
-            tooltip="缺省为当前用户；责任人可登记材料并提交本任务。"
+            label="归档截止"
+            tooltip="可选；留空时由租户归档时限策略自动计算。"
             :label-col="labelCol"
             :wrapper-col="wrapperCol"
           >
-            <TeacherSelector
-              :value="planForm.responsibleUserId"
-              placeholder="默认当前用户"
-              @change="handleResponsibleChange"
+            <UiDatePicker
+              size="sm"
+              v-model="planForm.archiveDueTimeOverride"
+              show-time
+              format="YYYY-MM-DD HH:mm"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              placeholder="留空则按策略自动计算"
             />
           </UiFormItem>
         </UiCol>
       </UiRow>
-
-      <UiFormItem label="保管年限">
-        <div class="retention-field">
-          <UiInputNumber
-            size="sm"
-            v-model="planForm.retentionYears"
-            :min="1"
-            :max="100"
-            :disabled="planForm.permanentRetention"
-          />
-          <span class="retention-field__unit">年</span>
-          <UiCheckbox v-model="planForm.permanentRetention">永久保管</UiCheckbox>
-        </div>
-      </UiFormItem>
-
-      <UiFormItem label="归档截止" tooltip="可选；留空时由租户归档时限策略自动计算。">
-        <UiDatePicker
-          v-model="planForm.archiveDueTimeOverride"
-          show-time
-          format="YYYY-MM-DD HH:mm"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          placeholder="留空则按法规策略自动计算"
-        />
-      </UiFormItem>
 
       <UiFormItem
         v-if="requiresScoreProof"
@@ -166,6 +166,7 @@ import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiUpload from '@/components/ui-guide/ui/UiUpload.vue'
@@ -203,7 +204,7 @@ const emit = defineEmits<{
   'update:plan-form-ref': [form: FormInstance | undefined]
 }>()
 
-const labelCol = { style: { width: '88px' } }
+const labelCol = { style: { width: '112px' } }
 const wrapperCol = { flex: 1 }
 
 const planForm = useInjectedArchiveTaskCreatePlanForm()
@@ -213,6 +214,27 @@ const scoreProofUploading = ref(false)
 
 const requiresScoreProof = computed(
   () => planForm.scoreSource === ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
+)
+
+const scoreSourceCodes = computed((): ArchiveScoreSourceCode[] => {
+  if (wizardState.provenance === ArchiveTaskProvenanceCode.CURRENT_TERM_OFFLINE) {
+    return [ArchiveScoreSourceCode.OFFLINE_CONFIRMED, ArchiveScoreSourceCode.TEACHING_AFFAIRS]
+  }
+  if (wizardState.provenance === ArchiveTaskProvenanceCode.HISTORICAL_DIGITIZE) {
+    return [
+      ArchiveScoreSourceCode.NOT_REQUIRED,
+      ArchiveScoreSourceCode.TEACHING_AFFAIRS,
+      ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
+    ]
+  }
+  return []
+})
+
+const scoreSourceRadioOptions = computed(() =>
+  scoreSourceCodes.value.map((value) => ({
+    value,
+    label: strictEnumLabel(ArchiveScoreSourceDescription, value, '成绩来源'),
+  })),
 )
 
 async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {
@@ -242,10 +264,7 @@ async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {
   return false
 }
 
-async function handleScoreSourceChange(
-  value: UiOptionValue | UiOptionValue[] | undefined,
-): Promise<void> {
-  const nextSource = String(value) as ArchiveScoreSourceCode
+async function handleScoreSourceChange(nextSource: ArchiveScoreSourceCode): Promise<void> {
   if (nextSource === planForm.scoreSource) return
   if (nextSource !== ArchiveScoreSourceCode.OFFLINE_CONFIRMED && planForm.scoreProofFileId) {
     try {
@@ -259,33 +278,16 @@ async function handleScoreSourceChange(
   planForm.scoreSource = nextSource
 }
 
+function onScoreSourceSelect(value: UiOptionValue | boolean | undefined): void {
+  if (value == null || typeof value === 'boolean') return
+  void handleScoreSourceChange(String(value) as ArchiveScoreSourceCode)
+}
+
 const templateSetCodeSelectValue = computed({
   get: () => nullableStringToSelectValue(planForm.templateSetCode),
   set: (value: UiOptionValue | UiOptionValue[] | undefined) => {
     planForm.templateSetCode = selectValueToNullableString(value)
   },
-})
-
-const scoreSourceOptions = computed(() => {
-  if (wizardState.provenance === ArchiveTaskProvenanceCode.CURRENT_TERM_OFFLINE) {
-    return [ArchiveScoreSourceCode.TEACHING_AFFAIRS, ArchiveScoreSourceCode.OFFLINE_CONFIRMED].map(
-      (value) => ({
-        value,
-        label: strictEnumLabel(ArchiveScoreSourceDescription, value, '成绩来源'),
-      }),
-    )
-  }
-  if (wizardState.provenance === ArchiveTaskProvenanceCode.HISTORICAL_DIGITIZE) {
-    return [
-      ArchiveScoreSourceCode.NOT_REQUIRED,
-      ArchiveScoreSourceCode.TEACHING_AFFAIRS,
-      ArchiveScoreSourceCode.OFFLINE_CONFIRMED,
-    ].map((value) => ({
-      value,
-      label: strictEnumLabel(ArchiveScoreSourceDescription, value, '成绩来源'),
-    }))
-  }
-  return []
 })
 
 function handleTemplateChange(value: UiOptionValue | UiOptionValue[] | undefined): void {

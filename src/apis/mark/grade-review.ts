@@ -114,17 +114,19 @@ export interface ReviewWindowPolicySaveRequest {
 
 /** 复核窗口策略 - 对应 ExamReviewWindowPolicy */
 export interface ExamReviewWindowPolicy {
-  id: string
+  id?: string
   tenantId?: string
   examId: string
-  openTime: string
-  closeTime: string
-  maxRequestCount: number
-  visibleMaterialScope: VisibleMaterialScopeCode
+  openTime?: string
+  closeTime?: string
+  maxRequestCount?: number
+  visibleMaterialScope?: VisibleMaterialScopeCode
   allowedReasonTypes?: GradeReviewReasonTypeCode[]
-  policyStatus: ReviewWindowPolicyStatusCode
+  policyStatus?: ReviewWindowPolicyStatusCode
   createTime?: string
   updateTime?: string
+  /** MVR-279：是否可保存/激活/关闭复核窗口；与 BE requireExamReviewerPermission 对齐 */
+  canManageReviewerWrites?: boolean
 }
 
 /**
@@ -267,6 +269,8 @@ export interface GradeReviewSummaryResponse {
   rejectedRequestCount: number
   correctedRequestCount: number
   correctionRecordCount: number
+  /** MVR-279：是否可领取/处理复核与成绩更正；与 BE requireExamReviewerPermission 对齐 */
+  canManageReviewerWrites?: boolean
 }
 
 /** 复核处理请求 - 对应 GradeReviewHandleRequest */

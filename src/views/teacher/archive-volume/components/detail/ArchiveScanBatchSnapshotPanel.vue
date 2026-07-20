@@ -86,7 +86,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <WorkbenchSurfaceCard flush class="archive-scan-batch-snapshot">
+  <WorkbenchSurfaceCard flush embedded class="archive-scan-batch-snapshot">
     <template #head>
       <div class="archive-scan-batch-snapshot__head">
         <h3 class="archive-scan-batch-snapshot__title">扫描批次快照</h3>

@@ -7,6 +7,18 @@
     @back="ec.handleGoBack"
     @nav-select="(key) => void scrollToSection(key)"
   >
+    <template #actions>
+      <UiButton
+        variant="primary"
+        :loading="ec.submitting.value"
+        :disabled="ec.submitting.value || ec.rosterPreviewSyncing.value"
+        @click="handleSubmit"
+      >
+        <template v-if="!ec.submitting.value" #icon><SaveOutlined /></template>
+        {{ ec.submitting.value ? '创建中…' : '创建' }}
+      </UiButton>
+    </template>
+
     <UiSpin :spinning="ec.submitting.value" tip="正在创建…">
       <BasicSettingsStep
         :basic-rules="ec.basicRules"
@@ -34,7 +46,6 @@
     <template #footer>
       <UiButton size="sm" variant="ghost" @click="ec.handleGoBack">取消</UiButton>
       <UiButton
-        size="sm"
         variant="primary"
         :loading="ec.submitting.value"
         :disabled="ec.submitting.value || ec.rosterPreviewSyncing.value"

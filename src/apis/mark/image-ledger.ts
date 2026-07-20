@@ -51,6 +51,8 @@ export interface ImageLedgerDetailResponse {
   balancedTime?: string
   diagnostic?: string
   pendingDuplicateCount: number
+  /** MVR-264：主考写能力位（整体对账/重复处置）；与 BE isExamOwner 对齐 */
+  canManageOwnerLedgerWrites?: boolean
 }
 
 /**

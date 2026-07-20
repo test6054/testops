@@ -30,10 +30,12 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
+            v-if="canManageOwnerLedgerWrites === true"
             :items="[{ key: 'resolve', label: '处置' }]"
             split
             @action="() => $emit('resolve', rows[index])"
           />
+          <span v-else class="duplicate-resolution__readonly">仅主考可处置</span>
         </template>
       </template>
     </UiDataTable>
@@ -61,6 +63,8 @@ defineOptions({ name: 'DuplicateResolutionCard' })
 const props = defineProps<{
   examId: string
   pendingDuplicateCount: number
+  /** MVR-264：主考写能力；非主考不展示处置 */
+  canManageOwnerLedgerWrites?: boolean
 }>()
 
 defineEmits<{ (e: 'resolve', record: ExamPaperDuplicateResolutionVO): void }>()

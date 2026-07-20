@@ -19,6 +19,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -26,6 +27,11 @@ import {
 import { showUserError } from '@/utils/error-handler'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard()
 const tab = ref<'virtual' | 'industry'>('virtual')
 const loading = ref(false)
 const virtualRows = ref<PortfolioVirtualTeachingRoomActivityVO[]>([])
@@ -68,6 +74,7 @@ const virtualColumns: ColumnsType = [
   { title: '活动', dataIndex: 'activityTitle', key: 'activityTitle' },
   { title: '类型', dataIndex: 'activityTypeLabel', key: 'activityTypeLabel', width: 160 },
   { title: '角色', dataIndex: 'roleLabel', key: 'roleLabel', width: 100 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   { title: '状态', key: 'reviewStatus', width: 100 },
 ]
 const industryColumns: ColumnsType = [
@@ -76,6 +83,7 @@ const industryColumns: ColumnsType = [
   { title: '阶段', dataIndex: 'stageCode', key: 'stageCode', width: 100 },
   { title: '角色', dataIndex: 'roleCode', key: 'roleCode', width: 100 },
   { title: '多身份', key: 'ownerIdentityLayers', width: 220 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   { title: '状态', key: 'reviewStatus', width: 100 },
 ]
 
@@ -83,6 +91,13 @@ function statusTone(status?: string): 'blue' | 'orange' | 'green' | 'gray' | 're
   if (status === 'APPROVED') return 'green'
   if (status === 'PENDING_REVIEW') return 'orange'
   if (status === 'REJECTED') return 'red'
+  return 'gray'
+}
+
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
   return 'gray'
 }
 
@@ -125,6 +140,9 @@ async function saveVirtual() {
     message.warning('请先选择教师')
     return
   }
+  if (!assertArchiveWritable('登记虚拟教研室活动')) {
+    return
+  }
   if (!virtualForm.roomName.trim() || !virtualForm.activityTitle.trim()) {
     message.warning('请填写教研室名称与活动标题')
     return
@@ -140,8 +158,6 @@ async function saveVirtual() {
       reviewStatus: virtualForm.reviewStatus,
       partnerEnterprise: virtualForm.partnerEnterprise || undefined,
       leadUnit: virtualForm.leadUnit || undefined,
-      resultFactor: 1,
-      applicationFactor: 1,
     })
     message.success('虚拟教研室活动已保存')
     virtualForm.roomName = ''
@@ -159,6 +175,9 @@ async function saveIndustry() {
     message.warning('请先选择教师')
     return
   }
+  if (!assertArchiveWritable('登记产教项目')) {
+    return
+  }
   if (!industryForm.projectName.trim()) {
     message.warning('请填写项目名称')
     return
@@ -173,10 +192,6 @@ async function saveIndustry() {
       roleCode: industryForm.roleCode,
       reviewStatus: industryForm.reviewStatus,
       enterpriseName: industryForm.enterpriseName || undefined,
-      roleFactor: 1,
-      stageFactor: 1,
-      talentOutcomeFactor: 1,
-      enterpriseFactor: 1,
     })
     message.success('产教项目已保存')
     industryForm.projectName = ''
@@ -212,6 +227,14 @@ onMounted(() => {
     </template>
 
     <PortfolioTeacherPickGate />
+
+    <UiCard
+      v-if="archiveWriteForbidden"
+      class="policy-ledger__block"
+      title="档案写禁"
+    >
+      <p class="policy-ledger__hint">{{ archiveWriteBlockMessage }}</p>
+    </UiCard>
 
     <UiCard class="policy-ledger__block">
       <div class="policy-ledger__toolbar">
@@ -278,7 +301,7 @@ onMounted(() => {
           style="width: 120px"
           :options="reviewStatusOptions.filter((o) => o.value)"
         />
-        <UiButton size="sm" variant="primary" :loading="saving" @click="saveVirtual">保存</UiButton>
+        <UiButton size="sm" variant="primary" :loading="saving" :disabled="archiveWriteForbidden" @click="saveVirtual">保存</UiButton>
       </div>
       <UiDataTable
         :loading="loading"
@@ -288,7 +311,15 @@ onMounted(() => {
         row-key="id"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'reviewStatus'">
+          <template v-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <UiTag v-if="record.archiveWriteForbidden" tone="red" class="ml-1">档案写禁</UiTag>
+            <span v-if="!record.lifecycleStatus && !record.evaluationHeld && !record.archiveWriteForbidden">—</span>
+          </template>
+          <template v-else-if="column.key === 'reviewStatus'">
             <UiTag :tone="statusTone(record.reviewStatus)">{{ record.reviewStatusLabel || record.reviewStatus }}</UiTag>
           </template>
         </template>
@@ -341,7 +372,7 @@ onMounted(() => {
           style="width: 120px"
           :options="reviewStatusOptions.filter((o) => o.value)"
         />
-        <UiButton size="sm" variant="primary" :loading="saving" @click="saveIndustry">保存</UiButton>
+        <UiButton size="sm" variant="primary" :loading="saving" :disabled="archiveWriteForbidden" @click="saveIndustry">保存</UiButton>
       </div>
       <UiDataTable
         :loading="loading"
@@ -366,6 +397,14 @@ onMounted(() => {
               </p>
             </div>
             <span v-else class="policy-ledger__muted">—</span>
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <UiTag v-if="record.archiveWriteForbidden" tone="red" class="ml-1">档案写禁</UiTag>
+            <span v-if="!record.lifecycleStatus && !record.evaluationHeld && !record.archiveWriteForbidden">—</span>
           </template>
           <template v-else-if="column.key === 'reviewStatus'">
             <UiTag :tone="statusTone(record.reviewStatus)">{{ record.reviewStatusLabel || record.reviewStatus }}</UiTag>

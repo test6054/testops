@@ -13,11 +13,13 @@ import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImp
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -39,6 +41,12 @@ const saving = ref(false)
 const removingId = ref('')
 const exporting = ref(false)
 const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' })
+const formTeacherId = computed(() => form.teacherUserId || undefined)
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
 const {
@@ -124,6 +132,9 @@ async function saveRecord() {
     showFormValidationMessage('成果条目须选择所属教师')
     return
   }
+  if (requiresTeacher.value && !assertArchiveWritable('保存发展记录')) {
+    return
+  }
   saving.value = true
   try {
     await portfolioDevelopmentRecordApi.save({
@@ -195,6 +206,12 @@ watch(
       <ContextBar layout="workbench" show-title :title="title" :subtitle="subtitle" />
     </template>
     <UiCard v-if="showEditor" title="新增条目">
+      <UiAlertStrip
+        v-if="requiresTeacher && archiveWriteForbidden"
+        tone="warning"
+        :message="archiveWriteBlockMessage || '该教师档案当前禁止写入'"
+        class="mb-3"
+      />
       <div class="form-row">
         <input v-model="form.recordTitle" class="input input--wide" placeholder="标题" />
         <UiSelect
@@ -213,7 +230,7 @@ watch(
           size="sm"
           variant="primary"
           :loading="saving"
-          :disabled="saving"
+          :disabled="saving || (requiresTeacher && archiveWriteForbidden)"
           @click="saveRecord"
         >
           保存

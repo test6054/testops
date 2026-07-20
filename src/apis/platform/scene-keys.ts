@@ -43,6 +43,7 @@ const PORTFOLIO_SCENES = new Set<ExcelImportSceneKey>([
 ])
 
 const MARK_SCENES = new Set<ExcelImportSceneKey>([
+  // 课程考核 Excel 建卷 scene 已硬拒；仍路由到 mark 以便平台调用收到业务错误码
   ExcelImportSceneKey.MARK_ARCHIVE_EXTERNAL,
   ExcelImportSceneKey.MARK_PAPER_ARCHIVE_HISTORY,
   ExcelImportSceneKey.MARK_ROSTER_EXCEL,

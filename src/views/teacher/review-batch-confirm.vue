@@ -10,23 +10,25 @@
         </template>
         <template #actions>
           <UiButton variant="ghost" size="sm" @click="goSingleReview"> 单题复核 </UiButton>
-          <UiButton
-            size="sm"
-            variant="outline"
-            :disabled="rows.length === 0"
-            @click="applyAiScores"
-          >
-            填入建议分
-          </UiButton>
-          <UiButton
-            size="sm"
-            variant="primary"
-            :disabled="selectedRowKeys.length === 0"
-            :loading="submitting"
-            @click="openConfirm"
-          >
-            批量确认选中
-          </UiButton>
+          <template v-if="canManageReviewerWrites">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :disabled="rows.length === 0"
+              @click="applyAiScores"
+            >
+              填入建议分
+            </UiButton>
+            <UiButton
+              size="sm"
+              variant="primary"
+              :disabled="selectedRowKeys.length === 0"
+              :loading="submitting"
+              @click="openConfirm"
+            >
+              批量确认选中
+            </UiButton>
+          </template>
         </template>
       </ContextBar>
     </template>
@@ -135,6 +137,7 @@ import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { batchConfirmQuestionGrades } from '@/apis/mark/exam-grade'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
@@ -171,6 +174,8 @@ const { refreshing: workbenchRefreshing } = useMarkWorkbenchContext()
 
 const loading = ref(false)
 const submitting = ref(false)
+// MVR-332：列表/制卷摘要下发 canManageReviewerWrites，缺声明会导致写闸 ReferenceError
+const canManageReviewerWrites = ref(false)
 const batchFailures = ref<ExamGradeBatchConfirmFailureItem[]>([])
 const rows = ref<ReviewTaskItemResponse[]>([])
 const scoreDraftMap = reactive<Record<string, number>>({})
@@ -239,6 +244,10 @@ function updateScore(gradeResultId: string, value: number | string | null): void
 }
 
 function applyAiScores(): void {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无批量复核写权限')
+    return
+  }
   let filled = 0
   let skipped = 0
   for (const record of rows.value) {
@@ -264,16 +273,24 @@ async function loadTasks(): Promise<void> {
   if (!selectedExamId.value) return
   loading.value = true
   try {
-    const result = await listReviewTasks({
-      examId: selectedExamId.value,
-      status: ReviewTaskStatusCode.PENDING,
-      excludeArbitration: true,
-      pageNum: pagination.current,
-      pageSize: pagination.pageSize,
-    })
+    const [result, layoutSummary] = await Promise.all([
+      listReviewTasks({
+        examId: selectedExamId.value,
+        status: ReviewTaskStatusCode.PENDING,
+        excludeArbitration: true,
+        pageNum: pagination.current,
+        pageSize: pagination.pageSize,
+      }),
+      // 空列表时 list 项无能力位，用制卷摘要下发的 canManageReviewerWrites 补齐
+      getExamLayoutQuestionSummary(selectedExamId.value).catch(() => null),
+    ])
     const records = result.list
     rows.value = records
     pagination.total = result.total
+    // MVR-328：列表有项时仅认行级 can===true；空列表用制卷摘要 can===true 补齐
+    canManageReviewerWrites.value = records.length > 0
+      ? records[0].canManageReviewerWrites === true
+      : layoutSummary?.canManageReviewerWrites === true
     initScoreDraft(records)
     selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
       records.some((row) => row.gradeResultId === id),
@@ -281,6 +298,7 @@ async function loadTasks(): Promise<void> {
   } catch (error) {
     rows.value = []
     pagination.total = 0
+    canManageReviewerWrites.value = false
     showUserError(error, '待复核任务加载失败')
   } finally {
     loading.value = false
@@ -304,6 +322,10 @@ function goSingleReview(): void {
 }
 
 function openConfirm(): void {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无批量复核写权限')
+    return
+  }
   if (selectedRowKeys.value.length === 0) return
   const missingScore = selectedRowKeys.value.some((id) => scoreDraftMap[id] == null)
   if (missingScore) {
@@ -320,6 +342,10 @@ function openConfirm(): void {
 
 async function submitBatch(): Promise<void> {
   if (!selectedExamId.value || selectedRowKeys.value.length === 0) return
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无批量复核写权限')
+    return
+  }
   if (submitting.value) {
     return
   }

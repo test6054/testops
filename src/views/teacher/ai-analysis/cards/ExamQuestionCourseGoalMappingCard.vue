@@ -12,6 +12,7 @@
       :course-goals="courseGoals"
       :rows="rows"
       :goal-options="goalOptions"
+      :can-manage-owner-writes="canManageOwnerCourseGoalWrites"
       @mapping-row-action="handleMappingRowAction"
       @goal-change="handleGoalChange"
       @weight-change="handleWeightChange"
@@ -35,6 +36,7 @@
       :course-goals="courseGoals"
       :rows="rows"
       :goal-options="goalOptions"
+      :can-manage-owner-writes="canManageOwnerCourseGoalWrites"
       @mapping-row-action="handleMappingRowAction"
       @goal-change="handleGoalChange"
       @weight-change="handleWeightChange"
@@ -80,6 +82,10 @@ const emit = defineEmits<{ changed: [] }>()
 const loading = ref(false)
 const workspace = ref<ExamQuestionCourseGoalMappingWorkspaceVO | null>(null)
 const rows = ref<MappingEditableRow[]>([])
+// MVR-332：仅认 workspace.canManageOwnerCourseGoalWrites===true
+const canManageOwnerCourseGoalWrites = computed(
+  () => workspace.value?.canManageOwnerCourseGoalWrites === true,
+)
 
 const courseGoals = computed<QualityCourseGoalForMarkVO[]>(() => workspace.value?.courseGoals ?? [])
 
@@ -167,6 +173,9 @@ async function loadData() {
 }
 
 async function saveRow(row: MappingEditableRow) {
+  if (canManageOwnerCourseGoalWrites.value !== true) {
+    return
+  }
   if (row.saving || row.deleting) return
   if (!props.examId || !row.qualityCourseGoalId) {
     showFormValidationMessage('请选择课程目标')
@@ -193,6 +202,9 @@ async function saveRow(row: MappingEditableRow) {
 }
 
 async function deleteRow(row: MappingEditableRow) {
+  if (canManageOwnerCourseGoalWrites.value !== true) {
+    return
+  }
   if (row.saving || row.deleting) return
   if (!row.mappingId) return
   const confirmed = await confirmAsync({

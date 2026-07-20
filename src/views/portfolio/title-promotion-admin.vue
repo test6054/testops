@@ -11,7 +11,7 @@ import type {
 } from '@/apis/portfolio/title-promotion'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
@@ -19,6 +19,7 @@ import TitlePromotionFlowPanel from '@/components/portfolio/TitlePromotionFlowPa
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -32,6 +33,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
@@ -77,6 +79,7 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 const userStore = useUserStore()
 const router = useRouter()
+const route = useRoute()
 const canManageSchoolWorkflow = computed(() => userStore.isTenantAdmin)
 const tabItems = computed(() => {
   const items: Array<{ key: 'task' | 'application', label: string }> = []
@@ -91,6 +94,37 @@ const activeTab = ref<'task' | 'application'>(
 )
 if (!canManageSchoolWorkflow.value) {
   activeTab.value = 'application'
+}
+
+/** PF-P0-296：职称治理 taskId / applicationId 深链 */
+function readRouteStringParam(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : ''
+}
+const pendingLocateTaskId = ref(readRouteStringParam(route.query.taskId))
+const pendingLocateApplicationId = ref(readRouteStringParam(route.query.applicationId))
+const highlightedTaskId = ref('')
+const highlightedApplicationId = ref('')
+if (pendingLocateApplicationId.value) {
+  activeTab.value = 'application'
+} else if (pendingLocateTaskId.value && canManageSchoolWorkflow.value) {
+  activeTab.value = 'task'
+}
+
+function taskRowClassName(record: PortfolioTitlePromotionTaskVO): string {
+  return record.id === highlightedTaskId.value ? 'title-promo__row-active' : ''
+}
+
+function applicationRowClassName(record: PortfolioTitlePromotionApplicationVO): string {
+  return record.id === highlightedApplicationId.value ? 'title-promo__row-active' : ''
+}
+
+function scrollToHighlightedRow() {
+  void nextTick(() => {
+    document.querySelector('.title-promo__row-active')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    })
+  })
 }
 const taskLoading = ref(false)
 const {
@@ -140,6 +174,25 @@ const taskRequestToken = ref(0)
 const appRequestToken = ref(0)
 const operationKey = ref('')
 const writing = computed(() => saving.value || Boolean(operationKey.value))
+/** 当前操作目标教师；用于封存写禁预检 */
+const actionTeacherId = ref<string | undefined>()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: actionTeacherId })
+
+async function bindActionTeacherAndAssert(
+  teacherUserId: string | number | undefined | null,
+  actionLabel: string,
+): Promise<boolean> {
+  actionTeacherId.value = teacherUserId != null && String(teacherUserId).trim() !== ''
+    ? String(teacherUserId)
+    : undefined
+  await reloadLifecycleState()
+  return assertArchiveWritable(actionLabel)
+}
 
 const taskQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 const appQuery = reactive<{
@@ -187,11 +240,19 @@ const appColumns: ColumnsType = [
   { title: '单号', dataIndex: 'applicationNo', key: 'applicationNo', width: 180 },
   { title: '任务', dataIndex: 'taskName', key: 'taskName' },
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 120 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '匹配度', dataIndex: 'matchScore', key: 'matchScore', width: 90 },
   { title: '红线', key: 'redlineBlocked', width: 80 },
   { title: '状态', key: 'applicationStatus', width: 120 },
   { title: '操作', key: 'actions', width: 280 },
 ]
+
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
 
 /** 院审/人事读整袋：teacherUserId 即档案 teacherId */
 function goTeacherPortfolioPage(path: string, teacherId?: string) {
@@ -244,7 +305,12 @@ function endWorkflowOperation(key: string) {
 async function loadTasks() {
   const currentToken = taskRequestToken.value + 1
   taskRequestToken.value = currentToken
-  const request = { pageNum: taskQuery.pageNum, pageSize: taskQuery.pageSize }
+  const locateOnce = pendingLocateTaskId.value
+  const request = {
+    pageNum: taskQuery.pageNum,
+    pageSize: taskQuery.pageSize,
+    locateTaskId: locateOnce || undefined,
+  }
   beginTaskLoad()
   taskLoading.value = true
   try {
@@ -254,6 +320,16 @@ async function loadTasks() {
     }
     tasks.value = page.list ?? []
     taskTotal.value = page.total ?? 0
+    if (page.pageNum != null) {
+      taskQuery.pageNum = page.pageNum
+    }
+    pendingLocateTaskId.value = ''
+    if (locateOnce) {
+      highlightedTaskId.value = locateOnce
+      if (tasks.value.some((item) => item.id === locateOnce)) {
+        scrollToHighlightedRow()
+      }
+    }
 
     okTaskLoad()
   } catch (error) {
@@ -274,10 +350,12 @@ async function loadTasks() {
 async function loadApps() {
   const currentToken = appRequestToken.value + 1
   appRequestToken.value = currentToken
+  const locateOnce = pendingLocateApplicationId.value
   const request = {
     pageNum: appQuery.pageNum,
     pageSize: appQuery.pageSize,
     applicationStatus: appQuery.applicationStatus,
+    locateApplicationId: locateOnce || undefined,
   }
   beginAppLoad()
   appLoading.value = true
@@ -288,6 +366,24 @@ async function loadApps() {
     }
     apps.value = page.list ?? []
     appTotal.value = page.total ?? 0
+    if (page.pageNum != null) {
+      appQuery.pageNum = page.pageNum
+    }
+    pendingLocateApplicationId.value = ''
+    if (locateOnce) {
+      highlightedApplicationId.value = locateOnce
+      const matched = apps.value.find((item) => item.id === locateOnce)
+      if (matched) {
+        scrollToHighlightedRow()
+        // 深链可行动：院审待办进入后自动打开审核面板一次
+        if (
+          matched.applicationStatus
+          === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
+        ) {
+          void openReviewAsync(matched)
+        }
+      }
+    }
 
     okAppLoad()
   } catch (error) {
@@ -756,7 +852,10 @@ async function emergencyReplaceCriteria() {
 
 function openExpertReview(row: PortfolioTitlePromotionApplicationVO) {
   if (writing.value) return
-  void openExpertReviewAsync(row)
+  void bindActionTeacherAndAssert(row.teacherUserId, '职称专家评审').then((ok) => {
+    if (!ok) return
+    void openExpertReviewAsync(row)
+  })
 }
 
 async function openExpertReviewAsync(row: PortfolioTitlePromotionApplicationVO) {
@@ -782,10 +881,13 @@ async function openExpertReviewAsync(row: PortfolioTitlePromotionApplicationVO) 
 
 function openPublicity(row: PortfolioTitlePromotionApplicationVO) {
   if (writing.value) return
-  publicityTarget.value = row
-  publicityForm.days = 7
-  publicityForm.remark = ''
-  publicityOpen.value = true
+  void bindActionTeacherAndAssert(row.teacherUserId, '职称公示发布').then((ok) => {
+    if (!ok) return
+    publicityTarget.value = row
+    publicityForm.days = 7
+    publicityForm.remark = ''
+    publicityOpen.value = true
+  })
 }
 
 async function runExpertReview(approve: boolean) {
@@ -793,6 +895,7 @@ async function runExpertReview(approve: boolean) {
   const target = expertTarget.value
   const targetId = target.id
   if (!targetId) return
+  if (!(await bindActionTeacherAndAssert(target.teacherUserId, '职称专家评审'))) return
   const operation = `expert:${targetId}`
   if (!beginWorkflowOperation(operation)) return
   try {
@@ -833,6 +936,7 @@ async function runStartPublicity() {
   const target = publicityTarget.value
   const targetId = target.id
   if (!targetId) return
+  if (!(await bindActionTeacherAndAssert(target.teacherUserId, '职称公示发布'))) return
   const operation = `publicity:${targetId}`
   if (!beginWorkflowOperation(operation)) return
   try {
@@ -860,6 +964,7 @@ async function runStartPublicity() {
 
 async function runArchivePublicity(row: PortfolioTitlePromotionApplicationVO) {
   if (!row.id) return
+  if (!(await bindActionTeacherAndAssert(row.teacherUserId, '职称公示归档'))) return
   const operation = `archive:${row.id}`
   if (!beginWorkflowOperation(operation)) return
   try {
@@ -888,7 +993,10 @@ function canArchivePublicity(row: PortfolioTitlePromotionApplicationVO) {
 
 function openReview(row: PortfolioTitlePromotionApplicationVO) {
   if (writing.value) return
-  void openReviewAsync(row)
+  void bindActionTeacherAndAssert(row.teacherUserId, '职称申报审核').then((ok) => {
+    if (!ok) return
+    void openReviewAsync(row)
+  })
 }
 
 async function openReviewAsync(row: PortfolioTitlePromotionApplicationVO) {
@@ -919,6 +1027,7 @@ async function runReview(
   const target = reviewTarget.value
   const targetId = target.id
   if (!targetId) return
+  if (!(await bindActionTeacherAndAssert(target.teacherUserId, '职称申报审核'))) return
   const operation = `${action}:${targetId}`
   if (!beginWorkflowOperation(operation)) return
   try {
@@ -1011,6 +1120,12 @@ onMounted(() => {
         </template>
       </ContextBar>
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+    />
     <UiCard>
       <UiSectionTabs
         v-model="activeTab"
@@ -1033,6 +1148,7 @@ onMounted(() => {
             v-model:current="taskQuery.pageNum"
             v-model:page-size="taskQuery.pageSize"
             :load-error="taskLoadError"
+            :row-class-name="taskRowClassName"
             row-key="id"
             :columns="taskColumns"
             :data-source="tasks"
@@ -1112,6 +1228,7 @@ onMounted(() => {
             v-model:current="appQuery.pageNum"
             v-model:page-size="appQuery.pageSize"
             :load-error="appLoadError"
+            :row-class-name="applicationRowClassName"
             row-key="id"
             :columns="appColumns"
             :data-source="apps"
@@ -1120,7 +1237,14 @@ onMounted(() => {
             @page-change="onAppPageChange"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'redlineBlocked'">
+              <template v-if="column.key === 'lifecycleStatus'">
+                <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+                  {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                </UiTag>
+                <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+                <span v-else-if="!record.lifecycleStatus">—</span>
+              </template>
+              <template v-else-if="column.key === 'redlineBlocked'">
                 <UiTag :tone="record.redlineBlocked ? 'red' : 'green'">
                   {{ record.redlineBlocked ? '阻断' : '通过' }}
                 </UiTag>
@@ -1271,8 +1395,8 @@ onMounted(() => {
                 === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
             "
           >
-            <UiButton size="sm" variant="primary" :disabled="writing" @click="runReview('collegeApprove')"> 院审通过 </UiButton>
-            <UiButton size="sm" variant="soft" :disabled="writing" @click="runReview('collegeReturn')">
+            <UiButton size="sm" variant="primary" :disabled="writing || archiveWriteForbidden" @click="runReview('collegeApprove')"> 院审通过 </UiButton>
+            <UiButton size="sm" variant="soft" :disabled="writing || archiveWriteForbidden" @click="runReview('collegeReturn')">
               院审退回
             </UiButton>
           </template>
@@ -1283,11 +1407,11 @@ onMounted(() => {
                   === PortfolioTitlePromotionApplicationStatusCode.HR_PENDING
             "
           >
-            <UiButton size="sm" variant="primary" :disabled="writing" @click="runReview('hrApprove')"> 人事复审通过 </UiButton>
-            <UiButton size="sm" variant="soft" :disabled="writing" @click="runReview('hrReturn')">
+            <UiButton size="sm" variant="primary" :disabled="writing || archiveWriteForbidden" @click="runReview('hrApprove')"> 人事复审通过 </UiButton>
+            <UiButton size="sm" variant="soft" :disabled="writing || archiveWriteForbidden" @click="runReview('hrReturn')">
               人事退回
             </UiButton>
-            <UiButton size="sm" variant="soft" :disabled="writing" @click="runReview('hrReject')">
+            <UiButton size="sm" variant="soft" :disabled="writing || archiveWriteForbidden" @click="runReview('hrReject')">
               驳回
             </UiButton>
           </template>
@@ -1343,8 +1467,8 @@ onMounted(() => {
         <label>专家意见</label>
         <UiTextarea size="sm" v-model="expertForm.opinion" :rows="3" />
         <div class="title-promo__actions">
-          <UiButton size="sm" variant="primary" :disabled="writing" @click="runExpertReview(true)"> 通过并进入公示 </UiButton>
-          <UiButton size="sm" variant="soft" :disabled="writing" @click="runExpertReview(false)">
+          <UiButton size="sm" variant="primary" :disabled="writing || archiveWriteForbidden" @click="runExpertReview(true)"> 通过并进入公示 </UiButton>
+          <UiButton size="sm" variant="soft" :disabled="writing || archiveWriteForbidden" @click="runExpertReview(false)">
             驳回
           </UiButton>
         </div>
@@ -1362,7 +1486,7 @@ onMounted(() => {
           <UiButton
             size="sm"
             variant="primary"
-            :disabled="writing"
+            :disabled="writing || archiveWriteForbidden"
             :loading="operationKey.startsWith('publicity:')"
             @click="runStartPublicity"
           >

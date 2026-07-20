@@ -23,6 +23,13 @@ export interface PortfolioEthicsSanctionVO {
   lastReviewOpinion?: string
   lastReviewedTime?: string
   updateTime: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
+
 }
 
 export interface PortfolioEthicsConstraintStatusVO {
@@ -31,6 +38,12 @@ export interface PortfolioEthicsConstraintStatusVO {
   redlineCoefficient: string
   activeSanctionCount: number
   publicSummary?: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
 
 export interface PortfolioEthicsReviewLogVO {

@@ -2,7 +2,7 @@ import type { Ref } from 'vue'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
 import message from 'ant-design-vue/es/message'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAbsenceExamStats } from '@/apis/mark/absence'
 import { FinalScoreRiskReasonCode } from '@/apis/mark/exam-score'
@@ -211,9 +211,35 @@ export function useScorePublishPreconditions(options: {
     return ensureFieldWideSourceFactGates(overview, '确认成绩');
   }
 
+  /**
+   * MVR-207：行内确认/发布按钮假可写对齐 BE 场级硬拦。
+   * 覆盖 ensureNoPendingAbsenceRecords、ensureAbsenceReconciliationComplete，
+   * 以及 ensureFinalScoreSourceFactsReady 中的阻塞事件/重复影像；不含软风险与单卷题分态。
+   */
+  const hasFieldWideHardBlockForWrite = computed(() => {
+    if ((pendingAbsenceCount.value ?? 0) > 0) {
+      return true
+    }
+    const overview = options.riskOverview.value
+    if (!overview) {
+      return false
+    }
+    if ((overview.unreconciledAbsenceCount ?? 0) > 0) {
+      return true
+    }
+    if ((overview.blockingIncidentCount ?? 0) > 0) {
+      return true
+    }
+    if ((overview.pendingDuplicateImageCount ?? 0) > 0) {
+      return true
+    }
+    return false
+  })
+
   return {
     pendingAbsenceCount,
     refreshPendingAbsenceCount,
+    hasFieldWideHardBlockForWrite,
     ensureScorePublishPreconditions,
     ensureSinglePaperPublishPreconditions,
     ensureScoreConfirmPreconditions,

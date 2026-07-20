@@ -5,7 +5,9 @@
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload()">
         查看历史
       </UiButton>
-      <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
+      <UiButton
+        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+      >
         生成达成度分析
       </UiButton>
     </template>
@@ -73,6 +75,7 @@ import type {
   CourseAchievementItemResponse,
   CourseObjectiveAchievementResponse,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
@@ -95,6 +98,7 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { loadExamsForCourseAcademicYearSemester } from '@/composables/useCrossExamDefaultScope'
+import { useExamSummariesReviewerWriteCapability } from '@/composables/useExamIdsReviewerWriteCapability'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { formatSemester } from '@/types/enums/semester-enum'
 import {
@@ -152,6 +156,7 @@ const examSelectScopeReferenceDepartmentId = computed(
 )
 
 const scopedExamIds = ref<string[]>([])
+const scopedExamSummaries = ref<ExamSummaryResponse[]>([])
 
 const scopeReady = computed(() =>
   Boolean(effectiveCourseId.value && effectiveAcademicYear.value && effectiveSemester.value),
@@ -161,6 +166,7 @@ const scopeReady = computed(() =>
 async function syncScopedExams(): Promise<void> {
   const semester = effectiveSemester.value
   if (!scopeReady.value || !semester) {
+    scopedExamSummaries.value = []
     scopedExamIds.value = []
     return
   }
@@ -174,10 +180,12 @@ async function syncScopedExams(): Promise<void> {
         referenceDepartmentId: examSelectScopeReferenceDepartmentId.value,
       },
     )
+    scopedExamSummaries.value = exams
     scopedExamIds.value = exams
       .map((exam) => exam.examId)
       .filter((examId): examId is string => Boolean(examId))
   } catch (error) {
+    scopedExamSummaries.value = []
     scopedExamIds.value = []
     showUserError(error, '考核环节加载失败')
   }
@@ -372,7 +380,18 @@ async function reload(options?: { silent?: boolean }): Promise<void> {
   }
 }
 
+
+/** MVR-286：默认拒绝假可写；所选考试均须 canManageReviewerWrites */
+const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
+  computed(() => scopedExamIds.value),
+  computed(() => scopedExamSummaries.value),
+)
+
 async function handleGenerate(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
+    return
+  }
   const courseId = effectiveCourseId.value
   const examIds = scopedExamIds.value
   if (!courseId) {

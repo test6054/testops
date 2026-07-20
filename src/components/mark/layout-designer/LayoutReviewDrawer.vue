@@ -42,7 +42,8 @@ async function persistAdjust(): Promise<void> {
   if (saving.value) {
     return
   }
-  if (props.readonly) {
+  // MVR-376：默认拒绝；仅 readonly===false（父层 layoutWritable）时可写
+  if (props.readonly !== false) {
     message.warning('考试已开印或已开始扫描，制卷设计不可修改')
     return
   }
@@ -95,7 +96,7 @@ async function persistAdjust(): Promise<void> {
         "
         @change="focusedBlockId = ($event as string | undefined) ?? null"
       />
-      <UiButton size="sm" variant="primary" :loading="saving" :disabled="readonly" @click="persistAdjust">
+      <UiButton size="sm" variant="primary" :loading="saving" :disabled="readonly !== false" @click="persistAdjust">
         保存微调
       </UiButton>
     </div>

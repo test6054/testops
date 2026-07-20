@@ -10,7 +10,7 @@ import type { PortfolioArchiveCategoryTreeNodeVO, PortfolioArchiveRecordSummaryV
 import type { PortfolioTitleJobCategoryCode } from '@/types/enums/portfolio-title-job-category-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { PortfolioArchiveRecordStatusCode } from '@/apis/portfolio/enums'
@@ -28,6 +28,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -55,7 +56,27 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard()
+const route = useRoute()
 const router = useRouter()
+
+/** PF-P0-299：解析 route query 字符串参数（applicationId / taskId / teacherId）。 */
+function readRouteStringParam(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0].trim()
+  }
+  return ''
+}
+
+/** 深链设置 selectedTaskId 时抑制 watch 清空表单。 */
+const suppressTaskWatch = ref(false)
 function goMasterpiecePreview() {
   void router.push({
     path: '/portfolio/teacher/masterpiece',
@@ -240,8 +261,11 @@ function applyApplicationToForm(app: PortfolioTitlePromotionApplicationVO) {
   matchResult.value = app
 }
 
+/**
+ * 加载教师当前任务下的申报单；优先消费 route.applicationId 深链（PF-P0-299）。
+ */
 async function loadExistingApplication() {
-  if (!selectedTaskId.value || !targetTeacherId.value) {
+  if (!targetTeacherId.value) {
     applicationId.value = undefined
     matchResult.value = null
     evidenceByCriteria.value = {}
@@ -250,6 +274,33 @@ async function loadExistingApplication() {
   }
   const currentToken = ++applicationRequestToken.value
   try {
+    const deepLinkedApplicationId = readRouteStringParam(route.query.applicationId)
+    if (deepLinkedApplicationId) {
+      const detail = await portfolioTitlePromotionApi.getApplication(deepLinkedApplicationId)
+      if (applicationRequestToken.value !== currentToken) {
+        return
+      }
+      if (detail.teacherUserId !== targetTeacherId.value) {
+        showFormValidationMessage('深链申报单与当前目标教师不一致，已忽略该申报单')
+      }
+      else {
+        if (detail.taskId && selectedTaskId.value !== detail.taskId) {
+          suppressTaskWatch.value = true
+          selectedTaskId.value = detail.taskId
+          suppressTaskWatch.value = false
+        }
+        applyApplicationToForm(detail)
+        await loadFlowView()
+        return
+      }
+    }
+    if (!selectedTaskId.value) {
+      applicationId.value = undefined
+      matchResult.value = null
+      evidenceByCriteria.value = {}
+      manualNoteByCriteria.value = {}
+      return
+    }
     const detail = await portfolioTitlePromotionApi.getMineByTask({
       taskId: selectedTaskId.value,
       teacherUserId: targetTeacherId.value,
@@ -345,7 +396,13 @@ async function loadPublishedTasks() {
       if (pageNum >= page.pages || page.list.length < page.pageSize) {
         publishedTasks.value = allTasks
         if (!selectedTaskId.value && allTasks.length > 0) {
-          selectedTaskId.value = allTasks[0].id
+          const deepTaskId = readRouteStringParam(route.query.taskId)
+          if (deepTaskId && allTasks.some(item => item.id === deepTaskId)) {
+            selectedTaskId.value = deepTaskId
+          }
+          else {
+            selectedTaskId.value = allTasks[0].id
+          }
         }
         return
       }
@@ -436,6 +493,9 @@ async function saveDraft() {
     showFormValidationMessage('申报已进入审核流程，当前不可修改材料')
     return
   }
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('保存职称申报草稿'))) {
     return
   }
@@ -504,6 +564,9 @@ async function submitApplication() {
     showFormValidationMessage('当前核验未通过或表单不完整，请补齐后再提交')
     return
   }
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('提交职称申报'))) {
     return
   }
@@ -537,6 +600,9 @@ async function submitApplication() {
 }
 
 watch(selectedTaskId, async () => {
+  if (suppressTaskWatch.value) {
+    return
+  }
   evidenceByCriteria.value = {}
   manualNoteByCriteria.value = {}
   matchResult.value = null
@@ -552,6 +618,21 @@ watch(selectedTaskId, async () => {
   }
   await loadExistingApplication()
 })
+
+watch(
+  () => [targetTeacherId.value, readRouteStringParam(route.query.applicationId), readRouteStringParam(route.query.taskId)],
+  async () => {
+    const deepTaskId = readRouteStringParam(route.query.taskId)
+    if (deepTaskId
+      && publishedTasks.value.some(item => item.id === deepTaskId)
+      && selectedTaskId.value !== deepTaskId) {
+      suppressTaskWatch.value = true
+      selectedTaskId.value = deepTaskId
+      suppressTaskWatch.value = false
+    }
+    await loadExistingApplication()
+  },
+)
 
 watch([pathCode, jobCategory], () => {
   const options = jobOptions.value
@@ -580,6 +661,13 @@ usePortfolioScopedLoader(async () => {
         :subtitle="selectedTask ? selectedTask.taskName : undefined"
       />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
     <template v-else>
       <p class="promotion-scene__select-hint">

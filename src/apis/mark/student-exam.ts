@@ -1,6 +1,7 @@
 import type { AiAnalysisStatusCode } from './ai-analysis-status'
 import type { ExamStatusCode } from './exam'
 import type { BindingStatusCode } from './exam-binding'
+import type { FinalScoreStatusCode } from './final-score-status'
 import type { GradeStatusCode } from './grade-status'
 import type { ObjectiveResultCode } from './objective-result'
 import type { QuestionTypeCode } from './question-type'
@@ -8,7 +9,6 @@ import type { MasteryLevelCode } from './student-mastery-level'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
-import { FinalScoreStatusCode } from './final-score-status'
 
 import { ReviewWindowPolicyStatusCode } from './grade-review'
 
@@ -246,34 +246,8 @@ export function getMyQuestionAnswerDetail(
 
 /**
  * 学生是否可提交复核申请。
- * 优先使用后端 canSubmitReviewRequest 真源；缺省时回退到本地时间窗/开放申请/次数判断，避免旧接口短暂不一致。
+ * MVR-320：仅认 BE 下发 canSubmitReviewRequest===true；禁止缺省本地启发式回退（禁兼容）。
  */
 export function canSubmitReview(item: StudentExamItemVO | StudentScoreDetailResponse): boolean {
-  if (typeof item.canSubmitReviewRequest === 'boolean') {
-    return item.canSubmitReviewRequest
-  }
-  if (item.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
-    return false
-  }
-  if (item.reviewWindowStatus !== ReviewWindowPolicyStatusCode.ACTIVE) {
-    return false
-  }
-  if (item.reviewWindowWithinTime === false) {
-    return false
-  }
-  if ((item.openReviewRequestCount ?? 0) > 0) {
-    return false
-  }
-  if (item.maxRequestCount != null && (item.usedReviewRequestCount ?? 0) >= item.maxRequestCount) {
-    return false
-  }
-  if (item.reviewWindowOpenTime && item.reviewWindowCloseTime) {
-    const now = Date.now()
-    const openAt = new Date(item.reviewWindowOpenTime).getTime()
-    const closeAt = new Date(item.reviewWindowCloseTime).getTime()
-    if (Number.isFinite(openAt) && Number.isFinite(closeAt) && (now < openAt || now > closeAt)) {
-      return false
-    }
-  }
-  return true
+  return item.canSubmitReviewRequest === true
 }

@@ -20,6 +20,7 @@ import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import YearPicker from '@/components/ui-guide/ui/YearPicker.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -32,6 +33,11 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const {
+  evaluationHeld,
+  evaluationHoldBlockMessage,
+  assertEvaluationParticipable,
+} = usePortfolioArchiveWriteGuard()
 const reportYear = ref(String(new Date().getFullYear()))
 const loading = ref(false)
 const generating = ref(false)
@@ -163,6 +169,9 @@ async function submitAnnualReviewNotice(notice: PortfolioEvaluationTeacherNotice
   if (!(await confirmProxyWrite('确认年度考核材料'))) {
     return
   }
+  if (notice.evaluationHeld || !assertEvaluationParticipable('确认年度考核材料')) {
+    return
+  }
 
   if (submittingNoticeId.value || !canOperate.value) {
     return
@@ -254,6 +263,13 @@ usePortfolioScopedLoader(
 
 <template>
   <StageWorkbenchShell>
+    <UiAlertStrip
+      v-if="evaluationHeld"
+      tone="warning"
+      title="评价参评已 hold"
+      :description="evaluationHoldBlockMessage"
+      class="mb-3"
+    />
     <template #context>
       <ContextBar show-title layout="workbench" title="年度考核准备">
         <template #actions>
@@ -306,7 +322,7 @@ usePortfolioScopedLoader(
                 v-if="notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED"
                 variant="primary"
                 :loading="submittingNoticeId === notice.id"
-                :disabled="Boolean(submittingNoticeId)"
+                :disabled="Boolean(submittingNoticeId) || Boolean(notice.evaluationHeld) || evaluationHeld"
                 @click="submitAnnualReviewNotice(notice)"
               >
                 提交考核材料

@@ -141,10 +141,15 @@ const handleOpenChange = (open: boolean) => {
 
 .ui-date-picker :deep(.ant-picker) {
   width: 100%;
+  box-sizing: border-box;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 11px !important;
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
   background-color: var(--dp-bg-control);
   font-size: 14px;
+  line-height: 22px;
   color: var(--dp-text-primary);
   font-family: var(--dp-font-family);
   box-shadow: none;
@@ -155,15 +160,18 @@ const handleOpenChange = (open: boolean) => {
 }
 
 .ui-date-picker--sm :deep(.ant-picker) {
-  min-height: var(--dp-control-height-sm);
+  height: var(--dp-control-height-sm, 32px) !important;
+  min-height: var(--dp-control-height-sm, 32px) !important;
 }
 
 .ui-date-picker--md :deep(.ant-picker) {
-  min-height: var(--dp-control-height-md);
+  height: var(--dp-control-height-md, 36px) !important;
+  min-height: var(--dp-control-height-md, 36px) !important;
 }
 
 .ui-date-picker--lg :deep(.ant-picker) {
-  min-height: var(--dp-control-height-lg);
+  height: var(--dp-control-height-lg, 40px) !important;
+  min-height: var(--dp-control-height-lg, 40px) !important;
 }
 
 .ui-date-picker :deep(.ant-picker:hover) {
@@ -175,7 +183,17 @@ const handleOpenChange = (open: boolean) => {
   box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
+.ui-date-picker :deep(.ant-picker-input) {
+  display: flex !important;
+  align-items: center !important;
+  width: 100%;
+  height: 100%;
+}
+
 .ui-date-picker :deep(.ant-picker-input > input) {
+  height: 100% !important;
+  padding: 0 !important;
+  line-height: 22px !important;
   background-color: transparent;
   color: var(--dp-text-primary);
   font-size: 14px;
@@ -184,15 +202,19 @@ const handleOpenChange = (open: boolean) => {
 
 .ui-date-picker :deep(.ant-picker-input > input::placeholder) {
   color: var(--dp-text-muted);
+  line-height: inherit;
 }
 
-.ui-date-picker :deep(.ant-picker-suffix) {
+.ui-date-picker :deep(.ant-picker-suffix),
+.ui-date-picker :deep(.ant-picker-clear) {
+  display: inline-flex !important;
+  align-items: center !important;
+  margin-inline-start: 4px;
   color: var(--dp-text-muted);
 }
 
 .ui-date-picker :deep(.ant-picker-clear) {
   background: transparent;
-  color: var(--dp-text-muted);
 }
 
 .ui-date-picker--error :deep(.ant-picker) {

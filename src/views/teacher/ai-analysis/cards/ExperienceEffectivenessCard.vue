@@ -11,7 +11,9 @@
       >
         查看历史
       </UiButton>
-      <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
+      <UiButton
+        v-if="canManageReviewerWrites" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+      >
         评估有效性
       </UiButton>
     </template>
@@ -27,6 +29,7 @@
       <template #field-sourceExamId>
         <AnalysisExamSelect
           v-model="form.sourceExamId"
+          @selected-exam-change="sourceExamSummary = $event"
           placeholder="请选择经验来源考试"
           :scope-course-id="examSelectScopeCourseId"
           :scope-class-id="examSelectScopeClassId"
@@ -49,6 +52,7 @@
       <template #field-evalExamId>
         <AnalysisExamSelect
           v-model="form.evalExamId"
+          @selected-exam-change="evalExamSummary = $event"
           placeholder="请选择评估所用考试"
           :scope-course-id="examSelectScopeCourseId"
           :scope-class-id="examSelectScopeClassId"
@@ -130,6 +134,7 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { GradingExperienceCaseResponse } from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import type {
@@ -166,6 +171,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
+import { useExamSummariesReviewerWriteCapability } from '@/composables/useExamIdsReviewerWriteCapability'
 import { EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -214,6 +220,17 @@ const form = reactive<ExperienceEffectivenessForm>({
   experienceCaseId: undefined,
   evalExamId: undefined,
 })
+
+const sourceExamSummary = ref<ExamSummaryResponse | null>(null)
+const evalExamSummary = ref<ExamSummaryResponse | null>(null)
+const effectivenessExamSummaries = computed(() =>
+  [sourceExamSummary.value, evalExamSummary.value].filter(
+    (item): item is ExamSummaryResponse => item != null,
+  ),
+)
+const effectivenessExamIds = computed(() =>
+  [form.sourceExamId, form.evalExamId].filter((item): item is string => Boolean(item)),
+)
 
 const effectivenessFilterFields = computed<FilterField[]>(() => [
   {
@@ -548,7 +565,18 @@ async function reload(): Promise<void> {
   }
 }
 
+
+/** MVR-286：默认拒绝假可写；所选考试均须 canManageReviewerWrites */
+const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
+  computed(() => effectivenessExamIds.value),
+  computed(() => effectivenessExamSummaries.value),
+)
+
 async function handleGenerate(): Promise<void> {
+  if (!canManageReviewerWrites.value) {
+    showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
+    return
+  }
   if (generating.value) return
   const experienceCaseId = form.experienceCaseId
   const evalExamId = form.evalExamId

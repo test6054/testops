@@ -83,6 +83,9 @@ const rows = ref<ExceptionDashboardRow[]>([])
 const itemKindFilter = ref<ExceptionDashboardRowKind | undefined>(undefined)
 const forceReleaseOpen = ref(false)
 const forceReleaseTicket = ref<{ ticketId: string } | null>(null)
+/** MVR-373：与 BE canForceReleaseTicket 同源；禁止对话框写死 true */
+const forceReleaseAllowed = ref(false)
+
 const cancellingTicketId = ref<string>()
 const pageRegisterRetryingKey = ref<string | null>(null)
 const partialTailDismissingKey = ref<string | null>(null)
@@ -367,26 +370,38 @@ function rowDetail(row: ExceptionDashboardRow) {
 }
 
 function canForceReleaseTicket(row: ExceptionDashboardRow) {
+  // MVR-309：状态 + BE canForceReleaseTicket（归档 ARCHIVE_ADMIN / 档案袋 scanAllowed）
   return (
     row.itemKind === ScannerExceptionItemKindCode.TICKET
     && Boolean(row.ticketId)
     && (row.ticketStatus === ScanDispatchTicketStatusCode.PROCESSING
       || row.ticketStatus === ScanDispatchTicketStatusCode.SUSPENDED)
+    && row.canForceReleaseTicket === true
   )
 }
 
 function canCancelTicket(row: ExceptionDashboardRow) {
+  // MVR-309：状态 + BE canCancelTicket（归档 canManageMaterials / 档案袋 scanAllowed）
   return (
     row.itemKind === ScannerExceptionItemKindCode.TICKET
     && Boolean(row.ticketId)
     && row.ticketStatus === ScanDispatchTicketStatusCode.PENDING
+    && row.canCancelTicket === true
   )
+}
+
+function handleForceReleased(): void {
+  forceReleaseAllowed.value = false
+  void reloadAll().then(() => emit('metrics-changed'))
 }
 
 function openForceRelease(row: ExceptionDashboardRow) {
   if (!canForceReleaseTicket(row) || !row.ticketId) {
+    forceReleaseAllowed.value = false
     return
   }
+  // MVR-373：对话框二次闸须认 BE 行级 canForceReleaseTicket，禁止写死 true
+  forceReleaseAllowed.value = row.canForceReleaseTicket === true
   forceReleaseTicket.value = { ticketId: row.ticketId }
   forceReleaseOpen.value = true
 }
@@ -424,6 +439,10 @@ function canRetryPageRegisterRow(row: ExceptionDashboardRow): boolean {
   if (!row.scanBatchId || !row.examId) {
     return false
   }
+  // MVR-262：与 BE requireExamOwnerPermission 对齐，非主考不展示重试
+  if (row.canManageOwnerExamWrites !== true) {
+    return false
+  }
   const state = row.pageRegisterState
   return (
     state === PageRegisterStateCode.BLOCKED_RECOVERABLE
@@ -446,7 +465,11 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
     })
   }
   if (row.itemKind === ScannerExceptionItemKindCode.BINDING_CONFLICT) {
-    actions.push({ key: 'goto-handle', label: '手工绑定' })
+    if (row.canManageOwnerExamWrites === true) {
+      actions.push({ key: 'goto-handle', label: '手工绑定' })
+    } else {
+      actions.push({ key: 'goto-handle', label: '查看详情' })
+    }
   } else if (
     row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
     || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
@@ -455,7 +478,12 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
   ) {
     actions.push({ key: 'goto-handle', label: '前往处理' })
   }
-  if (row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL && row.scanBatchId && row.examId) {
+  if (
+    row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL
+    && row.scanBatchId
+    && row.examId
+    && row.canManageOwnerExamWrites === true
+  ) {
     actions.push({
       key: 'ignore-partial-tail',
       label: '忽略并继续',
@@ -605,6 +633,11 @@ async function dismissPartialTail(row: ExceptionDashboardRow) {
   ) {
     return
   }
+  // MVR-307：与 canManageOwnerExamWrites / 行动作展示闸同源
+  if (row.canManageOwnerExamWrites !== true) {
+    message.warning('仅本场主考可忽略余页异常')
+    return
+  }
   if (partialTailDismissingKey.value) {
     return
   }
@@ -637,6 +670,11 @@ async function retryPageRegister(row: ExceptionDashboardRow) {
     || !row.scanBatchId
     || !row.examId
   ) {
+    return
+  }
+  // MVR-307：与 canRetryPageRegisterRow / canManageOwnerExamWrites 同源
+  if (!canRetryPageRegisterRow(row)) {
+    message.warning('仅本场主考可重试页登记')
     return
   }
   if (pageRegisterRetryingKey.value) {
@@ -760,12 +798,9 @@ watch(
 
     <ScanDispatchForceReleaseDialog
       v-model:open="forceReleaseOpen"
+      :can-force-release="forceReleaseAllowed"
       :ticket="forceReleaseTicket ? { ticketId: forceReleaseTicket.ticketId } : null"
-      @released="
-        () => {
-          void reloadAll().then(() => emit('metrics-changed'))
-        }
-      "
+      @released="handleForceReleased"
     />
   </div>
 </template>

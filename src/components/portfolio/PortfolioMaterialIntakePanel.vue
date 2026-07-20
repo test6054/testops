@@ -1,6 +1,13 @@
 <template>
   <div class="portfolio-intake-panel">
     <SignalBand v-if="signalMetrics.length" :metrics="signalMetrics" variant="inline" compact />
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="portfolio-intake-panel__write-ban"
+    />
 
     <section class="portfolio-intake-panel__section">
       <h3 class="portfolio-intake-panel__section-title">材料来源</h3>
@@ -29,7 +36,7 @@
           size="sm"
           variant="outline"
           :loading="restartingRejected"
-          :disabled="writePending"
+          :disabled="writePending || archiveWriteForbidden"
           @click="handleRestartRejected"
         >
           恢复重新采集
@@ -40,7 +47,7 @@
           size="sm"
           variant="outline"
           :loading="scanOpening"
-          :disabled="writePending"
+          :disabled="writePending || archiveWriteForbidden"
           @click="openScan"
         >
           一体机扫描
@@ -50,7 +57,7 @@
           variant="primary"
           v-if="showRegisterStart"
           :loading="starting"
-          :disabled="writePending"
+          :disabled="writePending || archiveWriteForbidden"
           @click="handleStart"
         >
           登记并开始处理
@@ -60,7 +67,7 @@
           v-if="showRetryAi"
           variant="outline"
           :loading="retryingAi"
-          :disabled="writePending"
+          :disabled="writePending || archiveWriteForbidden"
           @click="handleRetryAi"
         >
           重新智能抽取
@@ -104,7 +111,7 @@
           variant="outline"
           size="sm"
           :loading="reassigning"
-          :disabled="!reassignReady || writePending"
+          :disabled="!reassignReady || writePending || archiveWriteForbidden"
           @click="handleReassign"
         >
           重分类
@@ -173,10 +180,10 @@
       <h3 class="portfolio-intake-panel__section-title">归档动作</h3>
       <p v-if="archiveActionHint" class="portfolio-intake-panel__meta">{{ archiveActionHint }}</p>
       <div v-if="!readOnly" class="portfolio-intake-panel__actions">
-        <UiButton size="sm" variant="outline" :loading="saving" :disabled="writePending" @click="saveDraft">
+        <UiButton size="sm" variant="outline" :loading="saving" :disabled="writePending || archiveWriteForbidden" @click="handleSaveDraft">
           保存草稿
         </UiButton>
-        <UiButton variant="primary" size="sm" :loading="submitting" :disabled="writePending" @click="handleSubmit">
+        <UiButton variant="primary" size="sm" :loading="submitting" :disabled="writePending || archiveWriteForbidden" @click="handleSubmit">
           提交审核
         </UiButton>
       </div>
@@ -218,6 +225,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   buildPortfolioIntakeScanReturnTo,
   usePortfolioIntake,
@@ -238,6 +246,11 @@ const emit = defineEmits<{
 const route = useRoute()
 const { targetTeacherId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 
 const fileNodeId = ref<string>()
 const fileName = ref<string>()
@@ -470,9 +483,20 @@ function resetLocalIntakeSourceContext() {
   dispatchResult.value = null
 }
 
+
+async function handleSaveDraft() {
+  if (!assertArchiveWritable('保存材料草稿')) {
+    return
+  }
+  await saveDraft()
+}
+
 async function handleStart() {
   if (!fileNodeId.value) {
     message.error('请先上传材料文件')
+    return
+  }
+  if (!assertArchiveWritable('开始材料采集')) {
     return
   }
   if (!(await confirmProxyWrite('开始材料采集'))) {
@@ -494,6 +518,9 @@ async function handleStart() {
 async function handleRetryAi() {
   if (!categoryId.value) {
     message.warning('请先选择档案分类')
+    return
+  }
+  if (!assertArchiveWritable('重新智能抽取')) {
     return
   }
   if (!(await confirmProxyWrite('重新智能抽取'))) {
@@ -518,6 +545,9 @@ async function handleRetryAi() {
 const restartingRejected = ref(false)
 
 async function handleRestartRejected() {
+  if (!assertArchiveWritable('恢复重新采集')) {
+    return
+  }
   if (!(await confirmProxyWrite('恢复重新采集'))) {
     return
   }
@@ -542,6 +572,9 @@ async function handleRestartRejected() {
 async function openScan() {
   if (!targetTeacherId.value) {
     message.error('请先选择教师')
+    return
+  }
+  if (!assertArchiveWritable('一体机扫描登记')) {
     return
   }
   const requestToken = intakeScopeToken.value
@@ -581,6 +614,7 @@ async function openScan() {
       status: ticket.status,
       taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
       contextLabel: ticket.portfolioSnapshot?.categoryName ?? materialTitle.value,
+      canCancelTicket: ticket.canCancelTicket,
     }
     dispatchResultOpen.value = true
   } catch (error) {
@@ -627,6 +661,9 @@ async function handleReassign() {
     message.warning('请选择目标分类')
     return
   }
+  if (!assertArchiveWritable('材料重分类')) {
+    return
+  }
   if (!(await confirmProxyWrite('材料重分类'))) {
     return
   }
@@ -642,6 +679,9 @@ async function handleReassign() {
 }
 
 async function handleSubmit() {
+  if (!assertArchiveWritable('提交材料采集结果')) {
+    return
+  }
   if (!(await confirmProxyWrite('提交材料采集结果'))) {
     return
   }

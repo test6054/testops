@@ -30,6 +30,7 @@
           <template #icon><ReloadOutlined /></template>查看最新
         </UiButton>
         <UiButton
+          v-if="canManageReviewerWrites"
           variant="outline"
           size="sm"
           :loading="generating"
@@ -68,6 +69,7 @@
           刷新
         </UiButton>
         <UiButton
+          v-if="canManageReviewerWrites"
           variant="outline"
           size="sm"
           :loading="generating"
@@ -205,7 +207,7 @@ import type { TeachingAnalysisRecordResponse } from '@/apis/mark/teaching-analys
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { MarkStudentOption } from '@/composables/useMarkExamRoster'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { computed, ref, watch } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import {
   FINAL_SCORE_STATUS_TONE,
   FinalScoreStatusDescription,
@@ -224,6 +226,7 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { useAiAnalysisGenerationFeedback } from '@/composables/useAiAnalysisGenerationFeedback'
+import { AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY } from '@/composables/useAiAnalysisScope'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { buildBarChartInsight, mergeChartHint } from '@/utils/mark-chart-insights'
@@ -252,6 +255,16 @@ const emit = defineEmits<{ (e: 'student-change', studentUserId: string): void }>
 const record = ref<TeachingAnalysisRecordResponse | null>(null)
 const loading = ref(false)
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
+
+/** MVR-285：默认拒绝假可写；依赖 AI 分析中心 overview 或页面 provide 的能力位 */
+const injectedCanManageReviewerWrites = inject(
+  AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY,
+  null,
+)
+const canManageReviewerWrites = computed(
+  () => injectedCanManageReviewerWrites?.value === true,
+)
+
 const selectedStudentUserId = ref<string | undefined>(undefined)
 const hasQueried = ref(false)
 
@@ -303,6 +316,10 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
+  if (!canManageReviewerWrites.value) {
+    showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
+    return
+  }
   const studentUserId = selectedStudentUserId.value
   if (!studentUserId) {
     showFormValidationMessage('请先选择学生')

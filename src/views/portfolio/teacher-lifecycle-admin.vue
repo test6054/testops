@@ -22,6 +22,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -79,6 +80,16 @@ function statusLabel(code?: string) {
   return PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL[code as PortfolioTeacherLifecycleStatusCode] || code
 }
 
+/** 目标态是否参评 hold：与 BE holdsEvaluationTasks 对齐（ACTIVE 除外）。 */
+function toStatusEvaluationHeld(code?: string): boolean {
+  return Boolean(code && code !== 'ACTIVE')
+}
+
+/** 目标态是否档案写禁：TEMP_HOLD 可填报，其余非 ACTIVE 写禁。 */
+function toStatusArchiveWriteForbidden(code?: string): boolean {
+  return Boolean(code && code !== 'ACTIVE' && code !== 'TEMP_HOLD')
+}
+
 async function loadEvents() {
   loading.value = true
   try {
@@ -120,7 +131,12 @@ async function applyLifecycle() {
       changeType: applyForm.changeType,
       reasonText: applyForm.reasonText?.trim() || undefined,
     })
-    message.success(`已更新为${next.lifecycleStatusLabel || next.lifecycleStatus}`)
+    const holdBits: string[] = []
+    if (next.evaluationHeld) holdBits.push('参评 hold')
+    if (next.archiveWriteForbidden) holdBits.push('档案写禁')
+    else if (next.lifecycleStatus === 'TEMP_HOLD') holdBits.push('档案可填报')
+    const holdSuffix = holdBits.length ? `（${holdBits.join(' · ')}）` : ''
+    message.success(`已更新为${next.lifecycleStatusLabel || next.lifecycleStatus}${holdSuffix}`)
     applyForm.reasonText = ''
     await loadEvents()
   } catch (error) {
@@ -358,9 +374,32 @@ onMounted(() => {
               {{ record.changeTypeLabel || record.changeType || '—' }}
             </template>
             <template v-else-if="column.key === 'statusFlow'">
-              {{ record.fromStatusLabel || statusLabel(record.fromStatus) }}
-              →
-              {{ record.toStatusLabel || statusLabel(record.toStatus) }}
+              <span>
+                {{ record.fromStatusLabel || statusLabel(record.fromStatus) }}
+                →
+                {{ record.toStatusLabel || statusLabel(record.toStatus) }}
+              </span>
+              <UiTag
+                v-if="toStatusEvaluationHeld(record.toStatus)"
+                tone="orange"
+                class="ml-1"
+              >
+                参评 hold
+              </UiTag>
+              <UiTag
+                v-if="toStatusArchiveWriteForbidden(record.toStatus)"
+                tone="red"
+                class="ml-1"
+              >
+                档案写禁
+              </UiTag>
+              <UiTag
+                v-else-if="record.toStatus === 'TEMP_HOLD'"
+                tone="green"
+                class="ml-1"
+              >
+                档案可填报
+              </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton size="sm" variant="ghost" @click="openTeacherDirectory(record.teacherUserId)">

@@ -401,6 +401,17 @@ function openCorrectionDetail(row: PortfolioCorrectionSummaryVO): void {
   void openDetail(row.id)
 }
 
+/**
+ * PF-P0-289：消费 requestId 深链打开对应纠错工单详情（待办/站内信可行动）。
+ */
+async function applyDeepLinkedRequest() {
+  const requestId = typeof route.query.requestId === 'string' ? route.query.requestId.trim() : ''
+  if (!requestId) {
+    return
+  }
+  await openDetail(requestId)
+}
+
 usePortfolioScopedLoader(
   () => {
     scopeRequestToken.value += 1
@@ -420,7 +431,9 @@ usePortfolioScopedLoader(
       return
     }
     void loadCategories()
-    void loadCorrections()
+    void loadCorrections().then(() => {
+      void applyDeepLinkedRequest()
+    })
   },
   () => targetTeacherId.value,
 )
@@ -432,9 +445,10 @@ watch(
     applyRoutePrefill()
     if (form.categoryId) {
       void loadPublishedFields(form.categoryId, form.archiveRecordId || undefined)
-      return
+    } else {
+      publishedFields.value = []
     }
-    publishedFields.value = []
+    void applyDeepLinkedRequest()
   },
   { deep: true },
 )

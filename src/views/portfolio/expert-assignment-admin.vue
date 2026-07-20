@@ -489,6 +489,9 @@ onMounted(async () => {
             :rows="3"
             :disabled="operating"
           />
+          <p class="mt-1 text-xs text-[var(--dp-color-text-tertiary)]">
+            封存 / 暂挂 / 迁出链路教师处于评价参评 hold，不可授权；后端会硬拦，禁止假成功。
+          </p>
         </UiFormItem>
         <UiFormItem label="材料分类编码" required>
           <UiTextarea

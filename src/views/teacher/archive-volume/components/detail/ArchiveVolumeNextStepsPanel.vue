@@ -110,17 +110,24 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
   cursor: pointer;
   transition:
     border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
 }
 
 .archive-next-steps__item:hover {
   border-color: var(--dp-primary);
   box-shadow: var(--dp-shadow-sm);
+  transform: translateY(-1px);
 }
 
 .archive-next-steps__item--primary {
   border-color: var(--dp-orange-500);
   background: color-mix(in srgb, var(--dp-orange-500) 6%, var(--dp-surface));
+}
+
+.archive-next-steps__item--primary:hover {
+  border-color: var(--dp-orange-600, var(--dp-orange-500));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--dp-orange-500) 16%, transparent);
 }
 
 .archive-next-steps__item-head {
@@ -156,5 +163,15 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
   font-size: 12px;
   line-height: 1.5;
   color: var(--dp-text-4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archive-next-steps__item {
+    transition: none;
+  }
+
+  .archive-next-steps__item:hover {
+    transform: none;
+  }
 }
 </style>

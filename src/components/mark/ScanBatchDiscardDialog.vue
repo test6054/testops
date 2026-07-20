@@ -37,12 +37,15 @@ import UiConfirmModal from '@/components/ui-guide/ui/ConfirmModal.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import { showFormValidationMessage } from '@/utils/error-handler'
 
 defineOptions({ name: 'ScanBatchDiscardDialog' })
 
 const props = defineProps<{
   open: boolean
   confirmLoading?: boolean
+  /** MVR-376：与 BE canManageOwnerBatchActions / requireExamOwnerPermission 同源 */
+  canManageOwnerBatchActions?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -71,6 +74,11 @@ function handleCancel(): void {
 }
 
 function handleOk(): void {
+  // MVR-376：弹窗二次闸，禁止仅靠父层隐藏入口
+  if (props.canManageOwnerBatchActions !== true) {
+    showFormValidationMessage('当前账号无主考扫描写权限，无法废弃批次')
+    return
+  }
   if (props.confirmLoading) return
   const trimmed = reason.value.trim()
   if (!trimmed) {

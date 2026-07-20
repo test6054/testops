@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type {PortfolioEvaluationRereviewOrderVO} from '@/apis/portfolio/evaluation-publicity';
 import type {
   PortfolioEvaluationTaskVO,
   PortfolioEvaluationWorkgroupOptionVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
@@ -17,7 +18,10 @@ import {
   PortfolioEvaluationTaskStatusCode,
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import {
+  portfolioEvaluationPublicityApi
+  
+} from '@/apis/portfolio/evaluation-publicity'
 import {
   portfolioEvaluationTaskApi,
   portfolioEvaluationWorkgroupApi,
@@ -94,10 +98,18 @@ const archivingId = ref('')
 const publishing = ref(false)
 const requestToken = ref(0)
 const router = useRouter()
+const route = useRoute()
 const rows = ref<PortfolioEvaluationTaskVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(10)
 const pageTotal = ref(0)
+/** PF-P0-293：站内信/待办 evaluationTaskId 深链高亮 */
+const highlightedTaskId = ref('')
+const pendingLocateTaskId = ref(
+  typeof route.query.evaluationTaskId === 'string' ? route.query.evaluationTaskId.trim() : '',
+)
+/** 深链 CORRECTION_REVIEW 仅自动打开完成复核弹窗一次 */
+const autoOpenedCompleteRereview = ref(false)
 const publishModalOpen = ref(false)
 const publishTarget = ref<PortfolioEvaluationTaskVO | null>(null)
 const createModalOpen = ref(false)
@@ -106,13 +118,30 @@ const workgroupsLoading = ref(false)
 const workgroups = ref<PortfolioEvaluationWorkgroupOptionVO[]>([])
 const writing = computed(
   () =>
-    creating.value || Boolean(advancingId.value) || Boolean(archivingId.value) || publishing.value,
+    creating.value
+    || Boolean(advancingId.value)
+    || Boolean(archivingId.value)
+    || publishing.value
+    || completeRereviewSubmitting.value
+    || cancelRereviewSubmitting.value
+    || completeRereviewLoading.value,
 )
 const publishForm = reactive({
   publicityTitle: '',
   startTime: '',
   endTime: '',
 })
+/** 完成更正复核：结论录入 + 开放工单批量 complete */
+const completeRereviewModalOpen = ref(false)
+const completeRereviewTarget = ref<PortfolioEvaluationTaskVO | null>(null)
+const completeRereviewOrders = ref<PortfolioEvaluationRereviewOrderVO[]>([])
+const completeRereviewLoading = ref(false)
+const completeRereviewSubmitting = ref(false)
+const completeRereviewForm = reactive({
+  conclusionSummary: '',
+  cancelReason: '',
+})
+const cancelRereviewSubmitting = ref(false)
 const createForm = reactive({
   taskName: '',
   evaluationMode: PortfolioEvaluationModeCode.BY_INDICATOR,
@@ -148,7 +177,11 @@ const archiveReminderText = computed(() => {
 async function loadPage() {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
-  const request = { pageNum: pageNum.value, pageSize: pageSize.value }
+  const request = {
+    pageNum: pageNum.value,
+    pageSize: pageSize.value,
+    locateTaskId: pendingLocateTaskId.value || undefined,
+  }
   loading.value = true
   try {
     const page = await portfolioEvaluationTaskApi.page(request)
@@ -157,18 +190,72 @@ async function loadPage() {
     }
     rows.value = page.list
     pageTotal.value = page.total
+    pageNum.value = page.pageNum ?? pageNum.value
+    pageSize.value = page.pageSize ?? pageSize.value
+    // 定位仅生效一次，避免后续翻页被 locateTaskId 强拉回目标页
+    const locateOnce = pendingLocateTaskId.value
+    pendingLocateTaskId.value = ''
+    if (locateOnce) {
+      highlightedTaskId.value = locateOnce
+    }
+    await applyDeepLinkedTask(locateOnce)
   } catch (error) {
     if (requestToken.value !== currentToken) {
       return
     }
     rows.value = []
     pageTotal.value = 0
+    highlightedTaskId.value = ''
     showUserError(error, '加载评价任务失败')
   } finally {
     if (requestToken.value === currentToken) {
       loading.value = false
     }
   }
+}
+
+/** PF-P0-293：消费 evaluationTaskId 深链 — 高亮目标行；更正复核中可打开完成复核弹窗。 */
+async function applyDeepLinkedTask(taskId: string) {
+  if (!taskId) {
+    if (!highlightedTaskId.value) {
+      return
+    }
+    // 无新深链时保持既有高亮，仅在列表仍含目标时滚动
+    if (!rows.value.some((item) => item.id === highlightedTaskId.value)) {
+      return
+    }
+    scrollToHighlightedTask()
+    return
+  }
+  highlightedTaskId.value = taskId
+  const matched = rows.value.find((item) => item.id === taskId)
+  if (!matched) {
+    return
+  }
+  scrollToHighlightedTask()
+  if (
+    !autoOpenedCompleteRereview.value
+    && matched.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW
+  ) {
+    autoOpenedCompleteRereview.value = true
+    await openCompleteRereview(matched)
+  }
+}
+
+function taskRowClassName(record: PortfolioEvaluationTaskVO): string {
+  return record.id === highlightedTaskId.value ? 'school-evaluation__row-active' : ''
+}
+
+function scrollToHighlightedTask() {
+  if (!highlightedTaskId.value) {
+    return
+  }
+  void nextTick(() => {
+    document.querySelector('.school-evaluation__row-active')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    })
+  })
 }
 
 async function openCreateModal() {
@@ -404,10 +491,123 @@ async function createRereview(row: PortfolioEvaluationTaskVO) {
 }
 
 function goFillCorrection(row: PortfolioEvaluationTaskVO) {
+  // 路由真源：admin/evaluation-fill（无 school/evaluation-fill）
   void router.push({
-    path: '/portfolio/school/evaluation-fill',
+    path: '/portfolio/admin/evaluation-fill',
     query: { evaluationTaskId: row.id },
   })
+}
+
+/** 打开完成更正复核：列出开放工单，录入结论后逐条 complete（末单自动回写 ARCHIVED）。 */
+async function openCompleteRereview(row: PortfolioEvaluationTaskVO) {
+  if (writing.value) {
+    return
+  }
+  completeRereviewTarget.value = row
+  completeRereviewForm.conclusionSummary = ''
+  completeRereviewForm.cancelReason = ''
+  completeRereviewOrders.value = []
+  completeRereviewModalOpen.value = true
+  completeRereviewLoading.value = true
+  try {
+    const orders = await portfolioEvaluationPublicityApi.listRereview({
+      evaluationTaskId: row.id,
+    })
+    completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === 'OPEN')
+  } catch (error) {
+    completeRereviewModalOpen.value = false
+    completeRereviewTarget.value = null
+    showUserError(error, '加载更正复核工单失败')
+  } finally {
+    completeRereviewLoading.value = false
+  }
+}
+
+async function submitCompleteRereview() {
+  if (completeRereviewSubmitting.value || !completeRereviewTarget.value) {
+    return
+  }
+  const conclusion = completeRereviewForm.conclusionSummary.trim()
+  if (!conclusion) {
+    showFormValidationMessage('请填写更正复核结论')
+    return
+  }
+  const task = completeRereviewTarget.value
+  const openOrders = completeRereviewOrders.value
+  completeRereviewSubmitting.value = true
+  advancingId.value = task.id
+  try {
+    if (openOrders.length === 0) {
+      // 无开放工单：任务可能已全部完成工单但状态残留，走推进回写
+      await portfolioEvaluationPublicityApi.advanceTask({
+        taskId: task.id,
+        action: PortfolioEvaluationTaskAdvanceActionCode.COMPLETE_CORRECTION_REVIEW,
+      })
+    } else {
+      for (const order of openOrders) {
+        await portfolioEvaluationPublicityApi.completeRereview({
+          orderId: order.id,
+          conclusionSummary: conclusion,
+        })
+      }
+    }
+    message.success('更正复核已完成并回写归档')
+    completeRereviewModalOpen.value = false
+    completeRereviewTarget.value = null
+    completeRereviewOrders.value = []
+    completeRereviewForm.conclusionSummary = ''
+    await loadPage()
+  } catch (error) {
+    showUserError(error, '完成更正复核失败')
+  } finally {
+    completeRereviewSubmitting.value = false
+    advancingId.value = ''
+  }
+}
+
+/** 撤销单条开放更正复核工单（不改结论）。 */
+async function cancelRereviewOrder(order: PortfolioEvaluationRereviewOrderVO): Promise<void> {
+  if (cancelRereviewSubmitting.value || completeRereviewSubmitting.value) {
+    return
+  }
+  const reason = completeRereviewForm.cancelReason.trim()
+  if (!reason) {
+    message.warning('请填写撤销原因')
+    return
+  }
+  cancelRereviewSubmitting.value = true
+  advancingId.value = completeRereviewTarget.value?.id ? String(completeRereviewTarget.value.id) : ''
+  try {
+    await portfolioEvaluationPublicityApi.cancelRereview({
+      orderId: order.id,
+      reasonText: reason,
+    })
+    message.success('复核工单已撤销')
+    // 刷新开放工单列表；若已无开放工单则关闭弹窗并重载任务
+    const task = completeRereviewTarget.value
+    if (!task) {
+      completeRereviewModalOpen.value = false
+      await loadPage()
+      return
+    }
+    const orders = await portfolioEvaluationPublicityApi.listRereview({
+      evaluationTaskId: task.id,
+    })
+    completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === 'OPEN')
+    if (completeRereviewOrders.value.length === 0) {
+      completeRereviewModalOpen.value = false
+      completeRereviewTarget.value = null
+      completeRereviewOrders.value = []
+      completeRereviewForm.conclusionSummary = ''
+      completeRereviewForm.cancelReason = ''
+      await loadPage()
+    }
+  } catch (error) {
+    showUserError(error, '撤销复核工单失败')
+  } finally {
+    cancelRereviewSubmitting.value = false
+    advancingId.value = ''
+  }
 }
 
 /** 组装学校评价任务行内操作。 */
@@ -473,6 +673,12 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
       key: 'fillCorrection',
       label: '去改结论',
     })
+    actions.push({
+      key: 'completeRereview',
+      label: '完成更正复核',
+      tone: 'primary',
+      disabled: writing.value,
+    })
   }
   return actions
 }
@@ -503,8 +709,26 @@ function handleTaskRowAction(key: string, row: PortfolioEvaluationTaskVO): void 
     case 'fillCorrection':
       goFillCorrection(row)
       break
+    case 'completeRereview':
+      void openCompleteRereview(row)
+      break
   }
 }
+
+watch(
+  () => route.query.evaluationTaskId,
+  async (taskId, previousTaskId) => {
+    const next = typeof taskId === 'string' ? taskId.trim() : ''
+    const prev = typeof previousTaskId === 'string' ? previousTaskId.trim() : ''
+    if (next === prev) {
+      return
+    }
+    pageNum.value = 1
+    pendingLocateTaskId.value = next
+    autoOpenedCompleteRereview.value = false
+    await loadPage()
+  },
+)
 
 void loadPage()
 </script>
@@ -543,6 +767,7 @@ void loadPage()
         :loading="loading"
         :total="pageTotal"
         row-key="id"
+        :row-class-name="taskRowClassName"
         @page-change="() => void loadPage()"
       >
         <template #bodyCell="{ column, record }">
@@ -665,6 +890,61 @@ void loadPage()
         style="width: 100%"
       />
     </UiDialog>
+
+    <UiDialog
+      v-model:open="completeRereviewModalOpen"
+      title="完成更正复核"
+      ok-text="确认完成"
+      cancel-text="取消"
+      :confirm-loading="completeRereviewSubmitting || completeRereviewLoading || cancelRereviewSubmitting"
+      @ok="() => void submitCompleteRereview()"
+    >
+      <p class="school-evaluation__field">
+        任务「{{ completeRereviewTarget?.taskName || '' }}」：
+        <template v-if="completeRereviewLoading">正在加载开放工单…</template>
+        <template v-else-if="completeRereviewOrders.length === 0">
+          当前无开放复核工单，将直接回写归档。
+        </template>
+        <template v-else>
+          将完成 {{ completeRereviewOrders.length }} 条开放工单并在全部完成后回写归档。
+        </template>
+      </p>
+      <ul
+        v-if="!completeRereviewLoading && completeRereviewOrders.length > 0"
+        class="school-evaluation__field school-evaluation__rereview-orders"
+      >
+        <li v-for="order in completeRereviewOrders" :key="String(order.id)">
+          工单 #{{ order.id }}
+          <template v-if="order.subjectTeacherUserId"> · 教师 {{ order.subjectTeacherUserId }}</template>
+          <template v-else> · 整任务</template>
+          <template v-if="order.lifecycleStatusLabel || order.lifecycleStatus">
+            · {{ order.lifecycleStatusLabel || order.lifecycleStatus }}
+          </template>
+          <template v-if="order.evaluationHeld"> · 参评 hold</template>
+          <UiButton
+            size="sm"
+            variant="ghost"
+            class="school-evaluation__cancel-order"
+            :disabled="cancelRereviewSubmitting || completeRereviewSubmitting"
+            @click="() => void cancelRereviewOrder(order)"
+          >
+            撤销工单
+          </UiButton>
+        </li>
+      </ul>
+      <UiInput
+        size="sm"
+        v-model="completeRereviewForm.cancelReason"
+        class="school-evaluation__field"
+        placeholder="撤销原因（撤销工单时必填）"
+      />
+      <UiInput
+        size="sm"
+        v-model="completeRereviewForm.conclusionSummary"
+        class="school-evaluation__field"
+        placeholder="更正复核结论摘要（完成时必填）"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -675,10 +955,18 @@ void loadPage()
   margin-bottom: var(--dp-space-3);
 }
 
+.school-evaluation__cancel-order {
+  margin-left: var(--dp-space-2);
+}
+
 .school-evaluation__suspended-from {
   display: block;
   margin-top: var(--dp-space-1);
   color: var(--dp-text-secondary);
   font-size: 12px;
+}
+
+:deep(.school-evaluation__row-active) {
+  background: var(--dp-color-primary-bg);
 }
 </style>

@@ -84,6 +84,8 @@ const props = defineProps<{
   groups: QuestionMarkingGroupResponse[]
   viewAllRecycled: boolean
   leaderGroupIds: string[]
+  /** MVR-317：与父 canReassignRecycledTasks / BE requireRecycledTaskReassignPermission 同源 */
+  canReassign?: boolean
 }>()
 
 const loading = ref(false)
@@ -151,6 +153,11 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 }
 
 async function submitReassign(task: MarkingTaskResponse): Promise<void> {
+  // MVR-317：回收再分配二次拦截
+  if (props.canReassign !== true) {
+    message.warning('当前账号无权再分配回收任务')
+    return
+  }
   const targetReviewerUserId = targetReviewerByTaskId[task.id]
   if (!targetReviewerUserId) {
     return

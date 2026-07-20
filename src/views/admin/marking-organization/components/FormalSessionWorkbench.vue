@@ -248,7 +248,7 @@ const sessionTableEmptyDescription = computed(() => {
     if (props.createBlocked) {
       return ''
     }
-    return props.canManage ? '暂无正评会话，点击顶部「创建正评」开始阅卷' : '暂无正评会话'
+    return props.canManage === true ? '暂无正评会话，点击顶部「创建正评」开始阅卷' : '暂无正评会话'
   }
   if (props.pagination.total === 0 && hasActiveFilter.value) {
     return '未找到匹配会话，请调整筛选条件'
@@ -269,28 +269,28 @@ function emitPageChange(page: { current: number, pageSize: number }): void {
 }
 
 function canStart(status: FormalSessionStatusCode): boolean {
-  return props.canManage && status === FormalSessionStatusCode.SESSION_CREATED
+  return props.canManage === true && status === FormalSessionStatusCode.SESSION_CREATED
 }
 
 function canComplete(record: FormalSessionResponse): boolean {
   return (
-    props.canManage
+    props.canManage === true
     && record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE
     && record.sessionTaskCompletionReady
   )
 }
 
 function canPause(status: FormalSessionStatusCode): boolean {
-  return props.canManage && status === FormalSessionStatusCode.SESSION_ACTIVE
+  return props.canManage === true && status === FormalSessionStatusCode.SESSION_ACTIVE
 }
 
 function canResume(status: FormalSessionStatusCode): boolean {
-  return props.canManage && status === FormalSessionStatusCode.SESSION_PAUSED
+  return props.canManage === true && status === FormalSessionStatusCode.SESSION_PAUSED
 }
 
 function canClose(status: FormalSessionStatusCode): boolean {
   return (
-    props.canManage
+    props.canManage === true
     && (status === FormalSessionStatusCode.SESSION_ACTIVE
       || status === FormalSessionStatusCode.SESSION_PAUSED
       || status === FormalSessionStatusCode.SESSION_COMPLETED)
@@ -298,7 +298,7 @@ function canClose(status: FormalSessionStatusCode): boolean {
 }
 
 function canDelete(status: FormalSessionStatusCode): boolean {
-  return props.canManage && status === FormalSessionStatusCode.SESSION_CREATED
+  return props.canManage === true && status === FormalSessionStatusCode.SESSION_CREATED
 }
 
 function buildRowActions(record: FormalSessionResponse): UiTableRowActionItem[] {
@@ -362,7 +362,8 @@ function buildRowActions(record: FormalSessionResponse): UiTableRowActionItem[] 
 }
 
 function guardManageAction(): boolean {
-  if (props.canManage) {
+  // MVR-377：仅认 BE canManageExamOwner===true（父层已叠 ACTIVE）
+  if (props.canManage === true) {
     return true
   }
   showFormValidationMessage('仅考试主考老师可管理正评会话')

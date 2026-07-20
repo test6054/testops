@@ -20,6 +20,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -28,6 +29,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -40,6 +42,23 @@ const router = useRouter()
 const route = useRoute()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  evaluationHeld,
+  evaluationHoldBlockMessage,
+  lifecycleStatusLabel,
+} = usePortfolioArchiveWriteGuard()
+
+/** 课程档案概览返回的生命周期结构态（与写禁 guard 双源对齐展示）。 */
+const overviewLifecycle = ref<{
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
+}>({})
 
 const loading = ref(false)
 const customLoading = ref(false)
@@ -64,7 +83,8 @@ const highlightCourseCode = ref('')
 const semesterFilter = ref('')
 const overviewRequestToken = ref(0)
 
-const readonlyMode = computed(() => canPickTeachers.value && !!targetTeacherId.value)
+const readonlyMode = computed(() =>
+  (canPickTeachers.value && !!targetTeacherId.value) || archiveWriteForbidden.value)
 
 const displayedCourses = computed(() => {
   const code = highlightCourseCode.value.trim()
@@ -126,6 +146,7 @@ function resetOverviewContext() {
     frameworkSlotTotal: 0,
   }
   identityLayers.value = []
+  overviewLifecycle.value = {}
   multiIdentityNotes.value = []
   teachingWorkload.value = null
   loadFailed.value = false
@@ -161,6 +182,13 @@ async function loadOverview() {
     identityLayers.value = overview.identityLayers ?? []
     multiIdentityNotes.value = overview.multiIdentityNotes ?? []
     teachingWorkload.value = overview.teachingWorkloadByIdentity ?? null
+    overviewLifecycle.value = {
+      lifecycleStatus: overview.lifecycleStatus,
+      lifecycleStatusLabel: overview.lifecycleStatusLabel,
+      archiveWriteForbidden: overview.archiveWriteForbidden,
+      evaluationHeld: overview.evaluationHeld,
+      countsInCurrentFacultyStructure: overview.countsInCurrentFacultyStructure,
+    }
     try {
       const customList = await portfolioTeacherCustomCategoryApi.list({
         teacherId: scopeTeacherId(),
@@ -236,6 +264,9 @@ async function createCustomCategory() {
   if (creating.value) {
     return
   }
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('创建课程档案自建分类'))) {
     return
   }
@@ -262,6 +293,9 @@ async function confirmDeleteCustomCategory(row: PortfolioTeacherCustomCategoryVO
   }
   if (deletingCategoryId.value) return
 
+  if (!assertArchiveWritable()) {
+    return
+  }
   if (!(await confirmProxyWrite('删除课程档案自建分类'))) {
     return
   }
@@ -313,6 +347,20 @@ watch(
         subtitle="按讲授课程查看五框架完成度"
       />
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
+    <UiAlertStrip
+      v-else-if="evaluationHeld || overviewLifecycle.evaluationHeld"
+      tone="warning"
+      title="评价参评 hold"
+      :description="evaluationHoldBlockMessage || '当前教师处于参评 hold（如暂挂），档案可填报但不可参与进行中评价。'"
+      class="mb-3"
+    />
 
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
@@ -329,6 +377,30 @@ watch(
           {{ overviewSummary.fullyCompleteCourseCount }} 门 · 槽位完成
           {{ overviewSummary.frameworkSlotDone }}/{{ overviewSummary.frameworkSlotTotal }}
         </p>
+        <div
+          v-if="overviewLifecycle.lifecycleStatus || lifecycleStatusLabel"
+          class="course-archive__lifecycle"
+        >
+          <UiTag
+            v-if="overviewLifecycle.lifecycleStatus || lifecycleStatusLabel"
+            :tone="overviewLifecycle.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'"
+          >
+            {{ overviewLifecycle.lifecycleStatusLabel || lifecycleStatusLabel || overviewLifecycle.lifecycleStatus }}
+          </UiTag>
+          <UiTag v-if="overviewLifecycle.evaluationHeld || evaluationHeld" tone="orange" class="ml-1">
+            参评 hold
+          </UiTag>
+          <UiTag v-if="overviewLifecycle.archiveWriteForbidden || archiveWriteForbidden" tone="red" class="ml-1">
+            档案写禁
+          </UiTag>
+          <UiTag
+            v-if="overviewLifecycle.countsInCurrentFacultyStructure === false"
+            tone="neutral"
+            class="ml-1"
+          >
+            不计入在岗结构
+          </UiTag>
+        </div>
         <div v-if="teachingWorkload" class="course-archive__workload">
           <span>校内学时 {{ teachingWorkload.campusWorkloadHours ?? 0 }}</span>
           <span> · 外部学时 {{ teachingWorkload.externalWorkloadHours ?? 0 }}</span>

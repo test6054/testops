@@ -84,6 +84,15 @@ const form = reactive({
   detailDescription: '',
 })
 
+const formTeacherId = computed(() => form.teacherId || undefined)
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
+
+
 const reviewForm = reactive({
   reviewConclusion: PortfolioEthicsReviewConclusionCode.RELEASE,
   reviewOpinion: '',
@@ -98,6 +107,8 @@ const columns: ColumnsType = [
   { title: '状态', key: 'sanctionStatus', width: 110 },
   { title: '约束', key: 'constraintActive', width: 80 },
   { title: '公开摘要', dataIndex: 'publicSummary', key: 'publicSummary', ellipsis: true },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '操作', key: 'actions', width: 200 },
 ]
 
@@ -212,6 +223,14 @@ function openReview(row: PortfolioEthicsSanctionVO) {
   reviewOpen.value = true
 }
 
+
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 async function openDetail(row: PortfolioEthicsSanctionVO) {
   const currentToken = detailRequestToken.value + 1
   detailRequestToken.value = currentToken
@@ -293,6 +312,9 @@ async function loadPage() {
 }
 
 async function saveSanction() {
+  if (!assertArchiveWritable('登记师德处分')) {
+    return
+  }
   if (writing.value) return
   if (!form.teacherId.trim()) {
     showFormValidationMessage('请填写教师用户编号')
@@ -337,6 +359,13 @@ async function saveSanction() {
 }
 
 async function submitReview() {
+  if (reviewTarget.value?.teacherId) {
+    form.teacherId = String(reviewTarget.value.teacherId)
+    await reloadLifecycleState()
+  }
+  if (!assertArchiveWritable('师德处分复核')) {
+    return
+  }
   if (!reviewTarget.value || writing.value) return
   if (
     (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
@@ -398,6 +427,13 @@ onMounted(() => {
         </template>
       </ContextBar>
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
     <UiCard>
       <div class="ethics-admin__filters">
         <UiInput
@@ -457,6 +493,25 @@ onMounted(() => {
               <UiTag :tone="record.constraintActive ? 'red' : 'gray'">
                 {{ record.constraintActive ? '约束中' : '已解除' }}
               </UiTag>
+            </template>
+            <template v-else-if="column.key === 'lifecycleStatus'">
+              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+            
+              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-else class="text-neutral-400">—</span>
+            </template>
+            <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+              <span>
+                {{
+                  record.countsInCurrentFacultyStructure === true
+                    ? '是'
+                    : record.countsInCurrentFacultyStructure === false
+                      ? '否'
+                      : '—'
+                }}
+              </span>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton size="sm" variant="soft" @click="openDetail(record)"> 详情 </UiButton>

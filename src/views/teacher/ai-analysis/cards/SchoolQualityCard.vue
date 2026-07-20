@@ -3,7 +3,9 @@
     <template #actions>
       <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
-      <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
+      <UiButton
+        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+      >
         生成分析
       </UiButton>
     </template>
@@ -30,6 +32,7 @@
           :scope-semester="effectiveSemester"
           :auto-select-scoped-exams="examSelectAutoSelectScoped"
           placeholder="请选择至少 2 场考试"
+          @selected-exams-change="selectedExams = $event"
         />
       </template>
     </UiFilterBar>
@@ -90,6 +93,7 @@
 </template>
 
 <script lang="ts" setup>
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { SchoolQualityAnalysisResponse, SchoolQualityItemResponse, SchoolQualityRatingCode } from '@/apis/mark/school-quality'
 import type { BadgeTone, FilterField, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -117,6 +121,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
+import { useExamSummariesReviewerWriteCapability } from '@/composables/useExamIdsReviewerWriteCapability'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { formatSemester } from '@/types/enums/semester-enum'
 import {
@@ -166,6 +171,8 @@ const form = reactive<SchoolQualityForm>({
   dimensionId: '',
   examIds: [],
 })
+
+const selectedExams = ref<ExamSummaryResponse[]>([])
 
 const {
   records: historyRecords,
@@ -476,7 +483,18 @@ async function reload(): Promise<void> {
   }
 }
 
+
+/** MVR-286：默认拒绝假可写；所选考试均须 canManageReviewerWrites */
+const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
+  computed(() => form.examIds),
+  computed(() => selectedExams.value),
+)
+
 async function handleGenerate(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
+    return
+  }
   if (generating.value) return
   const examIds = form.examIds
   if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {

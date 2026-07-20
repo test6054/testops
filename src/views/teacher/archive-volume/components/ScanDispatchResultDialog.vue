@@ -28,6 +28,8 @@ export interface ScanDispatchResultPayload {
   taskKind?: ScanTaskKindCode
   contextLabel?: string
   gapTaskId?: string
+  /** MVR-309：与 BE canCancelTicket 同源 */
+  canCancelTicket?: boolean
 }
 
 const props = withDefaults(
@@ -55,7 +57,11 @@ let pendingTicketsLoadGeneration = 0
 const previewUrl = computed(() =>
   props.payload?.kioskUrl ? appendUrlQueryParam(props.payload.kioskUrl, 'mode', 'preview') : '',
 )
-const canCancel = computed(() => props.payload?.status === ScanDispatchTicketStatusCode.PENDING)
+// MVR-309：状态 + BE canCancelTicket（创建响应/列表同源）
+const canCancel = computed(() =>
+  props.payload?.status === ScanDispatchTicketStatusCode.PENDING
+  && props.payload?.canCancelTicket === true,
+)
 const isPortfolioDispatch = computed(
   () => (props.payload?.taskKind ?? props.taskKind) === ScanTaskKindCode.PORTFOLIO_COLLECT,
 )
@@ -117,6 +123,7 @@ async function loadPendingTickets() {
         traceLabelCode: item.traceLabelCode,
         status: item.status,
         taskKind: item.taskKind,
+        canCancelTicket: item.canCancelTicket,
         contextLabel:
           item.portfolioSnapshot?.gapTaskTitle
           ?? item.portfolioSnapshot?.categoryName
@@ -164,6 +171,10 @@ async function handleCancel() {
     return
   }
   if (cancelling.value || downloading.value) {
+    return
+  }
+  // MVR-309：二次拦截，对齐 canCancel
+  if (!canCancel.value) {
     return
   }
   cancelling.value = true

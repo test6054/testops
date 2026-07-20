@@ -234,7 +234,7 @@ const sessionTableEmptyDescription = computed(() => {
     if (props.createBlocked) {
       return ''
     }
-    return props.canManage ? '暂无试评会话，点击顶部「创建试评」开始定标' : '暂无试评会话'
+    return props.canManage === true ? '暂无试评会话，点击顶部「创建试评」开始定标' : '暂无试评会话'
   }
   if (props.pagination.total === 0 && hasActiveFilter.value) {
     return '未找到匹配会话，请调整筛选条件'
@@ -274,12 +274,12 @@ function emitPageChange(page: { current: number, pageSize: number }): void {
 }
 
 function canStart(status: TrialSessionStatusCode): boolean {
-  return props.canManage && status === TrialSessionStatusCode.TRIAL_CREATED
+  return props.canManage === true && status === TrialSessionStatusCode.TRIAL_CREATED
 }
 
 function canCalibrate(status: TrialSessionStatusCode): boolean {
   return (
-    props.canManage
+    props.canManage === true
     && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
       || status === TrialSessionStatusCode.TRIAL_SUBMITTED)
   )
@@ -287,7 +287,7 @@ function canCalibrate(status: TrialSessionStatusCode): boolean {
 
 function canClose(status: TrialSessionStatusCode): boolean {
   return (
-    props.canManage
+    props.canManage === true
     && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
       || status === TrialSessionStatusCode.TRIAL_SUBMITTED
       || status === TrialSessionStatusCode.CALIBRATED)
@@ -295,7 +295,7 @@ function canClose(status: TrialSessionStatusCode): boolean {
 }
 
 function canDelete(status: TrialSessionStatusCode): boolean {
-  return props.canManage && status === TrialSessionStatusCode.TRIAL_CREATED
+  return props.canManage === true && status === TrialSessionStatusCode.TRIAL_CREATED
 }
 
 function buildRowActions(record: TrialSessionResponse): UiTableRowActionItem[] {
@@ -327,7 +327,8 @@ function buildRowActions(record: TrialSessionResponse): UiTableRowActionItem[] {
 }
 
 function guardManageAction(): boolean {
-  if (props.canManage) {
+  // MVR-377：仅认 BE canManageExamOwner===true（父层已叠 ACTIVE）
+  if (props.canManage === true) {
     return true
   }
   showFormValidationMessage('仅考试主考老师可管理试评会话')

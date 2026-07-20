@@ -30,6 +30,17 @@ const bundle = ref<PortfolioExpertAssignmentReviewBundleVO | null>(null)
 const errorMessage = ref('')
 const requestToken = ref(0)
 
+/** 被评教师中处于评价参评 hold 的人数（TEMP_HOLD/SEALED 等）。 */
+const heldSubjectCount = computed(() =>
+  (bundle.value?.subjectTeachers ?? []).filter((item) => Boolean(item.evaluationHeld)).length,
+)
+
+/** 是否全部被评教师均参评 hold，填报入口应禁用。 */
+const allSubjectsEvaluationHeld = computed(() => {
+  const teachers = bundle.value?.subjectTeachers ?? []
+  return teachers.length > 0 && heldSubjectCount.value === teachers.length
+})
+
 const accessToken = computed(() => {
   const token = route.query.accessToken
   return typeof token === 'string' ? token : undefined
@@ -43,6 +54,7 @@ const assignmentId = computed(() => {
 const subjectTeacherColumns = computed<ColumnsType>(() => {
   const cols: ColumnsType = [
     { title: '被评教师', dataIndex: 'maskedDisplayName', key: 'maskedDisplayName' },
+    { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   ]
   // 脱敏审阅不暴露 teacherUserId，也不提供读整袋深链
   if (!bundle.value?.maskRequired) {
@@ -65,6 +77,7 @@ const materialColumns: ColumnsType = [
   { title: '身份切片', key: 'identityScope', width: 100 },
   { title: '校内硬性', key: 'usableForCampusHardCriteria', width: 110 },
   { title: '支撑材料', dataIndex: 'supportMaterialCount', key: 'supportMaterialCount', width: 100 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   { title: 'AI 初审', key: 'aiPreReview', width: 220 },
 ]
 
@@ -103,6 +116,10 @@ function goEvaluationFill() {
   if (!bundle.value?.evaluationTaskId) {
     return
   }
+  if (allSubjectsEvaluationHeld.value) {
+    showUserError(new Error('被评教师均处于参评 hold，禁止进入评价填报'), '无法填报')
+    return
+  }
   void router.push({
     path: '/portfolio/expert/evaluation-fill',
     query: { evaluationTaskId: bundle.value.evaluationTaskId },
@@ -131,7 +148,15 @@ watch(
         subtitle="只读审阅正式档案材料；填分请进入评价填报"
       >
         <template #actions>
-          <UiButton size="sm" v-if="bundle" variant="primary" @click="goEvaluationFill"> 去评价填报 </UiButton>
+          <UiButton
+            size="sm"
+            v-if="bundle"
+            variant="primary"
+            :disabled="allSubjectsEvaluationHeld"
+            @click="goEvaluationFill"
+          >
+            去评价填报
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -146,7 +171,13 @@ watch(
             {{ bundle.maskRequired ? '已脱敏' : '未脱敏' }}
           </UiTag>
           <span>过期：{{ bundle.expireTime }}</span>
+          <UiTag v-if="heldSubjectCount > 0" tone="orange">
+            参评 hold {{ heldSubjectCount }}/{{ bundle.subjectTeachers.length }}
+          </UiTag>
         </div>
+        <p v-if="heldSubjectCount > 0" class="expert-review__hold-hint">
+          封存 / 暂挂 / 迁出链路教师处于评价参评 hold：材料只读可查，禁止对其填报；后端会硬拦，禁止假成功。
+        </p>
         <UiDataTable
           pagination-mode="none"
           class="expert-review__teachers"
@@ -161,7 +192,14 @@ watch(
           empty-description="当前审阅包无被评教师，请核对指派或令牌。"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'actions'">
+            <template v-if="column.key === 'lifecycleStatus'">
+              <UiTag v-if="record.lifecycleStatus" :tone="record.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'">
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-else-if="!record.lifecycleStatus">—</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
               <UiButton
                 size="sm"
                 variant="soft"
@@ -182,7 +220,14 @@ watch(
           :pagination="false"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'hasPrimaryFile'">
+            <template v-if="column.key === 'lifecycleStatus'">
+              <UiTag v-if="record.lifecycleStatus" :tone="record.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'">
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-else-if="!record.lifecycleStatus">—</span>
+            </template>
+            <template v-else-if="column.key === 'hasPrimaryFile'">
               {{ record.hasPrimaryFile ? '有' : '无' }}
             </template>
             <template v-else-if="column.key === 'identityScope'">
@@ -257,5 +302,10 @@ watch(
   margin: 0 0 8px;
   font-size: 14px;
   font-weight: 600;
+}
+.expert-review__hold-hint {
+  margin: 0 0 12px;
+  color: var(--dp-color-warning, #d48806);
+  font-size: 13px;
 }
 </style>

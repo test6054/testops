@@ -34,14 +34,18 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamQuestionCourseGoalMappingTable' })
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   loading: boolean
   courseGoalConfigured?: boolean
   readiness?: CourseObjectiveMappingReadinessVO | null
   courseGoals: QualityCourseGoalForMarkVO[]
   rows: MappingEditableRow[]
   goalOptions: Array<{ value: string, label: string }>
-}>()
+  /** MVR-270：仅主考可写；与 BE requireExamOwnerPermission 对齐 */
+  canManageOwnerWrites?: boolean
+}>(), {
+  canManageOwnerWrites: false,
+})
 
 const emit = defineEmits<{
   (e: 'mapping-row-action', key: string, row: MappingEditableRow): void
@@ -250,6 +254,7 @@ function handleFilterReset(): void {
             class="exam-goal-mapping-table__select"
             placeholder="选择课程目标"
             :options="goalOptions"
+            :disabled="!canManageOwnerWrites"
             allow-clear
             allow-search
             option-filter-prop="label"
@@ -268,6 +273,7 @@ function handleFilterReset(): void {
             :max="999"
             :step="0.1"
             :precision="4"
+            :disabled="!canManageOwnerWrites"
             @change="() => handleWeightChange(record)"
           />
         </template>
@@ -282,6 +288,7 @@ function handleFilterReset(): void {
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
+            v-if="canManageOwnerWrites"
             :items="[
               { key: 'save', label: '保存', tone: 'primary', disabled: record.saving },
               {
@@ -295,6 +302,7 @@ function handleFilterReset(): void {
             split
             @action="(key) => emit('mapping-row-action', key, record)"
           />
+          <span v-else class="exam-goal-mapping-table__readonly-hint">仅主考可维护</span>
         </template>
       </template>
     </UiDataTable>

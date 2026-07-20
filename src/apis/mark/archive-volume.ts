@@ -15,7 +15,6 @@ import type { ArchiveEvaluationCampaignScopeMatchKindCode } from '@/types/enums/
 import type { ArchiveEvaluationCampaignStatusCode } from '@/types/enums/archive-evaluation-campaign-status-enum'
 import type { ArchiveEvaluationExportModeCode } from '@/types/enums/archive-evaluation-export-mode-enum'
 import type { ArchiveExamFormCode } from '@/types/enums/archive-exam-form-enum'
-import type { ArchiveImportBatchStatusCode } from '@/types/enums/archive-import-batch-status-enum'
 import type { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import type { ArchiveMaterialMediaTypeCode } from '@/types/enums/archive-material-media-type-enum'
 import type { ArchiveMaterialSortRuleCode } from '@/types/enums/archive-material-sort-rule-enum'
@@ -122,16 +121,6 @@ export {
   ArchiveExamFormCode,
   ArchiveExamFormDescription,
 } from '@/types/enums/archive-exam-form-enum'
-export {
-  ALL_ARCHIVE_EXTERNAL_IMPORT_TYPE_CODES,
-  ArchiveExternalImportTypeCode,
-  ArchiveExternalImportTypeDescription,
-} from '@/types/enums/archive-external-import-type-enum'
-export {
-  ALL_ARCHIVE_IMPORT_BATCH_STATUS_CODES,
-  ArchiveImportBatchStatusCode,
-  ArchiveImportBatchStatusDescription,
-} from '@/types/enums/archive-import-batch-status-enum'
 export {
   ALL_ARCHIVE_INTEGRITY_STATUS_CODES,
   ArchiveIntegrityStatusCode,
@@ -283,6 +272,9 @@ export const ARCHIVE_VOLUME_SOURCE_TYPE_TONE: Record<
   [ArchiveVolumeSourceTypeCode.ONLINE_MARKING]: 'blue',
   [ArchiveVolumeSourceTypeCode.OFFLINE_MARKED]: 'orange',
   [ArchiveVolumeSourceTypeCode.HISTORY_IMPORT]: 'gray',
+  [ArchiveVolumeSourceTypeCode.RESEARCH_PROJECT]: 'purple',
+  [ArchiveVolumeSourceTypeCode.GRADUATION_THESIS]: 'purple',
+  [ArchiveVolumeSourceTypeCode.STUDENT_RECORD]: 'green',
 }
 
 export const ARCHIVE_TRANSFER_STATUS_TONE: Record<
@@ -433,6 +425,12 @@ export interface ArchiveVolumeResponse {
   canApproveDepartmentReview?: boolean
   /** 当前用户是否可撤回已通过院系审核（列表 capabilities 摘要） */
   canWithdrawDepartmentReview?: boolean
+  /** 当前用户是否可催办该卷（列表 capabilities 摘要，MVR-319） */
+  canRemindArchiveDue?: boolean
+  /** MVR-329：列表行级鉴定管理能力；与详情 canManageAppraisal / ARCHIVE_ADMIN 同源 */
+  canManageAppraisal?: boolean
+  /** MVR-333：列表行级移交退回；与 requireTransferRejectPermission 同源 */
+  canRejectTransfer?: boolean
   /** 最新待验收移交提交人；MVR-196 批量退回双人制同源 */
   transferSubmitUserId?: string
   /** 租户/院系是否启用院系审核门禁 */
@@ -491,9 +489,9 @@ export const ArchiveVolumeSubmitChecklistPhaseDescription: Record<
   string
 > = {
   materials: '材料收齐',
-  integrity: '自检与四性',
+  integrity: '完整性自检',
   catalog: '编制目录',
-  selfCheck: '自查清单',
+  selfCheck: '自检清单',
   departmentReview: '院系审核',
   submit: '提交移交',
 }
@@ -574,6 +572,16 @@ export interface ArchiveVolumeDetailResponse {
   canConfirmSecurityMark?: boolean
   /** 当前用户是否可变更卷密级 */
   canUpdateSecurityLevel?: boolean
+  /** MVR-331：可移交验收（TRANSFER_REVIEWER 或 ARCHIVE_ADMIN；与 BE requireTransferReviewer 同源） */
+  canReviewTransfer?: boolean
+  /** MVR-331：可移交退回（TRANSFER_REVIEWER / COLLEGE_COORDINATOR / ARCHIVE_ADMIN） */
+  canRejectTransfer?: boolean
+  /** MVR-331：可审批销毁（院系 DESTRUCTION_APPROVER；与 approveDestruction 同源） */
+  canApproveDestruction?: boolean
+  /** MVR-339：可按协调人管理该卷整改（院系 COLLEGE_COORDINATOR） */
+  canManageRemediationAsCoordinator?: boolean
+  /** MVR-353：可在该卷新建整改（职责+状态+移交/开放整改互斥；与 createRemediationTask 同源） */
+  canCreateRemediationTask?: boolean
   /** 最近一次移交验收记录 */
   latestTransferRecord?: ArchiveVolumeTransferRecordResponse
   /** 当前用户待处理整改任务 */
@@ -823,6 +831,14 @@ export interface ArchiveRemediationTaskResponse {
   verifiedTime?: string
   statusHistory?: ArchiveRemediationTaskStatusHistoryVO[]
   evidenceItems?: ArchiveRemediationEvidenceResponse[]
+  /** MVR-338：可上传证据；与 assertRemediationEvidenceRegisterAllowed 同源 */
+  canUploadEvidence?: boolean
+  /** MVR-338：可更新任务；与 updateRemediationTask 写闸同源 */
+  canUpdateTask?: boolean
+  /** MVR-338：可按协调人维护；院系 COLLEGE_COORDINATOR 且未关闭 */
+  canManageAsCoordinator?: boolean
+  /** MVR-338：可复检关闭；协调人 + RESUBMITTED + 非责任人 */
+  canCloseWithVerification?: boolean
 }
 
 export interface ArchiveRemediationTaskUpdateRequest {
@@ -1054,8 +1070,15 @@ export function suggestArchiveVolumeMaterialTags(
   return http.post<string[]>('/api/mark/archive-volumes/materials/tags/suggest', request)
 }
 
-export function getArchiveVolumeDetail(volumeId: string): Promise<ArchiveVolumeDetailResponse> {
-  return http.post<ArchiveVolumeDetailResponse>('/api/mark/archive-volumes/detail', { volumeId })
+export function getArchiveVolumeDetail(
+  volumeId: string,
+  config?: ExtendedAxiosRequestConfig,
+): Promise<ArchiveVolumeDetailResponse> {
+  return http.post<ArchiveVolumeDetailResponse>(
+    '/api/mark/archive-volumes/detail',
+    { volumeId },
+    config,
+  )
 }
 
 export interface ArchiveVolumeMaterialPageRequest extends QueryDto {
@@ -1417,6 +1440,10 @@ export function pageOpenRemediationTasks(
 
 export interface ArchiveRemediationOpenStatsVO {
   openTaskCount: number
+  /** MVR-339：可创建整改任务（任一 COLLEGE_COORDINATOR） */
+  canCreateRemediationTask?: boolean
+  /** MVR-339：可查看迎评整改 Tab */
+  canViewRemediationTab?: boolean
 }
 
 export function getOpenRemediationStats(): Promise<ArchiveRemediationOpenStatsVO> {
@@ -1750,21 +1777,6 @@ export function waiveArchiveMaterialMissing(
   )
 }
 
-export interface ArchiveExternalImportResultVO {
-  batchId: string
-  batchNo: string
-  batchStatus: ArchiveImportBatchStatusCode
-  totalCount: number
-  successCount: number
-  failureCount: number
-  failureRows?: ArchiveExternalImportFailureRowVO[]
-}
-
-export interface ArchiveExternalImportFailureRowVO {
-  rowNo?: number
-  failureReason?: string
-}
-
 export interface ArchiveExcelFileResponse {
   fileName: string
   fileContentBase64: string
@@ -1841,6 +1853,40 @@ export interface ArchiveVolumeExamClassPublishProgressVO {
   unpublishedBoundPaperCount?: number
 }
 
+
+/** 列表 S1：待自动建袋考试样例项 */
+export interface ArchiveVolumeExamAutoCreateAttentionItemVO {
+  examId: string
+  examName?: string
+  examNo?: string
+  academicYear?: string
+  semester?: number | string
+  pendingStatus?: ArchiveVolumeAutoCreatePendingStatusCode
+  attemptCount?: number
+  nextRetryAt?: string
+  lastError?: string
+  failureCategory?: ArchiveAutoCreateFailureCategoryCode
+  triggerContext?: string
+}
+
+/** 列表 S1：待自动建袋考试摘要 */
+export interface ArchiveVolumeExamAutoCreateAttentionSummaryVO {
+  attentionExamCount: number
+  pendingRetryExamCount: number
+  manualRequiredExamCount: number
+  sampleExams?: ArchiveVolumeExamAutoCreateAttentionItemVO[]
+  /** 全部待自动建袋考试 ID（最多 200，用于考试列表高亮） */
+  attentionExamIds?: string[]
+}
+
+/** 查询待自动建袋考试摘要（PENDING / MANUAL_REQUIRED） */
+export function getArchiveVolumeExamAutoCreateAttentionSummary(): Promise<ArchiveVolumeExamAutoCreateAttentionSummaryVO> {
+  return http.post<ArchiveVolumeExamAutoCreateAttentionSummaryVO>(
+    '/api/mark/archive-volumes/exam/auto-create-attention-summary',
+    {},
+  )
+}
+
 export function getArchiveVolumeExamGate(examId: string): Promise<ArchiveVolumeExamGateResponse> {
   return http.post<ArchiveVolumeExamGateResponse>('/api/mark/archive-volumes/exam/archive-gate', {
     examId,
@@ -1892,6 +1938,8 @@ export interface ArchiveVolumeExamArchiveReviewVO {
   archivePackage?: ArchiveVolumeExamArchivePackageSummaryVO | null
   packageEvents?: ArchiveVolumeExamArchivePackageEventVO[]
   packageTimelineSteps?: ArchiveVolumeExamArchivePackageTimelineStepVO[]
+  /** MVR-268：主考写能力位（创建归档包/重新打包） */
+  canManageOwnerArchivePackageWrites?: boolean
 }
 
 export function getArchiveVolumeExamReview(
@@ -1907,6 +1955,65 @@ export function getArchiveVolumeExamReview(
 
 export function retryArchiveVolumeAutoCreate(examId: string): Promise<void> {
   return http.post<void>('/api/mark/archive-volumes/exam/retry-auto-create', { examId })
+}
+
+export interface ArchiveExternalFondsRetryAutoCreateRequest {
+  provenance: ArchiveTaskProvenanceCode
+  externalSourceSystem: string
+  externalBusinessNo: string
+}
+
+/** 人工修复后重新触发外部全宗自动建卷 */
+export function retryExternalFondsAutoCreate(
+  request: ArchiveExternalFondsRetryAutoCreateRequest,
+): Promise<void> {
+  return http.post<void>('/api/mark/archive-volumes/external-fonds/retry-auto-create', request)
+}
+
+export interface ArchiveExternalFondsPendingPageRequest extends QueryDto {
+  provenance?: ArchiveTaskProvenanceCode
+  pendingStatus?: ArchiveVolumeAutoCreatePendingStatusCode
+  departmentId?: string
+  externalBusinessNoKeyword?: string
+}
+
+export interface ArchiveExternalFondsPendingResponse {
+  pendingId: string
+  provenance: ArchiveTaskProvenanceCode
+  externalSourceSystem: string
+  externalBusinessNo: string
+  departmentId?: string
+  departmentName?: string
+  pendingStatus: ArchiveVolumeAutoCreatePendingStatusCode
+  attemptCount?: number
+  nextRetryAt?: string
+  lastError?: string
+  failureCategory?: ArchiveAutoCreateFailureCategoryCode
+  triggerContext?: string
+  volumeId?: string
+  updateTime?: string
+  /** MVR-290：是否可重试；与 hasCollegeCoordinatorDuty 同源 */
+  canManageExternalFondsRetry?: boolean
+}
+
+/** MVR-290：外部全宗待重试分页（页级写能力位） */
+export interface ArchiveExternalFondsPendingPageResponse {
+  canManageExternalFondsRetry?: boolean
+  list: ArchiveExternalFondsPendingResponse[]
+  total: number
+  pageNum: number
+  pageSize: number
+  pages: number
+}
+
+/** 分页查询外部全宗自动建卷待重试队列 */
+export function pageExternalFondsPending(
+  request: ArchiveExternalFondsPendingPageRequest,
+): Promise<ArchiveExternalFondsPendingPageResponse> {
+  return http.post<ArchiveExternalFondsPendingPageResponse>(
+    '/api/mark/archive-volumes/external-fonds/pending/page',
+    request,
+  )
 }
 
 export interface ArchiveVolumeAccessRecordResponse {

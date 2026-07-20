@@ -364,6 +364,7 @@
       :volume-id="tagModalVolumeId"
       :file-name="tagModalFileName"
       :initial-tags="tagModalTags"
+      :can-maintain-material="tagModalCanMaintain"
       @success="handleTagModalSuccess"
     />
 
@@ -508,6 +509,8 @@ const tagModalMaterialId = ref<string>()
 const tagModalVolumeId = ref<string>()
 const tagModalFileName = ref<string>()
 const tagModalTags = ref<string[]>([])
+/** MVR-315：检索结果行 canMaintainMaterial 透传标签弹窗 */
+const tagModalCanMaintain = ref(false)
 const hits = ref<ArchiveVolumeSearchResponse[]>([])
 const searchHitVolumeCount = ref(0)
 const departmentOptions = ref<Array<{ value: string, label: string }>>([])
@@ -896,7 +899,8 @@ function buildArchiveSearchRowActions(record: ArchiveVolumeSearchResponse): UiTa
     { key: 'detail', label: '查看卷', tone: 'primary' },
     { key: 'ocr-tab', label: '跳转检索页签' },
   ]
-  if (record.canMaintainMaterial) {
+  // MVR-344：仅认 BE 行级 canMaintainMaterial===true
+  if (record.canMaintainMaterial === true) {
     actions.push({ key: 'edit-tags', label: '编辑标签' })
     if (
       record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
@@ -943,10 +947,16 @@ function handleArchiveSearchAction(key: string, record: ArchiveVolumeSearchRespo
 }
 
 function openMaterialTagModal(record: ArchiveVolumeSearchResponse): void {
+  // MVR-315：与行级 canMaintainMaterial / BE 材料维护门禁同源
+  if (record.canMaintainMaterial !== true) {
+    message.warning('当前账号无维护材料标签权限')
+    return
+  }
   tagModalMaterialId.value = record.materialId
   tagModalVolumeId.value = record.volumeId
   tagModalFileName.value = record.fileName
   tagModalTags.value = [...(record.tags ?? [])]
+  tagModalCanMaintain.value = true
   tagModalOpen.value = true
 }
 
@@ -955,6 +965,11 @@ function handleTagModalSuccess(): void {
 }
 
 async function handleRetryMaterialOcr(record: ArchiveVolumeSearchResponse): Promise<void> {
+  // MVR-315：与行级 canMaintainMaterial 同源二次拦截
+  if (record.canMaintainMaterial !== true) {
+    message.warning('当前账号无重跑材料文字识别权限')
+    return
+  }
   if (retryingOcrMaterialIds.has(record.materialId)) return
   const confirmed = await confirmAsync({
     title: '重跑文字识别？',

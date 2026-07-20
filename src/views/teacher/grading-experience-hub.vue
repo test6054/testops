@@ -34,7 +34,13 @@
                 EXPERIENCE_ASSIST_CALIBRATION_HINT
               }}</span>
               <span class="experience-page__flow-hint">{{ EXPERIENCE_CASE_FLOW_HINT }}</span>
-              <UiButton size="sm" variant="primary" :loading="generatingSignatures" @click="handleGenerateSignatures">
+              <UiButton
+                v-if="canManageReviewerWrites"
+                size="sm"
+                variant="primary"
+                :loading="generatingSignatures"
+                @click="handleGenerateSignatures"
+              >
                 <template #icon><ThunderboltOutlined /></template>
                 生成 / 重算签名
               </UiButton>
@@ -92,6 +98,7 @@
               }}</span>
               <span class="experience-page__flow-hint">{{ EXPERIENCE_CASE_FLOW_HINT }}</span>
               <UiButton
+                v-if="canManageReviewerWrites"
                 size="sm"
                 variant="primary"
                 :disabled="!experienceFilterForm.layoutQuestionId"
@@ -196,6 +203,7 @@
             <div class="experience-page__panel-actions">
               <span class="experience-page__flow-hint">{{ AI_ANALYSIS_FLOW_HINT }}</span>
               <UiButton
+                v-if="canManageReviewerWrites"
                 size="sm"
                 variant="primary"
                 :disabled="!clusterFilterForm.layoutQuestionId"
@@ -540,6 +548,18 @@ const tabItems: UiSectionTabItem[] = [
 
 const generatingSignatures = ref(false)
 const experienceStats = ref<GradingExperienceStatsResponse | null>(null)
+/** MVR-284/355：默认拒绝假可写；仅 stats.canManageReviewerWrites 为 true 时开放 ACTIVE 写入口 */
+const canManageReviewerWrites = computed(
+  () => experienceStats.value?.canManageReviewerWrites === true,
+)
+
+/**
+ * MVR-364：确认/废弃不叠 ACTIVE；仅认 stats.canManageExperienceCaseLifecycle===true。
+ * 与 BE requireExamReviewerPermission（无 requireActiveExam）同源。
+ */
+const canManageExperienceCaseLifecycle = computed(
+  () => experienceStats.value?.canManageExperienceCaseLifecycle === true,
+)
 const questionOptionRows = ref<QuestionSignatureResponse[]>([])
 
 const {
@@ -686,6 +706,10 @@ async function loadSignatures(): Promise<void> {
 }
 
 async function handleGenerateSignatures(): Promise<void> {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无阅卷写权限')
+    return
+  }
   if (!selectedExamId.value || generatingSignatures.value) return
   generatingSignatures.value = true
   try {
@@ -825,6 +849,10 @@ function handleExperienceFilterSearch(): void {
 }
 
 async function handleExtract(): Promise<void> {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无阅卷写权限')
+    return
+  }
   if (!selectedExamId.value || !experienceFilterForm.layoutQuestionId || extracting.value) return
   extracting.value = true
   try {
@@ -851,19 +879,25 @@ const deprecatingExperience = ref(false)
 
 const canConfirmExperience = computed(
   () =>
-    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT
+    canManageExperienceCaseLifecycle.value
+    && detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT
     && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
     && Boolean(detailExperience.value?.id),
 )
 
 const canDeprecateExperience = computed(
   () =>
-    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED
+    canManageExperienceCaseLifecycle.value
+    && detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED
     && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
     && Boolean(detailExperience.value?.id),
 )
 
 async function handleConfirmExperience(): Promise<void> {
+  if (!canManageExperienceCaseLifecycle.value) {
+    message.warning('当前账号无经验案例治理权限')
+    return
+  }
   const caseId = detailExperience.value?.id
   if (!caseId || confirmingExperience.value) return
   confirmingExperience.value = true
@@ -879,6 +913,10 @@ async function handleConfirmExperience(): Promise<void> {
 }
 
 function handleDeprecateExperience(): void {
+  if (!canManageExperienceCaseLifecycle.value) {
+    message.warning('当前账号无经验案例治理权限')
+    return
+  }
   const caseId = detailExperience.value?.id
   if (!caseId) return
   void confirmAsync({
@@ -937,6 +975,10 @@ async function loadLatestCluster(): Promise<void> {
 }
 
 async function handleGenerateCluster(): Promise<void> {
+  if (!canManageReviewerWrites.value) {
+    message.warning('当前账号无阅卷写权限')
+    return
+  }
   if (!selectedExamId.value || !clusterFilterForm.layoutQuestionId || clustering.value) return
   clustering.value = true
   try {

@@ -27,6 +27,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -42,6 +43,11 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 const router = useRouter()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const portrait = ref<PortfolioTeacherPortraitVO | null>(null)
@@ -301,6 +307,10 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     if (item.archiveRecordId) {
       query.archiveRecordId = item.archiveRecordId
     }
+    // PF-P0-289：待办 refId=纠错工单 id，深链 requestId 直达详情，禁止只落到纠错列表首页
+    if (item.refId) {
+      query.requestId = item.refId
+    }
     void router.push({ path: '/portfolio/teacher/correction', query })
     return
   }
@@ -342,7 +352,14 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_DRAFT
     || item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_RETURNED
   ) {
-    void router.push({ path: '/portfolio/scene/dual-teacher', query })
+    // PF-P0-287：待办 refId=申请单 id，深链 applicationId + teacherId 代办 scope
+    void router.push({
+      path: '/portfolio/scene/dual-teacher',
+      query: {
+        ...query,
+        ...(item.refId ? { applicationId: item.refId } : {}),
+      },
+    })
     return
   }
   if (item.categoryId) {
@@ -360,6 +377,9 @@ function openTodo(item: PortfolioTodoSummaryVO) {
 
 async function acknowledgeRejectedCorrection(item: PortfolioTodoSummaryVO) {
   if (item.todoType !== PortfolioTodoTypeCode.CORRECTION_REJECTED || acknowledgingTodoKey.value) {
+    return
+  }
+  if (!assertArchiveWritable()) {
     return
   }
   if (!(await confirmProxyWrite('确认知悉纠错驳回'))) {
@@ -665,6 +685,13 @@ onUnmounted(() => {
             <UiButton size="sm" variant="ghost" @click="goReviewStatus">审核进度</UiButton>
             <UiButton size="sm" variant="ghost" @click="goArchive">我的档案</UiButton>
           </template>
+          <UiAlertStrip
+            v-if="archiveWriteForbidden"
+            tone="warning"
+            title="档案已封存写禁"
+            :description="archiveWriteBlockMessage"
+            class="mb-3"
+          />
         </template>
       </ContextBar>
     </template>

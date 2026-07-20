@@ -1,44 +1,48 @@
 <template>
-  <WorkbenchSurfaceCard flush class="archive-volume-ocr-search">
+  <WorkbenchSurfaceCard flush embedded class="archive-volume-ocr-search">
     <template #head>
       <div class="archive-volume-ocr-search__head">
         <div class="archive-volume-ocr-search__head-main">
           <span class="archive-volume-ocr-search__title">卷内内容检索</span>
-          <span class="archive-volume-ocr-search__hint">卷内文字识别全文检索 · 可跳转全局检索</span>
+          <span class="archive-volume-ocr-search__hint">卷内文字识别全文检索</span>
         </div>
-        <UiButton variant="ghost" size="sm" @click="goGlobalSearch"> 全局检索 </UiButton>
+        <UiButton
+          class="archive-volume-ocr-search__global"
+          variant="outline"
+          size="sm"
+          @click="goGlobalSearch"
+        >
+          全局检索
+        </UiButton>
       </div>
     </template>
 
-    <div class="archive-volume-ocr-search__toolbar">
-      <UiInput
-        size="sm"
-        v-model="keyword"
-        clearable
-        placeholder="搜索本卷文字识别全文：答卷内容、标准答案、分析报告..."
-        @press-enter="handleSearch"
-      />
-      <UiButton variant="primary" size="sm" :loading="loading" @click="handleSearch">
-        检索
-      </UiButton>
-    </div>
-
-    <div v-if="quickKeywords.length" class="archive-volume-ocr-search__quick">
-      <span class="archive-volume-ocr-search__quick-label">快捷</span>
-      <UiTextAction
-        v-for="item in quickKeywords"
-        :key="item"
-        tone="primary"
-        @click="applyQuickKeyword(item)"
-      >
-        {{ item }}
-      </UiTextAction>
-    </div>
+    <template #toolbar>
+      <div class="archive-volume-ocr-search__search">
+        <UiInput
+          v-model="keyword"
+          class="archive-volume-ocr-search__search-input"
+          size="md"
+          clearable
+          placeholder="搜索本卷文字识别全文：答卷内容、标准答案、分析报告…"
+          @press-enter="handleSearch"
+        />
+        <UiButton
+          class="archive-volume-ocr-search__search-btn"
+          variant="primary"
+          size="md"
+          :loading="loading"
+          @click="handleSearch"
+        >
+          检索
+        </UiButton>
+      </div>
+    </template>
 
     <div v-if="searched" class="archive-volume-ocr-search__results">
       <p class="archive-volume-ocr-search__result-meta">{{ hitPageTotal }} 条匹配 · 当前归档任务</p>
       <UiEmpty size="sm" v-if="!loading && hits.length === 0 && !hitsLoadFailed" description="本卷无匹配结果">
-        <UiTextAction tone="primary" @click="goGlobalSearch">切换全局检索</UiTextAction>
+        <UiButton variant="outline" size="sm" @click="goGlobalSearch">切换全局检索</UiButton>
       </UiEmpty>
       <UiDataTable
         v-else
@@ -97,7 +101,6 @@
     </div>
 
     <div v-else class="archive-volume-ocr-search__empty">
-      <UiEmpty size="sm" description="输入关键词搜索本卷所有文字识别文本" />
       <UiAlertStrip v-if="materialStatsLoadFailed" tone="warning" title="文字识别统计加载失败">
         <template #actions>
           <UiButton size="sm" variant="outline" @click="loadMaterialStats">重新加载</UiButton>
@@ -107,7 +110,7 @@
         <span class="archive-volume-ocr-search__overview-title">材料文字识别状态</span>
         <UiButton
           size="sm"
-          v-if="canMaintainMaterial && pendingOcrCount > 0"
+          v-if="canMaintainMaterial === true && pendingOcrCount > 0"
           variant="ghost"
           :loading="batchOcrSubmitting"
           @click="handleBatchOcr"
@@ -204,6 +207,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { highlightArchiveSearchSnippet } from '@/utils/archive-search-snippet'
@@ -247,8 +251,6 @@ const materialStatsLoadFailed = ref(false)
 const ocrDetailOpen = ref(false)
 const ocrDetailMaterialId = ref('')
 const ocrDetailInitialPageNo = ref<number>()
-
-const quickKeywords = ['水准测量', '高程计算', '评分标准', '达成度']
 
 const hitColumns: ColumnsType<ArchiveVolumeSearchResponse> = [{ title: '匹配', key: 'hit' }]
 
@@ -341,7 +343,7 @@ function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): bool
 
 function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    props.canMaintainMaterial
+    props.canMaintainMaterial === true
     && Boolean(record.fileId)
     && (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING
       || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
@@ -357,11 +359,6 @@ function openMaterialOcr(materialId: string, pageNo?: number): void {
 
 function openMaterialOcrPreview(record: ArchiveVolumeSearchResponse): void {
   openMaterialOcr(record.materialId, record.matchPageNo)
-}
-
-function applyQuickKeyword(value: string): void {
-  keyword.value = value
-  void handleSearch()
 }
 
 async function loadHits(): Promise<void> {
@@ -415,6 +412,11 @@ function goGlobalSearch(): void {
 }
 
 async function handleBatchOcr(): Promise<void> {
+  // MVR-312：与 canMaintainMaterial / 按钮 v-if 同源二次拦截
+  if (props.canMaintainMaterial !== true) {
+    message.warning('当前账号无维护材料识别权限')
+    return
+  }
   if (pendingOcrCount.value <= 0) {
     showFormValidationMessage('没有可触发文字识别的材料')
     return
@@ -445,6 +447,11 @@ async function handleBatchOcr(): Promise<void> {
 }
 
 function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
+  // MVR-312：单条 OCR 触发二次拦截
+  if (props.canMaintainMaterial !== true) {
+    message.warning('当前账号无维护材料识别权限')
+    return
+  }
   if (triggeringMaterialIds.has(material.materialId)) return
   void confirmAsync({
     title: '触发文字识别？',
@@ -493,7 +500,9 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--dp-space-2);
+    gap: var(--dp-space-3);
+    width: 100%;
+    min-width: 0;
   }
 
   &__head-main {
@@ -501,43 +510,66 @@ onMounted(() => {
     align-items: baseline;
     flex-wrap: wrap;
     gap: var(--dp-space-2);
+    min-width: 0;
+    flex: 1;
   }
 
   &__title {
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
+    line-height: 1.4;
     color: var(--dp-text-primary);
+    letter-spacing: -0.01em;
   }
 
   &__hint {
-    font-size: 11px;
-    font-family: var(--dp-font-mono);
+    font-size: 12px;
+    line-height: 1.4;
     color: var(--dp-text-muted);
   }
 
-  &__toolbar {
-    display: flex;
-    gap: var(--dp-space-2);
-    margin-bottom: var(--dp-space-3);
+  &__global {
+    flex-shrink: 0;
+    margin-left: auto;
   }
 
-  &__quick {
+  &__search {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: var(--dp-space-2);
-    margin-bottom: var(--dp-space-3);
+    width: 100%;
+    min-width: 0;
+    padding: var(--dp-space-2) var(--dp-space-3);
+    border-radius: var(--dp-radius-panel, 8px);
+    background: color-mix(in srgb, var(--dp-primary) 4%, var(--dp-surface-subtle, var(--dp-bg-layout)));
+    border: 1px solid color-mix(in srgb, var(--dp-primary) 10%, transparent);
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+
+    &:focus-within {
+      border-color: color-mix(in srgb, var(--dp-primary) 32%, transparent);
+      background: color-mix(in srgb, var(--dp-primary) 6%, var(--dp-surface-subtle, var(--dp-bg-layout)));
+    }
   }
 
-  &__quick-label {
-    font-size: 12px;
-    color: var(--dp-text-muted);
+  &__search-input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__search-btn {
+    flex-shrink: 0;
+  }
+
+  &__results,
+  &__empty {
+    padding: var(--dp-space-3) var(--dp-space-4);
   }
 
   &__result-meta {
     margin: 0 0 var(--dp-space-2);
     font-size: 12px;
     color: var(--dp-text-muted);
+    font-variant-numeric: tabular-nums;
   }
 
   &__hit-list {
@@ -547,12 +579,24 @@ onMounted(() => {
   }
 
   &__hit-item {
-    padding: var(--dp-space-3) 0;
-    border-top: 1px solid var(--dp-border-light);
+    padding: var(--dp-space-3);
+    margin-bottom: var(--dp-space-2);
+    border: 1px solid var(--dp-border-light);
+    border-radius: var(--dp-radius-panel, 8px);
+    background: var(--dp-surface);
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.15s ease;
 
-    &:first-child {
-      border-top: none;
-      padding-top: 0;
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &:hover {
+      border-color: color-mix(in srgb, var(--dp-primary) 28%, var(--dp-border-light));
+      box-shadow: var(--dp-shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.06));
+      transform: translateY(-1px);
     }
   }
 
@@ -580,6 +624,9 @@ onMounted(() => {
     font-size: 10px;
     color: var(--dp-text-muted);
     font-family: var(--dp-font-mono);
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--dp-text-muted) 8%, transparent);
   }
 
   &__hit-actions {
@@ -600,9 +647,11 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--dp-space-2);
-    padding-top: var(--dp-space-3);
-    border-top: 1px solid var(--dp-border-subtle);
+    margin-bottom: var(--dp-space-3);
+    padding: var(--dp-space-2) var(--dp-space-3);
+    border-radius: var(--dp-radius-control, 6px);
+    background: var(--dp-surface-subtle, var(--dp-bg-layout));
+    border: 1px solid var(--dp-border-subtle);
   }
 
   &__overview-title {
@@ -617,11 +666,35 @@ onMounted(() => {
   }
 }
 
+:deep(.archive-search-snippet-block) {
+  padding: var(--dp-space-2) var(--dp-space-3);
+  border-radius: var(--dp-radius-control-inner, 4px);
+  background: color-mix(in srgb, var(--dp-text-muted) 5%, transparent);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--dp-text-secondary);
+  margin-bottom: 4px;
+}
+
 :deep(.archive-search-snippet-mark) {
   background: color-mix(in srgb, var(--dp-primary) 18%, transparent);
   color: var(--dp-primary);
   font-weight: 600;
   padding: 0 2px;
   border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archive-volume-ocr-search__hit-item {
+    transition: none;
+
+    &:hover {
+      transform: none;
+    }
+  }
+
+  .archive-volume-ocr-search__search {
+    transition: none;
+  }
 }
 </style>

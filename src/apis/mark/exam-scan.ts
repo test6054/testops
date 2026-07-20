@@ -294,6 +294,8 @@ export interface ExamScannerBatchWorkbenchSummaryResponse {
   activePaperTemplateTotalPages?: number
   /** 整卷作答且尚无 ACTIVE 模板 */
   fullPaperFirstScanTemplatePending?: boolean
+  /** 是否可执行主考批次写动作（页登记重试等；与 isExamOwner 对齐） */
+  canManageOwnerBatchActions?: boolean
 }
 
 /** 扫描批次详情查询请求 - 对应 ExamScannerBatchDetailRequest */
@@ -637,6 +639,8 @@ export interface ExamScannerBatchWorkbenchResponse {
   paperBoundCount?: number
   topActions?: ScanBatchWorkbenchTopActionCode[]
   canViewOriginalImage?: boolean
+  /** 主考批次写动作（忽略 collate / 页绑定归卷等） */
+  canManageOwnerBatchActions?: boolean
   initialPageKey?: string
   initialPageItems?: ExamScannerBatchWorkbenchPageVO[]
   attributionItems?: ExamScannerBatchAttributionItemVO[]

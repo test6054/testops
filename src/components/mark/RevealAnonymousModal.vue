@@ -10,7 +10,7 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
-import { showUserError } from '@/utils/error-handler'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'RevealAnonymousModal' })
 
@@ -19,6 +19,8 @@ const open = defineModel<boolean>('open', { required: true })
 const props = defineProps<{
   examId: string
   taskId: string
+  /** MVR-375：与 BE canManageOwnerIdentityReveal / requireExamOwnerPermission 同源 */
+  canManageOwnerIdentityReveal?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -52,6 +54,11 @@ function resetForm(): void {
 
 /** 提交解匿名请求，后端负责考试创建人权限、密码二次校验和审计留痕。 */
 async function submitReveal(): Promise<void> {
+  // MVR-375：与父层 canManageOwnerIdentityReveal / BE requireExamOwnerPermission 二次拦截
+  if (props.canManageOwnerIdentityReveal !== true) {
+    showFormValidationMessage('当前账号无解匿名权限')
+    return
+  }
   if (!formRef.value) return
   try {
     await formRef.value.validate()

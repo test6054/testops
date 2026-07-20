@@ -173,6 +173,11 @@ function goVolumeDetail(volumeId: string): void {
 }
 
 function startApprove(accessRecordId: string): void {
+  // MVR-310：与 canApprove 同源，防拆栏后启动审批态
+  const target = records.value.find((item) => item.accessRecordId === accessRecordId)
+  if (!target || !canApprove(target)) {
+    return
+  }
   approvingId.value = accessRecordId
   approveComment.value = ''
   rejectingId.value = ''
@@ -185,6 +190,11 @@ function cancelApprove(): void {
 }
 
 function startReject(accessRecordId: string): void {
+  // MVR-310：与 canApprove 同源，防拆栏后启动驳回态
+  const target = records.value.find((item) => item.accessRecordId === accessRecordId)
+  if (!target || !canApprove(target)) {
+    return
+  }
   rejectingId.value = accessRecordId
   rejectComment.value = ''
   approvingId.value = ''
@@ -198,6 +208,12 @@ function cancelReject(): void {
 
 async function submitApprove(accessRecordId: string): Promise<void> {
   if (submitting.value) return
+  // MVR-310：写 handler 二次拦截，与行级 canApprove / BE requireAccessApprover 对齐
+  const target = records.value.find((item) => item.accessRecordId === accessRecordId)
+  if (!target || !canApprove(target)) {
+    message.warning('当前账号无批准查阅权限')
+    return
+  }
   submitting.value = true
   try {
     await approveArchiveVolumeAccess({
@@ -220,6 +236,12 @@ async function submitReject(accessRecordId: string): Promise<void> {
     return
   }
   if (submitting.value) return
+  // MVR-310：写 handler 二次拦截，与行级 canApprove / BE requireAccessApprover 对齐
+  const target = records.value.find((item) => item.accessRecordId === accessRecordId)
+  if (!target || !canApprove(target)) {
+    message.warning('当前账号无驳回查阅权限')
+    return
+  }
   submitting.value = true
   try {
     await rejectArchiveVolumeAccess({

@@ -100,7 +100,7 @@ export function formatDate(value: DateLike, fallback: string = DASH_PLACEHOLDER)
   return formatWithDayjs(value, 'YYYY-MM-DD', fallback)
 }
 
-/** 考试时间窗相对阶段：未开始 / 进行中 / 已结束。 */
+/** 考试时间窗相对阶段：未开始 / 进行中 / 考期已过（非考试 CLOSED）。 */
 export type ExamWindowPhase = 'upcoming' | 'ongoing' | 'ended'
 
 /**
@@ -126,7 +126,8 @@ export function resolveExamWindowPhase(
 }
 
 /**
- * 考试时间窗相对阶段文案：如「3 天后开始」「进行中」「已结束」。
+ * 考试时间窗相对阶段文案：如「3 天后开始」「进行中」「考期已过」。
+ * 「考期已过」仅表示已过 examEndTime，与考试状态 CLOSED 无关。
  */
 export function formatExamWindowPhaseLabel(
   start: DateLike,
@@ -141,7 +142,7 @@ export function formatExamWindowPhaseLabel(
     return '进行中'
   }
   if (phase === 'ended') {
-    return '已结束'
+    return '考期已过'
   }
   const startAt = dayjs(start)
   const diffMinutes = startAt.diff(now, 'minute')

@@ -2,12 +2,14 @@
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
+import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -19,13 +21,34 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
-import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
-const { currentUserId } = usePortfolioTeacherAccess()
+const route = useRoute()
+const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard()
+
+/** 管理员代办：可代写草稿，不可把申请错绑到操作人本人。 */
+const isProxyMode = computed(
+  () =>
+    Boolean(
+      canPickTeachers.value
+      && targetTeacherId.value
+      && targetTeacherId.value !== currentUserId.value,
+    ),
+)
+
+function readRouteStringParam(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0].trim()
+  }
+  return ''
+}
 const saving = ref(false)
 const submitting = ref(false)
 interface AttachmentItem {
@@ -127,29 +150,53 @@ const canSubmit = computed(() => {
   return /^\d{4}$/.test(form.certYear.trim())
 })
 
-async function loadMine() {
+/**
+ * PF-P0-287：按 page-scope 目标教师加载申请；优先消费 applicationId 深链，禁止把代办绑到操作人本人。
+ */
+async function loadApplication() {
   const currentToken = ++applicationRequestToken.value
-  if (!currentUserId.value) {
+  const teacherId = targetTeacherId.value
+  if (!teacherId) {
     resetApplicationContext()
     return
   }
   try {
-    const page = await portfolioDualTeacherApi.page({
-      pageNum: 1,
-      pageSize: 1,
-      teacherUserId: currentUserId.value,
-    })
-    if (currentToken !== applicationRequestToken.value) {
-      return
+    const deepLinkedApplicationId = readRouteStringParam(route.query.applicationId)
+    let detail: PortfolioDualTeacherApplicationVO | null = null
+    if (deepLinkedApplicationId) {
+      detail = await portfolioDualTeacherApi.get({ id: deepLinkedApplicationId })
+      if (currentToken !== applicationRequestToken.value) {
+        return
+      }
+      if (detail.teacherUserId !== teacherId) {
+        showFormValidationMessage('深链申请单与当前目标教师不一致，已忽略该申请单')
+        detail = null
+      }
     }
-    const mine = page.list?.[0]
-    if (!mine) {
-      resetApplicationContext()
-      return
-    }
-    const detail = await portfolioDualTeacherApi.get({ id: mine.id })
-    if (currentToken !== applicationRequestToken.value) {
-      return
+    if (!detail) {
+      const page = await portfolioDualTeacherApi.page({
+        pageNum: 1,
+        pageSize: 1,
+        teacherUserId: teacherId,
+      })
+      if (currentToken !== applicationRequestToken.value) {
+        return
+      }
+      const mine = page.list?.[0]
+      if (!mine) {
+        // 保留 token 递增后的空表单，允许新建
+        application.value = null
+        form.id = ''
+        form.certLevel = ''
+        form.certYear = String(new Date().getFullYear())
+        form.enterprisePracticeDays = 0
+        attachmentItems.value = []
+        return
+      }
+      detail = await portfolioDualTeacherApi.get({ id: mine.id })
+      if (currentToken !== applicationRequestToken.value) {
+        return
+      }
     }
     application.value = detail
     if (
@@ -230,7 +277,7 @@ function attachmentFileIds(): string[] {
 function buildDraftPayload() {
   return {
     id: form.id || undefined,
-    teacherUserId: currentUserId.value!,
+    teacherUserId: targetTeacherId.value!,
     certLevel: form.certLevel.trim() || undefined,
     certYear: form.certYear.trim() || undefined,
     enterprisePracticeDays: form.enterprisePracticeDays ?? undefined,
@@ -249,8 +296,8 @@ async function saveDraft() {
   if (!assertArchiveWritable()) {
     return
   }
-  if (!currentUserId.value) {
-    showFormValidationMessage('未获取当前用户')
+  if (!targetTeacherId.value) {
+    showFormValidationMessage('请先选择目标教师')
     return
   }
   if (!canEdit.value || operationPending.value) {
@@ -260,7 +307,7 @@ async function saveDraft() {
   try {
     await persistDraft()
     message.success('草稿已保存')
-    await loadMine()
+    await loadApplication()
   } catch (error) {
     showUserError(error, '保存双师认定草稿失败')
   } finally {
@@ -272,8 +319,8 @@ async function submitApplication() {
   if (!assertArchiveWritable()) {
     return
   }
-  if (!currentUserId.value) {
-    showFormValidationMessage('未获取当前用户')
+  if (!targetTeacherId.value) {
+    showFormValidationMessage('请先选择目标教师')
     return
   }
   if (!canEdit.value || operationPending.value) {
@@ -293,7 +340,7 @@ async function submitApplication() {
     await persistDraft()
     await portfolioDualTeacherApi.submit({ id: form.id })
     message.success('已提交审核')
-    await loadMine()
+    await loadApplication()
   } catch (error) {
     showUserError(error, '提交双师认定申请失败')
   } finally {
@@ -302,10 +349,10 @@ async function submitApplication() {
 }
 
 watch(
-  currentUserId,
+  () => [targetTeacherId.value, readRouteStringParam(route.query.applicationId)],
   () => {
     resetApplicationContext()
-    void loadMine()
+    void loadApplication()
   },
   { immediate: true },
 )
@@ -316,97 +363,107 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" title="双师认定申请" />
     </template>
-    <UiAlertStrip
-      v-if="archiveWriteForbidden"
-      tone="warning"
-      title="档案已封存写禁"
-      :description="archiveWriteBlockMessage"
-      class="mb-3"
-    />
+    <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
+    <template v-else>
+      <UiAlertStrip
+        v-if="isProxyMode"
+        tone="info"
+        title="代办模式"
+        description="当前正在代目标教师办理双师认定申请；保存与提交将写入该教师档案。"
+        class="mb-3"
+      />
+      <UiAlertStrip
+        v-if="archiveWriteForbidden"
+        tone="warning"
+        title="档案已封存写禁"
+        :description="archiveWriteBlockMessage"
+        class="mb-3"
+      />
 
-    <UiCard>
-      <div v-if="application" class="status-bar">
-        <span>申请单号 {{ application.applicationNo }}</span>
-        <span>状态 {{ statusLabel(application.applicationStatus) }}</span>
-        <span v-if="reReviewDrafting" class="re-review-hint">正在填写复核申请（尚未保存）</span>
-      </div>
-      <UiForm layout="vertical" class="form">
-        <UiFormItem label="认定等级" required>
-          <UiInput
-            size="sm"
-            v-model="form.certLevel"
-            :disabled="!canEdit || operationPending"
-            placeholder="如 高级"
-          />
-        </UiFormItem>
-        <UiFormItem label="认定年度" required>
-          <UiInput size="sm" v-model="form.certYear" :disabled="!canEdit || operationPending" />
-        </UiFormItem>
-        <UiFormItem label="企业实践天数">
-          <UiInputNumber
-            size="sm"
-            v-model="form.enterprisePracticeDays"
-            :disabled="!canEdit || operationPending"
-            :min="0"
-            style="width: 100%"
-          />
-        </UiFormItem>
-        <UiFormItem label="证明材料">
-          <input
-            ref="attachmentInputRef"
-            type="file"
-            class="sr-only"
-            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
-            multiple
-            @change="onAttachmentPick"
-          />
-          <UiButton
-            variant="primary"
-            size="sm"
-            :loading="uploading"
-            :disabled="!canEdit || operationPending"
-            @click="openAttachmentPicker"
-          >
-            上传附件
-          </UiButton>
-          <ul v-if="attachmentItems.length" class="attachment-list">
-            <li v-for="item in attachmentItems" :key="item.fileNodeId">
-              <span>{{ item.fileName }}</span>
-              <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)">移除</a>
-            </li>
-          </ul>
-        </UiFormItem>
-        <div class="actions">
-          <UiButton
-            v-if="canStartReReview"
-            size="sm"
-            variant="primary"
-            :disabled="operationPending"
-            @click="startReReview"
-          >
-            发起复核申请
-          </UiButton>
-          <UiButton
-            variant="primary"
-            size="sm"
-            :loading="saving"
-            :disabled="!canEdit || operationPending"
-            @click="saveDraft"
-          >
-            保存草稿
-          </UiButton>
-          <UiButton
-            size="sm"
-            variant="primary"
-            :loading="submitting"
-            :disabled="!canSubmit"
-            @click="submitApplication"
-          >
-            提交审核
-          </UiButton>
+      <UiCard>
+        <div v-if="application" class="status-bar">
+          <span>申请单号 {{ application.applicationNo }}</span>
+          <span>状态 {{ statusLabel(application.applicationStatus) }}</span>
+          <span v-if="reReviewDrafting" class="re-review-hint">正在填写复核申请（尚未保存）</span>
         </div>
-      </UiForm>
-    </UiCard>
+        <UiForm layout="vertical" class="form">
+          <UiFormItem label="认定等级" required>
+            <UiInput
+              size="sm"
+              v-model="form.certLevel"
+              :disabled="!canEdit || operationPending"
+              placeholder="如 高级"
+            />
+          </UiFormItem>
+          <UiFormItem label="认定年度" required>
+            <UiInput size="sm" v-model="form.certYear" :disabled="!canEdit || operationPending" />
+          </UiFormItem>
+          <UiFormItem label="企业实践天数">
+            <UiInputNumber
+              size="sm"
+              v-model="form.enterprisePracticeDays"
+              :disabled="!canEdit || operationPending"
+              :min="0"
+              style="width: 100%"
+            />
+          </UiFormItem>
+          <UiFormItem label="证明材料">
+            <input
+              ref="attachmentInputRef"
+              type="file"
+              class="sr-only"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+              multiple
+              @change="onAttachmentPick"
+            />
+            <UiButton
+              variant="primary"
+              size="sm"
+              :loading="uploading"
+              :disabled="!canEdit || operationPending"
+              @click="openAttachmentPicker"
+            >
+              上传附件
+            </UiButton>
+            <ul v-if="attachmentItems.length" class="attachment-list">
+              <li v-for="item in attachmentItems" :key="item.fileNodeId">
+                <span>{{ item.fileName }}</span>
+                <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)">移除</a>
+              </li>
+            </ul>
+          </UiFormItem>
+          <div class="actions">
+            <UiButton
+              v-if="canStartReReview"
+              size="sm"
+              variant="primary"
+              :disabled="operationPending"
+              @click="startReReview"
+            >
+              发起复核申请
+            </UiButton>
+            <UiButton
+              variant="primary"
+              size="sm"
+              :loading="saving"
+              :disabled="!canEdit || operationPending"
+              @click="saveDraft"
+            >
+              保存草稿
+            </UiButton>
+            <UiButton
+              size="sm"
+              variant="primary"
+              :loading="submitting"
+              :disabled="!canSubmit"
+              @click="submitApplication"
+            >
+              提交审核
+            </UiButton>
+          </div>
+        </UiForm>
+      </UiCard>
+    </template>
   </StageWorkbenchShell>
 </template>
 

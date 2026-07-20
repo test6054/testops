@@ -9,7 +9,7 @@
     </template>
 
     <template #signal>
-      <SignalBand :metrics="signalMetrics" variant="panel" compact />
+      <SignalBand :metrics="signalMetrics" variant="panel" />
     </template>
 
     <WorkbenchSurfaceCard flush class="archive-readiness-matrix">

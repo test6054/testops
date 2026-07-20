@@ -44,6 +44,7 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
@@ -74,7 +75,19 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
+
+function lifecycleTagTone(status?: string): 'green' | 'orange' | 'neutral' | 'red' {
+  if (status === 'ACTIVE') return 'green'
+  if (status === 'TEMP_HOLD') return 'orange'
+  if (status === 'SEALED' || status === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -412,6 +425,7 @@ async function loadPortraitBundle() {
       return
     }
     portrait.value = nextPortrait
+    void reloadLifecycleState()
     await loadSecondaryPortraitData()
   } catch (error) {
     if (portraitRequestToken.value !== requestToken) {
@@ -531,6 +545,24 @@ watch(creditCategory, (next, prev) => {
         <UiCard v-if="portrait" title="综合画像">
           <SignalBand :metrics="compositeItems" variant="panel" compact />
           <p class="teacher-portrait__meta">加权：核心 30% · 教学 25% · 科研/培训/实践各 15%</p>
+          <div
+            v-if="portrait.lifecycleStatus || archiveWriteForbidden"
+            class="teacher-portrait__lifecycle"
+          >
+            <template v-if="portrait.lifecycleStatus">
+              生命周期：
+              <UiTag :tone="lifecycleTagTone(portrait.lifecycleStatus)">
+                {{ portrait.lifecycleStatusLabel || portrait.lifecycleStatus }}
+              </UiTag>
+              <UiTag v-if="portrait.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-if="portrait.countsInCurrentFacultyStructure === false">
+                （不计入当前在岗结构）
+              </span>
+            </template>
+            <span v-if="archiveWriteForbidden || portrait.archiveWriteForbidden" class="teacher-portrait__write-ban">
+              档案写禁：{{ archiveWriteBlockMessage || '封存/迁出后禁止档案写入' }}
+            </span>
+          </div>
           <p class="teacher-portrait__meta">
             正式档案记录 {{ portrait.officialRecordCount }} 条
             <template v-if="portrait.computedTime">

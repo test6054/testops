@@ -99,18 +99,21 @@
         size="sm"
         v-if="listLoadFailed"
         title="加载失败"
+        description="请检查网络后重新查询"
         class="exam-list-page__empty"
       />
       <UiEmpty
         size="sm"
         v-else-if="listTab === 'priority' && !priorityLoading && priorityPagination.total === 0"
-        description="暂无优先推进的考试"
+        title="暂无优先推进"
+        description="当前筛选下没有需要优先处理的考试"
         class="exam-list-page__empty"
       />
       <UiEmpty
         size="sm"
         v-else-if="listTab === 'ongoing' && !ongoingLoading && ongoingPagination.total === 0"
-        description="暂无进行中的考试"
+        title="暂无进行中考试"
+        description="可新建考试，或切换到「全部」查看历史"
         class="exam-list-page__empty"
       />
 
@@ -233,136 +236,17 @@
   </StageWorkbenchShell>
 
   <!-- 考试维护 Drawer -->
-  <UiDrawer
-    :open="formModalOpen"
-    title="编辑考试"
-    :width="560"
-    :confirm-loading="saving"
-    :mask-closable="false"
-    ok-text="保存"
-    :hide-footer="false"
-    @update:open="(v: boolean) => (formModalOpen = v)"
-    @close="formModalOpen = false"
-    @confirm="handleSave"
-  >
-    <UiSkeletonState v-if="editDetailLoading" variant="card" compact />
-    <UiForm v-else ref="formRef" :model="examForm" :rules="examFormRules" layout="vertical">
-      <UiFormItem label="课程" name="courseId">
-        <CatalogCourseSelector
-          v-model:value="examForm.courseId"
-          placeholder="选择课程"
-          :allow-clear="false"
-        />
-      </UiFormItem>
-      <UiFormItem label="考试名称" name="examName">
-        <UiInput
-          size="sm"
-          v-model="examForm.examName"
-          placeholder="例如：2026 春《工程制图》期末"
-          :maxlength="100"
-        />
-      </UiFormItem>
-      <UiFormItem label="考务编号" name="examNo">
-        <UiInput
-          size="sm"
-          v-model="examForm.examNo"
-          placeholder="教务系统编号或自定义编号"
-          :maxlength="64"
-        />
-      </UiFormItem>
-      <UiFormItem label="学年" name="academicYear">
-        <UiInput
-          size="sm" v-model="examForm.academicYear" placeholder="2024-2025" :maxlength="9"
-        />
-      </UiFormItem>
-      <UiFormItem label="学期" name="semester">
-        <UiSelect
-          size="sm"
-          v-model="examForm.semester"
-          placeholder="选择学期"
-          allow-clear
-          :options="SemesterOptions"
-        />
-      </UiFormItem>
-      <UiFormItem label="考试时间窗" name="examWindow">
-        <UiRangePicker
-          v-model="examForm.examWindow"
-          show-time
-          format="YYYY-MM-DD HH:mm"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          :placeholder="['开始时间', '结束时间']"
-        />
-      </UiFormItem>
-      <UiFormItem label="阅卷策略" name="gradingStrategy">
-        <UiInput
-          size="sm"
-          :value="
-            strictEnumLabel(
-              ExamGradingStrategyDescription,
-              ExamGradingStrategyCode.SINGLE,
-              '阅卷策略',
-            )
-          "
-          disabled
-        />
-      </UiFormItem>
-      <UiFormItem label="成绩构成" name="scoreCompositionMode">
-        <UiRadioGroup
-          v-model="examForm.scoreCompositionMode"
-          size="sm"
-          block
-          :options="[
-            { label: '仅计入考试成绩（期末笔试）', value: 'EXAM_ONLY' },
-            { label: '期末考试 + 平时成绩合成', value: 'EXAM_WITH_DAILY' },
-          ]"
-        />
-        <div class="exam-list-form__composition-hint">
-          平时成绩指出勤、作业、课堂表现等；选择合成后，成绩确认时需为每位考生录入平时分，总成绩=考试分+平时分。
-        </div>
-      </UiFormItem>
-      <UiFormItem
-        v-if="examForm.scoreCompositionMode === 'EXAM_WITH_DAILY'"
-        label="平时成绩满分"
-        name="dailyScoreFull"
-      >
-        <UiInputNumber
-          size="sm"
-          v-model="examForm.dailyScoreFull"
-          :min="0.01"
-          :max="1000"
-          :precision="2"
-          style="width: 100%"
-          placeholder="例如 30（与培养方案中平时分满分一致）"
-        />
-      </UiFormItem>
-      <UiFormItem label="备注" name="remark">
-        <UiTextarea
-          size="sm"
-          v-model="examForm.remark"
-          :rows="3"
-          placeholder="可填写考试用途、班级范围说明等"
-          :maxlength="500"
-          :show-count="true"
-        />
-      </UiFormItem>
-      <UiFormItem label="涉密场次" name="confidential">
-        <UiSwitch size="sm" v-model="examForm.confidential" :disabled="editDetailLoading" />
-      </UiFormItem>
-    </UiForm>
-    <template #footer>
-      <UiButton size="sm" variant="outline" :disabled="saving" @click="formModalOpen = false">取消</UiButton>
-      <UiButton size="sm" variant="primary" :loading="saving" :disabled="editDetailLoading" @click="handleSave">保存</UiButton>
-    </template>
-  </UiDrawer>
+  <ExamEditDrawer
+    v-model:open="formModalOpen"
+    :exam-id="editingExamId"
+    @saved="handleExamEdited"
+  />
 </template>
 
 <script lang="ts" setup>
-import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type {
   ExamPageQueryRequest,
-  ExamScorePolicyCode,
-  ExamUpdateRequest,
   ExamWorkbenchSummaryResponse,
 } from '@/apis/mark/exam'
 import type {
@@ -384,41 +268,28 @@ import {
   deleteExam,
   EXAM_KIND_TONE,
   EXAM_STATUS_TONE,
-  ExamGradingStrategyCode,
-  ExamGradingStrategyDescription,
-  ExamKindCode,
   ExamKindDescription,
   ExamListScopeCode,
   ExamStatusCode,
   ExamStatusDescription,
-  getExamDetail,
   pageExamWorkbench,
-  updateExam,
 } from '@/apis/mark/exam'
-import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
+import ExamEditDrawer from '@/components/mark/ExamEditDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
-import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiRangePicker from '@/components/ui-guide/ui/RangePicker.vue'
-import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
-import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
-import UiForm from '@/components/ui-guide/ui/UiForm.vue'
-import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
-import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
-import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
-import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { useArchiveS1AutoCreateAttention } from '@/composables/useArchiveS1AutoCreateAttention'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   buildCloseExamBlockedContent,
@@ -428,13 +299,13 @@ import { useMarkDashboardFilterOptions } from '@/composables/useMarkDashboardFil
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
-import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
+import { formatSemester } from '@/types/enums/semester-enum'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import {
   buildOptionalAcademicYearSemesterQuery,
   ensureAcademicYearSemesterPair,
 } from '@/utils/academic-year-semester-query'
-import { rejectFormValidation, showUserError } from '@/utils/error-handler'
+import { showUserError } from '@/utils/error-handler'
 import { formatExamSubMeta } from '@/utils/exam-display-meta'
 import { readExamListDeepLinkQuery } from '@/utils/exam-list-navigation'
 import {
@@ -455,6 +326,10 @@ import ExamListExamWindowCell from '@/views/teacher/components/ExamListExamWindo
 defineOptions({ name: 'TeacherExamList' })
 
 const router = useRouter()
+const {
+  load: loadS1AutoCreateAttention,
+  isAttentionExam,
+} = useArchiveS1AutoCreateAttention()
 const route = useRoute()
 const authStore = useAuthStore()
 const userStore = useUserStore()
@@ -546,8 +421,6 @@ watch(
     }
   },
 )
-
-type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
 
 const priorityDataSource = ref<ExamWorkbenchSummaryResponse[]>([])
 const ongoingDataSource = ref<ExamWorkbenchSummaryResponse[]>([])
@@ -739,6 +612,9 @@ function resolveListTabFromCounts(): void {
 const summarySignalMetrics = computed((): SignalMetric[] => {
   const dash = '—'
   const filteredTotal = currentPagination.value.total ?? 0
+  const ongoing = ongoingBadgeTotal.value
+  const closed = closedTotal.value
+  const stale = stalePushTotal.value
   return [
     {
       key: 'filtered',
@@ -746,31 +622,43 @@ const summarySignalMetrics = computed((): SignalMetric[] => {
       value: filteredTotal,
       unit: '场',
       tone: 'blue',
+      iconTone: 'blue',
+      helper: listTab.value === 'all' ? '当前筛选结果' : '切换到「全部」查看',
       clickable: true,
     },
     {
       key: 'active',
       label: '进行中',
-      value: statusTotalsFailed.value ? dash : ongoingBadgeTotal.value,
+      value: statusTotalsFailed.value ? dash : ongoing,
       unit: '场',
       tone: 'green',
+      iconTone: 'green',
+      helper: statusTotalsFailed.value ? '计数暂不可用' : '可进入阅卷推进',
       clickable: true,
     },
     {
       key: 'closed',
       label: '已关闭',
-      value: statusTotalsFailed.value ? dash : closedTotal.value,
+      value: statusTotalsFailed.value ? dash : closed,
       unit: '场',
       tone: 'gray',
+      iconTone: 'gray',
+      helper: statusTotalsFailed.value ? '计数暂不可用' : '历史已关闭考试',
       clickable: !statusTotalsFailed.value,
     },
     {
       key: 'stale',
       label: '待推进',
-      value: statusTotalsFailed.value ? dash : stalePushTotal.value,
+      value: statusTotalsFailed.value ? dash : stale,
       unit: '场',
-      tone: stalePushTotal.value > 0 ? 'orange' : 'gray',
-      clickable: !statusTotalsFailed.value && stalePushTotal.value > 0,
+      tone: stale > 0 ? 'orange' : 'gray',
+      iconTone: stale > 0 ? 'orange' : 'gray',
+      helper: statusTotalsFailed.value
+        ? '计数暂不可用'
+        : stale > 0
+          ? '优先处理阻塞项'
+          : '暂无阻塞待办',
+      clickable: !statusTotalsFailed.value && stale > 0,
     },
   ]
 })
@@ -853,8 +741,15 @@ function examListExamSubMeta(exam: ExamWorkbenchSummaryResponse): string {
   return formatExamSubMeta(exam.examNo, exam.departmentName)
 }
 
+/** 关考 / tip 待建袋 / 阅卷已满均可进 S1 复盘，避免协调人误走「新建课程考核袋」。 */
 function isExamArchiveReady(exam: ExamWorkbenchSummaryResponse): boolean {
-  return exam.status === ExamStatusCode.CLOSED && getExamGradingPercent(exam) >= 100
+  if (isAttentionExam(exam.examId)) {
+    return true
+  }
+  if (exam.status === ExamStatusCode.CLOSED) {
+    return true
+  }
+  return getExamGradingPercent(exam) >= 100
 }
 
 function examListCustomRow(record: ExamWorkbenchSummaryResponse) {
@@ -864,6 +759,7 @@ function examListCustomRow(record: ExamWorkbenchSummaryResponse) {
 }
 
 function examListRowClassName(record: ExamWorkbenchSummaryResponse): string {
+  if (isAttentionExam(record.examId)) return 'exam-list-row--archive-attention'
   if (record.status === ExamStatusCode.CLOSED) return ''
   if (isExamPriorityRow(record)) return 'exam-list-row--priority'
   if (record.status === ExamStatusCode.ACTIVE) return 'exam-list-row--active'
@@ -895,9 +791,9 @@ function getOpenMarkingCount(exam: ExamWorkbenchSummaryResponse): number {
   return resolveExamProgressSnapshot(exam).openMarking
 }
 
-/** 教师视角：主考为自己创建；其余可见考试均为被分配批阅任务或题组评阅。 */
+/** 教师视角：主考与 BE canManageOwnerExamLifecycleWrites 同源；其余为评阅。 */
 function examParticipationLabel(exam: ExamWorkbenchSummaryResponse): string {
-  if (!!exam.createUser && exam.createUser === userStore.userInfo.userId) {
+  if (exam.canManageOwnerExamLifecycleWrites === true) {
     return '主考'
   }
   if (isAdminView.value) {
@@ -907,7 +803,7 @@ function examParticipationLabel(exam: ExamWorkbenchSummaryResponse): string {
 }
 
 function examParticipationTone(exam: ExamWorkbenchSummaryResponse): BadgeTone {
-  if (!!exam.createUser && exam.createUser === userStore.userInfo.userId) {
+  if (exam.canManageOwnerExamLifecycleWrites === true) {
     return 'green'
   }
   if (isAdminView.value) {
@@ -1002,6 +898,33 @@ function syncTabBadgeFromPagination(scope: ExamListScopeCode): void {
   allBadgeTotal.value = total
 }
 
+/** 当前页内将 S1 待自动建袋考试置顶，不改后端排序契约。 */
+function prioritizeAttentionExams(
+  exams: ExamWorkbenchSummaryResponse[],
+): ExamWorkbenchSummaryResponse[] {
+  if (exams.length <= 1) {
+    return exams
+  }
+  const attention: ExamWorkbenchSummaryResponse[] = []
+  const others: ExamWorkbenchSummaryResponse[] = []
+  for (const exam of exams) {
+    if (isAttentionExam(exam.examId)) {
+      attention.push(exam)
+    } else {
+      others.push(exam)
+    }
+  }
+  if (attention.length === 0) {
+    return exams
+  }
+  return [...attention, ...others]
+}
+
+function resortTabDataByAttention(scope: ExamListScopeCode): void {
+  const dataSourceRef = getDataSourceRefByScope(scope)
+  dataSourceRef.value = prioritizeAttentionExams(dataSourceRef.value)
+}
+
 async function loadTabData(scope: ExamListScopeCode): Promise<void> {
   const paginationState = getPaginationByScope(scope)
   const dataSourceRef = getDataSourceRefByScope(scope)
@@ -1012,7 +935,7 @@ async function loadTabData(scope: ExamListScopeCode): Promise<void> {
     const result = await pageExamWorkbench(
       buildWorkbenchQuery(scope, paginationState.current ?? 1, paginationState.pageSize ?? 10),
     )
-    dataSourceRef.value = result.list
+    dataSourceRef.value = prioritizeAttentionExams(result.list ?? [])
     paginationState.total = result.total
     if (result.pageNum != null) {
       paginationState.current = result.pageNum
@@ -1118,8 +1041,11 @@ function goMarkingTaskPool(exam: ExamWorkbenchSummaryResponse): void {
   })
 }
 
-function goArchiveVolumeList(): void {
-  void router.push({ name: 'TeacherArchiveVolumeList' })
+function goExamArchiveReview(exam: ExamWorkbenchSummaryResponse): void {
+  void router.push({
+    name: 'TeacherExamWorkspaceArchivePackage',
+    params: { examId: String(exam.examId) },
+  })
 }
 
 // ─── KPI 概览：workbench-scope-counts 返回 CLOSED；Signal「进行中」与 Tab 共用 ongoingCount ─
@@ -1127,226 +1053,27 @@ const closedTotal = ref<number>(0)
 const statusTotalsFailed = ref(false)
 
 const formModalOpen = ref(false)
-const editDetailLoading = ref(false)
-const saving = ref(false)
 const editingExamId = ref<string | null>(null)
-const formRef = ref<FormInstance>()
-const examForm = reactive<{
-  courseId: string | null
-  examName: string
-  examNo: string
-  academicYear?: string
-  semester?: SemesterCode
-  examWindow?: [string, string]
-  gradingStrategy: ExamGradingStrategyCode
-  scoreCompositionMode: ExamScoreCompositionMode
-  dailyScoreFull?: number
-  confidential: boolean
-  examKind: ExamKindCode
-  sourceExamId?: string
-  scorePolicy?: ExamScorePolicyCode
-  remark?: string
-}>({
-  courseId: null,
-  examName: '',
-  examNo: '',
-  academicYear: '',
-  semester: undefined,
-  examWindow: undefined,
-  gradingStrategy: ExamGradingStrategyCode.SINGLE,
-  scoreCompositionMode: 'EXAM_ONLY',
-  dailyScoreFull: undefined,
-  confidential: false,
-  examKind: ExamKindCode.REGULAR,
-  sourceExamId: undefined,
-  scorePolicy: undefined,
-  remark: '',
-})
-
-const examFormRules: Record<string, Rule[]> = {
-  courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
-  examName: [
-    { required: true, message: '请输入考试名称', trigger: 'blur' },
-    { max: 100, message: '考试名称最多 100 个字符', trigger: 'blur' },
-  ],
-  examNo: [
-    { required: true, message: '请输入考务编号', trigger: 'blur' },
-    { max: 64, message: '考务编号最多 64 个字符', trigger: 'blur' },
-  ],
-  academicYear: [
-    {
-      validator: async (): Promise<void> => {
-        const academicYear = examForm.academicYear?.trim()
-        if (!academicYear && !examForm.semester) return
-        if (!academicYear || !examForm.semester) {
-          return rejectFormValidation('学年与学期必须同时填写或同时留空')
-        }
-        const match = /^(\d{4})-(\d{4})$/.exec(academicYear)
-        if (!match || Number(match[2]) !== Number(match[1]) + 1) {
-          return rejectFormValidation('学年格式应为 2024-2025')
-        }
-      },
-      trigger: 'blur',
-    },
-  ],
-  semester: [
-    {
-      validator: async (): Promise<void> => {
-        const academicYear = examForm.academicYear?.trim()
-        if (!academicYear && !examForm.semester) return
-        if (!academicYear || !examForm.semester) {
-          return rejectFormValidation('学年与学期必须同时填写或同时留空')
-        }
-      },
-      trigger: 'change',
-    },
-  ],
-  examWindow: [
-    {
-      validator: async (): Promise<void> => {
-        const [startTime, endTime] = examForm.examWindow ?? []
-        if (!startTime || !endTime) {
-          return rejectFormValidation('请选择考试时间窗')
-        }
-      },
-      trigger: 'change',
-    },
-  ],
-  dailyScoreFull: [
-    {
-      validator: async (): Promise<void> => {
-        if (examForm.scoreCompositionMode !== 'EXAM_WITH_DAILY') return
-        const value = examForm.dailyScoreFull
-        if (value == null || value <= 0) {
-          return rejectFormValidation('请填写平时成绩满分（须大于 0）')
-        }
-        if (value > 1000) {
-          return rejectFormValidation('平时成绩满分不能超过 1000')
-        }
-      },
-      trigger: 'change',
-    },
-  ],
-  remark: [{ max: 500, message: '备注最多 500 个字符', trigger: 'blur' }],
-}
-
-function resetExamForm(): void {
-  editingExamId.value = null
-  editDetailLoading.value = false
-  examForm.courseId = null
-  examForm.examName = ''
-  examForm.examNo = ''
-  examForm.academicYear = ''
-  examForm.semester = undefined
-  examForm.examWindow = undefined
-  examForm.gradingStrategy = ExamGradingStrategyCode.SINGLE
-  examForm.scoreCompositionMode = 'EXAM_ONLY'
-  examForm.dailyScoreFull = undefined
-  examForm.confidential = false
-  examForm.examKind = ExamKindCode.REGULAR
-  examForm.sourceExamId = undefined
-  examForm.scorePolicy = undefined
-  examForm.remark = ''
-  formRef.value?.clearValidate()
-}
 
 function goCreateExam(): void {
   void router.push({ name: 'TeacherCreateExam' })
 }
 
-async function openEditModal(exam: ExamWorkbenchSummaryResponse): Promise<void> {
-  resetExamForm()
+function openEditModal(exam: ExamWorkbenchSummaryResponse): void {
+  if (!canManageOwnerExamLifecycle(exam)) {
+    return
+  }
   editingExamId.value = exam.examId
-  examForm.courseId = exam.courseId ?? null
-  examForm.examName = exam.examName
-  examForm.examNo = exam.examNo
-  examForm.academicYear = exam.academicYear ?? ''
-  examForm.semester = exam.semester
-  examForm.examWindow
-    = exam.examStartTime && exam.examEndTime ? [exam.examStartTime, exam.examEndTime] : undefined
-  examForm.scoreCompositionMode = exam.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
-  examForm.dailyScoreFull = exam.dailyScoreFull ?? undefined
-  examForm.examKind = exam.examKind ?? ExamKindCode.REGULAR
-  examForm.sourceExamId = exam.sourceExamId
-  examForm.scorePolicy = exam.scorePolicy
-  examForm.remark = exam.remark ?? ''
-  editDetailLoading.value = true
   formModalOpen.value = true
-  try {
-    const detail = await getExamDetail(exam.examId)
-    if (editingExamId.value !== exam.examId) return
-    examForm.confidential = detail.confidential === true
-    examForm.examKind = detail.examKind ?? examForm.examKind
-    examForm.sourceExamId = detail.sourceExamId
-    examForm.scorePolicy = detail.scorePolicy
-  } catch (error) {
-    formModalOpen.value = false
-    editingExamId.value = null
-    showUserError(error, '考试详情加载失败')
-  } finally {
-    if (editingExamId.value === exam.examId) {
-      editDetailLoading.value = false
-    }
-  }
 }
 
-function buildExamUpdateRequest(): ExamUpdateRequest | null {
-  const [startTime, endTime] = examForm.examWindow ?? []
-  if (!examForm.courseId || !startTime || !endTime || !editingExamId.value) {
-    message.error('请选择考试课程与考试时间')
-    return null
-  }
-  const academicYear = examForm.academicYear?.trim()
-  return {
-    examId: editingExamId.value,
-    courseId: examForm.courseId,
-    examName: examForm.examName.trim(),
-    examNo: examForm.examNo.trim(),
-    academicYear: academicYear || undefined,
-    semester: examForm.semester || undefined,
-    examStartTime: startTime,
-    examEndTime: endTime,
-    gradingStrategy: ExamGradingStrategyCode.SINGLE,
-    dailyScoreFull:
-      examForm.scoreCompositionMode === 'EXAM_WITH_DAILY' ? examForm.dailyScoreFull : null,
-    confidential: examForm.confidential,
-    remark: examForm.remark?.trim() || undefined,
-  }
+async function handleExamEdited(): Promise<void> {
+  await reloadAll()
 }
 
-async function handleSave(): Promise<void> {
-  if (saving.value) {
-    return
-  }
-  if (editDetailLoading.value) {
-    message.warning('考试详情加载中，请稍候再保存')
-    return
-  }
-  if (!formRef.value) return
-  try {
-    await formRef.value.validate()
-  } catch {
-    return
-  }
-  saving.value = true
-  try {
-    const request = buildExamUpdateRequest()
-    if (!request) {
-      return
-    }
-    await updateExam(request)
-    message.success('考试已更新')
-    formModalOpen.value = false
-    await reloadAll()
-  } catch (error) {
-    showUserError(error, '保存考试失败')
-  } finally {
-    saving.value = false
-  }
-}
-
-function isExamOwner(exam: ExamWorkbenchSummaryResponse): boolean {
-  return !!exam.createUser && exam.createUser === userStore.userInfo.userId
+/** MVR-327：仅认 BE canManageOwnerExamLifecycleWrites===true；禁止 createUser 本地回退 */
+function canManageOwnerExamLifecycle(exam: ExamWorkbenchSummaryResponse): boolean {
+  return exam.canManageOwnerExamLifecycleWrites === true
 }
 
 /** 组装考试列表行内操作：默认展示 3 项，其余由 UiTableActions 收入「更多」。 */
@@ -1357,14 +1084,17 @@ function buildExamRowActions(exam: ExamWorkbenchSummaryResponse): UiTableRowActi
     actions.push({ key: 'marking', label: '阅卷' })
   }
   if (isExamArchiveReady(exam)) {
-    actions.push({ key: 'archive', label: '归档' })
+    actions.push({
+      key: 'archive',
+      label: isAttentionExam(exam.examId) ? '待建袋·归档复盘' : '归档复盘',
+      tone: isAttentionExam(exam.examId) ? 'primary' : undefined,
+    })
   }
-  if (exam.status !== ExamStatusCode.CLOSED) {
+  // MVR-272：编辑/关闭/删除均仅主考；与 BE requireExamOwnerPermission 对齐
+  if (exam.status !== ExamStatusCode.CLOSED && canManageOwnerExamLifecycle(exam)) {
     actions.push({ key: 'edit', label: '编辑' })
-    if (isExamOwner(exam)) {
-      actions.push({ key: 'close', label: '关闭' })
-      actions.push({ key: 'delete', label: '删除', tone: 'danger' })
-    }
+    actions.push({ key: 'close', label: '关闭' })
+    actions.push({ key: 'delete', label: '删除', tone: 'danger' })
   }
   return actions
 }
@@ -1378,22 +1108,31 @@ function handleExamRowAction(key: string, exam: ExamWorkbenchSummaryResponse): v
       goMarkingTaskPool(exam)
       break
     case 'archive':
-      goArchiveVolumeList()
+      goExamArchiveReview(exam)
       break
     case 'edit':
+      if (!canManageOwnerExamLifecycle(exam)) {
+        return
+      }
       openEditModal(exam)
       break
     case 'close':
+      if (!canManageOwnerExamLifecycle(exam)) {
+        return
+      }
       confirmClose(exam)
       break
     case 'delete':
+      if (!canManageOwnerExamLifecycle(exam)) {
+        return
+      }
       confirmDelete(exam)
       break
   }
 }
 
 function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
-  if (examActionLoading.value) {
+  if (!canManageOwnerExamLifecycle(exam) || examActionLoading.value) {
     return
   }
   void (async () => {
@@ -1447,7 +1186,7 @@ function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
 }
 
 function confirmDelete(exam: ExamWorkbenchSummaryResponse): void {
-  if (examActionLoading.value) {
+  if (!canManageOwnerExamLifecycle(exam) || examActionLoading.value) {
     return
   }
   void confirmAsync({
@@ -1493,7 +1232,10 @@ async function reloadListAndCounts(options?: { resolveTab?: boolean }): Promise<
 }
 
 async function reloadAll(): Promise<void> {
+  // 先拉 S1 关注 examId 集合，再拉列表，保证本页置顶排序可用
+  await loadS1AutoCreateAttention()
   await reloadListAndCounts()
+  resortTabDataByAttention(tabToScope(listTab.value))
 }
 
 onActivated(() => {
@@ -1660,6 +1402,12 @@ onActivated(() => {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .exam-list-page__status-pulse {
+    animation: none;
+  }
+}
+
 .exam-list-page__progress {
   display: flex;
   align-items: center;
@@ -1681,7 +1429,13 @@ onActivated(() => {
   transform-origin: left center;
   border-radius: 3px;
   background: var(--dp-color-primary);
-  transition: transform 200ms ease;
+  transition: transform var(--dp-duration-normal, 200ms) ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .exam-list-page__progress-fill {
+    transition: none;
+  }
 }
 
 .exam-list-page__progress-fill--success {
@@ -1714,49 +1468,38 @@ onActivated(() => {
 
 .exam-table :deep(.ant-table-tbody > tr > td) {
   vertical-align: middle;
+  transition: background var(--dp-duration-fast, 150ms) ease;
+}
+
+.exam-table :deep(.ant-table-tbody > tr:hover > td) {
+  background: color-mix(in srgb, var(--dp-color-primary) 4%, var(--dp-surface));
 }
 
 .exam-table :deep(.exam-list-row--priority > td) {
   background: color-mix(in srgb, var(--dp-warning) 8%, transparent);
 }
 
+.exam-table :deep(.exam-list-row--priority:hover > td) {
+  background: color-mix(in srgb, var(--dp-warning) 12%, transparent);
+}
+
 .exam-table :deep(.exam-list-row--active > td) {
   background: color-mix(in srgb, var(--dp-color-primary) 6%, transparent);
 }
 
-.exam-list-page__exam-window {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  line-height: 1.4;
+.exam-table :deep(.exam-list-row--active:hover > td) {
+  background: color-mix(in srgb, var(--dp-color-primary) 10%, transparent);
 }
 
-.exam-list-page__exam-window-range {
-  font-size: 13px;
-  white-space: nowrap;
+.exam-table :deep(.exam-list-row--archive-attention > td) {
+  background: color-mix(in srgb, var(--dp-warning) 10%, transparent);
 }
 
-.exam-list-page__exam-window-phase {
-  font-size: 12px;
-  color: var(--dp-text-tertiary);
-}
-
-.exam-list-page__exam-window-phase--upcoming {
-  color: var(--dp-warning);
-}
-
-.exam-list-page__exam-window-phase--ongoing {
-  color: var(--dp-success);
+.exam-table :deep(.exam-list-row--archive-attention:hover > td) {
+  background: color-mix(in srgb, var(--dp-warning) 14%, transparent);
 }
 
 .muted {
-  color: var(--dp-text-tertiary);
-}
-
-.exam-list-form__composition-hint {
-  margin-top: 8px;
-  font-size: 12px;
-  line-height: 1.5;
   color: var(--dp-text-tertiary);
 }
 </style>

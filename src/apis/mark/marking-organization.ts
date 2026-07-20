@@ -421,8 +421,13 @@ export interface MarkingOrganizationResponse {
   remark?: string
   /** 考试主考老师用户 ID - 对应后端 MarkingOrganizationResponse.examCreateUserId */
   examCreateUserId?: string
-  /** 当前用户是否具备主考专属权限 - 对应后端 canManageExamOwner */
+  /** 当前用户是否具备主考专属写权限 - 对应后端 canManageExamOwner（主考∧ACTIVE） */
   canManageExamOwner?: boolean
+  /**
+   * 是否可写质量监控（进度快照 / 指标重算 / 创建抽检）
+   * 对应后端 canManageQualityMonitorWrites（主考或本组织负责人，不叠 ACTIVE）
+   */
+  canManageQualityMonitorWrites?: boolean
   groups: QuestionMarkingGroupResponse[]
   /** 题组数量 - 对应后端 groupCount */
   groupCount?: number
@@ -466,6 +471,8 @@ export interface MarkingTaskResponse {
   annotationNote?: string
   /** 匿名令牌值；匿名模式为真实令牌，实名模式为 null */
   anonymousToken: string | null
+  /** MVR-327：解匿名主考能力位；与 BE isExamOwner 同源 */
+  canManageOwnerIdentityReveal?: boolean
   /** 答卷身份展示信息，由后端按实名 / 匿名策略统一裁决 */
   paperDisplay: PaperInstanceDisplayVO
   /** 题号；整卷任务为 null */
@@ -1033,6 +1040,10 @@ export interface TeacherClaimContextResponse {
   groups: TeacherGroupClaimContextResponse[]
   /** 当前评阅员在本考试本阶段下的任务状态汇总 */
   taskSummary: TeacherMarkingTaskPoolSummaryResponse
+  /** MVR-281：是否可领取新任务（存在活跃题组评阅身份） */
+  canClaimTasks?: boolean
+  /** MVR-281：是否可执行阅卷任务写（批量给分等）；与 hasExamReviewerWritePermission 对齐 */
+  canManageReviewerWrites?: boolean
 }
 
 /**

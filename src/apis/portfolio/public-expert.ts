@@ -5,6 +5,15 @@ const PUBLIC_EXPERT = '/api/public/portfolio/expert-assignment'
 export interface PortfolioPublicExpertReviewSubjectVO {
   subjectRef: string
   maskedDisplayName: string
+  /** 生命周期状态编码（脱敏可读；不默认过滤） */
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  /** 档案写禁 */
+  archiveWriteForbidden?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
+  /** 评价参评 hold（与档案写禁分离） */
+  evaluationHeld?: boolean
 }
 
 export interface PortfolioPublicExpertReviewMaterialVO {
@@ -17,6 +26,15 @@ export interface PortfolioPublicExpertReviewMaterialVO {
   sourceType?: string
   hasPrimaryFile: boolean
   supportMaterialCount: number
+  /** 材料身份切片 CAMPUS/EXTERNAL/SHARED（US-MI-01；免登可读） */
+  identityScope?: string
+  /** EXTERNAL 切片不可用于校内硬性条件 */
+  usableForCampusHardCriteria?: boolean
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  countsInCurrentFacultyStructure?: boolean
+  evaluationHeld?: boolean
 }
 
 export interface PortfolioPublicExpertReviewBundleVO {

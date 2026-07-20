@@ -32,6 +32,7 @@ import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
@@ -69,9 +70,17 @@ const pkForm = reactive({
 const candidateColumns: ColumnsType = [
   { title: '排名', dataIndex: 'rankOrder', key: 'rankOrder', width: 64 },
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 100 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '评分', dataIndex: 'ruleScore', key: 'ruleScore', width: 80 },
   { title: '推荐理由', dataIndex: 'reasonText', key: 'reasonText' },
 ]
+
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
 
 const runColumns: ColumnsType = [
   { title: '运行编号', dataIndex: 'id', key: 'id', width: 100 },
@@ -429,7 +438,17 @@ watch(
           row-key="id"
           style="margin-top: 16px"
           @page-change="handlePageChange"
-        />
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'lifecycleStatus'">
+              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              </UiTag>
+              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-else-if="!record.lifecycleStatus">—</span>
+            </template>
+          </template>
+        </UiDataTable>
       </UiCard>
     </template>
     <template v-else-if="activeTab === 'runs'">

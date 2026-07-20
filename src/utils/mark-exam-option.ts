@@ -52,5 +52,8 @@ export function examSummaryFromDetail(detail: ExamDetailResponse): ExamSummaryRe
     scorePolicy: detail.scorePolicy,
     teachingAcademicYear: detail.teachingAcademicYear,
     teachingSemester: detail.teachingSemester,
+    canManageReviewerWrites: detail.canManageReviewerWrites,
+    canManageOwnerExamPrepWrites: detail.canManageOwnerExamPrepWrites,
+    canManageOwnerExamLifecycleWrites: detail.canManageOwnerExamLifecycleWrites,
   }
 }

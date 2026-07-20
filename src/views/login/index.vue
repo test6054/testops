@@ -350,10 +350,12 @@ onMounted(async () => {
 }
 
 .login-brand__name {
-  font-size: var(--dp-font-size-3xl);
+  font-size: clamp(28px, 3.2vw, 36px);
   line-height: 1.1;
   font-weight: var(--dp-font-weight-title);
+  letter-spacing: -0.03em;
   color: var(--login-text);
+  text-wrap: balance;
 }
 
 .login-brand__sub {
@@ -465,10 +467,12 @@ onMounted(async () => {
 
 .login-panel__title {
   margin: 0;
-  font-size: 28px;
+  font-size: clamp(24px, 2.4vw, 30px);
   line-height: 1.15;
   font-weight: var(--dp-font-weight-title);
+  letter-spacing: -0.02em;
   color: var(--login-text);
+  text-wrap: balance;
 }
 
 .login-panel__subtitle {

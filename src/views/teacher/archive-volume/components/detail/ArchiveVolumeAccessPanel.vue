@@ -1,5 +1,5 @@
 <template>
-  <WorkbenchSurfaceCard flush class="archive-volume-access-panel">
+  <WorkbenchSurfaceCard flush embedded class="archive-volume-access-panel">
     <template #head>
       <div class="archive-volume-access-panel__head">
         <h3 class="archive-volume-access-panel__title">查阅/借阅审批</h3>
@@ -448,6 +448,11 @@ async function submitReadPage() {
 }
 
 function openAccessRequest() {
+  // MVR-299：与 canRequestAccess 同源二次拦截
+  if (props.canRequestAccess !== true) {
+    message.warning('当前账号无发起借阅权限')
+    return
+  }
   accessReason.value = ''
   accessRequestMaterialId.value = ''
   accessModalOpen.value = true
@@ -459,6 +464,10 @@ function resolveAccessMaterialId(record: ArchiveVolumeAccessRecordResponse): str
 
 async function submitAccessRequest() {
   if (accessSubmitting.value) return
+  if (props.canRequestAccess !== true) {
+    message.warning('当前账号无发起借阅权限')
+    return
+  }
   if (!accessReason.value.trim()) {
     showFormValidationMessage('请填写查阅原因')
     return
@@ -494,6 +503,12 @@ function cancelApprove() {
 
 async function submitApproveAccess(accessRecordId: string) {
   if (approveAccessSubmitting.value) return
+  // MVR-299：审批写二次拦截（与行级 canApproveAccessRecord 对齐）
+  const target = accessRecords.value.find((item) => item.accessRecordId === accessRecordId)
+  if (!target || !props.canApproveAccessRecord(target)) {
+    message.warning('当前账号无批准查阅权限')
+    return
+  }
   approveAccessSubmitting.value = true
   try {
     const decisionComment = approveAccessComment.value.trim()
@@ -525,6 +540,11 @@ function cancelReject() {
 
 async function submitRejectAccess(accessRecordId: string) {
   if (rejectAccessSubmitting.value) return
+  const target = accessRecords.value.find((item) => item.accessRecordId === accessRecordId)
+  if (!target || !props.canApproveAccessRecord(target)) {
+    message.warning('当前账号无驳回查阅权限')
+    return
+  }
   if (!rejectAccessComment.value.trim()) {
     showFormValidationMessage('请填写驳回原因')
     return

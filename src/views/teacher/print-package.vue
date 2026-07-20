@@ -8,7 +8,10 @@
           </UiTag>
         </template>
         <template #actions>
-          <UiTooltip v-if="printPackageApplicable" :title="generateDisabledReason">
+          <UiTooltip
+            v-if="printPackageApplicable && canManageOwnerPrintPackageWrites"
+            :title="generateDisabledReason"
+          >
             <UiButton
               variant="primary"
               size="sm"
@@ -256,7 +259,7 @@ import { resolvePrintPackageGenerateGate } from '@/utils/workflow-readiness/prin
 defineOptions({ name: 'TeacherPrintPackage' })
 
 const router = useRouter()
-const { selectedExamId } = useMarkExamContext()
+const { selectedExamId, selectedExam } = useMarkExamContext()
 const workbenchContext = useMarkWorkbenchContext()
 const { examStatusLabel, examStatusTone } = useExamJourneyContextBar('印刷包')
 const { refreshSnapshot } = useWorkspaceExamId()
@@ -336,6 +339,10 @@ function goPrepWorkbench(): void {
 const loading = ref(false)
 const packageList = ref<ExamPrintPackageResponse[]>([])
 const printPackagePanel = ref<ExamWorkbenchPrintPackagePanelResponse | null>(null)
+/** MVR-266/324：仅认 BE canManageOwnerPrintPackageWrites===true；禁止缺省回退 isExamOwner */
+const canManageOwnerPrintPackageWrites = computed(
+  () => printPackagePanel.value?.canManageOwnerPrintPackageWrites === true,
+)
 // 加载失败：toast 提示，主区保持空态/列表壳
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 
@@ -464,6 +471,9 @@ const generateForm = reactive({
 })
 
 function openGenerateModal() {
+  if (!canManageOwnerPrintPackageWrites.value) {
+    return
+  }
   if (generateBlocked.value) {
     message.warning(generateDisabledReason.value ?? '考试准备未完成，暂不可生成印刷包')
     return
@@ -475,6 +485,9 @@ function openGenerateModal() {
 }
 
 async function handleGenerate() {
+  if (!canManageOwnerPrintPackageWrites.value) {
+    return
+  }
   if (!selectedExamId.value) return
   if (generating.value) return
   if (!generateForm.packageNo.trim()) {

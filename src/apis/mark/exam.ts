@@ -203,6 +203,12 @@ export interface ExamSummaryResponse {
   teachingAcademicYear?: string
   /** 开课学期 - 对应 ExamSummaryResponse.teachingSemester */
   teachingSemester?: SemesterCode
+  /** MVR-286：阅卷写能力位；与 hasExamReviewerWritePermission 口径一致 */
+  canManageReviewerWrites?: boolean
+  /** MVR-326/334：考试准备主考写；与 isExamOwner 同源（摘要投影，可选） */
+  canManageOwnerExamPrepWrites?: boolean
+  /** MVR-327/334：考试生命周期主考写；与 isExamOwner 同源（摘要投影，可选） */
+  canManageOwnerExamLifecycleWrites?: boolean
 }
 
 /** 考试工作台分页查询请求 - 对应 ExamWorkbenchPageQueryRequest */
@@ -244,6 +250,8 @@ export interface ExamWorkbenchSummaryResponse {
   remark?: string
   /** 创建人用户ID - 对应后端 ExamWorkbenchSummaryResponse.createUser */
   createUser?: string
+  /** MVR-327：考试生命周期主考写；与 BE isExamOwner 同源 */
+  canManageOwnerExamLifecycleWrites?: boolean
   createTime?: string
   /** 日常成绩满分；为空表示本场考试不纳入日常成绩 */
   dailyScoreFull?: number
@@ -316,6 +324,10 @@ export interface ExamDetailResponse {
   createUser: string
   /** 创建人昵称 - 对应 ExamDetailResponse.createUserNickName */
   createUserNickName?: string
+  /** MVR-326：考试准备主考写；与 BE isExamOwner 同源 */
+  canManageOwnerExamPrepWrites?: boolean
+  /** MVR-328：考试生命周期主考写；与 BE isExamOwner 同源 */
+  canManageOwnerExamLifecycleWrites?: boolean
   createTime?: string
   updateTime?: string
   /** 日常成绩满分；为空表示本场考试不纳入日常成绩 */
@@ -389,6 +401,8 @@ export interface ExamDetailResponse {
   teachingAcademicYear?: string
   /** 开课学期 - 对应 ExamDetailResponse.teachingSemester */
   teachingSemester?: SemesterCode
+  /** 是否可管理本场阅卷写操作；与 hasExamReviewerWritePermission 同源 */
+  canManageReviewerWrites?: boolean
 }
 
 /** 保存制卷形态请求 - 对应 ExamMaterialLayoutSaveRequest */
@@ -462,6 +476,10 @@ export interface ExamUpdateRequest {
   dailyScoreFull?: number | null
   /** 是否涉密考试场次 */
   confidential?: boolean
+  /**
+   * 参考院系 ID；未传保留原值。列表副行 departmentName 由该字段反查。
+   */
+  referenceDepartmentId?: string
   /** 开课学年；与 teachingSemester 须同时填写或同时留空 */
   teachingAcademicYear?: string
   /** 开课学期；与 teachingAcademicYear 须同时填写或同时留空 */

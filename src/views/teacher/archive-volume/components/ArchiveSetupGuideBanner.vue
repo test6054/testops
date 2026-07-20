@@ -3,7 +3,7 @@
     v-if="loadFailed"
     tone="warning"
     title="归档启用检查失败"
-    description="无法确认当前租户的归档模板配置，请重试后再新建归档任务。"
+    description="无法确认当前租户的归档模板配置，请重试后再新建课程考核袋。"
     dense
     class="archive-setup-guide-banner"
   >
@@ -29,9 +29,6 @@
     <ul v-if="missingItems.length > 0" class="archive-setup-guide-banner__list">
       <li v-for="item in missingItems" :key="item">{{ item }}</li>
     </ul>
-    <p class="archive-setup-guide-banner__hint">
-      归档任务由创建人负责，协作成员可查看并办理对应任务；请先补齐模板后再新建。
-    </p>
     <template v-if="actionLinks.length > 0" #actions>
       <UiButton
         v-for="link in actionLinks"
@@ -52,6 +49,9 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import { useAuthStore } from '@/stores/modules/auth'
+import { useUserStore } from '@/stores/modules/user'
+import { RoleEnum } from '@/types/enums'
 
 defineOptions({ name: 'ArchiveSetupGuideBanner' })
 
@@ -66,13 +66,28 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const authStore = useAuthStore()
+const userStore = useUserStore()
+
+/** MVR-246：配置深链仅超管/租户管理员可点，与 settings 路由 requireTenantAdmin 同源 */
+const canManageArchiveConfig = computed(
+  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin === true,
+)
 
 const missingItems = computed(() => props.readiness?.missingItems ?? [])
-const actionLinks = computed(() => props.readiness?.actionLinks ?? [])
+const actionLinks = computed(() => {
+  if (!canManageArchiveConfig.value) {
+    return []
+  }
+  return props.readiness?.actionLinks ?? []
+})
 
 function handleActionLink(linkTarget: string) {
   const normalized = linkTarget.trim()
   if (!normalized) return
+  if (!canManageArchiveConfig.value) {
+    return
+  }
   if (normalized.startsWith('/')) {
     void router.push(normalized)
     return
@@ -85,12 +100,6 @@ function handleActionLink(linkTarget: string) {
 .archive-setup-guide-banner__list {
   margin: var(--dp-space-2) 0 0;
   padding-left: 1.25em;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.archive-setup-guide-banner__hint {
-  margin: var(--dp-space-2) 0 0;
   font-size: 14px;
   line-height: 1.5;
 }

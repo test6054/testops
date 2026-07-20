@@ -35,7 +35,7 @@ export const createPageRoutes: RouteRecordRaw = {
       name: 'TeacherCreateArchiveTask',
       component: () => import('@/views/teacher/archive-volume/archive-task-create/archive-task-create.vue'),
       meta: {
-        title: '新建归档任务',
+        title: '新建课程考核袋',
         roles: TEACHER_ROLES,
         hideInMenu: true,
         noCache: true,

@@ -91,7 +91,12 @@
                 <TableOutlined />
                 任务列表
               </h3>
-              <UiButton variant="outline" size="sm" @click="toggleBatchMode">
+              <UiButton
+                v-if="canManageReviewerTaskWrites"
+                variant="outline"
+                size="sm"
+                @click="toggleBatchMode"
+              >
                 {{ batchMode ? '退出批量' : '批量模式' }}
               </UiButton>
             </header>
@@ -230,6 +235,7 @@
         :layout-question-id="batchLayoutQuestionId"
         :full-score="batchFullScore"
         :selected-tasks="selectedTasks"
+        :can-manage-reviewer-writes="canManageReviewerTaskWrites"
         @submitted="handleBatchSubmitted"
       />
     </template>
@@ -456,6 +462,10 @@ function handleSelectionChange(keys: (string | number)[]): void {
 }
 
 function toggleBatchMode(): void {
+  if (!canManageReviewerTaskWrites.value) {
+    message.warning('当前账号无阅卷任务写权限，无法进入批量给分')
+    return
+  }
   batchMode.value = !batchMode.value
   clearBatchSelection()
 }
@@ -466,6 +476,10 @@ function clearBatchSelection(): void {
 }
 
 async function openBatchDrawer(): Promise<void> {
+  if (!canManageReviewerTaskWrites.value) {
+    message.warning('当前账号无阅卷任务写权限')
+    return
+  }
   const first = selectedTasks.value[0]
   if (!first || !selectedExamId.value) return
   try {
@@ -635,11 +649,13 @@ async function loadTasks(options?: { silent?: boolean, resetPage?: boolean }): P
   }
   const previousIds = new Set(tasks.value.map((task) => task.id))
   try {
+    // MVR-281：任务池只展示当前评阅人本人任务，禁止超管读视角展开全场假可写批量给分
     const request: MarkingTaskQueryRequest = {
       examId: selectedExamId.value,
       groupId: filterForm.groupId?.trim() || undefined,
       sessionId: filterForm.sessionId?.trim() || undefined,
       taskStatus: filterForm.taskStatus,
+      reviewerUserId: currentUserId.value || undefined,
     }
     await markTaskStore.loadTasksPage(request, taskPageNum.value, taskPageSize.value, {
       silent: options?.silent,
@@ -747,15 +763,25 @@ const selectedClaimSessionPaused = computed(() => {
   return !!sessionId && pausedSessionIds.value.has(sessionId)
 })
 
-const canClaim = computed(
-  () =>
-    !selectedClaimSessionPaused.value && !!claimForm.sessionId.trim() && !!claimForm.groupId.trim(),
-)
 
 const claimContext = computed<TeacherClaimContextResponse | null>(() =>
   selectedExamId.value
     ? markTaskStore.getClaimContext(selectedExamId.value, markingPhase.value)
     : null,
+)
+
+
+/** MVR-281：默认拒绝假可写；仅 BE claim-context.canManageReviewerWrites 为 true 时允许批量给分 */
+const canManageReviewerTaskWrites = computed(
+  () => claimContext.value?.canManageReviewerWrites === true,
+)
+
+const canClaim = computed(
+  () =>
+    claimContext.value?.canClaimTasks === true
+    && !selectedClaimSessionPaused.value
+    && !!claimForm.sessionId.trim()
+    && !!claimForm.groupId.trim(),
 )
 
 const claimGroupOptions = computed(() =>
@@ -870,6 +896,10 @@ const claiming = ref(false)
 
 async function submitClaim(): Promise<void> {
   if (claiming.value) {
+    return
+  }
+  if (claimContext.value?.canClaimTasks !== true) {
+    message.warning('当前账号无可领取的题组评阅身份')
     return
   }
   if (selectedClaimSessionPaused.value) {

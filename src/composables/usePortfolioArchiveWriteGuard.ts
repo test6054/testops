@@ -40,6 +40,7 @@ export function usePortfolioArchiveWriteGuard(options?: PortfolioArchiveWriteGua
   const loadFailed = ref(false)
 
   const archiveWriteForbidden = computed(() => Boolean(lifecycleState.value?.archiveWriteForbidden))
+  const evaluationHeld = computed(() => Boolean(lifecycleState.value?.evaluationHeld))
   const lifecycleStatusLabel = computed(
     () => lifecycleState.value?.lifecycleStatusLabel || lifecycleState.value?.lifecycleStatus || '',
   )
@@ -49,6 +50,13 @@ export function usePortfolioArchiveWriteGuard(options?: PortfolioArchiveWriteGua
     }
     const status = lifecycleStatusLabel.value || '非在职'
     return `教师生命周期为「${status}」，禁止档案填报与改写。历史档案只读可查。`
+  })
+  const evaluationHoldBlockMessage = computed(() => {
+    if (!evaluationHeld.value) {
+      return ''
+    }
+    const status = lifecycleStatusLabel.value || '非在职'
+    return `教师生命周期为「${status}」，禁止参与进行中评价（含材料确认与异议）。`
   })
 
   async function reloadLifecycleState(): Promise<void> {
@@ -85,6 +93,15 @@ export function usePortfolioArchiveWriteGuard(options?: PortfolioArchiveWriteGua
     return true
   }
 
+  function assertEvaluationParticipable(actionLabel?: string): boolean {
+    if (evaluationHeld.value) {
+      const suffix = actionLabel ? `（${actionLabel}）` : ''
+      showFormValidationMessage(evaluationHoldBlockMessage.value + suffix)
+      return false
+    }
+    return true
+  }
+
   if (autoLoad) {
     watch(
       resolvedTeacherId,
@@ -101,9 +118,12 @@ export function usePortfolioArchiveWriteGuard(options?: PortfolioArchiveWriteGua
     loading,
     loadFailed,
     archiveWriteForbidden,
+    evaluationHeld,
     lifecycleStatusLabel,
     archiveWriteBlockMessage,
+    evaluationHoldBlockMessage,
     reloadLifecycleState,
     assertArchiveWritable,
+    assertEvaluationParticipable,
   }
 }

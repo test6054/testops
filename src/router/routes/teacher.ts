@@ -208,7 +208,10 @@ export const teacherRoutes: RouteRecordRaw[] = [
       },
       {
         path: 'archive-volumes/create',
-        redirect: { name: 'TeacherCreateArchiveTask' },
+        redirect: (to) => ({
+          name: 'TeacherCreateArchiveTask',
+          query: { ...to.query, provenance: 'CURRENT_TERM_OFFLINE' },
+        }),
       },
       {
         path: 'archive-volumes/create-offline',

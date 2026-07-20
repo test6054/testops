@@ -1,6 +1,6 @@
 @use './breakpoints' as bp;
-// 创建页长表单（独立全屏 layout + 底部操作栏）
-$create-form-page-max-width: 1120px;
+// 创建页长表单（独立全屏 layout）：与「新建考试」共用密度与壳层契约
+$create-form-page-max-width: 1400px;
 
 .create-form-page {
   display: flex;
@@ -25,6 +25,10 @@ $create-form-page-max-width: 1120px;
     width: 100%;
     max-width: $create-form-page-max-width;
     min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
   }
 
   &__header-left {
@@ -32,6 +36,13 @@ $create-form-page-max-width: 1120px;
     align-items: center;
     gap: 8px;
     min-width: 0;
+  }
+
+  &__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
   }
 
   &__heading {
@@ -103,10 +114,11 @@ $create-form-page-max-width: 1120px;
     width: 100%;
     max-width: $create-form-page-max-width;
     display: grid;
-    grid-template-columns: 160px minmax(0, 1fr);
+    grid-template-columns: 148px minmax(0, 1fr);
     gap: var(--dp-space-3, 12px);
     align-items: stretch;
-    padding: 12px 0 40px;
+    // 末段内容须滚出页脚遮挡；CreatePageLayout 为 overflow:hidden
+    padding: 12px 0 72px;
 
     &__aside {
       position: relative;
@@ -122,8 +134,8 @@ $create-form-page-max-width: 1120px;
     &__main {
       min-width: 0;
       width: 100%;
-      max-width: 920px;
-      padding: 0 12px 0 0;
+      max-width: none;
+      padding: 0 8px 0 0;
       background: transparent;
     }
 
@@ -139,6 +151,7 @@ $create-form-page-max-width: 1120px;
 
     &:last-child {
       border-bottom: none;
+      padding-bottom: 24px;
     }
   }
 
@@ -193,31 +206,132 @@ $create-form-page-max-width: 1120px;
   }
 
   .create-form {
-    max-width: 880px;
+    width: 100%;
+    max-width: none;
   }
 
   .create-form .ant-form-item {
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    width: 100%;
+  }
+
+  // 标签与控件顶对齐：错误文案不把 label 拉到整块垂直居中
+  .create-form .ant-form-item-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .create-form .ant-form-item-label {
+    width: 112px;
+    max-width: 112px;
+    flex: 0 0 112px;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    min-height: var(--dp-control-height-sm, 32px);
   }
 
   .create-form .ant-form-item-label > label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+    height: var(--dp-control-height-sm, 32px);
+    line-height: var(--dp-control-height-sm, 32px);
     font-size: 14px;
     font-weight: 500;
     color: var(--dp-text-primary);
+    white-space: nowrap;
+  }
+
+  .create-form .ant-form-item-control {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .create-form .ant-form-item-control-input,
+  .create-form .ant-form-item-control-input-content {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .create-form .ant-form-item-control-input {
+    min-height: var(--dp-control-height-sm, 32px);
+    align-items: center;
+  }
+
+  .create-form .ui-select,
+  .create-form .dp-input-wrap,
+  .create-form .ui-input-number,
+  .create-form .ui-date-picker,
+  .create-form .dp-quality-selector,
+  .create-form .ant-picker,
+  .create-form .ant-input-number,
+  .create-form .ant-select {
+    display: block;
+    width: 100% !important;
+    max-width: none;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .create-form .ui-select .ant-select,
+  .create-form .dp-quality-selector.ui-select,
+  .create-form .ui-date-picker .ant-picker {
+    width: 100% !important;
+  }
+
+  .create-form .retention-field .ui-input-number {
+    width: auto !important;
+    max-width: none;
+    flex: 0 0 auto;
+    display: inline-flex;
+  }
+
+  .create-form__control-wide {
+    display: block;
+    width: 100% !important;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .create-form .ant-form-item-extra,
+  .create-form .create-form__field-hint {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--dp-text-secondary);
   }
 
   .create-form__split-row {
     > .ant-col > .ant-form-item {
-      margin-bottom: 12px;
+      margin-bottom: 16px;
 
       .ant-form-item-row {
         align-items: flex-start;
+        flex-wrap: nowrap;
       }
 
-      .ant-form-item-label > label {
-        min-height: 32px;
+      .ant-form-item-control-input {
+        min-height: var(--dp-control-height-sm, 32px);
+        align-items: center;
       }
     }
+  }
+
+  .create-form__related-exam {
+    display: grid;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .create-form__related-exam .ui-select {
+    width: 100% !important;
   }
 
   .create-form__switch-row {
@@ -291,6 +405,7 @@ $create-form-page-max-width: 1120px;
     margin: 0;
     color: var(--dp-text-primary);
     font-weight: 500;
+    word-break: break-word;
   }
 
   .create-form-summary-actions {
@@ -305,10 +420,31 @@ $create-form-page-max-width: 1120px;
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
+    min-height: 32px;
+  }
+
+  .retention-field .ui-input-number {
+    width: auto;
+    flex: 0 0 auto;
   }
 
   .retention-field__unit {
+    flex: 0 0 auto;
     font-size: 14px;
+    line-height: 32px;
+    color: var(--dp-text-secondary);
+  }
+
+  .score-proof-field {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    min-height: 32px;
+  }
+
+  .score-proof-field__id {
+    font-size: 13px;
     color: var(--dp-text-secondary);
   }
 
@@ -374,6 +510,12 @@ $create-form-page-max-width: 1120px;
     }
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    .create-layout__aside-sticky .ui-sidebar-nav__item {
+      transition: none;
+    }
+  }
+
   @media (max-width: #{bp.$ant-grid-md - 1px}) {
     &__header {
       padding: 12px 16px;
@@ -385,7 +527,7 @@ $create-form-page-max-width: 1120px;
 
     .create-layout {
       grid-template-columns: minmax(0, 1fr);
-      padding: 0 0 40px;
+      padding: 0 0 72px;
 
       &__aside {
         display: none;

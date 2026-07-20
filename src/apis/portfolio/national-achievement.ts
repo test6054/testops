@@ -72,7 +72,14 @@ export interface PortfolioPlanningAchievementLinkVO {
   linkStatus: string
   completionRate?: string
   lockedTime?: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
+
 
 export interface PortfolioAchievementGapMissingItemVO {
   requirementCode: string

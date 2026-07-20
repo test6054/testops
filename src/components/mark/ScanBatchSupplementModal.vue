@@ -122,7 +122,8 @@ const boundPaperOptions = computed(() =>
 
 const prepareBlockDescription = computed(() => {
   const context = prepareContext.value
-  if (!context || context.canSubmitManualSupplement) {
+  // MVR-321：仅 canSubmitManualSupplement===true 视为可提交；null/false 均展示阻断说明
+  if (!context || context.canSubmitManualSupplement === true) {
     return ''
   }
   if (context.hasActiveScanSession) {
@@ -138,7 +139,7 @@ const submitDisabled = computed(
   () =>
     declaredClassIds.value.length === 0
     || prepareLoading.value
-    || prepareContext.value?.canSubmitManualSupplement === false,
+    || prepareContext.value?.canSubmitManualSupplement !== true,
 )
 
 function resetForm(): void {

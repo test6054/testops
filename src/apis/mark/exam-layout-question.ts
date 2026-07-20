@@ -57,6 +57,8 @@ export interface ExamTemplateResponse {
   totalQuestionCount?: number
   /** ROI 已就绪题目数 */
   roiReadyQuestionCount?: number
+  /** MVR-277：阅卷写权限能力位（修正答案等） */
+  canManageReviewerWrites?: boolean
 }
 
 export function getExamLayoutQuestionSummary(examId: string): Promise<ExamTemplateResponse> {

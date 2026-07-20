@@ -124,10 +124,20 @@ const antSize = computed<SizeType>(() => {
 <style lang="scss" scoped>
 .ui-select {
   width: 100%;
+  display: block;
   position: relative;
+  min-width: 0;
+}
+
+.ui-select :deep(.ant-select) {
+  width: 100% !important;
+  display: block;
 }
 
 .ui-select :deep(.ant-select-selector) {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
   border-radius: var(--dp-radius-control) !important;
   border: 1px solid var(--dp-border) !important;
   background-color: var(--dp-surface) !important;
@@ -178,6 +188,10 @@ const antSize = computed<SizeType>(() => {
   color: var(--dp-text-primary) !important;
   font-size: 14px !important;
   font-weight: 500 !important;
+  position: static !important;
+  inset: auto !important;
+  transform: none !important;
+  max-width: none;
 }
 
 .ui-select :deep(.ant-select-multiple .ant-select-selection-item-content) {
@@ -194,21 +208,77 @@ const antSize = computed<SizeType>(() => {
 
 .ui-select :deep(.ant-select-arrow),
 .ui-select :deep(.ant-select-clear) {
+  inset-inline-end: 11px !important;
+  top: 50% !important;
+  margin-top: 0 !important;
+  transform: translateY(-50%) !important;
+  height: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
   color: var(--dp-text-secondary) !important;
 }
 
 .ui-select--sm :deep(.ant-select-selector) {
+  height: var(--dp-control-height-sm, 32px) !important;
   min-height: var(--dp-control-height-sm, 32px) !important;
+  padding-block: 0 !important;
+  padding-inline: 11px 28px !important;
 }
 
 .ui-select--md :deep(.ant-select-selector) {
+  height: var(--dp-control-height-md, 36px) !important;
   min-height: var(--dp-control-height-md, 36px) !important;
-  padding-top: 2px !important;
-  padding-bottom: 2px !important;
+  padding-block: 0 !important;
+  padding-inline: 11px 28px !important;
 }
 
 .ui-select--lg :deep(.ant-select-selector) {
+  height: 40px !important;
   min-height: 40px !important;
+  padding-block: 0 !important;
+  padding-inline: 11px 28px !important;
+}
+
+/* 绝对铺满 + flex 居中：避免 translateY 偏 1px，且空值不 shrink */
+.ui-select :deep(.ant-select-selection-wrap) {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+}
+
+.ui-select :deep(.ant-select-selection-search) {
+  inset-inline-start: 0 !important;
+  inset-inline-end: 0 !important;
+  margin-inline-start: 0 !important;
+}
+
+.ui-select :deep(.ant-select-selection-search-input) {
+  height: 100% !important;
+  line-height: 22px !important;
+}
+
+.ui-select--sm :deep(.ant-select-selection-item),
+.ui-select--sm :deep(.ant-select-selection-placeholder),
+.ui-select--md :deep(.ant-select-selection-item),
+.ui-select--md :deep(.ant-select-selection-placeholder),
+.ui-select--lg :deep(.ant-select-selection-item),
+.ui-select--lg :deep(.ant-select-selection-placeholder) {
+  position: absolute !important;
+  inset: 0 !important;
+  inset-inline-end: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  transform: none !important;
+  line-height: 22px !important;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ui-select--error :deep(.ant-select-selector) {

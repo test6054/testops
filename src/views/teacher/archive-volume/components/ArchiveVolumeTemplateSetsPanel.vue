@@ -53,7 +53,10 @@
             </template>
           </template>
         </UiDataTable>
-        <div v-if="!templateSetsLoadFailed" class="archive-template-sets-panel__copy-bar">
+        <div
+          v-if="!templateSetsLoadFailed && canManageArchiveConfig === true"
+          class="archive-template-sets-panel__copy-bar"
+        >
           <div class="archive-template-sets-panel__copy-all">
             <span class="archive-template-sets-panel__copy-all-label">目标前缀</span>
             <UiInput
@@ -356,6 +359,9 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useAuthStore } from '@/stores/modules/auth'
+import { useUserStore } from '@/stores/modules/user'
+import { RoleEnum } from '@/types/enums'
 import { ArchiveMaterialDeliveryModeCode } from '@/types/enums/archive-material-delivery-mode-enum'
 import { archiveTenantTemplateOperationTypeLabel } from '@/types/enums/archive-tenant-template-operation-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -365,6 +371,13 @@ import ArchiveTemplateSetEditorDrawer from '@/views/teacher/archive-volume/compo
 import ArchiveTemplateSetPreviewDrawer from '@/views/teacher/archive-volume/components/ArchiveTemplateSetPreviewDrawer.vue'
 
 defineOptions({ name: 'ArchiveVolumeTemplateSetsPanel' })
+
+const authStore = useAuthStore()
+const userStore = useUserStore()
+/** MVR-314：与路由 requireTenantAdmin / BE requireTenantAdminForConfig 同源 */
+const canManageArchiveConfig = computed(
+  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin === true,
+)
 
 const activeScopeTab = ref<ArchiveTemplateScopeCode>(ArchiveTemplateScopeCode.PLATFORM)
 const scopeTabItems = [
@@ -649,6 +662,11 @@ async function loadTenantSetDetail(templateSetCode: string) {
 }
 
 async function openEditDrawer(templateSetCode: string) {
+  // MVR-381：与 canManageArchiveConfig / BE requireTenantAdminForConfig 二次拦截
+  if (canManageArchiveConfig.value !== true) {
+    message.warning('仅超级管理员或租户管理员可编辑归档模板')
+    return
+  }
   editorDrawerOpen.value = true
   await loadTenantSetDetail(templateSetCode)
 }
@@ -667,15 +685,21 @@ function findTenantSetByPlatformSource(sourceSetCode: string) {
 /** 模板套入口：本校副本可编辑；平台母版引导复制后编辑。 */
 async function openPlatformTemplate(record: ArchiveTenantTemplateSetResponse) {
   const tenantSet = findTenantSetByPlatformSource(record.templateSetCode)
-  if (tenantSet) {
+  // MVR-381：无配置写权仅预览；有权且已有本校副本才进编辑
+  if (tenantSet && canManageArchiveConfig.value === true) {
     await openEditDrawer(tenantSet.templateSetCode)
     return
   }
-  await openReadOnlyPreview(record.templateSetCode)
+  await openReadOnlyPreview(tenantSet?.templateSetCode ?? record.templateSetCode)
 }
 
 function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSetCode = '') {
   if (templateSetsLoadFailed.value) return
+  // MVR-381：复制入口与 canManageArchiveConfig 二次拦截
+  if (canManageArchiveConfig.value !== true) {
+    message.warning('仅超级管理员或租户管理员可复制归档模板')
+    return
+  }
   copySource.value = record
   copyTargetSetCode.value = defaultTargetSetCode
   copyOverride.value = false
@@ -684,6 +708,11 @@ function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSe
 
 async function submitCopy() {
   if (copyLoading.value) {
+    return
+  }
+  // MVR-314：模板配置写二次拦截
+  if (!canManageArchiveConfig.value) {
+    message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
   if (templateSetsLoadFailed.value) {
@@ -718,6 +747,11 @@ async function submitCopyAll() {
   if (copyAllLoading.value) {
     return
   }
+  // MVR-314：模板配置写二次拦截
+  if (!canManageArchiveConfig.value) {
+    message.warning('仅超级管理员或租户管理员可维护归档模板')
+    return
+  }
   if (templateSetsLoadFailed.value) {
     showFormValidationMessage('请先重新加载归档模板套')
     return
@@ -744,6 +778,11 @@ async function submitCopyAll() {
 
 function openResyncModal(record: ArchiveTenantTemplateSetResponse) {
   if (templateSetsLoadFailed.value) return
+  // MVR-381：重同步入口与 canManageArchiveConfig 二次拦截
+  if (canManageArchiveConfig.value !== true) {
+    message.warning('仅超级管理员或租户管理员可重新同步归档模板')
+    return
+  }
   resyncTarget.value = record
   resyncConfirmCode.value = ''
   resyncOpen.value = true
@@ -753,9 +792,17 @@ function buildPlatformTemplateRowActions(
   record: ArchiveTenantTemplateSetResponse,
 ): UiTableRowActionItem[] {
   const tenantSet = findTenantSetByPlatformSource(record.templateSetCode)
+  const canManage = canManageArchiveConfig.value === true
   return [
-    { key: 'open', label: tenantSet ? '编辑' : '预览' },
-    { key: 'copy', label: '复制到本校', hidden: !!tenantSet },
+    {
+      key: 'open',
+      label: tenantSet && canManage ? '编辑' : '预览',
+    },
+    {
+      key: 'copy',
+      label: '复制到本校',
+      hidden: !!tenantSet || !canManage,
+    },
   ]
 }
 
@@ -767,10 +814,15 @@ function handlePlatformTemplateRowAction(key: string, record: ArchiveTenantTempl
 function buildTenantTemplateRowActions(
   record: ArchiveTenantTemplateSetResponse,
 ): UiTableRowActionItem[] {
+  const canManage = canManageArchiveConfig.value === true
   return [
-    { key: 'edit', label: '编辑' },
+    { key: 'edit', label: '编辑', hidden: !canManage },
     { key: 'history', label: '版本历史' },
-    { key: 'resync', label: '重新同步', hidden: !canResyncTenantSet(record) },
+    {
+      key: 'resync',
+      label: '重新同步',
+      hidden: !canManage || !canResyncTenantSet(record),
+    },
   ]
 }
 
@@ -826,6 +878,11 @@ async function submitRestoreFromAudit(auditId: string): Promise<void> {
   if (restoringAuditId.value || auditLoading.value) {
     return
   }
+  // MVR-314：模板配置写二次拦截
+  if (!canManageArchiveConfig.value) {
+    message.warning('仅超级管理员或租户管理员可维护归档模板')
+    return
+  }
   if (!auditTarget.value || auditLoadFailed.value || templateSetsLoadFailed.value) {
     return
   }
@@ -855,6 +912,11 @@ async function submitResync() {
   if (resyncLoading.value) {
     return
   }
+  // MVR-314：模板配置写二次拦截
+  if (!canManageArchiveConfig.value) {
+    message.warning('仅超级管理员或租户管理员可维护归档模板')
+    return
+  }
   if (!resyncTarget.value || !canSubmitResync.value || templateSetsLoadFailed.value) return
   resyncLoading.value = true
   try {
@@ -875,6 +937,11 @@ async function submitResync() {
 
 async function saveTenantSet() {
   if (saving.value) {
+    return
+  }
+  // MVR-314：模板配置写二次拦截
+  if (!canManageArchiveConfig.value) {
+    message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
   if (!selectedSetCode.value || templateSetsLoadFailed.value) return

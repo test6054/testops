@@ -136,7 +136,8 @@ watch(
 
 const isAnswerSheetMode = computed(() => props.materialLayoutMode === 'ANSWER_SHEET')
 const isFullPaperMode = computed(() => props.materialLayoutMode === 'FULL_PAPER')
-const entryReadonly = computed(() => props.readonly || !props.materialLayoutMode || props.detecting)
+/** MVR-377：默认拒绝；仅父层显式 readonly===false 且已选模式、非识别中可写 */
+const entryReadonly = computed(() => props.readonly !== false || !props.materialLayoutMode || Boolean(props.detecting))
 
 const paperSpecOptions = ExamLayoutPaperSpecOptions
 
@@ -239,6 +240,11 @@ async function confirmRedetectIfNeeded(): Promise<boolean> {
 }
 
 async function startAutoDetect(sourceFileId: string): Promise<void> {
+  // MVR-377：默认拒绝；entryReadonly 含 !writable / detecting
+  if (entryReadonly.value) {
+    showFormValidationMessage('当前制卷设计不可编辑，无法自动预划区')
+    return
+  }
   if (!(await confirmRedetectIfNeeded())) {
     sourcePdfFileId.value = props.document?.sourcePdfFileId ?? ''
     return
@@ -249,6 +255,10 @@ async function startAutoDetect(sourceFileId: string): Promise<void> {
 }
 
 function handleAutoDetect(): void {
+  if (entryReadonly.value) {
+    showFormValidationMessage('当前制卷设计不可编辑，无法自动预划区')
+    return
+  }
   if (!sourcePdfFileId.value.trim()) {
     message.warning('请先上传整卷源文件')
     return

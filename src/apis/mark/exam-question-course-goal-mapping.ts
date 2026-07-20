@@ -45,6 +45,8 @@ export interface ExamQuestionCourseGoalMappingWorkspaceVO {
   readiness?: CourseObjectiveMappingReadinessVO
   courseGoals: QualityCourseGoalForMarkVO[]
   rows: ExamQuestionCourseGoalMappingWorkspaceRowVO[]
+  /** MVR-270：主考写能力位（保存/清除映射） */
+  canManageOwnerCourseGoalWrites?: boolean
 }
 
 export interface ExamQuestionCourseGoalMappingSaveRequest {

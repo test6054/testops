@@ -6,7 +6,8 @@ import type {
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDualTeacherApplicationStatusCode,
@@ -17,6 +18,7 @@ import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImp
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -24,6 +26,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioReviewAccess } from '@/composables/usePortfolioReviewAccess'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { useAuthStore } from '@/stores/modules/auth'
@@ -41,6 +44,14 @@ const previewingId = ref('')
 const workflowId = ref('')
 const exporting = ref(false)
 const writing = computed(() => Boolean(previewingId.value || workflowId.value) || exporting.value)
+/** 当前操作目标教师；用于封存写禁预检 */
+const actionTeacherId = ref<string | undefined>()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+  reloadLifecycleState,
+} = usePortfolioArchiveWriteGuard({ teacherId: actionTeacherId })
 /** 退回/驳回意见弹窗：负向决策必须填写意见后提交 */
 const opinionModal = reactive({
   open: false,
@@ -78,9 +89,42 @@ function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatu
 }
 
 const importModalOpen = ref(false)
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } = useQueryTable(
-  portfolioDualTeacherApi.page,
+const route = useRoute()
+/** PF-P0-295：院审台账 applicationId 深链高亮 */
+const highlightedApplicationId = ref('')
+const pendingLocateApplicationId = ref(
+  typeof route.query.applicationId === 'string' ? route.query.applicationId.trim() : '',
 )
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } = useQueryTable(
+  (params) =>
+    portfolioDualTeacherApi.page({
+      ...params,
+      locateApplicationId: pendingLocateApplicationId.value || undefined,
+    }),
+  {
+    onLoaded: (loadedRows) => {
+      const locateOnce = pendingLocateApplicationId.value
+      pendingLocateApplicationId.value = ''
+      if (!locateOnce) {
+        return
+      }
+      highlightedApplicationId.value = locateOnce
+      if (!loadedRows.some((item) => item.id === locateOnce)) {
+        return
+      }
+      void nextTick(() => {
+        document.querySelector('.dual-teacher-admin__row-active')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        })
+      })
+    },
+  },
+)
+
+function dualTeacherRowClassName(record: PortfolioDualTeacherApplicationVO): string {
+  return record.id === highlightedApplicationId.value ? 'dual-teacher-admin__row-active' : ''
+}
 
 const columns: ColumnsType = [
   { title: '申请单号', dataIndex: 'applicationNo', key: 'applicationNo' },
@@ -95,8 +139,17 @@ const columns: ColumnsType = [
     width: 88,
   },
   { title: '认定资格', key: 'eligibilityFreeze', width: 120 },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '操作', key: 'actions', width: 260 },
 ]
+
+function lifecycleTagTone(record: PortfolioDualTeacherApplicationVO): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
 
 async function previewEligibility(id: string) {
   if (writing.value) {
@@ -211,11 +264,20 @@ function handleDualTeacherRowAction(key: string, record: PortfolioDualTeacherApp
     void previewEligibility(record.id)
     return
   }
-  if (key === 'collegeReturn' || key === 'academicReturn' || key === 'academicReject') {
-    openOpinionModal(key, record.id)
-    return
-  }
-  void runWorkflow(key as DualTeacherWorkflowAction, record.id)
+  actionTeacherId.value = record.teacherUserId ? String(record.teacherUserId) : undefined
+  void reloadLifecycleState().then(() => {
+    if (key === 'collegeReturn' || key === 'academicReturn' || key === 'academicReject') {
+      if (!assertArchiveWritable('双师认定审核')) {
+        return
+      }
+      openOpinionModal(key, record.id)
+      return
+    }
+    if (!assertArchiveWritable('双师认定审核')) {
+      return
+    }
+    void runWorkflow(key as DualTeacherWorkflowAction, record.id)
+  })
 }
 
 function openOpinionModal(
@@ -259,6 +321,9 @@ async function confirmOpinionModal() {
     if (!confirmed || writing.value) {
       return Promise.reject(new Error('用户取消驳回或写入中'))
     }
+  }
+  if (!assertArchiveWritable('双师认定审核')) {
+    return Promise.reject(new Error('档案封存写禁'))
   }
   opinionModal.open = false
   await runWorkflow(action, id, auditOpinion)
@@ -356,6 +421,13 @@ async function handleImportSuccess() {
         </template>
       </ContextBar>
     </template>
+    <UiAlertStrip
+      v-if="archiveWriteForbidden"
+      tone="warning"
+      title="档案已封存写禁"
+      :description="archiveWriteBlockMessage"
+      class="mb-3"
+    />
     <UiPlatformExcelImportModal
       v-model:open="importModalOpen"
       :scene-key="ExcelImportSceneKey.PORTFOLIO_DUAL_TEACHER"
@@ -372,6 +444,7 @@ async function handleImportSuccess() {
         :data-source="rows"
         :loading="loading"
         :load-error="loadError"
+        :row-class-name="dualTeacherRowClassName"
         row-key="id"
         flat
         empty-kind="first-run"
@@ -381,6 +454,23 @@ async function handleImportSuccess() {
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'applicationStatus'">
             {{ statusLabel(record.applicationStatus) }}
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+            <span>{{
+              record.countsInCurrentFacultyStructure === true
+                ? '是'
+                : record.countsInCurrentFacultyStructure === false
+                  ? '否'
+                  : '—'
+            }}</span>
           </template>
           <template v-else-if="column.key === 'eligibilityFreeze'">
             <UiTag v-if="record.eligibilityFreeze?.eligible === true" tone="green">

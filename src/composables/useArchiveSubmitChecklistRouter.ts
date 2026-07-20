@@ -38,12 +38,15 @@ export function submitChecklistActionLabel(
     return item.actionLabel.trim()
   }
   const routeTarget = target ?? resolveSubmitChecklistRoute(item)
-  if (routeTarget.checklistPhaseKey === 'integrity') {
+  if (routeTarget.detailTabKey === ArchiveVolumeDetailTabKey.FOUR_PROPERTY) {
     if (item.dimension === 'FOUR_PROPERTY_SECURITY') return '确认密级定密'
     return '去四性检测'
   }
+  if (routeTarget.checklistPhaseKey === 'integrity') {
+    return '去完整性自检'
+  }
   if (routeTarget.checklistPhaseKey === 'catalog') return '去编目'
-  if (routeTarget.checklistPhaseKey === 'selfCheck') return '去自查'
+  if (routeTarget.checklistPhaseKey === 'selfCheck') return '去自检清单'
   if (routeTarget.checklistPhaseKey === 'departmentReview') return '去院系审核'
   if (routeTarget.checklistPhaseKey === 'submit') return '去提交'
   return '去处理'
@@ -51,7 +54,8 @@ export function submitChecklistActionLabel(
 
 function normalizeDetailTabKey(raw?: string): ArchiveVolumeDetailTabKey | null {
   if (!raw) return null
-  if (raw === 'catalog' || raw === 'selfCheck') return ArchiveVolumeDetailTabKey.MATERIALS
+  if (raw === 'catalog') return ArchiveVolumeDetailTabKey.MATERIALS
+  if (raw === 'selfCheck') return ArchiveVolumeDetailTabKey.SELF_CHECK
   const matchedTab = ARCHIVE_VOLUME_DETAIL_TAB_KEYS.find((tabKey) => tabKey === raw)
   if (matchedTab) {
     return matchedTab
@@ -63,6 +67,8 @@ function detailTabToChecklistPhase(
   tab: ArchiveVolumeDetailTabKey,
 ): ArchiveVolumeSubmitChecklistPhaseKey {
   if (tab === ArchiveVolumeDetailTabKey.INTEGRITY) return 'integrity'
+  if (tab === ArchiveVolumeDetailTabKey.SELF_CHECK) return 'selfCheck'
+  if (tab === ArchiveVolumeDetailTabKey.FOUR_PROPERTY) return 'integrity'
   if (tab === ArchiveVolumeDetailTabKey.TRANSFER) return 'submit'
   if (tab === ArchiveVolumeDetailTabKey.DEPARTMENT_REVIEW) return 'departmentReview'
   if (tab === ArchiveVolumeDetailTabKey.SCORES) return 'materials'
@@ -98,17 +104,21 @@ function dimensionToDetailTab(dimension: string): ArchiveVolumeDetailTabKey {
   switch (dimension) {
     case 'FOUR_PROPERTY':
     case 'FOUR_PROPERTY_SECURITY':
-    case 'REMEDIATION':
+      return ArchiveVolumeDetailTabKey.FOUR_PROPERTY
+    case 'INTEGRITY':
       return ArchiveVolumeDetailTabKey.INTEGRITY
+    case 'REMEDIATION':
+      return ArchiveVolumeDetailTabKey.MATERIALS
     case 'SCORE':
       return ArchiveVolumeDetailTabKey.SCORES
     case 'CATALOG_NOT_READY':
     case 'CATALOG':
+      return ArchiveVolumeDetailTabKey.MATERIALS
     case 'SELF_CHECK_PENDING':
     case 'SELF_CHECK':
     case 'SELF_CHECK_FORM':
     case 'SIGN_OFF':
-      return ArchiveVolumeDetailTabKey.MATERIALS
+      return ArchiveVolumeDetailTabKey.SELF_CHECK
     case 'DEPARTMENT_REVIEW':
       return ArchiveVolumeDetailTabKey.DEPARTMENT_REVIEW
     default:

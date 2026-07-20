@@ -73,6 +73,8 @@ const summaryLoading = ref(false)
 const cancellingTicketId = ref<string>()
 const forceReleaseOpen = ref(false)
 const forceReleaseTicket = ref<{ ticketId: string } | null>(null)
+/** MVR-373：与 BE canForceReleaseTicket 同源；禁止对话框写死 true */
+const forceReleaseAllowed = ref(false)
 const tickets = ref<ScanDispatchTicketVO[]>([])
 const queueSummary = ref<Awaited<ReturnType<typeof loadScanDispatchQueueSummary>> | null>(null)
 const pagination = reactive({ current: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
@@ -452,21 +454,31 @@ function openOperationLog(record: ScanDispatchTicketVO) {
 }
 
 function canCancelTicket(record: ScanDispatchTicketVO) {
-  return record.status === ScanDispatchTicketStatusCode.PENDING && Boolean(record.ticketId)
+  // MVR-309：状态 + BE canCancelTicket（归档 canManageMaterials / 档案袋 scanAllowed）
+  return (
+    record.status === ScanDispatchTicketStatusCode.PENDING
+    && Boolean(record.ticketId)
+    && record.canCancelTicket === true
+  )
 }
 
 function canForceReleaseTicket(record: ScanDispatchTicketVO) {
+  // MVR-309：状态 + BE canForceReleaseTicket（归档 ARCHIVE_ADMIN / 档案袋 scanAllowed）
   return (
     Boolean(record.ticketId)
     && (record.status === ScanDispatchTicketStatusCode.PROCESSING
       || record.status === ScanDispatchTicketStatusCode.SUSPENDED)
+    && record.canForceReleaseTicket === true
   )
 }
 
 function openForceRelease(record: ScanDispatchTicketVO) {
   if (!canForceReleaseTicket(record) || !record.ticketId) {
+    forceReleaseAllowed.value = false
     return
   }
+  // MVR-373：对话框二次闸须认 BE 行级 canForceReleaseTicket，禁止写死 true
+  forceReleaseAllowed.value = record.canForceReleaseTicket === true
   forceReleaseTicket.value = { ticketId: record.ticketId }
   forceReleaseOpen.value = true
 }
@@ -498,6 +510,7 @@ async function cancelTicket(record: ScanDispatchTicketVO) {
 }
 
 function handleForceReleased() {
+  forceReleaseAllowed.value = false
   void reloadAll().then(() => emit('metrics-changed'))
 }
 
@@ -649,6 +662,7 @@ onMounted(() => {
 
     <ScanDispatchForceReleaseDialog
       v-model:open="forceReleaseOpen"
+      :can-force-release="forceReleaseAllowed"
       :ticket="forceReleaseTicket ? { ticketId: forceReleaseTicket.ticketId } : null"
       @released="handleForceReleased"
     />

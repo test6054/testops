@@ -93,6 +93,10 @@ export const SYNC_TASK_FLOW_HINT = `${SYNC_TASK_MAIN_FLOW_STATUSES.map(
   (status) => strictEnumLabel(SyncTaskStatusDescription, status, '同步任务状态'),
 ).join(' → ')} / ${SYNC_TASK_BRANCH_STATUS_DESCRIPTIONS.join(' / ')}`
 
+/** MVR-205：GRADE_EXPORT 执行回写前置——仅已发布正式分可进入教务/LMS */
+export const GRADE_EXPORT_PASSBACK_PRECONDITION_HINT
+  = '执行成绩回写前须完成本场成绩发布；系统仅导出已发布正式分，未发布的已确认分不会进入教务'
+
 /** 归档卷教务成绩完成同步门禁说明（线下/纯归档卷） */
 export const ARCHIVE_TEACHING_AFFAIRS_SCORE_COMPLETION_HINT
   = '提交外部同步单号 → 教务成绩完成回写 → 与卷内成绩门禁一并满足后可提交归档'
@@ -227,11 +231,22 @@ export interface SyncTaskPageRequest extends QueryDto {
  * 分页查询同步任务
  * POST /api/exam/teaching-affairs/sync-task/page
  */
+/** 教务同步任务分页响应 - 对应 TeachingAffairsSyncTaskPageResponse */
+export interface TeachingAffairsSyncTaskPageResponse {
+  /** MVR-326：与 BE isExamOwner / requireExamOwnerPermission 同源 */
+  canManageOwnerTeachingAffairsWrites?: boolean
+  list: ExamTeachingAffairsSyncTask[]
+  total: number
+  pageNum?: number
+  pageSize?: number
+  pages?: number
+}
+
 export function pageSyncTasks(
   request: SyncTaskPageRequest,
   config?: import('@/config/axios/types').ExtendedAxiosRequestConfig,
-): Promise<PageResult<ExamTeachingAffairsSyncTask>> {
-  return http.post<PageResult<ExamTeachingAffairsSyncTask>>(
+): Promise<TeachingAffairsSyncTaskPageResponse> {
+  return http.post<TeachingAffairsSyncTaskPageResponse>(
     '/api/exam/teaching-affairs/sync-task/page',
     request,
     config,

@@ -1,5 +1,5 @@
 <template>
-  <WorkbenchSurfaceCard class="archive-volume-transfer-panel">
+  <WorkbenchSurfaceCard embedded class="archive-volume-transfer-panel">
     <UiAlertStrip
       v-if="
         detail.volume.transferStatus === ArchiveTransferStatusCode.REJECTED
@@ -41,7 +41,7 @@
         class="archive-volume-transfer-panel__actions"
       >
         <UiButton
-          v-if="canApproveTransferAction"
+          v-if="canApproveTransferAction === true"
           variant="primary"
           size="sm"
           :loading="approvingTransfer"
@@ -51,7 +51,7 @@
           验收通过
         </UiButton>
         <UiButton
-          v-if="canRejectTransferAction"
+          v-if="canRejectTransferAction === true"
           size="sm"
           variant="outline"
           :disabled="approvingTransfer"
@@ -178,14 +178,14 @@ function isTransferSubmitterSelf(): boolean {
 }
 
 const canApproveTransferAction = computed(() => {
-  if (!props.canReviewTransfer) return false
+  if (props.canReviewTransfer !== true) return false
   if (props.detail.volume.transferStatus !== ArchiveTransferStatusCode.PENDING_REVIEW) return false
   if (isTransferSubmitterSelf()) return false
   return true
 })
 
 const canRejectTransferAction = computed(() => {
-  if (!props.canRejectTransfer) return false
+  if (props.canRejectTransfer !== true) return false
   if (props.detail.volume.transferStatus !== ArchiveTransferStatusCode.PENDING_REVIEW) return false
   // MVR-193：提交人不得驳回本人提交的移交
   if (isTransferSubmitterSelf()) return false
@@ -267,8 +267,9 @@ async function downloadTransferPackage() {
 
 async function handleApproveTransfer() {
   if (approvingTransfer.value || rejectingTransfer.value) return
-  if (!canApproveTransferAction.value) {
-    showFormValidationMessage('移交提交人不得验收通过本人提交的移交')
+  // MVR-348：与 canApproveTransferAction / BE requireTransferReviewer 二次拦截
+  if (canApproveTransferAction.value !== true) {
+    message.warning('当前账号不可验收通过该移交（无权限、状态不符或本人提交）')
     return
   }
   if (props.detail.hasOpenRemediationTask === true) {
@@ -289,12 +290,22 @@ async function handleApproveTransfer() {
 }
 
 function openRejectTransfer() {
+  // MVR-348：与 canRejectTransferAction 同源二次拦截
+  if (canRejectTransferAction.value !== true) {
+    message.warning('当前账号无移交退回权限')
+    return
+  }
   rejectTransferReason.value = ''
   rejectTransferOpen.value = true
 }
 
 async function submitRejectTransfer() {
   if (approvingTransfer.value || rejectingTransfer.value) return
+  // MVR-300：与 canRejectTransferAction 同源二次拦截
+  if (canRejectTransferAction.value !== true) {
+    message.warning('当前账号无移交退回权限')
+    return
+  }
   if (!rejectTransferReason.value.trim()) {
     showFormValidationMessage('请填写退回原因')
     return

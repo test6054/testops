@@ -38,6 +38,8 @@ const props = defineProps<{
   volumeId?: string
   fileName?: string
   initialTags?: string[]
+  /** MVR-311：与 BE requireVolumeMaterialSearchMaintainPermission / canMaintainMaterial 同源 */
+  canMaintainMaterial?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -60,6 +62,11 @@ watch(
 
 async function handleSave() {
   if (saving.value) return
+  // MVR-311：写 handler 二次拦截
+  if (props.canMaintainMaterial !== true) {
+    message.warning('当前账号无维护材料标签权限')
+    return
+  }
   if (!props.materialId) {
     showFormValidationMessage('材料编号缺失，请关闭后重新打开材料标签')
     return

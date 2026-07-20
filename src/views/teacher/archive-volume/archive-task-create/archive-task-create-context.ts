@@ -9,10 +9,9 @@ import type { SemesterCode } from '@/types/enums/semester-enum'
 import { inject } from 'vue'
 
 export type ArchiveTaskCreateSectionKey
-  = 'archive-task-provenance' | 'archive-task-basic' | 'archive-task-plan' | 'archive-task-confirm'
+  = 'archive-task-basic' | 'archive-task-plan' | 'archive-task-confirm'
 
 export const ARCHIVE_TASK_CREATE_SECTION_ORDER: ArchiveTaskCreateSectionKey[] = [
-  'archive-task-provenance',
   'archive-task-basic',
   'archive-task-plan',
   'archive-task-confirm',
@@ -81,13 +80,13 @@ function requireInjectedContext<T>(value: T | undefined, errorMessage: string): 
 }
 
 export function useInjectedArchiveTaskCreateBasicForm(): ArchiveTaskCreateBasicForm {
-  return requireInjectedContext(inject(archiveTaskCreateBasicFormKey), '归档任务基本信息表单未注入')
+  return requireInjectedContext(inject(archiveTaskCreateBasicFormKey), '课程考核袋基本信息表单未注入')
 }
 
 export function useInjectedArchiveTaskCreatePlanForm(): ArchiveTaskCreatePlanForm {
-  return requireInjectedContext(inject(archiveTaskCreatePlanFormKey), '归档任务方案表单未注入')
+  return requireInjectedContext(inject(archiveTaskCreatePlanFormKey), '课程考核袋方案表单未注入')
 }
 
 export function useInjectedArchiveTaskCreateWizardState(): ArchiveTaskCreateWizardState {
-  return requireInjectedContext(inject(archiveTaskCreateWizardStateKey), '归档任务向导状态未注入')
+  return requireInjectedContext(inject(archiveTaskCreateWizardStateKey), '课程考核袋向导状态未注入')
 }

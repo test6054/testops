@@ -43,6 +43,17 @@ export interface PortfolioAnalysisAlertVO {
   alertSummary?: string
   ruleSnapshotId?: string
   portraitComputedTime?: string
+
+  /** 归属教师生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
+  lifecycleStatus?: string
+  /** 归属教师生命周期状态标签 */
+  lifecycleStatusLabel?: string
+  /** 档案写禁 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
 }
 
 export interface PortfolioAnalysisSuggestionVO {
@@ -54,6 +65,17 @@ export interface PortfolioAnalysisSuggestionVO {
   indicatorCode?: string
   priorityLevel: string
   ruleSnapshotId?: string
+  /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
+  lifecycleStatus?: string
+  /** 生命周期状态中文标签 */
+  lifecycleStatusLabel?: string
+  /** 是否禁止档案写 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
+
 }
 
 export interface PortfolioAnalysisTrainingRecommendVO {
@@ -66,6 +88,17 @@ export interface PortfolioAnalysisTrainingRecommendVO {
   recommendStatus: string
   trainingActivityId?: string
   ruleSnapshotId?: string
+  /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
+  lifecycleStatus?: string
+  /** 生命周期状态中文标签 */
+  lifecycleStatusLabel?: string
+  /** 是否禁止档案写 */
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  /** 是否计入当前在岗结构 */
+  countsInCurrentFacultyStructure?: boolean
+
 }
 
 export interface PortfolioPortraitCreditCurvePointVO {
@@ -85,6 +118,12 @@ export interface PortfolioPortraitCreditCurveVO {
   trendNote?: string | null
   officialFactCount?: number
   dedupDroppedCount?: number
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
 
 export interface PortfolioAnalysisComplianceAlertVO {
@@ -131,7 +170,14 @@ export interface PortfolioAnalysisAnnualReportVO {
   aiTaskId?: string
   errorSummary?: string
   createTime: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
 }
+
 
 export interface PortfolioTeacherPkSessionCreateRequest {
   teacherUserIds: string[]

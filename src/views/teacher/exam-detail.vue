@@ -16,8 +16,16 @@
           </UiTag>
           <UiTag v-if="detail.confidential" tone="purple" size="sm">涉密考试</UiTag>
         </template>
-        <template v-if="suggestedStage" #actions>
-          <UiButton size="sm" variant="primary" @click="goSuggestedStage">
+        <template #actions>
+          <UiButton
+            v-if="canEditExam"
+            size="sm"
+            variant="outline"
+            @click="openEditDrawer"
+          >
+            编辑考试
+          </UiButton>
+          <UiButton v-if="suggestedStage" size="sm" variant="primary" @click="goSuggestedStage">
             前往{{ suggestedStage.title }}
           </UiButton>
         </template>
@@ -67,6 +75,12 @@
       @todo-navigate="handleTodoNavigate"
     />
   </StageWorkbenchShell>
+
+  <ExamEditDrawer
+    v-model:open="editDrawerOpen"
+    :exam-id="examId"
+    @saved="handleExamEdited"
+  />
 </template>
 
 <script lang="ts" setup>
@@ -75,9 +89,10 @@ import type { ExamWorkbenchStageKeyCode } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import { storeToRefs } from 'pinia'
-import { computed, onActivated } from 'vue'
+import { computed, onActivated, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { EXAM_KIND_TONE, ExamKindDescription } from '@/apis/mark/exam'
+import { EXAM_KIND_TONE, ExamKindDescription, ExamStatusCode } from '@/apis/mark/exam'
+import ExamEditDrawer from '@/components/mark/ExamEditDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -128,6 +143,26 @@ const pageLoading = computed(
     (snapshotLoading.value && !snapshot.value)
     || (examDetailLoading?.value === true && !detail.value),
 )
+
+const editDrawerOpen = ref(false)
+// MVR-328：编辑考试仅主考；仅认 BE canManageOwnerExamLifecycleWrites===true
+const canEditExam = computed(
+  () =>
+    !!detail.value
+    && detail.value.status !== ExamStatusCode.CLOSED
+    && detail.value.canManageOwnerExamLifecycleWrites === true,
+)
+
+function openEditDrawer(): void {
+  if (!examId.value || !canEditExam.value) return
+  editDrawerOpen.value = true
+}
+
+async function handleExamEdited(): Promise<void> {
+  if (refreshChrome) {
+    await refreshChrome()
+  }
+}
 
 const suggestedStage = computed<WorkbenchStage | null>(() => {
   const key = suggestedStageKey.value

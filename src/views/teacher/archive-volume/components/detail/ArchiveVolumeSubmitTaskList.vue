@@ -15,7 +15,8 @@ const props = withDefaults(
     readonly?: boolean
   }>(),
   {
-    readonly: false,
+    // MVR-380：默认拒绝假可写；仅父级显式 :readonly="false" 可导航写入口
+    readonly: true,
   },
 )
 
@@ -72,7 +73,7 @@ function dimensionLabel(dimension: ArchiveVolumeSubmitChecklistDimensionCode): s
         </UiTag>
         <span class="submit-task-row__message">{{ item.message }}</span>
       </div>
-      <UiButton v-if="!readonly" size="sm" variant="outline" @click="emit('navigate', item)">
+      <UiButton v-if="readonly === false" size="sm" variant="outline" @click="emit('navigate', item)">
         {{ actionLabel(item) }}
       </UiButton>
     </li>

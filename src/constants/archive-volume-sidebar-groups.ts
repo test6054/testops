@@ -4,8 +4,13 @@ import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enu
 export const ARCHIVE_VOLUME_SIDEBAR_TAB_KEYS = [
   'materials',
   'ocr-search',
+  'task-settings',
+  'collaborators',
+  'start-collecting',
   'scores',
   'integrity',
+  'self-check',
+  'four-property',
   'department-review',
   'scan-batches',
   'scan-review',
@@ -27,6 +32,11 @@ export interface ArchiveVolumeSidebarNavGroup {
 
 export const ARCHIVE_VOLUME_SIDEBAR_NAV_GROUPS: ArchiveVolumeSidebarNavGroup[] = [
   {
+    key: 'manage',
+    label: '卷务',
+    tabKeys: ['task-settings', 'collaborators', 'start-collecting'],
+  },
+  {
     key: 'tools',
     label: '卷内工具',
     tabKeys: ['ocr-search'],
@@ -38,8 +48,8 @@ export const ARCHIVE_VOLUME_SIDEBAR_NAV_GROUPS: ArchiveVolumeSidebarNavGroup[] =
   },
   {
     key: 'quality',
-    label: '完整性与四性',
-    tabKeys: ['integrity'],
+    label: '质检阶段',
+    tabKeys: ['integrity', 'self-check', 'four-property'],
   },
   {
     key: 'review',
@@ -66,8 +76,13 @@ export const ARCHIVE_VOLUME_SIDEBAR_NAV_GROUPS: ArchiveVolumeSidebarNavGroup[] =
 const COLLECTING_VISIBLE_TABS: ReadonlySet<ArchiveVolumeSidebarTabKey> = new Set([
   'materials',
   'ocr-search',
+  'task-settings',
+  'collaborators',
+  'start-collecting',
   'scores',
   'integrity',
+  'self-check',
+  'four-property',
   'department-review',
   'scan-batches',
   'scan-review',

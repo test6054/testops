@@ -47,6 +47,20 @@ const MANUAL_PROVENANCE_SET = new Set<ArchiveTaskProvenanceCode>([
   ArchiveTaskProvenanceCode.HISTORICAL_DIGITIZE,
 ])
 
+/** 课程考核袋允许的平台母版套（及 forkSource 指向它们的租户套） */
+const COURSE_ASSESSMENT_PLATFORM_CODES = new Set([
+  'PLATFORM_PAPER_FULL',
+  'PLATFORM_NONPAPER_FULL',
+])
+
+function isCourseAssessmentTemplateSet(item: ArchiveTenantTemplateSetResponse): boolean {
+  const code = item.templateSetCode?.trim()
+  if (!code) return false
+  if (COURSE_ASSESSMENT_PLATFORM_CODES.has(code)) return true
+  const fork = item.forkSourceSetCode?.trim()
+  return Boolean(fork && COURSE_ASSESSMENT_PLATFORM_CODES.has(fork))
+}
+
 function parseRouteProvenance(raw: unknown): ArchiveTaskProvenanceCode | null {
   if (typeof raw !== 'string') return null
   for (const code of MANUAL_PROVENANCE_SET) {
@@ -78,7 +92,7 @@ export function useArchiveTaskCreate() {
   const templateLoading = ref(false)
   const templateLoadFailed = ref(false)
   const templateSets = ref<ArchiveTenantTemplateSetResponse[]>([])
-  const activeSection = ref<ArchiveTaskCreateSectionKey>('archive-task-provenance')
+  const activeSection = ref<ArchiveTaskCreateSectionKey>('archive-task-basic')
   const basicFormRef = ref<FormInstance>()
   const planFormRef = ref<FormInstance>()
 
@@ -86,8 +100,10 @@ export function useArchiveTaskCreate() {
   const defaultStartYear
     = parseAcademicYearStart(defaultTerm.academicYear) ?? new Date().getFullYear()
 
+  const routeProvenance = parseRouteProvenance(route.query.provenance)
   const wizardState = reactive<ArchiveTaskCreateWizardState>({
-    provenance: parseRouteProvenance(route.query.provenance),
+    // 入口锁定：无合法 query 时默认本学期线下袋，禁止在页内切换来源冒充多入口
+    provenance: routeProvenance ?? ArchiveTaskProvenanceCode.CURRENT_TERM_OFFLINE,
   })
 
   const basicForm = reactive<ArchiveTaskCreateBasicForm>({
@@ -121,11 +137,12 @@ export function useArchiveTaskCreate() {
     courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
     departmentId: [{ required: true, message: '请选择院系', trigger: 'change' }],
     archiveTitle: [
-      { required: true, message: '请输入归档标题', trigger: 'blur' },
-      { max: 512, message: '归档标题最多 512 个字符', trigger: 'blur' },
+      { required: true, message: '请输入归档标题', trigger: ['change', 'blur'] },
+      { max: 512, message: '归档标题最多 512 个字符', trigger: ['change', 'blur'] },
     ],
     academicYearStartYear: [{ required: true, message: '请选择学年起始年', trigger: 'change' }],
     semester: [{ required: true, message: '请选择学期', trigger: 'change' }],
+    teachingClassId: [{ required: true, message: '请选择授课班级', trigger: 'change' }],
   }
 
   const planRules: Record<string, Rule[]> = {
@@ -136,14 +153,13 @@ export function useArchiveTaskCreate() {
   }
 
   const navItems = computed(() => [
-    { key: 'archive-task-provenance', label: '任务来源' },
     { key: 'archive-task-basic', label: '任务信息' },
     { key: 'archive-task-plan', label: '归档方案' },
     { key: 'archive-task-confirm', label: '确认创建' },
   ])
 
   const templateSetOptions = computed(() =>
-    templateSets.value.map((item) => ({
+    templateSets.value.filter(isCourseAssessmentTemplateSet).map((item) => ({
       value: item.templateSetCode,
       label: item.templateSetName,
       examForm: item.examForm,
@@ -159,10 +175,10 @@ export function useArchiveTaskCreate() {
   const provenanceLabel = computed(() => {
     if (!wizardState.provenance) return '未选择'
     if (wizardState.provenance === ArchiveTaskProvenanceCode.CURRENT_TERM_OFFLINE) {
-      return '本学期线下考核归档'
+      return '本学期课程考核袋（手工）'
     }
     if (wizardState.provenance === ArchiveTaskProvenanceCode.HISTORICAL_DIGITIZE) {
-      return '历史档案数字化'
+      return '历史考核袋补录（手工）'
     }
     return wizardState.provenance
   })
@@ -236,37 +252,18 @@ export function useArchiveTaskCreate() {
     planForm.responsibleUserName = nickName
   }
 
-  async function selectProvenanceAndContinue(provenance: ArchiveTaskProvenanceCode): Promise<void> {
-    if (!(await applyProvenanceDefaults(provenance))) return
-    activeSection.value = 'archive-task-basic'
-  }
-
-  function goBatchExcelImport(): void {
-    void router.push({
-      name: 'TeacherArchiveVolumeList',
-      query: { openHistoryImport: '1' },
-    })
-  }
-
   async function loadTemplateSets(): Promise<void> {
     templateLoading.value = true
     templateLoadFailed.value = false
     try {
-      templateSets.value = await listArchiveTenantTemplateSets()
+      const allSets = await listArchiveTenantTemplateSets()
+      templateSets.value = allSets.filter(isCourseAssessmentTemplateSet)
     } catch (error) {
       showUserError(error, '加载目录模板套失败')
       templateLoadFailed.value = true
     } finally {
       templateLoading.value = false
     }
-  }
-
-  async function validateProvenanceStep(): Promise<boolean> {
-    if (!wizardState.provenance) {
-      showFormValidationMessage('请选择任务来源')
-      return false
-    }
-    return true
   }
 
   async function validateBasicStep(): Promise<boolean> {
@@ -297,13 +294,6 @@ export function useArchiveTaskCreate() {
     const targetIdx = ARCHIVE_TASK_CREATE_SECTION_ORDER.indexOf(target)
     for (let i = 0; i < targetIdx; i++) {
       const sectionKey = ARCHIVE_TASK_CREATE_SECTION_ORDER[i]
-      if (sectionKey === 'archive-task-provenance') {
-        if (!(await validateProvenanceStep())) {
-          activeSection.value = sectionKey
-          return false
-        }
-        continue
-      }
       if (sectionKey === 'archive-task-basic') {
         if (!(await validateBasicStep())) {
           showFormValidationMessage('请先完善任务信息')
@@ -335,10 +325,6 @@ export function useArchiveTaskCreate() {
       activeSection.value = 'archive-task-plan'
       return 'archive-task-plan'
     }
-    if (!(await validateProvenanceStep())) {
-      activeSection.value = 'archive-task-provenance'
-      return 'archive-task-provenance'
-    }
     if (!(await validateBasicStep())) {
       activeSection.value = 'archive-task-basic'
       showFormValidationMessage('请先完善任务信息')
@@ -352,12 +338,14 @@ export function useArchiveTaskCreate() {
     if (
       !basicForm.courseId
       || !basicForm.departmentId
+      || !basicForm.teachingClassId
       || !planForm.templateSetCode
       || !wizardState.provenance
     ) {
       void message.error('请完善必填项')
-      if (!wizardState.provenance) return 'archive-task-provenance'
-      if (!basicForm.courseId || !basicForm.departmentId) return 'archive-task-basic'
+      if (!basicForm.courseId || !basicForm.departmentId || !basicForm.teachingClassId) {
+        return 'archive-task-basic'
+      }
       return 'archive-task-plan'
     }
     submitting.value = true
@@ -374,7 +362,7 @@ export function useArchiveTaskCreate() {
         scoreSource: planForm.scoreSource,
         scoreProofFileId: planForm.scoreProofFileId ?? undefined,
         securityLevel: planForm.securityLevel,
-        teachingClassId: basicForm.teachingClassId ?? undefined,
+        teachingClassId: basicForm.teachingClassId,
         departmentId: basicForm.departmentId,
         relatedExamId: basicForm.relatedExamId ?? undefined,
         retentionYears: planForm.permanentRetention ? undefined : planForm.retentionYears,
@@ -383,12 +371,12 @@ export function useArchiveTaskCreate() {
         archiveDueTimeOverride: planForm.archiveDueTimeOverride,
       })
       planForm.scoreProofFileId = null
-      void message.success('归档任务创建成功')
-      void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId } })
+      void message.success('课程考核袋已创建，请继续整理材料')
+      void router.push({ name: 'TeacherArchiveVolumeDetail', params: { volumeId }, query: { tab: 'materials' } })
       return null
     } catch (error) {
-      submitErrorMessage.value = getUserErrorMessage(error, '创建归档任务失败')
-      showUserError(error, '创建归档任务失败')
+      submitErrorMessage.value = getUserErrorMessage(error, '创建课程考核袋失败')
+      showUserError(error, '创建课程考核袋失败')
       return null
     } finally {
       submitting.value = false
@@ -429,8 +417,13 @@ export function useArchiveTaskCreate() {
     const { userId, nickName } = userStore.userInfo
     setResponsibleUser(userId, nickName)
     void loadTemplateSets()
-    if (wizardState.provenance) {
-      activeSection.value = 'archive-task-basic'
+    activeSection.value = 'archive-task-basic'
+    // 无 query 时回写锁定 provenance，避免分享裸链后语义漂移
+    if (!parseRouteProvenance(route.query.provenance)) {
+      void router.replace({
+        name: route.name ?? 'TeacherCreateArchiveTask',
+        query: { ...route.query, provenance: wizardState.provenance },
+      })
     }
   })
 
@@ -452,8 +445,6 @@ export function useArchiveTaskCreate() {
     navItems,
     provenanceLabel,
     applyProvenanceDefaults,
-    selectProvenanceAndContinue,
-    goBatchExcelImport,
     setCourseSelection,
     setDepartmentSelection,
     setTeachingClassSelection,

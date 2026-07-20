@@ -264,10 +264,16 @@ async function loadIndicatorConfigs() {
 
 /** 材料预览必须限定在当前评价任务参评教师范围内，避免误用全局教师名册第一页导致错人预览。 */
 function buildPreviewTeacherOptions(rows: PortfolioEvaluationSubjectTeacherOptionVO[]) {
-  return rows.map((item) => ({
-    value: item.teacherUserId,
-    label: item.fullName?.trim() ? item.fullName : item.teacherUserId,
-  }))
+  return rows.map((item) => {
+    const name = item.fullName?.trim() ? item.fullName : item.teacherUserId
+    const hold = item.evaluationHeld
+      ? `（${item.lifecycleStatusLabel || item.lifecycleStatus || '参评hold'}）`
+      : ''
+    return {
+      value: item.teacherUserId,
+      label: `${name}${hold}`,
+    }
+  })
 }
 
 async function openMaterialPreview(taskId: string) {

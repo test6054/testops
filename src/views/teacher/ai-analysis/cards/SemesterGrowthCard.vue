@@ -4,7 +4,9 @@
       <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
       <UiRadioGroup v-model="form.examScopeMode" size="sm" :options="examScopeModeOptions" />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
-      <UiButton variant="primary" size="sm" :loading="generating" @click="handleGenerate">
+      <UiButton
+        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+      >
         生成成长曲线
       </UiButton>
     </template>
@@ -142,6 +144,7 @@ import {
   SEMESTER_GROWTH_TREND_TONE,
   SemesterGrowthTrendDescription,
 } from '@/apis/mark/cross-exam-analysis'
+import { pageExams } from '@/apis/mark/exam'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -156,6 +159,7 @@ import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
+import { useExamSummariesReviewerWriteCapability } from '@/composables/useExamIdsReviewerWriteCapability'
 import { useChartOption } from '@/hooks/modules/useChartOption'
 import { formatSemester } from '@/types/enums/semester-enum'
 import {
@@ -567,7 +571,79 @@ async function reload(): Promise<void> {
   }
 }
 
+
+/** AUTO 模式按开课学期候选考试摘要计算写能力；MANUAL 用已选考试 */
+const autoScopedExamSummaries = ref<ExamSummaryResponse[]>([])
+
+const capabilityExamIds = computed(() => {
+  if (form.examScopeMode === 'AUTO') {
+    return autoScopedExamSummaries.value
+      .map((exam) => exam.examId)
+      .filter((examId): examId is string => Boolean(examId))
+  }
+  return form.examIds
+})
+
+const capabilityExamSummaries = computed(() =>
+  form.examScopeMode === 'AUTO' ? autoScopedExamSummaries.value : selectedExams.value,
+)
+
+/** MVR-286：默认拒绝假可写；所选/自动候选考试均须 canManageReviewerWrites */
+const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
+  capabilityExamIds,
+  capabilityExamSummaries,
+)
+
+async function refreshAutoScopedExamSummaries(): Promise<void> {
+  if (form.examScopeMode !== 'AUTO') {
+    autoScopedExamSummaries.value = []
+    return
+  }
+  const teachingYear = effectiveTeachingAcademicYear.value?.trim()
+  const teachingSemester = effectiveTeachingSemester.value
+  const courseId = effectiveCourseId.value?.trim()
+  if (!teachingYear || !teachingSemester) {
+    autoScopedExamSummaries.value = []
+    return
+  }
+  try {
+    const page = await pageExams({
+      pageNum: 1,
+      pageSize: 100,
+      teachingAcademicYear: teachingYear,
+      teachingSemester,
+      ...(courseId ? { courseId } : {}),
+      ...(effectiveClassId.value?.trim() ? { classId: effectiveClassId.value.trim() } : {}),
+      ...(props.scopeReferenceDepartmentId?.trim()
+        ? { referenceDepartmentId: props.scopeReferenceDepartmentId.trim() }
+        : {}),
+    })
+    autoScopedExamSummaries.value = page.list ?? []
+  } catch {
+    autoScopedExamSummaries.value = []
+  }
+}
+
+watch(
+  () => [
+    form.examScopeMode,
+    effectiveTeachingAcademicYear.value,
+    effectiveTeachingSemester.value,
+    effectiveCourseId.value,
+    effectiveClassId.value,
+    props.scopeReferenceDepartmentId,
+  ],
+  () => {
+    void refreshAutoScopedExamSummaries()
+  },
+  { immediate: true },
+)
+
 async function handleGenerate(): Promise<void> {
+  if (canManageReviewerWrites.value !== true) {
+    showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
+    return
+  }
   if (generating.value) return
   if (
     !ensureRequiredAcademicYearSemester(

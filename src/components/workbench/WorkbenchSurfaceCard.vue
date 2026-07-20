@@ -1,5 +1,8 @@
 <template>
-  <section class="workbench-surface-card">
+  <section
+    class="workbench-surface-card"
+    :class="{ 'workbench-surface-card--embedded': embedded }"
+  >
     <header v-if="$slots.head" class="workbench-surface-card__head">
       <slot name="head" />
     </header>
@@ -22,9 +25,12 @@ withDefaults(
   defineProps<{
     /** 表格等内容区贴边，无内边距 */
     flush?: boolean
+    /** 嵌入外层 Surface 时去掉描边与阴影，避免双卡嵌套 */
+    embedded?: boolean
   }>(),
   {
     flush: false,
+    embedded: false,
   },
 )
 </script>
@@ -41,6 +47,13 @@ withDefaults(
   transition:
     border-color var(--dp-duration-normal) ease,
     box-shadow var(--dp-duration-normal) ease;
+}
+
+.workbench-surface-card--embedded {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .workbench-surface-card__head {

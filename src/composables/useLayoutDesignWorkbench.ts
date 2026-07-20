@@ -64,7 +64,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
   const detectPollingPolicy = ref<ExamLayoutDesignLoadResponse['detectPollingPolicy'] | null>(null)
   let detectSessionSeq = 0
   const previewing = ref(false)
-  const layoutWritable = ref(true)
+  // MVR-274：默认只读，待 load 返回 writable 后再开放；避免加载前假可写
+  const layoutWritable = ref(false)
   const writeLockReason = ref<string>()
   const document = ref<ExamLayoutDocument | null>(null)
   const layoutPersisted = ref(false)
@@ -355,7 +356,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       focusedBlockId.value = null
       focusedQuestionId.value = null
       currentPageNo.value = 1
-      layoutWritable.value = true
+      // MVR-274：无考试上下文时保持只读
+      layoutWritable.value = false
       writeLockReason.value = undefined
       return
     }

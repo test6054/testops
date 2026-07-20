@@ -51,4 +51,6 @@ export interface ExamIncidentRecord {
   updateUser?: string
   createTime?: string
   updateTime?: string
+  /** 是否可处置本场重大事件；与 hasExamReviewerWritePermission 同源 */
+  canManageReviewerWrites?: boolean
 }

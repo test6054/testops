@@ -188,7 +188,7 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
 .ongoing-exam-card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--dp-space-5);
+  gap: var(--dp-space-6);
 }
 
 .ongoing-exam-card__tooltip-target {
@@ -205,13 +205,23 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-control-inner);
   background: var(--dp-surface);
-  box-shadow: none;
-  transition: border-color var(--dp-duration-normal) ease;
+  box-shadow: var(--dp-shadow-xs);
+  transition:
+    border-color var(--dp-duration-normal) ease,
+    box-shadow var(--dp-duration-normal) ease,
+    transform var(--dp-duration-fast) ease;
 }
 
 .ongoing-exam-card:hover {
   border-color: var(--dp-color-primary-border);
-  box-shadow: none;
+  box-shadow: var(--dp-shadow-sm);
+  transform: translateY(-2px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ongoing-exam-card:hover {
+    transform: none;
+  }
 }
 
 .ongoing-exam-card--blocking {
@@ -265,6 +275,12 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
   transition: transform var(--dp-duration-slow) ease;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .ongoing-exam-card__progress-fill {
+    transition: none;
+  }
+}
+
 .ongoing-exam-card__progress-fill--success {
   background: var(--dp-success);
 }
@@ -284,18 +300,20 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
 }
 
 /*
- * 四指标一行：flex 均分 + 真实间距，禁止 2×2 挤在一起。
- * 对齐参考截图：label 上 / value 下，四列并列。
+ * 四指标一行：分隔格 + 色彩数字（Jira/飞书风格）
+ * 非零项有语义色背景，零值静默灰。
  */
 .ongoing-exam-card__metrics {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: stretch;
-  gap: 0;
+  gap: 1px;
   margin-top: var(--dp-space-3);
-  padding-top: var(--dp-space-3);
-  border-top: 1px solid var(--dp-border);
+  padding: var(--dp-space-2);
+  border-radius: var(--dp-radius-control, 6px);
+  background: var(--dp-border-subtle);
+  border: 1px solid var(--dp-border-subtle);
 }
 
 .ongoing-exam-card__metric {
@@ -303,24 +321,26 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
   min-width: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 2px;
-  padding: 0 var(--dp-space-3);
-  border-radius: 0;
-  background: transparent;
+  padding: var(--dp-space-2) var(--dp-space-2);
+  border-radius: var(--dp-radius-control-inner, 4px);
+  background: var(--dp-surface);
+  transition: background-color 0.15s ease;
 }
 
 .ongoing-exam-card__metric:first-child {
-  padding-left: 0;
+  padding-left: var(--dp-space-2);
 }
 
 .ongoing-exam-card__metric + .ongoing-exam-card__metric {
-  border-left: 1px solid var(--dp-border);
+  border-left: none;
 }
 
 .ongoing-exam-card__metric-label {
   font-size: 11px;
   line-height: 1.35;
-  color: var(--dp-text-secondary);
+  color: var(--dp-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -331,15 +351,29 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
   font-weight: 600;
   line-height: 1.3;
   font-variant-numeric: tabular-nums;
-  color: var(--dp-text-primary);
+  color: var(--dp-text-muted);
 }
 
 .ongoing-exam-card__metric-value--alert {
-  color: var(--dp-error);
+  color: var(--dp-orange-600, var(--dp-warning));
 }
 
 .ongoing-exam-card__metric-value--warn {
-  color: var(--dp-warning);
+  color: var(--dp-blue-600, var(--dp-color-primary));
+}
+
+.ongoing-exam-card__metric:has(.ongoing-exam-card__metric-value--alert) {
+  background: color-mix(in srgb, var(--dp-orange-500, var(--dp-warning)) 7%, var(--dp-surface));
+}
+
+.ongoing-exam-card__metric:has(.ongoing-exam-card__metric-value--warn) {
+  background: color-mix(in srgb, var(--dp-color-primary) 6%, var(--dp-surface));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ongoing-exam-card__metric {
+    transition: none;
+  }
 }
 
 .ongoing-exam-card__footer {

@@ -164,9 +164,6 @@ export function useArchiveDutyAccess() {
     return false
   }
 
-  function canManageRemediationAsCoordinator(volume: { departmentId?: string }): boolean {
-    return hasDutyForDepartment(ArchiveDutyTypeCode.COLLEGE_COORDINATOR, volume.departmentId)
-  }
 
   function filterListDepartmentOptions(
     all: Array<{ value: string, label: string }>,
@@ -349,7 +346,6 @@ export function useArchiveDutyAccess() {
     hasDuty,
     hasDutyForDepartment,
     canApproveAccessForVolume,
-    canManageRemediationAsCoordinator,
     filterListDepartmentOptions,
     filterStatisticsDepartmentOptions,
     filterDestructionLedgerDepartmentOptions,

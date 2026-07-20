@@ -24,7 +24,7 @@ const {
   isExamConfidential,
   examConfidentialLabel,
   examWatermarkLines,
-  isExamOwner,
+  canManageOwnerIdentityReveal,
   isReadOnly,
   isScoreReadOnly,
   taskRecycledBlocked,
@@ -194,7 +194,7 @@ const {
           :task="task"
           :loading="loading"
           :is-read-only="isScoreReadOnly"
-          :is-exam-owner="isExamOwner"
+          :can-manage-owner-identity-reveal="canManageOwnerIdentityReveal"
           :revealed-identity="revealedIdentity"
           :navigation="navigation"
           :task-status-tone="taskStatusTone"
@@ -359,6 +359,7 @@ const {
       v-model:open="revealOpen"
       :exam-id="task.examId"
       :task-id="task.id"
+      :can-manage-owner-identity-reveal="canManageOwnerIdentityReveal"
       @revealed="handleAnonymousRevealed"
     />
 

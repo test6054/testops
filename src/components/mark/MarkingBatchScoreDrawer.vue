@@ -53,7 +53,13 @@
         <UiButton size="sm" variant="outline" :disabled="submitting" @click="emit('update:open', false)">
           取消
         </UiButton>
-        <UiButton size="sm" variant="primary" :loading="submitting" @click="handleSubmit">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="submitting"
+          :disabled="canManageReviewerWrites !== true"
+          @click="handleSubmit"
+        >
           预检并提交
         </UiButton>
       </div>
@@ -89,6 +95,11 @@ const props = defineProps<{
   layoutQuestionId: string
   fullScore: number
   selectedTasks: MarkingTaskResponse[]
+  /**
+   * MVR-372：与 claim-context.canManageReviewerWrites（评阅写∧ACTIVE）同源。
+   * 仅认 ===true；禁止缺声明默认放行。
+   */
+  canManageReviewerWrites?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -164,6 +175,11 @@ async function confirmExtremeScore(): Promise<boolean> {
 
 async function handleSubmit(): Promise<void> {
   if (submitting.value) {
+    return
+  }
+  // MVR-372：写 handler 二次拦截；任务池仅隐藏入口不能替代
+  if (props.canManageReviewerWrites !== true) {
+    message.warning('当前账号无阅卷写权限，不能批量给分')
     return
   }
   if (!props.examId || !props.groupId || selectedTaskIds.value.length === 0) return

@@ -143,8 +143,17 @@ const showCorrectedScore = computed(() => {
   )
 })
 
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+  if (record.lifecycleStatus === 'ACTIVE') return 'green'
+  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
+  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
+  return 'neutral'
+}
+
 const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
   { title: '教师', key: 'teacherName', width: 120, fixed: 'left' },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '任务', dataIndex: 'taskName', key: 'taskName' },
   { title: '公示标题', dataIndex: 'publicityTitle', key: 'publicityTitle' },
   { title: '异议类型', key: 'objectionType', width: 120 },
@@ -174,6 +183,35 @@ async function downloadEvidence(row: PortfolioEvaluationObjectionSummaryVO) {
   await handleDownloadFile({ fileId: row.evidenceRef })
 }
 
+/** 深链 objectionId 是否已尝试打开（防止 loadPage 循环与重复弹抽屉）。 */
+const deepLinkObjectionApplied = ref(false)
+
+/**
+ * PF-P0-291：消费站内信 objectionId 深链，打开对应异议复核抽屉；禁止只落到任务筛选列表。
+ * @returns 若需清筛选后重载则返回 true
+ */
+function applyDeepLinkedObjection(): boolean {
+  const deepLinkedObjectionId
+    = typeof route.query.objectionId === 'string' ? route.query.objectionId.trim() : ''
+  if (!deepLinkedObjectionId || deepLinkObjectionApplied.value) {
+    return false
+  }
+  const hit = rows.value.find((item) => item.objectionId === deepLinkedObjectionId)
+  if (hit) {
+    deepLinkObjectionApplied.value = true
+    void openReviewDrawer(hit)
+    return false
+  }
+  if (objectionStatusFilter.value) {
+    // 深链目标可能不在默认 SUBMITTED 筛选中，清状态后由调用方重载一次
+    objectionStatusFilter.value = ''
+    pageNum.value = 1
+    return true
+  }
+  deepLinkObjectionApplied.value = true
+  return false
+}
+
 async function loadPage() {
   const currentToken = pageRequestToken.value + 1
   pageRequestToken.value = currentToken
@@ -196,6 +234,10 @@ async function loadPage() {
       && !rows.value.some((item) => item.objectionId === reviewTarget.value?.objectionId)
     ) {
       resetReviewContext()
+    }
+    if (applyDeepLinkedObjection()) {
+      // 清筛选后重载以命中非 SUBMITTED 或跨状态目标
+      void loadPage()
     }
   } catch (error) {
     if (pageRequestToken.value !== currentToken) {
@@ -310,16 +352,17 @@ async function openReviewDrawer(row: PortfolioEvaluationObjectionSummaryVO) {
 }
 
 watch(
-  () => route.query.evaluationTaskId,
-  (value) => {
+  () => [route.query.evaluationTaskId, route.query.objectionId],
+  ([taskId]) => {
     reviewContextToken.value += 1
     pageRequestToken.value += 1
     loading.value = false
     handlingId.value = ''
     rows.value = []
     pageTotal.value = 0
-    evaluationTaskId.value = typeof value === 'string' ? value : ''
+    evaluationTaskId.value = typeof taskId === 'string' ? taskId : ''
     pageNum.value = 1
+    deepLinkObjectionApplied.value = false
     resetReviewContext()
     void loadPage()
   },
@@ -438,6 +481,32 @@ void loadPage()
               @action="(key) => handleEvidenceAction(key, record)"
             />
             <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+            <span v-else>-</span>
+          </template>
+          <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
+            <UiTag
+              :tone="
+                record.countsInCurrentFacultyStructure === true
+                  ? 'green'
+                  : record.countsInCurrentFacultyStructure === false
+                    ? 'neutral'
+                    : 'neutral'
+              "
+            >
+              {{
+                record.countsInCurrentFacultyStructure === true
+                  ? '是'
+                  : record.countsInCurrentFacultyStructure === false
+                    ? '否'
+                    : '-'
+              }}
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
