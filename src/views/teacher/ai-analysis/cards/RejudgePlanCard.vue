@@ -355,6 +355,11 @@ async function handleReject(): Promise<void> {
 }
 
 function openExecuteModal(planId: string): void {
+  // MVR-386：打开执行弹窗与 canManageReviewerWrites / BE execute 二次拦截（对齐 MVR-380 BatchCorrection）
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('仅本场阅卷组织成员或主考可执行重判计划')
+    return
+  }
   const row = rows.value.find((item) => item.id === planId)
   if (!row || row.planStatus !== 'APPROVED') {
     return
@@ -432,7 +437,7 @@ function isRejudgePlanSubmitterSelf(row: ExamRejudgePlan): boolean {
 
 function canDecideRejudgePlan(row: ExamRejudgePlan): boolean {
   return (
-    canManageReviewerWrites.value
+    canManageReviewerWrites.value === true
     && row.planStatus === 'PENDING_APPROVAL'
     && !isRejudgePlanSubmitterSelf(row)
   )
@@ -458,7 +463,7 @@ function buildRejudgePlanActions(row: ExamRejudgePlan): UiTableRowActionItem[] {
     {
       key: 'execute',
       label: '执行',
-      hidden: !canManageReviewerWrites.value || row.planStatus !== 'APPROVED',
+      hidden: canManageReviewerWrites.value !== true || row.planStatus !== 'APPROVED',
       disabled: operating('execute'),
     },
   ]
@@ -475,6 +480,10 @@ function handleRejudgePlanAction(key: string, row: ExamRejudgePlan): void {
       openRejectModal(row.id)
       break
     case 'execute':
+      // MVR-386：行动作入口与 openExecuteModal 同源二次闸
+      if (canManageReviewerWrites.value !== true || row.planStatus !== 'APPROVED') {
+        return
+      }
       openExecuteModal(row.id)
       break
   }

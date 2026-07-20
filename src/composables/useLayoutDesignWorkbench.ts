@@ -326,7 +326,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       return false
     }
     const res = await loadExamLayoutDesign({ examId })
-    layoutWritable.value = res.writable
+    // MVR-384：仅认 BE loadExamLayoutDesign.writable===true；禁止 truthy 放行
+    layoutWritable.value = res.writable === true
     writeLockReason.value = res.writeLockReason
     detectPollingPolicy.value = res.detectPollingPolicy
     const detectTaskId = res.activeDetect?.detectTaskId
@@ -364,7 +365,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     loading.value = true
     try {
       const res = await loadExamLayoutDesign({ examId })
-      layoutWritable.value = res.writable
+      // MVR-384：仅认 BE writable===true
+      layoutWritable.value = res.writable === true
       writeLockReason.value = res.writeLockReason
       detectPollingPolicy.value = res.detectPollingPolicy
       if (res.document) {

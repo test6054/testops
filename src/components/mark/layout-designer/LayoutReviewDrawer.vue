@@ -104,6 +104,7 @@ async function persistAdjust(): Promise<void> {
       :document="document"
       :page-no="pageNo"
       :focused-block-id="focusedBlockId"
+      :read-only="readonly"
       @focus-block="handleFocus"
       @patch="emit('patch', $event)"
     />

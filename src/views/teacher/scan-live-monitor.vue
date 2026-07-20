@@ -1408,6 +1408,11 @@ function goToManualEntry(): void {
 }
 
 function goToManualSupplementFromAttention(record: ScanAttentionItemResponse): void {
+  // MVR-390：补扫入口与主考写闸同源，禁止无写权假入口
+  if (canManageOwnerBatchActions.value !== true) {
+    message.warning('当前账号非本场主考，无法发起补扫')
+    return
+  }
   if (!selectedExamId.value || !record.paperInstanceId) return
   void router.push({
     name: 'TeacherExamWorkspaceScanManualEntry',
@@ -1757,6 +1762,11 @@ const pageDiscardTarget = ref<ScanAttentionItemResponse | null>(null)
 const pageDiscardReason = ref('')
 const pageDiscardReasonError = ref('')
 async function onDiscardPage(record: ScanAttentionItemResponse): Promise<void> {
+  // MVR-390：打开废弃弹窗与 canManageOwnerBatchActions / BE 主考写门禁同源
+  if (canManageOwnerBatchActions.value !== true) {
+    message.warning('当前账号非本场主考，无法废弃扫描页')
+    return
+  }
   if (record.sourceType !== ScanAttentionSourceTypeCode.SCANNED_PAGE || !record.pageId) {
     message.warning('该异常不是扫描页来源，无法废弃')
     return

@@ -237,7 +237,8 @@
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 :items="[
-                  ...(canManageReviewerWrites
+                  // MVR-387：模板须 === true；ComputedRef 对象 truthy 会导致无写权仍展示行操作
+                  ...(canManageReviewerWrites === true
                     ? [
                       { key: 'correct-answer', label: '修正答案并生效' },
                       { key: 'regenerate', label: '重新生成' },
@@ -646,7 +647,8 @@ async function handleGenerateSelected(): Promise<void> {
 }
 
 function handleRowAction(actionKey: string, item: ExamQuestionAnalysisRecordResponse): void {
-  if (actionKey === 'correct-answer' && !canManageReviewerWrites.value) {
+  // MVR-387：写动作统一 !== true，禁止 truthy/本地身份放行
+  if (actionKey === 'correct-answer' && canManageReviewerWrites.value !== true) {
     message.warning('仅本场阅卷组织成员或主考可修正答案并生效')
     return
   }

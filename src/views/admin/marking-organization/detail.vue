@@ -1447,6 +1447,11 @@ function openGroupModal(): void {
 
 function openGroupEdit(record: QuestionMarkingGroupResponse): void {
   if (!guardExamOwnerAction()) return
+  // MVR-385：与 canEditGroup / 非 CLOSED 状态二次拦截
+  if (!canEditGroup(record)) {
+    showFormValidationMessage('当前题组状态不可编辑')
+    return
+  }
   groupForm.groupId = record.id
   groupForm.groupName = record.groupName
   groupForm.leaderUserId = record.leaderUserId
@@ -1537,12 +1542,22 @@ async function handleGroupRowAction(key: string, record: QuestionMarkingGroupRes
     return
   }
   if (key === 'delete') {
+    // MVR-385：与 canDeleteGroup / 仅 DRAFT 二次拦截
+    if (!canDeleteGroup(record)) {
+      showFormValidationMessage('仅草稿题组可删除')
+      return
+    }
     if (!(await confirmAsync({ content: '确认删除该题组？', okText: '删除', type: 'warning' })))
       return
     await submitGroupDelete(record)
     return
   }
   if (key === 'close') {
+    // MVR-385：与 canCloseGroup / ACTIVE|CONFIGURED 二次拦截
+    if (!canCloseGroup(record)) {
+      showFormValidationMessage('当前题组状态不可关闭')
+      return
+    }
     if (!(await confirmAsync({ content: '确认关闭该题组？', okText: '关闭', type: 'warning' })))
       return
     await submitGroupClose(record)
@@ -1554,6 +1569,11 @@ async function submitGroupDelete(record: QuestionMarkingGroupResponse): Promise<
     return
   }
   if (!guardExamOwnerAction()) return
+  // MVR-385：handler 二次认 canDeleteGroup
+  if (!canDeleteGroup(record)) {
+    showFormValidationMessage('仅草稿题组可删除')
+    return
+  }
   groupActionLoadingId.value = record.id
   try {
     await deleteQuestionGroup({ groupId: record.id })
@@ -1572,6 +1592,11 @@ async function submitGroupClose(record: QuestionMarkingGroupResponse): Promise<v
     return
   }
   if (!guardExamOwnerAction()) return
+  // MVR-385：handler 二次认 canCloseGroup
+  if (!canCloseGroup(record)) {
+    showFormValidationMessage('当前题组状态不可关闭')
+    return
+  }
   groupActionLoadingId.value = record.id
   try {
     await closeQuestionGroup({ groupId: record.id })

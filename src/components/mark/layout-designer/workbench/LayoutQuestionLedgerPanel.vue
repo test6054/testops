@@ -25,6 +25,9 @@ const emit = defineEmits<{
   'locate-roi': [question: ExamLayoutQuestionDto]
 }>()
 
+/** MVR-388：默认拒绝；仅父层显式 readonly===false（layoutWritable）可写 */
+const ledgerReadonly = computed(() => props.readonly !== false)
+
 interface QuestionRow {
   key: string
   question: ExamLayoutQuestionDto
@@ -138,7 +141,7 @@ function handleRowClick(record: QuestionRow): void {
             <UiButton
               size="sm"
               variant="ghost"
-              :disabled="readonly"
+              :disabled="ledgerReadonly"
               @click.stop="emit('locate-roi', record.question)"
             >
               定位 ROI
@@ -151,6 +154,7 @@ function handleRowClick(record: QuestionRow): void {
       class="layout-question-ledger__detail"
       :document="document"
       :question="selectedQuestion"
+      :readonly="ledgerReadonly"
       @patch="emit('patch', $event)"
     />
   </section>

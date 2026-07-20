@@ -33,11 +33,18 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 const props = defineProps<{
   document: ExamLayoutDocument | null
   question: ExamLayoutQuestionDto | null
+  /**
+   * MVR-388：默认拒绝假可写；仅父层显式 readonly===false（layoutWritable）可改题属性。
+   */
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
   patch: [document: ExamLayoutDocument]
 }>()
+
+/** MVR-388：未声明或 true 均只读 */
+const fieldReadonly = computed(() => props.readonly !== false)
 
 const OCR_SCENE_OPTIONS = ALL_MARK_OCR_SCENE_CODES.map((value) => ({
   value,
@@ -59,7 +66,8 @@ const roiReady = computed(() =>
 )
 
 function patchQuestion(partial: Partial<ExamLayoutQuestionDto>): void {
-  if (!props.document || !props.question) {
+  // MVR-388：handler 二次闸，禁止仅靠控件 disabled
+  if (fieldReadonly.value || !props.document || !props.question) {
     return
   }
   const questions = props.document.questions.map((item) =>
@@ -69,7 +77,7 @@ function patchQuestion(partial: Partial<ExamLayoutQuestionDto>): void {
 }
 
 function patchQuestionAnswer(partial: NonNullable<ExamLayoutQuestionDto['answer']>): void {
-  if (!focusedQuestion.value) {
+  if (fieldReadonly.value || !focusedQuestion.value) {
     return
   }
   patchQuestion({
@@ -216,6 +224,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
         <UiInput
           size="sm"
           :model-value="focusedQuestion.questionNo"
+          :disabled="fieldReadonly"
           @update:model-value="
             (value) =>
               patchQuestion({
@@ -227,7 +236,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
       </UiFormItem>
       <UiFormItem label="OCR 场景">
         <UiSelect
-          size="sm" v-model="focusedOcrScene" :options="OCR_SCENE_OPTIONS"
+          size="sm" v-model="focusedOcrScene" :options="OCR_SCENE_OPTIONS" :disabled="fieldReadonly"
         />
       </UiFormItem>
       <UiFormItem label="题型">
@@ -243,6 +252,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
           :max="100"
           :step="0.5"
           style="width: 100%"
+          :disabled="fieldReadonly"
           @change="(value) => patchQuestion({ fullScore: Number(value) || 0 })"
         />
       </UiFormItem>
@@ -252,6 +262,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
           :model-value="focusedQuestion.questionStem"
           :rows="5"
           placeholder="自动预划区会回填切题文本，可在此核对修正"
+          :disabled="fieldReadonly"
           @update:model-value="(value) => patchQuestion({ questionStem: String(value ?? '') })"
         />
       </UiFormItem>
@@ -269,6 +280,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
           size="sm"
           v-model="focusedComparePolicy"
           :options="OBJECTIVE_COMPARE_POLICY_OPTIONS"
+          :disabled="fieldReadonly"
         />
       </UiFormItem>
       <template v-if="focusedQuestion.answer?.comparePolicy === ObjectiveComparePolicy.CHOICE_SET">
@@ -277,6 +289,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
             size="sm"
             :model-value="formatOptions(focusedQuestion.answer?.declaredOptions)"
             placeholder="A,B,C,D"
+            :disabled="fieldReadonly"
             @update:model-value="(value) => updateDeclaredOptions(String(value ?? ''))"
           />
         </UiFormItem>
@@ -285,6 +298,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
             size="sm"
             :model-value="formatOptions(focusedQuestion.answer?.choiceOptions)"
             placeholder="A 或 A,C"
+            :disabled="fieldReadonly"
             @update:model-value="(value) => updateChoiceOptions(String(value ?? ''))"
           />
         </UiFormItem>
@@ -299,6 +313,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
             size="sm"
             :model-value="focusedQuestion.answer?.numericExpectedValue"
             style="width: 100%"
+            :disabled="fieldReadonly"
             @change="
               (value) =>
                 patchQuestionAnswer({ numericExpectedValue: Number(value), effectiveNow: true })
@@ -311,6 +326,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
             :model-value="focusedQuestion.answer?.numericTolerance"
             :min="0"
             style="width: 100%"
+            :disabled="fieldReadonly"
             @change="
               (value) =>
                 patchQuestionAnswer({ numericTolerance: Number(value), effectiveNow: true })
@@ -321,6 +337,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
           <UiInput
             size="sm"
             :model-value="focusedQuestion.answer?.numericUnit"
+            :disabled="fieldReadonly"
             @update:model-value="
               (value) =>
                 patchQuestionAnswer({
@@ -336,6 +353,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
           size="sm"
           :model-value="focusedQuestion.answer?.standardAnswer"
           :rows="3"
+          :disabled="fieldReadonly"
           @update:model-value="
             (value) =>
               patchQuestionAnswer({
@@ -350,6 +368,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
           size="sm"
           :model-value="focusedQuestion.answer?.answerExplain"
           :rows="3"
+          :disabled="fieldReadonly"
           @update:model-value="
             (value) =>
               patchQuestionAnswer({
@@ -364,6 +383,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
           size="sm"
           :model-value="focusedQuestion.answer?.gradingRubric"
           :rows="4"
+          :disabled="fieldReadonly"
           @update:model-value="
             (value) =>
               patchQuestionAnswer({
@@ -378,6 +398,7 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
           size="sm"
           :model-value="focusedQuestion.answer?.aiHint"
           :rows="3"
+          :disabled="fieldReadonly"
           @update:model-value="
             (value) =>
               patchQuestionAnswer({

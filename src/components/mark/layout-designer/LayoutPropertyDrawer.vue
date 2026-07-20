@@ -24,11 +24,18 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 const props = defineProps<{
   document: ExamLayoutDocument | null
   block: ExamLayoutBlockDto | null
+  /**
+   * MVR-389：默认拒绝假可写；仅父层显式 readonly===false 可改识别块属性。
+   */
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
   patch: [document: ExamLayoutDocument]
 }>()
+
+/** MVR-389：未声明或 true 均只读 */
+const fieldReadonly = computed(() => props.readonly !== false)
 
 const blockTypeOptions = ExamLayoutBlockTypeOptions
 const identityAreaTypeOptions = PaperMasterIdentityAreaTypeOptions
@@ -58,7 +65,8 @@ const questionOptions = computed(() => {
 const rectNorm = computed(() => props.block?.rectNorm)
 
 function patchBlock(partial: Partial<ExamLayoutBlockDto>): void {
-  if (!props.document || !props.block) {
+  // MVR-389：handler 二次闸
+  if (fieldReadonly.value || !props.document || !props.block) {
     return
   }
   const nextBlock = { ...props.block, ...partial }
@@ -156,6 +164,7 @@ function onLayoutQuestionChange(
           size="sm"
           :model-value="block.blockType"
           :options="blockTypeOptions"
+          :disabled="fieldReadonly"
           @change="onBlockTypeChange"
         />
       </UiFormItem>
@@ -166,6 +175,7 @@ function onLayoutQuestionChange(
           allow-clear
           placeholder="主观/客观块需绑定题目"
           :options="questionOptions"
+          :disabled="fieldReadonly"
           @change="onLayoutQuestionChange"
         />
       </UiFormItem>
@@ -176,6 +186,7 @@ function onLayoutQuestionChange(
           :min="0"
           :max="99"
           style="width: 100%"
+          :disabled="fieldReadonly"
           @change="patchBlock({ layer: Number($event) || 0 })"
         />
       </UiFormItem>
@@ -188,6 +199,7 @@ function onLayoutQuestionChange(
             :min="0"
             :max="1"
             addon-before="X"
+            :disabled="fieldReadonly"
             @change="patchRectField('x', $event)"
           />
           <UiInputNumber
@@ -197,6 +209,7 @@ function onLayoutQuestionChange(
             :min="0"
             :max="1"
             addon-before="Y"
+            :disabled="fieldReadonly"
             @change="patchRectField('y', $event)"
           />
           <UiInputNumber
@@ -206,6 +219,7 @@ function onLayoutQuestionChange(
             :min="0"
             :max="1"
             addon-before="W"
+            :disabled="fieldReadonly"
             @change="patchRectField('w', $event)"
           />
           <UiInputNumber
@@ -215,6 +229,7 @@ function onLayoutQuestionChange(
             :min="0"
             :max="1"
             addon-before="H"
+            :disabled="fieldReadonly"
             @change="patchRectField('h', $event)"
           />
         </div>
@@ -227,6 +242,7 @@ function onLayoutQuestionChange(
           size="sm"
           :model-value="block.identityAreaType"
           :options="identityAreaTypeOptions"
+          :disabled="fieldReadonly"
           @change="onIdentityAreaTypeChange"
         />
       </UiFormItem>

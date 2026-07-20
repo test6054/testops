@@ -226,6 +226,11 @@ function securityLevelLabel(code: ArchiveSecurityLevelCode) {
 }
 
 function openConfirmSecurityMarkModal() {
+  // MVR-390：打开弹窗与 canConfirmSecurityMark 二次拦截
+  if (props.detail.canConfirmSecurityMark !== true) {
+    message.warning('当前账号无定密确认权限')
+    return
+  }
   confirmSecurityMarkReason.value = ''
   confirmSecurityMarkOpen.value = true
 }
@@ -260,6 +265,11 @@ async function submitConfirmSecurityMark() {
 }
 
 function openUpdateSecurityLevelModal() {
+  // MVR-390：打开弹窗与 canUpdateSecurityLevel 二次拦截
+  if (props.detail.canUpdateSecurityLevel !== true) {
+    message.warning('当前账号无密级变更权限')
+    return
+  }
   updateSecurityLevelForm.securityLevel = props.detail.volume.securityLevel
   updateSecurityLevelForm.reason = ''
   updateSecurityLevelOpen.value = true

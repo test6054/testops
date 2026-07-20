@@ -8,6 +8,7 @@ import {
   resumeScanDispatch,
   suspendScanDispatch,
 } from '@/apis/mark/scanner-dispatch'
+import { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import { useDocumentKioskBootstrap } from '../composables/useDocumentKioskBootstrap'
@@ -33,7 +34,11 @@ export function useDispatchSession() {
   const scannerDeviceId = computed(() => bootstrap.setup.value?.scannerDeviceId ?? '')
   const scannerStationId = computed(() => bootstrap.setup.value?.scannerStationId ?? '')
 
+  /** MVR-383：BE canClaimTicket（PENDING+canScan/scanAllowed）∧ 快照完备；禁止 null 回退 */
   const canClaimTicket = computed(() => {
+    if (ticket.value?.canClaimTicket !== true) {
+      return false
+    }
     if (ticket.value?.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT) {
       const snapshot = ticket.value.portfolioSnapshot
       return Boolean(snapshot?.teacherId && snapshot.collectMode)
@@ -44,6 +49,18 @@ export function useDispatchSession() {
     }
     return Boolean(snapshot.physicalStorageLocation?.trim() && snapshot.materialType)
   })
+
+  function isDispatchSnapshotReady(current: ScanDispatchTicketVO | null | undefined): boolean {
+    if (!current) {
+      return false
+    }
+    if (current.taskKind === ScanTaskKindCode.PORTFOLIO_COLLECT) {
+      const snapshot = current.portfolioSnapshot
+      return Boolean(snapshot?.teacherId && snapshot.collectMode)
+    }
+    const snapshot = current.archiveSnapshot
+    return Boolean(snapshot?.physicalStorageLocation?.trim() && snapshot.materialType)
+  }
 
   function handleLeaseLost() {
     errorMessage.value = '派单租约已失效，任务可能已被释放，请返回队列重新领取'
@@ -62,12 +79,9 @@ export function useDispatchSession() {
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
       return
     }
-    lease.startHeartbeat(
-      ticketId.value,
-      scannerDeviceId.value,
-      scannerStationId.value,
-      { onLeaseLost: handleLeaseLost },
-    )
+    lease.startHeartbeat(ticketId.value, scannerDeviceId.value, scannerStationId.value, {
+      onLeaseLost: handleLeaseLost,
+    })
   }
 
   async function loadTicket() {
@@ -79,12 +93,10 @@ export function useDispatchSession() {
     errorMessage.value = ''
     try {
       ticket.value = await previewScanDispatch({ ticketId: ticketId.value })
-    }
-    catch (error) {
+    } catch (error) {
       errorMessage.value = getUserErrorMessage(error)
       ticket.value = null
-    }
-    finally {
+    } finally {
       loading.value = false
     }
   }
@@ -94,6 +106,11 @@ export function useDispatchSession() {
       return false
     }
     if (!assertLeaseActive()) {
+      return false
+    }
+    // MVR-383：handler 二次拦截，与按钮 :disabled 及 BE claim 同源
+    if (canClaimTicket.value !== true) {
+      errorMessage.value = '当前派单不可领取，请确认扫描权限与任务快照是否完整'
       return false
     }
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
@@ -110,12 +127,10 @@ export function useDispatchSession() {
       startProcessingHeartbeat()
       cognitive.requestConfirm(ticket.value)
       return true
-    }
-    catch (error) {
+    } catch (error) {
       errorMessage.value = getUserErrorMessage(error)
       return false
-    }
-    finally {
+    } finally {
       actionLoading.value = false
     }
   }
@@ -125,6 +140,11 @@ export function useDispatchSession() {
       return false
     }
     if (!assertLeaseActive()) {
+      return false
+    }
+    // MVR-383：认知确认二次拦截快照完备（与 CognitiveConfirmModal canConfirm 同源）
+    if (!isDispatchSnapshotReady(ticket.value)) {
+      errorMessage.value = '任务快照不完整，无法确认进纸'
       return false
     }
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
@@ -169,12 +189,10 @@ export function useDispatchSession() {
         },
       })
       return true
-    }
-    catch (error) {
+    } catch (error) {
       errorMessage.value = getUserErrorMessage(error)
       return false
-    }
-    finally {
+    } finally {
       actionLoading.value = false
     }
   }
@@ -184,10 +202,16 @@ export function useDispatchSession() {
       return false
     }
     if (!assertLeaseActive()) {
-      return
+      return false
+    }
+    // MVR-383：仅 PROCESSING 可挂起（与 BE suspend 状态门禁同源）
+    if (ticket.value?.status !== ScanDispatchTicketStatusCode.PROCESSING) {
+      errorMessage.value = '仅处理中派单可挂起'
+      return false
     }
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
-      return
+      errorMessage.value = '请先完成一体机设备激活后再挂起派单'
+      return false
     }
     actionLoading.value = true
     try {
@@ -197,11 +221,9 @@ export function useDispatchSession() {
         scannerStationId: scannerStationId.value,
       })
       lease.stopHeartbeat()
-    }
-    catch (error) {
+    } catch (error) {
       errorMessage.value = getUserErrorMessage(error)
-    }
-    finally {
+    } finally {
       actionLoading.value = false
     }
   }
@@ -257,10 +279,16 @@ export function useDispatchSession() {
       return false
     }
     if (!assertLeaseActive()) {
-      return
+      return false
+    }
+    // MVR-383：仅 SUSPENDED 可恢复（与 BE resume 状态门禁同源）
+    if (ticket.value?.status !== ScanDispatchTicketStatusCode.SUSPENDED) {
+      errorMessage.value = '仅挂起派单可恢复'
+      return false
     }
     if (!ticketId.value || !scannerDeviceId.value || !scannerStationId.value) {
-      return
+      errorMessage.value = '请先完成一体机设备激活后再恢复派单'
+      return false
     }
     actionLoading.value = true
     try {
@@ -270,11 +298,9 @@ export function useDispatchSession() {
         scannerStationId: scannerStationId.value,
       })
       startProcessingHeartbeat()
-    }
-    catch (error) {
+    } catch (error) {
       errorMessage.value = getUserErrorMessage(error)
-    }
-    finally {
+    } finally {
       actionLoading.value = false
     }
   }

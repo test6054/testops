@@ -90,6 +90,7 @@ const focusedBlock = computed(
         :document="document"
         :page-no="pageNo"
         :focused-block-id="focusedBlockId"
+        :readonly="readonly"
         @focus-block="emit('focus-block', $event)"
         @patch="emit('patch', $event)"
       />
@@ -122,12 +123,14 @@ const focusedBlock = computed(
         v-if="fullPaperMode && focusedQuestion"
         :document="document"
         :question="focusedQuestion"
+        :readonly="readonly"
         @patch="emit('patch', $event)"
       />
       <LayoutPropertyDrawer
         v-else
         :document="document"
         :block="focusedBlock"
+        :readonly="readonly"
         @patch="emit('patch', $event)"
       />
     </aside>

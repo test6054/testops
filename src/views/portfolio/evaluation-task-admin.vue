@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
+import type {
+  PortfolioEvaluationTaskStatusCode} from '@/apis/portfolio/enums';
 import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
 import type {
@@ -17,11 +18,13 @@ import {
   PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
   PortfolioEvaluationModeCode,
   PortfolioEvaluationModeDescription,
+  PortfolioEvaluationTaskAdvanceActionCode,
   PortfolioEvaluationTaskStatusDescription,
   PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import { PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE } from '@/apis/portfolio/types'
@@ -218,10 +221,7 @@ function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusCode) {
 
 function canReturnNotice(notice: PortfolioEvaluationTeacherNoticeVO | null): boolean {
   const taskStatus = preview.value?.taskStatus
-  if (
-    !taskStatus
-    || !PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES.includes(taskStatus)
-  ) {
+  if (!taskStatus || !PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES.includes(taskStatus)) {
     return false
   }
   return (
@@ -484,6 +484,52 @@ async function createTask() {
   }
 }
 
+/** PF-P0-317：草稿任务作废（DRAFT→VOID）。 */
+async function voidDraftTask(id: string) {
+  if (!id || taskWriting.value) {
+    return
+  }
+  const confirmed = await confirmAsync({
+    title: '作废评价任务',
+    content: '作废后草稿任务不可再发布，确认作废？',
+    type: 'warning',
+    okText: '作废',
+  })
+  if (!confirmed) {
+    return
+  }
+  const operation = `void:${id}`
+  taskOperationKey.value = operation
+  try {
+    await portfolioEvaluationPublicityApi.advanceTask({
+      taskId: id,
+      action: PortfolioEvaluationTaskAdvanceActionCode.VOID,
+    })
+    message.success('任务已作废')
+    await loadPage()
+  } catch (error) {
+    showUserError(error, '作废评价任务失败')
+  } finally {
+    if (taskOperationKey.value === operation) {
+      taskOperationKey.value = ''
+    }
+  }
+}
+
+function handleTaskAdminAction(key: string, record: { id: string, taskStatus?: string }) {
+  if (key === 'preview') {
+    openMaterialPreview(record.id)
+    return
+  }
+  if (key === 'publish') {
+    void publishTask(record.id)
+    return
+  }
+  if (key === 'void') {
+    void voidDraftTask(record.id)
+  }
+}
+
 async function publishTask(id: string) {
   if (taskWriting.value) return
   const operation = `publish:${id}`
@@ -533,7 +579,15 @@ onMounted(async () => {
     <template #context>
       <ContextBar show-title layout="workbench" title="多元评价任务">
         <template #actions>
-          <UiButton size="sm" variant="primary" :loading="exporting" :disabled="exporting || taskWriting" @click="exportExcel"> 导出表格文件 </UiButton>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="exporting"
+            :disabled="exporting || taskWriting"
+            @click="exportExcel"
+          >
+            导出表格文件
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -560,10 +614,12 @@ onMounted(async () => {
           style="width: 180px"
           size="sm"
           :disabled="taskWriting"
-          :options="indicatorConfigs.map((indicator) => ({
-            value: indicator.indicatorCode,
-            label: indicator.indicatorName || indicator.indicatorCode,
-          }))"
+          :options="
+            indicatorConfigs.map((indicator) => ({
+              value: indicator.indicatorCode,
+              label: indicator.indicatorName || indicator.indicatorCode,
+            }))
+          "
         />
         <UiSelect
           v-model="form.workgroupId"
@@ -663,16 +719,20 @@ onMounted(async () => {
                 {
                   key: 'publish',
                   label: '发布',
-                  hidden: record.taskStatus === 'PUBLISHED' || record.taskStatus === 'CLOSED',
+                  hidden: record.taskStatus !== 'DRAFT',
+                  disabled: taskWriting,
+                },
+                {
+                  key: 'void',
+                  label: '作废',
+                  tone: 'danger',
+                  hidden: record.taskStatus !== 'DRAFT',
                   disabled: taskWriting,
                 },
                 { key: 'preview', label: '材料预览', disabled: taskWriting },
               ]"
               split
-              @action="
-                (key) =>
-                  key === 'preview' ? openMaterialPreview(record.id) : publishTask(record.id)
-              "
+              @action="(key) => handleTaskAdminAction(key, record)"
             />
           </template>
         </template>
@@ -710,10 +770,10 @@ onMounted(async () => {
           class="evaluation-task-admin__identity-material"
         >
           <p class="evaluation-task-admin__preview-meta">
-            身份材料：正式档 {{ preview.identityMaterialPackage.officialRecordCount ?? 0 }}
-            · 校内硬性可用 {{ preview.identityMaterialPackage.campusHardUsableCount ?? 0 }}
-            · 仅外部 {{ preview.identityMaterialPackage.externalOnlyCount ?? 0 }}
-            · 共享 {{ preview.identityMaterialPackage.sharedCount ?? 0 }}
+            身份材料：正式档 {{ preview.identityMaterialPackage.officialRecordCount ?? 0 }} ·
+            校内硬性可用 {{ preview.identityMaterialPackage.campusHardUsableCount ?? 0 }} · 仅外部
+            {{ preview.identityMaterialPackage.externalOnlyCount ?? 0 }} · 共享
+            {{ preview.identityMaterialPackage.sharedCount ?? 0 }}
           </p>
           <p
             v-if="preview.identityMaterialPackage.citationPolicy"

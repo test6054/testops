@@ -94,6 +94,8 @@ export interface ScanDispatchTicketVO {
   canForceReleaseTicket?: boolean
   /** 取消派单（PENDING）；归档 canManageMaterials，档案袋 scanAllowed */
   canCancelTicket?: boolean
+  /** 领取派单（PENDING）；归档 canScan/canManageMaterials，档案袋 scanAllowed；与 claim 写口同源 */
+  canClaimTicket?: boolean
 }
 
 export interface ScanDispatchCreateRequest {

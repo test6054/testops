@@ -39,7 +39,8 @@ const props = withDefaults(
   }>(),
   {
     focusedQuestionId: null,
-    readOnly: false,
+    // MVR-389：默认拒绝假可写；仅父层显式 :read-only="false"（layoutWritable）可拖改
+    readOnly: true,
   },
 )
 

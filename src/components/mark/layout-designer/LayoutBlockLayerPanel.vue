@@ -21,6 +21,10 @@ const props = defineProps<{
   document: ExamLayoutDocument | null
   pageNo: number
   focusedBlockId: string | null
+  /**
+   * MVR-389：默认拒绝假可写；仅父层显式 readonly===false 可增删/调层识别块。
+   */
+  readonly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -28,10 +32,13 @@ const emit = defineEmits<{
   "patch": [document: ExamLayoutDocument]
 }>()
 
+/** MVR-389：未声明或 true 均只读 */
+const layerReadonly = computed(() => props.readonly !== false)
+
 const pageBlocks = computed(() => blocksOnPage(props.document, props.pageNo))
 
 function addBlock(blockType: ExamLayoutBlockTypeCode): void {
-  if (!props.document) {
+  if (layerReadonly.value || !props.document) {
     return
   }
   const maxLayer = props.document.blocks.reduce((max, block) => Math.max(max, block.layer ?? 0), 0)
@@ -44,7 +51,7 @@ function addBlock(blockType: ExamLayoutBlockTypeCode): void {
 }
 
 function removeFocusedBlock(): void {
-  if (!props.document || !props.focusedBlockId) {
+  if (layerReadonly.value || !props.document || !props.focusedBlockId) {
     return
   }
   emit('patch', {
@@ -58,7 +65,7 @@ function removeFocusedBlock(): void {
 }
 
 function moveLayer(delta: number): void {
-  if (!props.document || !props.focusedBlockId) {
+  if (layerReadonly.value || !props.document || !props.focusedBlockId) {
     return
   }
   const blocks = props.document.blocks.map((block) => {
@@ -77,7 +84,7 @@ function moveLayer(delta: number): void {
       <h2 class="layout-block-layer__title">识别图层</h2>
       <span class="layout-block-layer__count">第 {{ pageNo }} 页 · {{ pageBlocks.length }} 块</span>
     </div>
-    <div class="layout-block-layer__actions">
+    <div v-if="!layerReadonly" class="layout-block-layer__actions">
       <UiDropdown>
         <UiButton size="sm" variant="primary">添加识别块</UiButton>
         <template #overlay>

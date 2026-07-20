@@ -30,7 +30,7 @@
           <template #icon><ReloadOutlined /></template>查看最新
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
           :loading="generating"
@@ -69,7 +69,7 @@
           刷新
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites"
+          v-if="canManageReviewerWrites === true"
           variant="outline"
           size="sm"
           :loading="generating"
@@ -316,7 +316,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
-  if (!canManageReviewerWrites.value) {
+  if (canManageReviewerWrites.value !== true) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }

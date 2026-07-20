@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {PortfolioEvaluationRereviewOrderVO} from '@/apis/portfolio/evaluation-publicity';
+import type { PortfolioEvaluationRereviewOrderVO } from '@/apis/portfolio/evaluation-publicity'
 import type {
   PortfolioEvaluationTaskVO,
   PortfolioEvaluationWorkgroupOptionVO,
@@ -18,10 +18,7 @@ import {
   PortfolioEvaluationTaskStatusCode,
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
-import {
-  portfolioEvaluationPublicityApi
-  
-} from '@/apis/portfolio/evaluation-publicity'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import {
   portfolioEvaluationTaskApi,
   portfolioEvaluationWorkgroupApi,
@@ -343,6 +340,17 @@ async function advanceTask(
   if (writing.value) {
     return
   }
+  if (action === PortfolioEvaluationTaskAdvanceActionCode.VOID) {
+    const confirmed = await confirmAsync({
+      title: '作废评价任务',
+      content: `确认作废草稿任务「${row.taskName || row.id}」？作废后不可再发布。`,
+      type: 'warning',
+      okText: '作废',
+    })
+    if (!confirmed) {
+      return
+    }
+  }
   advancingId.value = row.id
   try {
     await portfolioEvaluationPublicityApi.advanceTask({
@@ -361,8 +369,7 @@ async function advanceTask(
     ) {
       const confirmed = await confirmAsync({
         title: '评分离散过大，是否强制进入结果汇总？',
-        content:
-          `${errText}\n\n请先确认已完成追加评审；强制汇总将写入审计日志，不替代评委会判断。`,
+        content: `${errText}\n\n请先确认已完成追加评审；强制汇总将写入审计日志，不替代评委会判断。`,
         type: 'warning',
         okText: '强制汇总',
       })
@@ -460,7 +467,6 @@ async function submitPublish() {
     publishing.value = false
   }
 }
-
 
 async function createRereview(row: PortfolioEvaluationTaskVO) {
   if (writing.value) {
@@ -576,7 +582,9 @@ async function cancelRereviewOrder(order: PortfolioEvaluationRereviewOrderVO): P
     return
   }
   cancelRereviewSubmitting.value = true
-  advancingId.value = completeRereviewTarget.value?.id ? String(completeRereviewTarget.value.id) : ''
+  advancingId.value = completeRereviewTarget.value?.id
+    ? String(completeRereviewTarget.value.id)
+    : ''
   try {
     await portfolioEvaluationPublicityApi.cancelRereview({
       orderId: order.id,
@@ -680,6 +688,15 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
       disabled: writing.value,
     })
   }
+  // PF-P0-317：草稿可作废，发布后走关闭/归档等终态路径
+  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.DRAFT) {
+    actions.push({
+      key: 'void',
+      label: '作废',
+      tone: 'danger',
+      disabled: writing.value,
+    })
+  }
   return actions
 }
 
@@ -712,6 +729,9 @@ function handleTaskRowAction(key: string, row: PortfolioEvaluationTaskVO): void 
     case 'completeRereview':
       void openCompleteRereview(row)
       break
+    case 'void':
+      void advanceTask(row, PortfolioEvaluationTaskAdvanceActionCode.VOID)
+      break
   }
 }
 
@@ -743,7 +763,9 @@ void loadPage()
         subtitle="评价任务状态推进、公示发布与归档"
       >
         <template #actions>
-          <UiButton size="sm" variant="primary" @click="() => void openCreateModal()"> 新建任务 </UiButton>
+          <UiButton size="sm" variant="primary" @click="() => void openCreateModal()">
+            新建任务
+          </UiButton>
           <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
         </template>
       </ContextBar>
@@ -896,7 +918,9 @@ void loadPage()
       title="完成更正复核"
       ok-text="确认完成"
       cancel-text="取消"
-      :confirm-loading="completeRereviewSubmitting || completeRereviewLoading || cancelRereviewSubmitting"
+      :confirm-loading="
+        completeRereviewSubmitting || completeRereviewLoading || cancelRereviewSubmitting
+      "
       @ok="() => void submitCompleteRereview()"
     >
       <p class="school-evaluation__field">
@@ -915,7 +939,9 @@ void loadPage()
       >
         <li v-for="order in completeRereviewOrders" :key="String(order.id)">
           工单 #{{ order.id }}
-          <template v-if="order.subjectTeacherUserId"> · 教师 {{ order.subjectTeacherUserId }}</template>
+          <template v-if="order.subjectTeacherUserId">
+            · 教师 {{ order.subjectTeacherUserId }}
+          </template>
           <template v-else> · 整任务</template>
           <template v-if="order.lifecycleStatusLabel || order.lifecycleStatus">
             · {{ order.lifecycleStatusLabel || order.lifecycleStatus }}

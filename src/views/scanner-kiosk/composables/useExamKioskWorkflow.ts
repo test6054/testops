@@ -3162,6 +3162,11 @@ export function useExamKioskWorkflow() {
 
   async function retryCurrentUpload() {
     if (!currentJob.value || loading.value) return
+    // MVR-385：与 canRetryUpload / 按钮 :disabled 二次拦截
+    if (!canRetryUpload.value) {
+      errorMessage.value = '当前任务状态不允许重试上传'
+      return
+    }
     loading.value = true
     errorMessage.value = ''
     try {
@@ -3327,6 +3332,11 @@ export function useExamKioskWorkflow() {
 
   async function retryCurrentCommit() {
     if (!currentJob.value || loading.value) return
+    // MVR-385：与 canRetryCommit / 按钮 :disabled 二次拦截
+    if (!canRetryCommit.value) {
+      errorMessage.value = '当前任务状态不允许重试提交'
+      return
+    }
     loading.value = true
     errorMessage.value = ''
     try {

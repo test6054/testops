@@ -1,86 +1,105 @@
 <template>
-  <div class="ui-arrow-timeline" :class="{ 'ui-arrow-timeline--compact': compact }">
-    <button
-      v-for="(stage, index) in normalizedStages"
-      :key="stage.key"
-      type="button"
-      class="ui-arrow-timeline__stage"
-      :class="[
-        `ui-arrow-timeline__stage--${stage.status}`,
-        { 'ui-arrow-timeline__stage--active': stage.key === activeKey },
-        { 'ui-arrow-timeline__stage--first': index === 0 },
-        { 'ui-arrow-timeline__stage--last': index === normalizedStages.length - 1 },
-        { 'ui-arrow-timeline__stage--disabled': !allowPendingSelect && stage.status === 'pending' },
-      ]"
-      :disabled="!allowPendingSelect && stage.status === 'pending'"
-      @click="handleStageClick(stage)"
-    >
-      <div class="ui-arrow-timeline__chevron">
-        <svg class="ui-arrow-timeline__shape" viewBox="0 0 200 80" preserveAspectRatio="none">
-          <!-- 第一个元素：左边平头 -->
-          <path
-            v-if="index === 0 && index === normalizedStages.length - 1"
-            class="ui-arrow-timeline__shape-bg"
-            d="M 4 4 L 196 4 L 196 76 L 4 76 Z"
-          />
-          <path
-            v-else-if="index === 0"
-            class="ui-arrow-timeline__shape-bg"
-            d="M 4 4 L 180 4 L 196 40 L 180 76 L 4 76 Z"
-          />
-          <!-- 最后一个元素：右边平尾 -->
-          <path
-            v-else-if="index === normalizedStages.length - 1"
-            class="ui-arrow-timeline__shape-bg"
-            d="M 4 4 L 196 4 L 196 76 L 4 76 L 20 40 Z"
-          />
-          <!-- 中间元素：两边都是箭头 -->
-          <path
-            v-else
-            class="ui-arrow-timeline__shape-bg"
-            d="M 4 4 L 180 4 L 196 40 L 180 76 L 4 76 L 20 40 Z"
-          />
-        </svg>
+  <div
+    class="ui-arrow-timeline"
+    :class="{ 'ui-arrow-timeline--compact': compact }"
+    :style="{ '--node-count': normalizedStages.length }"
+    role="navigation"
+    aria-label="考试旅程进度"
+  >
+    <!-- 轨道线 -->
+    <div class="ui-arrow-timeline__track" aria-hidden="true">
+      <div class="ui-arrow-timeline__track-fill" :style="{ width: `${progressPercent}%` }" />
+    </div>
 
-        <div class="ui-arrow-timeline__body">
-          <div class="ui-arrow-timeline__content">
-            <div class="ui-arrow-timeline__header">
-              <span class="ui-arrow-timeline__index">{{ index + 1 }}</span>
-              <span class="ui-arrow-timeline__title">{{ stage.title }}</span>
-            </div>
-            <div v-if="stage.dateRange" class="ui-arrow-timeline__date">
-              {{ stage.dateRange }}
-            </div>
-            <div v-if="stage.statusText" class="ui-arrow-timeline__status">
-              <span
-                class="ui-arrow-timeline__status-dot"
-                :class="`ui-arrow-timeline__status-dot--${stage.status}`"
-              />
-              <span class="ui-arrow-timeline__status-text">{{ stage.statusText }}</span>
-            </div>
-            <div v-if="stage.progress !== undefined" class="ui-arrow-timeline__progress">
-              <div class="ui-arrow-timeline__progress-bar">
-                <div
-                  class="ui-arrow-timeline__progress-fill"
-                  :style="{ width: `${Math.min(stage.progress, 100)}%` }"
-                />
-              </div>
-              <span class="ui-arrow-timeline__progress-text">{{ stage.progress }}%</span>
-            </div>
-            <div v-if="stage.metrics && stage.metrics.length" class="ui-arrow-timeline__metrics">
-              <div
-                v-for="metric in stage.metrics"
-                :key="metric.label"
-                class="ui-arrow-timeline__metric"
-              >
-                <span class="ui-arrow-timeline__metric-value">{{ metric.value }}</span>
-                <span class="ui-arrow-timeline__metric-label">{{ metric.label }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </button>
+    <!-- 节点列表 -->
+    <div class="ui-arrow-timeline__nodes">
+      <button
+        v-for="(stage, index) in normalizedStages"
+        :key="stage.key"
+        type="button"
+        class="ui-arrow-timeline__node"
+        :class="[
+          `ui-arrow-timeline__node--${stage.status}`,
+          { 'ui-arrow-timeline__node--selected': stage.key === activeKey },
+          { 'ui-arrow-timeline__node--disabled': !allowPendingSelect && stage.status === 'pending' },
+        ]"
+        :disabled="!allowPendingSelect && stage.status === 'pending'"
+        :aria-current="stage.key === activeKey ? 'step' : undefined"
+        :aria-label="`${stage.title}${stage.statusText ? `，${stage.statusText}` : ''}`"
+        @click="handleStageClick(stage)"
+      >
+        <!-- 圆形节点 -->
+        <span class="ui-arrow-timeline__dot">
+          <svg
+            v-if="stage.status === 'completed' || stage.status === 'done'"
+            class="ui-arrow-timeline__check"
+            viewBox="0 0 12 12"
+            fill="none"
+          >
+            <path
+              d="M2.5 6.5L5 9L9.5 3.5"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <svg
+            v-else-if="stage.status === 'warning'"
+            class="ui-arrow-timeline__warn-icon"
+            viewBox="0 0 12 12"
+            fill="none"
+          >
+            <path
+              d="M6 3.5V6.5M6 8.5V8.5"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            />
+          </svg>
+          <svg
+            v-else-if="stage.status === 'error'"
+            class="ui-arrow-timeline__error-icon"
+            viewBox="0 0 12 12"
+            fill="none"
+          >
+            <path
+              d="M3.5 3.5L8.5 8.5M8.5 3.5L3.5 8.5"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+            />
+          </svg>
+          <span v-else class="ui-arrow-timeline__dot-num">{{ index + 1 }}</span>
+        </span>
+
+        <!-- 标签区 -->
+        <span class="ui-arrow-timeline__label">
+          <span class="ui-arrow-timeline__title">{{ stage.title }}</span>
+          <span v-if="stage.statusText || stage.dateRange" class="ui-arrow-timeline__sub">
+            {{ stage.statusText || stage.dateRange }}
+          </span>
+          <span
+            v-else-if="stage.progress !== undefined"
+            class="ui-arrow-timeline__sub ui-arrow-timeline__sub--progress"
+          >
+            {{ stage.progress }}%
+          </span>
+        </span>
+
+        <!-- 指标区（非 compact 时显示） -->
+        <span v-if="stage.metrics && stage.metrics.length" class="ui-arrow-timeline__metrics">
+          <span
+            v-for="metric in stage.metrics"
+            :key="metric.label"
+            class="ui-arrow-timeline__metric"
+          >
+            <span class="ui-arrow-timeline__metric-value">{{ metric.value }}</span>
+            <span class="ui-arrow-timeline__metric-label">{{ metric.label }}</span>
+          </span>
+        </span>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -120,6 +139,21 @@ const normalizedStages = computed(() => {
   }))
 })
 
+/** 全局进度百分比：基于已完成 + 当前活跃节点位置 */
+const progressPercent = computed(() => {
+  const total = normalizedStages.value.length
+  if (total <= 1) return 0
+  // 找到最远的"已触达"节点（completed/done/active/running/warning/error）
+  let reachedIndex = -1
+  normalizedStages.value.forEach((s, i) => {
+    if (s.status !== 'pending') {
+      reachedIndex = i
+    }
+  })
+  if (reachedIndex < 0) return 0
+  return (reachedIndex / (total - 1)) * 100
+})
+
 function handleStageClick(stage: UiArrowTimelineStage) {
   if (!props.allowPendingSelect && stage.status === 'pending') return
   emit('select', stage)
@@ -128,362 +162,363 @@ function handleStageClick(stage: UiArrowTimelineStage) {
 
 <style lang="scss" scoped>
 @use '@/styles/breakpoints' as bp;
+
 .ui-arrow-timeline {
-  display: flex;
-  gap: 0;
+  position: relative;
   width: 100%;
+  padding: var(--dp-space-4, 16px) var(--dp-space-2, 8px) var(--dp-space-3, 12px);
   overflow-x: auto;
 }
 
-.ui-arrow-timeline__stage {
-  flex: 1;
-  min-width: 120px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  font: inherit;
-  text-align: inherit;
-  cursor: pointer;
-  transition: transform var(--dp-duration-fast) ease;
-}
-
-.ui-arrow-timeline__stage:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--dp-focus-ring);
-  z-index: 2;
-  position: relative;
-}
-
-.ui-arrow-timeline__stage:hover:not(.ui-arrow-timeline__stage--disabled) {
-  filter: brightness(0.97);
-}
-
-.ui-arrow-timeline__stage--disabled {
-  cursor: not-allowed;
-}
-
-.ui-arrow-timeline__chevron {
-  position: relative;
-  min-height: 88px;
-  height: 100%;
-}
-
-.ui-arrow-timeline__shape {
+/* ===== 轨道线 ===== */
+.ui-arrow-timeline__track {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.ui-arrow-timeline__shape-bg {
-  fill: var(--dp-surface-subtle);
-  stroke: var(--dp-border);
-  stroke-width: 1;
-  transition: all 0.2s ease;
-}
-
-.ui-arrow-timeline__body {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-3, 12px) 28px;
-}
-
-/* 第一个元素内容区左侧 padding 调整 */
-.ui-arrow-timeline__stage--first .ui-arrow-timeline__body {
-  padding-left: var(--dp-space-3, 12px);
-}
-
-/* 最后一个元素内容区右侧 padding 调整 */
-.ui-arrow-timeline__stage--last .ui-arrow-timeline__body {
-  padding-right: var(--dp-space-3, 12px);
-}
-
-/* ===== 状态：待处理（浅灰色，禁用） ===== */
-.ui-arrow-timeline__stage--pending .ui-arrow-timeline__shape-bg {
-  fill: var(--dp-surface-subtle);
-  stroke: var(--dp-border);
-}
-
-.ui-arrow-timeline__stage--pending .ui-arrow-timeline__title,
-.ui-arrow-timeline__stage--pending .ui-arrow-timeline__date,
-.ui-arrow-timeline__stage--pending .ui-arrow-timeline__status-text {
-  color: var(--dp-text-muted);
-}
-
-.ui-arrow-timeline__stage--pending .ui-arrow-timeline__index {
-  background: var(--dp-border);
-  color: var(--dp-text-muted);
-}
-
-.ui-arrow-timeline__stage--pending .ui-arrow-timeline__status-dot {
-  background: var(--dp-border-strong);
-}
-
-/* ===== 状态：进行中（淡蓝色背景 + 深蓝色边框） ===== */
-.ui-arrow-timeline__stage--running .ui-arrow-timeline__shape-bg,
-.ui-arrow-timeline__stage--active .ui-arrow-timeline__shape-bg {
-  fill: var(--dp-blue-50);
-  stroke: var(--dp-blue-500);
-}
-
-.ui-arrow-timeline__stage--running .ui-arrow-timeline__title,
-.ui-arrow-timeline__stage--active .ui-arrow-timeline__title {
-  color: var(--dp-blue-700);
-}
-
-.ui-arrow-timeline__stage--running .ui-arrow-timeline__index,
-.ui-arrow-timeline__stage--active .ui-arrow-timeline__index {
-  background: var(--dp-blue-500);
-  color: var(--dp-text-inverse);
-}
-
-.ui-arrow-timeline__stage--running .ui-arrow-timeline__status-dot,
-.ui-arrow-timeline__stage--active .ui-arrow-timeline__status-dot {
-  background: var(--dp-blue-500);
-}
-
-.ui-arrow-timeline__stage--running .ui-arrow-timeline__progress-fill,
-.ui-arrow-timeline__stage--active .ui-arrow-timeline__progress-fill {
-  background: var(--dp-blue-500);
-}
-
-/* ===== 状态：已完成（灰色背景 + 深灰色边框） ===== */
-.ui-arrow-timeline__stage--completed .ui-arrow-timeline__shape-bg,
-.ui-arrow-timeline__stage--done .ui-arrow-timeline__shape-bg {
-  fill: var(--dp-surface-muted);
-  stroke: var(--dp-text-muted);
-}
-
-.ui-arrow-timeline__stage--completed .ui-arrow-timeline__title,
-.ui-arrow-timeline__stage--done .ui-arrow-timeline__title {
-  color: var(--dp-text-secondary);
-}
-
-.ui-arrow-timeline__stage--completed .ui-arrow-timeline__index,
-.ui-arrow-timeline__stage--done .ui-arrow-timeline__index {
-  background: var(--dp-text-muted);
-  color: var(--dp-text-inverse);
-}
-
-.ui-arrow-timeline__stage--completed .ui-arrow-timeline__status-dot,
-.ui-arrow-timeline__stage--done .ui-arrow-timeline__status-dot {
-  background: var(--dp-text-muted);
-}
-
-.ui-arrow-timeline__stage--completed .ui-arrow-timeline__progress-bar,
-.ui-arrow-timeline__stage--done .ui-arrow-timeline__progress-bar {
-  background: color-mix(in srgb, var(--dp-text-muted) 20%, transparent);
-}
-
-.ui-arrow-timeline__stage--completed .ui-arrow-timeline__progress-fill,
-.ui-arrow-timeline__stage--done .ui-arrow-timeline__progress-fill {
-  background: var(--dp-text-muted);
-}
-
-/* ===== 状态：警告 ===== */
-.ui-arrow-timeline__stage--warning .ui-arrow-timeline__shape-bg {
-  fill: var(--dp-orange-50);
-  stroke: var(--dp-orange-500);
-}
-
-.ui-arrow-timeline__stage--warning .ui-arrow-timeline__index {
-  background: var(--dp-orange-500);
-  color: var(--dp-text-inverse);
-}
-
-.ui-arrow-timeline__stage--warning .ui-arrow-timeline__status-dot {
-  background: var(--dp-orange-500);
-}
-
-/* ===== 状态：错误 ===== */
-.ui-arrow-timeline__stage--error .ui-arrow-timeline__shape-bg {
-  fill: var(--dp-red-50);
-  stroke: var(--dp-red-500);
-}
-
-.ui-arrow-timeline__stage--error .ui-arrow-timeline__index {
-  background: var(--dp-red-500);
-  color: var(--dp-text-inverse);
-}
-
-.ui-arrow-timeline__stage--error .ui-arrow-timeline__status-dot {
-  background: var(--dp-red-500);
-}
-
-/* ===== 内容区 ===== */
-.ui-arrow-timeline__content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-  align-items: center;
-  text-align: center;
-}
-
-.ui-arrow-timeline__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ui-arrow-timeline__index {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--dp-text-muted);
-  background: color-mix(in srgb, var(--dp-text-muted) 15%, transparent);
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.ui-arrow-timeline__title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--dp-text-primary);
-  line-height: 1.4;
-}
-
-.ui-arrow-timeline__date {
-  font-size: 12px;
-  color: var(--dp-text-muted);
-  line-height: 1.3;
-}
-
-.ui-arrow-timeline__status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.ui-arrow-timeline__status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--dp-text-muted);
-}
-
-.ui-arrow-timeline__status-text {
-  font-size: 12px;
-  color: var(--dp-text-secondary);
-}
-
-/* ===== 进度条 ===== */
-.ui-arrow-timeline__progress {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.ui-arrow-timeline__progress-bar {
-  flex: 1;
-  height: 4px;
-  background: color-mix(in srgb, var(--dp-text-muted) 25%, transparent);
+  top: calc(var(--dp-space-4, 16px) + 13px);
+  left: calc(100% / var(--node-count, 6) / 2 + var(--dp-space-2, 8px));
+  right: calc(100% / var(--node-count, 6) / 2 + var(--dp-space-2, 8px));
+  height: 3px;
+  background: var(--dp-gray-200, #e2e8f0);
   border-radius: 2px;
   overflow: hidden;
 }
 
-.ui-arrow-timeline__progress-fill {
+.ui-arrow-timeline__track-fill {
   height: 100%;
-  background: var(--dp-color-primary);
+  background: linear-gradient(90deg, var(--dp-green-500, #10b981), var(--dp-blue-500, #2563eb));
   border-radius: 2px;
-  transition: width 0.3s ease;
+  transition: width var(--dp-duration-slow, 0.4s) cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.ui-arrow-timeline__progress-text {
+/* ===== 节点容器 ===== */
+.ui-arrow-timeline__nodes {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  z-index: 1;
+}
+
+/* ===== 单个节点按钮 ===== */
+.ui-arrow-timeline__node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 72px;
+  max-width: 130px;
+  flex: 1;
+  padding: 0 var(--dp-space-1, 4px);
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: transform var(--dp-duration-fast, 0.15s) ease;
+}
+
+.ui-arrow-timeline__node:focus-visible {
+  outline: none;
+  border-radius: var(--dp-radius-control, 6px);
+  box-shadow: 0 0 0 3px var(--dp-focus-ring, rgba(37, 99, 235, 0.3));
+}
+
+.ui-arrow-timeline__node:hover:not(.ui-arrow-timeline__node--disabled) {
+  transform: translateY(-1px);
+}
+
+.ui-arrow-timeline__node--disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* ===== 圆形节点 ===== */
+.ui-arrow-timeline__dot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--dp-gray-300, #cbd5e1);
+  background: var(--dp-surface, #fff);
+  color: var(--dp-text-muted, #94a3b8);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition:
+    background var(--dp-duration-fast, 0.15s) ease,
+    border-color var(--dp-duration-fast, 0.15s) ease,
+    box-shadow var(--dp-duration-fast, 0.15s) ease,
+    transform var(--dp-duration-fast, 0.15s) ease;
+}
+
+.ui-arrow-timeline__dot-num {
   font-size: 11px;
-  font-weight: 500;
-  color: var(--dp-text-secondary);
-  min-width: 32px;
-  text-align: right;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ui-arrow-timeline__check,
+.ui-arrow-timeline__warn-icon,
+.ui-arrow-timeline__error-icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* ===== 状态：已完成 ===== */
+.ui-arrow-timeline__node--completed .ui-arrow-timeline__dot,
+.ui-arrow-timeline__node--done .ui-arrow-timeline__dot {
+  background: var(--dp-green-500, #10b981);
+  border-color: var(--dp-green-500, #10b981);
+  color: var(--dp-text-inverse, #fff);
+}
+
+/* ===== 状态：进行中 / 活跃 ===== */
+.ui-arrow-timeline__node--running .ui-arrow-timeline__dot,
+.ui-arrow-timeline__node--active .ui-arrow-timeline__dot {
+  background: var(--dp-blue-500, #2563eb);
+  border-color: var(--dp-blue-500, #2563eb);
+  color: var(--dp-text-inverse, #fff);
+  transform: scale(1.15);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-blue-500, #2563eb) 18%, transparent);
+}
+
+/* ===== 状态：警告 ===== */
+.ui-arrow-timeline__node--warning .ui-arrow-timeline__dot {
+  background: var(--dp-orange-500, #f97316);
+  border-color: var(--dp-orange-500, #f97316);
+  color: var(--dp-text-inverse, #fff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-orange-500, #f97316) 15%, transparent);
+}
+
+/* ===== 状态：错误 ===== */
+.ui-arrow-timeline__node--error .ui-arrow-timeline__dot {
+  background: var(--dp-red-500, #ef4444);
+  border-color: var(--dp-red-500, #ef4444);
+  color: var(--dp-text-inverse, #fff);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-red-500, #ef4444) 15%, transparent);
+}
+
+/* ===== 状态：待处理 ===== */
+.ui-arrow-timeline__node--pending .ui-arrow-timeline__dot {
+  border-color: var(--dp-gray-300, #cbd5e1);
+  background: var(--dp-surface, #fff);
+  color: var(--dp-text-muted, #94a3b8);
+}
+
+/* ===== 选中标记 ===== */
+.ui-arrow-timeline__node--selected .ui-arrow-timeline__dot {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-blue-500, #2563eb) 22%, transparent);
+}
+
+.ui-arrow-timeline__node--selected.ui-arrow-timeline__node--pending .ui-arrow-timeline__dot {
+  border-color: var(--dp-blue-400, #60a5fa);
+  color: var(--dp-blue-500, #2563eb);
+}
+
+/* ===== 标签区 ===== */
+.ui-arrow-timeline__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ui-arrow-timeline__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dp-text-primary, #1e293b);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  transition: color var(--dp-duration-fast, 0.15s) ease;
+}
+
+.ui-arrow-timeline__node--pending .ui-arrow-timeline__title {
+  color: var(--dp-text-muted, #94a3b8);
+}
+
+.ui-arrow-timeline__node--running .ui-arrow-timeline__title,
+.ui-arrow-timeline__node--active .ui-arrow-timeline__title,
+.ui-arrow-timeline__node--selected .ui-arrow-timeline__title {
+  color: var(--dp-blue-700, #1d4ed8);
+}
+
+.ui-arrow-timeline__node--warning .ui-arrow-timeline__title {
+  color: var(--dp-orange-600, #ea580c);
+}
+
+.ui-arrow-timeline__node--error .ui-arrow-timeline__title {
+  color: var(--dp-red-600, #dc2626);
+}
+
+.ui-arrow-timeline__sub {
+  font-size: 11px;
+  color: var(--dp-text-muted, #94a3b8);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.ui-arrow-timeline__sub--progress {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--dp-blue-600, #2563eb);
 }
 
 /* ===== 指标区 ===== */
 .ui-arrow-timeline__metrics {
   display: flex;
-  gap: var(--dp-space-3, 12px);
-  margin-top: 6px;
+  gap: var(--dp-space-2, 8px);
+  margin-top: 2px;
 }
 
 .ui-arrow-timeline__metric {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0;
 }
 
 .ui-arrow-timeline__metric-value {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--dp-text-primary);
+  color: var(--dp-text-primary, #1e293b);
   line-height: 1.2;
+  font-variant-numeric: tabular-nums;
 }
 
 .ui-arrow-timeline__metric-label {
-  font-size: 11px;
-  color: var(--dp-text-muted);
+  font-size: 10px;
+  color: var(--dp-text-muted, #94a3b8);
 }
 
 /* ===== 紧凑模式 ===== */
-.ui-arrow-timeline--compact .ui-arrow-timeline__chevron {
-  min-height: 64px;
+.ui-arrow-timeline--compact {
+  padding: var(--dp-space-3, 12px) var(--dp-space-2, 8px) var(--dp-space-2, 8px);
 }
 
-.ui-arrow-timeline--compact .ui-arrow-timeline__body {
-  padding: var(--dp-space-2, 8px) var(--dp-space-4, 16px) var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+.ui-arrow-timeline--compact .ui-arrow-timeline__track {
+  top: calc(var(--dp-space-3, 12px) + 11px);
 }
 
-.ui-arrow-timeline--compact .ui-arrow-timeline__stage--first .ui-arrow-timeline__body {
-  padding-left: 12px;
+.ui-arrow-timeline--compact .ui-arrow-timeline__dot {
+  width: 24px;
+  height: 24px;
 }
 
-.ui-arrow-timeline--compact .ui-arrow-timeline__stage--last .ui-arrow-timeline__body {
-  padding-right: 12px;
+.ui-arrow-timeline--compact .ui-arrow-timeline__dot-num {
+  font-size: 10px;
 }
 
-.ui-arrow-timeline--compact .ui-arrow-timeline__stage {
-  min-width: 110px;
+.ui-arrow-timeline--compact .ui-arrow-timeline__check,
+.ui-arrow-timeline--compact .ui-arrow-timeline__warn-icon,
+.ui-arrow-timeline--compact .ui-arrow-timeline__error-icon {
+  width: 10px;
+  height: 10px;
+}
+
+.ui-arrow-timeline--compact .ui-arrow-timeline__node {
+  gap: 6px;
+  min-width: 60px;
 }
 
 .ui-arrow-timeline--compact .ui-arrow-timeline__title {
-  font-size: 12px;
+  font-size: 11px;
 }
 
-.ui-arrow-timeline--compact .ui-arrow-timeline__date {
-  font-size: 11px;
+.ui-arrow-timeline--compact .ui-arrow-timeline__sub {
+  font-size: 10px;
 }
 
 .ui-arrow-timeline--compact .ui-arrow-timeline__metrics {
   display: none;
 }
 
-.ui-arrow-timeline--compact .ui-arrow-timeline__progress {
-  display: none;
+/* ===== Active 节点脉冲动画 ===== */
+@keyframes node-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--dp-blue-500, #2563eb) 18%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 7px color-mix(in srgb, var(--dp-blue-500, #2563eb) 8%, transparent);
+  }
 }
 
-/* ===== 响应式 ===== */
+.ui-arrow-timeline__node--running .ui-arrow-timeline__dot,
+.ui-arrow-timeline__node--active .ui-arrow-timeline__dot {
+  animation: node-pulse 2.4s ease-in-out infinite;
+}
+
+/* ===== 响应式：移动端转垂直 ===== */
 @media (max-width: bp.$layout-mobile-max) {
   .ui-arrow-timeline {
+    padding: var(--dp-space-3, 12px);
+    overflow-x: visible;
+  }
+
+  .ui-arrow-timeline__track {
+    left: calc(var(--dp-space-3, 12px) + 11px);
+    right: auto;
+    top: calc(var(--dp-space-3, 12px) + 24px);
+    width: 3px;
+    height: calc(100% - 48px);
+  }
+
+  .ui-arrow-timeline__track-fill {
+    width: 100% !important;
+    height: 50%;
+  }
+
+  .ui-arrow-timeline__nodes {
     flex-direction: column;
-    gap: 6px;
+    gap: var(--dp-space-3, 12px);
   }
 
-  .ui-arrow-timeline__stage {
+  .ui-arrow-timeline__node {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--dp-space-3, 12px);
     min-width: auto;
+    max-width: none;
+    text-align: left;
+    padding: var(--dp-space-1, 4px) 0;
   }
 
-  .ui-arrow-timeline__shape-bg {
-    d: path('M 4 4 L 196 4 L 196 76 L 4 76 Z');
+  .ui-arrow-timeline__label {
+    align-items: flex-start;
   }
 
-  .ui-arrow-timeline__body {
-    padding: 12px 16px !important;
+  .ui-arrow-timeline__metrics {
+    margin-top: 0;
+    margin-left: auto;
+  }
+}
+
+/* ===== 无障碍：减少动效 ===== */
+@media (prefers-reduced-motion: reduce) {
+  .ui-arrow-timeline__dot,
+  .ui-arrow-timeline__node,
+  .ui-arrow-timeline__track-fill,
+  .ui-arrow-timeline__title {
+    transition: none;
+    animation: none;
+  }
+
+  .ui-arrow-timeline__node:hover:not(.ui-arrow-timeline__node--disabled) {
+    transform: none;
+  }
+
+  .ui-arrow-timeline__node--running .ui-arrow-timeline__dot,
+  .ui-arrow-timeline__node--active .ui-arrow-timeline__dot {
+    transform: scale(1.15);
+    animation: none;
   }
 }
 </style>

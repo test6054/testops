@@ -422,7 +422,6 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
-import { useUserStore } from '@/stores/modules/user'
 import {
   isSecurityRemediationDiagnostic,
   remediationDiagnosticLabel,
@@ -444,7 +443,6 @@ defineOptions({ name: 'TeacherArchiveVolumeRemediationDetail' })
 
 const route = useRoute()
 const router = useRouter()
-const userStore = useUserStore()
 const { loadGrants } = useArchiveDutyAccess()
 
 const loading = ref(false)
@@ -568,11 +566,13 @@ const showCoordinatorActions = computed(
   () => !isSupervisionRead.value && taskDetail.value?.canManageAsCoordinator === true,
 )
 
-const isCurrentAssignee = computed(
-  () => taskDetail.value?.assigneeUserId === userStore.userInfo.userId,
+/** MVR-384：责任人写入口认 BE canUpdateTask 且非协调人写位；禁止仅凭 assigneeUserId 本地身份放行 */
+const showAssigneeActions = computed(
+  () =>
+    !isSupervisionRead.value
+    && taskDetail.value?.canUpdateTask === true
+    && taskDetail.value?.canManageAsCoordinator !== true,
 )
-
-const showAssigneeActions = computed(() => !isSupervisionRead.value && isCurrentAssignee.value)
 
 /** MVR-192/338：与 BE canCloseWithVerification 同源 */
 const canCloseRemediationAsCoordinator = computed(

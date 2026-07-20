@@ -19,7 +19,8 @@ const props = withDefaults(
   }>(),
   {
     canvasTool: 'select',
-    readOnly: false,
+    // MVR-389：默认拒绝；与 LayoutCanvas.readOnly 同源
+    readOnly: true,
   },
 )
 

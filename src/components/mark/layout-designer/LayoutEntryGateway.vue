@@ -146,13 +146,17 @@ const paperSpecTooltip = computed(
 )
 
 function patchDocument(partial: Partial<ExamLayoutDocument>): void {
-  if (!props.document) {
+  // MVR-388：与 entryReadonly 同源默认拒绝，禁止仅靠模板 disabled 防写
+  if (entryReadonly.value || !props.document) {
     return
   }
   emit('patch', { ...props.document, ...partial })
 }
 
 function startBlankSheet(): void {
+  if (entryReadonly.value) {
+    return
+  }
   patchDocument({
     layoutEntryKind: ExamLayoutEntryKindCode.BLANK_SHEET,
     layoutName: layoutName.value || '标准答题卡',
@@ -162,6 +166,9 @@ function startBlankSheet(): void {
 }
 
 function startSourceFile(): void {
+  if (entryReadonly.value) {
+    return
+  }
   emit('patch', buildSourceFileDocument(props.document))
 }
 
@@ -190,6 +197,10 @@ function buildSourceFileDocument(currentDocument: ExamLayoutDocument | null): Ex
 }
 
 function handleGenerateSheet(): void {
+  if (entryReadonly.value) {
+    showFormValidationMessage('当前制卷设计不可编辑，无法生成答题卡')
+    return
+  }
   const questions = buildGenerateQuestionsFromDrafts(questionRows.value)
   if (questions.length === 0) {
     message.warning('请至少配置一道题目后再生成答题卡')
@@ -199,10 +210,16 @@ function handleGenerateSheet(): void {
   emit('generate-sheet', paperSpec.value, questions)
 }
 function addQuestion(ocrScene: string): void {
+  if (entryReadonly.value) {
+    return
+  }
   questionRows.value.push(createQuestionDraft(ocrScene, questionRows.value.length + 1))
 }
 
 function removeQuestion(index: number): void {
+  if (entryReadonly.value) {
+    return
+  }
   questionRows.value.splice(index, 1)
   resequenceQuestionNo()
 }
@@ -214,6 +231,9 @@ function resequenceQuestionNo(): void {
 }
 
 function handleQuestionSceneChange(row: LayoutQuestionDraft): void {
+  if (entryReadonly.value) {
+    return
+  }
   row.questionType = deriveQuestionType(row.ocrScene)
   row.optionCount = defaultOptionCount(row.ocrScene)
   row.fullScore = defaultFullScore(row.ocrScene)
@@ -271,7 +291,7 @@ function handleAutoDetect(): void {
 }
 
 async function syncUploadedPageMeta(fileId: string): Promise<void> {
-  if (!fileId) {
+  if (entryReadonly.value || !fileId) {
     return
   }
   const sourceDocument = buildSourceFileDocument(props.document)
@@ -364,7 +384,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
           <UiInput
             size="sm"
             v-model="layoutName"
-            :disabled="readonly"
+            :disabled="entryReadonly"
             placeholder="如：2025 春季期末试卷"
             @blur="patchDocument({ layoutName })"
           />
@@ -384,7 +404,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
               v-model="printSafeMarginMm"
               :min="3"
               :max="20"
-              :disabled="readonly"
+              :disabled="entryReadonly"
               aria-label="安全边距毫米"
               @change="patchDocument({ printSafeMarginMm })"
             />
