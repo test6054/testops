@@ -69,21 +69,6 @@
         class="scan-monitor__panel-alert"
       />
 
-      <UiAlertStrip
-        v-else-if="scanMonitorPanel?.signalBandMessage"
-        :tone="scanMonitorSignalBandTone"
-        :title="scanMonitorProgressTitle"
-        :description="scanMonitorPanel.signalBandMessage"
-        dense
-        class="scan-monitor__signal-band"
-      >
-        <template v-if="scanMonitorSignalActionLabel" #actions>
-          <UiButton size="sm" variant="outline" @click="handleScanMonitorSignalAction">
-            {{ scanMonitorSignalActionLabel }}
-          </UiButton>
-        </template>
-      </UiAlertStrip>
-
       <ScanDeviceCardGrid
         class="scan-monitor__devices"
         :devices="scannerDevices"
@@ -578,7 +563,8 @@ import type {
   ExamScanMonitorDeviceResponse,
   ExamWorkbenchScanMonitorPanelResponse,
 } from '@/apis/mark/exam-progress'
-import type { ExamScannerBatchResponse, ScanAttentionItemResponse } from '@/apis/mark/exam-scan'
+import type { ExamScannerBatchResponse, ScanAttentionItemResponse,
+  ScanBatchStatusCode} from '@/apis/mark/exam-scan'
 import type { ExamCandidateResponse } from '@/apis/mark/exam-scope'
 import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
 import type {
@@ -600,8 +586,6 @@ import {
 import { BindingStatusDescription, bindPaper } from '@/apis/mark/exam-binding'
 import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import {
-  ExamScanMonitorSignalActionKeyCode,
-  ExamScanMonitorSignalCode,
   getScanMonitorPanel,
   listExamScanMonitorDevices,
 } from '@/apis/mark/exam-progress'
@@ -618,8 +602,7 @@ import {
   ScanAttentionQueryGroupCode,
   ScanAttentionSourceTypeDescription,
   ScanAttentionTypeCode,
-  ScanAttentionTypeDescription,
-  ScanBatchStatusCode, ScanBatchStatusDescription 
+  ScanAttentionTypeDescription, ScanBatchStatusDescription 
 } from '@/apis/mark/exam-scan'
 import { CandidateStatusDescription, pageExamCandidates } from '@/apis/mark/exam-scope'
 import { pageExamScoreSummary } from '@/apis/mark/exam-score'
@@ -678,8 +661,6 @@ import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
 import {
   buildScanMonitorSignalMetrics,
-  mapScanMonitorSignalBandToneToAlert,
-  resolveScanMonitorSignalActionLabel,
 } from '@/utils/scan-monitor-panel-ui'
 import { toSignalMetrics } from '@/utils/stat-metric-helpers'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -1196,34 +1177,12 @@ function goToScanBatchOrphanRecovery(): void {
   })
 }
 
-function jumpToBlockedBatches(): void {
-  activeTab.value = 'normal'
-  filterForm.batchStatus = ScanBatchStatusCode.BLOCKED
-  applyNormalFilters()
-}
-
 const statPanelMetrics = computed<SignalMetric[]>(() =>
   buildScanMonitorSignalMetrics(scanMonitorPanel.value, scanMonitorPanelLoadFailed.value, {
     activeTab: activeTab.value,
     attentionTypeFilterActive: Boolean(filterForm.attentionType),
   }),
 )
-
-const scanMonitorSignalBandTone = computed(() =>
-  mapScanMonitorSignalBandToneToAlert(scanMonitorPanel.value?.signalBandTone),
-)
-
-const scanMonitorProgressTitle = computed(() => {
-  const panel = scanMonitorPanel.value
-  if (!panel) return '扫描进度'
-  if (panel.progressDisplay) return `扫描进度 ${panel.progressDisplay}`
-  return '扫描进度'
-})
-
-const scanMonitorSignalActionLabel = computed(() => {
-  const panel = scanMonitorPanel.value
-  return panel ? resolveScanMonitorSignalActionLabel(panel) : ''
-})
 
 function handleScanMonitorMetricClick(key: string): void {
   if (key === 'attention') {
@@ -1243,55 +1202,16 @@ function handleScanMonitorMetricClick(key: string): void {
   }
 }
 
-function handleScanMonitorSignalAction(): void {
-  if (!selectedExamId.value) return
-  const panel = scanMonitorPanel.value
-  if (!panel) return
-  switch (panel.signalActionKey) {
-    case ExamScanMonitorSignalActionKeyCode.UPLOAD_ROSTER:
-      void router.push({
-        name: 'TeacherExamWorkspaceCandidateRoster',
-        params: { examId: selectedExamId.value },
-      })
-      return
-    case ExamScanMonitorSignalActionKeyCode.VIEW_ATTENTION:
-      jumpToAbnormalTab()
-      return
-    case ExamScanMonitorSignalActionKeyCode.PUBLISH_SCORE:
-      void router.push({
-        name: 'TeacherExamWorkspaceScoreRelease',
-        params: { examId: selectedExamId.value },
-      })
-      return
-    case ExamScanMonitorSignalActionKeyCode.REFRESH:
-      void loadScanOverview(selectedExamId.value)
-      return
-    default:
-      break
-  }
-  switch (panel.signalCode) {
-    case ExamScanMonitorSignalCode.PAGE_REGISTER_PENDING:
-      if (panel.blockedCount > 0) {
-        jumpToBlockedBatches()
-      } else {
-        void loadScanOverview(selectedExamId.value)
-      }
-      return
-    case ExamScanMonitorSignalCode.PARTIAL_TAIL:
-    case ExamScanMonitorSignalCode.INCIDENT_OPEN:
-      jumpToAbnormalTab()
-      return
-    case ExamScanMonitorSignalCode.AWAITING_FIRST_SCAN_INFERENCE:
-      void loadScanOverview(selectedExamId.value)
-  }
-}
+const monitorBatchTabCount = computed(
+  () => scanMonitorPanel.value?.batchTotal ?? monitorBatchPagination.total ?? 0,
+)
 
 const monitorTabs = computed<UiSectionTabItem[]>(() => [
   {
     key: 'normal',
     label: '扫描批次',
-    count: monitorBatchPagination.total,
-    badgeTone: monitorBatchPagination.total > 0 ? 'blue' : 'gray',
+    count: monitorBatchTabCount.value,
+    badgeTone: monitorBatchTabCount.value > 0 ? 'blue' : 'gray',
   },
   {
     key: 'abnormal',

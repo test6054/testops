@@ -164,7 +164,6 @@ import ExportOutlined from '@ant-design/icons-vue/ExportOutlined'
 import FileProtectOutlined from '@ant-design/icons-vue/FileProtectOutlined'
 import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
 import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
-import FundOutlined from '@ant-design/icons-vue/FundOutlined'
 import HighlightOutlined from '@ant-design/icons-vue/HighlightOutlined'
 import LineChartOutlined from '@ant-design/icons-vue/LineChartOutlined'
 import MenuOutlined from '@ant-design/icons-vue/MenuOutlined'
@@ -244,7 +243,6 @@ const menuIconMap: Record<ExamWorkspaceMenuKey, Component> = {
   'marking-review-batch': CheckCircleOutlined,
   'archive-grading-experience': BulbOutlined,
   'score-summary': CheckCircleOutlined,
-  'score-release': FundOutlined,
   'score-absence': TeamOutlined,
   'score-appeal': AuditOutlined,
   'archive-package': FolderOutlined,

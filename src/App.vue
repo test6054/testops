@@ -21,6 +21,8 @@ const DP_FONT_FAMILY_SANS
  *
  * 提到模块顶层常量：避免每次 setup 都重新构造对象，去掉响应式无意义开销。
  * 主题色升级时仅改这一处即可（首屏 FOUC 兜底见 src/styles/ui-tokens.scss）。
+ *
+ * Cloudscape 对齐：中性灰画布 + 白面板层级，克制的控件几何与表格密度。
  */
 const THEME_CONFIG = Object.freeze({
   cssVar: true,
@@ -28,6 +30,17 @@ const THEME_CONFIG = Object.freeze({
     borderRadius: 6,
     fontSize: 14,
     fontFamily: DP_FONT_FAMILY_SANS,
+    colorBgLayout: '#f2f3f3',
+    controlHeight: 36,
+  }),
+  components: Object.freeze({
+    Table: Object.freeze({
+      headerBg: '#f8f9fa',
+      cellPaddingBlock: 12,
+    }),
+    Card: Object.freeze({
+      paddingLG: 20,
+    }),
   }),
   algorithm: theme.defaultAlgorithm,
 })

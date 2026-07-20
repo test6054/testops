@@ -894,8 +894,13 @@ const canDeprecateExperience = computed(
 )
 
 async function handleConfirmExperience(): Promise<void> {
-  if (!canManageExperienceCaseLifecycle.value) {
-    message.warning('当前账号无经验案例治理权限')
+  // MVR-422：与 canConfirmExperience 同源二次闸（治理权∧DRAFT∧分析成功）
+  if (!canConfirmExperience.value) {
+    message.warning(
+      canManageExperienceCaseLifecycle.value
+        ? '当前经验案例不可确认（须草稿且分析成功）'
+        : '当前账号无经验案例治理权限',
+    )
     return
   }
   const caseId = detailExperience.value?.id
@@ -913,8 +918,13 @@ async function handleConfirmExperience(): Promise<void> {
 }
 
 function handleDeprecateExperience(): void {
-  if (!canManageExperienceCaseLifecycle.value) {
-    message.warning('当前账号无经验案例治理权限')
+  // MVR-422：与 canDeprecateExperience 同源二次闸（治理权∧CONFIRMED∧分析成功）
+  if (!canDeprecateExperience.value) {
+    message.warning(
+      canManageExperienceCaseLifecycle.value
+        ? '当前经验案例不可废弃（须已确认且分析成功）'
+        : '当前账号无经验案例治理权限',
+    )
     return
   }
   const caseId = detailExperience.value?.id

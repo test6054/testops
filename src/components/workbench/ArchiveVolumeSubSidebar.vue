@@ -6,58 +6,110 @@
       'archive-volume-sub-sidebar--mobile-open': mobileOpen,
     }"
   >
-    <div v-if="!collapsed" class="archive-volume-sub-sidebar__header">
-      <button type="button" class="archive-volume-sub-sidebar__back" @click="emit('back-to-list')">
-        ← 返回列表
-      </button>
-      <div class="archive-volume-sub-sidebar__title-row">
-        <span
-          class="archive-volume-sub-sidebar__status-dot"
-          :class="`archive-volume-sub-sidebar__status-dot--${volumeStatusTone}`"
-        />
-        <h2 class="archive-volume-sub-sidebar__title">{{ archiveTitle }}</h2>
-      </div>
-      <p class="archive-volume-sub-sidebar__subtitle">{{ archiveSubtitle }}</p>
-      <p v-if="organizerLine" class="archive-volume-sub-sidebar__organizer">
-        {{ organizerLine }}
-      </p>
+    <div v-if="!collapsed" class="archive-volume-sub-sidebar__exam-switch">
+      <ExamSidebarExamSwitch
+        :exam-display-name="archiveTitle"
+        :exam-display-no="archiveNo"
+        :exam-context-line="archiveContextLine"
+        :exam-status-label="volumeStatusLabel"
+        :exam-status-tone="volumeStatusTone"
+      />
     </div>
 
-    <div v-if="!collapsed" class="archive-volume-sub-sidebar__section-label">归档阶段</div>
-    <nav class="archive-volume-sub-sidebar__nav">
-      <template v-for="group in navGroups" :key="group.key">
+    <div v-if="!collapsed && journeyStages.length" class="exam-sub-sidebar__progress">
+      <div class="exam-sub-sidebar__progress-meta">
+        <span>{{ journeyProgressLabel }}</span>
+        <span :class="{ 'exam-sub-sidebar__progress-pct--attention': journeyAttentionCount > 0 }">
+          {{ journeyProgressPercent }}%
+        </span>
+      </div>
+      <div
+        class="exam-sub-sidebar__progress-bar"
+        :class="{ 'exam-sub-sidebar__progress-bar--attention': journeyAttentionCount > 0 }"
+      >
         <div
-          v-if="!collapsed && navGroups.length > 1"
-          class="archive-volume-sub-sidebar__group-label"
-        >
-          {{ group.label }}
-        </div>
-        <button
-          v-for="tab in group.tabs"
-          :key="tab.key"
-          type="button"
-          class="archive-volume-sub-sidebar__nav-item"
-          :class="{
-            'archive-volume-sub-sidebar__nav-item--active': activeTab === tab.key,
-            'archive-volume-sub-sidebar__nav-item--warn':
-              tab.chainStatus === 'warn' && activeTab !== tab.key,
+          class="exam-sub-sidebar__progress-fill"
+          :style="{
+            transform: `scaleX(${Math.max(0, Math.min(1, journeyProgressPercent / 100))})`,
           }"
-          :title="collapsed ? tab.label : undefined"
-          @click="emit('tab-change', tab.key)"
+        />
+      </div>
+    </div>
+
+    <UiDivider v-if="!collapsed" class="archive-volume-sub-sidebar__divider" />
+
+    <nav
+      class="exam-journey-sidebar-nav"
+      :class="{ 'exam-journey-sidebar-nav--collapsed': collapsed }"
+      aria-label="归档旅程"
+    >
+      <UiSkeletonState
+        v-if="loading && journeyStages.length === 0"
+        :rows="4"
+        compact
+        class="exam-journey-sidebar-nav__skeleton"
+      />
+      <template v-else>
+        <div v-if="!collapsed" class="exam-journey-sidebar-nav__section-label">归档旅程</div>
+        <button
+          v-for="(stage, index) in journeyStages"
+          :key="stage.key"
+          type="button"
+          class="exam-journey-sidebar-nav__item"
+          :class="{
+            'exam-journey-sidebar-nav__item--active': activeJourneyKey === stage.key,
+            'exam-journey-sidebar-nav__item--completed': stage.status === 'completed',
+          }"
+          :title="collapsed ? stage.title : undefined"
+          @click="emit('journey-select', stage.key)"
         >
-          <span class="archive-volume-sub-sidebar__nav-label">
-            <span class="archive-volume-sub-sidebar__dot" :class="dotClass(tab)" />
-            <span v-if="!collapsed">{{ tab.label }}</span>
+          <span
+            class="exam-journey-sidebar-nav__index"
+            :class="`exam-journey-sidebar-nav__index--${stage.status}`"
+          >
+            <CheckOutlined
+              v-if="stage.status === 'completed'"
+              class="exam-journey-sidebar-nav__check"
+            />
+            <template v-else>{{ index + 1 }}</template>
           </span>
-          <span v-if="!collapsed && tab.badge" class="archive-volume-sub-sidebar__badge">
-            {{ tab.badge }}
-          </span>
+          <span v-if="!collapsed" class="exam-journey-sidebar-nav__title">{{ stage.title }}</span>
         </button>
       </template>
     </nav>
 
+    <template v-if="activeMenuTabs.length">
+      <UiDivider v-if="!collapsed" class="archive-volume-sub-sidebar__divider" />
+      <div class="archive-volume-sub-sidebar__menu">
+        <nav class="exam-sub-sidebar-nav">
+          <UiMenu
+            :selected-keys="[activeTab]"
+            :inline-collapsed="collapsed"
+            mode="inline"
+            @click="onMenuClick"
+          >
+            <UiMenuItem v-for="tab in activeMenuTabs" :key="tab.key">
+              <template #icon>
+                <ExamSubSidebarMenuIcon
+                  :icon="menuIconMap[tab.key] || FolderOutlined"
+                  :label="tab.label"
+                  :collapsed="collapsed"
+                />
+              </template>
+              <template v-if="!collapsed">
+                {{ tab.label }}
+                <span v-if="tab.badge" class="exam-sub-sidebar-nav__badge">
+                  {{ tab.badge }}
+                </span>
+              </template>
+            </UiMenuItem>
+          </UiMenu>
+        </nav>
+      </div>
+    </template>
+
     <template v-if="!collapsed && manageActions.length">
-      <div class="archive-volume-sub-sidebar__section-label">其他操作</div>
+      <UiDivider class="archive-volume-sub-sidebar__divider" />
       <div class="archive-volume-sub-sidebar__manage">
         <button
           v-for="action in manageActions"
@@ -69,20 +121,6 @@
         >
           {{ action.label }}
         </button>
-      </div>
-    </template>
-
-    <template v-if="!collapsed && statusRows.length">
-      <div
-        class="archive-volume-sub-sidebar__section-label archive-volume-sub-sidebar__section-label--meta"
-      >
-        卷状态
-      </div>
-      <div class="archive-volume-sub-sidebar__meta">
-        <div v-for="row in statusRows" :key="row.key" class="archive-volume-sub-sidebar__meta-row">
-          <span>{{ row.label }}</span>
-          <span class="archive-volume-sub-sidebar__meta-value">{{ row.value }}</span>
-        </div>
       </div>
     </template>
 
@@ -100,29 +138,57 @@
 </template>
 
 <script lang="ts" setup>
-import type { ArchiveVolumeNavigationChainStatusCode } from '@/apis/mark/archive-volume'
+import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
+import type { Component } from 'vue'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type {
   ArchiveVolumeManageActionKey,
   ArchiveVolumeSidebarManageAction,
   ArchiveVolumeSidebarTab,
 } from '@/composables/useArchiveVolumeWorkbenchContext'
+import type { WorkbenchStage } from '@/types/workbench'
 import type { ArchiveVolumeSidebarNavGroupView } from '@/utils/archive-volume-sidebar-navigation'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import CheckOutlined from '@ant-design/icons-vue/CheckOutlined'
+import CloudUploadOutlined from '@ant-design/icons-vue/CloudUploadOutlined'
+import ContainerOutlined from '@ant-design/icons-vue/ContainerOutlined'
+import FileProtectOutlined from '@ant-design/icons-vue/FileProtectOutlined'
+import FileSearchOutlined from '@ant-design/icons-vue/FileSearchOutlined'
+import FolderOutlined from '@ant-design/icons-vue/FolderOutlined'
+import HistoryOutlined from '@ant-design/icons-vue/HistoryOutlined'
+import InboxOutlined from '@ant-design/icons-vue/InboxOutlined'
 import MenuFoldOutlined from '@ant-design/icons-vue/MenuFoldOutlined'
 import MenuUnfoldOutlined from '@ant-design/icons-vue/MenuUnfoldOutlined'
+import PlayCircleOutlined from '@ant-design/icons-vue/PlayCircleOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import SafetyOutlined from '@ant-design/icons-vue/SafetyOutlined'
+import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
+import SettingOutlined from '@ant-design/icons-vue/SettingOutlined'
+import SolutionOutlined from '@ant-design/icons-vue/SolutionOutlined'
+import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
+import { computed } from 'vue'
+import UiDivider from '@/components/ui-guide/ui/UiDivider.vue'
+import UiMenu from '@/components/ui-guide/ui/UiMenu.vue'
+import UiMenuItem from '@/components/ui-guide/ui/UiMenuItem.vue'
+import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import ExamSidebarExamSwitch from '@/components/workbench/ExamSidebarExamSwitch.vue'
+import ExamSubSidebarMenuIcon from '@/components/workbench/ExamSubSidebarMenuIcon.vue'
+import {
+  buildArchiveVolumeJourneyStages,
+  resolveArchiveVolumeActiveJourneyKey,
+} from '@/utils/archive-volume-sidebar-navigation'
 
 defineOptions({ name: 'ArchiveVolumeSubSidebar' })
 
 const props = withDefaults(
   defineProps<{
     archiveTitle: string
-    archiveSubtitle: string
-    /** 归档责任人一行，主区不再重复展示 */
-    organizerLine?: string
+    archiveNo: string
+    archiveContextLine: string
+    volumeStatusLabel: string
     volumeStatusTone: BadgeTone
     activeTab: string
     navGroups: ArchiveVolumeSidebarNavGroupView[]
-    statusRows: Array<{ key: string, label: string, value: string }>
     manageActions?: ArchiveVolumeSidebarManageAction[]
     collapsed: boolean
     mobileOpen: boolean
@@ -130,161 +196,114 @@ const props = withDefaults(
   }>(),
   {
     manageActions: () => [],
+    loading: false,
   },
 )
 
 const emit = defineEmits<{
   'tab-change': [tabKey: string]
-  'back-to-list': []
+  'journey-select': [journeyKey: string]
   'toggle-collapse': []
   'manage-action': [key: ArchiveVolumeManageActionKey]
 }>()
 
-function dotClass(tab: ArchiveVolumeSidebarTab): string {
-  const chainStatus: ArchiveVolumeNavigationChainStatusCode | undefined = tab.chainStatus
-  if (tab.key === props.activeTab) {
-    return chainStatus === 'warn'
-      ? 'archive-volume-sub-sidebar__dot--warn'
-      : 'archive-volume-sub-sidebar__dot--current'
+const menuIconMap: Record<string, Component> = {
+  "materials": FolderOutlined,
+  'ocr-search': FileSearchOutlined,
+  'task-settings': SettingOutlined,
+  "collaborators": TeamOutlined,
+  'start-collecting': PlayCircleOutlined,
+  "scores": SolutionOutlined,
+  "integrity": SafetyOutlined,
+  'self-check': AuditOutlined,
+  'four-property': FileProtectOutlined,
+  'department-review': AuditOutlined,
+  'scan-batches': CloudUploadOutlined,
+  'scan-review': ScanOutlined,
+  "transfer": InboxOutlined,
+  "storage": ContainerOutlined,
+  "access": ProfileOutlined,
+  "appraisal": FileProtectOutlined,
+  "events": HistoryOutlined,
+}
+
+const journeyStages = computed((): WorkbenchStage[] =>
+  buildArchiveVolumeJourneyStages(props.navGroups, props.activeTab),
+)
+
+const activeJourneyKey = computed(() =>
+  resolveArchiveVolumeActiveJourneyKey(props.navGroups, props.activeTab),
+)
+
+const activeMenuTabs = computed((): ArchiveVolumeSidebarTab[] => {
+  const group = props.navGroups.find((item) => item.key === activeJourneyKey.value)
+  return group?.tabs ?? []
+})
+
+const journeyProgressPercent = computed(() => {
+  const stages = journeyStages.value
+  if (!stages.length) {
+    return 0
   }
-  if (chainStatus === 'done') {
-    return 'archive-volume-sub-sidebar__dot--done'
+  const completedCount = stages.filter((stage) => stage.status === 'completed').length
+  return Math.round((completedCount / stages.length) * 100)
+})
+
+const journeyAttentionCount = computed(() => {
+  return journeyStages.value.filter(
+    (stage) => stage.status === 'warning' || stage.status === 'error' || stage.status === 'blocked',
+  ).length
+})
+
+const journeyProgressLabel = computed(() => {
+  const stages = journeyStages.value
+  if (!stages.length) {
+    return '旅程进度'
   }
-  if (chainStatus === 'warn') {
-    return 'archive-volume-sub-sidebar__dot--warn'
+  const completedCount = stages.filter((stage) => stage.status === 'completed').length
+  const attention = journeyAttentionCount.value
+  if (attention > 0) {
+    return `已完成 ${completedCount}/${stages.length} · ${attention} 步需处理`
   }
-  return 'archive-volume-sub-sidebar__dot--pending'
+  return `已完成 ${completedCount}/${stages.length} 步`
+})
+
+function onMenuClick(info: MenuInfo): void {
+  emit('tab-change', String(info.key))
 }
 </script>
 
 <style lang="scss" scoped>
 @use '@/styles/breakpoints' as bp;
+
 .archive-volume-sub-sidebar {
   width: 260px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--dp-surface);
-  border-right: 1px solid var(--dp-border-subtle);
+  background: var(--dp-surface, var(--dp-bg-container));
+  border-right: 1px solid var(--dp-border, var(--dp-border-subtle));
   min-height: 0;
 
   &--collapsed {
     width: 64px;
   }
 
-  &__header {
-    padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+  &__exam-switch {
+    padding: var(--dp-space-3, 12px) var(--dp-space-3, 12px) var(--dp-space-2, 8px);
     flex-shrink: 0;
   }
 
-  &__back {
-    display: inline-flex;
-    align-items: center;
-    margin-bottom: var(--dp-space-2, 8px);
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: var(--dp-text-muted);
-    font-size: 12px;
-    cursor: pointer;
-
-    &:hover {
-      color: var(--dp-text-secondary);
-    }
+  &__divider {
+    margin: 0 !important;
   }
 
-  &__title-row {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--dp-space-2, 8px);
-    min-width: 0;
-  }
-
-  &__status-dot {
-    width: 7px;
-    height: 7px;
-    margin-top: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: var(--dp-text-muted);
-
-    &--green {
-      background: var(--dp-success);
-    }
-
-    &--blue {
-      background: var(--dp-color-primary);
-    }
-
-    &--orange {
-      background: var(--dp-warning);
-    }
-
-    &--red {
-      background: var(--dp-danger);
-    }
-
-    &--gray {
-      background: var(--dp-text-muted);
-    }
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 1.4;
-    color: var(--dp-text-primary);
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-
-  &__subtitle {
-    margin: 6px 0 0;
-    font-size: 12px;
-    line-height: 1.4;
-    color: var(--dp-text-muted);
-    word-break: break-all;
-  }
-
-  &__organizer {
-    margin: 4px 0 0;
-    font-size: 12px;
-    line-height: 1.4;
-    color: var(--dp-text-secondary);
-  }
-
-  &__section-label {
-    padding: var(--dp-space-2, 8px) var(--dp-space-4, 16px) var(--dp-space-1, 4px);
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--dp-text-muted);
-    text-transform: uppercase;
-    flex-shrink: 0;
-
-    &--meta {
-      margin-top: 8px;
-    }
-  }
-
-  &__group-label {
-    padding: 10px var(--dp-space-3, 12px) var(--dp-space-1, 4px);
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--dp-text-muted);
-  }
-
-  &__nav {
+  &__menu {
     flex: 1;
     min-height: 0;
-    overflow: auto;
-    padding: 0 var(--dp-space-2, 8px) var(--dp-space-2, 8px);
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    gap: 2px;
   }
 
   &__manage {
@@ -326,112 +345,12 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     }
   }
 
-  &__nav-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--dp-space-2, 8px);
-    width: 100%;
-    padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
-    border: none;
-    border-radius: var(--dp-radius-panel);
-    background: transparent;
-    color: var(--dp-text-secondary);
-    font-size: 13px;
-    text-align: left;
-    cursor: pointer;
-    transition:
-      background 0.2s,
-      color 0.2s;
-
-    &:hover {
-      background: var(--dp-fill-tertiary);
-      color: var(--dp-text-primary);
-    }
-
-    &--active {
-      background: color-mix(in srgb, var(--dp-color-primary) 8%, transparent);
-      color: var(--dp-color-primary);
-      font-weight: 500;
-    }
-
-    &--warn:not(&--active) {
-      color: var(--dp-warning);
-    }
-  }
-
-  &__nav-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  &__dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    background: var(--dp-fill-secondary);
-
-    &--done {
-      background: var(--dp-success);
-    }
-
-    &--current {
-      background: var(--dp-color-primary);
-    }
-
-    &--warn {
-      background: var(--dp-warning);
-    }
-
-    &--pending {
-      background: var(--dp-fill-secondary);
-    }
-  }
-
-  &__badge {
-    min-width: 18px;
-    padding: 0 6px;
-    border-radius: 9px;
-    background: color-mix(in srgb, var(--dp-color-primary) 12%, transparent);
-    color: var(--dp-color-primary);
-    font-size: 11px;
-    font-weight: 500;
-    line-height: 18px;
-    text-align: center;
-  }
-
-  &__meta {
-    padding: 0 16px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  &__meta-row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--dp-text-muted);
-  }
-
-  &__meta-value {
-    color: var(--dp-text-secondary);
-    text-align: right;
-    word-break: break-all;
-  }
-
   &__footer {
     margin-top: auto;
     padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
     border-top: 1px solid var(--dp-border, var(--dp-border-subtle));
     display: flex;
-    justify-content: flex-end;
+    justify-content: end;
     flex-shrink: 0;
   }
 
@@ -444,12 +363,12 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     border: none;
     border-radius: var(--dp-radius-panel);
     background: transparent;
-    color: var(--dp-text-muted);
+    color: var(--dp-text-muted, var(--dp-text-tertiary));
     cursor: pointer;
 
     &:hover {
-      background: var(--dp-fill-tertiary);
-      color: var(--dp-text-primary);
+      background: var(--dp-gray-100, var(--dp-fill-tertiary));
+      color: var(--dp-text-primary, var(--dp-text));
     }
   }
 
@@ -471,6 +390,170 @@ function dotClass(tab: ArchiveVolumeSidebarTab): string {
     &--collapsed:not(.archive-volume-sub-sidebar--mobile-open) {
       width: 260px;
     }
+  }
+}
+
+.exam-journey-sidebar-nav {
+  flex-shrink: 0;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 42vh;
+  overflow-y: auto;
+
+  &--collapsed {
+    align-items: center;
+    padding: 8px 4px;
+  }
+
+  &__skeleton {
+    padding: 4px 8px;
+  }
+
+  &__section-label {
+    margin: 8px 8px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--dp-text-muted);
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: none;
+    border-radius: var(--dp-radius-panel);
+    background: transparent;
+    cursor: pointer;
+    text-align: left;
+    color: var(--dp-text-primary);
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: var(--dp-fill-tertiary);
+    }
+
+    &--active {
+      background: var(--dp-blue-50);
+
+      .exam-journey-sidebar-nav__title {
+        color: var(--dp-color-primary);
+        font-weight: 600;
+      }
+    }
+  }
+
+  &__check {
+    font-size: 11px;
+  }
+
+  &__index {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--dp-surface-subtle);
+    color: var(--dp-text-secondary);
+
+    &--pending {
+      background: var(--dp-surface-subtle);
+      color: var(--dp-text-muted);
+    }
+
+    &--active {
+      background: var(--dp-blue-50);
+      color: var(--dp-color-primary);
+    }
+
+    &--completed {
+      background: var(--dp-success-bg);
+      color: var(--dp-success);
+    }
+
+    &--warning {
+      background: var(--dp-warning-bg);
+      color: var(--dp-warning);
+    }
+
+    &--error,
+    &--blocked {
+      background: var(--dp-error-bg);
+      color: var(--dp-danger);
+    }
+  }
+
+  &__title {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--dp-text-primary);
+  }
+
+  &--collapsed &__item {
+    width: 40px;
+    justify-content: center;
+    padding: 8px 0;
+  }
+
+  &--collapsed &__index {
+    margin: 0;
+  }
+}
+
+.exam-sub-sidebar__progress-pct--attention {
+  color: var(--dp-warning);
+  font-weight: 600;
+}
+
+.exam-sub-sidebar__progress-bar--attention {
+  box-shadow: inset 0 0 0 1px var(--dp-warning-border);
+}
+
+.exam-sub-sidebar-nav {
+  flex: 1;
+  overflow: auto;
+  padding: 8px;
+
+  :deep(.ant-menu-item) {
+    border-radius: var(--dp-radius-panel);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+  }
+
+  :deep(.ant-menu-item-selected) {
+    background: var(--dp-color-primary-bg);
+  }
+
+  :deep(.ant-menu-inline-collapsed) {
+    width: 100%;
+  }
+
+  :deep(.ant-menu-inline-collapsed > .ant-menu-item) {
+    padding-inline: calc(50% - 14px);
+  }
+
+  &__badge {
+    margin-left: auto;
+    min-width: 18px;
+    padding: 0 6px;
+    border-radius: 9px;
+    background: var(--dp-warning-bg);
+    color: var(--dp-warning);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
   }
 }
 </style>

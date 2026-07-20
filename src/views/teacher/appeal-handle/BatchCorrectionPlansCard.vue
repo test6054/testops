@@ -958,13 +958,13 @@ async function handleExecute(): Promise<void> {
     emit('changed')
     void confirmAsync({
       title: '请确认成绩发布状态',
-      content: '若更正前成绩已发布，学生端暂不可见最新分数。请前往成绩发布页重新发布。',
-      okText: '前往发布',
+      content: '若更正前成绩已发布，学生端暂不可见最新分数。请前往成绩确认与发布页重新发布。',
+      okText: '前往确认与发布',
       type: 'info',
       cancelText: '稍后处理',
       onOk: () => {
         void router.push({
-          name: 'TeacherExamWorkspaceScoreRelease',
+          name: 'TeacherExamWorkspaceScoreSummary',
           params: { examId: props.examId },
         })
       },

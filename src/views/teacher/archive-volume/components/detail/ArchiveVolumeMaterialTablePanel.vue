@@ -877,7 +877,15 @@ function emitRefreshed(options?: { silent?: boolean }) {
 }
 
 function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void {
-  if (props.canMaintainMaterial !== true) return
+  // MVR-422：与 canRetryMaterialOcr 同源二次闸（维护权∧FAILED∧fileId）
+  if (!canRetryMaterialOcr(material)) {
+    if (props.canMaintainMaterial !== true) {
+      message.warning('当前账号无维护材料识别权限')
+    } else {
+      message.warning('当前材料不可重试文字识别（非失败态或无文件）')
+    }
+    return
+  }
   if (retryingMaterialIds.has(material.materialId)) return
   void confirmAsync({
     title: '重试文字识别？',

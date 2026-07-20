@@ -55,7 +55,9 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
       <span class="scan-device-grid__title">本考试扫描端</span>
       <span class="scan-device-grid__meta">{{ devices.length }} 台</span>
     </template>
-    <div v-if="devices.length === 0" class="scan-device-grid__empty">当前无扫描端参与本考试</div>
+    <div v-if="devices.length === 0" class="scan-device-grid__empty">
+      暂无绑定一体机或历史扫描批次关联的扫描端
+    </div>
     <div v-else class="scan-device-grid__list">
       <button
         v-for="device in devices"

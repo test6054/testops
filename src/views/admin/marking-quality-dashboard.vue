@@ -1044,6 +1044,8 @@ const {
   init: initExamSelector,
 } = useMarkExamContext()
 
+const examQualityPanel = ref<ExamWorkbenchQualityPanelResponse | null>(null)
+
 // MVR-326：异常批次重处理仅主考；仅认 quality-panel.canManageOwnerBatchReprocess===true
 const canManageOwnerBatchReprocess = computed(
   () => examQualityPanel.value?.canManageOwnerBatchReprocess === true,
@@ -1113,7 +1115,6 @@ const scannerBatches = ref<ExamScannerBatchResponse[]>([])
 const scannerBatchLoading = ref(false)
 const scannerBatchKeyword = ref('')
 let scannerBatchSearchTimer: ReturnType<typeof setTimeout> | undefined
-const examQualityPanel = ref<ExamWorkbenchQualityPanelResponse | null>(null)
 // 加载失败：toast 提示，主区保持空态/列表壳
 
 const scopeValid = computed(() => Boolean(selectedExamId.value && selectedOrganizationId.value))

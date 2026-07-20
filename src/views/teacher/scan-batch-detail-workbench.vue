@@ -1164,8 +1164,14 @@ function locateAttributionItem(item: ExamScannerBatchAttributionItemVO): void {
   if (!pageKey) {
     return
   }
+  preferredTargetPaperInstanceId.value = undefined
+  previewTab.value = 'page'
   selectedPageKey.value = pageKey
+  ensureSelectedPageInRail(pageKey)
   void loadInspector(pageKey)
+  document
+    .querySelector('.scan-batch-detail-workbench__layout')
+    ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
 }
 
 function setPreferredReassignTarget(paperInstanceId: string): void {

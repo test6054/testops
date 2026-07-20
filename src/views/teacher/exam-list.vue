@@ -1142,12 +1142,12 @@ function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
         void confirmAsync({
           title: '尚不能关考',
           content: buildCloseExamBlockedContent(gate),
-          okText: '前往成绩发布',
+          okText: '前往成绩确认与发布',
           cancelText: '知道了',
           type: 'warning',
           onOk: async () => {
             await router.push({
-              name: 'TeacherExamWorkspaceScoreRelease',
+              name: 'TeacherExamWorkspaceScoreSummary',
               params: { examId: exam.examId },
             })
           },

@@ -9,10 +9,11 @@ export function buildScoreFinalizeSignalMetrics(
   panel: ExamWorkbenchScorePanelResponse | null,
   overview: FinalScoreRiskOverviewResponse | null,
   hasDailyScoreConfig = false,
+  publishableCount?: number,
 ): SignalMetric[] {
   if (panel?.distributionAvailable) {
     const total = overview?.totalCandidateCount ?? 0
-    return [
+    const metrics: SignalMetric[] = [
       { key: 'total', label: '总考生', value: total, unit: '人', tone: 'blue' },
       {
         key: 'avg',
@@ -40,6 +41,16 @@ export function buildScoreFinalizeSignalMetrics(
         tone: 'gray',
       },
     ]
+    if (publishableCount != null) {
+      metrics.push({
+        key: 'publishable',
+        label: '可发布',
+        value: publishableCount,
+        unit: '人',
+        tone: publishableCount > 0 ? 'green' : 'gray',
+      })
+    }
+    return metrics
   }
 
   const total = overview?.totalCandidateCount ?? 0
@@ -128,6 +139,15 @@ export function buildScoreFinalizeSignalMetrics(
       unit: '份',
       tone: 'red',
       helper: '须人工确认',
+    })
+  }
+  if (publishableCount != null) {
+    metrics.push({
+      key: 'publishable',
+      label: '可发布',
+      value: publishableCount,
+      unit: '人',
+      tone: publishableCount > 0 ? 'green' : 'gray',
     })
   }
   return metrics

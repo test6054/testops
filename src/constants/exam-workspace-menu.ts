@@ -260,14 +260,8 @@ export const EXAM_WORKSPACE_MENU_GROUPS: readonly ExamWorkspaceMenuGroup[] = [
     items: [
       {
         key: 'score-summary',
-        label: '成绩确认',
+        label: '成绩确认与发布',
         routeName: 'TeacherExamWorkspaceScoreSummary',
-        markStageKey: 'SCORE_PUBLISH',
-      },
-      {
-        key: 'score-release',
-        label: '成绩发布',
-        routeName: 'TeacherExamWorkspaceScoreRelease',
         markStageKey: 'SCORE_PUBLISH',
       },
       {

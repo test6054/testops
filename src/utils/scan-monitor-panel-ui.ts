@@ -140,10 +140,10 @@ export function buildScanMonitorSignalMetrics(
     {
       key: 'duplicate-page',
       label: '重复影像',
-      value: panel.duplicatePageCount,
-      tone: panel.duplicatePageCount > 0 ? 'orange' : 'green',
-      clickable: panel.duplicatePageCount > 0,
-      helper: panel.duplicatePageCount > 0 ? '打开重复 tab' : undefined,
+      value: panel.duplicateAttentionCount,
+      tone: panel.duplicateAttentionCount > 0 ? 'orange' : 'green',
+      clickable: panel.duplicateAttentionCount > 0,
+      helper: panel.duplicateAttentionCount > 0 ? '打开重复 tab' : undefined,
     },
     {
       key: 'attention',

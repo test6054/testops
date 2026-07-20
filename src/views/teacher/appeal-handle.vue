@@ -68,8 +68,6 @@
         :reload-token="batchReloadToken"
         @changed="onAppealFlowChanged"
       />
-
-      <ScorePublishRelatedLinksCard variant="appeal" />
     </template>
   </StageWorkbenchShell>
 </template>
@@ -90,7 +88,6 @@ import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import ExamSelectGateStrip from '@/components/workbench/ExamSelectGateStrip.vue'
 import ExamWorkspaceJourneySubNav from '@/components/workbench/ExamWorkspaceJourneySubNav.vue'
-import ScorePublishRelatedLinksCard from '@/components/workbench/ScorePublishRelatedLinksCard.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'

@@ -278,7 +278,7 @@ const archiveGateMoreItems = computed(() => {
     items.push({ key: 'createExportPackage', label: '创建导出归档包' })
   }
   if (showGateScorePublishAction.value) {
-    items.push({ key: 'scorePublish', label: '前往成绩发布' })
+    items.push({ key: 'scorePublish', label: '前往成绩确认与发布' })
   }
   if (showGateCloseExamAction.value) {
     items.push({ key: 'closeExam', label: '前往关考' })
