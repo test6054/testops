@@ -108,11 +108,11 @@ const columns: ColumnsType<PortfolioCorrectionSummaryVO> = [
   { title: '操作', key: 'actions', width: 260 },
 ]
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 /** 列表刷新或处理完成后必须清空失效的驳回上下文，避免继续操作旧工单。 */

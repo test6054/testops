@@ -279,11 +279,11 @@ function evaluationMaterialRowKey(record: unknown): string {
   ].join(':')
 }
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 const publicityColumns: ColumnsType<PortfolioEvaluationPublicityListItemVO> = [
@@ -913,7 +913,7 @@ watch(
               <span v-else>-</span>
             </template>
             <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
-              <UiTag :tone="record.countsInCurrentFacultyStructure === true ? 'green' : 'neutral'">
+              <UiTag :tone="record.countsInCurrentFacultyStructure === true ? 'green' : 'gray'">
                 {{
                   record.countsInCurrentFacultyStructure === true
                     ? '是'
@@ -1071,7 +1071,7 @@ watch(
                 :tone="
                   record.countsInCurrentFacultyStructure === true
                     ? 'green'
-                    : 'neutral'
+                    : 'gray'
                 "
               >
                 {{
@@ -1152,7 +1152,7 @@ watch(
               </UiTag>
               <UiTag
                 v-if="resultSummary.countsInCurrentFacultyStructure != null"
-                :tone="resultSummary.countsInCurrentFacultyStructure ? 'green' : 'neutral'"
+                :tone="resultSummary.countsInCurrentFacultyStructure ? 'green' : 'gray'"
               >
                 {{ resultSummary.countsInCurrentFacultyStructure ? '计入当前在岗' : '不计入当前在岗' }}
               </UiTag>

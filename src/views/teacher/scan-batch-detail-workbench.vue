@@ -423,6 +423,13 @@ import type {
   ScanBatchOrderAuditIssueResponse,
   ScanBatchOrderAuditResponse,
 } from '@/apis/mark/exam-scan'
+import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { useWindowSize } from '@vueuse/core'
+import message from 'ant-design-vue/es/message'
+import { computed, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import {
   discardScanBatchByTeacher,
   dismissScanBatchCollateAttention,
@@ -441,13 +448,6 @@ import {
   ScanBatchWorkbenchTopActionDescription,
   sealScanBatchByTeacher,
 } from '@/apis/mark/exam-scan'
-import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { useWindowSize } from '@vueuse/core'
-import message from 'ant-design-vue/es/message'
-import { computed, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import ScanBatchDiscardDialog from '@/components/mark/ScanBatchDiscardDialog.vue'
 import ScanBatchPageInspectorPanel from '@/components/mark/ScanBatchPageInspectorPanel.vue'
 import ScanBatchPageRail from '@/components/mark/ScanBatchPageRail.vue'
@@ -493,8 +493,8 @@ const route = useRoute()
 const router = useRouter()
 const { selectedExamId } = useWorkspaceExamId()
 const { width: viewportWidth } = useWindowSize()
-const { isExamConfidential, examConfidentialLabel, watermarkLines } =
-  useWorkspaceConfidentialContext()
+const { isExamConfidential, examConfidentialLabel, watermarkLines }
+  = useWorkspaceConfidentialContext()
 
 const pageStatusFilter = ref<ScanBatchWorkbenchPageStatusFilterCode>(
   ScanBatchWorkbenchPageStatusFilterCode.ALL,
@@ -555,8 +555,8 @@ const pageRailEmptyDescription = computed(() => {
     return '原件待自动登记与身份识别'
   }
   if (
-    pageStatusFilter.value !== ScanBatchWorkbenchPageStatusFilterCode.ALL ||
-    pageKeyword.value.trim()
+    pageStatusFilter.value !== ScanBatchWorkbenchPageStatusFilterCode.ALL
+    || pageKeyword.value.trim()
   ) {
     return '当前筛选条件下无匹配页轨'
   }
@@ -617,8 +617,8 @@ const scanBatchPrimaryAction = computed((): ScanBatchWorkbenchTopActionCode | nu
   if (!actions.length) return null
   const preferred = actions.find(
     (action) =>
-      action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER ||
-      action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES,
+      action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER
+      || action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES,
   )
   return preferred || actions[0] || null
 })
@@ -637,8 +637,8 @@ const scanBatchMoreActionItems = computed(() => {
       key: `top-${action}`,
       label: strictEnumLabel(ScanBatchWorkbenchTopActionDescription, action, '扫描批次顶栏动作'),
       danger:
-        action === ScanBatchWorkbenchTopActionCode.DISCARD ||
-        action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES,
+        action === ScanBatchWorkbenchTopActionCode.DISCARD
+        || action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES,
     }))
   if (canViewOriginalImage.value) {
     items.push({ key: 'preview-original', label: '查看原始影像', danger: false })
@@ -652,15 +652,15 @@ const scanBatchMoreActionItems = computed(() => {
 
 function isScanBatchPrimaryVariant(action: ScanBatchWorkbenchTopActionCode): boolean {
   return (
-    action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER ||
-    action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES
+    action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER
+    || action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES
   )
 }
 
 function isScanBatchDangerAction(action: ScanBatchWorkbenchTopActionCode): boolean {
   return (
-    action === ScanBatchWorkbenchTopActionCode.DISCARD ||
-    action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES
+    action === ScanBatchWorkbenchTopActionCode.DISCARD
+    || action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES
   )
 }
 
@@ -849,9 +849,9 @@ const selectedPage = computed(() => {
 
 const showPreviewTabs = computed(() =>
   Boolean(
-    canViewOriginalImage.value &&
-    selectedPage.value?.identitySliceFileId &&
-    selectedPage.value.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
+    canViewOriginalImage.value
+    && selectedPage.value?.identitySliceFileId
+    && selectedPage.value.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
   ),
 )
 
@@ -942,8 +942,8 @@ function resolvePageKeyAfterRefresh(
   if (pendingFileOrder !== null) {
     const registered = items.find(
       (item) =>
-        item.fileOrder === pendingFileOrder &&
-        item.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
+        item.fileOrder === pendingFileOrder
+        && item.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
     )
     if (registered) {
       return registered.pageKey
@@ -1008,10 +1008,10 @@ async function loadWorkbench(): Promise<void> {
       }
     }
     if (!pageKey && attributionItems.length) {
-      const preferredBucket =
-        attributionItems.find((item) => item.bucketKey === preservedBucketKey) ??
-        attributionItems.find((item) => item.manualReviewRequired) ??
-        attributionItems[0]
+      const preferredBucket
+        = attributionItems.find((item) => item.bucketKey === preservedBucketKey)
+          ?? attributionItems.find((item) => item.manualReviewRequired)
+          ?? attributionItems[0]
       pageKey = preferredBucket?.pages[0]?.pageKey || ''
       if (preferredBucket) {
         selectedBucketKey.value = preferredBucket.bucketKey
@@ -1094,10 +1094,10 @@ async function refreshPagesWindow(): Promise<void> {
 
 async function loadMorePages(): Promise<void> {
   if (
-    !selectedExamId.value ||
-    !scanBatchId.value ||
-    !pagesNextCursor.value ||
-    pagesLoadingMore.value
+    !selectedExamId.value
+    || !scanBatchId.value
+    || !pagesNextCursor.value
+    || pagesLoadingMore.value
   ) {
     return
   }
@@ -1200,9 +1200,9 @@ async function loadPreview(): Promise<void> {
   }
   if (!page.previewUrl) {
     if (
-      page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING &&
-      canViewOriginalImage.value &&
-      page.pageId
+      page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
+      && canViewOriginalImage.value
+      && page.pageId
     ) {
       await loadOriginalPreview(requestSeq)
     }

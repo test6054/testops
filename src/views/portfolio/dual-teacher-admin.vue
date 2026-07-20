@@ -145,11 +145,11 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 260 },
 ]
 
-function lifecycleTagTone(record: PortfolioDualTeacherApplicationVO): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: PortfolioDualTeacherApplicationVO): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 async function previewEligibility(id: string) {

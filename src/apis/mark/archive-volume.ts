@@ -1,6 +1,6 @@
 import type { ArchiveMaterialOcrStatusCode } from './archive-ocr-status'
-import type { ScanWorkOrderStatusCode } from '@/apis/mark/scanner-work-order'
 import type { ArchiveMaterialCatalogTemplateResponse } from '@/apis/mark/archive-platform-template'
+import type { ScanWorkOrderStatusCode } from '@/apis/mark/scanner-work-order'
 import type { WorkflowBlockingItem } from '@/components/workbench/workflow-readiness/types'
 import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 /**

@@ -83,11 +83,11 @@ const {
 } = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
-function lifecycleTagTone(status?: string): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' {
   if (status === 'ACTIVE') return 'green'
   if (status === 'TEMP_HOLD') return 'orange'
   if (status === 'SEALED' || status === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 const loading = ref(false)

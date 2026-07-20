@@ -37,6 +37,15 @@ function patchNode(patch: Partial<PfEligibilityRuleTreeNodeDto>) {
   replaceNode({ ...props.node, ...patch })
 }
 
+function patchTextField(
+  key: 'fieldKey' | 'expectedValue',
+  value: string | number | undefined,
+) {
+  patchNode({
+    [key]: value == null || value === '' ? undefined : String(value),
+  })
+}
+
 function onAuditStatusChange(auditStatus: SelectValue) {
   if (typeof auditStatus !== 'string') {
     return
@@ -116,14 +125,14 @@ function onNodeTypeChange(nodeType: SelectValue) {
           :value="node.fieldKey"
           placeholder="fieldKey"
           style="width: 140px"
-          @update:value="patchNode({ fieldKey: $event })"
+          @update:value="patchTextField('fieldKey', $event)"
         />
         <UiInput
           size="sm"
           :value="node.expectedValue"
           placeholder="expectedValue"
           style="width: 120px"
-          @update:value="patchNode({ expectedValue: $event })"
+          @update:value="patchTextField('expectedValue', $event)"
         />
       </template>
       <template v-else-if="node.nodeType === 'AUDIT_GATE'">
@@ -132,7 +141,7 @@ function onNodeTypeChange(nodeType: SelectValue) {
           :value="node.fieldKey"
           placeholder="fieldKey"
           style="width: 140px"
-          @update:value="patchNode({ fieldKey: $event })"
+          @update:value="patchTextField('fieldKey', $event)"
         />
         <UiSelect
           size="sm"

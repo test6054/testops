@@ -1,31 +1,31 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  ArchiveMaterialCatalogTemplateResponse,
+  ArchiveTenantTemplateSetResponse,
+} from '@/apis/mark/archive-platform-template'
+import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeStartCollectingCheckItem,
   ArchiveVolumeStartCollectingPrecheckResponse,
   ArchiveVolumeTaskSettingsUpdateRequest,
 } from '@/apis/mark/archive-volume'
-import type {
-  ArchiveMaterialCatalogTemplateResponse,
-  ArchiveTenantTemplateSetResponse,
-} from '@/apis/mark/archive-platform-template'
-import type { SignalMetric } from '@/types/workbench'
 import type { UiSelectOption } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
+import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import {
   precheckArchiveStartCollecting,
   startArchiveCollecting,
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
-import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
-import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import SignalBand from '@/components/workbench/SignalBand.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -42,11 +42,6 @@ import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import ArchiveVolumeCollaboratorStrip from '@/views/teacher/archive-volume/components/ArchiveVolumeCollaboratorStrip.vue'
 
-const COURSE_ASSESSMENT_PLATFORM_CODES = new Set([
-  'PLATFORM_PAPER_FULL',
-  'PLATFORM_NONPAPER_FULL',
-])
-
 const props = defineProps<{
   detail: ArchiveVolumeDetailResponse
   canStartCollecting: boolean
@@ -59,6 +54,11 @@ const emit = defineEmits<{
   updated: []
   navigate: [tabKey: string]
 }>()
+
+const COURSE_ASSESSMENT_PLATFORM_CODES = new Set([
+  'PLATFORM_PAPER_FULL',
+  'PLATFORM_NONPAPER_FULL',
+])
 
 const starting = ref(false)
 const loadingPrecheck = ref(false)

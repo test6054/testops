@@ -77,52 +77,67 @@ function statusTone(code: ArchiveCatalogStatusCode): BadgeTone {
   return strictEnumTone(ARCHIVE_CATALOG_STATUS_TONE, code, 'catalogStatus')
 }
 
+/** UiDataTable 插槽 record 为 unknown，收窄为目录行 API VO。 */
+function catalogLine(record: unknown): ArchiveVolumeCatalogLineVO {
+  return record as ArchiveVolumeCatalogLineVO
+}
+
 function catalogCellValue(
-  record: ArchiveVolumeCatalogLineVO,
+  record: unknown,
   dataIndex: unknown,
 ): string | number | undefined {
-  if (dataIndex === 'lineNo') return record.lineNo
-  if (dataIndex === 'archiveCode') return record.archiveCode
-  if (dataIndex === 'title') return record.title
-  if (dataIndex === 'responsible') return record.responsible
-  if (dataIndex === 'pageRange') return record.pageRange
-  if (dataIndex === 'fileDate') return record.fileDate
-  if (dataIndex === 'remark') return record.remark
+  const row = catalogLine(record)
+  if (dataIndex === 'lineNo') return row.lineNo
+  if (dataIndex === 'archiveCode') return row.archiveCode
+  if (dataIndex === 'title') return row.title
+  if (dataIndex === 'responsible') return row.responsible
+  if (dataIndex === 'pageRange') return row.pageRange
+  if (dataIndex === 'fileDate') return row.fileDate
+  if (dataIndex === 'remark') return row.remark
   throw new Error('归档目录列契约异常')
 }
 
-function catalogCellInputValue(record: ArchiveVolumeCatalogLineVO, dataIndex: unknown): string {
+function catalogCellInputValue(record: unknown, dataIndex: unknown): string {
   const value = catalogCellValue(record, dataIndex)
   return value === undefined ? '' : String(value)
 }
 
-function updateCatalogLineValue(index: number, dataIndex: unknown, value: string): void {
+/** 按目录行 API 字段写回草稿；index 来自表格插槽，须为有效行号。 */
+function updateCatalogLineValue(
+  index: unknown,
+  dataIndex: unknown,
+  value: string | number | undefined,
+): void {
   // MVR-380：单元格编辑二次拦截，仅 readonly===false 可改
   if (props.readonly !== false) {
     return
   }
+  if (typeof index !== 'number' || index < 0) {
+    throw new Error('归档目录行号契约异常')
+  }
+  const next = value == null ? '' : String(value)
   if (dataIndex === 'archiveCode') {
-    updateLine(index, { archiveCode: value })
+    updateLine(index, { archiveCode: next })
     return
   }
   if (dataIndex === 'title') {
-    updateLine(index, { title: value })
+    updateLine(index, { title: next })
     return
   }
   if (dataIndex === 'responsible') {
-    updateLine(index, { responsible: value })
+    updateLine(index, { responsible: next })
     return
   }
   if (dataIndex === 'pageRange') {
-    updateLine(index, { pageRange: value })
+    updateLine(index, { pageRange: next })
     return
   }
   if (dataIndex === 'fileDate') {
-    updateLine(index, { fileDate: value })
+    updateLine(index, { fileDate: next })
     return
   }
   if (dataIndex === 'remark') {
-    updateLine(index, { remark: value })
+    updateLine(index, { remark: next })
     return
   }
   throw new Error('归档目录编辑列契约异常')
@@ -273,14 +288,14 @@ defineExpose({ loadCatalog })
           {{ catalogCellValue(record, column.dataIndex) }}
         </template>
         <template v-else-if="column.key === 'lineNo'">
-          {{ record.lineNo }}
+          {{ catalogLine(record).lineNo }}
         </template>
         <template v-else>
           <UiInput
-            :value="catalogCellInputValue(record, column.dataIndex)"
             size="small"
             clearable
-            @update:value="updateCatalogLineValue(index, column.dataIndex, $event)"
+            :model-value="catalogCellInputValue(record, column.dataIndex)"
+            @update:model-value="(value) => updateCatalogLineValue(index, column.dataIndex, value)"
           />
         </template>
       </template>

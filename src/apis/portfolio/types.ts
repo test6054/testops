@@ -492,7 +492,7 @@ export const PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE: Record<PortfolioEv
   [PortfolioEvaluationTeacherNoticeStatusCode.MATERIAL_CONFIRM]: 'blue',
   [PortfolioEvaluationTeacherNoticeStatusCode.RETURNED_SUPPLEMENT]: 'orange',
   [PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED]: 'green',
-  [PortfolioEvaluationTeacherNoticeStatusCode.LIFECYCLE_INVALIDATED]: 'default',
+  [PortfolioEvaluationTeacherNoticeStatusCode.LIFECYCLE_INVALIDATED]: 'gray',
 }
 
 export {
@@ -2605,9 +2605,6 @@ export interface PortfolioEvaluationTeacherNoticeVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
-  /** 评价参评 hold（封存/暂挂/迁出链路） */
-  evaluationHeld?: boolean
-
 }
 
 export interface PortfolioEvaluationTeacherNoticePageRequest extends QueryDto {

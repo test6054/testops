@@ -430,7 +430,6 @@ import type {
   ArchiveVolumeMaterialResponse,
   ArchiveVolumeResponse,
   ArchiveVolumeSourceTypeCode,
-  ArchiveVolumeStatusCode,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
@@ -448,6 +447,7 @@ import {
   ArchiveMaterialTypeDescription,
   ArchiveRemediationStatusDescription,
   ArchiveVolumeSourceTypeDescription,
+  ArchiveVolumeStatusCode,
   ArchiveVolumeStatusDescription,
   exportEvaluationArchivePackage,
   exportEvaluationPackage,

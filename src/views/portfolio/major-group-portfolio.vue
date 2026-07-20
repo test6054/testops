@@ -524,7 +524,7 @@ watch(
                 <UiTag v-if="record.archiveWriteForbidden" tone="red" class="ml-1">档案写禁</UiTag>
                 <UiTag
                   v-if="record.countsInCurrentFacultyStructure === false"
-                  tone="neutral"
+                  tone="gray"
                   class="ml-1"
                 >
                   不计入在岗结构

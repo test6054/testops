@@ -147,16 +147,7 @@ async function runTrial() {
 }
 
 function applyImpactSummary(report: PortfolioPublishImpactReportVO): boolean {
-  let summary = report.indicatorSummary
-  if (!summary && report.indicatorSummaryJson) {
-    try {
-      summary = JSON.parse(report.indicatorSummaryJson) as PortfolioImpactIndicatorSummaryDto
-      report.indicatorSummary = summary
-    } catch {
-      impactSummary.value = null
-      return false
-    }
-  }
+  const summary = report.indicatorSummary
   if (!summary) {
     impactSummary.value = null
     return false

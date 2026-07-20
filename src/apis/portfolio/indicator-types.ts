@@ -186,12 +186,34 @@ export interface PortfolioIndicatorDefinitionVO {
   status: PfIndicatorStatusCode
 }
 
+/** Score 规则模板参数 — PortfolioIndicatorSeedTemplateParamsDto */
+export interface PortfolioIndicatorSeedTemplateParamsDto {
+  passValue?: number
+  standardScore?: number
+  minValue?: number
+  maxValue?: number
+  targetRatio?: number
+  cumulativeCap?: number
+  capScore?: number
+  addScore?: number
+  subScore?: number
+  weight?: number
+}
+
+/** 与 PortfolioIndicatorSeedTemplateParamsDto 同形（后端无单独 TemplateParamsDto） */
+export type PortfolioIndicatorTemplateParamsDto = PortfolioIndicatorSeedTemplateParamsDto
+
+/** 租户指标审核链 — PortfolioIndicatorAuditChainDto */
+export interface PortfolioIndicatorAuditChainDto {
+  stepRoleCodes?: string[]
+}
+
 export interface PortfolioIndicatorRuleTemplateVO {
   id: string
   templateCode: string
   templateName: string
   ruleType: PfScoreRuleTypeCode
-  paramsJson: string
+  params: PortfolioIndicatorSeedTemplateParamsDto
   status: PfIndicatorStatusCode
 }
 
@@ -200,17 +222,77 @@ export interface PortfolioIndicatorRuleTemplateSaveRequest {
   templateCode: string
   templateName: string
   ruleType: PfScoreRuleTypeCode
-  paramsJson: string
+  params: PortfolioIndicatorSeedTemplateParamsDto
   description?: string
-  status?: PfIndicatorStatusCode
+  status: PfIndicatorStatusCode
 }
+
+export interface PortfolioIndicatorIndustryPackDictionarySectionDto {
+  categories?: string[]
+  requiredFields?: string[]
+  levels?: string[]
+  roleOptions?: string[]
+}
+
+export interface PortfolioIndicatorIndustryPackDictionaryDto {
+  enterprisePractice?: PortfolioIndicatorIndustryPackDictionarySectionDto
+  qualification?: PortfolioIndicatorIndustryPackDictionarySectionDto
+  industryProject?: PortfolioIndicatorIndustryPackDictionarySectionDto
+}
+
+export interface PortfolioIndicatorIndustryPackWeightsDto {
+  enterprisePractice?: number
+  qualification?: number
+  industryProject?: number
+  teachingContribution?: number
+  socialService?: number
+  trainingDevelopment?: number
+}
+
+export interface PortfolioIndicatorIndustryPackAssessmentSectionDto {
+  sectionId?: string
+  title?: string
+  fieldRefs?: string[]
+}
+
+export interface PortfolioIndicatorIndustryPackAssessmentTemplateDto {
+  templateId?: string
+  sections?: PortfolioIndicatorIndustryPackAssessmentSectionDto[]
+}
+
+export interface PortfolioIndicatorIndustryPackMaterialChecklistDto {
+  required?: string[]
+  optional?: string[]
+}
+
+export type PortfolioIndustryPackDictionarySectionDto = PortfolioIndicatorIndustryPackDictionarySectionDto
+export type PortfolioIndustryPackDictionaryDto = PortfolioIndicatorIndustryPackDictionaryDto
+export type PortfolioIndustryPackWeightsDto = PortfolioIndicatorIndustryPackWeightsDto
+export type PortfolioIndustryPackAssessmentSectionDto = PortfolioIndicatorIndustryPackAssessmentSectionDto
+export type PortfolioIndustryPackAssessmentTemplateDto = PortfolioIndicatorIndustryPackAssessmentTemplateDto
+export type PortfolioIndustryPackMaterialChecklistDto = PortfolioIndicatorIndustryPackMaterialChecklistDto
+
+/** 行业包结构化定义 — PortfolioIndicatorIndustryPackDefDto */
+export interface PortfolioIndicatorIndustryPackDefDto {
+  packId: string
+  packName: string
+  version: string
+  applicableMajors?: string[]
+  dictionary?: PortfolioIndicatorIndustryPackDictionaryDto
+  weights?: PortfolioIndicatorIndustryPackWeightsDto
+  assessmentTemplate?: PortfolioIndicatorIndustryPackAssessmentTemplateDto
+  materialChecklist?: PortfolioIndicatorIndustryPackMaterialChecklistDto
+}
+
+/** 与 PortfolioIndicatorIndustryPackDefDto 同形 */
+export type PortfolioIndustryPackDefDto = PortfolioIndicatorIndustryPackDefDto
 
 export interface PortfolioIndustryPackVO {
   id: string
   packCode: string
   packName: string
-  packVersion?: string
-  packDefJson?: string
+  packVersion: string
+  packDef: PortfolioIndicatorIndustryPackDefDto
   seedVersion?: string
   status: PfIndicatorStatusCode
 }
@@ -219,9 +301,9 @@ export interface PortfolioIndustryPackSaveRequest {
   id?: string
   packCode: string
   packName: string
-  packVersion?: string
-  packDefJson: string
-  status?: PfIndicatorStatusCode
+  packVersion: string
+  packDef: PortfolioIndicatorIndustryPackDefDto
+  status: PfIndicatorStatusCode
 }
 
 /** 资格规则预置编码 */
@@ -308,10 +390,10 @@ export interface PortfolioTenantIndicatorConfigVO {
   enabled: boolean
   standardScore?: number
   capScore?: number
-  paramsOverrideJson?: string
+  paramsOverride?: PortfolioIndicatorSeedTemplateParamsDto
   applicableTeacherTypes?: string
   applicableScenes?: string
-  auditChainJson?: string
+  auditChain?: PortfolioIndicatorAuditChainDto
 }
 
 export interface PortfolioTenantIndicatorConfigSaveRequest {
@@ -319,10 +401,16 @@ export interface PortfolioTenantIndicatorConfigSaveRequest {
   enabled?: boolean
   standardScore?: number
   capScore?: number
-  paramsOverrideJson?: string
+  paramsOverride?: PortfolioIndicatorSeedTemplateParamsDto
   applicableTeacherTypes?: string
   applicableScenes?: string
-  auditChainJson?: string
+  auditChain?: PortfolioIndicatorAuditChainDto
+}
+
+export interface PortfolioIndustryPackBindConfigDto {
+  remark?: string
+  majorGroupCode?: string
+  packMergeWeight?: number
 }
 
 export interface PortfolioIndustryPackBindItem {
@@ -330,7 +418,7 @@ export interface PortfolioIndustryPackBindItem {
   majorGroupCode?: string
   majorGroupName?: string
   enabled?: boolean
-  bindConfigJson?: string
+  bindConfig?: PortfolioIndustryPackBindConfigDto
 }
 
 export interface PortfolioIndustryPackBindRequest {
@@ -369,7 +457,7 @@ export interface PortfolioIndicatorRuleTemplatePageRequest extends QueryDto {
 export interface PortfolioIndicatorComputeTrialRequest {
   ruleType: string
   indicatorCode?: string
-  paramsJson: string
+  params: PortfolioIndicatorSeedTemplateParamsDto
   rawValue: number
   auditRequired?: boolean
   auditApproved?: boolean
@@ -458,7 +546,7 @@ export interface PortfolioEligibilityRuleVO {
   eligibilityName: string
   sceneCode: PfSceneCode
   presetFlag: boolean
-  ruleTreeJson: string
+  ruleTree: PfEligibilityRuleTreeNodeDto
   status: string
 }
 
@@ -468,6 +556,84 @@ export interface PfEligibilityRuleTreeNodeDto {
   expectedValue?: string
   auditStatus?: string
   children?: PfEligibilityRuleTreeNodeDto[]
+}
+
+export interface PfEligibilityExplainNodeDto {
+  nodeType: string
+  fieldKey?: string
+  expectedValue?: string
+  actualValue?: string
+  auditStatus?: string
+  actualAuditStatus?: string
+  passed?: boolean
+  children?: PfEligibilityExplainNodeDto[]
+}
+
+export interface PfEligibilityExplainStructDto {
+  ruleTrack?: string
+  eligibilityCode?: string
+  snapshotId?: string
+  eligible?: boolean
+  root?: PfEligibilityExplainNodeDto
+  eligibilityGaps?: string[]
+  generatedTime?: string
+}
+
+export interface PfScoreExplainInputsDto {
+  rawValue?: number
+  unit?: string
+}
+
+export interface PfScoreExplainRuleHitDto {
+  ruleType?: string
+  segmentLabel?: string
+  standardScore?: number
+  dimensionWeight?: number
+  calcScore?: number
+  passed?: boolean
+}
+
+export interface PfScoreExplainAuditDto {
+  required?: boolean
+  status?: string
+  nodes?: string[]
+}
+
+export interface PfScoreExplainStructDto {
+  ruleTrack?: string
+  indicatorCode?: string
+  indicatorName?: string
+  snapshotId?: string
+  snapshotVersion?: string
+  academicYear?: string
+  inputs?: PfScoreExplainInputsDto
+  ruleHit?: PfScoreExplainRuleHitDto
+  audit?: PfScoreExplainAuditDto
+  eligibilityGaps?: string[]
+  generatedTime?: string
+}
+
+export interface PortfolioExplainVO {
+  ruleTrack?: string
+  scoreExplain?: PfScoreExplainStructDto
+  eligibilityExplain?: PfEligibilityExplainStructDto
+}
+
+export interface PortfolioPlatformRuleTemplateDraftItem {
+  templateId?: string
+  indicatorCode?: string
+  ruleType?: string
+  params?: PortfolioIndicatorSeedTemplateParamsDto
+  templateUpdateTime?: string
+}
+
+export interface PortfolioIndicatorDraftPayloadDto {
+  sceneCode?: string
+  configs?: PortfolioTenantIndicatorConfigVO[]
+  indicators?: PortfolioTenantSceneIndicatorItem[]
+  eligibilityCodes?: string[]
+  industryPackCodes?: string[]
+  platformRuleTemplates?: PortfolioPlatformRuleTemplateDraftItem[]
 }
 
 export interface PortfolioImpactTeacherSummaryDto {
@@ -513,18 +679,11 @@ export interface PortfolioPublishImpactReportVO {
   sceneCode: PfSceneCode
   draftSnapshotHash: string
   reportStatus: PfImpactReportStatusCode
-  /** 后端结构化摘要；兼容历史 Json 字段名时由拦截层解析 */
   indicatorSummary?: PortfolioImpactIndicatorSummaryDto
   teacherSummary?: PortfolioImpactTeacherSummaryDto
   orgSummary?: PortfolioImpactOrgSummaryDto
   eligibilitySummary?: PortfolioImpactEligibilitySummaryDto
   sampleCases?: PortfolioImpactSampleCaseDto[]
-  /** 兼容旧契约：若仅返回 Json 字符串，页面应解析后写入 summary */
-  indicatorSummaryJson?: string
-  teacherSummaryJson?: string
-  orgSummaryJson?: string
-  eligibilitySummaryJson?: string
-  sampleCasesJson?: string
   expiredTime: string
   changeLevel?: PfRuleChangeLevelCode | string
   evaluationTaskSummary?: PortfolioImpactEvaluationTaskSummaryDto
@@ -544,7 +703,7 @@ export interface PortfolioRulePublishSnapshotVO {
   effectiveFrom: string
   effectiveTo: string
   publishedTime: string
-  snapshotSummaryJson: string
+  snapshotSummary: PortfolioIndicatorDraftPayloadDto
 }
 
 export interface PortfolioIndicatorSourceMappingVO {
@@ -620,21 +779,17 @@ export interface PortfolioEligibilityEvalResultDto {
   eligible: boolean
   gapItems: string[]
   explainText: string
-  explainStructJson: string
-  auditStatusJson: string
+  explainStruct: PfEligibilityExplainStructDto
+  auditStatuses?: PortfolioEligibilityAuditStatusItem[]
 }
 
 export interface PortfolioIndicatorScoreComputeResult {
-  /** 模板计算分 - 对应后端 calcScore */
   calcScore?: number
-  /** 最终得分；审核未完成时为 null */
   finalScore?: number | null
-  /** 命中区间或阈值标签 */
   hitSegment?: string
-  /** 规则类型 */
   ruleType?: string
   explainText: string
-  explainStructJson: string
+  explainStruct: PfScoreExplainStructDto
 }
 
 export interface PortfolioIndicatorDefinitionPageRequest extends QueryDto {
@@ -675,8 +830,8 @@ export interface PortfolioEligibilityRuleSaveRequest {
   eligibilityCode: string
   eligibilityName: string
   sceneCode: PfSceneCode
-  ruleTreeJson: string
-  status?: string
+  ruleTree: PfEligibilityRuleTreeNodeDto
+  status: string
 }
 
 export interface PortfolioEligibilityRuleGetRequest {
@@ -846,7 +1001,7 @@ export interface PortfolioIndicatorTenantApi {
     data: PortfolioEligibilityEvaluateRequest,
   ) => Promise<PortfolioEligibilityEvalResultDto>
   pageEvalLog: (data: QueryDto) => Promise<PageResult<PortfolioEligibilityEvalLogVO>>
-  getExplain: (data: PortfolioExplainGetRequest) => Promise<string>
+  getExplain: (data: PortfolioExplainGetRequest) => Promise<PortfolioExplainVO>
   exportIndicatorCatalog: () => Promise<PortfolioIndicatorExportResultVO>
   exportSnapshotDiff: (
     data: PortfolioExportSnapshotDiffRequest,

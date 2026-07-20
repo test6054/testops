@@ -125,15 +125,14 @@ async function searchExams(keyword: string) {
   searchLoading.value = true
   try {
     const res = await pageExams({
-      current: 1,
-      size: 8,
-      examName: keyword,
-    } as never)
-    const records = res?.records ?? res?.data?.records ?? []
-    searchResults.value = records.map((item: Record<string, unknown>) => ({
-      id: String(item.examId ?? item.id ?? ''),
-      name: String(item.examName ?? item.name ?? ''),
-      academicYear: item.academicYear ? String(item.academicYear) : undefined,
+      pageNum: 1,
+      pageSize: 8,
+      keyword,
+    })
+    searchResults.value = res.list.map((item) => ({
+      id: item.examId,
+      name: item.examName,
+      academicYear: item.academicYear,
       semesterLabel: item.semester ? String(item.semester) : undefined,
     }))
   }

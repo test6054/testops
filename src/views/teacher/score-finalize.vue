@@ -96,7 +96,7 @@
         v-if="isPublishGateVisible('delayedAutoConfirm')"
         tone="error"
         title="延迟自动确认已失败"
-        :description="blockedDelayedAutoConfirmNotice"
+        :description="blockedDelayedAutoConfirmNotice ?? undefined"
         dense
         inline
         class="score-finalize__alert"

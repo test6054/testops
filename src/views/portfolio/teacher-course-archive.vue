@@ -395,7 +395,7 @@ watch(
           </UiTag>
           <UiTag
             v-if="overviewLifecycle.countsInCurrentFacultyStructure === false"
-            tone="neutral"
+            tone="gray"
             class="ml-1"
           >
             不计入在岗结构

@@ -146,7 +146,7 @@ function alertLabel(code?: string) {
 function alertTone(code?: string) {
   if (code === PortfolioSourceFixAlertStatusCode.OPEN) return 'red' as const
   if (code === PortfolioSourceFixAlertStatusCode.ACKED) return 'orange' as const
-  if (code === PortfolioSourceFixAlertStatusCode.NONE) return 'neutral' as const
+  if (code === PortfolioSourceFixAlertStatusCode.NONE) return 'gray' as const
   return 'blue' as const
 }
 
@@ -155,15 +155,15 @@ function statusTone(code?: string) {
   if (code === PortfolioSourceFixEventStatusCode.FAILED) return 'red' as const
   if (code === PortfolioSourceFixEventStatusCode.PARTIAL) return 'orange' as const
   if (code === PortfolioSourceFixEventStatusCode.RUNNING) return 'blue' as const
-  return 'neutral' as const
+  return 'gray' as const
 }
 
 /** 明细行生命周期 Tag 色（US-MI：读模型仅标注，不默认过滤）。 */
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 async function loadPage() {

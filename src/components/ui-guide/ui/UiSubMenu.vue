@@ -19,5 +19,6 @@ import { getCurrentInstance } from 'vue'
 defineOptions({ name: 'UiSubMenu', inheritAttrs: false })
 
 /** 与 UiMenuItem 相同：转发外层 :key 到 a-sub-menu，保证 openKeys / 展开态正确。 */
-const subMenuKey = getCurrentInstance()?.vnode.key
+const rawKey = getCurrentInstance()?.vnode.key
+const subMenuKey: PropertyKey | undefined = rawKey == null ? undefined : rawKey
 </script>

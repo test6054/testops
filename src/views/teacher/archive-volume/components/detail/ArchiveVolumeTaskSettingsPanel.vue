@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import type { Rule } from 'ant-design-vue/es/form'
 import type { ClassInfoDto } from '@/apis/edu/class'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { ArchiveTenantTemplateSetResponse } from '@/apis/mark/archive-platform-template'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import type { CourseListVO } from '@/apis/quality/user-catalog'
-import type { UiOptionValue } from '@/components/ui-guide/ui/types'
 import type {
   ArchiveExamFormCode,
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
   ArchiveVolumeTaskSettingsUpdateRequest,
 } from '@/apis/mark/archive-volume'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { CourseListVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import type { UiOptionValue } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
@@ -27,25 +26,25 @@ import {
 } from '@/apis/mark/archive-volume'
 import { pageExams } from '@/apis/mark/exam'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
+import { TeacherSelector } from '@/components/quality/selectors'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
-import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiCol from '@/components/ui-guide/ui/UiCol.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
+import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { ArchiveScoreSourceCode } from '@/types/enums/archive-score-source-enum'
+import { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
 import { ArchiveVolumeSourceTypeCode } from '@/types/enums/archive-volume-source-type-enum'
 import { ArchiveVolumeStatusCode } from '@/types/enums/archive-volume-status-enum'
-import { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
 import { SemesterCode, SemesterOptions } from '@/types/enums/semester-enum'
 import {
   composeAcademicYear,
@@ -67,7 +66,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'open-materials': []
-  updated: []
+  "updated": []
 }>()
 
 const COURSE_ASSESSMENT_PLATFORM_CODES = new Set([

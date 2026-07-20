@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioExpertAssignmentReviewBundleVO } from '@/apis/portfolio/expert-assignment'
+import type {
+  PortfolioExpertAssignmentReviewBundleVO,
+  PortfolioExpertAssignmentSubjectTeacherVO,
+  PortfolioExpertReviewMaterialItemVO,
+} from '@/apis/portfolio/expert-assignment'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
@@ -23,6 +27,50 @@ function goTeacherMasterpiece(teacherUserId?: string) {
     path: '/portfolio/teacher/masterpiece',
     query: { teacherId: teacherUserId },
   })
+}
+
+/** UiDataTable 插槽 record 为 unknown，收窄为被评教师 API VO。 */
+function subjectTeacherRow(record: unknown): PortfolioExpertAssignmentSubjectTeacherVO {
+  return record as PortfolioExpertAssignmentSubjectTeacherVO
+}
+
+/** UiDataTable 插槽 record 为 unknown，收窄为审阅材料 API VO。 */
+function materialRow(record: unknown): PortfolioExpertReviewMaterialItemVO {
+  return record as PortfolioExpertReviewMaterialItemVO
+}
+
+function subjectTeacherRowKey(record: unknown): string {
+  const row = subjectTeacherRow(record)
+  return row.subjectRef || row.teacherUserId || row.maskedDisplayName
+}
+
+function materialRowKey(record: unknown): string {
+  const row = materialRow(record)
+  return row.materialRef || row.archiveRecordId || `${row.maskedTeacherLabel}-${row.categoryCode}-${row.academicYear}`
+}
+
+function subjectLifecycleTone(record: unknown): 'green' | 'orange' {
+  return subjectTeacherRow(record).lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'
+}
+
+function materialLifecycleTone(record: unknown): 'green' | 'orange' {
+  return materialRow(record).lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'
+}
+
+function identityScopeTone(record: unknown): 'orange' | 'green' | 'blue' {
+  const scope = materialRow(record).identityScope
+  if (scope === 'EXTERNAL') return 'orange'
+  if (scope === 'SHARED') return 'green'
+  return 'blue'
+}
+
+function identityScopeLabel(record: unknown): string {
+  const scope = materialRow(record).identityScope
+  if (scope === 'CAMPUS') return '校内'
+  if (scope === 'EXTERNAL') return '仅外部'
+  if (scope === 'SHARED') return '共享'
+  if (!scope) return '—'
+  throw new Error(`专家审阅材料 identityScope 契约异常: ${scope}`)
 }
 const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
@@ -51,8 +99,8 @@ const assignmentId = computed(() => {
   return typeof id === 'string' ? id : undefined
 })
 
-const subjectTeacherColumns = computed<ColumnsType>(() => {
-  const cols: ColumnsType = [
+const subjectTeacherColumns = computed<ColumnsType<PortfolioExpertAssignmentSubjectTeacherVO>>(() => {
+  const cols: ColumnsType<PortfolioExpertAssignmentSubjectTeacherVO> = [
     { title: '被评教师', dataIndex: 'maskedDisplayName', key: 'maskedDisplayName' },
     { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   ]
@@ -66,7 +114,7 @@ const subjectTeacherColumns = computed<ColumnsType>(() => {
   return cols
 })
 
-const materialColumns: ColumnsType = [
+const materialColumns: ColumnsType<PortfolioExpertReviewMaterialItemVO> = [
   { title: '教师', dataIndex: 'maskedTeacherLabel', key: 'maskedTeacherLabel', width: 140 },
   { title: '分类', dataIndex: 'categoryName', key: 'categoryName', width: 160 },
   { title: '分类编码', dataIndex: 'categoryCode', key: 'categoryCode', width: 140 },
@@ -185,7 +233,7 @@ watch(
           :data-source="bundle.subjectTeachers"
           :show-pagination="false"
           :total="bundle.subjectTeachers.length"
-          :row-key="(record) => record.subjectRef || record.teacherUserId || record.maskedDisplayName"
+          :row-key="subjectTeacherRowKey"
           size="small"
           flat
           empty-kind="first-run"
@@ -193,18 +241,18 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="record.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'">
-                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              <UiTag v-if="subjectTeacherRow(record).lifecycleStatus" :tone="subjectLifecycleTone(record)">
+                {{ subjectTeacherRow(record).lifecycleStatusLabel || subjectTeacherRow(record).lifecycleStatus }}
               </UiTag>
-              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
-              <span v-else-if="!record.lifecycleStatus">—</span>
+              <UiTag v-if="subjectTeacherRow(record).evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-else-if="!subjectTeacherRow(record).lifecycleStatus">—</span>
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiButton
                 size="sm"
                 variant="soft"
-                :disabled="!record.teacherUserId"
-                @click="goTeacherMasterpiece(record.teacherUserId)"
+                :disabled="!subjectTeacherRow(record).teacherUserId"
+                @click="goTeacherMasterpiece(subjectTeacherRow(record).teacherUserId)"
               >
                 读整袋
               </UiButton>
@@ -214,50 +262,44 @@ watch(
         <h4 class="expert-review__section-title">授权材料清单</h4>
         <UiDataTable
           :load-error="loadError"
-          :row-key="(record) => record.materialRef || record.archiveRecordId || `${record.maskedTeacherLabel}-${record.categoryCode}-${record.academicYear}`"
+          :row-key="materialRowKey"
           :columns="materialColumns"
           :data-source="bundle.materials"
           :pagination="false"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="record.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'">
-                {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+              <UiTag v-if="materialRow(record).lifecycleStatus" :tone="materialLifecycleTone(record)">
+                {{ materialRow(record).lifecycleStatusLabel || materialRow(record).lifecycleStatus }}
               </UiTag>
-              <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
-              <span v-else-if="!record.lifecycleStatus">—</span>
+              <UiTag v-if="materialRow(record).evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
+              <span v-else-if="!materialRow(record).lifecycleStatus">—</span>
             </template>
             <template v-else-if="column.key === 'hasPrimaryFile'">
-              {{ record.hasPrimaryFile ? '有' : '无' }}
+              {{ materialRow(record).hasPrimaryFile ? '有' : '无' }}
             </template>
             <template v-else-if="column.key === 'identityScope'">
-              <UiTag :tone="record.identityScope === 'EXTERNAL' ? 'orange' : record.identityScope === 'SHARED' ? 'green' : 'blue'">
-                {{
-                  record.identityScope === 'CAMPUS'
-                    ? '校内'
-                    : record.identityScope === 'EXTERNAL'
-                      ? '仅外部'
-                      : record.identityScope === 'SHARED'
-                        ? '共享'
-                        : (record.identityScope || '—')
-                }}
+              <UiTag :tone="identityScopeTone(record)">
+                {{ identityScopeLabel(record) }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'usableForCampusHardCriteria'">
-              <UiTag :tone="record.usableForCampusHardCriteria ? 'green' : 'orange'">
-                {{ record.usableForCampusHardCriteria ? '可用' : '不可用' }}
+              <UiTag :tone="materialRow(record).usableForCampusHardCriteria ? 'green' : 'orange'">
+                {{ materialRow(record).usableForCampusHardCriteria ? '可用' : '不可用' }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'aiPreReview'">
-              <template v-if="record.hasAiPreReview">
+              <template v-if="materialRow(record).hasAiPreReview">
                 <div class="expert-review__ai">
                   <UiTag tone="blue">有 AI 初审</UiTag>
-                  <span v-if="record.aiPreReviewConclusionCode">结论：{{ record.aiPreReviewConclusionCode }}</span>
-                  <span v-if="record.aiPreReviewResultTitle" class="expert-review__ai-title">
-                    {{ record.aiPreReviewResultTitle }}
+                  <span v-if="materialRow(record).aiPreReviewConclusionCode">
+                    结论：{{ materialRow(record).aiPreReviewConclusionCode }}
                   </span>
-                  <span v-if="record.aiPreReviewSummary" class="expert-review__ai-summary">
-                    {{ record.aiPreReviewSummary }}
+                  <span v-if="materialRow(record).aiPreReviewResultTitle" class="expert-review__ai-title">
+                    {{ materialRow(record).aiPreReviewResultTitle }}
+                  </span>
+                  <span v-if="materialRow(record).aiPreReviewSummary" class="expert-review__ai-summary">
+                    {{ materialRow(record).aiPreReviewSummary }}
                   </span>
                   <span v-else-if="bundle?.maskRequired" class="expert-review__ai-muted">
                     脱敏模式不展示初审自由文本

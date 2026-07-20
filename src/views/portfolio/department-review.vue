@@ -157,11 +157,11 @@ const hasSensitiveRows = computed(() => rows.value.some((item) => item.riskLevel
 const showReviewActions = computed(() => Boolean(activeRow.value?.reviewActionAllowed))
 const activeAssociationBroken = computed(() => Boolean(activeRow.value?.associationBroken))
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'neutral' | 'red' {
+function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'neutral'
+  return 'gray'
 }
 
 
