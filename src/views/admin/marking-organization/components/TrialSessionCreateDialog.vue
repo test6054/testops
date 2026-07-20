@@ -80,9 +80,6 @@ const emit = defineEmits<{
 const groupId = ref<string | undefined>(undefined)
 const submitting = ref(false)
 
-const selectedGroupHasAllocationPolicy = computed(() =>
-  Boolean(groupId.value && props.groupHasAllocationPolicyMap?.[groupId.value]),
-)
 
 const selectedGroupReadiness = computed(() =>
   groupId.value ? props.groupCreateReadinessMap?.[groupId.value] : undefined,
@@ -92,10 +89,11 @@ const selectedGroupPolicy = computed(() =>
   groupId.value ? props.groupAllocationPolicyMap?.[groupId.value] : undefined,
 )
 
-const selectedGroupCanCreate = computed(() =>
-  selectedGroupReadiness.value
-    ? selectedGroupReadiness.value.canCreate
-    : selectedGroupHasAllocationPolicy.value,
+/**
+ * MVR-396：仅认 BE 题组 canCreate===true；禁止 readiness 缺失时回退「有分配策略即可建」。
+ */
+const selectedGroupCanCreate = computed(
+  () => selectedGroupReadiness.value?.canCreate === true,
 )
 
 const selectedGroupWorkflowSteps = computed(() => {

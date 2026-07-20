@@ -62,12 +62,14 @@ export const ArchiveVolumeDetailTabDescription: Record<ArchiveVolumeDetailTabKey
   [ArchiveVolumeDetailTabKey.EVENTS]: '事件流水',
 }
 
-/** 前端卷务页签（不进后端 chainSteps，侧栏独立注入） */
+/** 前端收材准备页签（不进后端 chainSteps，侧栏独立注入） */
 export const ARCHIVE_VOLUME_MANAGE_TAB_KEYS: ArchiveVolumeDetailTabKey[] = [
   ArchiveVolumeDetailTabKey.TASK_SETTINGS,
   ArchiveVolumeDetailTabKey.COLLABORATORS,
   ArchiveVolumeDetailTabKey.START_COLLECTING,
 ]
+
+export const ARCHIVE_VOLUME_PREPARE_TAB_KEYS = ARCHIVE_VOLUME_MANAGE_TAB_KEYS
 
 export const ARCHIVE_VOLUME_DETAIL_SECTION_TABS = ARCHIVE_VOLUME_DETAIL_TAB_KEYS.map((key) => ({
   key,

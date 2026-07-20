@@ -41,31 +41,33 @@ type BadgeVariant = 'solid' | 'outline' | 'soft'
   justify-content: center;
   gap: var(--dp-space-1, 6px);
   border: 1px solid var(--badge-border);
-  border-radius: var(--dp-radius-control-inner);
+  border-radius: var(--dp-radius-full, 999px);
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   line-height: 1;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
-    color 0.15s ease;
+    color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .ui-badge--sm {
   min-height: 22px;
-  padding: 0 8px;
+  padding: 0 9px;
   font-size: 11px;
 }
 
 .ui-badge--md {
   min-height: 26px;
-  padding: 0 10px;
+  padding: 0 11px;
   font-size: 12px;
 }
 
 .ui-badge--lg {
   min-height: 30px;
-  padding: 0 12px;
+  padding: 0 13px;
   font-size: 13px;
 }
 
@@ -78,12 +80,14 @@ type BadgeVariant = 'solid' | 'outline' | 'soft'
   color: var(--badge-text);
   background: var(--badge-bg);
   border-color: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--badge-text) 8%, transparent);
 }
 
 .ui-badge--solid {
   color: var(--badge-solid-text);
   background: var(--badge-solid-bg);
   border-color: transparent;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--badge-solid-bg) 30%, transparent);
 }
 
 .ui-badge--gray {

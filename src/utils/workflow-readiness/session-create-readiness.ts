@@ -76,12 +76,13 @@ function collectEffectiveBlockingItems(
   if (readiness.blockingItems.length > 0) {
     return readiness.blockingItems
   }
-  if (readiness.canCreate) {
+  // MVR-397：仅认 canCreate===true，禁止 truthy 缺省
+  if (readiness.canCreate === true) {
     return []
   }
   const blockedGroupItems: WorkflowBlockingItem[] = []
   for (const group of readiness.groups ?? []) {
-    if (group.canCreate || !group.blockingItems?.length) {
+    if (group.canCreate === true || !group.blockingItems?.length) {
       continue
     }
     blockedGroupItems.push(...group.blockingItems)

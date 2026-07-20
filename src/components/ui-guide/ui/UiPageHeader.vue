@@ -63,13 +63,22 @@ const emit = defineEmits<{
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: var(--dp-space-3, 12px);
-  padding-bottom: var(--dp-space-1, 4px);
+  gap: var(--dp-space-4, 16px);
+  padding-bottom: var(--dp-space-2, 8px);
 }
 
 .ui-page-header--divided {
-  padding-bottom: var(--dp-space-3, 12px);
-  border-bottom: 1px solid var(--dp-border);
+  padding-bottom: var(--dp-space-4, 16px);
+  border-bottom: none;
+  background-image: linear-gradient(
+    90deg,
+    var(--dp-border) 0%,
+    var(--dp-border) 60%,
+    transparent 100%
+  );
+  background-size: 100% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
 }
 
 .ui-page-header__main {
@@ -97,6 +106,7 @@ const emit = defineEmits<{
   font-size: 20px;
   line-height: 1.2;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--dp-text-primary);
 }
 

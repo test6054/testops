@@ -452,9 +452,7 @@
           :detail="detail"
           :can-start-collecting="detailScope.canStartCollecting"
           @started="handleStartCollectingStarted"
-          @open-materials="setActiveTab('materials')"
-          @open-task-settings="setActiveTab('task-settings')"
-          @open-collaborators="setActiveTab('collaborators')"
+          @navigate="setActiveTab"
         />
       </WorkbenchSurfaceCard>
 

@@ -421,8 +421,12 @@ export interface MarkingOrganizationResponse {
   remark?: string
   /** 考试主考老师用户 ID - 对应后端 MarkingOrganizationResponse.examCreateUserId */
   examCreateUserId?: string
-  /** 当前用户是否具备主考专属写权限 - 对应后端 canManageExamOwner（主考∧ACTIVE） */
+  /** 当前用户是否具备主考 ACTIVE 写权限 - 对应后端 canManageExamOwner（主考∧ACTIVE） */
   canManageExamOwner?: boolean
+  /**
+   * 是否可关闭试评/正评会话 - 对应后端 canCloseMarkingSessions（仅主考，不叠 ACTIVE；关考后仍可收口）
+   */
+  canCloseMarkingSessions?: boolean
   /**
    * 是否可写质量监控（进度快照 / 指标重算 / 创建抽检）
    * 对应后端 canManageQualityMonitorWrites（主考或本组织负责人，不叠 ACTIVE）

@@ -31,6 +31,7 @@ import type { ArchiveTaskProvenanceCode } from '@/types/enums/archive-task-prove
 import type { ArchiveVolumeAutoCreatePendingStatusCode } from '@/types/enums/archive-volume-auto-create-pending-status-enum'
 import type { ArchiveVolumeEventTypeCode } from '@/types/enums/archive-volume-event-type-enum'
 import type { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
+import type { ArchiveVolumeMemberSourceCode } from '@/types/enums/archive-volume-member-source-enum'
 import type { ArchiveVolumeNavigationChainStatusCode } from '@/types/enums/archive-volume-navigation-chain-status-enum'
 import type { ArchiveVolumeRoleCode } from '@/types/enums/archive-volume-role-enum'
 import type { ArchiveVolumeSignOffRoleCode } from '@/types/enums/archive-volume-sign-off-role-enum'
@@ -348,6 +349,8 @@ export interface ArchiveVolumeResponse {
   archiveNo: string
   archiveTitle: string
   courseId?: string
+  /** 课程名称，详情/列表由 edu-user 课程目录反查 */
+  courseName?: string
   departmentId?: string
   departmentName?: string
   teachingClassName?: string
@@ -645,7 +648,12 @@ export interface ArchiveVolumeMemberDisplayVO {
   memberId?: string
   userId?: string
   userName?: string
+  loginName?: string
+  departmentName?: string
   memberRole?: ArchiveVolumeMemberRoleCode
+  memberSource?: ArchiveVolumeMemberSourceCode
+  remark?: string
+  createTime?: string
 }
 
 export interface ArchiveVolumeTransferRecordResponse {
@@ -1504,9 +1512,30 @@ export function remindArchiveDue(volumeId: string): Promise<void> {
 
 export interface ArchiveVolumeTaskSettingsUpdateRequest {
   volumeId: string
-  expectedArchiveDueTime: string | null
-  archiveDueTime: string
-  reason: string
+  /** 新归档标题；不传表示不改标题 */
+  archiveTitle?: string
+  /** 改截止时必传；原值为空时传 null */
+  expectedArchiveDueTime?: string | null
+  /** 新归档截止；不传表示不改截止 */
+  archiveDueTime?: string
+  /** 改截止时必填 */
+  reason?: string
+}
+
+export interface ArchiveVolumeStartCollectingCheckItem {
+  itemKey: string
+  label: string
+  required: boolean
+  ready: boolean
+  message: string
+  /** 可跳转页签：task-settings / collaborators / materials */
+  actionTab?: string | null
+}
+
+export interface ArchiveVolumeStartCollectingPrecheckResponse {
+  canStart: boolean
+  passedRequired: boolean
+  items: ArchiveVolumeStartCollectingCheckItem[]
 }
 
 export function updateArchiveVolumeTaskSettings(
@@ -2571,6 +2600,15 @@ export function withdrawArchiveVolumeDepartmentReview(
   return http.post<ArchiveVolumeResponse>(
     '/api/mark/archive-volumes/department-review/withdraw',
     request,
+  )
+}
+
+export function precheckArchiveStartCollecting(
+  volumeId: string,
+): Promise<ArchiveVolumeStartCollectingPrecheckResponse> {
+  return http.post<ArchiveVolumeStartCollectingPrecheckResponse>(
+    '/api/mark/archive-volumes/task/start-collecting/precheck',
+    { volumeId },
   )
 }
 

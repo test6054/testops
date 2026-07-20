@@ -14,10 +14,13 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES,
+  PORTFOLIO_EVALUATION_SCENE_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
   PortfolioEvaluationModeCode,
   PortfolioEvaluationModeDescription,
+  PortfolioEvaluationSceneCode,
+  PortfolioEvaluationSceneDescription,
   PortfolioEvaluationTaskAdvanceActionCode,
   PortfolioEvaluationTaskStatusDescription,
   PortfolioEvaluationTeacherNoticeStatusCode,
@@ -144,6 +147,7 @@ function evaluationMaterialRowKey(record: unknown): string {
 interface PortfolioEvaluationTaskForm {
   taskName: string
   evaluationMode: PortfolioEvaluationModeCode
+  sceneCode: PortfolioEvaluationSceneCode
   targetIndicatorCode: string
   workgroupId: string
   startTime: string
@@ -155,6 +159,7 @@ type PortfolioEvaluationTaskStatusFilter = '' | PortfolioEvaluationTaskStatusCod
 const form = reactive<PortfolioEvaluationTaskForm>({
   taskName: '',
   evaluationMode: PortfolioEvaluationModeCode.BY_PERSON,
+  sceneCode: PortfolioEvaluationSceneCode.GENERAL,
   targetIndicatorCode: '',
   workgroupId: '',
   startTime: '',
@@ -176,15 +181,20 @@ const {
     portfolioEvaluationTaskApi.page({
       ...params,
       taskStatus: params.taskStatus || undefined,
+      sceneCode: params.sceneCode || undefined,
     }),
   {
-    defaultFilters: () => ({ taskStatus: '' as PortfolioEvaluationTaskStatusFilter }),
+    defaultFilters: () => ({
+      taskStatus: '' as PortfolioEvaluationTaskStatusFilter,
+      sceneCode: undefined as PortfolioEvaluationSceneCode | undefined,
+    }),
     immediate: false,
   },
 )
 
 const columns: ColumnsType = [
   { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
+  { title: '场景', dataIndex: 'sceneCode', key: 'sceneCode', width: 120 },
   { title: '模式', dataIndex: 'evaluationMode', key: 'evaluationMode', width: 100 },
   { title: '回流指标', dataIndex: 'targetIndicatorCode', key: 'targetIndicatorCode', width: 120 },
   { title: '工作组', dataIndex: 'workgroupId', key: 'workgroupId', width: 100 },
@@ -197,6 +207,15 @@ const columns: ColumnsType = [
 
 function evaluationModeLabel(mode: PortfolioEvaluationModeCode): string {
   return strictEnumLabel(PortfolioEvaluationModeDescription, mode, '多元评价模式')
+}
+
+function evaluationSceneLabel(scene?: PortfolioEvaluationSceneCode | string): string {
+  if (!scene) return '—'
+  return strictEnumLabel(
+    PortfolioEvaluationSceneDescription,
+    scene as PortfolioEvaluationSceneCode,
+    '评价任务场景',
+  )
 }
 
 function taskStatusLabel(status: PortfolioEvaluationTaskStatusCode): string {
@@ -461,6 +480,7 @@ async function createTask() {
   try {
     await portfolioEvaluationTaskApi.create({
       taskName: form.taskName.trim(),
+      sceneCode: form.sceneCode,
       evaluationMode: form.evaluationMode,
       targetIndicatorCode:
         form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
@@ -472,6 +492,7 @@ async function createTask() {
     })
     message.success('评价任务已创建')
     form.taskName = ''
+    form.sceneCode = PortfolioEvaluationSceneCode.GENERAL
     form.workgroupId = ''
     form.targetIndicatorCode = ''
     form.startTime = ''
@@ -608,6 +629,14 @@ onMounted(async () => {
           :disabled="taskWriting"
         />
         <UiSelect
+          size="sm"
+          v-model="form.sceneCode"
+          placeholder="业务场景"
+          style="width: 140px"
+          :options="PORTFOLIO_EVALUATION_SCENE_OPTIONS"
+          :disabled="taskWriting"
+        />
+        <UiSelect
           v-if="form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON"
           v-model="form.targetIndicatorCode"
           placeholder="选择画像回流指标"
@@ -665,6 +694,15 @@ onMounted(async () => {
           :options="PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS"
           @change="search"
         />
+        <UiSelect
+          size="sm"
+          v-model="query.sceneCode"
+          allow-clear
+          placeholder="业务场景"
+          style="width: 140px"
+          :options="PORTFOLIO_EVALUATION_SCENE_OPTIONS"
+          @change="search"
+        />
         <UiButton size="sm" :disabled="taskWriting" @click="search"> 查询 </UiButton>
       </div>
       <WorkbenchContextGateStrip
@@ -688,7 +726,10 @@ onMounted(async () => {
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'evaluationMode'">
+          <template v-if="column.key === 'sceneCode'">
+            {{ evaluationSceneLabel(record.sceneCode) }}
+          </template>
+          <template v-else-if="column.key === 'evaluationMode'">
             {{ evaluationModeLabel(record.evaluationMode) }}
           </template>
           <template v-else-if="column.key === 'taskStatus'">

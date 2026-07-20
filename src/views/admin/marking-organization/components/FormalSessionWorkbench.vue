@@ -149,6 +149,8 @@ const props = defineProps<{
   pagination: SessionPaginationState
   loading?: boolean
   canManage: boolean
+  /** MVR-398：关闭归档仅主考、不叠 ACTIVE */
+  canCloseMarkingSessions?: boolean
   createBlocked?: boolean
   prerequisiteEmpty?: WorkflowPrerequisiteEmptyViewModel
 }>()
@@ -289,8 +291,9 @@ function canResume(status: FormalSessionStatusCode): boolean {
 }
 
 function canClose(status: FormalSessionStatusCode): boolean {
+  // MVR-398：关闭归档认 canCloseMarkingSessions（主考，不叠 ACTIVE）
   return (
-    props.canManage === true
+    props.canCloseMarkingSessions === true
     && (status === FormalSessionStatusCode.SESSION_ACTIVE
       || status === FormalSessionStatusCode.SESSION_PAUSED
       || status === FormalSessionStatusCode.SESSION_COMPLETED)
@@ -498,6 +501,10 @@ async function handleSessionRowAction(key: string, record: FormalSessionResponse
     return
   }
   if (key === 'pause') {
+    // MVR-397：打开暂停原因弹窗前叠主考闸，禁止仅靠行动作显隐
+    if (!guardManageAction()) {
+      return
+    }
     emit('open-lifecycle', 'pauseFormal', record.id)
     return
   }
@@ -511,10 +518,19 @@ async function handleSessionRowAction(key: string, record: FormalSessionResponse
     return
   }
   if (key === 'close') {
+    // MVR-398：关闭归档打开闸认 canCloseMarkingSessions，关考后仍可收口
+    if (props.canCloseMarkingSessions !== true) {
+      showFormValidationMessage('仅考试主考老师可关闭正评会话')
+      return
+    }
     emit('open-lifecycle', 'closeFormal', record.id)
     return
   }
   if (key === 'delete') {
+    // MVR-397：删除确认前叠主考闸
+    if (!guardManageAction()) {
+      return
+    }
     if (
       !(await confirmAsync({
         content: '确认删除该正评会话？正评草稿将被软删除，不可恢复。',

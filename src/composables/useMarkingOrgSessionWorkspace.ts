@@ -159,13 +159,19 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
     return map
   })
 
+  /**
+   * MVR-396：可建会话题组仅认 BE groups[].canCreate===true；
+   * readiness 未下发或无题组时默认空列表，禁止回退展示全部题组假可建。
+   */
   const creatableGroupOptions = computed(() => {
     const readinessGroups = sessionCreateReadiness.value?.groups
     if (!readinessGroups?.length) {
-      return groupOptions.value
+      return []
     }
     const creatableGroupIds = new Set(
-      readinessGroups.filter((group) => group.canCreate).map((group) => group.groupId),
+      readinessGroups
+        .filter((group) => group.canCreate === true)
+        .map((group) => group.groupId),
     )
     return groupOptions.value.filter((option) => creatableGroupIds.has(option.value))
   })
@@ -191,11 +197,27 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
     organization,
   )
 
+  /**
+   * MVR-398：关闭试评/正评仅认 BE canCloseMarkingSessions===true（主考，不叠 ACTIVE）。
+   */
+  const canCloseMarkingSessions = computed(
+    () => organization.value?.canCloseMarkingSessions === true,
+  )
+
   function guardOrganizationOwnerAction(): boolean {
     if (canManageOrganization.value) {
       return true
     }
     message.warning('仅考试主考老师可管理试评 / 正评会话')
+    return false
+  }
+
+  /** MVR-398：关闭会话打开闸；关考后主考仍可收口 */
+  function guardCloseMarkingSessionAction(): boolean {
+    if (canCloseMarkingSessions.value === true) {
+      return true
+    }
+    message.warning('仅考试主考老师可关闭试评 / 正评会话')
     return false
   }
 
@@ -630,8 +652,10 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
     sessionCreateWorkflow,
     sessionCreateReadiness,
     canManageOrganization,
+    canCloseMarkingSessions,
     signalMetrics,
     guardOrganizationOwnerAction,
+    guardCloseMarkingSessionAction,
     reloadAll,
     reloadSessions,
     applySessionFilter,

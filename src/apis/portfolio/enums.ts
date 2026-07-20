@@ -3,6 +3,7 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
 import type { PortfolioEvaluationModeCode } from '@/types/enums/portfolio-evaluation-mode-enum'
 import type { PortfolioEvaluationObjectionTypeCode } from '@/types/enums/portfolio-evaluation-objection-type-enum'
+import type { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
 import type { PortfolioExternalTeacherDataStatusCode } from '@/types/enums/portfolio-external-teacher-data-status-enum'
 import type { PortfolioKeyTeacherRegistryTypeCode } from '@/types/enums/portfolio-key-teacher-registry-type-enum'
 import type { PortfolioMaterialStatusCode } from '@/types/enums/portfolio-material-status-enum'
@@ -32,6 +33,10 @@ import {
   ALL_PORTFOLIO_EVALUATION_OBJECTION_TYPE_CODES,
   PortfolioEvaluationObjectionTypeDescription,
 } from '@/types/enums/portfolio-evaluation-objection-type-enum'
+import {
+  ALL_PORTFOLIO_EVALUATION_SCENE_CODES,
+  PortfolioEvaluationSceneDescription,
+} from '@/types/enums/portfolio-evaluation-scene-enum'
 import {
   ALL_PORTFOLIO_EVALUATION_TASK_STATUS_CODES,
   PortfolioEvaluationTaskStatusCode,
@@ -208,6 +213,11 @@ export {
   PortfolioEvaluationPublicityStatusCode,
   PortfolioEvaluationPublicityStatusDescription,
 } from '@/types/enums/portfolio-evaluation-publicity-status-enum'
+export {
+  ALL_PORTFOLIO_EVALUATION_SCENE_CODES,
+  PortfolioEvaluationSceneCode,
+  PortfolioEvaluationSceneDescription,
+} from '@/types/enums/portfolio-evaluation-scene-enum'
 export {
   ALL_PORTFOLIO_EVALUATION_TASK_ADVANCE_ACTION_CODES,
   PortfolioEvaluationTaskAdvanceActionCode,
@@ -412,6 +422,14 @@ export const PORTFOLIO_EVALUATION_MODE_OPTIONS: Array<{
 }> = ALL_PORTFOLIO_EVALUATION_MODE_CODES.map((value) => ({
   value,
   label: strictEnumLabel(PortfolioEvaluationModeDescription, value, '评价模式'),
+}))
+
+export const PORTFOLIO_EVALUATION_SCENE_OPTIONS: Array<{
+  value: PortfolioEvaluationSceneCode
+  label: string
+}> = ALL_PORTFOLIO_EVALUATION_SCENE_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(PortfolioEvaluationSceneDescription, value, '评价任务场景'),
 }))
 
 /** 多元评价填报可读任务状态（不含草稿/作废/关闭） */

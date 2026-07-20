@@ -42,17 +42,29 @@ withDefaults(
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
-  box-shadow: var(--dp-shadow-xs);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--dp-text-primary) 4%, transparent),
+    0 1px 3px color-mix(in srgb, var(--dp-text-primary) 5%, transparent);
   overflow: hidden;
   transition:
-    border-color var(--dp-duration-normal) ease,
-    box-shadow var(--dp-duration-normal) ease;
+    border-color var(--dp-duration-normal) cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow var(--dp-duration-normal) cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.workbench-surface-card:hover {
+  box-shadow:
+    0 2px 4px color-mix(in srgb, var(--dp-text-primary) 5%, transparent),
+    0 4px 12px color-mix(in srgb, var(--dp-text-primary) 6%, transparent);
 }
 
 .workbench-surface-card--embedded {
   background: transparent;
   border: none;
   border-radius: 0;
+  box-shadow: none;
+}
+
+.workbench-surface-card--embedded:hover {
   box-shadow: none;
 }
 
@@ -63,7 +75,11 @@ withDefaults(
   gap: var(--dp-space-2);
   padding: var(--dp-space-3) var(--dp-space-4);
   border-bottom: 1px solid var(--dp-border);
-  background: var(--dp-surface-elevated);
+  background: linear-gradient(
+    180deg,
+    var(--dp-surface-elevated) 0%,
+    color-mix(in srgb, var(--dp-surface-elevated) 60%, var(--dp-surface)) 100%
+  );
 }
 
 .workbench-surface-card__head :deep(h2),
@@ -74,7 +90,7 @@ withDefaults(
   margin: 0;
   font-size: 15px;
   line-height: 1.4;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--dp-text-primary);
   letter-spacing: -0.01em;
 }
@@ -94,8 +110,8 @@ withDefaults(
   flex-wrap: wrap;
   gap: var(--dp-space-2);
   padding: var(--dp-space-2) var(--dp-space-4);
-  border-bottom: 1px solid var(--dp-border);
-  background: var(--dp-surface-elevated);
+  border-bottom: 1px solid color-mix(in srgb, var(--dp-border) 70%, transparent);
+  background: color-mix(in srgb, var(--dp-surface-elevated) 50%, var(--dp-surface));
 }
 
 .workbench-surface-card__body {
@@ -107,5 +123,11 @@ withDefaults(
 
 .workbench-surface-card__body--flush {
   padding: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workbench-surface-card {
+    transition: none;
+  }
 }
 </style>

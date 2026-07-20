@@ -195,6 +195,66 @@ export interface PortfolioTeacherPkSessionVO {
   createTime: string
 }
 
+
+/** §8.48 聘期滚动评价 */
+export interface PortfolioAppointmentPeriodYearScoreVO {
+  year?: number
+  annualScore?: number | string
+  weight?: number | string
+  weightedContribution?: number | string
+  weightedInRollup?: boolean
+  referencedTaskIds?: string[]
+  referencedTaskNames?: string[]
+  sourceSceneCode?: string
+}
+
+export interface PortfolioAppointmentPeriodKeyAchievementVO {
+  processSessionId?: string
+  title?: string
+  sessionDate?: string
+  referenceNote?: string
+}
+
+export interface PortfolioAppointmentPeriodRiskItemVO {
+  sanctionId?: string
+  impactScope?: string
+  publicSummary?: string
+  sanctionStartDate?: string
+  sanctionEndDate?: string
+  referenceNote?: string
+}
+
+export interface PortfolioAppointmentPeriodEvaluationVO {
+  formulaLabel?: string
+  teacherId?: string
+  cycleSceneCode?: string
+  cycleSceneLabel?: string
+  annualSourceSceneCode?: string
+  periodStart?: string
+  periodEnd?: string
+  weightedAnnualScore?: number | string
+  keyAchievementBonus?: number | string
+  riskDeduction?: number | string
+  compositeScore?: number | string
+  weightedYearCount?: number
+  yearScores?: PortfolioAppointmentPeriodYearScoreVO[]
+  keyAchievements?: PortfolioAppointmentPeriodKeyAchievementVO[]
+  riskItems?: PortfolioAppointmentPeriodRiskItemVO[]
+  evidenceNotes?: string[]
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
+}
+
+export interface PortfolioAppointmentPeriodEvaluationGetRequest {
+  teacherId?: string
+  periodStart: string
+  periodEnd: string
+  cycleSceneCode?: 'APPOINTMENT' | 'TITLE_REVIEW' | 'DOUBLE_HIGH_CYCLE' | 'ACADEMIC_YEAR'
+}
+
 export const portfolioAnalysisApi = {
   getWorkbenchSummary: (data: PortfolioTeacherCompletenessGetRequest = {}) =>
     http.post<PortfolioTeacherWorkbenchSummaryVO>(
@@ -232,6 +292,11 @@ export const portfolioAnalysisApi = {
   getMasterpieceContribution: (data: PortfolioTeacherPortraitGetRequest = {}) =>
     http.post<PortfolioMasterpieceContributionVO>(
       '/api/portfolio/portrait/teacher/masterpiece-contribution/get',
+      data,
+    ),
+  getAppointmentPeriodEvaluation: (data: PortfolioAppointmentPeriodEvaluationGetRequest) =>
+    http.post<PortfolioAppointmentPeriodEvaluationVO>(
+      '/api/portfolio/portrait/teacher/appointment-period-evaluation/get',
       data,
     ),
   getEducatingOutcomeContribution: (data: PortfolioTeacherPortraitGetRequest = {}) =>

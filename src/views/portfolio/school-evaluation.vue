@@ -11,8 +11,11 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
+  PORTFOLIO_EVALUATION_SCENE_OPTIONS,
   PORTFOLIO_EVALUATION_TASK_STATUS_TONE,
   PortfolioEvaluationModeCode,
+  PortfolioEvaluationSceneCode,
+  PortfolioEvaluationSceneDescription,
   PortfolioEvaluationTaskAdvanceActionCode,
   PortfolioEvaluationTaskAdvanceActionDescription,
   PortfolioEvaluationTaskStatusCode,
@@ -85,6 +88,15 @@ function taskStatusLabel(status: PortfolioEvaluationTaskStatusCode): string {
   return strictEnumLabel(PortfolioEvaluationTaskStatusDescription, status, '多元评价任务状态')
 }
 
+function evaluationSceneLabel(scene?: PortfolioEvaluationSceneCode | string): string {
+  if (!scene) return '—'
+  return strictEnumLabel(
+    PortfolioEvaluationSceneDescription,
+    scene as PortfolioEvaluationSceneCode,
+    '评价任务场景',
+  )
+}
+
 function taskStatusTone(status: PortfolioEvaluationTaskStatusCode) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TASK_STATUS_TONE, status, '多元评价任务状态')
 }
@@ -98,6 +110,7 @@ const router = useRouter()
 const route = useRoute()
 const rows = ref<PortfolioEvaluationTaskVO[]>([])
 const pageNum = ref(1)
+const sceneFilter = ref<PortfolioEvaluationSceneCode | undefined>(undefined)
 const pageSize = ref(10)
 const pageTotal = ref(0)
 /** PF-P0-293：站内信/待办 evaluationTaskId 深链高亮 */
@@ -142,6 +155,7 @@ const cancelRereviewSubmitting = ref(false)
 const createForm = reactive({
   taskName: '',
   evaluationMode: PortfolioEvaluationModeCode.BY_INDICATOR,
+  sceneCode: PortfolioEvaluationSceneCode.GENERAL,
   targetIndicatorCode: '',
   workgroupId: '',
   startTime: '',
@@ -150,6 +164,7 @@ const createForm = reactive({
 
 const columns: ColumnsType<PortfolioEvaluationTaskVO> = [
   { title: '任务名称', dataIndex: 'taskName', key: 'taskName', fixed: 'left' },
+  { title: '场景', dataIndex: 'sceneCode', key: 'sceneCode', width: 120 },
   { title: '模式', dataIndex: 'evaluationMode', key: 'evaluationMode', width: 100 },
   { title: '时间窗', key: 'timeWindow', width: 200 },
   { title: '状态', key: 'taskStatus', width: 120 },
@@ -171,6 +186,11 @@ const archiveReminderText = computed(() => {
     : `${tasks.length} 个评价任务（${names}）公示已结束且无待复核异议，请逐条执行归档。`
 })
 
+function onSceneFilterChange() {
+  pageNum.value = 1
+  void loadPage()
+}
+
 async function loadPage() {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
@@ -178,6 +198,7 @@ async function loadPage() {
     pageNum: pageNum.value,
     pageSize: pageSize.value,
     locateTaskId: pendingLocateTaskId.value || undefined,
+    sceneCode: sceneFilter.value || undefined,
   }
   loading.value = true
   try {
@@ -300,6 +321,7 @@ async function submitCreateTask() {
     await portfolioEvaluationTaskApi.create({
       taskName: createForm.taskName.trim(),
       evaluationMode: createForm.evaluationMode,
+      sceneCode: createForm.sceneCode,
       ...(createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
         ? { targetIndicatorCode: createForm.targetIndicatorCode.trim() }
         : {}),
@@ -311,6 +333,7 @@ async function submitCreateTask() {
     createModalOpen.value = false
     createForm.taskName = ''
     createForm.evaluationMode = PortfolioEvaluationModeCode.BY_INDICATOR
+    createForm.sceneCode = PortfolioEvaluationSceneCode.GENERAL
     createForm.targetIndicatorCode = ''
     createForm.workgroupId = ''
     createForm.startTime = ''
@@ -766,6 +789,15 @@ void loadPage()
           <UiButton size="sm" variant="primary" @click="() => void openCreateModal()">
             新建任务
           </UiButton>
+          <UiSelect
+            size="sm"
+            v-model="sceneFilter"
+            allow-clear
+            placeholder="业务场景"
+            style="width: 150px"
+            :options="PORTFOLIO_EVALUATION_SCENE_OPTIONS"
+            @change="onSceneFilterChange"
+          />
           <UiButton size="sm" :loading="loading" @click="() => void loadPage()"> 刷新 </UiButton>
         </template>
       </ContextBar>
@@ -793,7 +825,10 @@ void loadPage()
         @page-change="() => void loadPage()"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'timeWindow'">
+          <template v-if="column.key === 'sceneCode'">
+            {{ evaluationSceneLabel(record.sceneCode) }}
+          </template>
+          <template v-else-if="column.key === 'timeWindow'">
             {{ record.startTime }} — {{ record.endTime }}
           </template>
           <template v-else-if="column.key === 'taskStatus'">
@@ -885,6 +920,13 @@ void loadPage()
         v-model="createForm.evaluationMode"
         :options="PORTFOLIO_EVALUATION_MODE_OPTIONS"
         placeholder="评价模式"
+        class="school-evaluation__field"
+      />
+      <UiSelect
+        size="sm"
+        v-model="createForm.sceneCode"
+        :options="PORTFOLIO_EVALUATION_SCENE_OPTIONS"
+        placeholder="业务场景（§8.48 多周期隔离）"
         class="school-evaluation__field"
       />
       <UiInput

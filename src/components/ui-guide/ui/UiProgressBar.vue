@@ -127,32 +127,35 @@ function lightenColor(hex: string, percent: number): string {
 
 .ui-progress-bar__percent {
   font-size: 13px;
-  font-weight: 600;
-  color: var(--dp-text-secondary);
+  font-weight: 700;
+  color: var(--dp-text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .ui-progress-bar__track {
   width: 100%;
   border-radius: 999px;
   overflow: hidden;
-  background-color: var(--dp-gray-200);
+  background-color: color-mix(in srgb, var(--dp-gray-200) 70%, var(--dp-surface));
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dp-text-primary) 4%, transparent);
 }
 
 .ui-progress-bar__fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 0.4s ease;
-  background-color: var(--dp-color-primary);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  background: linear-gradient(90deg, var(--dp-color-primary), color-mix(in srgb, var(--dp-color-primary) 75%, var(--dp-blue-200)));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--dp-color-primary) 25%, transparent);
 }
 
 .ui-progress-bar--striped .ui-progress-bar__fill {
   background-image: linear-gradient(
     45deg,
-    rgba(255, 255, 255, 0.15) 25%,
+    rgba(255, 255, 255, 0.18) 25%,
     transparent 25%,
     transparent 50%,
-    rgba(255, 255, 255, 0.15) 50%,
-    rgba(255, 255, 255, 0.15) 75%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.18) 75%,
     transparent 75%,
     transparent
   );
@@ -170,7 +173,11 @@ function lightenColor(hex: string, percent: number): string {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ui-progress-bar__fill--striped {
+  .ui-progress-bar__fill {
+    transition: none;
+  }
+
+  .ui-progress-bar--striped .ui-progress-bar__fill {
     animation: none;
   }
 }

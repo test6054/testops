@@ -24,15 +24,23 @@ export const ARCHIVE_VOLUME_QUALITY_TABS = [
   'four-property',
 ] as const
 
-/** 卷务三页：任务设置 / 协作管理 / 开始收材（无门禁条工具栏） */
-export const ARCHIVE_VOLUME_MANAGE_TABS = [
+/** 收材准备页：任务设置 / 协作管理 / 开始收材（无门禁条工具栏） */
+export const ARCHIVE_VOLUME_PREPARE_TABS = [
   'task-settings',
   'collaborators',
   'start-collecting',
 ] as const
 
+/** @deprecated 使用 ARCHIVE_VOLUME_PREPARE_TABS */
+export const ARCHIVE_VOLUME_MANAGE_TABS = ARCHIVE_VOLUME_PREPARE_TABS
+
+export function isArchiveVolumePrepareTab(tab: string): boolean {
+  return (ARCHIVE_VOLUME_PREPARE_TABS as readonly string[]).includes(tab)
+}
+
+/** @deprecated 使用 isArchiveVolumePrepareTab */
 export function isArchiveVolumeManageTab(tab: string): boolean {
-  return (ARCHIVE_VOLUME_MANAGE_TABS as readonly string[]).includes(tab)
+  return isArchiveVolumePrepareTab(tab)
 }
 
 /** 质检阶段内隐藏全部质检类导航芯片（侧栏已承担跳转，面板/引导条承担执行） */

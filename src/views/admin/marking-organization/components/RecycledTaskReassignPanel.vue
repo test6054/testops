@@ -32,25 +32,23 @@
         </template>
         <template v-else-if="column.key === 'targetReviewer'">
           <UiSelect
+            v-if="canReassign === true"
             size="sm"
             v-model="targetReviewerByTaskId[record.id]"
             placeholder="选择目标教师"
             :options="reviewerOptionsByGroupId[record.groupId ?? ''] ?? []"
             style="width: 100%"
           />
+          <span v-else class="recycled-panel__muted">—</span>
         </template>
         <template v-else-if="column.key === 'action'">
           <UiTableActions
-            :items="[
-              {
-                key: 'reassign',
-                label: '再分配',
-                disabled: !targetReviewerByTaskId[record.id] || reassigningId === record.id,
-              },
-            ]"
+            v-if="canReassign === true"
+            :items="buildReassignActions(record)"
             split
             @action="() => submitReassign(record)"
           />
+          <span v-else class="recycled-panel__muted">—</span>
         </template>
       </template>
     </UiDataTable>
@@ -62,6 +60,7 @@ import type {
   MarkingTaskResponse,
   QuestionMarkingGroupResponse,
 } from '@/apis/mark/marking-organization'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { pageMarkingTasks, reassignRecycledMarkingTask } from '@/apis/mark/marking-organization'
@@ -117,6 +116,17 @@ const columns = [
   { title: '目标教师', key: 'targetReviewer', width: 220 },
   { title: '操作', key: 'action', width: 100 },
 ]
+
+/** MVR-392：再分配行操作仅 canReassign===true 时渲染，避免关考/无权限假可点 */
+function buildReassignActions(record: MarkingTaskResponse): UiTableRowActionItem[] {
+  return [
+    {
+      key: 'reassign',
+      label: '再分配',
+      disabled: !targetReviewerByTaskId[record.id] || reassigningId.value === record.id,
+    },
+  ]
+}
 
 async function loadTasks(): Promise<void> {
   if (!props.examId) {
@@ -203,5 +213,9 @@ watch(
 .recycled-panel__hint {
   font-size: 13px;
   color: var(--dp-text-secondary);
+}
+
+.recycled-panel__muted {
+  color: var(--dp-text-tertiary, #8c8c8c);
 }
 </style>

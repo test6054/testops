@@ -182,6 +182,7 @@ import type {
   UiTableRowActionItem,
 } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getReviewQuestionProgressSummary } from '@/apis/mark/exam-progress'
@@ -598,6 +599,15 @@ onActivated(() => {
 
 function goReviewWorkspace(record: ReviewTaskItemResponse): void {
   if (!selectedExamId.value) {
+    return
+  }
+  // MVR-394：进入仲裁写工作台与行级 canManageReviewerWrites / isActionableTask 二次拦截
+  if (record.canManageReviewerWrites !== true) {
+    message.warning('当前账号无本场复核写权限，无法进入仲裁工作台')
+    return
+  }
+  if (!isActionableTask(record)) {
+    message.warning('当前任务状态不可进入仲裁工作台')
     return
   }
   void router.push({

@@ -174,7 +174,6 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type {
   MyPendingSpotCheckItemResponse,
-  SpotCheckStatusCode,
 } from '@/apis/mark/marking-quality'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -186,6 +185,7 @@ import {
   listMyPendingSpotChecks,
   SPOT_CHECK_STATUS_TONE,
   SpotCheckConclusionCode,
+  SpotCheckStatusCode,
   SpotCheckStatusDescription,
 } from '@/apis/mark/marking-quality'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -209,6 +209,7 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -217,6 +218,7 @@ defineOptions({ name: 'TeacherMarkingSpotCheck' })
 
 const { selectedExamId } = useMarkExamContext()
 const { refreshSnapshot } = useWorkspaceExamId()
+const userStore = useUserStore()
 
 const pendingItems = ref<MyPendingSpotCheckItemResponse[]>([])
 const pendingCount = ref(0)
@@ -326,7 +328,28 @@ const form = reactive<SpotCheckForm>({
 
 const valid = computed(() => Boolean(targetItem.value?.id && form.conclusion))
 
-function buildSpotCheckActions(_item: MyPendingSpotCheckItemResponse): UiTableRowActionItem[] {
+/**
+ * MVR-393：与 BE requireSpotCheckHandlePermission / 列表 SQL 同源二次闸。
+ * 列表已过滤 handler，此处防陈旧弹窗、状态漂移与原评阅人自检。
+ */
+function canHandleSpotCheckItem(item: MyPendingSpotCheckItemResponse): boolean {
+  if (
+    item.spotCheckStatus !== SpotCheckStatusCode.PENDING
+    && item.spotCheckStatus !== SpotCheckStatusCode.IN_PROGRESS
+  ) {
+    return false
+  }
+  const userId = userStore.userInfo.userId
+  if (userId && item.reviewerUserId != null && String(item.reviewerUserId) === String(userId)) {
+    return false
+  }
+  return pendingItems.value.some((row) => row.id === item.id)
+}
+
+function buildSpotCheckActions(item: MyPendingSpotCheckItemResponse): UiTableRowActionItem[] {
+  if (canHandleSpotCheckItem(item) !== true) {
+    return []
+  }
   return [{ key: 'handle', label: '处理结论', tone: 'primary' }]
 }
 
@@ -337,6 +360,11 @@ function handleSpotCheckAction(key: string, item: MyPendingSpotCheckItemResponse
 }
 
 function openHandleModal(item: MyPendingSpotCheckItemResponse): void {
+  // MVR-393：打开结案弹窗二次拦截
+  if (canHandleSpotCheckItem(item) !== true) {
+    message.warning('当前抽检任务不可处理，请刷新后重试')
+    return
+  }
   targetItem.value = item
   form.conclusion = SpotCheckConclusionCode.PASSED
   form.reviewScore = undefined
@@ -347,6 +375,13 @@ function openHandleModal(item: MyPendingSpotCheckItemResponse): void {
 async function submitConclusion(): Promise<void> {
   if (!valid.value || !targetItem.value) return
   if (submitting.value) return
+  // MVR-393：提交与 BE 自检/状态门禁二次拦截
+  if (canHandleSpotCheckItem(targetItem.value) !== true) {
+    message.warning('当前抽检任务不可处理，请刷新后重试')
+    modalOpen.value = false
+    targetItem.value = null
+    return
+  }
   submitting.value = true
   try {
     await handleSpotCheck({

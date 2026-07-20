@@ -1174,6 +1174,11 @@ function setPreferredReassignTarget(paperInstanceId: string): void {
 }
 
 async function openOrderAudit(): Promise<void> {
+  // MVR-393：「人工合并」属主考写路径入口，打开前叠 canManageOwnerBatchActions===true
+  if (canManageOwnerBatchActions.value !== true) {
+    message.warning('仅本场主考可打开人工合并')
+    return
+  }
   const batch = workbench.value?.batch
   if (!batch?.scanBatchId || !selectedExamId.value) {
     return

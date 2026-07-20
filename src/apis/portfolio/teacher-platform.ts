@@ -14,6 +14,7 @@ import type {
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioEvaluationModeCode,
+  PortfolioEvaluationSceneCode,
   PortfolioEvaluationTaskStatusCode,
   PortfolioExternalTeacherDataStatusCode,
   PortfolioExternalTeacherImportBatchStatusCode,
@@ -1318,6 +1319,8 @@ export interface PortfolioEvaluationTaskVO {
   id: string
   taskName: string
   evaluationMode: PortfolioEvaluationModeCode
+  /** §8.48 任务业务场景 */
+  sceneCode?: PortfolioEvaluationSceneCode
   targetIndicatorCode?: string
   taskStatus: PortfolioEvaluationTaskStatusCode
   workgroupId?: string
@@ -1334,6 +1337,8 @@ export interface PortfolioEvaluationTaskVO {
 
 export interface PortfolioEvaluationTaskPageRequest extends QueryDto {
   taskStatus?: PortfolioEvaluationTaskStatusCode
+  /** §8.48 任务业务场景筛选 */
+  sceneCode?: PortfolioEvaluationSceneCode
   /** PF-P0-293：站内信/待办深链定位评价任务 */
   locateTaskId?: string
 }
@@ -1341,6 +1346,8 @@ export interface PortfolioEvaluationTaskPageRequest extends QueryDto {
 export interface PortfolioEvaluationTaskCreateRequest {
   taskName: string
   evaluationMode: PortfolioEvaluationModeCode
+  /** §8.48 任务业务场景；缺省后端按 GENERAL */
+  sceneCode?: PortfolioEvaluationSceneCode
   targetIndicatorCode?: string
   workgroupId: string
   startTime?: string

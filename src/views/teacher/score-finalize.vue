@@ -585,7 +585,7 @@
           </UiButton>
           <UiButton
             v-else-if="
-              canManageReviewerWrites
+              canRepairAbsenceScoreZeroFinal === true
                 && reason.reasonCode === FinalScoreRiskReasonCode.MISSING_ABSENCE_SCORE_ZERO_FINAL
             "
             size="sm"

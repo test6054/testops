@@ -23,7 +23,7 @@ export const ARCHIVE_VOLUME_SIDEBAR_TAB_KEYS = [
 
 export type ArchiveVolumeSidebarTabKey = (typeof ARCHIVE_VOLUME_SIDEBAR_TAB_KEYS)[number]
 
-/** 侧栏阶段分组：对标高校档案「收材→质检→审核→移交→保管利用→审计」。 */
+/** 侧栏阶段分组：对标高校档案「收材准备→材料→质检→审核→移交→保管利用→审计」。 */
 export interface ArchiveVolumeSidebarNavGroup {
   key: string
   label: string
@@ -32,19 +32,22 @@ export interface ArchiveVolumeSidebarNavGroup {
 
 export const ARCHIVE_VOLUME_SIDEBAR_NAV_GROUPS: ArchiveVolumeSidebarNavGroup[] = [
   {
-    key: 'manage',
-    label: '卷务',
-    tabKeys: ['task-settings', 'collaborators', 'start-collecting'],
+    key: 'collect',
+    label: '材料收齐',
+    tabKeys: [
+      'task-settings',
+      'collaborators',
+      'start-collecting',
+      'materials',
+      'scores',
+      'scan-batches',
+      'scan-review',
+    ],
   },
   {
     key: 'tools',
     label: '卷内工具',
     tabKeys: ['ocr-search'],
-  },
-  {
-    key: 'collect',
-    label: '材料收齐',
-    tabKeys: ['materials', 'scores', 'scan-batches', 'scan-review'],
   },
   {
     key: 'quality',
@@ -78,7 +81,6 @@ const COLLECTING_VISIBLE_TABS: ReadonlySet<ArchiveVolumeSidebarTabKey> = new Set
   'ocr-search',
   'task-settings',
   'collaborators',
-  'start-collecting',
   'scores',
   'integrity',
   'self-check',
@@ -87,6 +89,11 @@ const COLLECTING_VISIBLE_TABS: ReadonlySet<ArchiveVolumeSidebarTabKey> = new Set
   'scan-batches',
   'scan-review',
   'events',
+])
+
+const DRAFT_VISIBLE_TABS: ReadonlySet<ArchiveVolumeSidebarTabKey> = new Set([
+  ...COLLECTING_VISIBLE_TABS,
+  'start-collecting',
 ])
 
 const SUBMITTED_VISIBLE_TABS: ReadonlySet<ArchiveVolumeSidebarTabKey> = new Set([
@@ -103,6 +110,7 @@ const STORED_VISIBLE_TABS: ReadonlySet<ArchiveVolumeSidebarTabKey> = new Set([
 
 /**
  * 按卷主状态渐进披露侧栏 Tab；深链 tab 不在集合内时仍允许路由打开，仅侧栏不展示入口。
+ * 开始收材仅 DRAFT 展示。
  */
 export function isArchiveVolumeSidebarTabVisible(
   tabKey: string,
@@ -112,10 +120,11 @@ export function isArchiveVolumeSidebarTabVisible(
     return false
   }
   const key = tabKey as ArchiveVolumeSidebarTabKey
+  if (!volumeStatus || volumeStatus === ArchiveVolumeStatusCode.DRAFT) {
+    return DRAFT_VISIBLE_TABS.has(key)
+  }
   if (
-    !volumeStatus
-    || volumeStatus === ArchiveVolumeStatusCode.DRAFT
-    || volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+    volumeStatus === ArchiveVolumeStatusCode.COLLECTING
     || volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
     || volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
   ) {

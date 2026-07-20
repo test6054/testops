@@ -1117,17 +1117,44 @@ async function loadWorkbenchPanels(): Promise<void> {
   }
 }
 
+/**
+ * MVR-392：回收再分配写闸与 BE requireRecycledTaskReassignPermission + requireActiveExam 同源。
+ * - 主考：canManageExamOwner（主考 ∧ ACTIVE）
+ * - 组织负责人 / 题组组长：须考试 ACTIVE（examDetail.status），禁止关考后假可点
+ * 禁止仅用 leaderUserId 本地回退且不叠 ACTIVE。
+ */
 const canReassignRecycledTasks = computed(() => {
   if (!organization.value) {
     return false
   }
   const userId = userStore.userInfo.userId
-  if (canManageExamOwner.value) {
+  if (!userId) {
+    return false
+  }
+  // 主考路径已叠 ACTIVE
+  if (canManageExamOwner.value === true) {
     return true
   }
-  return groups.value.some((group) => group.leaderUserId === userId)
+  // 非主考再分配写须 ACTIVE；examDetail 未就绪默认拒绝
+  if (examDetail.value?.status !== ExamStatusCode.ACTIVE) {
+    return false
+  }
+  if (organization.value.leaderUserId != null && String(organization.value.leaderUserId) === String(userId)) {
+    return true
+  }
+  return groups.value.some((group) => String(group.leaderUserId) === String(userId))
 })
-const canViewAllRecycledTasks = computed(() => canManageExamOwner.value)
+/** 整场回收任务列表：主考（ACTIVE）或组织负责人（BE canListAll；关考主考仍可由 BE 列表门禁承接，FE 与 canManageExamOwner 对齐不扩权） */
+const canViewAllRecycledTasks = computed(() => {
+  if (canManageExamOwner.value === true) {
+    return true
+  }
+  const userId = userStore.userInfo.userId
+  if (!userId || !organization.value?.leaderUserId) {
+    return false
+  }
+  return String(organization.value.leaderUserId) === String(userId)
+})
 
 const detailTabItems = computed((): UiSectionTabItem[] => {
   const items: UiSectionTabItem[] = [
@@ -1486,6 +1513,14 @@ async function submitGroup(): Promise<void> {
     return
   }
   if (!guardExamOwnerAction()) return
+  // MVR-396：更新已有题组须叠 canEditGroup（非 CLOSED）；创建仅主考闸
+  if (groupForm.groupId) {
+    const existing = groups.value.find((group) => group.id === groupForm.groupId)
+    if (!existing || !canEditGroup(existing)) {
+      showFormValidationMessage('当前题组状态不可编辑')
+      return
+    }
+  }
   if (!organizationId.value || !groupFormRef.value) return
   try {
     await groupFormRef.value.validate()
@@ -1659,6 +1694,8 @@ function onOrgDetailMoreAction(key: string) {
 }
 
 async function requestDeleteOrganization(): Promise<void> {
+  // MVR-396：删除组织打开确认前叠主考闸，禁止仅靠更多菜单显隐
+  if (!guardExamOwnerAction()) return
   const ok = await confirmAsync({
     title: '确认删除该阅卷组织？',
     content: '删除后不可恢复；请确认组织下无进行中的试评/正评会话。',

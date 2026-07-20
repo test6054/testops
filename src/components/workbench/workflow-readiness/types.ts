@@ -16,6 +16,7 @@ export const WorkflowBlockingItemCode = {
   LAYOUT_SCOPE_ERROR: 'LAYOUT_SCOPE_ERROR',
   SCORE_NOT_PUBLISHED: 'SCORE_NOT_PUBLISHED',
   EXAM_NOT_CLOSED: 'EXAM_NOT_CLOSED',
+  EXAM_NOT_ACTIVE: 'EXAM_NOT_ACTIVE',
 } as const
 
 export type WorkflowBlockingItemCodeValue

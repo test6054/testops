@@ -150,6 +150,7 @@ function handleChange(value: Key) {
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-gray-50);
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dp-text-primary) 3%, transparent);
 }
 
 .ui-section-tabs__tab {
@@ -166,9 +167,10 @@ function handleChange(value: Key) {
   line-height: 1.4;
   cursor: pointer;
   transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease;
+    background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ui-section-tabs__tab:hover:not(:disabled):not(.ui-section-tabs__tab--active) {
@@ -179,7 +181,14 @@ function handleChange(value: Key) {
 .ui-section-tabs__tab--active {
   background: var(--dp-surface);
   color: var(--dp-text-primary);
-  box-shadow: var(--dp-shadow-xs);
+  font-weight: 600;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--dp-text-primary) 6%, transparent),
+    0 1px 3px color-mix(in srgb, var(--dp-text-primary) 4%, transparent);
+}
+
+.ui-section-tabs__tab:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .ui-section-tabs__tab:disabled {

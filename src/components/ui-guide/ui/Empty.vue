@@ -93,8 +93,12 @@ const resolvedDescription = computed(() => {
   text-align: center;
   padding: var(--dp-space-6, 24px) var(--dp-space-4, 16px);
   border-radius: var(--dp-radius-panel);
-  background: var(--dp-surface-elevated);
-  border: 1px solid var(--dp-border);
+  background: linear-gradient(
+    180deg,
+    var(--dp-surface-elevated) 0%,
+    color-mix(in srgb, var(--dp-surface-elevated) 50%, var(--dp-surface)) 100%
+  );
+  border: 1px dashed color-mix(in srgb, var(--dp-border) 80%, transparent);
 }
 
 .ui-empty--sm {
@@ -104,19 +108,20 @@ const resolvedDescription = computed(() => {
 }
 
 .ui-empty--md {
-  padding: var(--dp-space-6, 24px) var(--dp-space-4, 16px);
+  padding: var(--dp-space-8, 32px) var(--dp-space-4, 16px);
 }
 
 .ui-empty__icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   margin-bottom: var(--dp-space-3, 12px);
   border-radius: var(--dp-radius-full);
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--dp-text-primary) 5%, transparent);
 }
 
 .ui-empty__dot {
@@ -142,23 +147,45 @@ const resolvedDescription = computed(() => {
 }
 
 .ui-empty__action {
-  margin-top: var(--dp-space-3, 10px);
+  margin-top: var(--dp-space-4, 16px);
 }
 
 .ui-empty__action-btn {
-  min-height: 28px;
-  padding: 0 var(--dp-space-3, 12px);
+  min-height: 30px;
+  padding: 0 var(--dp-space-4, 16px);
   border: 1px solid var(--dp-border);
-  border-radius: var(--dp-radius-control, 6px);
-  background: var(--dp-bg-container);
-  color: var(--dp-text);
+  border-radius: var(--dp-radius-full, 999px);
+  background: var(--dp-surface);
+  color: var(--dp-text-primary);
   font-size: 13px;
-  line-height: 26px;
+  font-weight: 500;
+  line-height: 28px;
   cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
 }
 
 .ui-empty__action-btn:hover {
   border-color: var(--dp-color-primary);
   color: var(--dp-color-primary);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--dp-color-primary) 12%, transparent);
+  transform: translateY(-1px);
+}
+
+.ui-empty__action-btn:active {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-empty__action-btn {
+    transition: none;
+  }
+
+  .ui-empty__action-btn:hover {
+    transform: none;
+  }
 }
 </style>

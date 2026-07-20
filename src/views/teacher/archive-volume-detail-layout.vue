@@ -176,7 +176,7 @@ const sidebarNavGroups = computed(() =>
   ),
 )
 
-/** 页签型卷务入口走侧栏导航；此处仅保留非页签操作。 */
+/** 页签型收材准备入口走侧栏导航；此处仅保留非页签操作。 */
 const sidebarManageActions = computed((): ArchiveVolumeSidebarManageAction[] => {
   const caps = detail.value?.capabilities
   if (!caps) {

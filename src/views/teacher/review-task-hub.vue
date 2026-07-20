@@ -135,6 +135,7 @@ import type {
 } from '@/apis/mark/exam-review-task'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
@@ -378,6 +379,11 @@ function enterReview(record: ReviewTaskItemResponse): void {
     })
     return
   }
+  // MVR-394：进入复核写工作台仅认行级 canManageReviewerWrites===true（BE 评阅写∧ACTIVE）
+  if (record.canManageReviewerWrites !== true) {
+    message.warning('当前账号无本场复核写权限，无法进入复核工作台')
+    return
+  }
   void router.push({
     name: 'TeacherExamWorkspaceReviewWorkspace',
     params: { examId: examId.value, taskId: record.reviewTaskId },
@@ -389,8 +395,9 @@ function goBatchConfirm(): void {
   if (!examId.value) {
     return
   }
-  // MVR-291：无写能力不得导航进批量确认页（页内虽叠闸，避免假入口）
-  if (!canManageReviewerWrites.value) {
+  // MVR-291/394：无写能力不得导航进批量确认页（页内虽叠闸，避免假入口）
+  if (canManageReviewerWrites.value !== true) {
+    message.warning('当前账号无批量复核写权限')
     return
   }
   void router.push({

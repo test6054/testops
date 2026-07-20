@@ -55,6 +55,10 @@ export enum ArchiveVolumeEventTypeCode {
   DIGITAL_MATERIAL_CONFIRMED = 'DIGITAL_MATERIAL_CONFIRMED',
   COLLECTING_STARTED = 'COLLECTING_STARTED',
   ARCHIVE_DUE_TIME_OVERRIDDEN = 'ARCHIVE_DUE_TIME_OVERRIDDEN',
+  ARCHIVE_TITLE_UPDATED = 'ARCHIVE_TITLE_UPDATED',
+  MEMBER_ADDED = 'MEMBER_ADDED',
+  MEMBER_ROLE_UPDATED = 'MEMBER_ROLE_UPDATED',
+  MEMBER_REMOVED = 'MEMBER_REMOVED',
 }
 
 export const ALL_ARCHIVE_VOLUME_EVENT_TYPE_CODES: readonly ArchiveVolumeEventTypeCode[] = [
@@ -113,6 +117,10 @@ export const ALL_ARCHIVE_VOLUME_EVENT_TYPE_CODES: readonly ArchiveVolumeEventTyp
   ArchiveVolumeEventTypeCode.DIGITAL_MATERIAL_CONFIRMED,
   ArchiveVolumeEventTypeCode.COLLECTING_STARTED,
   ArchiveVolumeEventTypeCode.ARCHIVE_DUE_TIME_OVERRIDDEN,
+  ArchiveVolumeEventTypeCode.ARCHIVE_TITLE_UPDATED,
+  ArchiveVolumeEventTypeCode.MEMBER_ADDED,
+  ArchiveVolumeEventTypeCode.MEMBER_ROLE_UPDATED,
+  ArchiveVolumeEventTypeCode.MEMBER_REMOVED,
 ]
 export const ArchiveVolumeEventTypeDescription: Record<ArchiveVolumeEventTypeCode, string> = {
   [ArchiveVolumeEventTypeCode.VOLUME_CREATED]: '建卷',
@@ -170,4 +178,8 @@ export const ArchiveVolumeEventTypeDescription: Record<ArchiveVolumeEventTypeCod
   [ArchiveVolumeEventTypeCode.DIGITAL_MATERIAL_CONFIRMED]: '电子材料确认',
   [ArchiveVolumeEventTypeCode.COLLECTING_STARTED]: '开始收材',
   [ArchiveVolumeEventTypeCode.ARCHIVE_DUE_TIME_OVERRIDDEN]: '归档截止覆盖',
+  [ArchiveVolumeEventTypeCode.ARCHIVE_TITLE_UPDATED]: '归档标题修改',
+  [ArchiveVolumeEventTypeCode.MEMBER_ADDED]: '协作成员新增',
+  [ArchiveVolumeEventTypeCode.MEMBER_ROLE_UPDATED]: '协作成员角色变更',
+  [ArchiveVolumeEventTypeCode.MEMBER_REMOVED]: '协作成员移除',
 }

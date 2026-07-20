@@ -3,6 +3,7 @@ import type { EChartsCoreOption } from 'echarts/core'
 import type {
   PortfolioAnalysisSuggestionVO,
   PortfolioAnalysisTrainingRecommendVO,
+  PortfolioAppointmentPeriodEvaluationVO,
   PortfolioPortraitCreditCurveVO,
 } from '@/apis/portfolio/analysis'
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
@@ -101,6 +102,7 @@ const planCompletion = ref<PortfolioDevelopmentPlanCompletionVO | null>(null)
 const suggestions = ref<PortfolioAnalysisSuggestionVO[]>([])
 const trainingRecommendations = ref<PortfolioAnalysisTrainingRecommendVO[]>([])
 const creditCurve = ref<PortfolioPortraitCreditCurveVO | null>(null)
+const appointmentPeriodEval = ref<PortfolioAppointmentPeriodEvaluationVO | null>(null)
 /** §8.66 学分曲线分类：ALL / DIGITAL_LITERACY / NATIONAL_TRAINING / CERTIFICATE / OTHER_TRAINING */
 const creditCategory = ref('ALL')
 const creditCurveLoading = ref(false)
@@ -234,6 +236,7 @@ function resetPortraitBundleContext() {
   suggestions.value = []
   trainingRecommendations.value = []
   creditCurve.value = null
+  appointmentPeriodEval.value = null
 }
 
 function buildPortraitRequest() {
@@ -340,6 +343,19 @@ async function loadPlanCompletion() {
   }
 }
 
+
+function defaultAppointmentPeriodRange(): { periodStart: string, periodEnd: string } {
+  const end = new Date()
+  const start = new Date(end.getFullYear() - 2, 0, 1)
+  const fmt = (d: Date) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+  return { periodStart: fmt(start), periodEnd: fmt(end) }
+}
+
 async function loadSecondaryPortraitData() {
   if (!portrait.value) {
     return
@@ -349,6 +365,7 @@ async function loadSecondaryPortraitData() {
   cohortRequestToken.value = cohortToken
   const request = buildPortraitRequest()
   const teacherId = targetTeacherId.value
+  const appointmentRange = defaultAppointmentPeriodRange()
   const settled = await Promise.allSettled([
     portfolioAnalysisApi.getPortraitCohortCompare(buildCohortRequest()),
     portfolioAnalysisApi.getPortraitTrend({ ...request, limit: 12 }),
@@ -360,8 +377,16 @@ async function loadSecondaryPortraitData() {
     teacherId
       ? portfolioAnalysisApi.getCreditCurve({ teacherId, creditCategory: creditCategory.value })
       : Promise.resolve(null),
+    teacherId
+      ? portfolioAnalysisApi.getAppointmentPeriodEvaluation({
+          teacherId,
+          periodStart: appointmentRange.periodStart,
+          periodEnd: appointmentRange.periodEnd,
+          cycleSceneCode: 'APPOINTMENT',
+        })
+      : Promise.resolve(null),
   ])
-  const [cohortSettled, trendSettled, , suggestionSettled, trainingSettled, creditSettled] = settled
+  const [cohortSettled, trendSettled, , suggestionSettled, trainingSettled, creditSettled, appointmentSettled] = settled
   if (portraitRequestToken.value !== requestToken) {
     return
   }
@@ -397,6 +422,12 @@ async function loadSecondaryPortraitData() {
     creditCurve.value = null
     showUserError(creditSettled.reason, '加载学分曲线失败')
   }
+  if (appointmentSettled.status === 'fulfilled') {
+    appointmentPeriodEval.value = appointmentSettled.value
+  } else {
+    appointmentPeriodEval.value = null
+    showUserError(appointmentSettled.reason, '加载聘期滚动评价失败')
+  }
 }
 
 async function loadPortraitBundle() {
@@ -417,6 +448,7 @@ async function loadPortraitBundle() {
   suggestions.value = []
   trainingRecommendations.value = []
   creditCurve.value = null
+  appointmentPeriodEval.value = null
   creditCategory.value = 'ALL'
   try {
     const request = buildPortraitRequest()
@@ -1007,6 +1039,60 @@ watch(creditCategory, (next, prev) => {
         </ul>
       </UiCard>
 
+
+
+      <UiCard
+        v-if="appointmentPeriodEval"
+        title="§8.48 聘期滚动评价"
+        class="teacher-portrait__appointment-period"
+      >
+        <p class="teacher-portrait__hint-text">
+          综合 {{ appointmentPeriodEval.compositeScore }}
+          · 年度加权 {{ appointmentPeriodEval.weightedAnnualScore }}
+          · 关键成果 +{{ appointmentPeriodEval.keyAchievementBonus }}
+          · 风险 -{{ appointmentPeriodEval.riskDeduction }}
+          · 周期 {{ appointmentPeriodEval.periodStart }} ~ {{ appointmentPeriodEval.periodEnd }}
+          · {{ appointmentPeriodEval.cycleSceneLabel || appointmentPeriodEval.cycleSceneCode }}
+        </p>
+        <p class="teacher-portrait__hint-text">{{ appointmentPeriodEval.formulaLabel }}</p>
+        <p class="teacher-portrait__hint-text">
+          年度来源场景 {{ appointmentPeriodEval.annualSourceSceneCode }}（与查询周期隔离）
+        </p>
+        <table
+          v-if="appointmentPeriodEval.yearScores?.length"
+          class="teacher-portrait__table"
+        >
+          <thead>
+            <tr>
+              <th>年度</th>
+              <th>表现分</th>
+              <th>权重</th>
+              <th>加权贡献</th>
+              <th>引用任务</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in appointmentPeriodEval.yearScores"
+              :key="`year-${row.year}`"
+            >
+              <td>{{ row.year }}</td>
+              <td>{{ row.annualScore }}</td>
+              <td>{{ row.weight }}</td>
+              <td>{{ row.weightedContribution }}</td>
+              <td>{{ row.referencedTaskNames?.join('、') || row.referencedTaskIds?.join('、') || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <ul v-if="appointmentPeriodEval.evidenceNotes?.length" class="teacher-portrait__hint-text">
+          <li
+            v-for="(note, idx) in appointmentPeriodEval.evidenceNotes"
+            :key="`ap-note-${idx}`"
+          >
+            {{ note }}
+          </li>
+        </ul>
+      </UiCard>
 
       <UiCard
         v-if="portrait?.educatingOutcomeContribution"

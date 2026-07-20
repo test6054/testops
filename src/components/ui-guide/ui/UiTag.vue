@@ -49,10 +49,12 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border-radius: var(--dp-radius-control-inner);
+  border-radius: var(--dp-radius-full, 999px);
   border: 1px solid transparent;
   color: var(--tag-text);
   font-family: var(--dp-font-family), sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
@@ -61,27 +63,25 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
 
 .ui-tag--sm {
   min-height: 22px;
-  padding: 0 8px;
+  padding: 0 9px;
   font-size: 11px;
-  font-weight: 500;
 }
 
 .ui-tag--md {
   min-height: 26px;
-  padding: 0 10px;
+  padding: 0 11px;
   font-size: 12px;
-  font-weight: 500;
 }
 
 .ui-tag--lg {
   min-height: 30px;
-  padding: 0 12px;
+  padding: 0 13px;
   font-size: 13px;
-  font-weight: 500;
 }
 
 .ui-tag--soft {
   background: var(--tag-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tag-text) 8%, transparent);
 }
 
 .ui-tag--outline {

@@ -708,6 +708,11 @@ async function loadClassOptionsForExam(_examId: string): Promise<void> {
 }
 
 async function openAddClassModal(): Promise<void> {
+  // MVR-391：与 canManageRosterWrites / classScopeReadOnly 二次拦截
+  if (canManageRosterWrites.value !== true || classScopeReadOnly.value) {
+    message.warning('当前账号或考试状态不可维护班级范围')
+    return
+  }
   if (!departmentId.value) {
     message.warning('本场考试未配置参考院系，无法新增班级')
     return
@@ -724,6 +729,11 @@ async function openAddClassModal(): Promise<void> {
 }
 
 async function handleAddClassSubmit(): Promise<void> {
+  // MVR-391：与 canManageRosterWrites / classScopeReadOnly 二次拦截
+  if (canManageRosterWrites.value !== true || classScopeReadOnly.value) {
+    message.warning('当前账号或考试状态不可维护班级范围')
+    return
+  }
   if (!pendingAddClassIds.value.length) {
     showFormValidationMessage('请选择要新增的班级')
     return
@@ -1179,6 +1189,10 @@ async function removeCandidate(studentUserId: string): Promise<void> {
 
 watch(classIds, (ids) => {
   if (classScopeHydrating.value || !selectedExamId.value || classScopeReadOnly.value) {
+    return
+  }
+  // MVR-394：自动保存班级范围与 canManageRosterWrites 二次拦截（classScopeReadOnly 已含，显式默认拒绝）
+  if (canManageRosterWrites.value !== true) {
     return
   }
   if (sameClassIds(ids, lastSavedClassIds.value)) {

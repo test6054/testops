@@ -86,7 +86,7 @@
             </UiButton>
           </template>
         </UiEmpty>
-        <UiForm v-else :disabled="dutyLoading || saving">
+        <UiForm v-else :disabled="dutyLoading || saving || canManageArchiveConfig !== true">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>档案管理岗位</span>
@@ -97,7 +97,7 @@
                   配置归档职责类型、院系范围与全校授权（含部门档案员）
                 </span>
                 <div class="archive-volume-settings__section-actions">
-                  <UiButton size="sm" variant="outline" @click="addDutyRow">新增授权</UiButton>
+                  <UiButton v-if="canManageArchiveConfig === true" size="sm" variant="outline" @click="addDutyRow">新增授权</UiButton>
                   <UiButton size="sm" variant="primary" :loading="saving" @click="saveDutyGrants">
                     保存职责授权
                   </UiButton>
@@ -145,6 +145,7 @@
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
+                    v-if="canManageArchiveConfig === true"
                     :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
                     split
                     @action="() => removeDutyRow(index)"
@@ -162,7 +163,7 @@
             <UiButton size="sm" variant="outline" @click="loadPolicy">重新加载</UiButton>
           </template>
         </UiEmpty>
-        <UiForm v-else :disabled="policyLoading || saving">
+        <UiForm v-else :disabled="policyLoading || saving || canManageArchiveConfig !== true">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>密级访问矩阵</span>
@@ -173,7 +174,7 @@
                   按职责类型限制可访问的最高密级
                 </span>
                 <div class="archive-volume-settings__section-actions">
-                  <UiButton size="sm" variant="outline" @click="addPolicyRow">新增策略</UiButton>
+                  <UiButton v-if="canManageArchiveConfig === true" size="sm" variant="outline" @click="addPolicyRow">新增策略</UiButton>
                   <UiButton
                     size="sm"
                     variant="primary"
@@ -215,6 +216,7 @@
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
+                    v-if="canManageArchiveConfig === true"
                     :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
                     split
                     @action="() => removePolicyRow(index)"
@@ -234,7 +236,7 @@
             </UiButton>
           </template>
         </UiEmpty>
-        <UiForm v-else :disabled="collaborationLoading || saving">
+        <UiForm v-else :disabled="collaborationLoading || saving || canManageArchiveConfig !== true">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>协作与提交策略</span>
@@ -309,7 +311,7 @@
             </UiButton>
           </template>
         </UiEmpty>
-        <UiForm v-else :disabled="deadlineLoading || saving">
+        <UiForm v-else :disabled="deadlineLoading || saving || canManageArchiveConfig !== true">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>归档时限策略</span>
@@ -320,7 +322,12 @@
                   须保留一条租户默认；可按院系覆盖法规节点、临期提醒与院系审核门禁
                 </span>
                 <div class="archive-volume-settings__section-actions">
-                  <UiButton size="sm" variant="outline" @click="addDeadlineRow">
+                  <UiButton
+                    v-if="canManageArchiveConfig === true"
+                    size="sm"
+                    variant="outline"
+                    @click="addDeadlineRow"
+                  >
                     新增院系策略
                   </UiButton>
                   <UiButton
@@ -386,6 +393,7 @@
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions
+                    v-if="canManageArchiveConfig === true"
                     :items="[
                       {
                         key: 'delete',
@@ -675,6 +683,11 @@ function newRowKey() {
 }
 
 function addDutyRow() {
+  // MVR-391：与 canManageArchiveConfig / BE requireTenantAdminForConfig 二次拦截
+  if (canManageArchiveConfig.value !== true) {
+    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    return
+  }
   dutyRows.value.push({
     rowKey: newRowKey(),
     userId: '',
@@ -685,10 +698,17 @@ function addDutyRow() {
 }
 
 function removeDutyRow(index: number) {
+  if (canManageArchiveConfig.value !== true) {
+    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    return
+  }
   dutyRows.value.splice(index, 1)
 }
 
 function handleTenantWideChange(index: number) {
+  if (canManageArchiveConfig.value !== true) {
+    return
+  }
   if (dutyRows.value[index]?.tenantWide) {
     dutyRows.value[index].scopeDepartmentId = undefined
   }
@@ -719,6 +739,11 @@ async function loadDepartments() {
 }
 
 function addPolicyRow() {
+  // MVR-391：与 canManageArchiveConfig 二次拦截
+  if (canManageArchiveConfig.value !== true) {
+    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    return
+  }
   policyRows.value.push({
     rowKey: newRowKey(),
     dutyType: ArchiveDutyTypeCode.ARCHIVE_ADMIN,
@@ -727,6 +752,10 @@ function addPolicyRow() {
 }
 
 function removePolicyRow(index: number) {
+  if (canManageArchiveConfig.value !== true) {
+    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    return
+  }
   policyRows.value.splice(index, 1)
 }
 
@@ -743,10 +772,19 @@ function buildDefaultDeadlineRow(isTenantDefault: boolean): DeadlineRow {
 }
 
 function addDeadlineRow() {
+  // MVR-391：与 canManageArchiveConfig 二次拦截
+  if (canManageArchiveConfig.value !== true) {
+    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    return
+  }
   deadlineRows.value.push(buildDefaultDeadlineRow(false))
 }
 
 function removeDeadlineRow(index: number) {
+  if (canManageArchiveConfig.value !== true) {
+    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    return
+  }
   if (deadlineRows.value[index]?.isTenantDefault) return
   deadlineRows.value.splice(index, 1)
 }
@@ -795,7 +833,7 @@ async function loadCollaborationPolicy() {
 async function saveCollaborationPolicyForm() {
   if (collaborationLoadFailed.value || saving.value) return
   // MVR-314：配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -844,7 +882,7 @@ async function saveDeadlinePolicyRows() {
   if (deadlineLoadFailed.value || departmentLoadFailed.value || saving.value) return
   if (!validateDeadlineRows()) return
   // MVR-314：配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -910,7 +948,7 @@ async function saveDutyGrants() {
   if (dutyLoadFailed.value || departmentLoadFailed.value || saving.value) return
   if (!validateDutyRows()) return
   // MVR-314：配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
@@ -936,7 +974,7 @@ async function saveDutyGrants() {
 async function saveSecurityPolicyRows() {
   if (policyLoadFailed.value || saving.value) return
   // MVR-314：配置写二次拦截
-  if (!canManageArchiveConfig.value) {
+  if (canManageArchiveConfig.value !== true) {
     message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }

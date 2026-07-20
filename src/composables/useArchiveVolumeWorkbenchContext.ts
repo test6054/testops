@@ -24,7 +24,7 @@ export interface ArchiveVolumeSidebarTab {
   badge?: number
 }
 
-/** 侧栏「其他操作」：导出 / 驳回（页签型卷务入口走 setActiveTab） */
+/** 侧栏「其他操作」：导出 / 驳回（收材准备页签走 setActiveTab） */
 export type ArchiveVolumeManageActionKey = 'export' | 'reject'
 
 export interface ArchiveVolumeSidebarManageAction {
@@ -74,7 +74,7 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
   )
   const nextStepActions = computed(() => detail.value?.navigationSummary?.nextStepActions ?? [])
 
-  const manageSidebarTabs = computed((): ArchiveVolumeSidebarTab[] => {
+  const prepareSidebarTabs = computed((): ArchiveVolumeSidebarTab[] => {
     const tabs: ArchiveVolumeSidebarTab[] = [
       {
         key: ArchiveVolumeDetailTabKey.TASK_SETTINGS,
@@ -94,8 +94,7 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
       },
     ]
     const status = detail.value?.volume.volumeStatus
-    const canStart = detail.value?.capabilities?.canStartCollecting === true
-    if (status === ArchiveVolumeStatusCode.DRAFT || canStart) {
+    if (status === ArchiveVolumeStatusCode.DRAFT) {
       tabs.push({
         key: ArchiveVolumeDetailTabKey.START_COLLECTING,
         label: strictEnumLabel(
@@ -109,11 +108,11 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
   })
 
   const sidebarTabs = computed((): ArchiveVolumeSidebarTab[] => {
-    const manageTabs = manageSidebarTabs.value
+    const prepareTabs = prepareSidebarTabs.value
     const chain = navigationChainSteps.value
     if (chain.length) {
       return [
-        ...manageTabs,
+        ...prepareTabs,
         { key: 'ocr-search', label: '卷内检索' },
         ...chain.map((step) => ({
           key: step.tabKey,
@@ -124,19 +123,23 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
       ]
     }
     const sectionTabs = ARCHIVE_VOLUME_DETAIL_SECTION_TABS
-      .filter((item) => !manageTabs.some((tab) => tab.key === item.key))
+      .filter((item) => !prepareTabs.some((tab) => tab.key === item.key))
       .map((item) => ({
         key: item.key,
         label: item.label,
       }))
-    return [...manageTabs, ...sectionTabs]
+    return [...prepareTabs, ...sectionTabs]
   })
 
   function isValidDetailTab(tabKey: string): boolean {
+    // 开始收材：侧栏仅 DRAFT 展示入口；深链在 COLLECTING+ 仍可打开只读完成态
+    if (tabKey === ArchiveVolumeDetailTabKey.START_COLLECTING) {
+      return true
+    }
     if (ARCHIVE_VOLUME_DETAIL_SECTION_TABS.some((item) => item.key === tabKey)) {
       return true
     }
-    if (manageSidebarTabs.value.some((item) => item.key === tabKey)) {
+    if (prepareSidebarTabs.value.some((item) => item.key === tabKey)) {
       return true
     }
     return navigationChainSteps.value.some((step) => step.tabKey === tabKey)
@@ -151,9 +154,18 @@ export function provideArchiveVolumeWorkbenchContext(): ArchiveVolumeWorkbenchCo
     if (options?.preserveUserTab && isValidDetailTab(activeTab.value)) {
       return
     }
+    const status = detail.value?.volume.volumeStatus
+    if (status === ArchiveVolumeStatusCode.DRAFT) {
+      activeTab.value = ArchiveVolumeDetailTabKey.TASK_SETTINGS
+      return
+    }
     const suggested = detail.value?.navigationSummary?.suggestedTabKey
     if (suggested && isValidDetailTab(suggested)) {
       activeTab.value = suggested
+      return
+    }
+    if (status === ArchiveVolumeStatusCode.COLLECTING) {
+      activeTab.value = ArchiveVolumeDetailTabKey.MATERIALS
     }
   }
 

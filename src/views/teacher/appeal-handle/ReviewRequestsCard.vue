@@ -306,8 +306,13 @@ async function handleReviewRequestAction(
   record: GradeReviewRequestItemResponse,
 ): Promise<void> {
   if (key === 'claim') {
+    // MVR-395：与 canClaimReviewRequest / BE PENDING+双人制 二次拦截，禁止仅行动作显隐
     if (!canManageReviewerWrites.value) {
       message.warning('当前账号无复核申请处理权限')
+      return
+    }
+    if (!canClaimReviewRequest(record)) {
+      message.warning('当前申请不可领取（状态已变或申请人本人不可领）')
       return
     }
     if (!record.id || claimingId.value) {

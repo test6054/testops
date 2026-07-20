@@ -8,13 +8,17 @@ import { computed, ref, watch } from 'vue'
 import {
   ArchiveMaterialSubmissionStatusCode,
   ArchiveMaterialTypeDescription,
+  ArchiveScoreSourceDescription,
   ArchiveSecurityLevelDescription,
+  ArchiveVolumeSourceTypeDescription,
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { ArchiveVolumeMemberRoleCode } from '@/types/enums/archive-volume-member-role-enum'
+import { getSemesterDescription } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -32,11 +36,54 @@ const emit = defineEmits<{
   "updated": []
 }>()
 
-const saving = ref(false)
+const savingTitle = ref(false)
+const savingDue = ref(false)
+const titleEditValue = ref('')
 const dueEditValue = ref<string | undefined>()
 const dueReason = ref('')
 
 const volume = computed(() => props.detail.volume)
+const canEditTaskSettings = computed(
+  () => props.canManageCollaborators === true || props.canUpdateArchiveDueTime === true,
+)
+
+const identityRows = computed(() => {
+  const v = volume.value
+  const termParts = [
+    v.academicYear,
+    v.semester ? getSemesterDescription(v.semester) : undefined,
+  ].filter(Boolean)
+  return [
+    { key: 'no', label: '归档编号', value: v.archiveNo || '—' },
+    {
+      key: 'course',
+      label: '课程',
+      value: v.courseName || (v.courseId ? `课程 ${v.courseId}` : '—'),
+    },
+    { key: 'class', label: '教学班', value: v.teachingClassName || '—' },
+    { key: 'term', label: '学年学期', value: termParts.length ? termParts.join(' · ') : '—' },
+    { key: 'dept', label: '院系', value: v.departmentName || '—' },
+    {
+      key: 'source',
+      label: '建卷来源',
+      value: v.sourceType
+        ? strictEnumLabel(ArchiveVolumeSourceTypeDescription, v.sourceType, 'sourceType')
+        : '—',
+    },
+    {
+      key: 'score',
+      label: '成绩来源',
+      value: v.scoreSource
+        ? strictEnumLabel(ArchiveScoreSourceDescription, v.scoreSource, 'scoreSource')
+        : '—',
+    },
+    {
+      key: 'exam',
+      label: '关联考试',
+      value: v.relatedExamName || v.relatedExamNo || (v.examId ? `考试 ${v.examId}` : '未关联'),
+    },
+  ]
+})
 
 const retentionLabel = computed(() => {
   if (volume.value.permanentRetention) return '永久保管'
@@ -50,7 +97,23 @@ const securityLevelLabel = computed(() => {
   return strictEnumLabel(ArchiveSecurityLevelDescription, level, 'securityLevel')
 })
 
+const organizerName = computed(() => {
+  const organizer = (props.detail.collaborators ?? []).find(
+    (m) => m.memberRole === ArchiveVolumeMemberRoleCode.ORGANIZER,
+  )
+  return organizer?.userName || (volume.value.responsibleUserId
+    ? `用户 ${volume.value.responsibleUserId}`
+    : '—')
+})
+
 const materialChecklist = computed(() => props.detail.materials ?? [])
+
+const materialReadyCount = computed(
+  () =>
+    materialChecklist.value.filter(
+      (row) => row.submissionStatus === ArchiveMaterialSubmissionStatusCode.SUBMITTED,
+    ).length,
+)
 
 function materialRowLabel(row: ArchiveVolumeMaterialResponse): string {
   return strictEnumLabel(ArchiveMaterialTypeDescription, row.materialType, 'materialType')
@@ -66,6 +129,14 @@ function materialRowStatus(row: ArchiveVolumeMaterialResponse): string {
 }
 
 watch(
+  () => volume.value.archiveTitle,
+  (title) => {
+    titleEditValue.value = title || ''
+  },
+  { immediate: true },
+)
+
+watch(
   () => volume.value.archiveDueTime,
   (dueTime) => {
     dueReason.value = ''
@@ -74,8 +145,38 @@ watch(
   { immediate: true },
 )
 
+async function saveArchiveTitle(): Promise<void> {
+  if (savingTitle.value) return
+  if (props.canManageCollaborators !== true) {
+    message.warning('当前账号无归档标题维护权限')
+    return
+  }
+  const nextTitle = titleEditValue.value.trim()
+  if (!nextTitle) {
+    showFormValidationMessage('归档标题不能为空')
+    return
+  }
+  if (nextTitle === (volume.value.archiveTitle || '')) {
+    message.info('标题未变更')
+    return
+  }
+  savingTitle.value = true
+  try {
+    await updateArchiveVolumeTaskSettings({
+      volumeId: volume.value.volumeId,
+      archiveTitle: nextTitle,
+    })
+    message.success('归档标题已更新')
+    emit('updated')
+  } catch (error) {
+    showUserError(error, '更新归档标题失败')
+  } finally {
+    savingTitle.value = false
+  }
+}
+
 async function saveArchiveDueTime(): Promise<void> {
-  if (saving.value) return
+  if (savingDue.value) return
   if (props.canUpdateArchiveDueTime !== true) {
     message.warning('当前账号无归档截止维护权限')
     return
@@ -89,7 +190,7 @@ async function saveArchiveDueTime(): Promise<void> {
     showFormValidationMessage('请填写覆盖原因')
     return
   }
-  saving.value = true
+  savingDue.value = true
   try {
     await updateArchiveVolumeTaskSettings({
       volumeId: volume.value.volumeId,
@@ -102,7 +203,7 @@ async function saveArchiveDueTime(): Promise<void> {
   } catch (error) {
     showUserError(error, '更新归档截止失败')
   } finally {
-    saving.value = false
+    savingDue.value = false
   }
 }
 </script>
@@ -112,11 +213,40 @@ async function saveArchiveDueTime(): Promise<void> {
     <header class="av-task-settings__header">
       <h3 class="av-task-settings__title">任务设置</h3>
       <p class="av-task-settings__intro">
-        维护本卷任务级配置。租户模板母版与档案岗位请在「归档配置」中由管理员维护。
+        查看本卷建卷身份与任务参数。收材阶段可修改归档标题与截止；模板、密级与责任人流转不在本页变更。
       </p>
     </header>
 
+    <section class="av-task-settings__block">
+      <h4 class="av-task-settings__heading">卷身份</h4>
+      <div v-if="canManageCollaborators" class="av-task-settings__title-form">
+        <span class="av-task-settings__title-label">归档标题</span>
+        <UiInput
+          size="sm"
+          v-model="titleEditValue"
+          placeholder="归档标题"
+          :maxlength="200"
+        />
+        <UiButton size="sm" variant="primary" :loading="savingTitle" @click="saveArchiveTitle">
+          保存标题
+        </UiButton>
+      </div>
+      <p v-else class="av-task-settings__value">{{ volume.archiveTitle || '—' }}</p>
+      <dl class="av-task-settings__identity">
+        <div v-for="row in identityRows" :key="row.key" class="av-task-settings__identity-row">
+          <dt>{{ row.label }}</dt>
+          <dd>{{ row.value }}</dd>
+        </div>
+      </dl>
+    </section>
+
     <div class="av-task-settings__grid">
+      <section class="av-task-settings__section">
+        <h4 class="av-task-settings__heading">归档责任人</h4>
+        <p class="av-task-settings__value">{{ organizerName }}</p>
+        <p class="av-task-settings__hint">对应卷内 ORGANIZER；更换责任人走主链流转，不可在此删除。</p>
+      </section>
+
       <section class="av-task-settings__section">
         <h4 class="av-task-settings__heading">模板套</h4>
         <p class="av-task-settings__value">{{ volume.templateSetCode || '—' }}</p>
@@ -132,7 +262,10 @@ async function saveArchiveDueTime(): Promise<void> {
       <section class="av-task-settings__section">
         <h4 class="av-task-settings__heading">保管期限</h4>
         <p class="av-task-settings__value">{{ retentionLabel }}</p>
-        <p v-if="volume.templateSetCode" class="av-task-settings__hint">
+        <p v-if="volume.retentionUntil" class="av-task-settings__hint">
+          到期日 {{ volume.retentionUntil }}
+        </p>
+        <p v-else-if="volume.templateSetCode" class="av-task-settings__hint">
           继承自模板套 {{ volume.templateSetCode }}
         </p>
       </section>
@@ -174,21 +307,32 @@ async function saveArchiveDueTime(): Promise<void> {
               placeholder="覆盖原因（必填，写入审计）"
               :maxlength="200"
             />
-            <UiButton size="sm" variant="primary" :loading="saving" @click="saveArchiveDueTime">
+            <UiButton size="sm" variant="primary" :loading="savingDue" @click="saveArchiveDueTime">
               保存截止时刻
             </UiButton>
           </div>
-          <p class="av-task-settings__hint">收材阶段归档责任人可手工覆盖；须晚于当前时刻。</p>
+          <p class="av-task-settings__hint">收材阶段归档责任人可手工覆盖；须晚于当前时刻，原因写入事件流水。</p>
         </template>
         <template v-else>
           <p class="av-task-settings__value">{{ formatDateTime(volume.archiveDueTime) || '—' }}</p>
-          <p class="av-task-settings__hint">按租户归档时限策略计算；收材完成后不可再改。</p>
+          <p class="av-task-settings__hint">
+            {{
+              canEditTaskSettings
+                ? '按租户归档时限策略计算。'
+                : '按租户归档时限策略计算；收材完成后不可再改。'
+            }}
+          </p>
         </template>
       </section>
 
       <section class="av-task-settings__section av-task-settings__section--wide">
         <div class="av-task-settings__heading-row">
-          <h4 class="av-task-settings__heading">材料清单（只读）</h4>
+          <h4 class="av-task-settings__heading">
+            材料清单（只读）
+            <span class="av-task-settings__count">
+              {{ materialReadyCount }}/{{ materialChecklist.length }} 已登记
+            </span>
+          </h4>
           <UiButton size="sm" variant="ghost" @click="emit('open-materials')">去登记材料</UiButton>
         </div>
         <ul v-if="materialChecklist.length > 0" class="av-task-settings__material-list">
@@ -213,7 +357,7 @@ async function saveArchiveDueTime(): Promise<void> {
   flex-direction: column;
   gap: var(--dp-space-4);
   padding: var(--dp-space-4);
-  max-width: 820px;
+  max-width: 920px;
 }
 
 .av-task-settings__header {
@@ -236,7 +380,59 @@ async function saveArchiveDueTime(): Promise<void> {
   font-size: 13px;
   line-height: 1.5;
   color: var(--dp-text-secondary);
-  max-width: 65ch;
+  max-width: 72ch;
+}
+
+.av-task-settings__block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-3);
+  padding: var(--dp-space-3);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--dp-radius-control, 6px);
+  background: var(--dp-surface-subtle, var(--dp-bg-layout));
+}
+
+.av-task-settings__title-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-2);
+  max-width: 560px;
+}
+
+.av-task-settings__title-label {
+  flex: 0 0 72px;
+  font-size: 13px;
+  color: var(--dp-text-muted);
+}
+
+.av-task-settings__identity {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2px;
+}
+
+.av-task-settings__identity-row {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: var(--dp-space-2);
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--dp-surface);
+  font-size: 13px;
+
+  dt {
+    margin: 0;
+    color: var(--dp-text-muted);
+  }
+
+  dd {
+    margin: 0;
+    color: var(--dp-text-primary);
+    word-break: break-word;
+  }
 }
 
 .av-task-settings__grid {
@@ -268,9 +464,20 @@ async function saveArchiveDueTime(): Promise<void> {
 
 .av-task-settings__heading {
   margin: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
   font-size: 13px;
   font-weight: 600;
   color: var(--dp-text-primary);
+}
+
+.av-task-settings__count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dp-text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .av-task-settings__value {

@@ -101,8 +101,12 @@ const handleOk = () => {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
-  background: var(--dp-surface);
+  padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+  background: linear-gradient(
+    180deg,
+    var(--dp-surface-elevated) 0%,
+    var(--dp-surface) 100%
+  );
   border-bottom: 1px solid var(--dp-border);
 }
 
@@ -114,7 +118,8 @@ const handleOk = () => {
 .ui-dialog__title {
   margin: 0;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--dp-text-primary);
 }
 
@@ -125,29 +130,36 @@ const handleOk = () => {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: var(--dp-radius-control-inner);
+  border-radius: var(--dp-radius-full, 999px);
   background: transparent;
   color: var(--dp-text-secondary);
   cursor: pointer;
   transition:
     background-color 0.15s ease,
-    color 0.15s ease;
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .ui-dialog__close:hover {
   background: var(--dp-bg-control);
   color: var(--dp-text-primary);
+  transform: scale(1.05);
+}
+
+.ui-dialog__close:active {
+  transform: scale(0.95);
 }
 
 .ui-dialog__body {
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-4, 16px);
+  padding: var(--dp-space-4, 16px);
 }
 
 .ui-dialog__footer {
   display: flex;
   justify-content: flex-end;
   gap: var(--dp-space-2, 8px);
-  padding: 0 var(--dp-space-4, 16px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-4, 16px);
+  border-top: 1px solid color-mix(in srgb, var(--dp-border) 60%, transparent);
 }
 </style>
 
@@ -155,10 +167,12 @@ const handleOk = () => {
 .ui-dialog-wrap {
   .ant-modal-content {
     padding: 0 !important;
-    border-radius: var(--dp-radius-overlay) !important;
+    border-radius: calc(var(--dp-radius-overlay) + 4px) !important;
     overflow: hidden !important;
-    box-shadow: var(--dp-shadow-modal) !important;
-    border: 1px solid var(--dp-border);
+    box-shadow:
+      0 8px 32px color-mix(in srgb, var(--dp-text-primary) 12%, transparent),
+      0 2px 8px color-mix(in srgb, var(--dp-text-primary) 8%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--dp-border) 80%, transparent);
   }
 
   .ant-modal-close {
@@ -170,7 +184,8 @@ const handleOk = () => {
   }
 
   .ant-modal-mask {
-    background-color: color-mix(in srgb, var(--dp-text-primary) 40%, transparent);
+    background-color: color-mix(in srgb, var(--dp-text-primary) 35%, transparent);
+    backdrop-filter: blur(4px);
   }
 }
 </style>

@@ -177,11 +177,20 @@ const sideStyle = computed(() => ({
   flex-direction: column;
   gap: var(--dp-space-3, 12px);
   min-width: 0;
-  padding: var(--dp-space-3, 12px);
+  padding: var(--dp-space-4, 16px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
-  box-shadow: var(--dp-shadow-card);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--dp-text-primary) 4%, transparent),
+    0 2px 8px color-mix(in srgb, var(--dp-text-primary) 5%, transparent);
+  transition: box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.ui-statistic-chart-card:hover {
+  box-shadow:
+    0 2px 4px color-mix(in srgb, var(--dp-text-primary) 5%, transparent),
+    0 4px 16px color-mix(in srgb, var(--dp-text-primary) 7%, transparent);
 }
 
 .ui-statistic-chart-card--compact {
@@ -206,6 +215,7 @@ const sideStyle = computed(() => ({
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface-subtle);
+  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--dp-text-primary) 3%, transparent);
 }
 
 .ui-statistic-chart-card__side {
@@ -223,10 +233,18 @@ const sideStyle = computed(() => ({
 .ui-statistic-chart-card__stat {
   display: grid;
   gap: var(--dp-space-1, 4px);
-  padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px);
+  padding: var(--dp-space-3, 12px);
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-panel);
   background: var(--dp-surface);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.ui-statistic-chart-card__stat:hover {
+  border-color: color-mix(in srgb, var(--dp-color-primary) 30%, var(--dp-border));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--dp-color-primary) 6%, transparent);
 }
 
 .ui-statistic-chart-card__stat-head {
@@ -241,40 +259,48 @@ const sideStyle = computed(() => ({
   height: 8px;
   flex-shrink: 0;
   border-radius: 999px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 12%, transparent);
 }
 
 .ui-statistic-chart-card__stat-dot--gray {
   background: var(--dp-text-muted);
+  color: var(--dp-text-muted);
 }
 
 .ui-statistic-chart-card__stat-dot--blue {
   background: var(--dp-blue-500);
+  color: var(--dp-blue-500);
 }
 
 .ui-statistic-chart-card__stat-dot--green {
   background: var(--dp-green-600);
+  color: var(--dp-green-600);
 }
 
 .ui-statistic-chart-card__stat-dot--orange {
   background: var(--dp-orange-600);
+  color: var(--dp-orange-600);
 }
 
 .ui-statistic-chart-card__stat-dot--red {
   background: var(--dp-red-600);
+  color: var(--dp-red-600);
 }
 
 .ui-statistic-chart-card__stat-dot--yellow {
   background: var(--dp-orange-600);
+  color: var(--dp-orange-600);
 }
 
 .ui-statistic-chart-card__stat-dot--purple {
   background: var(--dp-purple-500);
+  color: var(--dp-purple-500);
 }
 
 .ui-statistic-chart-card__stat-label {
   min-width: 0;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--dp-text-secondary);
 }
 
@@ -286,15 +312,17 @@ const sideStyle = computed(() => ({
 }
 
 .ui-statistic-chart-card__stat-value {
-  font-size: 20px;
+  font-size: 22px;
   line-height: 1.15;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--dp-text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
 .ui-statistic-chart-card__stat-unit {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--dp-text-muted);
 }
 
@@ -308,7 +336,16 @@ const sideStyle = computed(() => ({
 
 .ui-statistic-chart-card__footer {
   padding-top: 14px;
-  border-top: 1px solid var(--dp-border);
+  border-top: none;
+  background-image: linear-gradient(
+    90deg,
+    var(--dp-border) 0%,
+    var(--dp-border) 50%,
+    transparent 100%
+  );
+  background-size: 100% 1px;
+  background-position: 0 0;
+  background-repeat: no-repeat;
 }
 
 @media (max-width: 1080px) {
@@ -318,6 +355,13 @@ const sideStyle = computed(() => ({
 
   .ui-statistic-chart-card__side {
     width: 100% !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-statistic-chart-card,
+  .ui-statistic-chart-card__stat {
+    transition: none;
   }
 }
 </style>

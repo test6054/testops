@@ -66,7 +66,16 @@ const props = withDefaults(defineProps<{
 
 .ui-panel-header--divided {
   padding-bottom: var(--dp-space-3, 10px);
-  border-bottom: 1px solid var(--dp-border);
+  border-bottom: none;
+  background-image: linear-gradient(
+    90deg,
+    var(--dp-border) 0%,
+    var(--dp-border) 50%,
+    transparent 100%
+  );
+  background-size: 100% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
 }
 
 .ui-panel-header--compact {
@@ -74,12 +83,24 @@ const props = withDefaults(defineProps<{
 }
 
 .ui-panel-header__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--dp-blue-700);
+  color: var(--dp-blue-600);
+}
+
+.ui-panel-header__eyebrow::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--dp-blue-500);
+  flex-shrink: 0;
 }
 
 .ui-panel-header__row {
@@ -104,8 +125,9 @@ const props = withDefaults(defineProps<{
 .ui-panel-header__title {
   margin: 0;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.4;
+  letter-spacing: -0.01em;
   color: var(--dp-text-primary);
 }
 
@@ -118,7 +140,7 @@ const props = withDefaults(defineProps<{
 
 .ui-panel-header__description {
   margin: var(--dp-space-2, 8px) 0 0;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.7;
   color: var(--dp-text-secondary);
 }

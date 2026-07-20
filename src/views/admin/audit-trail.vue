@@ -499,13 +499,14 @@ function handleLogPageChange(pageInfo: { current: number, pageSize: number }) {
 // ─── 重大事件 ──────────────────────────────────
 const incidentLoading = ref(false)
 const incidents = ref<ExamIncidentRecord[]>([])
-/** MVR-288：默认拒绝假可写；详情/列表能力位同源 hasExamReviewerWritePermission */
-const canManageReviewerWrites = computed(() => {
-  if (selectedExam.value?.canManageReviewerWrites === true) {
-    return true
-  }
-  return incidents.value.some(item => item.canManageReviewerWrites === true)
-})
+/**
+ * MVR-288/393：默认拒绝假可写。
+ * 列表写入口仅认行级 record.canManageReviewerWrites===true（BE hasExamReviewerWritePermission 投影）；
+ * 禁止用「任意一行 true / 考试级 true」抬高整表解决按钮。
+ */
+function canResolveIncident(record: ExamIncidentRecord): boolean {
+  return record.canManageReviewerWrites === true && record.resolved !== true
+}
 const incidentFilter = reactive({ unresolvedOnly: false })
 const incidentPagination = reactive<TablePaginationConfig>({
   current: 1,
@@ -588,7 +589,8 @@ const resolvingIncident = ref<ExamIncidentRecord | null>(null)
 const resolveNote = ref('')
 
 function buildIncidentActions(record: ExamIncidentRecord): UiTableRowActionItem[] {
-  if (!canManageReviewerWrites.value) {
+  // MVR-393：行级 can* 叠闸；已解决不展示
+  if (canResolveIncident(record) !== true) {
     return []
   }
   return [
@@ -596,7 +598,6 @@ function buildIncidentActions(record: ExamIncidentRecord): UiTableRowActionItem[
       key: 'resolve',
       label: '解决事件',
       tone: 'primary',
-      hidden: record.resolved,
     },
   ]
 }
@@ -608,7 +609,8 @@ function handleIncidentAction(key: string, record: ExamIncidentRecord): void {
 }
 
 function openResolveModal(incident: ExamIncidentRecord) {
-  if (!canManageReviewerWrites.value) {
+  // MVR-393：打开/提交仅认行级 canManageReviewerWrites===true 且未解决
+  if (canResolveIncident(incident) !== true) {
     message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
     return
   }
@@ -619,7 +621,7 @@ function openResolveModal(incident: ExamIncidentRecord) {
 
 async function submitResolve() {
   if (resolving.value || !resolvingIncident.value) return
-  if (!canManageReviewerWrites.value) {
+  if (canResolveIncident(resolvingIncident.value) !== true) {
     message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
     return
   }

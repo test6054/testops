@@ -1539,6 +1539,12 @@ function goDetailWithTab(volumeId: string, tab?: string) {
 }
 
 function openDeptReviewDrawer(volumeId: string) {
+  // MVR-391：打开院系审核抽屉与行级 canApproveDepartmentReview 二次拦截
+  const row = volumes.value.find((item) => item.volumeId === volumeId)
+  if (row?.canApproveDepartmentReview !== true) {
+    message.warning('当前账号不可进行院系审核')
+    return
+  }
   deptReviewVolumeId.value = volumeId
   deptReviewDrawerOpen.value = true
 }

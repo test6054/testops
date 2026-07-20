@@ -113,7 +113,7 @@ const handleOk = () => {
   align-items: center;
   justify-content: space-between;
   gap: var(--dp-space-2, 8px);
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) 0;
+  padding: var(--dp-space-4, 16px) var(--dp-space-4, 16px) 0;
 }
 
 .ui-drawer__header--close-only {
@@ -133,7 +133,8 @@ const handleOk = () => {
 .ui-drawer__title {
   margin: 0;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--dp-text-primary);
 }
 
@@ -144,21 +145,29 @@ const handleOk = () => {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: var(--dp-radius-control-inner);
+  border-radius: var(--dp-radius-full, 999px);
   background: transparent;
   color: var(--dp-text-secondary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .ui-drawer__close:hover {
   background: var(--dp-gray-100);
   color: var(--dp-text-primary);
+  transform: scale(1.05);
+}
+
+.ui-drawer__close:active {
+  transform: scale(0.95);
 }
 
 .ui-drawer__body {
   flex: 1;
-  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-4, 16px);
+  padding: var(--dp-space-4, 16px);
 }
 
 .ui-drawer__header--close-only + .ui-drawer__body {
@@ -169,8 +178,8 @@ const handleOk = () => {
   display: flex;
   justify-content: flex-end;
   gap: var(--dp-space-2, 8px);
-  padding: 10px var(--dp-space-4, 16px) var(--dp-space-3, 12px);
-  border-top: 1px solid var(--dp-border);
+  padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px) var(--dp-space-4, 16px);
+  border-top: 1px solid color-mix(in srgb, var(--dp-border) 60%, transparent);
 }
 </style>
 
@@ -180,10 +189,18 @@ const handleOk = () => {
 
   .ant-drawer-content {
     background: var(--dp-surface) !important;
+    box-shadow:
+      -8px 0 32px color-mix(in srgb, var(--dp-text-primary) 8%, transparent),
+      -2px 0 8px color-mix(in srgb, var(--dp-text-primary) 5%, transparent) !important;
   }
 
   .ant-drawer-body {
     padding: 0 !important;
+  }
+
+  .ant-drawer-mask {
+    background-color: color-mix(in srgb, var(--dp-text-primary) 30%, transparent) !important;
+    backdrop-filter: blur(3px);
   }
 
   &.ant-drawer-right > .ant-drawer-content-wrapper {
@@ -211,7 +228,7 @@ const handleOk = () => {
     &.ant-drawer-panel-motion-right-appear-active {
       transform: none !important;
       clip-path: inset(0 0 0 0);
-      transition: clip-path 0.3s ease !important;
+      transition: clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
   }
 
@@ -222,7 +239,7 @@ const handleOk = () => {
     &.ant-drawer-panel-motion-right-leave-active {
       transform: none !important;
       clip-path: inset(0 0 0 100%);
-      transition: clip-path 0.3s ease !important;
+      transition: clip-path 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
   }
 

@@ -33,7 +33,7 @@
             size="sm"
             :disabled="!canCreateSession"
             :title="sessionCreateWorkflow.disabledTooltip"
-            @click="createDialogOpen = true"
+            @click="openCreateDialog"
           >
             创建试评
           </UiButton>
@@ -82,6 +82,7 @@
       :pagination="sessionPagination"
       :loading="sessionsLoading"
       :can-manage="canManageOrganization"
+      :can-close-marking-sessions="canCloseMarkingSessions"
       :create-blocked="canManageOrganization && sessionCreateReadinessLoaded && !canCreateSession"
       :prerequisite-empty="sessionCreateWorkflow.emptyState"
       @search="applySessionFilter"
@@ -107,7 +108,7 @@
       v-model:open="lifecycleModalOpen"
       :action="lifecycleAction"
       :session-id="lifecycleSessionId"
-      :can-manage="canManageOrganization"
+      :can-manage="lifecycleModalCanManage"
       @success="onTrialSessionsChanged"
     />
   </StageWorkbenchShell>
@@ -115,7 +116,8 @@
 
 <script lang="ts" setup>
 import type { LifecycleAction } from './components/SessionLifecycleReasonModal.vue'
-import { ref } from 'vue'
+import message from 'ant-design-vue/es/message'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   MARKING_ORGANIZATION_STATUS_TONE,
@@ -163,8 +165,10 @@ const {
   sessionCreateReadinessLoadFailed,
   sessionCreateWorkflow,
   canManageOrganization,
+  canCloseMarkingSessions,
   signalMetrics,
   guardOrganizationOwnerAction,
+  guardCloseMarkingSessionAction,
   sessionPagination,
   sessionFilterModel,
   applySessionFilter,
@@ -174,12 +178,37 @@ const {
 } = useMarkingOrgSessionWorkspace('trial')
 
 const createDialogOpen = ref(false)
+
+/** MVR-397：创建试评打开前叠主考∧canCreateSession，禁止仅靠按钮 disabled */
+function openCreateDialog(): void {
+  if (!guardOrganizationOwnerAction()) {
+    return
+  }
+  if (canCreateSession.value !== true) {
+    message.warning(sessionCreateWorkflow.value.disabledTooltip || `当前不可创建试评会话`)
+    return
+  }
+  createDialogOpen.value = true
+}
+
 const lifecycleModalOpen = ref(false)
 const lifecycleAction = ref<LifecycleAction | null>(null)
 const lifecycleSessionId = ref('')
 
+/** MVR-398：关闭动作认 canCloseMarkingSessions；其它写认 canManageOrganization */
+const lifecycleModalCanManage = computed(() => {
+  if (lifecycleAction.value === 'closeFormal' || lifecycleAction.value === 'closeTrial') {
+    return canCloseMarkingSessions.value === true
+  }
+  return canManageOrganization.value === true
+})
+
 function openLifecycleModal(action: LifecycleAction, sessionId: string): void {
-  if (!guardOrganizationOwnerAction()) {
+  if (action === 'closeFormal' || action === 'closeTrial') {
+    if (!guardCloseMarkingSessionAction()) {
+      return
+    }
+  } else if (!guardOrganizationOwnerAction()) {
     return
   }
   lifecycleAction.value = action

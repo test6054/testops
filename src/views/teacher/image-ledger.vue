@@ -207,7 +207,9 @@ const resolveOpen = ref(false)
 const resolveTarget = ref<ExamPaperDuplicateResolutionVO | null>(null)
 
 function openResolve(record: ExamPaperDuplicateResolutionVO): void {
-  if (!canManageOwnerLedgerWrites.value) {
+  // MVR-391：打开处置弹窗仅认 canManageOwnerLedgerWrites===true
+  if (canManageOwnerLedgerWrites.value !== true) {
+    message.warning('仅本场主考可处置重复影像')
     return
   }
   resolveTarget.value = record

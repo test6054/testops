@@ -141,6 +141,8 @@ const props = defineProps<{
   pagination: SessionPaginationState
   loading?: boolean
   canManage: boolean
+  /** MVR-398：关闭试评仅主考、不叠 ACTIVE */
+  canCloseMarkingSessions?: boolean
   createBlocked?: boolean
   prerequisiteEmpty?: WorkflowPrerequisiteEmptyViewModel
 }>()
@@ -286,8 +288,9 @@ function canCalibrate(status: TrialSessionStatusCode): boolean {
 }
 
 function canClose(status: TrialSessionStatusCode): boolean {
+  // MVR-398：关闭试评认 canCloseMarkingSessions（主考，不叠 ACTIVE）
   return (
-    props.canManage === true
+    props.canCloseMarkingSessions === true
     && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
       || status === TrialSessionStatusCode.TRIAL_SUBMITTED
       || status === TrialSessionStatusCode.CALIBRATED)
@@ -387,10 +390,19 @@ async function handleSessionRowAction(key: string, record: TrialSessionResponse)
     return
   }
   if (key === 'close') {
+    // MVR-398：关闭试评打开闸认 canCloseMarkingSessions，关考后仍可收口
+    if (props.canCloseMarkingSessions !== true) {
+      showFormValidationMessage('仅考试主考老师可关闭试评会话')
+      return
+    }
     emit('open-lifecycle', 'closeTrial', record.id)
     return
   }
   if (key === 'delete') {
+    // MVR-397：删除确认前叠主考闸
+    if (!guardManageAction()) {
+      return
+    }
     if (
       !(await confirmAsync({
         content: '确认删除该试评会话？试评草稿将被软删除，不可恢复。',

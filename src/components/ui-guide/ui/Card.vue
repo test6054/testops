@@ -72,11 +72,13 @@ const hasHeader = computed(
   background-color: var(--dp-surface);
   border: 1px solid var(--dp-card-border);
   border-radius: var(--dp-radius-panel);
-  /* 列表/区块默认轻阴影；浮层级 --dp-shadow-card 仅 hoverable 或浮层使用 */
-  box-shadow: var(--dp-shadow-sm);
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--dp-text-primary) 4%, transparent),
+    0 1px 3px color-mix(in srgb, var(--dp-text-primary) 6%, transparent);
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -86,12 +88,25 @@ const hasHeader = computed(
 }
 
 .dp-card--hoverable {
-  box-shadow: var(--dp-shadow-card);
+  cursor: pointer;
+  box-shadow:
+    0 1px 3px color-mix(in srgb, var(--dp-text-primary) 5%, transparent),
+    0 4px 12px color-mix(in srgb, var(--dp-text-primary) 7%, transparent);
 }
 
 .dp-card--hoverable:hover {
   border-color: var(--dp-color-primary-border, var(--dp-blue-200));
-  box-shadow: var(--dp-shadow-card-hover);
+  box-shadow:
+    0 4px 8px color-mix(in srgb, var(--dp-color-primary) 8%, transparent),
+    0 8px 24px color-mix(in srgb, var(--dp-text-primary) 10%, transparent);
+  transform: translateY(-2px);
+}
+
+.dp-card--hoverable:active {
+  transform: translateY(0);
+  box-shadow:
+    0 1px 3px color-mix(in srgb, var(--dp-text-primary) 5%, transparent),
+    0 4px 12px color-mix(in srgb, var(--dp-text-primary) 7%, transparent);
 }
 
 .dp-card__header {
@@ -101,7 +116,11 @@ const hasHeader = computed(
   gap: var(--dp-space-3, 12px);
   padding: var(--dp-space-3, 12px) var(--dp-space-4, 16px);
   border-bottom: 1px solid var(--dp-border);
-  background: var(--dp-surface-elevated);
+  background: linear-gradient(
+    180deg,
+    var(--dp-surface-elevated) 0%,
+    color-mix(in srgb, var(--dp-surface-elevated) 60%, var(--dp-surface)) 100%
+  );
 }
 
 .dp-card__title {
@@ -146,5 +165,16 @@ const hasHeader = computed(
 .dp-card--compact .dp-card__body,
 .dp-card--compact .dp-card__body--no-header {
   padding: var(--dp-space-3, 12px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dp-card,
+  .dp-card--hoverable {
+    transition: none;
+  }
+
+  .dp-card--hoverable:hover {
+    transform: none;
+  }
 }
 </style>
