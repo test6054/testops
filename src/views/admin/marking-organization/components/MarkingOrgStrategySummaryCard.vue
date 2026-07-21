@@ -3,7 +3,7 @@
     <template #head>
       <div class="org-strategy__head">
         <h3 class="org-strategy__title">分配策略</h3>
-        <UiButton v-if="canManage" variant="outline" size="sm" @click="emit('edit-policy')">
+        <UiButton v-if="canManage === true" variant="outline" size="sm" @click="emit('edit-policy')">
           编辑策略
         </UiButton>
       </div>

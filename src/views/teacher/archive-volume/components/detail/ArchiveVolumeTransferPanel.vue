@@ -183,14 +183,14 @@ function isTransferSubmitterSelf(): boolean {
 
 const canApproveTransferAction = computed(
   () =>
-    Boolean(props.canReviewTransfer)
+    (props.canReviewTransfer === true)
     && props.detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
     && !isTransferSubmitterSelf(),
 )
 
 const canRejectTransferAction = computed(
   () =>
-    Boolean(props.canRejectTransfer)
+    (props.canRejectTransfer === true)
     && props.detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
     && !isTransferSubmitterSelf(),
 )

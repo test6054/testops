@@ -70,8 +70,7 @@ const columns: ColumnsType<ArchiveScanBatchSnapshotItemVO> = [
 ]
 
 const rowSelection = computed(() =>
-  props.canReview
-    ? {
+  props.canReview === true ? {
         selectedRowKeys: selectedRowKeys.value,
         onChange: (keys: Key[]) => {
           selectedRowKeys.value = keys.map(String)
@@ -109,7 +108,7 @@ async function loadRows() {
 
 function openBatchAction(action: 'confirm-normal' | 'discard') {
   // MVR-305：与 canReview 同源二次拦截
-  if (!props.canReview) {
+  if (props.canReview !== true) {
     void message.warning('当前账号无扫描批次复核权限')
     return
   }
@@ -127,7 +126,7 @@ async function submitBatchAction() {
     return
   }
   // MVR-305：与 canReview 同源二次拦截
-  if (!props.canReview) {
+  if (props.canReview !== true) {
     void message.warning('当前账号无扫描批次复核权限')
     return
   }

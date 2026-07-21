@@ -521,7 +521,7 @@ const superviseForm = reactive({
 
 const canRequestAppraisal = computed(() => {
   const vol = props.detail.volume
-  if (!props.canManageAppraisal) return false
+  if (props.canManageAppraisal !== true) return false
   const status = vol.appraisalStatus
   if (!(
     status === ArchiveAppraisalStatusCode.NOT_DUE
@@ -564,9 +564,7 @@ const canRequestDestruction = computed(
 )
 
 const canApproveDestructionAction = computed(() => {
-  if (
-    !props.canApproveDestruction
-    || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.REQUESTED
+  if (props.canApproveDestruction !== true || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.REQUESTED
   ) {
     return false
   }
@@ -587,9 +585,7 @@ const canExecuteDestruction = computed(
 
 /** MVR-199：与 BE assertDestructionWitnessSeparated 同源，申请/审批/执行人不可见监销确认 */
 const canSuperviseDestruction = computed(() => {
-  if (
-    !props.canApproveDestruction
-    || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.EXECUTED
+  if (props.canApproveDestruction !== true || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.EXECUTED
     || !props.detail.destructionExecutionUserId
     || !props.currentUserId
   ) {

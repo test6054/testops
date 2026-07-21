@@ -75,7 +75,7 @@ function handleCancel(): void {
 
 function handleOk(): void {
   // MVR-376：弹窗二次闸，禁止仅靠父层隐藏入口
-  if (!props.canManageOwnerBatchActions) {
+  if (props.canManageOwnerBatchActions !== true) {
     showFormValidationMessage('当前账号无主考扫描写权限，无法废弃批次')
     return
   }

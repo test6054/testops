@@ -316,7 +316,7 @@ async function submitUpdateSecurityLevel() {
 
 async function runFourPropertyCheck() {
   // MVR-347：与 canRunFourProperty 同源二次拦截
-  if (!props.canRunFourProperty) {
+  if (props.canRunFourProperty !== true) {
     void message.warning('当前账号或卷状态不可执行四性检测')
     return
   }

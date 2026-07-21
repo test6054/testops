@@ -135,11 +135,11 @@ const identityLocked = computed(
     volume.value.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING
     || Boolean(volume.value.examId),
 )
-const canEdit = computed(() => props.canManageCollaborators)
+const canEdit = computed(() => props.canManageCollaborators === true)
 const canEditTemplate = computed(
   () => canEdit.value && volume.value.volumeStatus === ArchiveVolumeStatusCode.DRAFT,
 )
-const canEditDue = computed(() => props.canUpdateArchiveDueTime)
+const canEditDue = computed(() => props.canUpdateArchiveDueTime === true)
 
 const academicYearStartOptions = generateAcademicYearStartOptions().map((year) => ({
   value: year,

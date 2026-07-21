@@ -301,7 +301,7 @@ function integrityStatusTone(
 
 function openDelayAllowModal(item: ArchiveIntegrityMissingItemVO) {
   // MVR-348：与 canAllowMaterialDelay 同源二次拦截
-  if (!props.canAllowMaterialDelay) {
+  if (props.canAllowMaterialDelay !== true) {
     void message.warning('当前账号无延迟补交登记权限')
     return
   }
@@ -316,7 +316,7 @@ async function submitDelayAllow() {
   if (delayAllowSubmitting.value) {
     return
   }
-  if (!props.canAllowMaterialDelay) {
+  if (props.canAllowMaterialDelay !== true) {
     void message.warning('当前账号无延迟补交登记权限')
     return
   }
@@ -355,7 +355,7 @@ async function submitDelayAllow() {
 
 function openWaiveMissingModal(item: ArchiveIntegrityMissingItemVO) {
   // MVR-348：与 canWaiveMaterialMissing 同源二次拦截
-  if (!props.canWaiveMaterialMissing) {
+  if (props.canWaiveMaterialMissing !== true) {
     void message.warning('当前账号无材料缺失豁免权限')
     return
   }
@@ -368,7 +368,7 @@ async function submitWaiveMissing() {
   if (waiveMissingSubmitting.value) {
     return
   }
-  if (!props.canWaiveMaterialMissing) {
+  if (props.canWaiveMaterialMissing !== true) {
     void message.warning('当前账号无材料缺失豁免权限')
     return
   }
@@ -397,7 +397,7 @@ async function submitWaiveMissing() {
 
 function openWaiveIntegrityModal() {
   // MVR-348：与 canWaiveIntegrity 同源二次拦截
-  if (!props.canWaiveIntegrity) {
+  if (props.canWaiveIntegrity !== true) {
     void message.warning('当前账号无完整性豁免权限')
     return
   }
@@ -409,7 +409,7 @@ async function submitWaiveIntegrity() {
   if (waivingIntegrity.value) {
     return
   }
-  if (!props.canWaiveIntegrity) {
+  if (props.canWaiveIntegrity !== true) {
     void message.warning('当前账号无完整性豁免权限')
     return
   }

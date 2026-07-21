@@ -94,7 +94,7 @@ async function handleOk(): Promise<void> {
     return
   }
   // MVR-372：写 handler 二次拦截；父页仅隐藏入口不能替代
-  if (!props.canManageOwnerLedgerWrites) {
+  if (props.canManageOwnerLedgerWrites !== true) {
     void message.warning('仅考试主考可处置重复影像')
     return
   }

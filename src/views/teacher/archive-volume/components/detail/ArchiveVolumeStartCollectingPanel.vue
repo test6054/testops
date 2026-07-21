@@ -74,7 +74,7 @@ const dueReason = ref('')
 const volume = computed(() => props.detail.volume)
 const collaborators = computed(() => props.detail.collaborators ?? [])
 const isDraft = computed(() => volume.value.volumeStatus === ArchiveVolumeStatusCode.DRAFT)
-const canEditSettings = computed(() => isDraft.value && props.canManageCollaborators)
+const canEditSettings = computed(() => isDraft.value && props.canManageCollaborator === trues === true)
 
 const readinessRows = computed((): ArchiveVolumeStartCollectingCheckItem[] => {
   return precheck.value?.items ?? []
@@ -90,7 +90,7 @@ const readyCount = computed(() => readinessRows.value.filter((row) => row.ready)
 const canCommit = computed(
   () =>
     isDraft.value
-    && props.canStartCollecting
+    && props.canStartCollecting === true
     && precheck.value?.canStart === true
     && blockingCount.value === 0
     && !precheckError.value,
@@ -251,7 +251,7 @@ function syncEditorsFromVolume(): void {
 }
 
 async function loadTemplateSets(): Promise<void> {
-  if (!isDraft.value || !props.canManageCollaborators) {
+  if (!isDraft.value || props.canManageCollaborators !== true) {
     templateSets.value = []
     return
   }
@@ -328,7 +328,7 @@ function onCheckItemActivate(row: ArchiveVolumeStartCollectingCheckItem): void {
 
 async function saveTaskSettings(): Promise<void> {
   if (savingSettings.value || !canEditSettings.value) return
-  if (!props.canManageCollaborators) {
+  if (props.canManageCollaborators !== true) {
     void message.warning('当前账号无任务设置维护权限')
     return
   }
@@ -411,7 +411,7 @@ async function saveTaskSettings(): Promise<void> {
 
 async function handleStart(): Promise<void> {
   if (starting.value) return
-  if (!props.canStartCollecting) {
+  if (props.canStartCollecting !== true) {
     void message.warning('当前账号无开始收材权限')
     return
   }

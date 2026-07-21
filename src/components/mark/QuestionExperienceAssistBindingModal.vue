@@ -114,7 +114,7 @@ async function loadCandidates(): Promise<void> {
 async function handleSave(): Promise<void> {
   if (!props.examId || !props.layoutQuestionId || saving.value) return
   // MVR-372：写 handler 二次拦截；策略页仅隐藏入口不能替代
-  if (!props.canManageReviewerWrites) {
+  if (props.canManageReviewerWrites !== true) {
     void message.warning('仅本场阅卷组织成员或主考可绑定定标经验')
     return
   }

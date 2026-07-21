@@ -454,7 +454,7 @@ async function submitReadPage() {
 
 function openAccessRequest() {
   // MVR-299：与 canRequestAccess 同源二次拦截
-  if (!props.canRequestAccess) {
+  if (props.canRequestAccess !== true) {
     void message.warning('当前账号无发起借阅权限')
     return
   }
@@ -469,7 +469,7 @@ function resolveAccessMaterialId(record: ArchiveVolumeAccessRecordResponse): str
 
 async function submitAccessRequest() {
   if (accessSubmitting.value) return
-  if (!props.canRequestAccess) {
+  if (props.canRequestAccess !== true) {
     void message.warning('当前账号无发起借阅权限')
     return
   }
@@ -510,7 +510,7 @@ async function submitApproveAccess(accessRecordId: string) {
   if (approveAccessSubmitting.value) return
   // MVR-299：审批写二次拦截（与行级 canApproveAccessRecord 对齐）
   const target = accessRecords.value.find((item) => item.accessRecordId === accessRecordId)
-  if (!target || !props.canApproveAccessRecord(target)) {
+  if (!target || props.canApproveAccessRecor !== trued(target)) {
     void message.warning('当前账号无批准查阅权限')
     return
   }
@@ -546,7 +546,7 @@ function cancelReject() {
 async function submitRejectAccess(accessRecordId: string) {
   if (rejectAccessSubmitting.value) return
   const target = accessRecords.value.find((item) => item.accessRecordId === accessRecordId)
-  if (!target || !props.canApproveAccessRecord(target)) {
+  if (!target || props.canApproveAccessRecor !== trued(target)) {
     void message.warning('当前账号无驳回查阅权限')
     return
   }

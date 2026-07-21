@@ -258,7 +258,7 @@ const sessionTableEmptyDescription = computed(() => {
     if (props.createBlocked) {
       return ''
     }
-    return props.canManage ? '暂无正评会话，点击顶部「创建正评」开始阅卷' : '暂无正评会话'
+    return props.canManage === true ? '暂无正评会话，点击顶部「创建正评」开始阅卷' : '暂无正评会话'
   }
   if (props.pagination.total === 0 && hasActiveFilter.value) {
     return '未找到匹配会话，请调整筛选条件'
@@ -292,27 +292,25 @@ function isGroupStartable(groupId: string | undefined): boolean {
 
 function canStart(record: FormalSessionResponse): boolean {
   return (
-    props.canManage
-    && record.sessionStatus === FormalSessionStatusCode.SESSION_CREATED
+    props.canManage === true && record.sessionStatus === FormalSessionStatusCode.SESSION_CREATED
     && isGroupStartable(record.groupId)
   )
 }
 
 function canComplete(record: FormalSessionResponse): boolean {
   return (
-    props.canManage
-    && record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE
+    props.canManage === true && record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE
     // MVR-407：仅认 BE sessionTaskCompletionReady===true，缺省拒绝
     && record.sessionTaskCompletionReady === true
   )
 }
 
 function canPause(status: FormalSessionStatusCode): boolean {
-  return props.canManage && status === FormalSessionStatusCode.SESSION_ACTIVE
+  return props.canManage === true && status === FormalSessionStatusCode.SESSION_ACTIVE
 }
 
 function canResume(status: FormalSessionStatusCode): boolean {
-  return props.canManage && status === FormalSessionStatusCode.SESSION_PAUSED
+  return props.canManage === true && status === FormalSessionStatusCode.SESSION_PAUSED
 }
 
 function canClose(status: FormalSessionStatusCode): boolean {
@@ -326,7 +324,7 @@ function canClose(status: FormalSessionStatusCode): boolean {
 }
 
 function canDelete(status: FormalSessionStatusCode): boolean {
-  return props.canManage && status === FormalSessionStatusCode.SESSION_CREATED
+  return props.canManage === true && status === FormalSessionStatusCode.SESSION_CREATED
 }
 
 function buildRowActions(record: FormalSessionResponse): UiTableRowActionItem[] {
@@ -391,7 +389,7 @@ function buildRowActions(record: FormalSessionResponse): UiTableRowActionItem[] 
 
 function guardManageAction(): boolean {
   // MVR-377：仅认 BE canManageExamOwner===true（父层已叠 ACTIVE）
-  if (props.canManage) {
+  if (props.canManage === true) {
     return true
   }
   showFormValidationMessage('仅考试主考老师可管理正评会话')
@@ -569,7 +567,7 @@ async function handleSessionRowAction(key: string, record: FormalSessionResponse
   }
   if (key === 'close') {
     // MVR-398：关闭归档打开闸认 canCloseMarkingSessions，关考后仍可收口
-    if (!props.canCloseMarkingSessions) {
+    if (props.canCloseMarkingSessions !== true) {
       showFormValidationMessage('仅考试主考老师可关闭正评会话')
       return
     }

@@ -32,7 +32,7 @@
         </template>
         <template v-else-if="column.key === 'targetReviewer'">
           <UiSelect
-            v-if="canReassign"
+            v-if="canReassign === true"
             size="sm"
             v-model="targetReviewerByTaskId[record.id]"
             placeholder="选择目标教师"
@@ -43,7 +43,7 @@
         </template>
         <template v-else-if="column.key === 'action'">
           <UiTableActions
-            v-if="canReassign"
+            v-if="canReassign === true"
             :items="buildReassignActions(record)"
             split
             @action="() => submitReassign(record)"
@@ -164,7 +164,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 
 async function submitReassign(task: MarkingTaskResponse): Promise<void> {
   // MVR-317：回收再分配二次拦截
-  if (!props.canReassign) {
+  if (props.canReassign !== true) {
     void message.warning('当前账号无权再分配回收任务')
     return
   }

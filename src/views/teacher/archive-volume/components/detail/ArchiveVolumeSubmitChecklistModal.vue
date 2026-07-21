@@ -145,7 +145,7 @@ function close() {
 async function handleConfirm() {
   if (submitting.value) return
   // MVR-305：权限闸优先于表单就绪 canConfirm
-  if (!props.canConfirmSelfCheck) {
+  if (props.canConfirmSelfCheck !== true) {
     void message.warning('当前账号无提交前自查确认权限')
     return
   }

@@ -266,7 +266,7 @@ async function handleConfirmScoreCompletion() {
     return
   }
   // MVR-299：与工具栏 canConfirmScoreCompletion 同源二次拦截
-  if (!props.canConfirmScoreCompletion) {
+  if (props.canConfirmScoreCompletion !== true) {
     void message.warning('当前账号无成绩完成确认权限')
     return
   }

@@ -101,7 +101,7 @@ async function loadLocationHistory() {
 async function handleSave() {
   if (submitting.value) return
   // MVR-303：与 canEdit 同源二次拦截
-  if (!props.canEdit) {
+  if (props.canEdit !== true) {
     void message.warning('当前账号无柜位维护权限')
     return
   }

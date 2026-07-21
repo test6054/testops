@@ -238,7 +238,7 @@ const sessionTableEmptyDescription = computed(() => {
     if (props.createBlocked) {
       return ''
     }
-    return props.canManage ? '暂无试评会话，点击顶部「创建试评」开始定标' : '暂无试评会话'
+    return props.canManage === true ? '暂无试评会话，点击顶部「创建试评」开始定标' : '暂无试评会话'
   }
   if (props.pagination.total === 0 && hasActiveFilter.value) {
     return '未找到匹配会话，请调整筛选条件'
@@ -291,16 +291,14 @@ function isGroupStartable(groupId: string | undefined): boolean {
 
 function canStart(record: TrialSessionResponse): boolean {
   return (
-    props.canManage
-    && record.sessionStatus === TrialSessionStatusCode.TRIAL_CREATED
+    props.canManage === true && record.sessionStatus === TrialSessionStatusCode.TRIAL_CREATED
     && isGroupStartable(record.groupId)
   )
 }
 
 function canCalibrate(status: TrialSessionStatusCode): boolean {
   return (
-    props.canManage
-    && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
+    props.canManage === true && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
       || status === TrialSessionStatusCode.TRIAL_SUBMITTED)
   )
 }
@@ -316,7 +314,7 @@ function canClose(status: TrialSessionStatusCode): boolean {
 }
 
 function canDelete(status: TrialSessionStatusCode): boolean {
-  return props.canManage && status === TrialSessionStatusCode.TRIAL_CREATED
+  return props.canManage === true && status === TrialSessionStatusCode.TRIAL_CREATED
 }
 
 function buildRowActions(record: TrialSessionResponse): UiTableRowActionItem[] {
@@ -349,7 +347,7 @@ function buildRowActions(record: TrialSessionResponse): UiTableRowActionItem[] {
 
 function guardManageAction(): boolean {
   // MVR-377：仅认 BE canManageExamOwner===true（父层已叠 ACTIVE）
-  if (props.canManage) {
+  if (props.canManage === true) {
     return true
   }
   showFormValidationMessage('仅考试主考老师可管理试评会话')
@@ -425,7 +423,7 @@ async function handleSessionRowAction(key: string, record: TrialSessionResponse)
   }
   if (key === 'close') {
     // MVR-398：关闭试评打开闸认 canCloseMarkingSessions，关考后仍可收口
-    if (!props.canCloseMarkingSessions) {
+    if (props.canCloseMarkingSessions !== true) {
       showFormValidationMessage('仅考试主考老师可关闭试评会话')
       return
     }

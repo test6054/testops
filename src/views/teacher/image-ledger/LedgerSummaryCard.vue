@@ -45,7 +45,7 @@
       </div>
       <div class="ledger-summary__hero-right">
         <UiButton
-          v-if="canManageOwnerLedgerWrites"
+          v-if="canManageOwnerLedgerWrites === true"
           variant="primary"
           size="sm"
           :loading="balancing"

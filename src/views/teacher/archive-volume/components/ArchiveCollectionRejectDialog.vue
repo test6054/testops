@@ -33,7 +33,7 @@ watch(
 async function submit() {
   if (submitting.value) return
   // MVR-305：与 canRejectCollection 同源二次拦截
-  if (!props.canRejectCollection) {
+  if (props.canRejectCollection !== true) {
     void message.warning('当前账号无驳回收材权限')
     return
   }

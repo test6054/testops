@@ -55,7 +55,7 @@ function resetForm(): void {
 /** 提交解匿名请求，后端负责考试创建人权限、密码二次校验和审计留痕。 */
 async function submitReveal(): Promise<void> {
   // MVR-375：与父层 canManageOwnerIdentityReveal / BE requireExamOwnerPermission 二次拦截
-  if (!props.canManageOwnerIdentityReveal) {
+  if (props.canManageOwnerIdentityReveal !== true) {
     showFormValidationMessage('当前账号无解匿名权限')
     return
   }

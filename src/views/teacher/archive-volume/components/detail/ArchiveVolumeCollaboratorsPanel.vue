@@ -212,8 +212,7 @@ const columns = computed((): ColumnType<CollaboratorTreeRow>[] => {
     { title: '加入时间', key: 'createTimeLabel', width: 156 },
     { title: '能力 / 备注', key: 'meta', ellipsis: true },
   ]
-  return props.canManageCollaborators
-    ? [...base, { title: '操作', key: 'actions', width: 200 }]
+  return props.canManageCollaborators === true ? [...base, { title: '操作', key: 'actions', width: 200 }]
     : base
 })
 
@@ -309,7 +308,7 @@ function handleRosterReset(): void {
 
 async function handleAdd(): Promise<void> {
   if (submitting.value) return
-  if (!props.canManageCollaborators) {
+  if (props.canManageCollaborators !== true) {
     void message.warning('当前账号无协作老师管理权限')
     return
   }
@@ -340,7 +339,7 @@ async function handleAdd(): Promise<void> {
 }
 
 async function handleRoleChange(row: CollaboratorMemberRow, nextRole: ArchiveVolumeMemberRoleCode) {
-  if (!props.canManageCollaborators || !row.roleEditable) return
+  if (props.canManageCollaborators !== true || !row.roleEditable) return
   if (nextRole === row.memberRole) return
   if (roleUpdatingMemberId.value || submitting.value) return
   roleUpdatingMemberId.value = row.memberId
@@ -368,7 +367,7 @@ async function handleMemberAction(key: string, row: CollaboratorMemberRow): Prom
 
 async function handleRemove(row: CollaboratorMemberRow) {
   if (!row.memberId || submitting.value) return
-  if (!props.canManageCollaborators) {
+  if (props.canManageCollaborators !== true) {
     void message.warning('当前账号无协作老师管理权限')
     return
   }
