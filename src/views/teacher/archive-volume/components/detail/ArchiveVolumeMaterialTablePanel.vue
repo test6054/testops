@@ -116,7 +116,7 @@
             下载
           </UiTextAction>
           <UiTextAction
-            v-if="canMaintainMaterial === true"
+            v-if="canMaintainMaterial"
             tone="primary"
             @click="openTagModal(record)"
           >
@@ -552,7 +552,7 @@ function onMaterialMoreAction(key: string): void {
   }
   if (key === 'course-sync') {
     // MVR-377：与 canRegisterMaterial / BE requireCanManageMaterials 二次拦截
-    if (props.canRegisterMaterial !== true) {
+    if (!props.canRegisterMaterial) {
       showFormValidationMessage('当前账号无材料登记权限')
       return
     }
@@ -650,8 +650,8 @@ function sharedRefTypeLabel(refType?: ArchiveSharedMaterialRefTypeCode): string 
 async function confirmRemoveSharedRef(
   record: ArchiveVolumeSharedMaterialRefResponse,
 ): Promise<void> {
-  if (removingSharedRefId.value || props.canRemoveSharedMaterialRef !== true) {
-    if (props.canRemoveSharedMaterialRef !== true) {
+  if (removingSharedRefId.value || !props.canRemoveSharedMaterialRef) {
+    if (!props.canRemoveSharedMaterialRef) {
       void message.warning('当前账号无解除合用材料引用权限')
     }
     return
@@ -671,7 +671,7 @@ async function removeSharedRef(record: ArchiveVolumeSharedMaterialRefResponse): 
     return
   }
   // MVR-302：与 canRemoveSharedMaterialRef 同源二次拦截
-  if (props.canRemoveSharedMaterialRef !== true) {
+  if (!props.canRemoveSharedMaterialRef) {
     void message.warning('当前账号无解除合用材料引用权限')
     return
   }
@@ -700,7 +700,7 @@ const effectiveExamId = computed(
 
 /** MVR-294/374：与 BE requireCanManageMaterials 对齐，仅认 canRegisterMaterial===true */
 const canGenerateExamReports = computed(
-  () => Boolean(effectiveExamId.value) && props.canRegisterMaterial === true,
+  () => Boolean(effectiveExamId.value) && props.canRegisterMaterial,
 )
 
 const courseObjectiveMappingPath = computed(() => {
@@ -733,7 +733,7 @@ const registerCatalogLabel = computed(() => {
 })
 
 const courseObjectiveMappingHint = computed(() => {
-  if (props.detail.courseObjectiveReportReady === true) return null
+  if (props.detail.courseObjectiveReportReady) return null
   const total = props.detail.courseObjectiveTotalQuestionCount
   const mapped = props.detail.courseObjectiveMappedQuestionCount
   const goalTotal = props.detail.courseObjectiveTotalGoalCount
@@ -759,7 +759,7 @@ const courseObjectiveMappingHint = computed(() => {
 async function handleGenerateExamAnalysis(): Promise<void> {
   if (generatingExamAnalysis.value || generatingCourseObjective.value) return
   // MVR-294：与 BE requireCanManageMaterials 二次拦截
-  if (props.canRegisterMaterial !== true) {
+  if (!props.canRegisterMaterial) {
     void message.warning('当前账号无权登记本卷材料，无法生成试卷分析报告')
     return
   }
@@ -781,7 +781,7 @@ async function handleGenerateExamAnalysis(): Promise<void> {
 async function handleGenerateCourseObjective(): Promise<void> {
   if (generatingExamAnalysis.value || generatingCourseObjective.value) return
   // MVR-294：与 BE requireCanManageMaterials 二次拦截
-  if (props.canRegisterMaterial !== true) {
+  if (!props.canRegisterMaterial) {
     void message.warning('当前账号无权登记本卷材料，无法生成课程目标达成报告')
     return
   }
@@ -825,7 +825,7 @@ function materialOcrStatusTone(code: ArchiveMaterialOcrStatusCode): BadgeTone {
 
 function canRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): boolean {
   // MVR-185：OCR 重试与收材窗口解耦
-  if (props.canMaintainMaterial !== true) return false
+  if (!props.canMaintainMaterial) return false
   return material.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED && Boolean(material.fileId)
 }
 
@@ -864,7 +864,7 @@ function openMaterialOcrDetail(material: ArchiveVolumeMaterialResponse): void {
 }
 
 function openTagModal(material: ArchiveVolumeMaterialResponse): void {
-  if (props.canMaintainMaterial !== true) return
+  if (!props.canMaintainMaterial) return
   tagEditMaterial.value = material
   tagModalOpen.value = true
 }
@@ -877,7 +877,7 @@ function emitRefreshed(options?: { silent?: boolean }) {
 function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void {
   // MVR-422：与 canRetryMaterialOcr 同源二次闸（维护权∧FAILED∧fileId）
   if (!canRetryMaterialOcr(material)) {
-    if (props.canMaintainMaterial !== true) {
+    if (!props.canMaintainMaterial) {
       void message.warning('当前账号无维护材料识别权限')
     } else {
       void message.warning('当前材料不可重试文字识别（非失败态或无文件）')
@@ -984,7 +984,7 @@ function resolveSelectedCatalogContext(): {
 
 function openUploadModal() {
   // MVR-302：与 canRegisterMaterial 同源二次拦截
-  if (props.canRegisterMaterial !== true) {
+  if (!props.canRegisterMaterial) {
     void message.warning('当前账号无材料登记权限')
     return
   }
@@ -1029,7 +1029,7 @@ function resolveArchiveScanQuery(): Record<string, string> | null {
 
 function openArchiveScan() {
   // MVR-302：扫描收材登记与 canRegisterMaterial 对齐
-  if (props.canRegisterMaterial !== true) {
+  if (!props.canRegisterMaterial) {
     void message.warning('当前账号无材料登记权限')
     return
   }
@@ -1049,7 +1049,7 @@ function handleDispatchCreated(payload: ScanDispatchResultPayload) {
 
 function openSharedRefModal() {
   // MVR-302：合用引用登记与 canRegisterMaterial 对齐
-  if (props.canRegisterMaterial !== true) {
+  if (!props.canRegisterMaterial) {
     void message.warning('当前账号无材料登记权限')
     return
   }
@@ -1065,7 +1065,7 @@ async function submitMaterial() {
     return
   }
   // MVR-302：与 canRegisterMaterial 同源二次拦截
-  if (props.canRegisterMaterial !== true) {
+  if (!props.canRegisterMaterial) {
     void message.warning('当前账号无材料登记权限')
     return
   }
@@ -1111,7 +1111,7 @@ async function submitSharedRef() {
     return
   }
   // MVR-302：与 canRegisterMaterial 同源二次拦截
-  if (props.canRegisterMaterial !== true) {
+  if (!props.canRegisterMaterial) {
     void message.warning('当前账号无材料登记权限')
     return
   }

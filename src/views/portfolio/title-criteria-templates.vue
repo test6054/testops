@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTitleCriteriaTemplateVO } from '@/apis/portfolio/title-promotion'
-import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
 import type { PortfolioTitleJobCategoryCode } from '@/types/enums/portfolio-title-job-category-enum'
-import {
-  ALL_PORTFOLIO_TITLE_JOB_CATEGORY_CODES,
-  PortfolioTitleJobCategoryDescription,
-} from '@/types/enums/portfolio-title-job-category-enum'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
@@ -46,13 +42,17 @@ import {
   PortfolioTitleCriteriaSatisfyModeCode,
   PortfolioTitleCriteriaSatisfyModeDescription,
 } from '@/types/enums/portfolio-title-criteria-satisfy-mode-enum'
+import {
+  ALL_PORTFOLIO_TITLE_JOB_CATEGORY_CODES,
+  PortfolioTitleJobCategoryDescription,
+} from '@/types/enums/portfolio-title-job-category-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
 const saving = ref(false)
 const rows = ref<PortfolioTitleCriteriaTemplateVO[]>([])
-const categoryOptions = ref<Array<{ value: string; label: string }>>([])
+const categoryOptions = ref<Array<{ value: string, label: string }>>([])
 const total = ref(0)
 const editorOpen = ref(false)
 const editingId = ref<string | undefined>()
@@ -165,8 +165,8 @@ function openEdit(row: PortfolioTitleCriteriaTemplateVO) {
   form.jobCategory = row.jobCategory || undefined
   form.expectedValue = row.expectedValue || ''
   form.evidenceCategoryCode = row.evidenceCategoryCode
-  form.blockOnFail =
-    row.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? true : row.blockOnFail
+  form.blockOnFail
+    = row.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? true : row.blockOnFail
   form.enabled = row.enabled
   form.sortNo = row.sortNo || 0
   editorOpen.value = true
@@ -175,11 +175,11 @@ function openEdit(row: PortfolioTitleCriteriaTemplateVO) {
 /** 校验表格插槽记录属于条件模板合同，避免把 unknown 行直接强转为业务对象。 */
 function isTemplateRecord(record: unknown): record is PortfolioTitleCriteriaTemplateVO {
   return (
-    typeof record === 'object' &&
-    record !== null &&
-    'id' in record &&
-    'templateCode' in record &&
-    'enabled' in record
+    typeof record === 'object'
+    && record !== null
+    && 'id' in record
+    && 'templateCode' in record
+    && 'enabled' in record
   )
 }
 
@@ -210,16 +210,16 @@ async function saveTemplate() {
     return
   }
   if (
-    (form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ANY_OF_GROUP ||
-      form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP) &&
-    !form.groupCode.trim()
+    (form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ANY_OF_GROUP
+      || form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP)
+    && !form.groupCode.trim()
   ) {
     showFormValidationMessage('组满足模式必须填写业绩组编码')
     return
   }
   if (
-    form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP &&
-    (!form.groupMinimumCount || form.groupMinimumCount < 1)
+    form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
+    && (!form.groupMinimumCount || form.groupMinimumCount < 1)
   ) {
     showFormValidationMessage('请填写组内最低满足条数')
     return
@@ -229,22 +229,22 @@ async function saveTemplate() {
     return
   }
   if (
-    requiresPositiveExpectedValueCheckType(form.checkType) &&
-    !/^[1-9]\d*$/.test(form.expectedValue.trim())
+    requiresPositiveExpectedValueCheckType(form.checkType)
+    && !/^[1-9]\d*$/.test(form.expectedValue.trim())
   ) {
     showFormValidationMessage('当前核验类型必须填写正整数阈值')
     return
   }
   if (
-    form.checkType === PortfolioTitleCriteriaCheckTypeCode.DEGREE_REQUIREMENT &&
-    !form.expectedValue.trim()
+    form.checkType === PortfolioTitleCriteriaCheckTypeCode.DEGREE_REQUIREMENT
+    && !form.expectedValue.trim()
   ) {
     showFormValidationMessage('学历学位要求必须填写期望值')
     return
   }
   if (
-    form.checkType === PortfolioTitleCriteriaCheckTypeCode.HONOR_LEVEL &&
-    !isPortfolioHonorLevelCode(form.expectedValue.trim())
+    form.checkType === PortfolioTitleCriteriaCheckTypeCode.HONOR_LEVEL
+    && !isPortfolioHonorLevelCode(form.expectedValue.trim())
   ) {
     showFormValidationMessage('获奖级别必须填写有效级别编码')
     return
@@ -292,7 +292,7 @@ async function saveTemplate() {
 
 async function loadCategoryOptions() {
   const tree = await portfolioArchiveTemplateApi.listCategoryTree()
-  const options: Array<{ value: string; label: string }> = []
+  const options: Array<{ value: string, label: string }> = []
   const visit = (nodes: PortfolioArchiveCategoryTreeNodeVO[]) => {
     for (const node of nodes) {
       if (node.status === PortfolioArchiveCategoryStatusCode.ACTIVE) {
@@ -504,11 +504,9 @@ onMounted(() => {
             v-model="form.blockOnFail"
             :disabled="form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD"
           />
-          <span
-            >不满足阻断提交{{
-              form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? '（硬门槛强制）' : ''
-            }}</span
-          >
+          <span>不满足阻断提交{{
+            form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? '（硬门槛强制）' : ''
+          }}</span>
         </div>
         <div class="title-criteria__switch-row">
           <UiSwitch v-model="form.enabled" />

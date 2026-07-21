@@ -78,7 +78,7 @@
       />
 
       <UiAlertStrip
-        v-if="workbench?.batch?.orderAuditAttentionPending === true"
+        v-if="workbench?.batch?.orderAuditAttentionPending"
         tone="warning"
         :closable="false"
         dense

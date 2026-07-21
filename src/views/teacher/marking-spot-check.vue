@@ -348,7 +348,7 @@ function canHandleSpotCheckItem(item: MyPendingSpotCheckItemResponse): boolean {
 }
 
 function buildSpotCheckActions(item: MyPendingSpotCheckItemResponse): UiTableRowActionItem[] {
-  if (canHandleSpotCheckItem(item) !== true) {
+  if (!canHandleSpotCheckItem(item)) {
     return []
   }
   return [{ key: 'handle', label: '处理结论', tone: 'primary' }]
@@ -362,7 +362,7 @@ function handleSpotCheckAction(key: string, item: MyPendingSpotCheckItemResponse
 
 function openHandleModal(item: MyPendingSpotCheckItemResponse): void {
   // MVR-393：打开结案弹窗二次拦截
-  if (canHandleSpotCheckItem(item) !== true) {
+  if (!canHandleSpotCheckItem(item)) {
     void message.warning('当前抽检任务不可处理，请刷新后重试')
     return
   }
@@ -377,7 +377,7 @@ async function submitConclusion(): Promise<void> {
   if (!valid.value || !targetItem.value) return
   if (submitting.value) return
   // MVR-393：提交与 BE 自检/状态门禁二次拦截
-  if (canHandleSpotCheckItem(targetItem.value) !== true) {
+  if (!canHandleSpotCheckItem(targetItem.value)) {
     void message.warning('当前抽检任务不可处理，请刷新后重试')
     modalOpen.value = false
     targetItem.value = null

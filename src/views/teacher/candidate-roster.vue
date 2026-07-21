@@ -723,7 +723,7 @@ async function loadClassOptionsForExam(_examId: string): Promise<void> {
 
 async function openAddClassModal(): Promise<void> {
   // MVR-391：与 canManageRosterWrites / classScopeReadOnly 二次拦截
-  if (canManageRosterWrites.value !== true || classScopeReadOnly.value) {
+  if (!canManageRosterWrites.value || classScopeReadOnly.value) {
     void message.warning('当前账号或考试状态不可维护班级范围')
     return
   }
@@ -744,7 +744,7 @@ async function openAddClassModal(): Promise<void> {
 
 async function handleAddClassSubmit(): Promise<void> {
   // MVR-391：与 canManageRosterWrites / classScopeReadOnly 二次拦截
-  if (canManageRosterWrites.value !== true || classScopeReadOnly.value) {
+  if (!canManageRosterWrites.value || classScopeReadOnly.value) {
     void message.warning('当前账号或考试状态不可维护班级范围')
     return
   }
@@ -1210,7 +1210,7 @@ watch(classIds, (ids) => {
     return
   }
   // MVR-394：自动保存班级范围与 canManageRosterWrites 二次拦截（classScopeReadOnly 已含，显式默认拒绝）
-  if (canManageRosterWrites.value !== true) {
+  if (!canManageRosterWrites.value) {
     return
   }
   if (sameClassIds(ids, lastSavedClassIds.value)) {

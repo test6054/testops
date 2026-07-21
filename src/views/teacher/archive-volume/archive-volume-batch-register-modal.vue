@@ -82,6 +82,8 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { ref, watch } from 'vue'
 import {
   ARCHIVE_MATERIAL_TYPE_OPTIONS,
   ArchiveElectronicOriginalStatusCode,
@@ -89,8 +91,6 @@ import {
   ArchiveMaterialSortRuleCode,
   batchRegisterArchiveVolumeMaterials,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -117,7 +117,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  success: []
+  'success': []
 }>()
 
 interface BatchRow {
@@ -190,7 +190,7 @@ function removeRow(uid: string) {
 
 async function handleSubmit() {
   // MVR-317：批量登记与 canRegisterMaterial 二次拦截
-  if (props.canRegisterMaterial !== true) {
+  if (!props.canRegisterMaterial) {
     showFormValidationMessage('当前账号无材料登记权限')
     return
   }

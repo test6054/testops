@@ -74,7 +74,7 @@ const dueReason = ref('')
 const volume = computed(() => props.detail.volume)
 const collaborators = computed(() => props.detail.collaborators ?? [])
 const isDraft = computed(() => volume.value.volumeStatus === ArchiveVolumeStatusCode.DRAFT)
-const canEditSettings = computed(() => isDraft.value && props.canManageCollaborators === true)
+const canEditSettings = computed(() => isDraft.value && props.canManageCollaborators)
 
 const readinessRows = computed((): ArchiveVolumeStartCollectingCheckItem[] => {
   return precheck.value?.items ?? []
@@ -90,7 +90,7 @@ const readyCount = computed(() => readinessRows.value.filter((row) => row.ready)
 const canCommit = computed(
   () =>
     isDraft.value
-    && props.canStartCollecting === true
+    && props.canStartCollecting
     && precheck.value?.canStart === true
     && blockingCount.value === 0
     && !precheckError.value,
@@ -328,7 +328,7 @@ function onCheckItemActivate(row: ArchiveVolumeStartCollectingCheckItem): void {
 
 async function saveTaskSettings(): Promise<void> {
   if (savingSettings.value || !canEditSettings.value) return
-  if (props.canManageCollaborators !== true) {
+  if (!props.canManageCollaborators) {
     void message.warning('当前账号无任务设置维护权限')
     return
   }
@@ -411,12 +411,12 @@ async function saveTaskSettings(): Promise<void> {
 
 async function handleStart(): Promise<void> {
   if (starting.value) return
-  if (props.canStartCollecting !== true) {
+  if (!props.canStartCollecting) {
     void message.warning('当前账号无开始收材权限')
     return
   }
   await loadPrecheck()
-  if (precheck.value?.canStart !== true || blockingCount.value > 0) {
+  if (!precheck.value?.canStart || blockingCount.value > 0) {
     void message.warning('请先补齐开收前必填项')
     return
   }
@@ -644,7 +644,7 @@ async function handleStart(): Promise<void> {
       </section>
 
       <section class="av-start__commit">
-        <template v-if="canStartCollecting === true">
+        <template v-if="canStartCollecting">
           <p v-if="precheckError" class="av-start__hint av-start__hint--warn">
             预检未通过加载，无法确认开收。
           </p>

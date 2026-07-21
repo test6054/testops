@@ -51,7 +51,7 @@
           </UiButton>
           <UiButton variant="outline" size="sm" @click="goTrialSessions"> 试评定标 </UiButton>
           <UiDropdownAction
-            v-if="organization && canDeleteOrganization === true"
+            v-if="organization && canDeleteOrganization"
             trigger-style="button"
             button-text="更多"
             :items="orgDetailMoreActionItems"
@@ -601,11 +601,11 @@
           <UiSwitch
             size="sm"
             v-model="editForm.anonymousMode"
-            :disabled="canUpdateOrganizationAnonymousMode !== true"
+            :disabled="!canUpdateOrganizationAnonymousMode"
           />
           <span class="org-detail__switch-hint">
             {{
-              canUpdateOrganizationAnonymousMode === true
+              canUpdateOrganizationAnonymousMode
                 ? '启用后阅卷教师不可见考生身份'
                 : '已进入试评/正评或任务后不可修改匿名模式；备注仍可保存'
             }}
@@ -1583,7 +1583,7 @@ function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
 function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
   // MVR-407：关闭题组须主考∧ACTIVE；状态仅 ACTIVE/CONFIGURED
   return (
-    canManageExamOwner.value === true
+    canManageExamOwner.value
     && (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
       || record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
   )
@@ -1681,7 +1681,7 @@ async function submitUpdate(): Promise<void> {
   // MVR-404：匿名模式变更须 canUpdateOrganizationAnonymousMode；仅改备注始终可走
   const anonymityChanged
     = Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
-  if (anonymityChanged && canUpdateOrganizationAnonymousMode.value !== true) {
+  if (anonymityChanged && !canUpdateOrganizationAnonymousMode.value) {
     showFormValidationMessage('已进入试评/正评或任务后不可修改匿名模式')
     return
   }
@@ -1695,7 +1695,7 @@ async function submitUpdate(): Promise<void> {
     const request: OrganizationUpdateRequest = {
       organizationId: requireMarkingOrganizationId(organization.value),
       anonymousMode:
-        canUpdateOrganizationAnonymousMode.value === true
+        canUpdateOrganizationAnonymousMode.value
           ? editForm.anonymousMode
           : Boolean(organization.value.anonymousMode),
       remark: editForm.remark?.trim() || undefined,
@@ -1717,7 +1717,7 @@ const orgDetailMoreActionItems = computed(() => [
     label: '删除组织',
     danger: true,
     // MVR-405：菜单仅在 canDeleteOrganization 时展示；disabled 防并发
-    disabled: deleting.value || canDeleteOrganization.value !== true,
+    disabled: deleting.value || !canDeleteOrganization.value,
   },
 ])
 
@@ -1731,7 +1731,7 @@ async function requestDeleteOrganization(): Promise<void> {
   // MVR-396：删除组织打开确认前叠主考闸，禁止仅靠更多菜单显隐
   if (!guardExamOwnerAction()) return
   // MVR-405：与 BE canDeleteOrganization / runtimeRefs 二次闸
-  if (canDeleteOrganization.value !== true) {
+  if (!canDeleteOrganization.value) {
     showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
     return
   }
@@ -1752,7 +1752,7 @@ async function submitDelete(): Promise<void> {
     return
   }
   if (!guardExamOwnerAction()) return
-  if (canDeleteOrganization.value !== true) {
+  if (!canDeleteOrganization.value) {
     showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
     return
   }

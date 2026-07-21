@@ -128,7 +128,7 @@ function buildActions(record: ExamManualSupplementCandidateItemResponse): UiTabl
   ) {
     actions.push({ key: 'handle-attention', label: '处理异常', tone: 'danger' })
   }
-  if (props.canManageOwnerWrites === true) {
+  if (props.canManageOwnerWrites) {
     if (record.supplementEligible && record.missingTemplatePageNos.length > 0) {
       actions.push({
         key: 'supplement-missing',
@@ -142,7 +142,7 @@ function buildActions(record: ExamManualSupplementCandidateItemResponse): UiTabl
   if (actions.length > 0) {
     return actions
   }
-  if (props.canManageOwnerWrites !== true) {
+  if (!props.canManageOwnerWrites) {
     return [{ key: 'readonly', label: '仅主考可补录', disabled: true }]
   }
   const blockReason = record.blockReason || record.replaceBlockReason
@@ -155,7 +155,7 @@ function handleAction(key: string, record: ExamManualSupplementCandidateItemResp
     return
   }
   // MVR-376：主考写动作仅认 canManageOwnerWrites===true
-  if (props.canManageOwnerWrites !== true) {
+  if (!props.canManageOwnerWrites) {
     return
   }
   if (key === 'supplement-missing') {

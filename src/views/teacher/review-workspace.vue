@@ -640,13 +640,10 @@ const canConfirm = computed(() => {
     return false
   }
   const status = detail.value?.status
-  if (status !== ReviewTaskStatusCode.PENDING && status !== ReviewTaskStatusCode.IN_PROGRESS) {
-    return false
-  }
-  if (claimBlockedByOther.value) {
-    return false
-  }
-  return true
+  return (
+    (status === ReviewTaskStatusCode.PENDING || status === ReviewTaskStatusCode.IN_PROGRESS)
+    && !claimBlockedByOther.value
+  )
 })
 
 /** 仅首次复核任务可驳回升级仲裁；仲裁任务本身不可再次驳回。 */

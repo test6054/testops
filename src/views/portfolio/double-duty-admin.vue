@@ -46,8 +46,8 @@ const {
 } = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } =
-  useQueryTable(portfolioDoubleDutyApi.page)
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
+  = useQueryTable(portfolioDoubleDutyApi.page)
 
 const columns: ColumnsType = [
   { title: '教师', key: 'teacher', width: 120 },

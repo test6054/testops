@@ -6,7 +6,7 @@
     <template v-if="!embedded" #toolbar>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites === true"
+          v-if="canManageReviewerWrites"
           variant="outline"
           size="sm"
           :loading="generating"
@@ -29,7 +29,7 @@
     <template v-if="embedded" #actions>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites === true"
+          v-if="canManageReviewerWrites"
           variant="outline"
           size="sm"
           :loading="generating"
@@ -189,7 +189,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }

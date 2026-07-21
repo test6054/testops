@@ -75,7 +75,7 @@ function toggleAll(checked: boolean) {
 async function handleConfirm() {
   if (confirming.value) return
   // MVR-299：与 showPanel/canConfirmDigitalMaterials 同源二次拦截
-  if (canConfirm.value !== true) {
+  if (!canConfirm.value) {
     void message.warning('当前账号无电子材料确认权限')
     return
   }

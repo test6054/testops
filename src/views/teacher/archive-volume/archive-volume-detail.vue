@@ -745,7 +745,7 @@ const qualityGuide = computed(
                 )
               : '—'
           }`,
-          actionLabel: d.canConfirmSecurityMark === true ? '确认密级定密' : undefined,
+          actionLabel: d.canConfirmSecurityMark ? '确认密级定密' : undefined,
           actionKey: 'security-mark',
         }
       }
@@ -799,15 +799,10 @@ const hubNextStepActions = computed(() => {
       gateTargets.add('appraisal')
     }
   }
-  return nextStepActions.value.filter((action) => {
-    if (action.targetTabKey === activeTab.value) {
-      return false
-    }
-    if (action.targetTabKey && gateTargets.has(action.targetTabKey)) {
-      return false
-    }
-    return true
-  })
+  return nextStepActions.value.filter((action) =>
+    action.targetTabKey !== activeTab.value
+    && (!action.targetTabKey || !gateTargets.has(action.targetTabKey)),
+  )
 })
 
 const showNextStepsPanel = computed(
@@ -839,10 +834,10 @@ const securityFourPropertyDescription = computed(() =>
 
 const canRunIntegrityCheck = computed(() => {
   const d = detail.value
-  if (!d || d.canManageMaterials !== true) return false
+  if (!d || !d.canManageMaterials) return false
   return (
     d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-    || d.hasOpenRemediationTask === true
+    || d.hasOpenRemediationTask
   )
 })
 
@@ -850,7 +845,7 @@ const canRunFourPropertyCheck = computed(() => {
   const d = detail.value
   if (!d) return false
   if (d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING) {
-    return d.canManageMaterials === true
+    return d.canManageMaterials
   }
   return d.volume.volumeStatus === ArchiveVolumeStatusCode.SUBMITTED && canReviewTransfer.value
 })
@@ -867,7 +862,7 @@ const submitBlockReason = computed(() => {
 const scoreSubmitBlockReason = computed(() => {
   const d = detail.value
   if (!d || !detailScope.volumeAcceptsSubmitStatus(d.volume.volumeStatus)) return null
-  if (d.capabilities?.canSubmitVolume !== true) return null
+  if (!d.capabilities?.canSubmitVolume) return null
   if (isScoreSubmitReady(d.volume)) return null
   if (d.volume.scoreSource === 'MARK_INTERNAL') {
     return '线上阅卷双门禁未满足'
@@ -1114,7 +1109,7 @@ const fourPropertySignalMetrics = computed((): SignalMetric[] => {
   if (!d) return []
   const four = displayedFourProperty.value
   const fourSummary = four ? countFourPropertyPassed(buildFourPropertyDimensionViews(four)) : null
-  const securityPending = d.volume.securityMarkPending === true
+  const securityPending = d.volume.securityMarkPending
   return [
     {
       key: 'four-property',
@@ -1181,7 +1176,7 @@ const transferSignalMetrics = computed((): SignalMetric[] => {
     d.volume.volumeStatus,
     'volumeStatus',
   )
-  const openRemediation = d.hasOpenRemediationTask === true
+  const openRemediation = d.hasOpenRemediationTask
   return [
     {
       key: 'transfer-status',
@@ -1476,7 +1471,7 @@ const canExportManifest = computed(() => {
 const canEditPhysicalLocation = computed(() => {
   const d = detail.value
   // MVR-374：与 detailScope.canRegisterMaterial / BE 材料写同源，仅认 === true
-  if (detailScope.canRegisterMaterial !== true || !d) return false
+  if (!detailScope.canRegisterMaterial || !d) return false
   return d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
 })
 
@@ -1562,7 +1557,7 @@ watch(manageActionTick, (tick) => {
   }
   if (tick.key === 'reject') {
     // MVR-382：与 canRejectCollection / BE 驳回收材门禁二次拦截
-    if (detailScope.canRejectCollection !== true) {
+    if (!detailScope.canRejectCollection) {
       void message.warning('当前账号不可驳回收材')
       return
     }
@@ -1593,7 +1588,7 @@ function handleQualityGuideAction(): void {
   }
   if (key === 'self-check-sign') {
     // MVR-382：与 canSelfCheck 同源，禁止无写权打开签字确认
-    if (detailScope.capabilities.canSelfCheck !== true) {
+    if (!detailScope.capabilities.canSelfCheck) {
       void message.warning('当前账号不可进行自查签字确认')
       return
     }
@@ -1611,7 +1606,7 @@ function handleQualityGuideAction(): void {
 
 async function runFourPropertyCheckFromGuide() {
   // MVR-347：与 canRunFourPropertyCheck 同源；无权限时只切页不发写请求
-  if (canRunFourPropertyCheck.value !== true) {
+  if (!canRunFourPropertyCheck.value) {
     void message.warning('当前账号或卷状态不可执行四性检测')
     setActiveTab('four-property')
     return
@@ -1621,8 +1616,7 @@ async function runFourPropertyCheckFromGuide() {
   }
   checkingFourProperty.value = true
   try {
-    const result = await checkArchiveVolumeFourProperty(volumeId.value)
-    fourPropertyResult.value = result
+    fourPropertyResult.value = await checkArchiveVolumeFourProperty(volumeId.value)
     void message.success('四性检测完成')
     await loadDetail()
   } catch (error) {
@@ -1634,7 +1628,7 @@ async function runFourPropertyCheckFromGuide() {
 
 async function runIntegrityCheck() {
   // MVR-347：与 canRunIntegrityCheck / BE 完整性自检写门禁二次拦截
-  if (canRunIntegrityCheck.value !== true) {
+  if (!canRunIntegrityCheck.value) {
     void message.warning('当前账号或卷状态不可执行完整性自检')
     return
   }
@@ -1664,7 +1658,7 @@ async function executeSubmit(overdueReason?: string) {
     return
   }
   // MVR-305：与 canSubmitVolume 同源二次拦截
-  if (detailScope.canSubmitVolume !== true) {
+  if (!detailScope.canSubmitVolume) {
     void message.warning('当前账号无提交归档权限')
     return
   }
@@ -1694,7 +1688,7 @@ async function handleSubmit() {
   const d = detail.value
   if (!d) return
   // MVR-305：与 canSubmitVolume 同源二次拦截
-  if (detailScope.canSubmitVolume !== true) {
+  if (!detailScope.canSubmitVolume) {
     void message.warning('当前账号无提交归档权限')
     return
   }
@@ -1710,7 +1704,7 @@ async function handleSubmit() {
 }
 
 async function confirmOverdueSubmit() {
-  if (detailScope.canSubmitVolume !== true) {
+  if (!detailScope.canSubmitVolume) {
     void message.warning('当前账号无提交归档权限')
     return
   }
@@ -1724,7 +1718,7 @@ async function confirmOverdueSubmit() {
 
 async function handleExport() {
   // MVR-341：与侧栏 canExportManifest 状态闸一致；BE requireVolumeReadable 仍为权威
-  if (canExportManifest.value !== true) {
+  if (!canExportManifest.value) {
     void message.warning('当前卷状态不可导出 manifest')
     return
   }
@@ -1771,7 +1765,7 @@ async function loadFocusedRemediationTask() {
 
 async function advanceRemediation(taskStatus: ArchiveRemediationStatusCode) {
   // MVR-317/382：与 canAdvanceRemediation / BE canUpdateTask 二次拦截
-  if (canAdvanceRemediation.value !== true) {
+  if (!canAdvanceRemediation.value) {
     void message.warning('当前账号不可推进该整改任务')
     return
   }

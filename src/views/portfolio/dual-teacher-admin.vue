@@ -480,7 +480,7 @@ async function handleImportSuccess() {
             }}</span>
           </template>
           <template v-else-if="column.key === 'eligibilityFreeze'">
-            <UiTag v-if="record.eligibilityFreeze?.eligible === true" tone="green">
+            <UiTag v-if="record.eligibilityFreeze?.eligible" tone="green">
               已冻结·满足
             </UiTag>
             <UiTag v-else-if="record.eligibilityFreeze?.eligible === false" tone="orange">

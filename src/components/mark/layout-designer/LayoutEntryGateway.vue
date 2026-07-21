@@ -4,19 +4,11 @@ import type {
   ExamLayoutDocument,
   ExamLayoutGenerateQuestionRequest,
 } from '@/apis/mark/exam-layout-design'
-import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import type { LayoutQuestionDraft } from '@/utils/layout-question-templates'
-import {
-  buildGenerateQuestionsFromDrafts,
-  createAnswerSheetDefaultQuestionRows,
-  createQuestionDraft,
-  defaultFullScore,
-  defaultOptionCount,
-  deriveQuestionType,
-} from '@/utils/layout-question-templates'
 import QuestionCircleOutlined from '@ant-design/icons-vue/QuestionCircleOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
+import { fetchExamLayoutPageUploadMeta } from '@/apis/mark/exam-layout-design'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -38,6 +30,14 @@ import {
 import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { layoutHasSourceFileDetectResult } from '@/utils/exam-layout-designer'
+import {
+  buildGenerateQuestionsFromDrafts,
+  createAnswerSheetDefaultQuestionRows,
+  createQuestionDraft,
+  defaultFullScore,
+  defaultOptionCount,
+  deriveQuestionType,
+} from '@/utils/layout-question-templates'
 
 const props = defineProps<{
   document: ExamLayoutDocument | null
@@ -51,7 +51,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'generate-sheet': [paperSpec: string, questions: ExamLayoutGenerateQuestionRequest[]]
   'auto-detect': [sourcePdfFileId: string]
-  patch: [document: ExamLayoutDocument]
+  "patch": [document: ExamLayoutDocument]
 }>()
 
 const OCR_SCENE_OPTIONS = [
@@ -100,8 +100,8 @@ const sourceFileCanAutoDetect = computed(() => {
   return /\.(pdf|doc|docx|png|jpe?g)$/i.test(sourcePdfFileName.value)
 })
 const paperSpec = ref<ExamLayoutPaperSpecCode>(
-  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec) ??
-    defaultBlankSheetPaperSpec(),
+  ALL_EXAM_LAYOUT_PAPER_SPEC_CODES.find((code) => code === props.document?.paperSpec)
+  ?? defaultBlankSheetPaperSpec(),
 )
 const layoutName = ref(props.document?.layoutName ?? '')
 const printSafeMarginMm = ref(props.document?.printSafeMarginMm ?? 5)
@@ -136,10 +136,8 @@ watch(
 
 const isAnswerSheetMode = computed(() => props.materialLayoutMode === 'ANSWER_SHEET')
 const isFullPaperMode = computed(() => props.materialLayoutMode === 'FULL_PAPER')
-/** MVR-377：默认拒绝；仅父层显式 readonly===false 且已选模式、非识别中可写 */
-const entryReadonly = computed(
-  () => props.readonly !== false || !props.materialLayoutMode || Boolean(props.detecting),
-)
+/** 只读或未选材料版式模式时不可写 */
+const entryReadonly = computed(() => props.readonly || !props.materialLayoutMode)
 
 const paperSpecOptions = ExamLayoutPaperSpecOptions
 
@@ -148,7 +146,6 @@ const paperSpecTooltip = computed(
 )
 
 function patchDocument(partial: Partial<ExamLayoutDocument>): void {
-  // MVR-388：与 entryReadonly 同源默认拒绝，禁止仅靠模板 disabled 防写
   if (entryReadonly.value || !props.document) {
     return
   }
@@ -262,7 +259,6 @@ async function confirmRedetectIfNeeded(): Promise<boolean> {
 }
 
 async function startAutoDetect(sourceFileId: string): Promise<void> {
-  // MVR-377：默认拒绝；entryReadonly 含 !writable / detecting
   if (entryReadonly.value) {
     showFormValidationMessage('当前制卷设计不可编辑，无法自动预划区')
     return

@@ -7,6 +7,8 @@ import type {
   OnsiteVisitPlanSaveRequest,
   OnsiteVisitPlanVO,
 } from '@/apis/quality/accreditation'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
   AccreditationCycleStatusCode,
@@ -15,8 +17,6 @@ import {
   OnsiteChecklistItemStatusCode,
   OnsiteChecklistItemStatusDescription,
 } from '@/apis/quality/accreditation'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import { ArchiveSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -62,7 +62,7 @@ const checklistColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 100 },
 ]
 
-const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode; label: string }[] = [
+const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode, label: string }[] = [
   { key: '', label: '全部' },
   { key: OnsiteChecklistCategoryCode.FACILITY, label: '设施' },
   { key: OnsiteChecklistCategoryCode.PAPER_SAMPLE, label: '样本' },
@@ -91,8 +91,8 @@ const checklistCategoryFilter = ref<'' | OnsiteChecklistCategoryCode>('')
 
 const canMutateOnsitePlan = computed(
   () =>
-    props.activeCycle?.cycleStatus === AccreditationCycleStatusCode.ACTIVE &&
-    props.activeCycle?.currentPhase === 'ONSITE_VISIT',
+    props.activeCycle?.cycleStatus === AccreditationCycleStatusCode.ACTIVE
+    && props.activeCycle?.currentPhase === 'ONSITE_VISIT',
 )
 
 const canCreatePlan = computed(() => canMutateOnsitePlan.value && !!props.activeCycleId)
@@ -141,7 +141,7 @@ async function loadPlans() {
   }
 }
 
-function handlePlanPageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePlanPageChange(pageEvent: { current: number, pageSize: number }) {
   planPageNum.value = pageEvent.current
   planPageSize.value = pageEvent.pageSize
   void loadPlans()
@@ -183,7 +183,7 @@ async function loadChecklistItems() {
   }
 }
 
-function handleChecklistPageChange(pageEvent: { current: number; pageSize: number }) {
+function handleChecklistPageChange(pageEvent: { current: number, pageSize: number }) {
   checklistPageNum.value = pageEvent.current
   checklistPageSize.value = pageEvent.pageSize
   void loadChecklistItems()
@@ -317,15 +317,15 @@ async function submitChecklistItem() {
     return
   }
   if (
-    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED &&
-    !checklistForm.evidenceArchiveId
+    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED
+    && !checklistForm.evidenceArchiveId
   ) {
     void message.error('已完成检查项必须关联证据归档')
     return
   }
   if (
-    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE &&
-    !checklistForm.remark?.trim()
+    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE
+    && !checklistForm.remark?.trim()
   ) {
     void message.error('不适用检查项必须填写说明')
     return
@@ -392,8 +392,8 @@ defineExpose({ openCreate, loadPlans })
             :percent="
               record.totalChecklistCount
                 ? Math.round(
-                    ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
-                  )
+                  ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
+                )
                 : 0
             "
             size="sm"

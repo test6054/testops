@@ -211,10 +211,7 @@ const canActivateReviewWindow = computed(() => {
   if (!openTime) {
     return false
   }
-  if (openTime >= closeTime) {
-    return false
-  }
-  return true
+  return openTime < closeTime
 })
 
 const activateBlockReason = computed(() => {

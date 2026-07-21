@@ -674,7 +674,7 @@ function openCreateTaskModal() {
 
 async function submitCreateTask() {
   // MVR-342/353：入口与 open-stats canCreateRemediationTask 二次拦截（卷级再校验 detail canCreateRemediationTask）
-  if (canCreateRemediationTask.value !== true) {
+  if (!canCreateRemediationTask.value) {
     void message.warning('仅学院协调人可创建整改任务')
     return
   }
@@ -695,7 +695,7 @@ async function submitCreateTask() {
   try {
     const volumeDetail = await getArchiveVolumeDetail(createTaskForm.volumeId.trim())
     // MVR-353：仅认 BE getDetail canCreateRemediationTask===true（职责+状态+移交/开放整改互斥）
-    if (volumeDetail.canCreateRemediationTask !== true) {
+    if (!volumeDetail.canCreateRemediationTask) {
       showFormValidationMessage(
         '当前卷不可新建整改（需学院协调职责，且卷为收材/待验收/已入库、非移交待验收、无开放整改）',
       )

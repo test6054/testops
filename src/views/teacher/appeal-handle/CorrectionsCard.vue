@@ -154,6 +154,10 @@ import type {
   ExamGradeCorrectionRecordResponse,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   computeSingleQuestionCorrectionCompositeTotal,
   createCorrection,
@@ -163,10 +167,6 @@ import {
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -209,7 +209,7 @@ const REVIEW_REQUEST_SEARCH_DEBOUNCE_MS = 300
 
 const rows = ref<ExamGradeCorrectionRecordResponse[]>([])
 const loading = ref(false)
-const reviewRequestOptions = ref<{ value: string; label: string }[]>([])
+const reviewRequestOptions = ref<{ value: string, label: string }[]>([])
 const reviewRequestCache = ref<Map<string, GradeReviewRequestItemResponse>>(new Map())
 const reviewRequestLoading = ref(false)
 let reviewRequestSearchTimer: ReturnType<typeof setTimeout> | undefined
@@ -293,19 +293,19 @@ function isFinalScoreCorrectable(request: GradeReviewRequestItemResponse): boole
     return false
   }
   return (
-    status === FinalScoreStatusCode.CONFIRMED ||
-    status === FinalScoreStatusCode.PUBLISHED ||
-    status === FinalScoreStatusCode.CORRECTED ||
-    status === FinalScoreStatusCode.WITHDRAWN
+    status === FinalScoreStatusCode.CONFIRMED
+    || status === FinalScoreStatusCode.PUBLISHED
+    || status === FinalScoreStatusCode.CORRECTED
+    || status === FinalScoreStatusCode.WITHDRAWN
   )
 }
 
 /** MVR-194/208：与 BE assertGradeReviewOperatorSeparatedFromStudent 同源 */
 function isGradeReviewApplicantSelf(request: GradeReviewRequestItemResponse): boolean {
   return Boolean(
-    currentUserId.value &&
-    request.studentUserId &&
-    String(request.studentUserId) === String(currentUserId.value),
+    currentUserId.value
+    && request.studentUserId
+    && String(request.studentUserId) === String(currentUserId.value),
   )
 }
 
@@ -492,7 +492,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -531,24 +531,24 @@ async function submit(): Promise<void> {
     return
   }
   if (
-    form.layoutQuestionId &&
-    !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
+    form.layoutQuestionId
+    && !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
   ) {
     void message.warning('更正题目必须来自选中的复核申请')
     return
   }
   if (
-    request.questionRefs.length === 0 &&
-    props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
-    form.afterScore > 60
+    request.questionRefs.length === 0
+    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+    && form.afterScore > 60
   ) {
     void message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
     return
   }
   if (
-    form.layoutQuestionId &&
-    props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
-    isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, form.afterScore)
+    form.layoutQuestionId
+    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
+    && isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, form.afterScore)
   ) {
     void message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
     return
@@ -572,8 +572,8 @@ async function submit(): Promise<void> {
     if (form.layoutQuestionId && remaining > 0) {
       successMessage = `单题更正已执行，同申请尚有 ${remaining} 题待更正，申请仍保持已通过`
     } else if (
-      form.layoutQuestionId &&
-      result.reviewRequestStatusAfterCorrection === GradeReviewRequestStatusCode.CORRECTED
+      form.layoutQuestionId
+      && result.reviewRequestStatusAfterCorrection === GradeReviewRequestStatusCode.CORRECTED
     ) {
       successMessage = '单题更正已执行，申请范围内题目均已更正'
     }

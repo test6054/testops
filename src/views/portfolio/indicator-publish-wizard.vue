@@ -293,7 +293,7 @@ async function publish() {
     return
   }
   try {
-    const snapshotId = await portfolioIndicatorTenantApi.publishModel({
+    await portfolioIndicatorTenantApi.publishModel({
       sceneCode: targetSceneCode,
       impactReportId: targetImpactReportId,
       academicYear: targetAcademicYear,

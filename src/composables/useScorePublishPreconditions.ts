@@ -224,16 +224,11 @@ export function useScorePublishPreconditions(options: {
     if (!overview) {
       return false
     }
-    if ((overview.unreconciledAbsenceCount ?? 0) > 0) {
-      return true
-    }
-    if ((overview.blockingIncidentCount ?? 0) > 0) {
-      return true
-    }
-    if ((overview.pendingDuplicateImageCount ?? 0) > 0) {
-      return true
-    }
-    return false
+    return (
+      (overview.unreconciledAbsenceCount ?? 0) > 0
+      || (overview.blockingIncidentCount ?? 0) > 0
+      || (overview.pendingDuplicateImageCount ?? 0) > 0
+    )
   })
 
   return {

@@ -6,15 +6,15 @@ import type {
   PortfolioTeacherLifecycleEventVO,
   PortfolioTeacherLifecycleStatusCode,
 } from '@/apis/portfolio/teacher-lifecycle'
+import message from 'ant-design-vue/es/message'
+import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
   PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
   portfolioTeacherLifecycleApi,
 } from '@/apis/portfolio/teacher-lifecycle'
-import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -314,9 +314,9 @@ onMounted(() => {
           <UiFormItem label="原因">
             <UiInput v-model="applyForm.reasonText" placeholder="可选" style="width: 220px" />
           </UiFormItem>
-          <UiButton variant="primary" :loading="applying" @click="applyLifecycle"
-            >管理员登记</UiButton
-          >
+          <UiButton variant="primary" :loading="applying" @click="applyLifecycle">
+            管理员登记
+          </UiButton>
           <UiButton :loading="applying" @click="selfDeclareLifecycle">自助申报</UiButton>
           <UiButton
             :disabled="!applyForm.teacherUserId || !!operationKey"
@@ -327,9 +327,7 @@ onMounted(() => {
           </UiButton>
           <label class="teacher-lifecycle-admin__import">
             <span class="teacher-lifecycle-admin__import-btn">
-              <UiButton variant="primary" size="sm" :loading="operationKey.startsWith('import:')"
-                >导入迁出包</UiButton
-              >
+              <UiButton variant="primary" size="sm" :loading="operationKey.startsWith('import:')">导入迁出包</UiButton>
             </span>
             <input
               class="teacher-lifecycle-admin__import-input"

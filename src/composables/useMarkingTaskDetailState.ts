@@ -962,7 +962,7 @@ export function useMarkingTaskDetailState() {
 
   function openRevealDialog(): void {
     // MVR-375：与 BE canManageOwnerIdentityReveal 二次拦截，禁止仅入口隐藏
-    if (canManageOwnerIdentityReveal.value !== true) {
+    if (!canManageOwnerIdentityReveal.value) {
       showFormValidationMessage('当前账号无解匿名权限')
       return
     }

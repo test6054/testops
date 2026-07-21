@@ -8,7 +8,7 @@
         </UiTag>
         <div class="archive-quality-panel__section-actions">
           <UiButton
-            v-if="detail.canConfirmSecurityMark === true"
+            v-if="detail.canConfirmSecurityMark"
             size="sm"
             variant="outline"
             :loading="confirmingSecurityMark"
@@ -17,7 +17,7 @@
             确认密级定密
           </UiButton>
           <UiButton
-            v-if="detail.canUpdateSecurityLevel === true"
+            v-if="detail.canUpdateSecurityLevel"
             size="sm"
             variant="ghost"
             :loading="updatingSecurityLevel"
@@ -228,7 +228,7 @@ function securityLevelLabel(code: ArchiveSecurityLevelCode) {
 
 function openConfirmSecurityMarkModal() {
   // MVR-390：打开弹窗与 canConfirmSecurityMark 二次拦截
-  if (props.detail.canConfirmSecurityMark !== true) {
+  if (!props.detail.canConfirmSecurityMark) {
     void message.warning('当前账号无定密确认权限')
     return
   }
@@ -240,7 +240,7 @@ async function submitConfirmSecurityMark() {
   if (confirmingSecurityMark.value) {
     return
   }
-  if (props.detail.canConfirmSecurityMark !== true) {
+  if (!props.detail.canConfirmSecurityMark) {
     void message.warning('当前账号无定密确认权限')
     return
   }
@@ -267,7 +267,7 @@ async function submitConfirmSecurityMark() {
 
 function openUpdateSecurityLevelModal() {
   // MVR-390：打开弹窗与 canUpdateSecurityLevel 二次拦截
-  if (props.detail.canUpdateSecurityLevel !== true) {
+  if (!props.detail.canUpdateSecurityLevel) {
     void message.warning('当前账号无密级变更权限')
     return
   }
@@ -280,7 +280,7 @@ async function submitUpdateSecurityLevel() {
   if (updatingSecurityLevel.value) {
     return
   }
-  if (props.detail.canUpdateSecurityLevel !== true) {
+  if (!props.detail.canUpdateSecurityLevel) {
     void message.warning('当前账号无密级变更权限')
     return
   }
@@ -316,7 +316,7 @@ async function submitUpdateSecurityLevel() {
 
 async function runFourPropertyCheck() {
   // MVR-347：与 canRunFourProperty 同源二次拦截
-  if (props.canRunFourProperty !== true) {
+  if (!props.canRunFourProperty) {
     void message.warning('当前账号或卷状态不可执行四性检测')
     return
   }

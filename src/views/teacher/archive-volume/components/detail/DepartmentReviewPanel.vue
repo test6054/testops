@@ -107,7 +107,7 @@ const statusLabel = computed(() => {
 async function handleRequest() {
   if (actionBusy.value) return
   // MVR-300：与 canRequest 同源二次拦截
-  if (canRequest.value !== true) {
+  if (!canRequest.value) {
     void message.warning('当前账号无发起院系审核权限')
     return
   }
@@ -139,7 +139,7 @@ async function handleRequest() {
 async function handleApprove() {
   if (actionBusy.value) return
   // MVR-300：与 canApprove 同源二次拦截
-  if (canApprove.value !== true) {
+  if (!canApprove.value) {
     void message.warning('当前账号无院系审核通过权限')
     return
   }
@@ -158,7 +158,7 @@ async function handleApprove() {
 async function handleReject() {
   if (actionBusy.value) return
   // MVR-300：与 canApprove 同源二次拦截（驳回同审批职责）
-  if (canApprove.value !== true) {
+  if (!canApprove.value) {
     void message.warning('当前账号无院系审核驳回权限')
     return
   }
@@ -186,7 +186,7 @@ async function handleReject() {
 async function handleWithdraw() {
   if (actionBusy.value) return
   // MVR-300：与 canWithdraw 同源二次拦截
-  if (canWithdraw.value !== true) {
+  if (!canWithdraw.value) {
     void message.warning('当前账号无撤回院系审核权限')
     return
   }
@@ -224,7 +224,7 @@ function navigateTab(tabKey: string) {
     </template>
     <template v-if="showPanel" #toolbar>
       <UiButton
-        v-if="canRequest === true"
+        v-if="canRequest"
         size="sm"
         variant="primary"
         :loading="requesting"
@@ -234,7 +234,7 @@ function navigateTab(tabKey: string) {
         发起院系审核
       </UiButton>
       <UiButton
-        v-if="canApprove === true"
+        v-if="canApprove"
         size="sm"
         variant="primary"
         :loading="approving"
@@ -244,7 +244,7 @@ function navigateTab(tabKey: string) {
         审核通过
       </UiButton>
       <UiButton
-        v-if="canApprove === true"
+        v-if="canApprove"
         size="sm"
         variant="outline"
         :disabled="actionBusy"
@@ -253,7 +253,7 @@ function navigateTab(tabKey: string) {
         驳回
       </UiButton>
       <UiButton
-        v-if="canWithdraw === true"
+        v-if="canWithdraw"
         size="sm"
         variant="outline"
         :loading="withdrawing"
@@ -277,7 +277,7 @@ function navigateTab(tabKey: string) {
       </p>
       <UiInput
         size="sm"
-        v-if="canRequest === true"
+        v-if="canRequest"
         v-model="requestReason"
         placeholder="申请说明（可选）"
         class="dept-review-panel__input"

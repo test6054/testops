@@ -392,7 +392,7 @@ function buildUpdateRequest(): ExamUpdateRequest | null {
 
 async function handleSave(): Promise<void> {
   // MVR-428：仅认 BE 下发 canManageOwnerExamLifecycleWrites === true，禁止 truthy 回退
-  if (canManageOwnerExamLifecycleWrites.value !== true) {
+  if (!canManageOwnerExamLifecycleWrites.value) {
     void message.warning('仅考试主考可修改考试主信息')
     return
   }

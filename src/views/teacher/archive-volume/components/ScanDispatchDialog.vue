@@ -64,7 +64,7 @@ watch(
 
 async function handleSubmit() {
   // MVR-318：创建派单与 canRegisterMaterial / BE requireCanScan 二次拦截
-  if (props.canRegisterMaterial !== true) {
+  if (!props.canRegisterMaterial) {
     showFormValidationMessage('当前账号无扫描派单权限')
     return
   }

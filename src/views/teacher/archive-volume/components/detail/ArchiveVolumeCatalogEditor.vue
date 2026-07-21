@@ -105,8 +105,8 @@ function updateCatalogLineValue(
   dataIndex: unknown,
   value: string | number | undefined,
 ): void {
-  // MVR-380：单元格编辑二次拦截，仅 readonly===false 可改
-  if (props.readonly !== false) {
+  // MVR-380：单元格编辑二次拦截；withDefaults 后 readonly 恒为 boolean，默认 true 拒写
+  if (props.readonly) {
     return
   }
   if (typeof index !== 'number' || index < 0) {
@@ -141,8 +141,8 @@ function updateCatalogLineValue(
 }
 
 async function handleGenerateDraft() {
-  // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）；仅 readonly===false 可写
-  if (props.readonly !== false) {
+  // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）
+  if (props.readonly) {
     void message.warning('当前账号无目录编辑权限')
     return
   }
@@ -151,8 +151,8 @@ async function handleGenerateDraft() {
 }
 
 async function handleSave() {
-  // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）；仅 readonly===false 可写
-  if (props.readonly !== false) {
+  // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）
+  if (props.readonly) {
     void message.warning('当前账号无目录编辑权限')
     return
   }
@@ -161,8 +161,8 @@ async function handleSave() {
 }
 
 async function handleConfirm() {
-  // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）；仅 readonly===false 可写
-  if (props.readonly !== false) {
+  // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）
+  if (props.readonly) {
     void message.warning('当前账号无目录编辑权限')
     return
   }
@@ -190,7 +190,7 @@ defineExpose({ loadCatalog })
         </UiTag>
       </div>
     </template>
-    <template v-if="readonly === false && editableLines.length > 0" #toolbar>
+    <template v-if="!readonly && editableLines.length > 0" #toolbar>
       <div class="archive-volume-catalog-editor__actions">
         <UiButton
           size="sm"
@@ -250,7 +250,7 @@ defineExpose({ loadCatalog })
     <div v-else-if="editableLines.length === 0" class="archive-volume-catalog-editor__empty-strip">
       <span class="archive-volume-catalog-editor__empty-text">尚未生成目录草稿</span>
       <UiButton
-        v-if="readonly === false"
+        v-if="!readonly"
         size="sm"
         variant="primary"
         :loading="saving"
@@ -305,13 +305,6 @@ defineExpose({ loadCatalog })
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-4);
-}
-
-.archive-volume-catalog-editor__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--dp-space-3);
 }
 
 .archive-volume-catalog-editor__title-wrap {

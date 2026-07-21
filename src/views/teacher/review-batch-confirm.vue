@@ -324,7 +324,7 @@ function goSingleReview(): void {
 
 function openConfirm(): void {
   // MVR-394：仅认 canManageReviewerWrites===true
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     void message.warning('当前账号无批量复核写权限')
     return
   }
@@ -345,7 +345,7 @@ function openConfirm(): void {
 async function submitBatch(): Promise<void> {
   if (!selectedExamId.value || selectedRowKeys.value.length === 0) return
   // MVR-394：仅认 canManageReviewerWrites===true
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     void message.warning('当前账号无批量复核写权限')
     return
   }

@@ -10,7 +10,7 @@
       </UiTag>
       <template v-if="task?.anonymousToken && !revealedIdentity">
         <UiTooltip
-          v-if="canManageOwnerIdentityReveal !== true"
+          v-if="!canManageOwnerIdentityReveal"
           title="当前为匿名阅卷模式，仅考试主考老师可解匿名查看学生身份"
         >
           <UiTag tone="blue" size="sm">匿名保护中</UiTag>
@@ -57,7 +57,7 @@
             </div>
           </dl>
         </template>
-        <template v-if="task.anonymousToken && !revealedIdentity && canManageOwnerIdentityReveal === true" #footer>
+        <template v-if="task.anonymousToken && !revealedIdentity && canManageOwnerIdentityReveal" #footer>
           <UiButton size="sm" variant="outline" @click="emit('reveal')">
             <template #icon><UnlockOutlined /></template>
             解匿名

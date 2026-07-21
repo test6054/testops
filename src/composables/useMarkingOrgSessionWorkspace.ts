@@ -162,7 +162,7 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
   })
 
   /**
-   * MVR-396：可建会话题组仅认 BE groups[].canCreate===true；
+   * MVR-396：可建会话题组仅认 BE groups[].canCreate；
    * readiness 未下发或无题组时默认空列表，禁止回退展示全部题组假可建。
    */
   const creatableGroupOptions = computed(() => {
@@ -171,7 +171,7 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
       return []
     }
     const creatableGroupIds = new Set(
-      readinessGroups.filter((group) => group.canCreate === true).map((group) => group.groupId),
+      readinessGroups.filter((group) => group.canCreate).map((group) => group.groupId),
     )
     return groupOptions.value.filter((option) => creatableGroupIds.has(option.value))
   })
@@ -214,7 +214,7 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
 
   /** MVR-398：关闭会话打开闸；关考后主考仍可收口 */
   function guardCloseMarkingSessionAction(): boolean {
-    if (canCloseMarkingSessions.value === true) {
+    if (canCloseMarkingSessions.value) {
       return true
     }
     void message.warning('仅考试主考老师可关闭试评 / 正评会话')

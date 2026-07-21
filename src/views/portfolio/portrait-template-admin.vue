@@ -1,15 +1,9 @@
 <script setup lang="ts">
 import type { PortfolioPortraitTemplateVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioPortraitTemplateApi } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
-import {
-  defaultPortraitLayout,
-  mergeLayoutWithChartConfig,
-  toPortraitChartConfigPayload,
-  toPortraitLayoutPayload,
-} from '@/utils/portrait-layout'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref } from 'vue'
+import { portfolioPortraitTemplateApi } from '@/apis/portfolio/teacher-platform'
 import PortfolioPortraitLayoutEditor from '@/components/portfolio/PortfolioPortraitLayoutEditor.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -18,6 +12,12 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  defaultPortraitLayout,
+  mergeLayoutWithChartConfig,
+  toPortraitChartConfigPayload,
+  toPortraitLayoutPayload,
+} from '@/utils/portrait-layout'
 
 const loading = ref(false)
 const templates = ref<PortfolioPortraitTemplateVO[]>([])

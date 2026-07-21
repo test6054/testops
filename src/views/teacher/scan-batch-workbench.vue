@@ -160,13 +160,13 @@
               <span v-else class="muted">0</span>
             </template>
             <template v-else-if="column.key === 'orderAudit'">
-              <UiTag v-if="record.orderAuditAttentionPending === true" tone="orange" size="sm">
+              <UiTag v-if="record.orderAuditAttentionPending" tone="orange" size="sm">
                 余页待确认
               </UiTag>
               <UiTag v-else-if="record.orderAuditPassed === false" tone="red" size="sm">
                 {{ record.orderAuditIssueCount ?? 0 }} 项异常
               </UiTag>
-              <UiTag v-else-if="record.orderAuditPassed === true" tone="green" size="sm">
+              <UiTag v-else-if="record.orderAuditPassed" tone="green" size="sm">
                 {{ record.orderAuditIssueCount ? `通过·${record.orderAuditIssueCount}项` : '通过' }}
               </UiTag>
               <span v-else class="muted">待审计</span>

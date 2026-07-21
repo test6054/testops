@@ -171,7 +171,7 @@ async function loadData() {
 }
 
 async function saveRow(row: MappingEditableRow) {
-  if (canManageOwnerCourseGoalWrites.value !== true) {
+  if (!canManageOwnerCourseGoalWrites.value) {
     return
   }
   if (row.saving || row.deleting) return
@@ -200,7 +200,7 @@ async function saveRow(row: MappingEditableRow) {
 }
 
 async function deleteRow(row: MappingEditableRow) {
-  if (canManageOwnerCourseGoalWrites.value !== true) {
+  if (!canManageOwnerCourseGoalWrites.value) {
     return
   }
   if (row.saving || row.deleting) return

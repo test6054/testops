@@ -525,7 +525,12 @@ async function openCriteria(row: PortfolioTitlePromotionTaskVO) {
           break
         }
         if (pageNum === TITLE_CRITERIA_TEMPLATE_PAGE_MAX) {
-          throw new Error(`启用条件模板分页超过 ${TITLE_CRITERIA_TEMPLATE_PAGE_MAX} 页`)
+          criteriaTemplates.value = []
+          showUserError(
+            new Error(`启用条件模板分页超过 ${TITLE_CRITERIA_TEMPLATE_PAGE_MAX} 页`),
+            '加载条件模板失败',
+          )
+          break
         }
       }
     } catch (error) {

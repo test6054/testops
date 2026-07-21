@@ -425,7 +425,7 @@ async function loadConfig(): Promise<void> {
 /** MVR-371：超管保存租户 OCR 渠道；与 BE saveConfig / requireOcrConfigWritePermission 二次拦截。 */
 async function handleSaveTenantChannel(): Promise<void> {
   // MVR-430：仅认 canManageOcrTenantChannel === true，与 BE 超管写闸同源
-  if (canManageOcrTenantChannel.value !== true) {
+  if (!canManageOcrTenantChannel.value) {
     void message.warning('仅平台超级管理员可配置租户文字识别渠道')
     return
   }

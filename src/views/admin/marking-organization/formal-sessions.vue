@@ -186,7 +186,7 @@ function openCreateDialog(): void {
   if (!guardOrganizationOwnerAction()) {
     return
   }
-  if (canCreateSession.value !== true) {
+  if (!canCreateSession.value) {
     void message.warning(sessionCreateWorkflow.value.disabledTooltip || `当前不可创建正评会话`)
     return
   }
@@ -200,9 +200,9 @@ const lifecycleSessionId = ref('')
 /** MVR-398：关闭动作认 canCloseMarkingSessions；暂停等 ACTIVE 写认 canManageOrganization */
 const lifecycleModalCanManage = computed(() => {
   if (lifecycleAction.value === 'closeFormal' || lifecycleAction.value === 'closeTrial') {
-    return canCloseMarkingSessions.value === true
+    return canCloseMarkingSessions.value
   }
-  return canManageOrganization.value === true
+  return canManageOrganization.value
 })
 
 function openLifecycleModal(action: LifecycleAction, sessionId: string): void {

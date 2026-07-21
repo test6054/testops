@@ -62,7 +62,7 @@
           size="sm"
           variant="primary"
           :loading="submitting"
-          :disabled="canManageReviewerWrites !== true"
+          :disabled="!canManageReviewerWrites"
           @click="handleSubmit"
         >
           预检并提交
@@ -183,7 +183,7 @@ async function handleSubmit(): Promise<void> {
     return
   }
   // MVR-372：写 handler 二次拦截；任务池仅隐藏入口不能替代
-  if (props.canManageReviewerWrites !== true) {
+  if (!props.canManageReviewerWrites) {
     void message.warning('当前账号无阅卷写权限，不能批量给分')
     return
   }

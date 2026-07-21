@@ -42,9 +42,9 @@
 
 <script lang="ts" setup>
 import type { ExamScannerBatchRecoverOrphanFailureItem } from '@/apis/mark/exam-scan'
-import { recoverOrphanScanEvents } from '@/apis/mark/exam-scan'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
+import { recoverOrphanScanEvents } from '@/apis/mark/exam-scan'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -76,14 +76,14 @@ const visible = computed(() => props.orphanPendingEventCount > 0)
 
 const canRecover = computed(
   () =>
-    Boolean(props.examId) &&
-    props.orphanPendingEventCount > 0 &&
-    props.canManageOwnerBatchActions === true,
+    Boolean(props.examId)
+    && props.orphanPendingEventCount > 0
+    && props.canManageOwnerBatchActions,
 )
 
 const description = computed(() => {
   const scope = `${props.orphanPendingEventCount} 条事件、${props.orphanPendingPageCount} 页尚未归入扫描批次`
-  if (props.canManageOwnerBatchActions === true) {
+  if (props.canManageOwnerBatchActions) {
     return `${scope}，可按扫描设备自动聚合补救。`
   }
   return `${scope}，请联系考试主考老师执行补救。`
@@ -108,8 +108,8 @@ function formatFailureItem(item: ExamScannerBatchRecoverOrphanFailureItem): stri
   const deviceLabel = item.scannerStationId
     ? `${item.scannerDeviceId} / ${item.scannerStationId}`
     : item.scannerDeviceId
-  const scopeText =
-    item.eventCount != null
+  const scopeText
+    = item.eventCount != null
       ? `（${item.eventCount} 条事件${item.pageCount != null ? `，${item.pageCount} 页` : ''}）`
       : ''
   return `${deviceLabel}${scopeText}：${item.failureMessage}`

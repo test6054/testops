@@ -147,16 +147,16 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import type { UiOptionValue } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   ARCHIVE_EXAM_FORM_OPTIONS,
   ARCHIVE_SECURITY_LEVEL_OPTIONS,
   ArchiveScoreSourceDescription,
   discardArchiveTaskScoreProof,
 } from '@/apis/mark/archive-volume'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import type { UiOptionValue } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -198,7 +198,7 @@ const emit = defineEmits<{
     code: string | null,
     name: string,
     examForm?: ArchiveExamFormCode,
-    retention?: { defaultPermanentRetention?: boolean; defaultRetentionYears?: number },
+    retention?: { defaultPermanentRetention?: boolean, defaultRetentionYears?: number },
   ]
   'responsible-change': [userId: string | null, nickName: string]
   'update:plan-form-ref': [form: FormInstance | undefined]
@@ -247,11 +247,15 @@ async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {
     }
     const previousFileId = planForm.scoreProofFileId
     if (previousFileId) {
+      let previousDiscardError: unknown
       try {
         await discardArchiveTaskScoreProof(previousFileId)
       } catch (error) {
+        previousDiscardError = error
         await discardArchiveTaskScoreProof(node.id)
-        throw error
+      }
+      if (previousDiscardError) {
+        throw previousDiscardError
       }
     }
     planForm.scoreProofFileId = node.id

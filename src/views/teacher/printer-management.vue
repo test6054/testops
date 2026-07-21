@@ -225,7 +225,7 @@
         </UiDescriptionsItem>
         <UiDescriptionsItem label="Kiosk 防误触锁">
           <UiTag :tone="!detailInfo.kioskLockEnabled ? 'orange' : 'green'">
-            {{ detailInfo.kioskLockEnabled === false ? '已关闭' : '已启用' }}
+            {{ !detailInfo.kioskLockEnabled ? '已关闭' : '已启用' }}
           </UiTag>
         </UiDescriptionsItem>
         <UiDescriptionsItem label="Web 补录工位">
@@ -509,7 +509,7 @@ const columns: ColumnsType<ExamScannerDeviceResponse> = [
 function buildDeviceActions(record: ExamScannerDeviceResponse): UiTableRowActionItem[] {
   // MVR-316：无运维写权仅保留详情，避免行内假可写
   const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
-  if (canManageScannerDeviceWrites.value !== true) {
+  if (!canManageScannerDeviceWrites.value) {
     return actions
   }
   actions.push(
@@ -690,7 +690,7 @@ function resetForm(): void {
 
 function handleCreate(): void {
   // MVR-316：与 BE requireTeacherMarkOpsPermission 二次拦截
-  if (canManageScannerDeviceWrites.value !== true) {
+  if (!canManageScannerDeviceWrites.value) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
@@ -701,7 +701,7 @@ function handleCreate(): void {
 
 function handleEdit(record: ExamScannerDeviceResponse): void {
   // MVR-316：编辑设备与教师运维写闸同源
-  if (canManageScannerDeviceWrites.value !== true) {
+  if (!canManageScannerDeviceWrites.value) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
@@ -726,7 +726,7 @@ function handleEdit(record: ExamScannerDeviceResponse): void {
 
 async function handleFormSubmit(): Promise<void> {
   // MVR-316：保存设备与 BE requireTeacherMarkOpsPermission 二次拦截
-  if (canManageScannerDeviceWrites.value !== true) {
+  if (!canManageScannerDeviceWrites.value) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
@@ -822,7 +822,7 @@ function scannerDeviceDiagnosticText(
 
 async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<void> {
   // MVR-316：重新绑定与教师运维写闸同源
-  if (canManageScannerDeviceWrites.value !== true) {
+  if (!canManageScannerDeviceWrites.value) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
@@ -851,7 +851,7 @@ async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<voi
 
 async function handleCreateActivationCode(record: ExamScannerDeviceResponse): Promise<void> {
   // MVR-316：激活码与 BE requireTeacherMarkOpsPermission 二次拦截
-  if (canManageScannerDeviceWrites.value !== true) {
+  if (!canManageScannerDeviceWrites.value) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
@@ -873,7 +873,7 @@ async function handleCreateActivationCode(record: ExamScannerDeviceResponse): Pr
 
 function handleUnbindAgent(record: ExamScannerDeviceResponse): void {
   // MVR-316：解绑与教师运维写闸同源
-  if (canManageScannerDeviceWrites.value !== true) {
+  if (!canManageScannerDeviceWrites.value) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }
@@ -936,7 +936,7 @@ async function handleViewDetail(record: ExamScannerDeviceResponse): Promise<void
 // ─── 删除 ────────────────────────────────────────────
 function handleDelete(record: ExamScannerDeviceResponse): void {
   // MVR-316：删除与教师运维写闸同源
-  if (canManageScannerDeviceWrites.value !== true) {
+  if (!canManageScannerDeviceWrites.value) {
     void message.warning('当前账号无扫描设备运维权限')
     return
   }

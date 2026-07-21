@@ -658,7 +658,7 @@ function goList() {
 
 async function exportOverviewExcel() {
   // MVR-340：与 canViewStatisticsKpi / BE requireStatisticsViewer 二次拦截
-  if (canViewStatisticsKpi.value !== true) {
+  if (!canViewStatisticsKpi.value) {
     void message.warning('当前账号无导出迎评统计权限')
     return
   }
@@ -682,7 +682,7 @@ async function exportOverviewExcel() {
 
 async function exportDestructionExcel() {
   // MVR-340：与 canViewDestructionLedger / BE requireDestructionLedgerViewer 二次拦截
-  if (canViewDestructionLedger.value !== true) {
+  if (!canViewDestructionLedger.value) {
     void message.warning('当前账号无导出销毁清册权限')
     return
   }

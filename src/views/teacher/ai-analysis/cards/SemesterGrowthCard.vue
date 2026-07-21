@@ -5,7 +5,7 @@
       <UiRadioGroup v-model="form.examScopeMode" size="sm" :options="examScopeModeOptions" />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites === true"
+        v-if="canManageReviewerWrites"
         variant="primary"
         size="sm"
         :loading="generating"
@@ -643,7 +643,7 @@ watch(
 )
 
 async function handleGenerate(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }

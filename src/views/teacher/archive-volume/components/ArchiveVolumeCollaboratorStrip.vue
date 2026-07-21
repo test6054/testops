@@ -46,7 +46,7 @@ function joinNames(items: ArchiveVolumeMemberDisplayVO[]) {
     <span v-if="submitters.length"> · 提交 {{ joinNames(submitters) }}</span>
     <span v-if="viewers.length"> · 只读 {{ joinNames(viewers) }}</span>
     <UiButton
-      v-if="canManage === true"
+      v-if="canManage"
       size="sm"
       variant="ghost"
       class="collab-strip__manage"

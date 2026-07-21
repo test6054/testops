@@ -256,6 +256,12 @@ import type {
   ExamScannerBatchAttributionItemVO,
   ExamScannerBatchPageInspectorVO,
 } from '@/apis/mark/exam-scan'
+import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
+import PaperClipOutlined from '@ant-design/icons-vue/PaperClipOutlined'
+
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { bindPaper } from '@/apis/mark/exam-binding'
 import {
   QUALITY_DECISION_TONE,
   QualityDecisionDescription,
@@ -264,12 +270,6 @@ import {
   ScanBatchWorkbenchRosterMatchStatusDescription,
   ScanBatchWorkbenchRosterMatchStatusTone,
 } from '@/apis/mark/exam-scan'
-import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
-
-import PaperClipOutlined from '@ant-design/icons-vue/PaperClipOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { bindPaper } from '@/apis/mark/exam-binding'
 import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -399,9 +399,9 @@ const bindingStatusLabel = computed(() => {
     return '已绑定'
   }
   if (
-    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
-    (page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND ||
-      page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT)
+    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
+    && (page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND
+      || page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT)
   ) {
     return '待绑定'
   }
@@ -446,30 +446,26 @@ const boundIdentityLine = computed(() => {
 
 const showBindForm = computed(() => {
   // MVR-376：仅认 BE canManageOwnerBatchActions===true
-  if (props.canManageOwnerWrites !== true) {
-    return false
-  }
   const page = props.inspector?.page
-  if (
-    !page ||
-    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING ||
-    page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.BOUND
-  ) {
-    return false
-  }
-  return Boolean(page.paperInstanceId && props.examId && props.scanBatchId)
+  return Boolean(
+    props.canManageOwnerWrites
+    && page
+    && page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
+    && page.bindingStatus !== ScanBatchWorkbenchBindingStatusCode.BOUND
+    && page.paperInstanceId
+    && props.examId
+    && props.scanBatchId,
+  )
 })
 
 const showBindBlocked = computed(() => {
   const page = props.inspector?.page
-  if (
-    !page ||
-    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING ||
-    page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.BOUND
-  ) {
-    return false
-  }
-  return !page.paperInstanceId
+  return Boolean(
+    page
+    && page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
+    && page.bindingStatus !== ScanBatchWorkbenchBindingStatusCode.BOUND
+    && !page.paperInstanceId,
+  )
 })
 
 const bindBlockedHint = computed(() => {
@@ -484,9 +480,9 @@ const reassignTargetOptions = computed(() => {
   return (props.attributionItems ?? [])
     .filter(
       (item) =>
-        !item.unassignedBucket &&
-        item.paperInstanceId &&
-        item.paperInstanceId !== currentPaperInstanceId,
+        !item.unassignedBucket
+        && item.paperInstanceId
+        && item.paperInstanceId !== currentPaperInstanceId,
     )
     .map((item) => {
       const identityParts = [
@@ -528,16 +524,15 @@ const currentPaperLabel = computed(() => {
 const showReassignSection = computed(() => {
   const page = props.inspector?.page
   // MVR-376：仅认 BE canManageOwnerBatchActions===true
-  if (props.canManageOwnerWrites !== true) {
-    return false
-  }
-  if (!page || !props.examId || !props.scanBatchId || !page.pageId) {
-    return false
-  }
-  return (
-    page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING &&
-    page.templatePageNo !== undefined &&
-    reassignTargetOptions.value.length > 0
+  return Boolean(
+    props.canManageOwnerWrites
+    && page
+    && props.examId
+    && props.scanBatchId
+    && page.pageId
+    && page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
+    && page.templatePageNo !== undefined
+    && reassignTargetOptions.value.length > 0,
   )
 })
 
@@ -578,7 +573,7 @@ function syncBindFormFromPage(): void {
 
 async function submitBind(): Promise<void> {
   // MVR-376：与 canManageOwnerWrites / BE requireExamOwnerPermission 二次拦截
-  if (props.canManageOwnerWrites !== true) {
+  if (!props.canManageOwnerWrites) {
     showFormValidationMessage('当前账号无主考扫描写权限，无法绑定身份')
     return
   }
@@ -619,7 +614,7 @@ async function submitBind(): Promise<void> {
 
 async function submitReassign(): Promise<void> {
   // MVR-376：与 canManageOwnerWrites / BE requireExamOwnerPermission 二次拦截
-  if (props.canManageOwnerWrites !== true) {
+  if (!props.canManageOwnerWrites) {
     showFormValidationMessage('当前账号无主考扫描写权限，无法人工调卷')
     return
   }

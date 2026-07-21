@@ -420,7 +420,10 @@ async function loadPublishedTasks() {
         return
       }
     }
-    throw new Error(`已发布职称任务分页超过 ${PROMOTION_PAGE_MAX} 页`)
+    showUserError(
+      new Error(`已发布职称任务分页超过 ${PROMOTION_PAGE_MAX} 页`),
+      '加载申报任务失败',
+    )
   } catch (error) {
     showUserError(error, '加载申报任务失败')
   }
@@ -451,7 +454,10 @@ async function loadRecords() {
         return
       }
     }
-    throw new Error(`正式档案分页超过 ${PROMOTION_PAGE_MAX} 页`)
+    showUserError(
+      new Error(`正式档案分页超过 ${PROMOTION_PAGE_MAX} 页`),
+      '加载正式档案失败',
+    )
   } catch (error) {
     showUserError(error, '加载正式档案失败')
   } finally {
@@ -544,7 +550,7 @@ const canSubmitApplication = computed(() => {
   if (!selectionConfirmed.value) {
     return false
   }
-  if (matchResult.value && matchResult.value.canSubmit === false) {
+  if (matchResult.value?.canSubmit === false) {
     return false
   }
   return true

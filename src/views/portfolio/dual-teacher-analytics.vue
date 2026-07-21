@@ -30,6 +30,16 @@ const certLevelColumns: ColumnsType = [
   { title: '数量', dataIndex: 'count', key: 'count', width: 88, align: 'right' },
 ]
 
+const departmentColumns: ColumnsType = [
+  { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
+  { title: '在岗双师', dataIndex: 'count', key: 'count', width: 100, align: 'right' },
+]
+
+const certYearColumns: ColumnsType = [
+  { title: '认定年份', dataIndex: 'certYear', key: 'certYear' },
+  { title: '通过教师数', dataIndex: 'count', key: 'count', width: 110, align: 'right' },
+]
+
 function applicationStatusLabel(status: PortfolioDualTeacherApplicationStatusCode): string {
   return strictEnumLabel(
     PortfolioDualTeacherApplicationStatusDescription,
@@ -82,9 +92,14 @@ onMounted(loadStats)
         :description="loadFailed ? '双师分析数据加载失败' : '暂无双师分析数据'"
       />
       <div v-else-if="stats" class="grid">
-        <UiCard title="概览">
+        <UiCard title="流程概览">
           <p>申请总数 {{ stats.totalCount }}</p>
           <p>认定通过 {{ stats.approvedCount }}</p>
+        </UiCard>
+        <UiCard title="在岗结构双师比例">
+          <p>在岗教师 {{ stats.structureTeacherCount ?? 0 }}</p>
+          <p>在岗双师 {{ stats.structureDualTeacherCount ?? 0 }}</p>
+          <p>双师比例 {{ stats.dualTeacherRatioPercent ?? 0 }}%</p>
         </UiCard>
         <UiCard title="按状态">
           <UiDataTable
@@ -116,6 +131,32 @@ onMounted(loadStats)
             :show-pagination="false"
             :sticky-header="false"
             :total="stats.certLevelCounts.length"
+          />
+        </UiCard>
+        <UiCard title="院系分布（在岗）">
+          <UiDataTable
+            :columns="departmentColumns"
+            :data-source="stats.departmentCounts || []"
+            row-key="departmentId"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="(stats.departmentCounts || []).length"
+          />
+        </UiCard>
+        <UiCard title="认定年份变化">
+          <UiDataTable
+            :columns="certYearColumns"
+            :data-source="stats.certYearCounts || []"
+            row-key="certYear"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="(stats.certYearCounts || []).length"
           />
         </UiCard>
       </div>

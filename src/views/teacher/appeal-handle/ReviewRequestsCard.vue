@@ -263,14 +263,10 @@ function isGradeReviewApplicantSelf(record: GradeReviewRequestItemResponse): boo
 }
 
 function canClaimReviewRequest(record: GradeReviewRequestItemResponse): boolean {
-  if (record.requestStatus !== GradeReviewRequestStatusCode.PENDING) {
-    return false
-  }
-  // MVR-194：申请人不得领取本人申请
-  if (isGradeReviewApplicantSelf(record)) {
-    return false
-  }
-  return true
+  return (
+    record.requestStatus === GradeReviewRequestStatusCode.PENDING
+    && !isGradeReviewApplicantSelf(record)
+  )
 }
 
 /** 后端要求先领取且仅领取人可处理（IN_REVIEW）后再 handleReviewRequest。 */

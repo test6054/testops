@@ -163,8 +163,7 @@ async function openReview(plan: TrainingPlanVO): Promise<void> {
   drawerOpen.value = true
   detailLoading.value = true
   try {
-    const detail = await trainingPlanApi.detail(plan.id)
-    selectedPlan.value = detail
+    selectedPlan.value = await trainingPlanApi.detail(plan.id)
     try {
       checklist.value = await trainingPlanApi.checklist(plan.id)
     } catch (error) {

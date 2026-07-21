@@ -296,7 +296,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 }
 
 async function handleApprove(planId: string): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     void message.warning('仅本场阅卷组织成员或主考可审批重判计划')
     return
   }
@@ -327,7 +327,7 @@ function openRejectModal(planId: string): void {
 }
 
 async function handleReject(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     void message.warning('仅本场阅卷组织成员或主考可驳回重判计划')
     return
   }
@@ -356,7 +356,7 @@ async function handleReject(): Promise<void> {
 
 function openExecuteModal(planId: string): void {
   // MVR-386：打开执行弹窗与 canManageReviewerWrites / BE execute 二次拦截（对齐 MVR-380 BatchCorrection）
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     void message.warning('仅本场阅卷组织成员或主考可执行重判计划')
     return
   }
@@ -370,7 +370,7 @@ function openExecuteModal(planId: string): void {
 }
 
 async function handleExecute(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     void message.warning('仅本场阅卷组织成员或主考可执行重判计划')
     return
   }
@@ -437,7 +437,7 @@ function isRejudgePlanSubmitterSelf(row: ExamRejudgePlan): boolean {
 
 function canDecideRejudgePlan(row: ExamRejudgePlan): boolean {
   return (
-    canManageReviewerWrites.value === true
+    canManageReviewerWrites.value
     && row.planStatus === 'PENDING_APPROVAL'
     && !isRejudgePlanSubmitterSelf(row)
   )
@@ -463,7 +463,7 @@ function buildRejudgePlanActions(row: ExamRejudgePlan): UiTableRowActionItem[] {
     {
       key: 'execute',
       label: '执行',
-      hidden: canManageReviewerWrites.value !== true || row.planStatus !== 'APPROVED',
+      hidden: !canManageReviewerWrites.value || row.planStatus !== 'APPROVED',
       disabled: operating('execute'),
     },
   ]
@@ -481,7 +481,7 @@ function handleRejudgePlanAction(key: string, row: ExamRejudgePlan): void {
       break
     case 'execute':
       // MVR-386：行动作入口与 openExecuteModal 同源二次闸
-      if (canManageReviewerWrites.value !== true || row.planStatus !== 'APPROVED') {
+      if (!canManageReviewerWrites.value || row.planStatus !== 'APPROVED') {
         return
       }
       openExecuteModal(row.id)

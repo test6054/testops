@@ -208,6 +208,27 @@ export interface PortfolioDualTeacherAnalyticsVO {
   approvedCount: number
   statusCounts: PortfolioDualTeacherStatusCountVO[]
   certLevelCounts: PortfolioDualTeacherCertLevelCountVO[]
+  /** §8.61 在岗结构教师数 */
+  structureTeacherCount?: number
+  /** 在岗结构内已通过双师认定教师数 */
+  structureDualTeacherCount?: number
+  /** 双师比例百分比 */
+  dualTeacherRatioPercent?: number | string
+  /** 在岗双师院系分布 */
+  departmentCounts?: PortfolioDualTeacherDepartmentCountVO[]
+  /** 认定年份分布 */
+  certYearCounts?: PortfolioDualTeacherCertYearCountVO[]
+}
+
+export interface PortfolioDualTeacherDepartmentCountVO {
+  departmentId: string
+  departmentName: string
+  count: number
+}
+
+export interface PortfolioDualTeacherCertYearCountVO {
+  certYear: string
+  count: number
 }
 
 export interface PortfolioDualTeacherStatusCountVO {

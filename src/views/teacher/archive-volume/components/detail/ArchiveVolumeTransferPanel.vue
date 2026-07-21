@@ -14,7 +14,7 @@
     <UiAlertStrip
       v-if="
         detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
-          && detail.hasOpenRemediationTask === true
+          && detail.hasOpenRemediationTask
       "
       tone="warning"
       title="存在未关闭整改"
@@ -41,17 +41,17 @@
         class="archive-volume-transfer-panel__actions"
       >
         <UiButton
-          v-if="canApproveTransferAction === true"
+          v-if="canApproveTransferAction"
           variant="primary"
           size="sm"
           :loading="approvingTransfer"
-          :disabled="rejectingTransfer || detail.hasOpenRemediationTask === true"
+          :disabled="rejectingTransfer || detail.hasOpenRemediationTask"
           @click="handleApproveTransfer"
         >
           验收通过
         </UiButton>
         <UiButton
-          v-if="canRejectTransferAction === true"
+          v-if="canRejectTransferAction"
           size="sm"
           variant="outline"
           :disabled="approvingTransfer"
@@ -181,20 +181,19 @@ function isTransferSubmitterSelf(): boolean {
   )
 }
 
-const canApproveTransferAction = computed(() => {
-  if (props.canReviewTransfer !== true) return false
-  if (props.detail.volume.transferStatus !== ArchiveTransferStatusCode.PENDING_REVIEW) return false
-  if (isTransferSubmitterSelf()) return false
-  return true
-})
+const canApproveTransferAction = computed(
+  () =>
+    Boolean(props.canReviewTransfer)
+    && props.detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
+    && !isTransferSubmitterSelf(),
+)
 
-const canRejectTransferAction = computed(() => {
-  if (props.canRejectTransfer !== true) return false
-  if (props.detail.volume.transferStatus !== ArchiveTransferStatusCode.PENDING_REVIEW) return false
-  // MVR-193：提交人不得驳回本人提交的移交
-  if (isTransferSubmitterSelf()) return false
-  return true
-})
+const canRejectTransferAction = computed(
+  () =>
+    Boolean(props.canRejectTransfer)
+    && props.detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
+    && !isTransferSubmitterSelf(),
+)
 
 const approvingTransfer = ref(false)
 const rejectingTransfer = ref(false)
@@ -272,11 +271,11 @@ async function downloadTransferPackage() {
 async function handleApproveTransfer() {
   if (approvingTransfer.value || rejectingTransfer.value) return
   // MVR-348：与 canApproveTransferAction / BE requireTransferReviewer 二次拦截
-  if (canApproveTransferAction.value !== true) {
+  if (!canApproveTransferAction.value) {
     void message.warning('当前账号不可验收通过该移交（无权限、状态不符或本人提交）')
     return
   }
-  if (props.detail.hasOpenRemediationTask === true) {
+  if (props.detail.hasOpenRemediationTask) {
     showFormValidationMessage('存在未关闭整改，请先完成整改或退回移交')
     return
   }
@@ -295,7 +294,7 @@ async function handleApproveTransfer() {
 
 function openRejectTransfer() {
   // MVR-348：与 canRejectTransferAction 同源二次拦截
-  if (canRejectTransferAction.value !== true) {
+  if (!canRejectTransferAction.value) {
     void message.warning('当前账号无移交退回权限')
     return
   }
@@ -306,7 +305,7 @@ function openRejectTransfer() {
 async function submitRejectTransfer() {
   if (approvingTransfer.value || rejectingTransfer.value) return
   // MVR-300：与 canRejectTransferAction 同源二次拦截
-  if (canRejectTransferAction.value !== true) {
+  if (!canRejectTransferAction.value) {
     void message.warning('当前账号无移交退回权限')
     return
   }

@@ -168,7 +168,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     if (detecting.value) {
       return true
     }
-    if (layoutWritable.value === true) {
+    if (layoutWritable.value) {
       if (!document.value) {
         return true
       }
@@ -338,8 +338,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       return false
     }
     const res = await loadExamLayoutDesign({ examId })
-    // MVR-384：仅认 BE loadExamLayoutDesign.writable===true；禁止 truthy 放行
-    layoutWritable.value = res.writable === true
+    // MVR-384：layoutWritable 承接 BE loadExamLayoutDesign.writable（合同 boolean）
+    layoutWritable.value = res.writable
     writeLockReason.value = res.writeLockReason
     detectPollingPolicy.value = res.detectPollingPolicy
     const detectTaskId = res.activeDetect?.detectTaskId
@@ -377,8 +377,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     loading.value = true
     try {
       const res = await loadExamLayoutDesign({ examId })
-      // MVR-384：仅认 BE writable===true
-      layoutWritable.value = res.writable === true
+      // MVR-384：layoutWritable 承接 BE writable（合同 boolean）
+      layoutWritable.value = res.writable
       writeLockReason.value = res.writeLockReason
       detectPollingPolicy.value = res.detectPollingPolicy
       if (res.document) {
@@ -465,7 +465,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       return
     }
     // MVR-411：可写预览须本地 document + 保存校验；只读预览不传 document
-    const writablePreview = layoutWritable.value === true
+    const writablePreview = layoutWritable.value
     if (writablePreview) {
       if (!document.value) {
         return

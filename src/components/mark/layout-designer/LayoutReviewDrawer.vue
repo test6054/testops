@@ -11,12 +11,18 @@ import { showUserError } from '@/utils/error-handler'
 
 const open = defineModel<boolean>('open', { default: false })
 
-const props = defineProps<{
-  examId: string
-  document: ExamLayoutDocument | null
-  pageNo: number
-  readonly?: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    examId: string
+    document: ExamLayoutDocument | null
+    pageNo: number
+    /** MVR-376：默认拒绝；仅父层显式 :readonly="false" 时可写 */
+    readonly?: boolean
+  }>(),
+  {
+    readonly: true,
+  },
+)
 
 const emit = defineEmits<{
   patch: [document: ExamLayoutDocument]
@@ -43,7 +49,7 @@ async function persistAdjust(): Promise<void> {
     return
   }
   // MVR-376：默认拒绝；仅 readonly===false（父层 layoutWritable）时可写
-  if (props.readonly !== false) {
+  if (props.readonly) {
     void message.warning('考试已开印或已开始扫描，制卷设计不可修改')
     return
   }
@@ -100,7 +106,7 @@ async function persistAdjust(): Promise<void> {
         size="sm"
         variant="primary"
         :loading="saving"
-        :disabled="readonly !== false"
+        :disabled="readonly"
         @click="persistAdjust"
       >
         保存微调

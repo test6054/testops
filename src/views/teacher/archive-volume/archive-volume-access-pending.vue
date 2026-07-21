@@ -91,9 +91,9 @@
               </div>
             </template>
             <template v-else>
-              <UiButton size="sm" variant="primary" @click="startApprove(record.accessRecordId)"
-                >批准</UiButton
-              >
+              <UiButton size="sm" variant="primary" @click="startApprove(record.accessRecordId)">
+                批准
+              </UiButton>
               <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)">
                 拒绝
               </UiButton>
@@ -110,14 +110,14 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeAccessRecordResponse } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   approveArchiveVolumeAccess,
   listPendingArchiveAccessRecords,
   rejectArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -155,8 +155,7 @@ function canApprove(record: ArchiveVolumeAccessRecordResponse): boolean {
 async function loadRecords(): Promise<void> {
   loading.value = true
   try {
-    const result = await listPendingArchiveAccessRecords()
-    records.value = result
+    records.value = await listPendingArchiveAccessRecords()
     loadFailed.value = false
   } catch (error) {
     loadFailed.value = true

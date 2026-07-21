@@ -18,7 +18,7 @@
           @change="reload"
         />
         <UiButton
-          v-if="canManageReviewerWrites === true"
+          v-if="canManageReviewerWrites"
           variant="outline"
           size="sm"
           :disabled="!selectedQuestionForCorrection"
@@ -27,7 +27,7 @@
           修正答案并生效
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites === true"
+          v-if="canManageReviewerWrites"
           variant="outline"
           size="sm"
           :loading="generating && !generatingAllMode"
@@ -37,7 +37,7 @@
           生成当前题
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites === true"
+          v-if="canManageReviewerWrites"
           variant="outline"
           size="sm"
           :loading="generating"
@@ -70,7 +70,7 @@
           @change="reload"
         />
         <UiButton
-          v-if="canManageReviewerWrites === true"
+          v-if="canManageReviewerWrites"
           variant="outline"
           size="sm"
           :disabled="!selectedQuestionForCorrection"
@@ -79,7 +79,7 @@
           修正答案并生效
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites === true"
+          v-if="canManageReviewerWrites"
           variant="outline"
           size="sm"
           :loading="generating && !generatingAllMode"
@@ -89,7 +89,7 @@
           生成当前题
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites === true"
+          v-if="canManageReviewerWrites"
           variant="primary"
           size="sm"
           :loading="generating"
@@ -190,7 +190,7 @@
           <template #empty-action>
             <div class="dp-space" v-if="tableEmptyKind === 'first-run'" style="--dp-space-gap: 8px">
               <UiButton
-                v-if="canManageReviewerWrites === true"
+                v-if="canManageReviewerWrites"
                 variant="outline"
                 size="sm"
                 :loading="generating"
@@ -205,7 +205,7 @@
               style="--dp-space-gap: 8px"
             >
               <UiButton
-                v-if="canManageReviewerWrites === true"
+                v-if="canManageReviewerWrites"
                 variant="outline"
                 size="sm"
                 :loading="generating && !generatingAllMode"
@@ -250,7 +250,7 @@
               <UiTableActions
                 :items="[
                   // MVR-387：模板须 === true；ComputedRef 对象 truthy 会导致无写权仍展示行操作
-                  ...(canManageReviewerWrites === true
+                  ...(canManageReviewerWrites
                     ? [
                       { key: 'correct-answer', label: '修正答案并生效' },
                       { key: 'regenerate', label: '重新生成' },
@@ -590,7 +590,7 @@ async function reloadCurrentScope(): Promise<void> {
 }
 
 async function handleGenerateAll(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
@@ -616,7 +616,7 @@ async function handleGenerateAll(): Promise<void> {
 }
 
 async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
@@ -649,7 +649,7 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
 }
 
 async function handleGenerateSelected(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
@@ -661,13 +661,13 @@ async function handleGenerateSelected(): Promise<void> {
 }
 
 function handleRowAction(actionKey: string, item: ExamQuestionAnalysisRecordResponse): void {
-  // MVR-387：写动作统一 !== true，禁止 truthy/本地身份放行
-  if (actionKey === 'correct-answer' && canManageReviewerWrites.value !== true) {
+  // MVR-387：写动作统一 !value（computed 已 === true 归一），禁止 truthy/本地身份放行
+  if (actionKey === 'correct-answer' && !canManageReviewerWrites.value) {
     void message.warning('仅本场阅卷组织成员或主考可修正答案并生效')
     return
   }
   if (actionKey === 'regenerate') {
-    if (canManageReviewerWrites.value !== true) {
+    if (!canManageReviewerWrites.value) {
       void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
       return
     }
@@ -680,7 +680,7 @@ function handleRowAction(actionKey: string, item: ExamQuestionAnalysisRecordResp
 }
 
 function handleOpenSelectedQuestionCorrection(): void {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     void message.warning('仅本场阅卷组织成员或主考可修正答案并生效')
     return
   }

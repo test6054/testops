@@ -1333,7 +1333,7 @@ function goToManualEntry(): void {
 
 function goToManualSupplementFromAttention(record: ScanAttentionItemResponse): void {
   // MVR-390：补扫入口与主考写闸同源，禁止无写权假入口
-  if (canManageOwnerBatchActions.value !== true) {
+  if (!canManageOwnerBatchActions.value) {
     void message.warning('当前账号非本场主考，无法发起补扫')
     return
   }
@@ -1687,7 +1687,7 @@ const pageDiscardReason = ref('')
 const pageDiscardReasonError = ref('')
 async function onDiscardPage(record: ScanAttentionItemResponse): Promise<void> {
   // MVR-390：打开废弃弹窗与 canManageOwnerBatchActions / BE 主考写门禁同源
-  if (canManageOwnerBatchActions.value !== true) {
+  if (!canManageOwnerBatchActions.value) {
     void message.warning('当前账号非本场主考，无法废弃扫描页')
     return
   }
@@ -1710,7 +1710,7 @@ function closePageDiscardModal(): void {
 }
 
 async function confirmDiscardPage(): Promise<void> {
-  if (canManageOwnerBatchActions.value !== true) {
+  if (!canManageOwnerBatchActions.value) {
     return
   }
   const record = pageDiscardTarget.value
@@ -1943,7 +1943,7 @@ async function loadBindSourcePageImage(): Promise<void> {
 }
 
 function openBindDrawer(record: ScanAttentionItemResponse): void {
-  if (canManageOwnerBatchActions.value !== true) {
+  if (!canManageOwnerBatchActions.value) {
     return
   }
   if (!record.paperInstanceId || !record.scanBatchId) {
@@ -1969,7 +1969,7 @@ function openBindDrawer(record: ScanAttentionItemResponse): void {
 
 async function handleBind(): Promise<void> {
   // MVR-316：与 BE requireExamOwnerPermission / canManageOwnerBatchActions 二次拦截
-  if (canManageOwnerBatchActions.value !== true) {
+  if (!canManageOwnerBatchActions.value) {
     void message.warning('当前账号非本场主考，无法进行身份绑定')
     return
   }
@@ -2035,7 +2035,7 @@ function handleMonitorBatchAction(key: string, batch: ExamScannerBatchResponse):
 function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
   // MVR-263：主考写动作与 BE requireExamOwnerPermission 对齐，非主考仅保留导航/查看
-  const canOwnerWrite = canManageOwnerBatchActions.value === true
+  const canOwnerWrite = canManageOwnerBatchActions.value
   if (record.attentionType === ScanAttentionTypeCode.BINDING_CONFLICT) {
     if (canOwnerWrite) {
       actions.push({
@@ -2181,7 +2181,7 @@ const rowSelection = computed(() => ({
 
 async function handleBatchBind(): Promise<void> {
   // MVR-316：批量身份绑定与主考写闸同源
-  if (canManageOwnerBatchActions.value !== true) {
+  if (!canManageOwnerBatchActions.value) {
     void message.warning('当前账号非本场主考，无法批量身份绑定')
     return
   }
@@ -2231,7 +2231,7 @@ function closeBatchBindDrawer(): void {
 
 async function submitBatchBind(): Promise<void> {
   // MVR-316：批量提交与 BE requireExamOwnerPermission 二次拦截
-  if (canManageOwnerBatchActions.value !== true) {
+  if (!canManageOwnerBatchActions.value) {
     void message.warning('当前账号非本场主考，无法批量身份绑定')
     return
   }

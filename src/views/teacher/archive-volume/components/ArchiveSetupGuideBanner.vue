@@ -71,7 +71,7 @@ const userStore = useUserStore()
 
 /** MVR-246：配置深链仅超管/租户管理员可点，与 settings 路由 requireTenantAdmin 同源 */
 const canManageArchiveConfig = computed(
-  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin === true,
+  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin,
 )
 
 const missingItems = computed(() => props.readiness?.missingItems ?? [])

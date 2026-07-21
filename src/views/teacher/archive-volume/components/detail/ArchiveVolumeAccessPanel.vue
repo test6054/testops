@@ -331,8 +331,7 @@ async function loadAccessRecords() {
   if (!props.volumeId) return
   accessLoading.value = true
   try {
-    const records = await listArchiveVolumeAccessRecords(props.volumeId)
-    accessRecords.value = records
+    accessRecords.value = await listArchiveVolumeAccessRecords(props.volumeId)
     accessLoadFailed.value = false
   } catch (error) {
     showUserError(error, '加载查阅记录失败')
@@ -455,7 +454,7 @@ async function submitReadPage() {
 
 function openAccessRequest() {
   // MVR-299：与 canRequestAccess 同源二次拦截
-  if (props.canRequestAccess !== true) {
+  if (!props.canRequestAccess) {
     void message.warning('当前账号无发起借阅权限')
     return
   }
@@ -470,7 +469,7 @@ function resolveAccessMaterialId(record: ArchiveVolumeAccessRecordResponse): str
 
 async function submitAccessRequest() {
   if (accessSubmitting.value) return
-  if (props.canRequestAccess !== true) {
+  if (!props.canRequestAccess) {
     void message.warning('当前账号无发起借阅权限')
     return
   }

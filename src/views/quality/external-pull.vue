@@ -1677,7 +1677,7 @@ onMounted(async () => {
               :key="entry.key"
               class="external-pull__entry-card external-pull__entry-card--compact"
             >
-              <UiRow :gutter="12" align="middle">
+              <UiRow :gutter="12" class="external-pull__sort-row">
                 <UiCol :span="10">
                   <UiSelect
                     size="sm"
@@ -2036,6 +2036,10 @@ onMounted(async () => {
     &--compact {
       padding: 10px 12px;
     }
+  }
+
+  &__sort-row {
+    align-items: center;
   }
 
   &__entry-header {

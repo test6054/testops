@@ -397,7 +397,7 @@ function goBatchConfirm(): void {
     return
   }
   // MVR-291/394：无写能力不得导航进批量确认页（页内虽叠闸，避免假入口）
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     void message.warning('当前账号无批量复核写权限')
     return
   }

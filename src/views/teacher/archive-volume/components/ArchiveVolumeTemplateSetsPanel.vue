@@ -54,7 +54,7 @@
           </template>
         </UiDataTable>
         <div
-          v-if="!templateSetsLoadFailed && canManageArchiveConfig === true"
+          v-if="!templateSetsLoadFailed && canManageArchiveConfig"
           class="archive-template-sets-panel__copy-bar"
         >
           <div class="archive-template-sets-panel__copy-all">
@@ -366,7 +366,7 @@ const authStore = useAuthStore()
 const userStore = useUserStore()
 /** MVR-314：与路由 requireTenantAdmin / BE requireTenantAdminForConfig 同源 */
 const canManageArchiveConfig = computed(
-  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin === true,
+  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin,
 )
 
 const activeScopeTab = ref<ArchiveTemplateScopeCode>(ArchiveTemplateScopeCode.PLATFORM)
@@ -653,7 +653,7 @@ async function loadTenantSetDetail(templateSetCode: string) {
 
 async function openEditDrawer(templateSetCode: string) {
   // MVR-381：与 canManageArchiveConfig / BE requireTenantAdminForConfig 二次拦截
-  if (canManageArchiveConfig.value !== true) {
+  if (!canManageArchiveConfig.value) {
     void message.warning('仅超级管理员或租户管理员可编辑归档模板')
     return
   }
@@ -676,7 +676,7 @@ function findTenantSetByPlatformSource(sourceSetCode: string) {
 async function openPlatformTemplate(record: ArchiveTenantTemplateSetResponse) {
   const tenantSet = findTenantSetByPlatformSource(record.templateSetCode)
   // MVR-381：无配置写权仅预览；有权且已有本校副本才进编辑
-  if (tenantSet && canManageArchiveConfig.value === true) {
+  if (tenantSet && canManageArchiveConfig.value) {
     await openEditDrawer(tenantSet.templateSetCode)
     return
   }
@@ -686,7 +686,7 @@ async function openPlatformTemplate(record: ArchiveTenantTemplateSetResponse) {
 function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSetCode = '') {
   if (templateSetsLoadFailed.value) return
   // MVR-381：复制入口与 canManageArchiveConfig 二次拦截
-  if (canManageArchiveConfig.value !== true) {
+  if (!canManageArchiveConfig.value) {
     void message.warning('仅超级管理员或租户管理员可复制归档模板')
     return
   }
@@ -701,7 +701,7 @@ async function submitCopy() {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (canManageArchiveConfig.value !== true) {
+  if (!canManageArchiveConfig.value) {
     void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -738,7 +738,7 @@ async function submitCopyAll() {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (canManageArchiveConfig.value !== true) {
+  if (!canManageArchiveConfig.value) {
     void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -769,7 +769,7 @@ async function submitCopyAll() {
 function openResyncModal(record: ArchiveTenantTemplateSetResponse) {
   if (templateSetsLoadFailed.value) return
   // MVR-381/421：重同步入口与 canManageArchiveConfig ∧ canResyncTenantSet 二次拦截
-  if (canManageArchiveConfig.value !== true) {
+  if (!canManageArchiveConfig.value) {
     void message.warning('仅超级管理员或租户管理员可重新同步归档模板')
     return
   }
@@ -786,7 +786,7 @@ function buildPlatformTemplateRowActions(
   record: ArchiveTenantTemplateSetResponse,
 ): UiTableRowActionItem[] {
   const tenantSet = findTenantSetByPlatformSource(record.templateSetCode)
-  const canManage = canManageArchiveConfig.value === true
+  const canManage = canManageArchiveConfig.value
   return [
     {
       key: 'open',
@@ -808,7 +808,7 @@ function handlePlatformTemplateRowAction(key: string, record: ArchiveTenantTempl
 function buildTenantTemplateRowActions(
   record: ArchiveTenantTemplateSetResponse,
 ): UiTableRowActionItem[] {
-  const canManage = canManageArchiveConfig.value === true
+  const canManage = canManageArchiveConfig.value
   return [
     { key: 'edit', label: '编辑', hidden: !canManage },
     { key: 'history', label: '版本历史' },
@@ -874,7 +874,7 @@ async function submitRestoreFromAudit(auditId: string): Promise<void> {
   }
   // MVR-314：模板配置写二次拦截
   // MVR-431：恢复写闸与 canManageArchiveConfig 严格叠闸
-  if (canManageArchiveConfig.value !== true) {
+  if (!canManageArchiveConfig.value) {
     void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -908,7 +908,7 @@ async function submitResync() {
     return
   }
   // MVR-314/421：模板配置写 ∧ 可重同步源版本二次拦截
-  if (canManageArchiveConfig.value !== true) {
+  if (!canManageArchiveConfig.value) {
     void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -939,7 +939,7 @@ async function saveTenantSet() {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (canManageArchiveConfig.value !== true) {
+  if (!canManageArchiveConfig.value) {
     void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
@@ -956,7 +956,7 @@ async function saveTenantSet() {
     showFormValidationMessage('至少保留一条自查项')
     return
   }
-  if (editorMeta.defaultPermanentRetention !== true && editorMeta.defaultRetentionYears == null) {
+  if (!editorMeta.defaultPermanentRetention && editorMeta.defaultRetentionYears == null) {
     showFormValidationMessage('请填写保管年限或勾选永久')
     return
   }

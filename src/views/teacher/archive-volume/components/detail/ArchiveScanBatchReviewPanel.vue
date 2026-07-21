@@ -70,7 +70,7 @@ const columns: ColumnsType<ArchiveScanBatchSnapshotItemVO> = [
 ]
 
 const rowSelection = computed(() =>
-  props.canReview === true
+  props.canReview
     ? {
         selectedRowKeys: selectedRowKeys.value,
         onChange: (keys: Key[]) => {
@@ -109,7 +109,7 @@ async function loadRows() {
 
 function openBatchAction(action: 'confirm-normal' | 'discard') {
   // MVR-305：与 canReview 同源二次拦截
-  if (props.canReview !== true) {
+  if (!props.canReview) {
     void message.warning('当前账号无扫描批次复核权限')
     return
   }
@@ -127,7 +127,7 @@ async function submitBatchAction() {
     return
   }
   // MVR-305：与 canReview 同源二次拦截
-  if (props.canReview !== true) {
+  if (!props.canReview) {
     void message.warning('当前账号无扫描批次复核权限')
     return
   }
@@ -186,7 +186,7 @@ onMounted(() => {
         仅展示质检标记为疑似混扫的已提交批次，可确认正常或作废对应卷内材料。
       </p>
     </template>
-    <template v-if="canReview === true" #toolbar>
+    <template v-if="canReview" #toolbar>
       <UiButton
         size="sm"
         variant="outline"

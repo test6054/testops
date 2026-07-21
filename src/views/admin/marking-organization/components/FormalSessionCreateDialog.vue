@@ -160,7 +160,7 @@ watch(
 )
 
 async function submit(): Promise<void> {
-  if (props.canManage !== true) {
+  if (!props.canManage) {
     showFormValidationMessage('仅考试主考老师可管理正评会话')
     return
   }

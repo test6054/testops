@@ -212,10 +212,9 @@ const columns = computed((): ColumnType<CollaboratorTreeRow>[] => {
     { title: '加入时间', key: 'createTimeLabel', width: 156 },
     { title: '能力 / 备注', key: 'meta', ellipsis: true },
   ]
-  if (props.canManageCollaborators === true) {
-    base.push({ title: '操作', key: 'actions', width: 200 })
-  }
-  return base
+  return props.canManageCollaborators
+    ? [...base, { title: '操作', key: 'actions', width: 200 }]
+    : base
 })
 
 function memberMatchesKeyword(row: CollaboratorMemberRow, keyword: string): boolean {
@@ -310,7 +309,7 @@ function handleRosterReset(): void {
 
 async function handleAdd(): Promise<void> {
   if (submitting.value) return
-  if (props.canManageCollaborators !== true) {
+  if (!props.canManageCollaborators) {
     void message.warning('当前账号无协作老师管理权限')
     return
   }
@@ -341,7 +340,7 @@ async function handleAdd(): Promise<void> {
 }
 
 async function handleRoleChange(row: CollaboratorMemberRow, nextRole: ArchiveVolumeMemberRoleCode) {
-  if (props.canManageCollaborators !== true || !row.roleEditable) return
+  if (!props.canManageCollaborators || !row.roleEditable) return
   if (nextRole === row.memberRole) return
   if (roleUpdatingMemberId.value || submitting.value) return
   roleUpdatingMemberId.value = row.memberId
@@ -369,7 +368,7 @@ async function handleMemberAction(key: string, row: CollaboratorMemberRow): Prom
 
 async function handleRemove(row: CollaboratorMemberRow) {
   if (!row.memberId || submitting.value) return
-  if (props.canManageCollaborators !== true) {
+  if (!props.canManageCollaborators) {
     void message.warning('当前账号无协作老师管理权限')
     return
   }
@@ -403,7 +402,7 @@ async function handleRemove(row: CollaboratorMemberRow) {
     <SignalBand :metrics="signalMetrics" variant="panel" compact class="av-collab__signal" />
 
     <UiFilterBar
-      v-if="canManageCollaborators === true"
+      v-if="canManageCollaborators"
       v-model="addFormModel"
       :fields="addFilterFields"
       variant="panel"
@@ -485,7 +484,7 @@ async function handleRemove(row: CollaboratorMemberRow) {
           <span v-else-if="isMemberRow(record)">{{ record.remark }}</span>
         </template>
         <template v-else-if="column.key === 'actions'">
-          <template v-if="isMemberRow(record) && canManageCollaborators === true">
+          <template v-if="isMemberRow(record) && canManageCollaborators">
             <div class="av-collab__actions">
               <UiSelect
                 v-if="record.roleEditable"

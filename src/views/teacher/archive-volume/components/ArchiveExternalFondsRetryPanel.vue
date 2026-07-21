@@ -259,8 +259,7 @@ async function retryRow(record: ArchiveExternalFondsPendingResponse): Promise<vo
     void message.error('仅具备学院教务协调职责的用户可重试外部全宗自动建卷')
     return
   }
-  const key = rowRetryKey(record)
-  retryingKey.value = key
+  retryingKey.value = rowRetryKey(record)
   try {
     await retryExternalFondsAutoCreate({
       provenance: record.provenance,

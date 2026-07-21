@@ -109,7 +109,7 @@ export function useDispatchSession() {
       return false
     }
     // MVR-383：handler 二次拦截，与按钮 :disabled 及 BE claim 同源
-    if (canClaimTicket.value !== true) {
+    if (!canClaimTicket.value) {
       errorMessage.value = '当前派单不可领取，请确认扫描权限与任务快照是否完整'
       return false
     }
