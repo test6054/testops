@@ -7,19 +7,20 @@ import type {
   AchievementAuditStatusCode,
   AchievementStatusCode,
   AchievementTargetTypeCode,
+  AiTaskFailurePhaseCode,
   AiTaskTypeCode,
-  ImprovementTaskStatusCode,
-} from '@/apis/quality/types'
+
+  ImprovementTaskStatusCode} from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
 import { storeToRefs } from 'pinia'
-
 import { computed, nextTick, onActivated, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { improvementTaskApi } from '@/apis/quality/improvement-task'
+
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_COLOR,
@@ -27,6 +28,7 @@ import {
   AchievementStatusDescription,
   AchievementTargetTypeDescription,
   AI_TASK_STATUS_COLOR,
+  AiTaskFailurePhaseDescription,
   AiTaskStatusCode,
   AiTaskStatusDescription,
   AiTaskTypeDescription,
@@ -336,6 +338,10 @@ function aiStatusLabel(value: AiTaskStatusCode): string {
   return strictEnumLabel(AiTaskStatusDescription, value, 'AI 任务状态')
 }
 
+function aiFailurePhaseLabel(value: AiTaskFailurePhaseCode): string {
+  return strictEnumLabel(AiTaskFailurePhaseDescription, value, 'AI 任务失败阶段')
+}
+
 function aiStatusColor(value: AiTaskStatusCode): BadgeTone {
   return strictEnumTone(AI_TASK_STATUS_COLOR, value, 'AI 任务状态')
 }
@@ -637,7 +643,10 @@ function handleTodoAction(key: string) {
       </QualityPageContextBar>
     </template>
 
-    <template v-if="trainingPlanId && planConfirmationStatus === ConfirmationStatusCode.CONFIRMED" #rail>
+    <template
+      v-if="trainingPlanId && planConfirmationStatus === ConfirmationStatusCode.CONFIRMED"
+      #rail
+    >
       <StageRail :stages="stages" @select="handleStageSelect" />
     </template>
 
@@ -651,11 +660,7 @@ function handleTodoAction(key: string) {
         :card-count="4"
         compact
       />
-      <UiEmpty
-        v-else-if="summaryLoadFailed"
-        size="sm"
-        title="加载失败"
-      />
+      <UiEmpty v-else-if="summaryLoadFailed" size="sm" title="加载失败" />
       <SignalBand
         v-else
         :metrics="signals"
@@ -787,7 +792,10 @@ function handleTodoAction(key: string) {
             </UiDataTable>
           </section>
 
-          <section ref="aiListSectionRef" class="quality-dashboard__list-section quality-dashboard__list-section--wide">
+          <section
+            ref="aiListSectionRef"
+            class="quality-dashboard__list-section quality-dashboard__list-section--wide"
+          >
             <div class="quality-dashboard__list-head">
               <h4 class="quality-dashboard__list-title">最近 AI 任务</h4>
               <UiButton variant="ghost" size="sm" @click="goAiTask">查看全部</UiButton>
@@ -825,7 +833,11 @@ function handleTodoAction(key: string) {
                       'quality-dashboard__value--error': record.status === AiTaskStatusCode.FAILED,
                     }"
                   >
-                    {{ record.status === AiTaskStatusCode.FAILED ? record.failurePhase : '不适用' }}
+                    {{
+                      record.status === AiTaskStatusCode.FAILED && record.failurePhase
+                        ? aiFailurePhaseLabel(record.failurePhase)
+                        : '不适用'
+                    }}
                   </span>
                 </template>
               </template>

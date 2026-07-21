@@ -1,5 +1,6 @@
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { PortfolioPolicyLedgerReviewStatusCode } from '@/types/enums/portfolio-policy-ledger-review-status-enum'
 import http from '@/config/axios'
 
 export interface PortfolioVirtualTeachingRoomActivityVO {
@@ -18,7 +19,7 @@ export interface PortfolioVirtualTeachingRoomActivityVO {
   roleLabel?: string
   resultFactor?: number
   applicationFactor?: number
-  reviewStatus: string
+  reviewStatus: PortfolioPolicyLedgerReviewStatusCode
   reviewStatusLabel?: string
   activityDate?: string
   academicYear?: string
@@ -26,6 +27,13 @@ export interface PortfolioVirtualTeachingRoomActivityVO {
   fileId?: string
   createTime?: string
   updateTime?: string
+  submittedUserId?: string
+  submittedTime?: string
+  evidenceFingerprint?: string
+  reviewedUserId?: string
+  reviewedTime?: string
+  reviewOpinion?: string
+  statusVersion: number
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: string
   /** 生命周期状态中文标签 */
@@ -40,7 +48,6 @@ export interface PortfolioVirtualTeachingRoomActivityVO {
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 多身份说明 */
   ownerMultiIdentityNote?: string
-
 }
 
 export interface PortfolioVirtualTeachingRoomActivitySaveRequest {
@@ -57,7 +64,6 @@ export interface PortfolioVirtualTeachingRoomActivitySaveRequest {
   roleCode: string
   resultFactor?: number
   applicationFactor?: number
-  reviewStatus?: string
   activityDate?: string
   academicYear?: string
   evidenceNote?: string
@@ -66,7 +72,7 @@ export interface PortfolioVirtualTeachingRoomActivitySaveRequest {
 
 export interface PortfolioVirtualTeachingRoomActivityPageRequest extends QueryDto {
   teacherUserId?: string
-  reviewStatus?: string
+  reviewStatus?: PortfolioPolicyLedgerReviewStatusCode
   searchText?: string
 }
 
@@ -85,13 +91,20 @@ export interface PortfolioIndustryEducationProjectVO {
   stageFactor?: number
   talentOutcomeFactor?: number
   enterpriseFactor?: number
-  reviewStatus: string
+  reviewStatus: PortfolioPolicyLedgerReviewStatusCode
   reviewStatusLabel?: string
   academicYear?: string
   evidenceNote?: string
   fileId?: string
   createTime?: string
   updateTime?: string
+  submittedUserId?: string
+  submittedTime?: string
+  evidenceFingerprint?: string
+  reviewedUserId?: string
+  reviewedTime?: string
+  reviewOpinion?: string
+  statusVersion: number
   /** US-MI-01 贡献教师多身份并列层 */
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   ownerMultiIdentityNote?: string
@@ -106,7 +119,6 @@ export interface PortfolioIndustryEducationProjectVO {
   evaluationHeld?: boolean
   /** 是否计入当前在岗结构 */
   countsInCurrentFacultyStructure?: boolean
-
 }
 
 export interface PortfolioIndustryEducationProjectSaveRequest {
@@ -123,7 +135,6 @@ export interface PortfolioIndustryEducationProjectSaveRequest {
   stageFactor?: number
   talentOutcomeFactor?: number
   enterpriseFactor?: number
-  reviewStatus?: string
   academicYear?: string
   evidenceNote?: string
   fileId?: string
@@ -131,9 +142,20 @@ export interface PortfolioIndustryEducationProjectSaveRequest {
 
 export interface PortfolioIndustryEducationProjectPageRequest extends QueryDto {
   teacherUserId?: string
-  reviewStatus?: string
+  reviewStatus?: PortfolioPolicyLedgerReviewStatusCode
   projectType?: string
   searchText?: string
+}
+
+export interface PortfolioPolicyLedgerVersionRequest {
+  id: string
+  statusVersion: number
+}
+
+export interface PortfolioPolicyLedgerReviewRequest extends PortfolioPolicyLedgerVersionRequest {
+  evidenceFingerprint: string
+  approved: boolean
+  reviewOpinion: string
 }
 
 export const portfolioVirtualTeachingRoomActivityApi = {
@@ -149,6 +171,10 @@ export const portfolioVirtualTeachingRoomActivityApi = {
     ),
   save: (data: PortfolioVirtualTeachingRoomActivitySaveRequest) =>
     http.post<string>('/api/portfolio/virtual-teaching-room-activity/save', data),
+  submitReview: (data: PortfolioPolicyLedgerVersionRequest) =>
+    http.post<void>('/api/portfolio/virtual-teaching-room-activity/submit-review', data),
+  review: (data: PortfolioPolicyLedgerReviewRequest) =>
+    http.post<void>('/api/portfolio/virtual-teaching-room-activity/review', data),
   delete: (data: { id: string }) =>
     http.post<void>('/api/portfolio/virtual-teaching-room-activity/delete', data),
 }
@@ -166,6 +192,10 @@ export const portfolioIndustryEducationProjectApi = {
     ),
   save: (data: PortfolioIndustryEducationProjectSaveRequest) =>
     http.post<string>('/api/portfolio/industry-education-project/save', data),
+  submitReview: (data: PortfolioPolicyLedgerVersionRequest) =>
+    http.post<void>('/api/portfolio/industry-education-project/submit-review', data),
+  review: (data: PortfolioPolicyLedgerReviewRequest) =>
+    http.post<void>('/api/portfolio/industry-education-project/review', data),
   delete: (data: { id: string }) =>
     http.post<void>('/api/portfolio/industry-education-project/delete', data),
 }

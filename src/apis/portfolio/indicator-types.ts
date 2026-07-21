@@ -1,17 +1,15 @@
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
-import type {
-  PfCurrentTaskRuleStrategyCode} from '@/types/enums/pf-current-task-rule-strategy-enum';
+import type { PfCurrentTaskRuleStrategyCode } from '@/types/enums/pf-current-task-rule-strategy-enum'
 import type { PfEligibilityAuditStatusCode } from '@/types/enums/pf-eligibility-audit-status-enum'
 import type { PfEligibilityNodeTypeCode } from '@/types/enums/pf-eligibility-node-type-enum'
-import type {
-  PfImpactApprovalStatusCode} from '@/types/enums/pf-impact-approval-status-enum';
+import type { PfEligibilityRuleStatusCode } from '@/types/enums/pf-eligibility-rule-status-enum'
+import type { PfImpactApprovalStatusCode } from '@/types/enums/pf-impact-approval-status-enum'
 import type { PfIndicatorBusinessReferenceSceneCode } from '@/types/enums/pf-indicator-business-reference-scene-enum'
 import type { PfIndicatorDataSourceChannelCode } from '@/types/enums/pf-indicator-data-source-channel-enum'
 import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
 import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
-import type {
-  PfRuleChangeLevelCode} from '@/types/enums/pf-rule-change-level-enum';
+import type { PfRuleChangeLevelCode } from '@/types/enums/pf-rule-change-level-enum'
 import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
 import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import {
@@ -75,6 +73,12 @@ export {
   PfEligibilityNodeTypeCode,
   PfEligibilityNodeTypeDescription,
 } from '@/types/enums/pf-eligibility-node-type-enum'
+
+export {
+  ALL_PF_ELIGIBILITY_RULE_STATUS_CODES,
+  PfEligibilityRuleStatusCode,
+  PfEligibilityRuleStatusDescription,
+} from '@/types/enums/pf-eligibility-rule-status-enum'
 
 export {
   pfImpactApprovalAllowsPublish,
@@ -266,12 +270,16 @@ export interface PortfolioIndicatorIndustryPackMaterialChecklistDto {
   optional?: string[]
 }
 
-export type PortfolioIndustryPackDictionarySectionDto = PortfolioIndicatorIndustryPackDictionarySectionDto
+export type PortfolioIndustryPackDictionarySectionDto
+  = PortfolioIndicatorIndustryPackDictionarySectionDto
 export type PortfolioIndustryPackDictionaryDto = PortfolioIndicatorIndustryPackDictionaryDto
 export type PortfolioIndustryPackWeightsDto = PortfolioIndicatorIndustryPackWeightsDto
-export type PortfolioIndustryPackAssessmentSectionDto = PortfolioIndicatorIndustryPackAssessmentSectionDto
-export type PortfolioIndustryPackAssessmentTemplateDto = PortfolioIndicatorIndustryPackAssessmentTemplateDto
-export type PortfolioIndustryPackMaterialChecklistDto = PortfolioIndicatorIndustryPackMaterialChecklistDto
+export type PortfolioIndustryPackAssessmentSectionDto
+  = PortfolioIndicatorIndustryPackAssessmentSectionDto
+export type PortfolioIndustryPackAssessmentTemplateDto
+  = PortfolioIndicatorIndustryPackAssessmentTemplateDto
+export type PortfolioIndustryPackMaterialChecklistDto
+  = PortfolioIndicatorIndustryPackMaterialChecklistDto
 
 /** 行业包结构化定义 — PortfolioIndicatorIndustryPackDefDto */
 export interface PortfolioIndicatorIndustryPackDefDto {
@@ -495,7 +503,6 @@ export interface PortfolioIndicatorComputeLogVO {
   countsInCurrentFacultyStructure?: boolean
 }
 
-
 export interface PortfolioTenantConfigAuditLogVO {
   id: string
   bizType: string
@@ -522,7 +529,6 @@ export interface PortfolioEligibilityEvalLogVO {
   countsInCurrentFacultyStructure?: boolean
 }
 
-
 export interface PortfolioTenantSceneIndicatorItem {
   indicatorCode: string
   weightPct?: number
@@ -548,24 +554,24 @@ export interface PortfolioEligibilityRuleVO {
   sceneCode: PfSceneCode
   presetFlag: boolean
   ruleTree: PfEligibilityRuleTreeNodeDto
-  status: string
+  status: PfEligibilityRuleStatusCode
 }
 
 export interface PfEligibilityRuleTreeNodeDto {
-  nodeType: string
+  nodeType: PfEligibilityNodeTypeCode
   fieldKey?: string
   expectedValue?: string
-  auditStatus?: string
+  auditStatus?: PfEligibilityAuditStatusCode
   children?: PfEligibilityRuleTreeNodeDto[]
 }
 
 export interface PfEligibilityExplainNodeDto {
-  nodeType: string
+  nodeType: PfEligibilityNodeTypeCode
   fieldKey?: string
   expectedValue?: string
   actualValue?: string
-  auditStatus?: string
-  actualAuditStatus?: string
+  auditStatus?: PfEligibilityAuditStatusCode
+  actualAuditStatus?: PfEligibilityAuditStatusCode
   passed?: boolean
   children?: PfEligibilityExplainNodeDto[]
 }
@@ -677,6 +683,7 @@ export interface PortfolioImpactEvaluationTaskSummaryDto {
 
 export interface PortfolioPublishImpactReportVO {
   id: string
+  createUser: string
   sceneCode: PfSceneCode
   draftSnapshotHash: string
   reportStatus: PfImpactReportStatusCode
@@ -686,9 +693,9 @@ export interface PortfolioPublishImpactReportVO {
   eligibilitySummary?: PortfolioImpactEligibilitySummaryDto
   sampleCases?: PortfolioImpactSampleCaseDto[]
   expiredTime: string
-  changeLevel?: PfRuleChangeLevelCode | string
+  changeLevel?: PfRuleChangeLevelCode
   evaluationTaskSummary?: PortfolioImpactEvaluationTaskSummaryDto
-  approvalStatus?: PfImpactApprovalStatusCode | string
+  approvalStatus?: PfImpactApprovalStatusCode
   approvedUser?: string
   approvedTime?: string
   approvalOpinion?: string
@@ -711,7 +718,7 @@ export interface PortfolioIndicatorSourceMappingVO {
   indicatorCode: string
   indicatorName: string
   defaultDataSource?: string
-  channelCode: string
+  channelCode: PfIndicatorDataSourceChannelCode
   channelLabel: string
   outOfScope: boolean
   autoCollectSupported: boolean
@@ -719,7 +726,7 @@ export interface PortfolioIndicatorSourceMappingVO {
 
 export interface PortfolioIndicatorCollectedValueVO {
   indicatorCode: string
-  channelCode: string
+  channelCode: PfIndicatorDataSourceChannelCode
   collected: boolean
   rawValue?: string
   skipReason?: string
@@ -740,7 +747,6 @@ export interface PortfolioIndicatorAutoCollectSummaryResponse {
   /** 多身份贡献说明；层数大于 1 时非空 */
   ownerMultiIdentityNote?: string
 }
-
 
 export interface PortfolioIndicatorAutoCollectPageRequest extends QueryDto {
   teacherId: string
@@ -822,7 +828,7 @@ export interface PortfolioTenantSceneModelSaveRequest {
 export interface PortfolioTenantSceneModelPublishRequest extends PortfolioSceneCodeRequest {
   impactReportId: string
   academicYear: string
-  currentTaskRuleStrategy?: PfCurrentTaskRuleStrategyCode | string
+  currentTaskRuleStrategy?: PfCurrentTaskRuleStrategyCode
 }
 
 export interface PortfolioPublishImpactApproveRequest {
@@ -836,7 +842,7 @@ export interface PortfolioEligibilityRuleSaveRequest {
   eligibilityName: string
   sceneCode: PfSceneCode
   ruleTree: PfEligibilityRuleTreeNodeDto
-  status: string
+  status: PfEligibilityRuleStatusCode
 }
 
 export interface PortfolioEligibilityRuleGetRequest {

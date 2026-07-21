@@ -3,7 +3,7 @@ import { useRoute } from 'vue-router'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { usePortfolioStore } from '@/stores/modules/portfolio'
 
-/** 解析当前页应使用的目标教师 ID（store > query > 本人默认） */
+/** 解析当前页应使用的目标教师 ID（授权 URL 深链 > store > 本人默认）。 */
 export function usePortfolioPageScope() {
   const route = useRoute()
   const portfolioStore = usePortfolioStore()
@@ -13,9 +13,6 @@ export function usePortfolioPageScope() {
     typeof route.query.teacherId === 'string' ? route.query.teacherId : '')
 
   const targetTeacherId = computed(() => {
-    if (portfolioStore.currentTeacherId) {
-      return portfolioStore.currentTeacherId
-    }
     const queryId = queryTeacherId.value
     if (queryId) {
       if (canPickTeachers.value || canReviewPortfolio.value) {
@@ -25,6 +22,9 @@ export function usePortfolioPageScope() {
         return queryId
       }
       return resolveDefaultTeacherId()
+    }
+    if (portfolioStore.currentTeacherId) {
+      return portfolioStore.currentTeacherId
     }
     return resolveDefaultTeacherId()
   })

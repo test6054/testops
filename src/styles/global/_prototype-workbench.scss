@@ -696,6 +696,11 @@
   color: var(--dp-red-700);
 }
 
+:global(.dim-pill--purple) {
+  background: var(--dp-purple-50);
+  color: var(--dp-purple-700);
+}
+
 :global(.catalog-tree) {
   padding: var(--dp-space-2) 0;
 }
@@ -1188,4 +1193,8 @@
 :global(.matrix-cell--fail) {
   background: var(--dp-red-50);
   color: var(--dp-red-700);
+}
+
+:global(.matrix-cell--empty) {
+  color: var(--dp-text-muted);
 }

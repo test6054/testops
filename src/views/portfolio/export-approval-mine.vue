@@ -90,12 +90,9 @@ const pagination = computed(() => ({
   showSizeChanger: true,
 }))
 
-function exportTypeLabel(code: string): string {
-  return strictEnumLabel(
-    PortfolioExportTypeDescription,
-    code as PortfolioExportTypeCode,
-    '导出类型',
-  )
+function exportTypeLabel(code?: PortfolioExportTypeCode): string {
+  if (!code) return '—'
+  return strictEnumLabel(PortfolioExportTypeDescription, code, '导出类型')
 }
 
 function approvalStatusLabel(code: string): string {

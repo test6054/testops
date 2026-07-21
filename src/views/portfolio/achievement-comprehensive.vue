@@ -19,9 +19,9 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -40,7 +40,6 @@ const loading = ref(false)
 const pageRequestToken = ref(0)
 const rows = ref<PortfolioDevelopmentRecordVO[]>([])
 const stats = ref<PortfolioAchievementStatsVO | null>(null)
-const { hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
 const query = reactive({
   pageNum: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
@@ -78,9 +77,6 @@ async function loadPage() {
       return
     }
     rows.value = page.list ?? []
-    await hydrateTeacherLabels(
-      rows.value.map((row) => row.teacherUserId).filter((id): id is string => Boolean(id)),
-    )
     if (currentToken !== pageRequestToken.value) {
       return
     }
@@ -145,7 +141,9 @@ onMounted(loadPage)
           </template>
           <template v-else-if="column.key === 'teacherUserId'">
             <div class="achievement-comprehensive__teacher">
-              <span>{{ teacherLabel(record.teacherUserId) }}</span>
+              <span>{{
+                formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber)
+              }}</span>
               <UiTag
                 v-if="record.lifecycleStatus"
                 size="sm"

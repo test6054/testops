@@ -1,5 +1,24 @@
 <template>
   <div class="archive-volume-remediation-panel">
+    <UiAlertStrip
+      v-if="remediationStatsLoadFailed"
+      class="archive-volume-remediation-panel__signals-error"
+      tone="warning"
+      title="整改概览加载失败"
+      description="任务列表不受影响，可重试加载概览指标。"
+      dense
+    >
+      <template #actions>
+        <UiButton size="sm" variant="outline" @click="loadRemediationStats">重新加载</UiButton>
+      </template>
+    </UiAlertStrip>
+    <SignalBand
+      v-else-if="remediationSignalMetrics.length > 0"
+      class="archive-volume-remediation-panel__signals"
+      :metrics="remediationSignalMetrics"
+      variant="panel"
+      @metric-click="handleSignalMetricClick"
+    />
     <WorkbenchSurfaceCard flush>
       <template #head>整改活动</template>
       <template #toolbar>
@@ -10,7 +29,7 @@
             :loading="campaignLoading"
             :options="campaignOptions"
             allow-clear
-            placeholder="选择评估批次"
+            placeholder="选择迎评批次"
             style="width: 280px"
             @change="handleCampaignChange"
           />
@@ -21,7 +40,7 @@
             <span class="archive-volume-remediation-panel__campaign-rate-label">批次就绪率</span>
             <ArchiveReadinessRateBar :percent="selectedCampaign.readinessRatePercent" />
           </div>
-          <UiButton size="sm" :disabled="!selectedCampaignId" @click="loadTasks">刷新</UiButton>
+          <UiButton size="sm" :disabled="!selectedCampaignId" @click="() => loadTasks()">刷新</UiButton>
           <UiButton
             v-if="isTenantWideCollegeCoordinator"
             size="sm"
@@ -54,7 +73,7 @@
             :loading="exporting"
             @click="handleExportCampaign"
           >
-            导出 manifest
+            导出迎评清单
           </UiButton>
           <UiButton
             v-if="isTenantWideCollegeCoordinator && selectedCampaignId"
@@ -88,7 +107,7 @@
         <template #default>
           <span style="display: inline-flex; align-items: center; gap: 8px">
             <UiTag tone="blue" size="sm">未选择批次</UiTag>
-            <span>请选择评估批次后查看整改任务</span>
+            <span>请选择迎评批次后查看整改任务</span>
           </span>
         </template>
       </UiAlertStrip>
@@ -100,37 +119,86 @@
           class="remediation-card"
           :class="remediationPriorityCardClass(task.taskPriority)"
         >
-          <div class="remediation-card__head">
-            <UiTag :tone="remediationStatusTone(task.taskStatus)" size="sm">
-              {{ remediationStatusLabel(task.taskStatus) }}
-            </UiTag>
-            <span class="remediation-card__title">{{ task.taskTitle }}</span>
-            <UiTag :tone="remediationPriorityTone(task.taskPriority)" size="sm">
-              {{ remediationPriorityLabel(task.taskPriority) }}
-            </UiTag>
+          <div class="remediation-card__top">
+            <div class="remediation-card__main">
+              <div class="remediation-card__title">{{ task.taskTitle }}</div>
+              <p v-if="task.taskDescription" class="remediation-card__desc">
+                {{ task.taskDescription }}
+              </p>
+              <div class="remediation-card__tags">
+                <UiTag :tone="remediationPriorityTone(task.taskPriority)" size="sm">
+                  {{ remediationPriorityLabel(task.taskPriority) }}
+                </UiTag>
+                <UiTag :tone="remediationStatusTone(task.taskStatus)" size="sm">
+                  {{ remediationStatusLabel(task.taskStatus) }}
+                </UiTag>
+                <UiTag v-if="task.diagnosticCode" tone="gray" size="sm">
+                  {{ remediationDiagnosticLabel(task.diagnosticCode) }}
+                </UiTag>
+              </div>
+            </div>
+            <div class="remediation-card__actions">
+              <UiButton
+                v-if="
+                  task.taskStatus === ArchiveRemediationStatusCode.OPEN
+                    || task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+                "
+                size="sm"
+                variant="outline"
+                @click="openTask(task.taskId)"
+              >
+                去整改
+              </UiButton>
+              <UiButton
+                v-else-if="task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED"
+                size="sm"
+                variant="outline"
+                @click="openTask(task.taskId)"
+              >
+                审核
+              </UiButton>
+              <UiButton
+                v-else-if="task.taskStatus === ArchiveRemediationStatusCode.CLOSED"
+                size="sm"
+                variant="outline"
+                @click="openTask(task.taskId)"
+              >
+                查看
+              </UiButton>
+              <UiTextAction
+                v-if="task.taskStatus !== ArchiveRemediationStatusCode.CLOSED"
+                @click="openTask(task.taskId)"
+              >
+                详情
+              </UiTextAction>
+            </div>
           </div>
-          <p v-if="task.taskDescription" class="remediation-card__desc">
-            {{ task.taskDescription }}
-          </p>
           <div class="remediation-card__meta">
-            <span v-if="task.createUserId">发现人: {{ remediationCreatorLabel(task) }}</span>
-            <span>负责人: {{ remediationAssigneeLabel(task) }}</span>
-            <span v-if="task.dueTime">截止: {{ formatDateTime(task.dueTime) }}</span>
-            <span v-if="task.createTime">创建: {{ formatDateTime(task.createTime) }}</span>
-          </div>
-          <div class="remediation-card__actions">
-            <UiButton
-              v-if="
-                task.taskStatus === ArchiveRemediationStatusCode.OPEN
-                  || task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
-              "
-              size="sm"
-              variant="outline"
-              @click="openTask(task.taskId)"
-            >
-              去整改
-            </UiButton>
-            <UiTextAction @click="openTask(task.taskId)">详情</UiTextAction>
+            <span>
+              负责人 <b>{{ remediationAssigneeLabel(task) }}</b>
+            </span>
+            <span v-if="task.createUserId">
+              发现人 <b>{{ remediationCreatorLabel(task) }}</b>
+            </span>
+            <span v-if="task.createTime">
+              创建 <b>{{ formatDateTime(task.createTime) }}</b>
+            </span>
+            <span v-if="task.dueTime && task.taskStatus !== ArchiveRemediationStatusCode.CLOSED">
+              截止
+              <b :class="remediationDeadlineClass(task.dueTime)">
+                {{ formatDateTime(task.dueTime) }}{{ remediationDeadlineHint(task.dueTime) }}
+              </b>
+            </span>
+            <span v-if="task.closedTime">
+              完成 <b>{{ formatDateTime(task.closedTime) }}</b>
+            </span>
+            <span v-if="task.verifierNickName">
+              核验人
+              <b>
+                {{ task.verifierNickName
+                }}{{ task.verifiedTime ? ` · ${formatDateTime(task.verifiedTime)}` : '' }}
+              </b>
+            </span>
           </div>
         </article>
       </div>
@@ -146,7 +214,7 @@
 
     <UiDrawer
       :open="campaignModalOpen"
-      :title="campaignForm.campaignId ? '编辑评估批次' : '新建评估批次'"
+      :title="campaignForm.campaignId ? '编辑迎评批次' : '新建迎评批次'"
       :width="560"
       :confirm-loading="campaignSaving"
       ok-text="保存"
@@ -302,19 +370,21 @@
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type {
   ArchiveEvaluationCampaignResponse,
-  ArchiveRemediationPriorityCode,
+  ArchiveRemediationByCampaignStatsVO,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import message from 'ant-design-vue/es/message'
+import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS,
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ARCHIVE_REMEDIATION_DIAGNOSTIC_CODE_OPTIONS,
+  ARCHIVE_REMEDIATION_STATUS_TONE,
   ArchiveEvaluationCampaignStatusCode,
+  ArchiveRemediationPriorityCode,
   ArchiveRemediationStatusCode,
   ArchiveRemediationStatusDescription,
   createRemediationTask,
@@ -322,6 +392,7 @@ import {
   exportEvaluationPackage,
   getArchiveVolumeDetail,
   getOpenRemediationStats,
+  getRemediationStatsByCampaign,
   pageEvaluationCampaigns,
   pageRemediationTasksByCampaign,
   saveEvaluationCampaign,
@@ -344,6 +415,7 @@ import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -356,6 +428,7 @@ import {
   parseTripleFromAcademicYear,
   resolveAcademicYearFromTriple,
 } from '@/utils/academic-year-semester-triple-filter'
+import { remediationDiagnosticLabel } from '@/utils/archive-remediation-diagnostic'
 import {
   remediationAssigneeLabel,
   remediationCreatorLabel,
@@ -366,6 +439,7 @@ import {
   remediationPriorityCardClass,
 } from '@/utils/archive-remediation-priority'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { message } from '@/utils/feedback'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveEvaluationExportTaskModal from '@/views/teacher/archive-volume/components/ArchiveEvaluationExportTaskModal.vue'
@@ -390,6 +464,14 @@ const selectedCampaign = ref<ArchiveEvaluationCampaignResponse | null>(null)
 const tasks = ref<ArchiveRemediationTaskResponse[]>([])
 const selectedCampaignId = ref<string>()
 const taskPagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
+const remediationStats = ref<ArchiveRemediationByCampaignStatsVO | null>(null)
+const remediationStatsLoadFailed = ref(false)
+/** 信号带点击筛选：状态与优先级互斥，空值表示不过滤。 */
+const taskStatusFilter = ref<ArchiveRemediationStatusCode>()
+const taskPriorityFilter = ref<ArchiveRemediationPriorityCode>()
+/** 任务列表与概览的请求序号，快速切换批次时丢弃过期响应。 */
+let taskLoadSeq = 0
+let statsLoadSeq = 0
 
 interface RemediationCampaignForm {
   campaignId: string | undefined
@@ -462,6 +544,8 @@ function syncSelectedCampaign(campaignId?: string): void {
 function handleCampaignChange(value: SelectValue): void {
   const campaignId = typeof value === 'string' ? value : undefined
   syncSelectedCampaign(campaignId)
+  taskStatusFilter.value = undefined
+  taskPriorityFilter.value = undefined
   taskPagination.pageNum = 1
   void loadTasks()
 }
@@ -477,10 +561,7 @@ function remediationStatusLabel(code: ArchiveRemediationStatusCode) {
 }
 
 function remediationStatusTone(code: ArchiveRemediationStatusCode): BadgeTone {
-  if (code === ArchiveRemediationStatusCode.CLOSED) return 'gray'
-  if (code === ArchiveRemediationStatusCode.RESUBMITTED) return 'green'
-  if (code === ArchiveRemediationStatusCode.IN_PROGRESS) return 'blue'
-  return 'orange'
+  return strictEnumTone(ARCHIVE_REMEDIATION_STATUS_TONE, code, 'taskStatus')
 }
 
 function remediationPriorityLabel(code: ArchiveRemediationPriorityCode) {
@@ -489,6 +570,137 @@ function remediationPriorityLabel(code: ArchiveRemediationPriorityCode) {
 
 function remediationPriorityTone(code: ArchiveRemediationPriorityCode): BadgeTone {
   return strictEnumTone(ARCHIVE_REMEDIATION_PRIORITY_TONE, code, 'taskPriority')
+}
+
+/** 整改截止相对时限着色：已逾期=红，7 天内到期=橙，其余不着色。 */
+function remediationDeadlineClass(dueTime: string): string {
+  const remaining = new Date(dueTime).getTime() - Date.now()
+  if (remaining < 0) return 'remediation-deadline--overdue'
+  if (remaining <= 7 * 24 * 60 * 60 * 1000) return 'remediation-deadline--soon'
+  return ''
+}
+
+/** 整改截止相对时限文案：已逾期/剩余天数；距截止超过 7 天不展示。 */
+function remediationDeadlineHint(dueTime: string): string {
+  const remaining = new Date(dueTime).getTime() - Date.now()
+  if (remaining >= 0 && remaining > 7 * 24 * 60 * 60 * 1000) return ''
+  const days = Math.max(1, Math.ceil(Math.abs(remaining) / (24 * 60 * 60 * 1000)))
+  return remaining < 0 ? `（已逾期 ${days} 天）` : `（剩余 ${days} 天）`
+}
+
+/** 整改概览指标：优先级分桶 + 待核验 + 已关闭，点击切换任务列表筛选，helper 与原型一致。 */
+const remediationSignalMetrics = computed<SignalMetric[]>(() => {
+  const stats = remediationStats.value
+  if (!stats) return []
+  const verifiedDenominator = stats.closedTaskCount + stats.resubmittedTaskCount
+  const passRateHint
+    = verifiedDenominator > 0
+      ? `核验通过率 ${Math.round((stats.closedTaskCount / verifiedDenominator) * 100)}%`
+      : undefined
+  const priorityMetric = (
+    code: ArchiveRemediationPriorityCode,
+    value: number,
+    helper?: string,
+  ): SignalMetric => ({
+    key: `priority-${code.toLowerCase()}`,
+    label: `${remediationPriorityLabel(code)}优先级`,
+    value,
+    unit: '项',
+    tone: strictEnumTone(ARCHIVE_REMEDIATION_PRIORITY_TONE, code, 'taskPriority'),
+    helper,
+    clickable: true,
+    active: taskPriorityFilter.value === code && !taskStatusFilter.value,
+  })
+  return [
+    priorityMetric(
+      ArchiveRemediationPriorityCode.HIGH,
+      stats.highPriorityTaskCount,
+      stats.overdueTaskCount > 0 ? `${stats.overdueTaskCount} 项已逾期` : undefined,
+    ),
+    priorityMetric(
+      ArchiveRemediationPriorityCode.MEDIUM,
+      stats.mediumPriorityTaskCount,
+      stats.dueSoonTaskCount > 0 ? `本周到期 ${stats.dueSoonTaskCount}` : undefined,
+    ),
+    priorityMetric(
+      ArchiveRemediationPriorityCode.LOW,
+      stats.lowPriorityTaskCount,
+      stats.lowPriorityTaskCount > 0 ? '均在期限内' : undefined,
+    ),
+    {
+      key: 'awaiting-verification',
+      label: '待核验',
+      value: stats.resubmittedTaskCount,
+      unit: '项',
+      tone: remediationStatusTone(ArchiveRemediationStatusCode.RESUBMITTED),
+      helper: stats.resubmittedTaskCount > 0 ? '已提交证据' : undefined,
+      clickable: true,
+      active: taskStatusFilter.value === ArchiveRemediationStatusCode.RESUBMITTED,
+    },
+    {
+      key: 'closed',
+      label: remediationStatusLabel(ArchiveRemediationStatusCode.CLOSED),
+      value: stats.closedTaskCount,
+      unit: '项',
+      tone: remediationStatusTone(ArchiveRemediationStatusCode.CLOSED),
+      helper: passRateHint,
+      clickable: true,
+      active: taskStatusFilter.value === ArchiveRemediationStatusCode.CLOSED,
+    },
+  ]
+})
+
+/** 信号带点击筛选：再次点击当前激活指标取消筛选；筛选走服务端分页，概览本身不随筛选变化。 */
+function handleSignalMetricClick(key: string): void {
+  if (!selectedCampaignId.value) return
+  if (key === 'priority-high' || key === 'priority-medium' || key === 'priority-low') {
+    const code
+      = key === 'priority-high'
+        ? ArchiveRemediationPriorityCode.HIGH
+        : key === 'priority-medium'
+          ? ArchiveRemediationPriorityCode.MEDIUM
+          : ArchiveRemediationPriorityCode.LOW
+    taskPriorityFilter.value = taskPriorityFilter.value === code ? undefined : code
+    taskStatusFilter.value = undefined
+  } else if (key === 'awaiting-verification') {
+    taskStatusFilter.value
+      = taskStatusFilter.value === ArchiveRemediationStatusCode.RESUBMITTED
+        ? undefined
+        : ArchiveRemediationStatusCode.RESUBMITTED
+    taskPriorityFilter.value = undefined
+  } else if (key === 'closed') {
+    taskStatusFilter.value
+      = taskStatusFilter.value === ArchiveRemediationStatusCode.CLOSED
+        ? undefined
+        : ArchiveRemediationStatusCode.CLOSED
+    taskPriorityFilter.value = undefined
+  } else {
+    return
+  }
+  taskPagination.pageNum = 1
+  void loadTasks(false)
+}
+
+/** 加载当前迎评批次的整改状态汇总；失败时置失败态由告警条提供重试，不阻断任务列表。 */
+async function loadRemediationStats(): Promise<void> {
+  if (!selectedCampaignId.value) {
+    remediationStats.value = null
+    remediationStatsLoadFailed.value = false
+    return
+  }
+  const seq = ++statsLoadSeq
+  try {
+    const stats = await getRemediationStatsByCampaign({
+      campaignId: selectedCampaignId.value,
+    })
+    if (seq !== statsLoadSeq) return
+    remediationStats.value = stats
+    remediationStatsLoadFailed.value = false
+  } catch {
+    if (seq !== statsLoadSeq) return
+    remediationStats.value = null
+    remediationStatsLoadFailed.value = true
+  }
 }
 
 async function loadCampaigns() {
@@ -502,48 +714,58 @@ async function loadCampaigns() {
       await loadTasks()
     }
   } catch (error) {
-    showUserError(error, '评估批次列表加载失败')
+    showUserError(error, '迎评批次列表加载失败')
   } finally {
     campaignLoading.value = false
   }
 }
 
-async function loadTasks() {
+async function loadTasks(reloadStats = true) {
   if (!selectedCampaignId.value) {
     tasks.value = []
     taskPagination.total = 0
+    remediationStats.value = null
+    remediationStatsLoadFailed.value = false
     return
   }
+  if (reloadStats) {
+    void loadRemediationStats()
+  }
+  const seq = ++taskLoadSeq
   taskLoading.value = true
   try {
     const page = await pageRemediationTasksByCampaign({
       campaignId: selectedCampaignId.value,
       pageNum: taskPagination.pageNum,
       pageSize: taskPagination.pageSize,
+      taskStatus: taskStatusFilter.value,
+      taskPriority: taskPriorityFilter.value,
     })
+    if (seq !== taskLoadSeq) return
     tasks.value = page.list
     taskPagination.pageNum = page.pageNum
     taskPagination.pageSize = page.pageSize
     taskPagination.total = page.total
   } catch (error) {
+    if (seq !== taskLoadSeq) return
     showUserError(error, '整改任务列表加载失败')
     tasks.value = []
     taskPagination.total = 0
   } finally {
-    taskLoading.value = false
+    if (seq === taskLoadSeq) taskLoading.value = false
   }
 }
 
 function handleTaskPageChange(pageNum: number, pageSize: number): void {
   taskPagination.pageNum = pageNum
   taskPagination.pageSize = pageSize
-  void loadTasks()
+  void loadTasks(false)
 }
 
 function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
-  // MVR-317：评估批次维护仅租户级学院协调人
+  // MVR-317：迎评批次维护仅租户级学院协调人
   if (!isTenantWideCollegeCoordinator.value) {
-    void message.warning('仅租户级学院协调人可维护评估批次')
+    void message.warning('仅租户级学院协调人可维护迎评批次')
     return
   }
   campaignForm.campaignId = campaign?.campaignId
@@ -563,7 +785,7 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
 async function submitCampaign() {
   // MVR-317：与 isTenantWideCollegeCoordinator 二次拦截
   if (!isTenantWideCollegeCoordinator.value) {
-    void message.warning('仅租户级学院协调人可维护评估批次')
+    void message.warning('仅租户级学院协调人可维护迎评批次')
     return
   }
   if (campaignSaving.value) return
@@ -595,7 +817,7 @@ async function submitCampaign() {
       endTime: campaignForm.endTime,
       description: campaignForm.description.trim() || undefined,
     })
-    void message.success(campaignForm.campaignId ? '评估批次已更新' : '评估批次已创建')
+    void message.success(campaignForm.campaignId ? '迎评批次已更新' : '迎评批次已创建')
     campaignModalOpen.value = false
     await loadCampaigns()
     selectedCampaignId.value = saved.campaignId
@@ -603,7 +825,7 @@ async function submitCampaign() {
     taskPagination.pageNum = 1
     await loadTasks()
   } catch (error) {
-    showUserError(error, '保存评估批次失败')
+    showUserError(error, '保存迎评批次失败')
   } finally {
     campaignSaving.value = false
   }
@@ -612,7 +834,7 @@ async function submitCampaign() {
 async function handleExportCampaign() {
   // MVR-318：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
   if (!isTenantWideCollegeCoordinator.value) {
-    void message.warning('仅全校学院协调人可导出评估材料包')
+    void message.warning('仅全校学院协调人可导出迎评材料包')
     return
   }
   if (!selectedCampaignId.value || exporting.value) return
@@ -621,12 +843,12 @@ async function handleExportCampaign() {
     await runArchiveEvaluationExportFlow({
       campaignId: selectedCampaignId.value,
       exportFn: exportEvaluationPackage,
-      successMessage: '评估 manifest 已导出',
+      successMessage: '迎评清单已导出',
       scopeHint: ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
       campaignLabel: selectedCampaign.value?.campaignName,
     })
   } catch (error) {
-    showUserError(error, '导出评估清单失败')
+    showUserError(error, '导出迎评清单失败')
   } finally {
     exporting.value = false
   }
@@ -635,7 +857,7 @@ async function handleExportCampaign() {
 async function handleExportArchiveCampaign() {
   // MVR-318：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
   if (!isTenantWideCollegeCoordinator.value) {
-    void message.warning('仅全校学院协调人可导出评估材料包')
+    void message.warning('仅全校学院协调人可导出迎评材料包')
     return
   }
   if (!selectedCampaignId.value || exportingArchive.value) return
@@ -751,6 +973,14 @@ watch(
 </script>
 
 <style scoped>
+.archive-volume-remediation-panel__signals {
+  margin-bottom: var(--dp-space-3);
+}
+
+.archive-volume-remediation-panel__signals-error {
+  margin-bottom: var(--dp-space-3);
+}
+
 .archive-volume-remediation-panel__actions {
   display: flex;
   flex-wrap: wrap;
@@ -803,45 +1033,56 @@ watch(
 }
 
 .remediation-card {
-  padding: var(--dp-space-3) var(--dp-space-4);
-  border: 1px solid var(--dp-border-light);
-  border-radius: var(--dp-radius-sm);
+  padding: var(--dp-space-4) var(--dp-space-5);
+  border: 1px solid var(--dp-border-subtle);
+  border-left: 3px solid var(--dp-gray-400);
+  border-radius: var(--dp-radius-panel);
+  box-shadow: var(--dp-shadow-xs);
   background: var(--dp-surface);
 }
 
 .remediation-card--high {
-  border-color: var(--dp-danger);
-  background: color-mix(in srgb, var(--dp-danger) 6%, var(--dp-surface));
+  border-left-color: var(--dp-error);
 }
 
 .remediation-card--medium {
-  border-color: var(--dp-warning);
-  background: color-mix(in srgb, var(--dp-warning) 8%, var(--dp-surface));
+  border-left-color: var(--dp-warning);
 }
 
 .remediation-card--low {
-  border-color: var(--dp-primary);
-  background: color-mix(in srgb, var(--dp-primary) 6%, var(--dp-surface));
+  border-left-color: var(--dp-gray-400);
 }
 
-.remediation-card__head {
+.remediation-card__top {
   display: flex;
-  align-items: center;
-  gap: var(--dp-space-2);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--dp-space-3);
+}
+
+.remediation-card__main {
+  flex: 1;
+  min-width: 0;
 }
 
 .remediation-card__title {
-  flex: 1;
   font-size: 14px;
   font-weight: 600;
   color: var(--dp-text);
 }
 
 .remediation-card__desc {
-  margin: var(--dp-space-2) 0 0;
+  margin: var(--dp-space-1) 0 0;
   font-size: 12px;
   line-height: 1.5;
   color: var(--dp-text-3);
+}
+
+.remediation-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dp-space-2);
+  margin-top: var(--dp-space-2);
 }
 
 .remediation-card__meta {
@@ -853,10 +1094,24 @@ watch(
   color: var(--dp-text-4);
 }
 
+.remediation-card__meta b {
+  font-weight: 500;
+  color: var(--dp-text-secondary);
+}
+
+.remediation-card__meta .remediation-deadline--overdue {
+  color: var(--dp-error);
+}
+
+.remediation-card__meta .remediation-deadline--soon {
+  color: var(--dp-warning);
+}
+
 .remediation-card__actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--dp-space-2);
-  margin-top: var(--dp-space-2);
+  flex-shrink: 0;
 }
 </style>

@@ -1,12 +1,9 @@
-import type { PortfolioTeacherDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import { ref } from 'vue'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { REMOTE_SEARCH_PAGE_SIZE } from '@/constants/pagination'
 import { showUserError } from '@/utils/error-handler'
-import {
-  formatPortfolioTeacherDetailSelectLabel,
-  toPortfolioTeacherSelectOption
-} from '@/utils/portfolio-teacher-display'
+import { toPortfolioTeacherSelectOption } from '@/utils/portfolio-teacher-display'
 
 /**
  * portfolio 管理台教师远程搜索与姓名缓存；供成果库/荣誉库等表单绑定 teacherUserId。
@@ -21,14 +18,6 @@ export function usePortfolioTeacherSearch() {
       return
     }
     teacherLabelById.value.set(option.value, option.label)
-  }
-
-  function rememberTeacherDetailLabel(teacher: PortfolioTeacherDetailVO): void {
-    const label = formatPortfolioTeacherDetailSelectLabel(teacher)
-    if (!label) {
-      return
-    }
-    teacherLabelById.value.set(teacher.userId, label)
   }
 
   async function searchTeachers(keyword: string) {
@@ -49,21 +38,6 @@ export function usePortfolioTeacherSearch() {
     }
   }
 
-  async function hydrateTeacherLabels(userIds: string[]) {
-    for (const userId of userIds) {
-      if (!userId || teacherLabelById.value.has(userId)) {
-        continue
-      }
-      try {
-        const detail = await portfolioTeacherApi.get(userId)
-        rememberTeacherDetailLabel(detail)
-      }
-      catch {
-        // 教师详情未加载成功时不写入姓名兜底
-      }
-    }
-  }
-
   function rememberTeacherSelectLabel(userId: string, label: string) {
     teacherLabelById.value.set(userId, label)
   }
@@ -74,7 +48,7 @@ export function usePortfolioTeacherSearch() {
     }
     const label = teacherLabelById.value.get(userId)
     if (!label) {
-      return '—'
+      throw new Error(`教师 ${userId} 缺少已缓存的姓名标签，请先选中或搜索该教师`)
     }
     return label
   }
@@ -82,7 +56,6 @@ export function usePortfolioTeacherSearch() {
   return {
     teacherOptions,
     searchTeachers,
-    hydrateTeacherLabels,
     rememberTeacherSelectLabel,
     teacherLabel,
   }

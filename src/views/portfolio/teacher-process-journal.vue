@@ -528,7 +528,9 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
                   <UiTag v-if="row.selectedForMasterpiece" tone="orange" size="sm">
                     代表作精选
                   </UiTag>
-                  <UiTag v-if="row.linkedArchiveRecordId" tone="green" size="sm">已关联档案</UiTag>
+                  <UiTag v-if="row.linkedArchiveRecordId" tone="green" size="sm">
+                    {{ row.linkedArchiveLabel }}
+                  </UiTag>
                   <UiTag tone="gray" size="sm">{{ segmentSummary(row) }}</UiTag>
                 </div>
               </div>

@@ -1,4 +1,10 @@
-import type { AiManualHandlingStatusCode, AiTaskBusinessTypeCode, AiTaskStatusCode, AiTaskTypeCode } from './types'
+import type {
+  AiManualHandlingStatusCode,
+  AiTaskBusinessTypeCode,
+  AiTaskFailurePhaseCode,
+  AiTaskStatusCode,
+  AiTaskTypeCode,
+} from './types'
 import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 /**
  * AI 异步任务主表 API
@@ -51,7 +57,7 @@ export interface AiTaskVO {
   /** 质量报告标题，由后端按 reportId 装配。 */
   reportTitle?: string
   status: AiTaskStatusCode
-  failurePhase?: string
+  failurePhase?: AiTaskFailurePhaseCode
   failureReason?: string
   maskMappingId?: string
   resultId?: string
@@ -106,7 +112,7 @@ export interface AiTaskCompleteRequest {
 /** AI 任务失败登记请求 - 对齐后端 AiTaskFailRequest */
 export interface AiTaskFailRequest {
   id: string
-  failurePhase: string
+  failurePhase: AiTaskFailurePhaseCode
   failureReason: string
   promptSnapshotId?: string
   maskMappingId?: string
@@ -143,5 +149,6 @@ export const aiTaskApi = {
   complete: (data: AiTaskCompleteRequest) => http.post<void>(`${TASK}/complete`, data),
   fail: (data: AiTaskFailRequest) => http.post<void>(`${TASK}/fail`, data),
   cancel: (data: AiTaskCancelRequest) => http.post<void>(`${TASK}/cancel`, data),
-  manualHandle: (data: AiTaskManualHandlingRequest) => http.post<void>(`${TASK}/manual-handle`, data),
+  manualHandle: (data: AiTaskManualHandlingRequest) =>
+    http.post<void>(`${TASK}/manual-handle`, data),
 }

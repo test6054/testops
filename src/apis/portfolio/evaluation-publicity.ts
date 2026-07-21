@@ -45,7 +45,10 @@ export const portfolioEvaluationPublicityApi = {
   handleObjection: (data: PortfolioEvaluationObjectionHandleRequest) =>
     http.post<PortfolioEvaluationObjectionSummaryVO>(`${BASE}/objection/handle`, data),
   getObjectionReviewPackage: (data: PortfolioEvaluationObjectionReviewPackageRequest) =>
-    http.post<PortfolioEvaluationObjectionReviewPackageVO>(`${BASE}/objection/review-package`, data),
+    http.post<PortfolioEvaluationObjectionReviewPackageVO>(
+      `${BASE}/objection/review-package`,
+      data,
+    ),
   summarizeTeacherResult: (data: PortfolioEvaluationResultSummaryRequest) =>
     http.post<PortfolioEvaluationTeacherResultSummaryVO>(`${BASE}/result/summary`, data),
   advanceTask: (data: PortfolioEvaluationTaskAdvanceRequest) =>
@@ -68,6 +71,10 @@ export interface PortfolioEvaluationRereviewOrderVO {
   id: string | number
   evaluationTaskId: string | number
   subjectTeacherUserId?: string | number
+  /** edu-user 被评教师姓名 */
+  subjectTeacherName?: string
+  /** edu-user 被评教师工号 */
+  subjectTeacherNumber?: string
   triggerType?: string
   triggerRefId?: string | number
   orderStatus: string
@@ -87,6 +94,4 @@ export interface PortfolioEvaluationRereviewOrderVO {
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 多身份贡献说明；层数大于 1 时非空 */
   ownerMultiIdentityNote?: string
-
 }
-

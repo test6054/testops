@@ -26,6 +26,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import {
+  formatPortfolioTeacherDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
   resolvePortfolioTeacherDisplayName,
 } from '@/utils/portfolio-teacher-display'
@@ -396,15 +397,10 @@ watch(
             }}<template v-if="reportDetail.reportPeriodLabel">
               · {{ reportDetail.reportPeriodLabel }}</template>
           </span>
-          <span
-            v-if="
-              reportDetail.teacherName || reportDetail.teacherNumber || reportDetail.departmentName
-            "
-            class="report-meta__extra"
-          >
-            {{ reportDetail.teacherName || `教师编号 ${reportDetail.teacherId}` }}
-            <template v-if="reportDetail.teacherNumber">
-              · {{ reportDetail.teacherNumber }}</template>
+          <span v-if="reportDetail.teacherId" class="report-meta__extra">
+            {{
+              formatPortfolioTeacherDisplay(reportDetail.teacherName, reportDetail.teacherNumber)
+            }}
             <template v-if="reportDetail.departmentName">
               · {{ reportDetail.departmentName }}</template>
           </span>

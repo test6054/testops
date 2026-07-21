@@ -60,6 +60,7 @@ const attachmentInputRef = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 const application = ref<PortfolioDualTeacherApplicationVO | null>(null)
 const applicationRequestToken = ref(0)
+const applicationFormEpoch = ref(0)
 const operationPending = computed(() => saving.value || submitting.value || uploading.value)
 
 const form = reactive({
@@ -70,8 +71,9 @@ const form = reactive({
 })
 
 /** 申请单作用域变化时清空旧表单，避免旧加载结果回写当前申请页。 */
-function resetApplicationContext() {
+function resetApplicationContext(): void {
   applicationRequestToken.value += 1
+  applicationFormEpoch.value += 1
   saving.value = false
   submitting.value = false
   uploading.value = false
@@ -131,6 +133,7 @@ function startReReview() {
   if (!canStartReReview.value) {
     return
   }
+  applicationFormEpoch.value += 1
   form.id = ''
   form.certLevel = application.value?.certLevel ?? ''
   form.certYear = String(new Date().getFullYear())
@@ -229,7 +232,8 @@ function openAttachmentPicker() {
   attachmentInputRef.value?.click()
 }
 
-async function onAttachmentPick(event: Event) {
+/** 上传结果绑定教师、申请单和表单代际，旧申请附件不得追加到新表单。 */
+async function onAttachmentPick(event: Event): Promise<void> {
   if (!(event.target instanceof HTMLInputElement)) {
     return
   }
@@ -242,10 +246,22 @@ async function onAttachmentPick(event: Event) {
     input.value = ''
     return
   }
+  const context = {
+    teacherId: targetTeacherId.value,
+    applicationId: form.id || undefined,
+    epoch: applicationFormEpoch.value,
+  }
   uploading.value = true
   try {
     for (const file of Array.from(files)) {
       const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
+      if (
+        applicationFormEpoch.value !== context.epoch
+        || targetTeacherId.value !== context.teacherId
+        || (form.id || undefined) !== context.applicationId
+      ) {
+        return
+      }
       if (!attachmentItems.value.some((item) => item.fileNodeId === uploaded.id)) {
         attachmentItems.value = [
           ...attachmentItems.value,
@@ -255,9 +271,14 @@ async function onAttachmentPick(event: Event) {
     }
     void message.success('附件已上传')
   } catch (error) {
+    if (applicationFormEpoch.value !== context.epoch) {
+      return
+    }
     showUserError(error, '附件上传失败')
   } finally {
-    uploading.value = false
+    if (applicationFormEpoch.value === context.epoch) {
+      uploading.value = false
+    }
     input.value = ''
   }
 }

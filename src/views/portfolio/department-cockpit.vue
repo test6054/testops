@@ -180,12 +180,9 @@ function complianceTypeLabel(code: string): string {
   )
 }
 
-function alertStatusLabel(code: string): string {
-  return strictEnumLabel(
-    PortfolioAlertStatusDescription,
-    code as PortfolioAlertStatusCode,
-    '预警状态',
-  )
+function alertStatusLabel(code?: PortfolioAlertStatusCode): string {
+  if (!code) return '—'
+  return strictEnumLabel(PortfolioAlertStatusDescription, code, '预警状态')
 }
 
 async function loadSummary() {
@@ -304,7 +301,9 @@ watch(
         :subtitle="summary?.departmentName || portrait?.departmentName"
       >
         <template #actions>
-          <UiButton size="sm" :disabled="!departmentId" @click="goDeptOneTable()"> 部门一张表 </UiButton>
+          <UiButton size="sm" :disabled="!departmentId" @click="goDeptOneTable()">
+            部门一张表
+          </UiButton>
         </template>
       </ContextBar>
     </template>

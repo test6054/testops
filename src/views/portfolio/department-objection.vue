@@ -40,6 +40,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -187,8 +188,9 @@ const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
   { title: '操作', key: 'actions', width: 120 },
 ]
 
-/** 深链任务切换后必须清空旧复核上下文，避免继续操作上一任务的异议单。 */
-function resetReviewContext() {
+/** 作废当前材料包请求并清空复核上下文，避免旧异议证据继续可写。 */
+function resetReviewContext(): void {
+  reviewContextToken.value += 1
   reviewDrawerOpen.value = false
   reviewTarget.value = null
   reviewPackage.value = null
@@ -196,6 +198,13 @@ function resetReviewContext() {
   reviewForm.action = PortfolioEvaluationObjectionHandleActionCode.CORRECT
   reviewForm.handleOpinion = ''
   reviewForm.correctedScore = undefined
+}
+
+/** 抽屉关闭时立即作废在途材料包请求。 */
+function handleReviewDrawerOpenChange(open: boolean): void {
+  if (!open) {
+    resetReviewContext()
+  }
 }
 
 async function downloadEvidence(row: PortfolioEvaluationObjectionSummaryVO) {
@@ -328,6 +337,7 @@ async function submitReview() {
       return
     }
     void message.success('复核完成')
+    handlingId.value = ''
     resetReviewContext()
     await loadPage()
   } catch (error) {
@@ -342,7 +352,11 @@ async function submitReview() {
   }
 }
 
-async function openReviewDrawer(row: PortfolioEvaluationObjectionSummaryVO) {
+/** 打开指定异议并绑定独立材料包代际，后返回的旧请求不得覆盖当前目标。 */
+async function openReviewDrawer(row: PortfolioEvaluationObjectionSummaryVO): Promise<void> {
+  const contextToken = reviewContextToken.value + 1
+  reviewContextToken.value = contextToken
+  const objectionId = row.objectionId
   reviewTarget.value = row
   reviewForm.action = requiresCorrectedScore(row.objectionType)
     ? PortfolioEvaluationObjectionHandleActionCode.CORRECT
@@ -351,23 +365,31 @@ async function openReviewDrawer(row: PortfolioEvaluationObjectionSummaryVO) {
   reviewForm.correctedScore = undefined
   reviewPackage.value = null
   reviewDrawerOpen.value = true
-  const contextToken = reviewContextToken.value
   reviewPackageLoading.value = true
   try {
     const pack = await portfolioEvaluationPublicityApi.getObjectionReviewPackage({
-      objectionId: row.objectionId,
+      objectionId,
     })
-    if (reviewContextToken.value !== contextToken) {
+    if (
+      reviewContextToken.value !== contextToken
+      || reviewTarget.value?.objectionId !== objectionId
+    ) {
       return
     }
     reviewPackage.value = pack
   } catch (error) {
-    if (reviewContextToken.value !== contextToken) {
+    if (
+      reviewContextToken.value !== contextToken
+      || reviewTarget.value?.objectionId !== objectionId
+    ) {
       return
     }
     showUserError(error, '加载异议复核材料包失败')
   } finally {
-    if (reviewContextToken.value === contextToken) {
+    if (
+      reviewContextToken.value === contextToken
+      && reviewTarget.value?.objectionId === objectionId
+    ) {
       reviewPackageLoading.value = false
     }
   }
@@ -376,7 +398,6 @@ async function openReviewDrawer(row: PortfolioEvaluationObjectionSummaryVO) {
 watch(
   () => [route.query.evaluationTaskId, route.query.objectionId],
   ([taskId]) => {
-    reviewContextToken.value += 1
     pageRequestToken.value += 1
     loading.value = false
     handlingId.value = ''
@@ -502,7 +523,7 @@ void loadPage()
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherName'">
-            {{ record.teacherName }}
+            {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'objectionType'">
             {{
@@ -606,9 +627,15 @@ void loadPage()
       />
     </UiCard>
 
-    <UiDrawer v-model:open="reviewDrawerOpen" title="异议复核" width="640">
+    <UiDrawer
+      v-model:open="reviewDrawerOpen"
+      title="异议复核"
+      width="640"
+      @update:open="handleReviewDrawerOpenChange"
+    >
       <p v-if="reviewTarget" class="department-objection__meta">
-        {{ reviewTarget.teacherName }} · {{ reviewTarget.taskName }}
+        {{ formatPortfolioTeacherDisplay(reviewTarget.teacherName, reviewTarget.teacherNumber) }} ·
+        {{ reviewTarget.taskName }}
         <template v-if="reviewTarget.indicatorCode">
           · 指标 {{ reviewTarget.indicatorCode }}
         </template>
@@ -692,7 +719,7 @@ void loadPage()
           size="sm"
           variant="ghost"
           :disabled="Boolean(handlingId)"
-          @click="reviewDrawerOpen = false"
+          @click="resetReviewContext"
         >
           取消
         </UiButton>

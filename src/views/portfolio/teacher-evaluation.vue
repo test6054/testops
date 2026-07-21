@@ -20,8 +20,8 @@ import {
   PortfolioEvaluationObjectionTypeCode,
   PortfolioEvaluationPublicityStatusDescription,
   PortfolioEvaluationSceneDescription,
-  PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
+  PortfolioEvaluationTeacherNoticeStatusEnum,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
@@ -58,11 +58,11 @@ import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
-function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): string {
+function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusEnum): string {
   return strictEnumLabel(PortfolioEvaluationTeacherNoticeStatusDescription, status, '评价通知状态')
 }
 
-function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusCode) {
+function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusEnum) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE, status, '评价通知状态')
 }
 
@@ -703,7 +703,7 @@ function buildNoticeRowActions(record: PortfolioEvaluationTeacherNoticeVO): UiTa
       disabled: previewLoading.value || confirming.value,
     },
   ]
-  if (record.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED) {
+  if (record.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusEnum.CONFIRMED) {
     actions.push({
       key: 'confirm',
       label: '确认材料',

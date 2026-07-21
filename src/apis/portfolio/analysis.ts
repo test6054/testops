@@ -5,7 +5,9 @@ import type {
   PortfolioTeacherPkCompareVO,
   PortfolioTeacherRecommendPkCompareRequest,
 } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioCockpitSummaryVO, PortfolioDigitalLiteracyVO,
+import type {
+  PortfolioCockpitSummaryVO,
+  PortfolioDigitalLiteracyVO,
   PortfolioEducatingOutcomeContributionVO,
   PortfolioGuidanceContributionVO,
   PortfolioIndustryEducationProjectContributionVO,
@@ -24,8 +26,11 @@ import type { PortfolioCockpitSummaryVO, PortfolioDigitalLiteracyVO,
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTeachingWorkloadByIdentityVO,
   PortfolioTextbookContributionVO,
-  PortfolioVirtualTeachingRoomContributionVO } from '@/apis/portfolio/types'
+  PortfolioVirtualTeachingRoomContributionVO,
+} from '@/apis/portfolio/types'
 import type { IdRequest, PageResult, QueryDto } from '@/types'
+import type { PortfolioAlertStatusCode } from '@/types/enums/portfolio-alert-status-enum'
+import type { PortfolioEthicsImpactScopeCode } from '@/types/enums/portfolio-ethics-impact-scope-enum'
 import http from '@/config/axios'
 
 export interface PortfolioAnalysisAlertVO {
@@ -35,7 +40,7 @@ export interface PortfolioAnalysisAlertVO {
   teacherNumber?: string
   departmentName?: string
   alertType: string
-  alertStatus: string
+  alertStatus: PortfolioAlertStatusCode
   indicatorCode?: string
   alertTitle: string
   alertSummary?: string
@@ -146,7 +151,7 @@ export interface PortfolioAnalysisComplianceAlertVO {
   departmentId?: string
   departmentName?: string
   alertType: string
-  alertStatus: string
+  alertStatus: PortfolioAlertStatusCode
   currentValue?: string
   thresholdValue?: string
   alertSummary: string
@@ -196,7 +201,6 @@ export interface PortfolioAnalysisAnnualReportVO {
   ownerMultiIdentityNote?: string
 }
 
-
 export interface PortfolioTeacherPkSessionCreateRequest {
   teacherUserIds: string[]
   dimensionCodes: PortfolioPortraitDimensionCode[]
@@ -212,7 +216,6 @@ export interface PortfolioTeacherPkSessionVO {
   createUser: string
   createTime: string
 }
-
 
 /** §8.48 聘期滚动评价 */
 export interface PortfolioAppointmentPeriodYearScoreVO {
@@ -235,7 +238,7 @@ export interface PortfolioAppointmentPeriodKeyAchievementVO {
 
 export interface PortfolioAppointmentPeriodRiskItemVO {
   sanctionId?: string
-  impactScope?: string
+  impactScope?: PortfolioEthicsImpactScopeCode
   publicSummary?: string
   sanctionStartDate?: string
   sanctionEndDate?: string
@@ -291,11 +294,20 @@ export const portfolioAnalysisApi = {
   getPortrait: (data: PortfolioTeacherPortraitGetRequest = {}) =>
     http.post<PortfolioTeacherPortraitVO>('/api/portfolio/portrait/teacher/get', data),
   getDigitalLiteracy: (data: PortfolioTeacherPortraitGetRequest = {}) =>
-    http.post<PortfolioDigitalLiteracyVO>('/api/portfolio/portrait/teacher/digital-literacy/get', data),
+    http.post<PortfolioDigitalLiteracyVO>(
+      '/api/portfolio/portrait/teacher/digital-literacy/get',
+      data,
+    ),
   getGuidanceContribution: (data: PortfolioTeacherPortraitGetRequest = {}) =>
-    http.post<PortfolioGuidanceContributionVO>('/api/portfolio/portrait/teacher/guidance-contribution/get', data),
+    http.post<PortfolioGuidanceContributionVO>(
+      '/api/portfolio/portrait/teacher/guidance-contribution/get',
+      data,
+    ),
   getTextbookContribution: (data: PortfolioTeacherPortraitGetRequest = {}) =>
-    http.post<PortfolioTextbookContributionVO>('/api/portfolio/portrait/teacher/textbook-contribution/get', data),
+    http.post<PortfolioTextbookContributionVO>(
+      '/api/portfolio/portrait/teacher/textbook-contribution/get',
+      data,
+    ),
   getVirtualTeachingRoomContribution: (data: PortfolioTeacherPortraitGetRequest = {}) =>
     http.post<PortfolioVirtualTeachingRoomContributionVO>(
       '/api/portfolio/portrait/teacher/virtual-teaching-room-contribution/get',
@@ -348,7 +360,7 @@ export const portfolioAnalysisApi = {
     pageSize: number
     teacherId?: string
     alertType?: string
-    alertStatus?: string
+    alertStatus?: PortfolioAlertStatusCode
   }) => http.post<PageResult<PortfolioAnalysisAlertVO>>('/api/portfolio/analysis/alert/page', data),
   listSuggestions: (data: { teacherId: string }) =>
     http.post<PortfolioAnalysisSuggestionVO[]>('/api/portfolio/analysis/suggestion/list', data),
@@ -370,7 +382,7 @@ export const portfolioAnalysisApi = {
     pageSize: number
     scopeType?: string
     departmentId?: string
-    alertStatus?: string
+    alertStatus?: PortfolioAlertStatusCode
   }) =>
     http.post<PageResult<PortfolioAnalysisComplianceAlertVO>>(
       '/api/portfolio/analysis/compliance/page',
@@ -407,11 +419,14 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/report/annual/page',
       data,
     ),
-  resolvePortraitAlert: (data: { alertId: string, alertStatus: string, resolveRemark?: string }) =>
-    http.post<void>('/api/portfolio/analysis/alert/resolve', data),
+  resolvePortraitAlert: (data: {
+    alertId: string
+    alertStatus: PortfolioAlertStatusCode
+    resolveRemark?: string
+  }) => http.post<void>('/api/portfolio/analysis/alert/resolve', data),
   resolveComplianceAlert: (data: {
     alertId: string
-    alertStatus: string
+    alertStatus: PortfolioAlertStatusCode
     resolveRemark?: string
   }) => http.post<void>('/api/portfolio/analysis/compliance/resolve', data),
 }

@@ -184,11 +184,14 @@ function canPreview(row: PortfolioReportingTaskVO): boolean {
 }
 
 function canRequestApproval(row: PortfolioReportingTaskVO): boolean {
-  return canPreview(row) && Boolean(row.previewReady)
+  return canPreview(row) && Boolean(row.previewReady && row.previewFingerprint)
 }
 
 function canApprove(row: PortfolioReportingTaskVO): boolean {
-  return row.taskStatus === PortfolioReportingTaskStatusCode.PENDING_APPROVAL
+  return (
+    row.taskStatus === PortfolioReportingTaskStatusCode.PENDING_APPROVAL
+    && Boolean(row.previewFingerprint)
+  )
 }
 
 function canDownload(row: PortfolioReportingTaskVO): boolean {
@@ -323,10 +326,15 @@ async function runPreview(row: PortfolioReportingTaskVO) {
 
 async function runRequestApproval(row: PortfolioReportingTaskVO) {
   const taskId = row.id
+  const scopeFingerprint = row.previewFingerprint
+  if (!scopeFingerprint) {
+    showUserError(new Error('缺少冻结预览指纹'), '请重新执行报送预览')
+    return
+  }
   const operation = `task:request:${taskId}`
   if (!beginOperation(operation)) return
   try {
-    await portfolioReportingApi.requestApproval({ id: taskId })
+    await portfolioReportingApi.requestApproval({ id: taskId, scopeFingerprint })
     void message.success('已提交审批')
     await loadPage()
   } catch (error) {
@@ -338,11 +346,16 @@ async function runRequestApproval(row: PortfolioReportingTaskVO) {
 
 async function runApprove(row: PortfolioReportingTaskVO) {
   const taskId = row.id
+  const scopeFingerprint = row.previewFingerprint
+  if (!scopeFingerprint || !row.previewAsOf) {
+    showUserError(new Error('缺少冻结审批口径'), '该任务须重新预览并提交审批')
+    return
+  }
   const operation = `task:approve:${taskId}`
   if (!beginOperation(operation)) return
   const confirmed = await confirmAsync({
     title: '确认审批通过并生成报送产物？',
-    content: `将按预览口径批准「${row.taskTitle}」并生成正式共享清单，请确认范围与脱敏设置。`,
+    content: `将严格按 ${row.previewAsOf} 冻结的预览口径生成正式共享清单（指纹 ${scopeFingerprint.slice(0, 12)}），后续新增教师或档案不会进入本次产物。`,
     type: 'warning',
   })
   if (!confirmed) {
@@ -350,7 +363,7 @@ async function runApprove(row: PortfolioReportingTaskVO) {
     return
   }
   try {
-    await portfolioReportingApi.approve({ id: taskId })
+    await portfolioReportingApi.approve({ id: taskId, scopeFingerprint })
     void message.success('已审批并生成报送清单')
     await loadPage()
   } catch (error) {
@@ -565,12 +578,22 @@ onMounted(() => {
     </UiDialog>
     <UiDialog v-model:open="previewOpen" title="报送预览" hide-footer>
       <template v-if="preview">
-        <p>任务编号：{{ previewTaskId }}</p>
+        <p>已生成预览包</p>
         <p>教师人数：{{ preview.teacherCount }}</p>
         <p>正式档案条数：{{ preview.officialArchiveCount }}</p>
+        <p>冻结时间：{{ preview.asOf }}</p>
         <p>脱敏：{{ preview.maskMode ? '是' : '否' }}</p>
         <p>口径：{{ preview.dataScopeNote }}</p>
-        <p>共享字段：{{ preview.shareFields.join('、') }}</p>
+        <p>
+          共享字段：{{
+            preview.shareFields
+              .map((code) => PortfolioReportingShareFieldDescription[code])
+              .join('、')
+          }}
+        </p>
+        <p>范围指纹：{{ preview.scopeFingerprint }}</p>
+        <p>教师清单摘要：{{ preview.teacherIdsHash }}</p>
+        <p>正式档案摘要：{{ preview.officialArchiveIdsHash }}</p>
       </template>
     </UiDialog>
     <UiDialog

@@ -165,6 +165,8 @@ const historyRequestToken = ref(0)
 const auditFlowRequestToken = ref(0)
 const historyVisible = ref(false)
 const auditFlowCode = ref('')
+const auditFlowState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
+const auditFlowLoadedCategoryId = ref('')
 const categoryVisible = ref(false)
 const fieldVisible = ref(false)
 const publishVisible = ref(false)
@@ -333,6 +335,8 @@ async function loadTree() {
         versionHistory.value = []
         changeLogs.value = []
         auditFlowCode.value = ''
+        auditFlowLoadedCategoryId.value = ''
+        auditFlowState.value = 'idle'
       }
     }
   } catch (error) {
@@ -346,6 +350,8 @@ async function loadTree() {
     versionHistory.value = []
     changeLogs.value = []
     auditFlowCode.value = ''
+    auditFlowLoadedCategoryId.value = ''
+    auditFlowState.value = 'idle'
     treeLoadError.value = '档案分类加载失败，请重试'
     showUserError(error, '加载档案分类失败')
   } finally {
@@ -367,6 +373,9 @@ function findTreeNode(nodes: TreeNode[], key: string): TreeNode | null {
 async function selectCategory(node: TreeNode) {
   const currentToken = ++categoryRequestToken.value
   selectedNode.value = node
+  auditFlowCode.value = ''
+  auditFlowLoadedCategoryId.value = ''
+  auditFlowState.value = 'loading'
   activeVersionId.value = node.raw.draftVersionId ?? node.raw.publishedVersionId ?? null
   fields.value = []
   await loadHistory(currentToken)
@@ -383,9 +392,14 @@ async function loadAuditFlowBinding(expectedToken = categoryRequestToken.value) 
   auditFlowRequestToken.value = currentToken
   if (!selectedCategory.value) {
     auditFlowCode.value = ''
+    auditFlowLoadedCategoryId.value = ''
+    auditFlowState.value = 'idle'
     return
   }
   const categoryId = selectedCategory.value.id
+  auditFlowCode.value = ''
+  auditFlowLoadedCategoryId.value = ''
+  auditFlowState.value = 'loading'
   try {
     const binding = await portfolioArchiveTemplateApi.getAuditFlowBinding({
       categoryId,
@@ -397,6 +411,8 @@ async function loadAuditFlowBinding(expectedToken = categoryRequestToken.value) 
       return
     }
     auditFlowCode.value = binding?.auditFlowCode ?? ''
+    auditFlowLoadedCategoryId.value = categoryId
+    auditFlowState.value = 'ready'
   } catch (error) {
     if (
       expectedToken !== categoryRequestToken.value
@@ -404,12 +420,23 @@ async function loadAuditFlowBinding(expectedToken = categoryRequestToken.value) 
     ) {
       return
     }
+    auditFlowCode.value = ''
+    auditFlowLoadedCategoryId.value = ''
+    auditFlowState.value = 'error'
     showUserError(error, '加载审核流绑定失败')
   }
 }
 
 async function bindAuditFlow() {
-  if (!selectedCategory.value || !auditFlowCode.value.trim()) {
+  if (
+    !selectedCategory.value
+    || auditFlowState.value !== 'ready'
+    || auditFlowLoadedCategoryId.value !== selectedCategory.value.id
+  ) {
+    void message.error('当前分类审核流尚未就绪，请先重新加载')
+    return
+  }
+  if (!auditFlowCode.value.trim()) {
     void message.error('请先填写审核流编码')
     return
   }
@@ -1139,25 +1166,37 @@ onMounted(async () => {
               v-model="auditFlowCode"
               placeholder="审核流编码"
               style="width: 220px"
-              :disabled="writing"
+              :disabled="writing || auditFlowState !== 'ready'"
             />
             <UiButton
               variant="primary"
               size="sm"
               :loading="operationKey.startsWith('audit-flow:bind:')"
-              :disabled="writing"
+              :disabled="writing || auditFlowState !== 'ready'"
               @click="bindAuditFlow"
             >
               绑定
             </UiButton>
             <UiButton
               size="sm"
-              :disabled="writing"
+              :disabled="writing || auditFlowState !== 'ready'"
               @click="auditFlowCode = PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE"
             >
               使用默认
             </UiButton>
           </div>
+          <UiAlertStrip
+            v-if="canManageTenant && auditFlowState === 'error'"
+            dense
+            tone="error"
+            title="当前分类审核流加载失败，已禁止绑定"
+          >
+            <template #actions>
+              <UiButton size="sm" variant="outline" @click="loadAuditFlowBinding()">
+                重新加载
+              </UiButton>
+            </template>
+          </UiAlertStrip>
           <div v-if="canManageTenant" class="toolbar">
             <UiButton
               v-if="canViewPublished"

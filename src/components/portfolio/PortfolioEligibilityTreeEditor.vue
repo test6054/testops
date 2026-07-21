@@ -3,8 +3,12 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type { PfEligibilityRuleTreeNodeDto } from '@/apis/portfolio/indicator-types'
 import { computed } from 'vue'
 import {
+  ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
+  ALL_PF_ELIGIBILITY_NODE_TYPE_CODES,
   PF_ELIGIBILITY_AUDIT_STATUS_OPTIONS,
   PF_ELIGIBILITY_NODE_TYPE_OPTIONS,
+  PfEligibilityAuditStatusCode,
+  PfEligibilityNodeTypeCode,
 } from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -19,14 +23,18 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:node': [node: PfEligibilityRuleTreeNodeDto]
-  "remove": []
+  'remove': []
 }>()
 
 const depth = computed(() => props.depth ?? 0)
 
 const isLogic = computed(() => {
   const nodeType = props.node.nodeType
-  return nodeType === 'AND' || nodeType === 'OR' || nodeType === 'NOT'
+  return (
+    nodeType === PfEligibilityNodeTypeCode.AND
+    || nodeType === PfEligibilityNodeTypeCode.OR
+    || nodeType === PfEligibilityNodeTypeCode.NOT
+  )
 })
 
 function replaceNode(next: PfEligibilityRuleTreeNodeDto) {
@@ -46,11 +54,26 @@ function patchTextField(
   })
 }
 
+function resolveNodeType(value: SelectValue): PfEligibilityNodeTypeCode | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  return ALL_PF_ELIGIBILITY_NODE_TYPE_CODES.find((code) => code === value)
+}
+
+function resolveAuditStatus(value: SelectValue): PfEligibilityAuditStatusCode | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+  return ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES.find((code) => code === value)
+}
+
 function onAuditStatusChange(auditStatus: SelectValue) {
-  if (typeof auditStatus !== 'string') {
+  const nextStatus = resolveAuditStatus(auditStatus)
+  if (!nextStatus) {
     return
   }
-  patchNode({ auditStatus })
+  patchNode({ auditStatus: nextStatus })
 }
 
 function addChild() {
@@ -58,7 +81,7 @@ function addChild() {
     ...props.node,
     children: [
       ...(props.node.children ?? []),
-      { nodeType: 'LEAF', fieldKey: '', expectedValue: '' },
+      { nodeType: PfEligibilityNodeTypeCode.LEAF, fieldKey: '', expectedValue: '' },
     ],
   })
 }
@@ -76,15 +99,20 @@ function updateChild(index: number, child: PfEligibilityRuleTreeNodeDto) {
 }
 
 function onNodeTypeChange(nodeType: SelectValue) {
-  if (typeof nodeType !== 'string') {
+  const nextType = resolveNodeType(nodeType)
+  if (!nextType) {
     return
   }
-  if (nodeType === 'AND' || nodeType === 'OR' || nodeType === 'NOT') {
+  if (
+    nextType === PfEligibilityNodeTypeCode.AND
+    || nextType === PfEligibilityNodeTypeCode.OR
+    || nextType === PfEligibilityNodeTypeCode.NOT
+  ) {
     const children = props.node.children?.length
       ? [...props.node.children]
-      : [{ nodeType: 'LEAF', fieldKey: '', expectedValue: '' }]
+      : [{ nodeType: PfEligibilityNodeTypeCode.LEAF, fieldKey: '', expectedValue: '' }]
     replaceNode({
-      nodeType,
+      nodeType: nextType,
       children,
       fieldKey: undefined,
       expectedValue: undefined,
@@ -92,18 +120,18 @@ function onNodeTypeChange(nodeType: SelectValue) {
     })
     return
   }
-  if (nodeType === 'AUDIT_GATE') {
+  if (nextType === PfEligibilityNodeTypeCode.AUDIT_GATE) {
     replaceNode({
       ...props.node,
-      nodeType,
+      nodeType: nextType,
       children: undefined,
-      auditStatus: props.node.auditStatus ?? 'PENDING',
+      auditStatus: props.node.auditStatus ?? PfEligibilityAuditStatusCode.PENDING,
     })
     return
   }
   replaceNode({
     ...props.node,
-    nodeType,
+    nodeType: nextType,
     children: undefined,
   })
 }
@@ -119,27 +147,27 @@ function onNodeTypeChange(nodeType: SelectValue) {
         style="width: 120px"
         @update:model-value="onNodeTypeChange"
       />
-      <template v-if="node.nodeType === 'LEAF'">
+      <template v-if="node.nodeType === PfEligibilityNodeTypeCode.LEAF">
         <UiInput
           size="sm"
           :value="node.fieldKey"
-          placeholder="fieldKey"
+          placeholder="字段键"
           style="width: 140px"
           @update:value="patchTextField('fieldKey', $event)"
         />
         <UiInput
           size="sm"
           :value="node.expectedValue"
-          placeholder="expectedValue"
+          placeholder="期望值"
           style="width: 120px"
           @update:value="patchTextField('expectedValue', $event)"
         />
       </template>
-      <template v-else-if="node.nodeType === 'AUDIT_GATE'">
+      <template v-else-if="node.nodeType === PfEligibilityNodeTypeCode.AUDIT_GATE">
         <UiInput
           size="sm"
           :value="node.fieldKey"
-          placeholder="fieldKey"
+          placeholder="字段键"
           style="width: 140px"
           @update:value="patchTextField('fieldKey', $event)"
         />

@@ -3,7 +3,7 @@
  *
  * 后端路径：/api/quality/external-pull-tasks
  */
-import type { ExternalPullTaskStatusCode } from './types'
+import type { ExternalPullFailurePhaseCode, ExternalPullTaskStatusCode } from './types'
 import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { BusinessAnchorCode } from '@/types/enums/business-anchor-code-enum'
@@ -34,6 +34,7 @@ export interface ExternalPullTaskVO {
   finishedTime?: string
   elapsedMs?: number
   returnRows?: number
+  failurePhase?: ExternalPullFailurePhaseCode
   failureReason?: string
   operatorUserId?: string
   createTime?: string

@@ -24,6 +24,7 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -45,8 +46,7 @@ const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' 
 const formTeacherId = computed(() => form.teacherUserId || undefined)
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const {
   loading,
   rows,
@@ -57,23 +57,13 @@ const {
   loadPage,
   search,
   handlePageChange,
-} = useQueryTable(
-  (params) =>
-    portfolioDevelopmentRecordApi.page({
-      ...params,
-      recordType: props.recordType,
-      categoryCode: props.categoryCode,
-      levelCode: props.levelCode ?? (props.nationalOnly ? 'NATIONAL' : undefined),
-    }),
-  {
-    onLoaded: (list) => {
-      if (props.recordType !== PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT) {
-        return
-      }
-      const userIds = list.map((row) => row.teacherUserId).filter((id): id is string => Boolean(id))
-      void hydrateTeacherLabels([...new Set(userIds)])
-    },
-  },
+} = useQueryTable((params) =>
+  portfolioDevelopmentRecordApi.page({
+    ...params,
+    recordType: props.recordType,
+    categoryCode: props.categoryCode,
+    levelCode: props.levelCode ?? (props.nationalOnly ? 'NATIONAL' : undefined),
+  }),
 )
 
 const requiresTeacher = computed(
@@ -266,7 +256,7 @@ watch(
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
-            {{ teacherLabel(record.teacherUserId) }}
+            {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'affiliationStaffNo'">
             {{ record.affiliationStaffNo || '—' }}

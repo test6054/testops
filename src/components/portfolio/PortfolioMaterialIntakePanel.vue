@@ -222,7 +222,6 @@
 import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
@@ -236,6 +235,7 @@ import {
 import {
   PORTFOLIO_MATERIAL_INTAKE_STAGE_TONE,
   PORTFOLIO_TEMPLATE_CODE_CERTIFICATE,
+  PortfolioAiTaskTypeCode,
 } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioAiCandidateConfirmPanel from '@/components/portfolio/PortfolioAiCandidateConfirmPanel.vue'
@@ -256,6 +256,7 @@ import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
+import { message } from '@/utils/feedback'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
@@ -615,7 +616,7 @@ async function openScan() {
       taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
       collectMode: PortfolioCollectModeCode.AI_SUBMIT,
       teacherId: targetTeacherId.value,
-      taskType: 'PORTFOLIO_CERTIFICATE_OCR',
+      taskType: PortfolioAiTaskTypeCode.PORTFOLIO_CERTIFICATE_OCR,
       templateCode: PORTFOLIO_TEMPLATE_CODE_CERTIFICATE,
       archiveRecordId: archiveRecordId.value || undefined,
     })

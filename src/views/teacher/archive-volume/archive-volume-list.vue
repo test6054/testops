@@ -41,7 +41,6 @@
 
       <UiAlertStrip
         v-if="s1TipVisible"
-        class="archive-volume-list__s1-tip"
         :tone="s1TipTone"
         :title="s1TipTitle"
         :description="s1TipDescription"
@@ -151,7 +150,6 @@
             :tasks="openRemediationTasks"
             :total-count="openRemediationTaskTotal"
             :loading="remediationLoading"
-            class="archive-volume-list__alert"
             @go="goRemediationVolume"
           />
         </template>
@@ -2011,14 +2009,6 @@ onMounted(async () => {
 }
 
 .archive-volume-list__filter {
-  width: 100%;
-}
-
-.archive-volume-list__filter-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--dp-space-2);
-  justify-content: flex-end;
   width: 100%;
 }
 

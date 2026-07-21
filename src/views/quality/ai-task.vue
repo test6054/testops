@@ -18,6 +18,8 @@ import type {
   QualityStatusCountsResponse,
 } from '@/apis/quality/ai-task'
 import type { AiTaskSubmitRequest } from '@/apis/quality/ai-task-trigger'
+import type {
+  AiTaskFailurePhaseCode} from '@/apis/quality/types';
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { AiResultImprovementPriorityCode } from '@/types/enums/ai-result-improvement-priority-enum'
@@ -49,6 +51,7 @@ import {
   AiOutputValidationDescription,
   AiTaskBusinessTypeCode,
   AiTaskBusinessTypeDescription,
+  AiTaskFailurePhaseDescription,
   AiTaskStatusCode,
   AiTaskStatusDescription,
   AiTaskTypeCode,
@@ -116,6 +119,10 @@ function aiTaskTypeLabel(value: AiTaskTypeCode): string {
 
 function aiTaskStatusLabel(value: AiTaskStatusCode): string {
   return strictEnumLabel(AiTaskStatusDescription, value, '智能任务状态')
+}
+
+function aiTaskFailurePhaseLabel(value: AiTaskFailurePhaseCode): string {
+  return strictEnumLabel(AiTaskFailurePhaseDescription, value, '智能任务失败阶段')
 }
 
 function aiTaskStatusColor(value: AiTaskStatusCode): BadgeTone {
@@ -242,6 +249,10 @@ const PORTFOLIO_AI_TASK_TYPES: readonly AiTaskTypeCode[] = [
   AiTaskTypeCode.PORTFOLIO_REPORT_GENERATE,
   AiTaskTypeCode.PORTFOLIO_COCKPIT_ASK,
   AiTaskTypeCode.PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN,
+  AiTaskTypeCode.PORTFOLIO_CONTENT_OPTIMIZE,
+  AiTaskTypeCode.PORTFOLIO_TEACHING_EFFECT_ANALYSIS,
+  AiTaskTypeCode.PORTFOLIO_DEVELOPMENT_SUGGEST,
+  AiTaskTypeCode.PORTFOLIO_CONTENT_GENERATE,
 ]
 
 function mapTaskTypeOptions(
@@ -302,9 +313,13 @@ const taskBusinessTypeMap: Record<AiTaskTypeCode, AiTaskBusinessTypeCode> = {
   [AiTaskTypeCode.PORTFOLIO_DOCUMENT_PARSE]: AiTaskBusinessTypeCode.PORTFOLIO_MATERIAL,
   [AiTaskTypeCode.PORTFOLIO_MATERIAL_QA]: AiTaskBusinessTypeCode.PORTFOLIO_MATERIAL,
   [AiTaskTypeCode.PORTFOLIO_POLICY_MATCH]: AiTaskBusinessTypeCode.PORTFOLIO_MATERIAL,
+  [AiTaskTypeCode.PORTFOLIO_CONTENT_OPTIMIZE]: AiTaskBusinessTypeCode.PORTFOLIO_MATERIAL,
+  [AiTaskTypeCode.PORTFOLIO_TEACHING_EFFECT_ANALYSIS]: AiTaskBusinessTypeCode.PORTFOLIO_MATERIAL,
   [AiTaskTypeCode.PORTFOLIO_REPORT_GENERATE]: AiTaskBusinessTypeCode.PORTFOLIO_EVALUATION,
   [AiTaskTypeCode.PORTFOLIO_TEACHER_RECOMMEND_EXPLAIN]: AiTaskBusinessTypeCode.PORTFOLIO_EVALUATION,
   [AiTaskTypeCode.PORTFOLIO_COCKPIT_ASK]: AiTaskBusinessTypeCode.PORTFOLIO_EVALUATION,
+  [AiTaskTypeCode.PORTFOLIO_DEVELOPMENT_SUGGEST]: AiTaskBusinessTypeCode.PORTFOLIO_EVALUATION,
+  [AiTaskTypeCode.PORTFOLIO_CONTENT_GENERATE]: AiTaskBusinessTypeCode.PORTFOLIO_EVALUATION,
   [AiTaskTypeCode.PROGRAM_REPORT_GENERATE]: AiTaskBusinessTypeCode.REPORT,
   [AiTaskTypeCode.SYLLABUS_PARSE]: AiTaskBusinessTypeCode.QUALITY_COURSE,
   [AiTaskTypeCode.TRAINING_PLAN_PARSE]: AiTaskBusinessTypeCode.TRAINING_PLAN,
@@ -1466,7 +1481,7 @@ onMounted(async () => {
             </template>
             <template v-else-if="column.key === 'failurePhase'">
               <span :class="{ 'ai-task__error-text': record.status === AiTaskStatusCode.FAILED }">
-                {{ record.failurePhase || '不适用' }}
+                {{ record.failurePhase ? aiTaskFailurePhaseLabel(record.failurePhase) : '不适用' }}
               </span>
             </template>
             <template v-else-if="column.key === 'startedTime'">
@@ -1743,7 +1758,11 @@ onMounted(async () => {
             <span
               :class="{ 'ai-task__error-text': detailRecord.status === AiTaskStatusCode.FAILED }"
             >
-              {{ detailRecord.failurePhase || '不适用' }}
+              {{
+                detailRecord.failurePhase
+                  ? aiTaskFailurePhaseLabel(detailRecord.failurePhase)
+                  : '不适用'
+              }}
             </span>
           </UiDescriptionsItem>
           <UiDescriptionsItem label="未完成说明">

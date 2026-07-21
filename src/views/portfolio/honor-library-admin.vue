@@ -25,6 +25,7 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const importModalOpen = ref(false)
@@ -63,8 +64,7 @@ const form = reactive({
 const formTeacherId = computed(() => form.teacherUserId || undefined)
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const {
   loading,
   rows,
@@ -97,8 +97,6 @@ const {
     }),
     onLoaded: async (list, params) => {
       const currentToken = ++statsRequestToken.value
-      const userIds = list.map((row) => row.teacherUserId).filter((id): id is string => Boolean(id))
-      await hydrateTeacherLabels([...new Set(userIds)])
       const nextStats = await portfolioDevelopmentRecordApi.honorStats({
         levelCode: params.levelCode || undefined,
         awardUnit: params.awardUnit || undefined,
@@ -300,7 +298,7 @@ async function exportHonor() {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
-            {{ teacherLabel(record.teacherUserId) }}
+            {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'affiliationStaffNo'">
             {{ record.affiliationStaffNo || '—' }}

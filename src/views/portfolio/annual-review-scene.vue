@@ -7,10 +7,11 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import {
-  PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
+  PortfolioEvaluationTeacherNoticeStatusEnum,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE } from '@/apis/portfolio/types'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
@@ -28,7 +29,7 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
@@ -44,7 +45,7 @@ const annualNotices = ref<PortfolioEvaluationTeacherNoticeVO[]>([])
 
 const hasPendingAnnualNotices = computed(() =>
   annualNotices.value.some(
-    (notice) => notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED,
+    (notice) => notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusEnum.CONFIRMED,
   ),
 )
 const submittingNoticeId = ref('')
@@ -69,6 +70,14 @@ const statusLabel = computed(() =>
 function annualNoticeStatusLabel(notice: PortfolioEvaluationTeacherNoticeVO): string {
   return strictEnumLabel(
     PortfolioEvaluationTeacherNoticeStatusDescription,
+    notice.noticeStatus,
+    '年度考核材料状态',
+  )
+}
+
+function annualNoticeStatusTone(notice: PortfolioEvaluationTeacherNoticeVO) {
+  return strictEnumTone(
+    PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
     notice.noticeStatus,
     '年度考核材料状态',
   )
@@ -300,22 +309,12 @@ usePortfolioScopedLoader(
               </p>
             </div>
             <div class="annual-review__notice-actions">
-              <UiTag
-                size="sm"
-                :tone="
-                  notice.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
-                    ? 'green'
-                    : notice.noticeStatus
-                      === PortfolioEvaluationTeacherNoticeStatusCode.RETURNED_SUPPLEMENT
-                      ? 'orange'
-                      : 'blue'
-                "
-              >
+              <UiTag size="sm" :tone="annualNoticeStatusTone(notice)">
                 {{ annualNoticeStatusLabel(notice) }}
               </UiTag>
               <UiButton
                 size="sm"
-                v-if="notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED"
+                v-if="notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusEnum.CONFIRMED"
                 variant="primary"
                 :loading="submittingNoticeId === notice.id"
                 :disabled="

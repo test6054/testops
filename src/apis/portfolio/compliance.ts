@@ -6,13 +6,13 @@ import http from '@/config/axios'
 
 export interface PortfolioComplianceThresholdVO {
   id: string
-  metricCode: string
-  scopeType: string
+  metricCode: PortfolioComplianceAlertTypeCode
+  scopeType: PortfolioComplianceScopeTypeCode
   departmentId?: string
   targetValue: string
   yellowThreshold: string
   redThreshold: string
-  compareDirection: string
+  compareDirection: PortfolioComplianceCompareDirectionCode
   denominatorBasisValue?: string
   counselorRatioStandard?: number
   enabled: boolean
@@ -20,9 +20,9 @@ export interface PortfolioComplianceThresholdVO {
 }
 
 export interface PortfolioComplianceMetricVO {
-  metricCode: string
+  metricCode: PortfolioComplianceAlertTypeCode
   metricLabel: string
-  scopeType: string
+  scopeType: PortfolioComplianceScopeTypeCode
   departmentId?: string
   numeratorValue?: string
   denominatorValue?: string
@@ -30,7 +30,7 @@ export interface PortfolioComplianceMetricVO {
   targetValue?: string
   yellowThreshold?: string
   redThreshold?: string
-  metricStatus: string
+  metricStatus: PortfolioComplianceMetricStatusCode
   alertLevel?: string
   summaryText: string
   computedTime?: string

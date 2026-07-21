@@ -1,4 +1,5 @@
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
+import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfolio-archive-record-source-type-enum'
 import http from '@/config/axios'
 
 const PUBLIC_EXPERT = '/api/public/portfolio/expert-assignment'
@@ -28,7 +29,7 @@ export interface PortfolioPublicExpertReviewMaterialVO {
   categoryName?: string
   academicYear?: string
   documentVersionNo?: number
-  sourceType?: string
+  sourceType?: PortfolioArchiveRecordSourceTypeCode
   hasPrimaryFile: boolean
   supportMaterialCount: number
   /** 材料身份切片 CAMPUS/EXTERNAL/SHARED（US-MI-01；免登可读） */

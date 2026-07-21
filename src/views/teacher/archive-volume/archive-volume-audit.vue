@@ -12,12 +12,7 @@
       <SignalBand :metrics="signalMetrics" variant="panel" />
     </template>
 
-    <UiEmpty
-      size="sm"
-      v-if="loadFailed"
-      title="加载失败"
-      description="审计事件加载失败"
-    />
+    <UiEmpty size="sm" v-if="loadFailed" title="加载失败" description="审计事件加载失败" />
 
     <WorkbenchSurfaceCard v-else flush>
       <template #toolbar>
@@ -64,8 +59,14 @@
           <template v-else-if="column.key === 'operatorUserId'">
             {{ record.operatorNickName || record.operatorUserId || '—' }}
           </template>
+          <template v-else-if="column.key === 'beforeStatus'">
+            {{ record.beforeStatus || '—' }}
+          </template>
+          <template v-else-if="column.key === 'afterStatus'">
+            {{ record.afterStatus || '—' }}
+          </template>
           <template v-else-if="column.key === 'createTime'">
-            {{ formatDateTime(record.createTime) }}
+            <span class="archive-audit-page__muted">{{ formatDateTime(record.createTime) }}</span>
           </template>
         </template>
       </UiDataTable>
@@ -123,11 +124,16 @@ const events = ref<ArchiveVolumeAuditEventResponse[]>([])
 const auditEventCount = ref(0)
 const pagination = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE, total: 0 })
 
-const signalMetrics = computed<SignalMetric[]>(() =>
-  auditEventCount.value > 0
-    ? [{ key: 'events', label: '审计事件', value: auditEventCount.value }]
-    : [],
-)
+const signalMetrics = computed<SignalMetric[]>(() => [
+  {
+    key: 'events',
+    label: '审计事件',
+    value: auditEventCount.value,
+    unit: '条',
+    tone: 'blue',
+    helper: '当前筛选范围',
+  },
+])
 
 interface ArchiveVolumeAuditFilterForm extends Record<string, unknown> {
   departmentId?: string
@@ -149,6 +155,7 @@ const filterFields = computed<FilterField[]>(() => [
     label: '学院',
     type: 'select',
     options: filterGlobalAuditDepartmentOptions(departmentOptions.value),
+    placeholder: '全部学院',
     allowClear: globalAuditScopedDepartmentIds.value.length !== 1,
     disabled: globalAuditScopedDepartmentIds.value.length === 1,
   },
@@ -157,6 +164,7 @@ const filterFields = computed<FilterField[]>(() => [
     label: '事件类型',
     type: 'select',
     options: ARCHIVE_VOLUME_EVENT_TYPE_OPTIONS,
+    placeholder: '全部事件',
     allowClear: true,
   },
 ])
@@ -259,3 +267,9 @@ onMounted(() => {
   void initPage()
 })
 </script>
+
+<style scoped>
+.archive-audit-page__muted {
+  color: var(--dp-text-muted);
+}
+</style>

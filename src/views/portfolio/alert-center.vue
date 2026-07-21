@@ -36,6 +36,7 @@ import {
   PortfolioComplianceScopeTypeDescription,
 } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import { showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -127,12 +128,22 @@ function alertTypeLabel(code: string): string {
   )
 }
 
-function alertStatusLabel(code: string): string {
-  return strictEnumLabel(
-    PortfolioAlertStatusDescription,
-    code as PortfolioAlertStatusCode,
-    '预警状态',
-  )
+function alertStatusLabel(code?: PortfolioAlertStatusCode): string {
+  if (!code) return '—'
+  return strictEnumLabel(PortfolioAlertStatusDescription, code, '预警状态')
+}
+
+function alertStatusTone(code: PortfolioAlertStatusCode): 'red' | 'orange' | 'green' | 'gray' {
+  if (code === PortfolioAlertStatusCode.OPEN) {
+    return 'red'
+  }
+  if (code === PortfolioAlertStatusCode.ACKNOWLEDGED) {
+    return 'orange'
+  }
+  if (code === PortfolioAlertStatusCode.RESOLVED) {
+    return 'green'
+  }
+  return 'gray'
 }
 
 function complianceTypeLabel(code: string): string {
@@ -149,16 +160,6 @@ function scopeTypeLabel(code: string): string {
     code as PortfolioComplianceScopeTypeCode,
     '合规预警范围',
   )
-}
-
-function alertStatusTone(code: string): 'red' | 'orange' | 'green' | 'gray' {
-  if (code === PortfolioAlertStatusCode.OPEN) {
-    return 'red'
-  }
-  if (code === PortfolioAlertStatusCode.ACKNOWLEDGED) {
-    return 'orange'
-  }
-  return 'green'
 }
 
 async function loadPortraitAlerts() {
@@ -387,10 +388,11 @@ onMounted(() => {
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'teacher'">
               <div class="alert-center__teacher">
-                <strong>{{ record.teacherName || `教师 ${record.teacherId}` }}</strong>
-                <span class="alert-center__sub">
-                  {{ record.teacherNumber || record.teacherId }}
-                  <template v-if="record.departmentName"> · {{ record.departmentName }} </template>
+                <strong>{{
+                  formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber)
+                }}</strong>
+                <span v-if="record.departmentName" class="alert-center__sub">
+                  {{ record.departmentName }}
                 </span>
                 <div
                   v-if="record.lifecycleStatus || record.ownerIdentityLayers?.length"

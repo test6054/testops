@@ -6,7 +6,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
 import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
@@ -30,6 +30,7 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { AiTaskStatusCode } from '@/types/enums/ai-task-status-enum'
+import { PortfolioAiAdoptionTargetTypeCode } from '@/types/enums/portfolio-ai-adoption-target-type-enum'
 import {
   PortfolioAiAnalysisReviewStatusCode,
   PortfolioAiAnalysisReviewStatusDescription,
@@ -88,6 +89,7 @@ const tabItems: UiSectionTabItem[] = ASSISTANTS.map((item) => ({
 }))
 
 const route = useRoute()
+const router = useRouter()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
@@ -97,6 +99,7 @@ const activeKey = ref<AssistantKey>('generate')
 const submitting = ref(false)
 const historyLoading = ref(false)
 const reviewLoading = ref(false)
+const detailLoadingToken = ref<number | null>(null)
 const loadFailed = ref(false)
 const historyRows = ref<PortfolioAiAnalysisSummaryVO[]>([])
 const historyTotal = ref(0)
@@ -106,6 +109,7 @@ const activeDetail = ref<PortfolioAiAnalysisDetailVO | null>(null)
 const pollToken = ref(0)
 const historyToken = ref(0)
 const reviewToken = ref(0)
+const detailToken = ref(0)
 const reviewForm = reactive({
   revisedDraftMarkdown: '',
   reviewOpinion: '',
@@ -136,6 +140,7 @@ const pendingReview = computed(
 const canReviewResult = computed(
   () => pendingReview.value && activeDetail.value?.teacherId === currentUserId.value,
 )
+const detailLoading = computed(() => detailLoadingToken.value !== null)
 
 function reviewStatusTone(status: PortfolioAiAnalysisReviewStatusCode): BadgeTone {
   const tones: Record<PortfolioAiAnalysisReviewStatusCode, BadgeTone> = {
@@ -154,9 +159,11 @@ function resetTeacherContext(): void {
   pollToken.value += 1
   historyToken.value += 1
   reviewToken.value += 1
+  detailToken.value += 1
   submitting.value = false
   historyLoading.value = false
   reviewLoading.value = false
+  detailLoadingToken.value = null
   historyRows.value = []
   historyTotal.value = 0
   pageNum.value = 1
@@ -244,17 +251,55 @@ async function loadHistory(): Promise<void> {
 }
 
 function applyDetail(detail: PortfolioAiAnalysisDetailVO): void {
+  detailToken.value += 1
+  detailLoadingToken.value = null
   activeDetail.value = detail
   reviewForm.revisedDraftMarkdown = detail.draftMarkdown || detail.summary || ''
   reviewForm.reviewOpinion = ''
   // SHIP：草稿落主列单栏，不再默认弹抽屉第三栏
 }
 
+/** 按教师、助手和结果 ID 绑定详情请求，旧响应不得成为当前可审批草稿。 */
 async function openDetail(row: PortfolioAiAnalysisSummaryVO): Promise<void> {
+  if (reviewLoading.value) {
+    return
+  }
+  const analysisResultId = row.id
+  const teacherId = targetTeacherId.value
+  const assistant = currentAssistant.value
+  const token = detailToken.value + 1
+  detailToken.value = token
+  detailLoadingToken.value = token
+  activeDetail.value = null
+  reviewForm.revisedDraftMarkdown = ''
+  reviewForm.reviewOpinion = ''
   try {
-    applyDetail(await portfolioAiJobApi.getAnalysis(row.id))
+    const detail = await portfolioAiJobApi.getAnalysis(analysisResultId)
+    if (
+      detailToken.value !== token
+      || targetTeacherId.value !== teacherId
+      || currentAssistant.value.key !== assistant.key
+    ) {
+      return
+    }
+    if (
+      detail.id !== analysisResultId
+      || detail.teacherId !== teacherId
+      || detail.analysisType !== assistant.analysisType
+    ) {
+      showUserError(null, '智能分析详情合同与当前选择不一致')
+      return
+    }
+    applyDetail(detail)
   } catch (error) {
+    if (detailToken.value !== token) {
+      return
+    }
     showUserError(error, '加载智能分析详情失败')
+  } finally {
+    if (detailLoadingToken.value === token) {
+      detailLoadingToken.value = null
+    }
   }
 }
 
@@ -408,18 +453,52 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
     }
     applyDetail(detail)
     await loadHistory()
-    void message.success(
-      reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED
-        ? activeKey.value === 'development'
-          ? '建议已写入本年度发展规划'
-          : '结果已写入通用文档草稿'
-        : '智能分析结果已驳回',
-    )
+    if (reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED) {
+      void message.success(
+        activeKey.value === 'development' ? '建议已写入本年度发展规划' : '结果已写入通用文档草稿',
+      )
+      await openAdoptedTarget(detail)
+    } else {
+      void message.success('智能分析结果已驳回')
+    }
   } catch (error) {
     if (reviewToken.value !== token) return
     showUserError(error, '处理智能分析结果失败')
   } finally {
     if (reviewToken.value === token) reviewLoading.value = false
+  }
+}
+
+/** 确认入档后的按钮文案；缺失则视为前后端契约错误。 */
+function requireAdoptedBusinessLabel(detail: PortfolioAiAnalysisDetailVO): string {
+  const label = detail.adoptedBusinessLabel?.trim()
+  if (!label) {
+    throw new Error('已确认入档结果缺少 adoptedBusinessLabel，前后端契约不完整')
+  }
+  return label
+}
+
+/** 确认入档后跳转到已写入的档案草稿或发展规划。 */
+async function openAdoptedTarget(detail: PortfolioAiAnalysisDetailVO): Promise<void> {
+  if (
+    detail.adoptedTargetType === PortfolioAiAdoptionTargetTypeCode.ARCHIVE_RECORD
+    && detail.adoptedRecordId
+  ) {
+    const query: Record<string, string> = { recordId: detail.adoptedRecordId }
+    if (detail.teacherId) {
+      query.teacherId = detail.teacherId
+    }
+    await router.push({ path: '/portfolio/teacher/archive', query })
+    return
+  }
+  if (
+    detail.adoptedTargetType === PortfolioAiAdoptionTargetTypeCode.DEVELOPMENT_PLAN
+    && detail.adoptedPlanId
+  ) {
+    await router.push({
+      path: '/portfolio/admin/development-plan',
+      query: { planId: detail.adoptedPlanId },
+    })
   }
 }
 
@@ -430,7 +509,11 @@ function loadMoreHistory(): void {
 
 watch(activeKey, () => {
   pollToken.value += 1
+  detailToken.value += 1
+  reviewToken.value += 1
   submitting.value = false
+  detailLoadingToken.value = null
+  reviewLoading.value = false
   pageNum.value = 1
   activeDetail.value = null
   void loadHistory()
@@ -608,6 +691,17 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
           <p v-else-if="pendingReview" class="ai-assistants__draft-hint">
             该结果须由教师本人确认或驳回
           </p>
+          <div
+            v-else-if="
+              activeDetail.reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED
+                && (activeDetail.adoptedRecordId || activeDetail.adoptedPlanId)
+            "
+            class="ai-assistants__draft-actions"
+          >
+            <UiButton size="sm" variant="outline" @click="openAdoptedTarget(activeDetail)">
+              {{ requireAdoptedBusinessLabel(activeDetail) }}
+            </UiButton>
+          </div>
         </div>
         <p v-if="activeDetail.summary" class="ai-assistants__summary">{{ activeDetail.summary }}</p>
         <UiForm layout="vertical" class="ai-assistants__draft-form">
@@ -632,7 +726,11 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
       </section>
 
       <section v-else class="ai-assistants__draft-empty" aria-label="草稿空态">
-        <span>生成后草稿显示在此 · 确认写入前不会进入档案</span>
+        <span>
+          {{
+            detailLoading ? '正在加载所选历史结果…' : '生成后草稿显示在此 · 确认写入前不会进入档案'
+          }}
+        </span>
         <UiButton v-if="loadFailed" size="sm" variant="outline" @click="loadHistory">
           重新加载历史
         </UiButton>

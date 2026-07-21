@@ -72,6 +72,7 @@ const uploadingFile = ref(false)
 const attachmentInputRef = ref<HTMLInputElement | null>(null)
 const kindFilter = ref<PortfolioTeachingExtensionKindCode | ''>('')
 const requestToken = ref(0)
+const formEpoch = ref(0)
 const recommendationIntentConsumed = ref(false)
 
 const form = reactive({
@@ -144,7 +145,9 @@ function kindLabel(kind: PortfolioTeachingExtensionKindCode) {
   return strictEnumLabel(PortfolioTeachingExtensionKindDescription, kind, '活动大类')
 }
 
-function resetForm() {
+function resetForm(): void {
+  formEpoch.value += 1
+  uploadingFile.value = false
   editing.value = null
   form.activityKind = PortfolioTeachingExtensionKindCode.TRAINING
   form.categoryCode = ''
@@ -246,7 +249,7 @@ async function loadData() {
   }
 }
 
-function openModal(row?: PortfolioTeachingExtensionActivityVO) {
+function openModal(row?: PortfolioTeachingExtensionActivityVO): void {
   if (row?.archiveRecordId && !canEditActivity(row)) {
     void message.info('该培训活动的档案正在审核或已正式归档，不可修改')
     return
@@ -255,6 +258,8 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
     showFormValidationMessage('管理员查看模式下不可新增活动')
     return
   }
+  formEpoch.value += 1
+  uploadingFile.value = false
   editing.value = row || null
   form.activityKind = row?.activityKind || PortfolioTeachingExtensionKindCode.TRAINING
   form.categoryCode = row?.categoryCode || ''
@@ -456,25 +461,44 @@ function openAttachmentPicker() {
   attachmentInputRef.value?.click()
 }
 
-async function onAttachmentPick(event: Event) {
+/** 上传结果绑定教师、活动和表单代际，过期文件不得写入当前表单。 */
+async function onAttachmentPick(event: Event): Promise<void> {
   if (!(event.target instanceof HTMLInputElement)) {
     return
   }
-  const file = event.target.files?.[0]
+  const input = event.target
+  const file = input.files?.[0]
   if (!file) {
     return
+  }
+  const context = {
+    teacherId: targetTeacherId.value,
+    activityId: editing.value?.id,
+    epoch: formEpoch.value,
   }
   uploadingFile.value = true
   try {
     const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
+    if (
+      formEpoch.value !== context.epoch
+      || targetTeacherId.value !== context.teacherId
+      || editing.value?.id !== context.activityId
+    ) {
+      return
+    }
     form.fileId = uploaded.id
     form.attachmentName = uploaded.nodeName
     void message.success('证明材料已上传')
   } catch (error) {
+    if (formEpoch.value !== context.epoch) {
+      return
+    }
     showUserError(error, '证明材料上传失败')
   } finally {
-    uploadingFile.value = false
-    event.target.value = ''
+    if (formEpoch.value === context.epoch) {
+      uploadingFile.value = false
+    }
+    input.value = ''
   }
 }
 

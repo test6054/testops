@@ -325,12 +325,12 @@ export const ARCHIVE_MATERIAL_TYPE_OPTIONS: Array<{
 
 export const ARCHIVE_REMEDIATION_STATUS_TONE: Record<
   ArchiveRemediationStatusCode,
-  'gray' | 'blue' | 'orange' | 'green'
+  'blue' | 'orange' | 'green' | 'red'
 > = {
-  [ArchiveRemediationStatusCode.OPEN]: 'orange',
+  [ArchiveRemediationStatusCode.OPEN]: 'red',
   [ArchiveRemediationStatusCode.IN_PROGRESS]: 'blue',
-  [ArchiveRemediationStatusCode.RESUBMITTED]: 'green',
-  [ArchiveRemediationStatusCode.CLOSED]: 'gray',
+  [ArchiveRemediationStatusCode.RESUBMITTED]: 'orange',
+  [ArchiveRemediationStatusCode.CLOSED]: 'green',
 }
 
 export const ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS: Array<{
@@ -1282,6 +1282,8 @@ export interface ArchiveEvaluationCampaignPageRequest extends QueryDto {}
 
 export interface ArchiveRemediationByCampaignPageRequest extends QueryDto {
   campaignId: string
+  taskStatus?: ArchiveRemediationStatusCode
+  taskPriority?: ArchiveRemediationPriorityCode
 }
 
 export interface ArchiveReadinessMatrixPreviewPageRequest extends QueryDto {
@@ -1474,6 +1476,11 @@ export interface ArchiveRemediationByCampaignStatsVO {
   inProgressTaskCount: number
   resubmittedTaskCount: number
   closedTaskCount: number
+  highPriorityTaskCount: number
+  mediumPriorityTaskCount: number
+  lowPriorityTaskCount: number
+  overdueTaskCount: number
+  dueSoonTaskCount: number
 }
 
 export function getRemediationStatsByCampaign(
@@ -1909,14 +1916,13 @@ export interface ArchiveVolumeExamClassPublishProgressVO {
   unpublishedBoundPaperCount?: number
 }
 
-
 /** 列表 S1：待自动建袋考试样例项 */
 export interface ArchiveVolumeExamAutoCreateAttentionItemVO {
   examId: string
   examName?: string
   examNo?: string
   academicYear?: string
-  semester?: number | string
+  semester?: SemesterCode
   pendingStatus?: ArchiveVolumeAutoCreatePendingStatusCode
   attemptCount?: number
   nextRetryAt?: string
@@ -2872,9 +2878,9 @@ export interface ArchiveVolumeSharedMaterialRefResponse {
   catalogNote?: string
 }
 
-export function listArchiveSharedMaterialRefs(
-  request: { volumeId: string },
-): Promise<ArchiveVolumeSharedMaterialRefResponse[]> {
+export function listArchiveSharedMaterialRefs(request: {
+  volumeId: string
+}): Promise<ArchiveVolumeSharedMaterialRefResponse[]> {
   return http.post<ArchiveVolumeSharedMaterialRefResponse[]>(
     '/api/mark/archive-volumes/shared-material/ref/list',
     request,
@@ -2891,7 +2897,6 @@ export function removeArchiveSharedMaterialRef(
 ): Promise<void> {
   return http.post<void>('/api/mark/archive-volumes/shared-material/ref/remove', request)
 }
-
 
 export interface ArchiveVolumeAccessDownloadRequest {
   accessRecordId: string

@@ -203,7 +203,12 @@
 
       <StageWorkbenchShell class="archive-volume-detail__shell">
         <template #context>
-          <ContextBar layout="workbench" show-title :title="workbenchStageLabel">
+          <ContextBar
+            layout="workbench"
+            show-title
+            :title="workbenchStageLabel"
+            :subtitle="workbenchSubtitle"
+          >
             <template v-if="showWorkbenchActions" #actions>
               <UiButton
                 v-if="detailScope.canStartCollecting && !isQualityTab && !isManageTab"
@@ -331,7 +336,7 @@
             :detail="detail"
             :displayed-integrity-result="displayedIntegrityResult"
             :checking-integrity="checkingIntegrity"
-            :can-run-integrity="canRunIntegrityCheck"
+            :can-run-integrity="detailScope.canRunIntegrityCheck"
             :can-allow-material-delay="canAllowMaterialDelay"
             :can-waive-material-missing="canWaiveMaterialMissing"
             :can-waive-integrity="canWaiveIntegrity"
@@ -672,6 +677,17 @@ const workbenchStageLabel = computed(() => {
   return fromNav?.label || '归档任务'
 })
 
+/** 工作台副标题：档号 · 课程（或关联考试） · 卷状态，标识当前归档卷。 */
+const workbenchSubtitle = computed(() => {
+  const volume = detail.value?.volume
+  if (!volume) return undefined
+  const parts: string[] = [volume.archiveNo]
+  const subject = volume.courseName ?? volume.relatedExamName
+  if (subject) parts.push(`${volume.academicYear} ${subject}`)
+  parts.push(strictEnumLabel(ArchiveVolumeStatusDescription, volume.volumeStatus, 'volumeStatus'))
+  return parts.join(' · ')
+})
+
 const isQualityTab = computed(() => isArchiveVolumeQualityTab(activeTab.value))
 const isManageTab = computed(() => isArchiveVolumeManageTab(activeTab.value))
 
@@ -700,7 +716,7 @@ const qualityGuide = computed(
         return {
           title: '先执行完整性自检',
           description: '对照必交材料检查缺件，通过后再做自检清单与四性',
-          actionLabel: canRunIntegrityCheck.value ? '执行完整性自检' : undefined,
+          actionLabel: detailScope.canRunIntegrityCheck ? '执行完整性自检' : undefined,
           actionKey: 'integrity',
         }
       }
@@ -799,9 +815,10 @@ const hubNextStepActions = computed(() => {
       gateTargets.add('appraisal')
     }
   }
-  return nextStepActions.value.filter((action) =>
-    action.targetTabKey !== activeTab.value
-    && (!action.targetTabKey || !gateTargets.has(action.targetTabKey)),
+  return nextStepActions.value.filter(
+    (action) =>
+      action.targetTabKey !== activeTab.value
+      && (!action.targetTabKey || !gateTargets.has(action.targetTabKey)),
   )
 })
 
@@ -832,20 +849,12 @@ const securityFourPropertyDescription = computed(() =>
   resolveSecurityDiagnosticMessage(displayedFourProperty.value),
 )
 
-const canRunIntegrityCheck = computed(() => {
-  const d = detail.value
-  if (!d || !d.canManageMaterials) return false
-  return (
-    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-    || d.hasOpenRemediationTask
-  )
-})
-
 const canRunFourPropertyCheck = computed(() => {
   const d = detail.value
   if (!d) return false
+  // 与 BE checkFourProperty：COLLECTING→requireCanManageMaterials；SUBMITTED→移交验收岗
   if (d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING) {
-    return d.canManageMaterials
+    return detailScope.capabilities.canManageMaterials === true
   }
   return d.volume.volumeStatus === ArchiveVolumeStatusCode.SUBMITTED && canReviewTransfer.value
 })
@@ -1627,8 +1636,8 @@ async function runFourPropertyCheckFromGuide() {
 }
 
 async function runIntegrityCheck() {
-  // MVR-347：与 canRunIntegrityCheck / BE 完整性自检写门禁二次拦截
-  if (!canRunIntegrityCheck.value) {
+  // MVR-347：与 detailScope.canRunIntegrityCheck / BE capabilities 同源二次拦截
+  if (!detailScope.canRunIntegrityCheck) {
     void message.warning('当前账号或卷状态不可执行完整性自检')
     return
   }

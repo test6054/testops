@@ -1,4 +1,6 @@
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
+import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 export interface PortfolioProcessSessionVO {
@@ -8,13 +10,16 @@ export interface PortfolioProcessSessionVO {
   courseCode?: string
   courseName?: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   sessionDate: string
   sessionTitle: string
   prepText?: string
   processText?: string
   feedbackText?: string
+  /** 深链用，页面不展示主键 */
   linkedArchiveRecordId?: string
+  /** 教师可读：关联档案说明（分类 + 状态） */
+  linkedArchiveLabel?: string
   selectedForMasterpiece?: boolean
   sessionStatus?: string
   updateTime?: string
@@ -75,7 +80,7 @@ export interface PortfolioProcessSessionLinkArchiveRequest {
 
 export interface PortfolioProcessSessionLinkArchiveResult {
   recordId: string
-  recordStatus?: string
+  recordStatus?: PortfolioArchiveRecordStatusCode
 }
 
 export const portfolioProcessSessionApi = {

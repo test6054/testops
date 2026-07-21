@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { PortfolioArchiveRecordFieldInput, PortfolioGapTaskDetailVO } from '@/apis/portfolio/types'
+import type {
+  PortfolioArchiveRecordFieldInput,
+  PortfolioGapTaskDetailVO,
+} from '@/apis/portfolio/types'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -8,7 +11,10 @@ import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scann
 import { PortfolioCollectModeCode, ScanTaskKindCode } from '@/apis/mark/scanner-work-order'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
-import { PortfolioGapTaskStatusCode, PortfolioGapTaskStatusDescription } from '@/apis/portfolio/enums'
+import {
+  PortfolioGapTaskStatusCode,
+  PortfolioGapTaskStatusDescription,
+} from '@/apis/portfolio/enums'
 import { portfolioGapApi } from '@/apis/portfolio/gap'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
@@ -24,7 +30,10 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -43,11 +52,8 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' {
   if (status === 'ACTIVE') return 'green'
@@ -108,12 +114,10 @@ const gapSubmissionAvailable = computed(() => {
   return new Date(detail.value.dueTime.replace(' ', 'T')).getTime() > Date.now()
 })
 
-const formWritable = computed(
-  () => gapSubmissionAvailable.value && !archiveWriteForbidden.value,
-)
+const formWritable = computed(() => gapSubmissionAvailable.value && !archiveWriteForbidden.value)
 
-function resetFormState() {
-  scopeRequestToken.value += 1
+/** 清空当前补采表单；请求代际只由加载入口统一推进。 */
+function resetFormState(): void {
   for (const key of Object.keys(fieldValues)) {
     delete fieldValues[key]
   }
@@ -126,12 +130,14 @@ function resetFormState() {
   dispatchResult.value = null
 }
 
-async function loadTask() {
+/** 按当前教师与补采任务加载详情，旧范围响应不得写回。 */
+async function loadTask(): Promise<void> {
   const requestToken = scopeRequestToken.value + 1
   scopeRequestToken.value = requestToken
   if (!gapTaskId.value) {
     detail.value = null
     resetFormState()
+    loading.value = false
     return
   }
   loading.value = true
@@ -226,6 +232,7 @@ async function handleSaveDraft() {
       return
     }
     void message.success('草稿已保存')
+    saving.value = false
     await loadTask()
   } catch (error) {
     if (scopeRequestToken.value !== requestToken) {
@@ -421,10 +428,7 @@ watch(
               {{ detail.lifecycleStatusLabel || detail.lifecycleStatus }}
             </UiTag>
             <UiTag v-if="detail.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
-            <UiTag
-              v-if="detail.countsInCurrentFacultyStructure === false"
-              tone="gray"
-            >
+            <UiTag v-if="detail.countsInCurrentFacultyStructure === false" tone="gray">
               非当前在岗
             </UiTag>
             <PortfolioOwnerIdentityLayersCell

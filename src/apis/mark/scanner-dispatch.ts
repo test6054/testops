@@ -5,6 +5,7 @@ import type {
 } from '@/apis/mark/scanner-work-order'
 import type { PageResult, QueryDto } from '@/types'
 import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
+import type { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
 import type { ScanBatchQualityFlagCode } from '@/types/enums/scan-batch-quality-flag-enum'
 import type { ScanDispatchTicketStatusCode } from '@/types/enums/scan-dispatch-ticket-status-enum'
 import type { ScanOperationActionCode } from '@/types/enums/scan-operation-action-enum'
@@ -66,7 +67,7 @@ export interface ScanDispatchPortfolioSnapshotVO {
   gapTaskTitle?: string
   categoryId?: string
   categoryName?: string
-  taskType?: string
+  taskType?: PortfolioAiTaskTypeCode
   templateCode?: string
   archiveRecordId?: string
 }
@@ -109,7 +110,7 @@ export interface ScanDispatchCreateRequest {
   collectMode?: PortfolioCollectModeCode
   gapTaskId?: string
   categoryId?: string
-  taskType?: string
+  taskType?: PortfolioAiTaskTypeCode
   templateCode?: string
   archiveRecordId?: string
   materialTags?: string[]

@@ -55,17 +55,25 @@
         </div>
       </template>
 
+      <div v-if="matrixMeta" class="archive-readiness-matrix__legend" aria-label="就绪度色调图例">
+        <span class="archive-readiness-matrix__legend-item"><span
+          class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--good"
+        ></span>全部就绪：入库与完整性 / 四性检查均通过</span>
+        <span class="archive-readiness-matrix__legend-item"><span
+          class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--warn"
+        ></span>部分就绪：存在缺件或检查未通过</span>
+        <span class="archive-readiness-matrix__legend-item"><span
+          class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--fail"
+        ></span>未启动：入库率 0%</span>
+        <span class="archive-readiness-matrix__legend-item"><span
+          class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--empty"
+        ></span>该学期无数据</span>
+      </div>
+
       <UiSkeletonState v-if="loading && !matrixMeta" variant="card" compact />
-      <UiAlertStrip
-        v-else-if="!matrixMeta"
-        tone="info"
-        size="sm"
-        dense
-        inline
-        :show-icon="false"
-      >
+      <UiAlertStrip v-else-if="!matrixMeta" tone="info" size="sm" dense inline :show-icon="false">
         <template #default>
-          <span style="display:inline-flex;align-items:center;gap:8px">
+          <span style="display: inline-flex; align-items: center; gap: 8px">
             <UiTag tone="blue" size="sm">未选择范围</UiTag>
             <span>请选择截止学年与学期后查询就绪矩阵</span>
           </span>
@@ -91,7 +99,7 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key?.startsWith('term-')">
             <div class="archive-readiness-matrix__cell">
-              <span :class="readinessRateCellClass(termCell(record, column.key)?.storedRate ?? 0)">
+              <span :class="readinessRateCellClass(termCell(record, column.key)?.storedRate)">
                 {{ formatReadinessRate(termCell(record, column.key)?.storedRate) }}
               </span>
               <div class="archive-readiness-matrix__cell-sub">
@@ -253,8 +261,8 @@ const tableRows = computed<ReadinessTableRow[]>(() => {
 const signalMetrics = computed<SignalMetric[]>(() => {
   if (!matrixMeta.value) return []
   return [
-    { key: 'rows', label: '院系课程', value: matrixMeta.value.rowCount },
-    { key: 'terms', label: '学期列', value: matrixMeta.value.termColumnCount },
+    { key: 'rows', label: '院系课程', value: matrixMeta.value.rowCount, unit: '行' },
+    { key: 'terms', label: '学期列', value: matrixMeta.value.termColumnCount, unit: '列' },
   ]
 })
 
@@ -409,6 +417,48 @@ async function loadCampaignOptions(): Promise<void> {
   align-items: center;
   gap: 8px;
   padding: 12px 16px;
+}
+
+.archive-readiness-matrix__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dp-space-4);
+  padding: var(--dp-space-2) var(--dp-space-4);
+  background: var(--dp-surface);
+  border-bottom: 1px solid var(--dp-border-subtle);
+  font-size: 12px;
+  color: var(--dp-text-muted);
+}
+
+.archive-readiness-matrix__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.archive-readiness-matrix__legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.archive-readiness-matrix__legend-dot--good {
+  background: var(--dp-success);
+}
+
+.archive-readiness-matrix__legend-dot--warn {
+  background: var(--dp-warning);
+}
+
+.archive-readiness-matrix__legend-dot--fail {
+  background: var(--dp-error);
+}
+
+.archive-readiness-matrix__legend-dot--empty {
+  background: var(--dp-gray-400);
 }
 
 .archive-readiness-matrix__table {

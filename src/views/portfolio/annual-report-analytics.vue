@@ -25,7 +25,10 @@ import {
   PortfolioAnnualReportTaskStatusDescription,
 } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
-import { portfolioTeacherSelectOptionsFromSummaries } from '@/utils/portfolio-teacher-display'
+import {
+  formatPortfolioTeacherDisplay,
+  portfolioTeacherSelectOptionsFromSummaries,
+} from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -145,7 +148,6 @@ function onHistoryTableChange(changeEvent: UiDataTableChangeEvent) {
 const historyColumns = [
   // 身份层列在 bodyCell 渲染
 
-  { title: '任务编号', dataIndex: 'id', key: 'id', width: 120 },
   { title: '教师', key: 'teacher', width: 180 },
   { title: '身份层', key: 'ownerIdentityLayers', width: 200 },
   { title: '报告年度', dataIndex: 'reportYear', key: 'reportYear', width: 100 },
@@ -174,6 +176,13 @@ function taskStatusLabel(status: string): string {
     status as PortfolioAnnualReportTaskStatusCode,
     '年度报告任务状态',
   )
+}
+
+function formatTaskTeacher(task: PortfolioAnalysisAnnualReportVO): string {
+  if (!task.teacherId?.trim()) {
+    return '—'
+  }
+  return formatPortfolioTeacherDisplay(task.teacherName, task.teacherNumber)
 }
 
 function mergeTeacherOptions(rows: PortfolioTeacherSummaryVO[]) {
@@ -339,16 +348,9 @@ watch(
     <UiCard v-if="latestTask" title="最近任务" class="annual-report__result">
       <dl class="annual-report__meta">
         <div>
-          <dt>任务编号</dt>
-          <dd>{{ latestTask.id }}</dd>
-        </div>
-        <div>
           <dt>教师</dt>
           <dd>
-            {{ latestTask.teacherName || `教师编号 ${latestTask.teacherId}` }}
-            <template v-if="latestTask.teacherNumber">
-              （{{ latestTask.teacherNumber }}）
-            </template>
+            {{ formatTaskTeacher(latestTask) }}
             <div
               v-if="latestTask.lifecycleStatus || latestTask.ownerIdentityLayers?.length"
               class="annual-report__identity"
@@ -392,10 +394,14 @@ watch(
             </UiTag>
           </dd>
         </div>
-        <div v-if="latestTask.aiTaskId">
-          <dt>智能任务编号</dt>
+        <div
+          v-if="
+            latestTask.aiTaskId
+              || latestTask.taskStatus === PortfolioAnnualReportTaskStatusCode.SUCCESS
+          "
+        >
+          <dt>报告结果</dt>
           <dd>
-            {{ latestTask.aiTaskId }}
             <UiButton
               v-if="latestTask.taskStatus === PortfolioAnnualReportTaskStatusCode.SUCCESS"
               size="sm"
@@ -404,6 +410,7 @@ watch(
             >
               查看报告
             </UiButton>
+            <span v-else>生成中或尚未完成</span>
           </dd>
         </div>
         <div v-if="latestTask.errorSummary">
@@ -435,10 +442,7 @@ watch(
             </UiTag>
           </template>
           <template v-else-if="column.key === 'teacher'">
-            <span>
-              {{ record.teacherName || `教师编号 ${record.teacherId}` }}
-              <template v-if="record.teacherNumber">（{{ record.teacherNumber }}）</template>
-            </span>
+            <span>{{ formatTaskTeacher(record) }}</span>
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiButton

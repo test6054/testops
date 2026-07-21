@@ -38,9 +38,9 @@ import {
   PortfolioEvaluationSceneDescription,
 } from '@/types/enums/portfolio-evaluation-scene-enum'
 import {
-  ALL_PORTFOLIO_EVALUATION_TASK_STATUS_CODES,
-  PortfolioEvaluationTaskStatusCode,
+  ALL_PORTFOLIO_EVALUATION_TASK_STATUS_ENUMS,
   PortfolioEvaluationTaskStatusDescription,
+  PortfolioEvaluationTaskStatusEnum,
 } from '@/types/enums/portfolio-evaluation-task-status-enum'
 import {
   ALL_PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_CODES,
@@ -74,6 +74,22 @@ import {
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
+  ALL_PORTFOLIO_AFFILIATION_CHANGE_TYPE_CODES,
+  PortfolioAffiliationChangeTypeCode,
+  PortfolioAffiliationChangeTypeDescription,
+} from '@/types/enums/portfolio-affiliation-change-type-enum'
+export {
+  ALL_PORTFOLIO_AFFILIATION_HISTORY_SOURCE_TYPE_CODES,
+  PortfolioAffiliationHistorySourceTypeCode,
+  PortfolioAffiliationHistorySourceTypeDescription,
+} from '@/types/enums/portfolio-affiliation-history-source-type-enum'
+export {
+  ALL_PORTFOLIO_AI_ADOPTION_TARGET_TYPE_CODES,
+  isPortfolioAiAdoptionTargetType,
+  PortfolioAiAdoptionTargetTypeCode,
+  PortfolioAiAdoptionTargetTypeDescription,
+} from '@/types/enums/portfolio-ai-adoption-target-type-enum'
+export {
   ALL_PORTFOLIO_AI_ANALYSIS_REVIEW_STATUS_CODES,
   PortfolioAiAnalysisReviewStatusCode,
   PortfolioAiAnalysisReviewStatusDescription,
@@ -105,6 +121,7 @@ export {
 } from '@/types/enums/portfolio-archive-field-type-enum'
 export {
   ALL_PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_CODES,
+  isPortfolioArchiveRecordSourceType,
   PortfolioArchiveRecordSourceTypeCode,
   PortfolioArchiveRecordSourceTypeDescription,
 } from '@/types/enums/portfolio-archive-record-source-type-enum'
@@ -134,6 +151,11 @@ export {
   PortfolioCompletenessLevelDescription,
 } from '@/types/enums/portfolio-completeness-level-enum'
 export {
+  ALL_PORTFOLIO_CONTRIBUTION_ITEM_SOURCE_TYPE_CODES,
+  PortfolioContributionItemSourceTypeCode,
+  PortfolioContributionItemSourceTypeDescription,
+} from '@/types/enums/portfolio-contribution-item-source-type-enum'
+export {
   ALL_PORTFOLIO_CORRECTION_HANDLE_ACTION_CODES,
   PortfolioCorrectionHandleActionCode,
 } from '@/types/enums/portfolio-correction-handle-action-enum'
@@ -147,6 +169,11 @@ export {
   PortfolioCorrectionRequestStatusCode,
   PortfolioCorrectionRequestStatusDescription,
 } from '@/types/enums/portfolio-correction-request-status-enum'
+export {
+  ALL_PORTFOLIO_CREDIT_FACT_SOURCE_CHANNEL_CODES,
+  PortfolioCreditFactSourceChannelCode,
+  PortfolioCreditFactSourceChannelDescription,
+} from '@/types/enums/portfolio-credit-fact-source-channel-enum'
 export {
   ALL_PORTFOLIO_DEVELOPMENT_PLAN_HISTORY_IMPORT_BATCH_STATUS_CODES,
   PortfolioDevelopmentPlanHistoryImportBatchStatusCode,
@@ -167,12 +194,12 @@ export {
   PortfolioDevelopmentPlanTypeCode,
   PortfolioDevelopmentPlanTypeDescription,
 } from '@/types/enums/portfolio-development-plan-type-enum'
-
 export {
   ALL_PORTFOLIO_DEVELOPMENT_RECORD_STATUS_CODES,
   PortfolioDevelopmentRecordStatusCode,
   PortfolioDevelopmentRecordStatusDescription,
 } from '@/types/enums/portfolio-development-record-status-enum'
+
 export {
   ALL_PORTFOLIO_DEVELOPMENT_RECORD_TYPE_CODES,
   PortfolioDevelopmentRecordTypeCode,
@@ -224,14 +251,14 @@ export {
   PortfolioEvaluationTaskAdvanceActionDescription,
 } from '@/types/enums/portfolio-evaluation-task-advance-action-enum'
 export {
-  ALL_PORTFOLIO_EVALUATION_TASK_STATUS_CODES,
-  PortfolioEvaluationTaskStatusCode,
+  ALL_PORTFOLIO_EVALUATION_TASK_STATUS_ENUMS,
   PortfolioEvaluationTaskStatusDescription,
+  PortfolioEvaluationTaskStatusEnum,
 } from '@/types/enums/portfolio-evaluation-task-status-enum'
 export {
-  ALL_PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_CODES,
-  PortfolioEvaluationTeacherNoticeStatusCode,
+  ALL_PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_ENUMS,
   PortfolioEvaluationTeacherNoticeStatusDescription,
+  PortfolioEvaluationTeacherNoticeStatusEnum,
 } from '@/types/enums/portfolio-evaluation-teacher-notice-status-enum'
 export {
   ALL_PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_CODES,
@@ -264,12 +291,23 @@ export {
   PortfolioMaterialIntakeStageDescription,
 } from '@/types/enums/portfolio-material-intake-stage-enum'
 export {
+  ALL_PORTFOLIO_MATERIAL_REF_FREEZE_STATUS_CODES,
+  PortfolioMaterialRefFreezeStatusCode,
+  PortfolioMaterialRefFreezeStatusDescription,
+} from '@/types/enums/portfolio-material-ref-freeze-status-enum'
+export {
+  ALL_PORTFOLIO_MATERIAL_REF_SCOPE_CODES,
+  PortfolioMaterialRefScopeCode,
+  PortfolioMaterialRefScopeDescription,
+} from '@/types/enums/portfolio-material-ref-scope-enum'
+export {
   ALL_PORTFOLIO_MATERIAL_RISK_LEVEL_CODES,
   PortfolioMaterialRiskLevelCode,
   PortfolioMaterialRiskLevelDescription,
 } from '@/types/enums/portfolio-material-risk-level-enum'
 export {
   ALL_PORTFOLIO_MATERIAL_STATUS_CODES,
+  isPortfolioMaterialStatus,
   PortfolioMaterialStatusCode,
   PortfolioMaterialStatusDescription,
 } from '@/types/enums/portfolio-material-status-enum'
@@ -278,6 +316,11 @@ export {
   PortfolioMaterialTypeCode,
   PortfolioMaterialTypeDescription,
 } from '@/types/enums/portfolio-material-type-enum'
+export {
+  ALL_PORTFOLIO_MATERIAL_VERSION_STATUS_CODES,
+  PortfolioMaterialVersionStatusCode,
+  PortfolioMaterialVersionStatusDescription,
+} from '@/types/enums/portfolio-material-version-status-enum'
 export {
   ALL_PORTFOLIO_ORG_ALIAS_TARGET_TYPE_CODES,
   PortfolioOrgAliasTargetTypeCode,
@@ -318,6 +361,11 @@ export {
   PortfolioReviewTaskStatusCode,
   PortfolioReviewTaskStatusDescription,
 } from '@/types/enums/portfolio-review-task-status-enum'
+export {
+  ALL_PORTFOLIO_SYNC_TASK_STATUS_ENUMS,
+  PortfolioSyncTaskStatusDescription,
+  PortfolioSyncTaskStatusEnum,
+} from '@/types/enums/portfolio-sync-task-status-enum'
 export {
   ALL_PORTFOLIO_TEACHER_IDENTITY_STATUS_CODES,
   PortfolioTeacherIdentityStatusCode,
@@ -434,64 +482,62 @@ export const PORTFOLIO_EVALUATION_SCENE_OPTIONS: Array<{
 
 /** 多元评价填报可读任务状态（不含草稿/作废/关闭） */
 /** 评价填报可写入状态：已发布独立填报期 + 专家评审阶段 */
-export const PORTFOLIO_EVALUATION_ENTRY_WRITABLE_STATUSES: PortfolioEvaluationTaskStatusCode[]
-  = [
-    PortfolioEvaluationTaskStatusCode.PUBLISHED,
-    PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW,
-    PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW,
-  ]
+export const PORTFOLIO_EVALUATION_ENTRY_WRITABLE_STATUSES: PortfolioEvaluationTaskStatusEnum[] = [
+  PortfolioEvaluationTaskStatusEnum.PUBLISHED,
+  PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW,
+  PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW,
+]
 
 /** 外部专家填报可写状态：仅专家评审阶段 */
-export const PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES: PortfolioEvaluationTaskStatusCode[]
-  = [
-    PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW,
-  ]
+export const PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES: PortfolioEvaluationTaskStatusEnum[]
+  = [PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW]
 
 /** 评价材料确认/退回补充可操作任务状态：发布确认期 + 初审/复审/专家评审退回重确认 */
-export const PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES: PortfolioEvaluationTaskStatusCode[]
+export const PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES: PortfolioEvaluationTaskStatusEnum[]
   = [
-    PortfolioEvaluationTaskStatusCode.PUBLISHED,
-    PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW,
-    PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW,
-    PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.PUBLISHED,
+    PortfolioEvaluationTaskStatusEnum.PRELIMINARY_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.SCHOOL_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW,
   ]
 
-export const PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES: PortfolioEvaluationTaskStatusCode[]
+export const PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES: PortfolioEvaluationTaskStatusEnum[]
   = [
-    PortfolioEvaluationTaskStatusCode.PUBLISHED,
-    PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW,
-    PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW,
-    PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW,
-    PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY,
-    PortfolioEvaluationTaskStatusCode.PUBLICITY,
-    PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING,
-    PortfolioEvaluationTaskStatusCode.ARCHIVED,
-    PortfolioEvaluationTaskStatusCode.SUSPENDED,
+    PortfolioEvaluationTaskStatusEnum.PUBLISHED,
+    PortfolioEvaluationTaskStatusEnum.PRELIMINARY_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.SCHOOL_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.RESULT_SUMMARY,
+    PortfolioEvaluationTaskStatusEnum.PUBLICITY,
+    PortfolioEvaluationTaskStatusEnum.OBJECTION_HANDLING,
+    PortfolioEvaluationTaskStatusEnum.ARCHIVED,
+    PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.SUSPENDED,
   ]
 
 export const PORTFOLIO_EVALUATION_TASK_STATUS_TONE: Record<
-  PortfolioEvaluationTaskStatusCode,
+  PortfolioEvaluationTaskStatusEnum,
   BadgeTone
 > = {
-  [PortfolioEvaluationTaskStatusCode.DRAFT]: 'gray',
-  [PortfolioEvaluationTaskStatusCode.PUBLISHED]: 'green',
-  [PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW]: 'blue',
-  [PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW]: 'blue',
-  [PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW]: 'blue',
-  [PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY]: 'orange',
-  [PortfolioEvaluationTaskStatusCode.PUBLICITY]: 'orange',
-  [PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING]: 'orange',
-  [PortfolioEvaluationTaskStatusCode.ARCHIVED]: 'green',
-  [PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW]: 'orange',
-  [PortfolioEvaluationTaskStatusCode.SUSPENDED]: 'gray',
-  [PortfolioEvaluationTaskStatusCode.VOID]: 'red',
-  [PortfolioEvaluationTaskStatusCode.CLOSED]: 'blue',
+  [PortfolioEvaluationTaskStatusEnum.DRAFT]: 'gray',
+  [PortfolioEvaluationTaskStatusEnum.PUBLISHED]: 'green',
+  [PortfolioEvaluationTaskStatusEnum.PRELIMINARY_REVIEW]: 'blue',
+  [PortfolioEvaluationTaskStatusEnum.SCHOOL_REVIEW]: 'blue',
+  [PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW]: 'blue',
+  [PortfolioEvaluationTaskStatusEnum.RESULT_SUMMARY]: 'orange',
+  [PortfolioEvaluationTaskStatusEnum.PUBLICITY]: 'orange',
+  [PortfolioEvaluationTaskStatusEnum.OBJECTION_HANDLING]: 'orange',
+  [PortfolioEvaluationTaskStatusEnum.ARCHIVED]: 'green',
+  [PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW]: 'orange',
+  [PortfolioEvaluationTaskStatusEnum.SUSPENDED]: 'gray',
+  [PortfolioEvaluationTaskStatusEnum.VOID]: 'red',
+  [PortfolioEvaluationTaskStatusEnum.CLOSED]: 'blue',
 }
 
 export const PORTFOLIO_EVALUATION_TASK_STATUS_OPTIONS: Array<{
-  value: PortfolioEvaluationTaskStatusCode
+  value: PortfolioEvaluationTaskStatusEnum
   label: string
-}> = ALL_PORTFOLIO_EVALUATION_TASK_STATUS_CODES.map((value) => ({
+}> = ALL_PORTFOLIO_EVALUATION_TASK_STATUS_ENUMS.map((value) => ({
   value,
   label: strictEnumLabel(PortfolioEvaluationTaskStatusDescription, value, '评价任务状态'),
 }))

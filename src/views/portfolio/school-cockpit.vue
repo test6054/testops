@@ -170,12 +170,9 @@ function complianceTypeLabel(code: string): string {
   )
 }
 
-function alertStatusLabel(code: string): string {
-  return strictEnumLabel(
-    PortfolioAlertStatusDescription,
-    code as PortfolioAlertStatusCode,
-    '预警状态',
-  )
+function alertStatusLabel(code?: PortfolioAlertStatusCode): string {
+  if (!code) return '—'
+  return strictEnumLabel(PortfolioAlertStatusDescription, code, '预警状态')
 }
 
 function scopeTypeLabel(code: string): string {
@@ -230,9 +227,11 @@ onMounted(async () => {
         layout="workbench"
         show-title
         title="学校驾驶舱"
-        :subtitle="campusOrgId
-          ? `校区筛选 · 兼课教师按校区分别采集后合并计算`
-          : '全校师资与结构合规概览 · 跨校区兼课按身份分校区采集'"
+        :subtitle="
+          campusOrgId
+            ? `校区筛选 · 兼课教师按校区分别采集后合并计算`
+            : '全校师资与结构合规概览 · 跨校区兼课按身份分校区采集'
+        "
       >
         <template #toolbar>
           <UiSelect

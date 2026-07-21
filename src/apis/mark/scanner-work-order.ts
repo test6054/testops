@@ -8,6 +8,7 @@ import type { ArchiveScanBatchModeCode } from '@/types/enums/archive-scan-batch-
 import type { DirectScanProviderChainCode } from '@/types/enums/direct-scan-provider-chain-enum'
 import type { DocumentBlankPageStatusCode } from '@/types/enums/document-blank-page-status-enum'
 import type { DocumentBusinessSceneCode } from '@/types/enums/document-business-scene-enum'
+import type { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
 import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
 import type { ScannerColorModeCode } from '@/types/enums/scanner-color-mode-enum'
 import type { ScannerDuplexModeCode } from '@/types/enums/scanner-duplex-mode-enum'
@@ -81,7 +82,7 @@ export interface ScanWorkOrderStartRequest {
   teacherId?: string
   gapTaskId?: string
   categoryId?: string
-  taskType?: string
+  taskType?: PortfolioAiTaskTypeCode
   templateCode?: string
   archiveRecordId?: string
   providerChain?: DirectScanProviderChainCode
@@ -133,7 +134,7 @@ export interface ScanWorkOrderPortfolioContextVO {
   gapTaskTitle?: string
   categoryId?: string
   categoryName?: string
-  taskType?: string
+  taskType?: PortfolioAiTaskTypeCode
   templateCode?: string
   archiveRecordId?: string
   scanAllowed?: boolean
@@ -253,7 +254,7 @@ export interface ScanWorkOrderContextRequest {
   teacherId?: string
   gapTaskId?: string
   categoryId?: string
-  taskType?: string
+  taskType?: PortfolioAiTaskTypeCode
   templateCode?: string
   archiveRecordId?: string
   dispatchTicketId?: string

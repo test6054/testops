@@ -23,7 +23,7 @@ export interface PortfolioNationalAchievementRequirementVO {
   id?: string
   requirementCode: string
   requirementTitle: string
-  evidenceType: string
+  evidenceType: PortfolioAchievementEvidenceTypeCode
   evidenceMatchValue: string
   weight: string
   sortOrder: number
@@ -90,7 +90,7 @@ export interface PortfolioPlanningAchievementLinkVO {
 export interface PortfolioAchievementGapMissingItemVO {
   requirementCode: string
   requirementTitle: string
-  evidenceType: string
+  evidenceType: PortfolioAchievementEvidenceTypeCode
   evidenceMatchValue: string
   weight: string
   suggestCollectHint: string

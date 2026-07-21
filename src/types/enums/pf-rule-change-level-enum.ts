@@ -17,6 +17,6 @@ export const PfRuleChangeLevelDescription: Record<PfRuleChangeLevelCode, string>
   [PfRuleChangeLevelCode.C]: '轻微变更',
 }
 
-export function pfRuleChangeLevelRequiresApproval(level?: string | null): boolean {
+export function pfRuleChangeLevelRequiresApproval(level?: PfRuleChangeLevelCode | null): boolean {
   return level === PfRuleChangeLevelCode.A || level === PfRuleChangeLevelCode.B
 }

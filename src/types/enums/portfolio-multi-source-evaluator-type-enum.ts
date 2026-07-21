@@ -1,5 +1,5 @@
-/** §8.53 多元评价来源类型 */
-export enum PortfolioMultiSourceEvaluatorTypeCode {
+/** 多元评价来源类型 - 与后端 PortfolioMultiSourceEvaluatorTypeEnum 逐值对齐 */
+export enum PortfolioMultiSourceEvaluatorTypeEnum {
   STUDENT = 'STUDENT',
   SUPERVISOR = 'SUPERVISOR',
   PEER = 'PEER',
@@ -7,20 +7,28 @@ export enum PortfolioMultiSourceEvaluatorTypeCode {
   COMMITTEE = 'COMMITTEE',
 }
 
+export const ALL_PORTFOLIO_MULTI_SOURCE_EVALUATOR_TYPE_ENUMS: readonly PortfolioMultiSourceEvaluatorTypeEnum[] = [
+  PortfolioMultiSourceEvaluatorTypeEnum.STUDENT,
+  PortfolioMultiSourceEvaluatorTypeEnum.SUPERVISOR,
+  PortfolioMultiSourceEvaluatorTypeEnum.PEER,
+  PortfolioMultiSourceEvaluatorTypeEnum.SELF,
+  PortfolioMultiSourceEvaluatorTypeEnum.COMMITTEE,
+]
+
 export const PortfolioMultiSourceEvaluatorTypeDescription: Record<
-  PortfolioMultiSourceEvaluatorTypeCode,
+  PortfolioMultiSourceEvaluatorTypeEnum,
   string
 > = {
-  [PortfolioMultiSourceEvaluatorTypeCode.STUDENT]: '学生评价',
-  [PortfolioMultiSourceEvaluatorTypeCode.SUPERVISOR]: '督导评价',
-  [PortfolioMultiSourceEvaluatorTypeCode.PEER]: '同行评价',
-  [PortfolioMultiSourceEvaluatorTypeCode.SELF]: '教师自评',
-  [PortfolioMultiSourceEvaluatorTypeCode.COMMITTEE]: '教学委员会评价',
+  [PortfolioMultiSourceEvaluatorTypeEnum.STUDENT]: '学生评价',
+  [PortfolioMultiSourceEvaluatorTypeEnum.SUPERVISOR]: '督导评价',
+  [PortfolioMultiSourceEvaluatorTypeEnum.PEER]: '同行评价',
+  [PortfolioMultiSourceEvaluatorTypeEnum.SELF]: '教师自评',
+  [PortfolioMultiSourceEvaluatorTypeEnum.COMMITTEE]: '教学委员会评价',
 }
 
-export const PortfolioMultiSourceEvaluatorTypeOptions = Object.values(
-  PortfolioMultiSourceEvaluatorTypeCode,
-).map((code) => ({
-  value: code,
-  label: PortfolioMultiSourceEvaluatorTypeDescription[code],
-}))
+export const PortfolioMultiSourceEvaluatorTypeOptions = ALL_PORTFOLIO_MULTI_SOURCE_EVALUATOR_TYPE_ENUMS.map(
+  (code) => ({
+    value: code,
+    label: PortfolioMultiSourceEvaluatorTypeDescription[code],
+  }),
+)

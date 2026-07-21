@@ -18,8 +18,8 @@ import {
   PortfolioEvaluationSceneDescription,
   PortfolioEvaluationTaskAdvanceActionCode,
   PortfolioEvaluationTaskAdvanceActionDescription,
-  PortfolioEvaluationTaskStatusCode,
   PortfolioEvaluationTaskStatusDescription,
+  PortfolioEvaluationTaskStatusEnum,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import {
@@ -42,38 +42,39 @@ import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGa
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const ADVANCE_ACTIONS: Partial<
-  Record<PortfolioEvaluationTaskStatusCode, PortfolioEvaluationTaskAdvanceActionCode>
+  Record<PortfolioEvaluationTaskStatusEnum, PortfolioEvaluationTaskAdvanceActionCode>
 > = {
-  [PortfolioEvaluationTaskStatusCode.PUBLISHED]:
+  [PortfolioEvaluationTaskStatusEnum.PUBLISHED]:
     PortfolioEvaluationTaskAdvanceActionCode.START_PRELIMINARY_REVIEW,
-  [PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW]:
+  [PortfolioEvaluationTaskStatusEnum.PRELIMINARY_REVIEW]:
     PortfolioEvaluationTaskAdvanceActionCode.START_SCHOOL_REVIEW,
-  [PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW]:
+  [PortfolioEvaluationTaskStatusEnum.SCHOOL_REVIEW]:
     PortfolioEvaluationTaskAdvanceActionCode.START_EXPERT_REVIEW,
-  [PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW]:
+  [PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW]:
     PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY,
 }
 
 function canArchiveTask(task: PortfolioEvaluationTaskVO): boolean {
   return (
-    (task.taskStatus === PortfolioEvaluationTaskStatusCode.PUBLICITY
-      || task.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING)
+    (task.taskStatus === PortfolioEvaluationTaskStatusEnum.PUBLICITY
+      || task.taskStatus === PortfolioEvaluationTaskStatusEnum.OBJECTION_HANDLING)
     && task.publicityExpiredAwaitingArchive === true
   )
 }
 
 function canSuspendTask(task: PortfolioEvaluationTaskVO): boolean {
   return [
-    PortfolioEvaluationTaskStatusCode.PUBLISHED,
-    PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW,
-    PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW,
-    PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW,
-    PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY,
-    PortfolioEvaluationTaskStatusCode.PUBLICITY,
-    PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING,
+    PortfolioEvaluationTaskStatusEnum.PUBLISHED,
+    PortfolioEvaluationTaskStatusEnum.PRELIMINARY_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.SCHOOL_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.RESULT_SUMMARY,
+    PortfolioEvaluationTaskStatusEnum.PUBLICITY,
+    PortfolioEvaluationTaskStatusEnum.OBJECTION_HANDLING,
   ].includes(task.taskStatus)
 }
 
@@ -85,7 +86,7 @@ function advanceActionLabel(action: PortfolioEvaluationTaskAdvanceActionCode): s
   )
 }
 
-function taskStatusLabel(status: PortfolioEvaluationTaskStatusCode): string {
+function taskStatusLabel(status: PortfolioEvaluationTaskStatusEnum): string {
   return strictEnumLabel(PortfolioEvaluationTaskStatusDescription, status, '多元评价任务状态')
 }
 
@@ -98,7 +99,7 @@ function evaluationSceneLabel(scene?: PortfolioEvaluationSceneCode | string): st
   )
 }
 
-function taskStatusTone(status: PortfolioEvaluationTaskStatusCode) {
+function taskStatusTone(status: PortfolioEvaluationTaskStatusEnum) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TASK_STATUS_TONE, status, '多元评价任务状态')
 }
 
@@ -257,7 +258,7 @@ async function applyDeepLinkedTask(taskId: string) {
   scrollToHighlightedTask()
   if (
     !autoOpenedCompleteRereview.value
-    && matched.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW
+    && matched.taskStatus === PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW
   ) {
     autoOpenedCompleteRereview.value = true
     await openCompleteRereview(matched)
@@ -351,7 +352,7 @@ async function submitCreateTask() {
 }
 
 function nextAction(
-  status: PortfolioEvaluationTaskStatusCode,
+  status: PortfolioEvaluationTaskStatusEnum,
 ): PortfolioEvaluationTaskAdvanceActionCode | undefined {
   return ADVANCE_ACTIONS[status]
 }
@@ -654,9 +655,9 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
   }
   const advance = nextAction(row.taskStatus)
   // 行内仅 1 个 primary：阶段主动作优先（恢复 > 发布 > 异议 > 推进 > 归档）
-  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.SUSPENDED) {
+  if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.SUSPENDED) {
     actions.push({ key: 'resume', label: '恢复任务', tone: 'primary', disabled: writing.value })
-  } else if (row.taskStatus === PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY) {
+  } else if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.RESULT_SUMMARY) {
     actions.push({ key: 'publish', label: '发布公示', tone: 'primary', disabled: writing.value })
     if (advance) {
       actions.push({
@@ -665,7 +666,7 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
         disabled: writing.value,
       })
     }
-  } else if (row.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING) {
+  } else if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.OBJECTION_HANDLING) {
     actions.push({ key: 'objection', label: '处理异议', tone: 'primary' })
     if (advance) {
       actions.push({
@@ -689,7 +690,7 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
       disabled: writing.value,
     })
   }
-  if (row.taskStatus !== PortfolioEvaluationTaskStatusCode.SUSPENDED && canSuspendTask(row)) {
+  if (row.taskStatus !== PortfolioEvaluationTaskStatusEnum.SUSPENDED && canSuspendTask(row)) {
     actions.push({ key: 'suspend', label: '暂停任务', tone: 'danger', disabled: writing.value })
   }
   if (canArchiveTask(row) && !actions.some((item) => item.key === 'archive')) {
@@ -699,7 +700,7 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
       disabled: writing.value,
     })
   }
-  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.ARCHIVED) {
+  if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.ARCHIVED) {
     actions.push({
       key: 'rereview',
       label: '发起更正复核',
@@ -707,7 +708,7 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
       disabled: writing.value,
     })
   }
-  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW) {
+  if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW) {
     actions.push({
       key: 'fillCorrection',
       label: '去改结论',
@@ -720,7 +721,7 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
     })
   }
   // PF-P0-317：草稿可作废，发布后走关闭/归档等终态路径
-  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.DRAFT) {
+  if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.DRAFT) {
     actions.push({
       key: 'void',
       label: '作废',
@@ -998,7 +999,10 @@ void loadPage()
         <li v-for="order in completeRereviewOrders" :key="String(order.id)">
           工单 #{{ order.id }}
           <template v-if="order.subjectTeacherUserId">
-            · 教师 {{ order.subjectTeacherUserId }}
+            ·
+            {{
+              formatPortfolioTeacherDisplay(order.subjectTeacherName, order.subjectTeacherNumber)
+            }}
           </template>
           <template v-else> · 整任务</template>
           <template v-if="order.lifecycleStatusLabel || order.lifecycleStatus">

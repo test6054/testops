@@ -34,6 +34,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -386,7 +387,7 @@ void loadPage()
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherName'">
-            {{ record.teacherName }}
+            {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
@@ -421,7 +422,8 @@ void loadPage()
 
     <UiDrawer v-model:open="rejectDrawerOpen" title="驳回纠错" width="420">
       <p v-if="rejectTarget" class="correction-admin__reject-meta">
-        {{ rejectTarget.teacherName }} · {{ rejectTarget.fieldLabel ?? rejectTarget.fieldCode }}
+        {{ formatPortfolioTeacherDisplay(rejectTarget.teacherName, rejectTarget.teacherNumber) }} ·
+        {{ rejectTarget.fieldLabel ?? rejectTarget.fieldCode }}
       </p>
       <UiTextarea
         v-model="rejectForm.handleOpinion"

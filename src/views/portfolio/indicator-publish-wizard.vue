@@ -24,7 +24,6 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStep from '@/components/ui-guide/ui/UiStep.vue'
 import UiSteps from '@/components/ui-guide/ui/UiSteps.vue'
@@ -52,11 +51,9 @@ const trialPassed = ref(false)
 const readiness = ref<PortfolioIndicatorEngineReadinessVO | null>(null)
 const impactReport = ref<PortfolioPublishImpactReportVO | null>(null)
 const impactSummary = ref<PortfolioImpactIndicatorSummaryDto | null>(null)
-const approvalOpinion = ref('')
 const currentTaskRuleStrategy = ref<PfCurrentTaskRuleStrategyCode>(
   PfCurrentTaskRuleStrategyCode.KEEP_CURRENT,
 )
-const approving = computed(() => operationKey.value === 'approve-impact')
 const readinessError = ref('')
 const readinessRequestToken = ref(0)
 const workflowSceneCode = ref<PfSceneCode | null>(null)
@@ -78,7 +75,6 @@ function resetWorkflow() {
   impactReportId.value = ''
   impactReport.value = null
   impactSummary.value = null
-  approvalOpinion.value = ''
   currentTaskRuleStrategy.value = PfCurrentTaskRuleStrategyCode.KEEP_CURRENT
   step.value = 1
 }
@@ -206,44 +202,14 @@ const showTaskStrategy = computed(() => {
   return level === PfRuleChangeLevelCode.B
 })
 
-function changeLevelLabel(code?: string): string {
+function changeLevelLabel(code?: PfRuleChangeLevelCode): string {
   if (!code) return '—'
-  return strictEnumLabel(
-    PfRuleChangeLevelDescription,
-    code as PfRuleChangeLevelCode,
-    '规则变更级别',
-  )
+  return strictEnumLabel(PfRuleChangeLevelDescription, code, '规则变更级别')
 }
 
-function approvalStatusLabel(code?: string): string {
+function approvalStatusLabel(code?: PfImpactApprovalStatusCode): string {
   if (!code) return '—'
-  return strictEnumLabel(
-    PfImpactApprovalStatusDescription,
-    code as PfImpactApprovalStatusCode,
-    '影响分析审批状态',
-  )
-}
-
-async function approveImpact(approved: boolean) {
-  if (!impactReportId.value) return
-  const operation = 'approve-impact'
-  if (!beginOperation(operation)) return
-  try {
-    const report = await portfolioIndicatorTenantApi.approveImpactReport({
-      impactReportId: impactReportId.value,
-      approved,
-      approvalOpinion: approvalOpinion.value || undefined,
-    })
-    impactReport.value = report
-    if (report.indicatorSummary) {
-      impactSummary.value = report.indicatorSummary
-    }
-    void message.success(approved ? '影响分析已审批通过' : '影响分析已驳回')
-  } catch (error) {
-    showUserError(error, approved ? '审批通过失败' : '审批驳回失败')
-  } finally {
-    endOperation(operation)
-  }
+  return strictEnumLabel(PfImpactApprovalStatusDescription, code, '影响分析审批状态')
 }
 
 async function publish() {
@@ -454,33 +420,9 @@ onMounted(loadReadiness)
               {{ impactReport.evaluationTaskSummary.publicizedOrArchivedTaskCount ?? 0 }}</span>
             <span>受影响教师 {{ impactReport.evaluationTaskSummary.affectedTeacherCount ?? 0 }}</span>
           </div>
-          <template v-if="requiresApproval && impactReport.approvalStatus === 'PENDING_APPROVAL'">
-            <UiTextarea
-              v-model="approvalOpinion"
-              :rows="3"
-              placeholder="审批意见（驳回时建议填写原因）"
-              :disabled="writing"
-            />
-            <div class="approval-actions">
-              <UiButton
-                size="sm"
-                variant="primary"
-                :loading="approving"
-                :disabled="writing"
-                @click="approveImpact(true)"
-              >
-                审批通过
-              </UiButton>
-              <UiButton
-                size="sm"
-                :loading="approving"
-                :disabled="writing"
-                @click="approveImpact(false)"
-              >
-                驳回
-              </UiButton>
-            </div>
-          </template>
+          <p v-if="requiresApproval && impactReport.approvalStatus === 'PENDING_APPROVAL'">
+            该影响报告已进入独立审批队列，创建人不能审批本人报告。
+          </p>
           <div v-if="showTaskStrategy" class="strategy-row">
             <label>进行中任务规则策略</label>
             <UiSelect

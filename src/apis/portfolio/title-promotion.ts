@@ -91,6 +91,10 @@ export interface PortfolioTitlePromotionApplicationVO {
   taskName?: string
   targetTitleLevel?: string
   teacherUserId: string
+  /** edu-user 教师姓名 */
+  teacherName?: string
+  /** edu-user 教师工号 */
+  teacherNumber?: string
   applicationNo?: string
   applicationStatus: PortfolioTitlePromotionApplicationStatusCode
   pathCode?: PortfolioTitleCriteriaPathCode
@@ -371,16 +375,17 @@ export const portfolioTitlePromotionApi = {
       data,
     ),
 
-  saveCriteriaTemplate: (data: Partial<PortfolioTitleCriteriaTemplateVO> & {
-    templateCode: string
-    templateTitle: string
-    gateKind: PortfolioTitleCriteriaGateKindCode
-    checkType: PortfolioTitleCriteriaCheckTypeCode
-    satisfyMode: PortfolioTitleCriteriaSatisfyModeCode
-    pathCode: PortfolioTitleCriteriaPathCode
-    blockOnFail: boolean
-  }) =>
-    http.post<string>('/api/portfolio/title-promotion/criteria-template/save', data),
+  saveCriteriaTemplate: (
+    data: Partial<PortfolioTitleCriteriaTemplateVO> & {
+      templateCode: string
+      templateTitle: string
+      gateKind: PortfolioTitleCriteriaGateKindCode
+      checkType: PortfolioTitleCriteriaCheckTypeCode
+      satisfyMode: PortfolioTitleCriteriaSatisfyModeCode
+      pathCode: PortfolioTitleCriteriaPathCode
+      blockOnFail: boolean
+    },
+  ) => http.post<string>('/api/portfolio/title-promotion/criteria-template/save', data),
 
   enableCriteriaTemplate: (data: { id: string, enabled: boolean }) =>
     http.post<void>('/api/portfolio/title-promotion/criteria-template/enable', data),
@@ -422,11 +427,7 @@ export const portfolioTitlePromotionApi = {
       data,
     ),
 
-  pageTaskCriteriaChangeLog: (data: {
-    taskId: string
-    pageNum?: number
-    pageSize?: number
-  }) =>
+  pageTaskCriteriaChangeLog: (data: { taskId: string, pageNum?: number, pageSize?: number }) =>
     http.post<PageResult<PortfolioTitleTaskCriteriaChangeLogVO>>(
       '/api/portfolio/title-promotion/task-criteria/change-log/page',
       data,

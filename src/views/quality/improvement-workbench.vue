@@ -68,21 +68,18 @@ async function refreshWorkbenchSignals(): Promise<boolean> {
   return loadSignalSources()
 }
 
-async function loadTabLists(): Promise<void> {
+/** 只加载当前已挂载页签，避免要求四个互斥 v-if 页签同时存在。 */
+async function loadActiveTabList(): Promise<void> {
   await nextTick()
-  const improvementTab = improvementTaskTabRef.value
-  const issueTab = auditIssueTabRef.value
-  const rectTab = auditRectificationTabRef.value
-  const supTab = auditSupervisionTabRef.value
-  if (!improvementTab || !issueTab || !rectTab || !supTab) {
+  let activeTabExpose: TabLoadExpose | null
+  if (activeTab.value === 'improvement') activeTabExpose = improvementTaskTabRef.value
+  else if (activeTab.value === 'issue') activeTabExpose = auditIssueTabRef.value
+  else if (activeTab.value === 'rectification') activeTabExpose = auditRectificationTabRef.value
+  else activeTabExpose = auditSupervisionTabRef.value
+  if (!activeTabExpose) {
     throw toUserError(null, '工作台页签尚未就绪')
   }
-  await Promise.all([
-    improvementTab.loadList(),
-    issueTab.loadList(),
-    rectTab.loadList(),
-    supTab.loadList(),
-  ])
+  await activeTabExpose.loadList()
 }
 
 async function consumeImprovementDeepLink(): Promise<void> {
@@ -97,7 +94,6 @@ async function consumeImprovementDeepLink(): Promise<void> {
     = typeof route.query.aiTaskId === 'string' ? route.query.aiTaskId.trim() : undefined
   await improvementTaskTabRef.value?.openByDeepLink?.({ improvementTaskId, aiTaskId })
 }
-
 
 const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   if (!qualityStore.currentTrainingPlanId) {
@@ -114,7 +110,10 @@ async function handleScopeChange(): Promise<void> {
   loading.value = true
   signalsLoadFailed.value = false
   try {
-    await loadTabLists()
+    if (planGateMode.value) {
+      return
+    }
+    await loadActiveTabList()
     if (serial !== scopeChangeSerial) {
       return
     }
@@ -142,12 +141,9 @@ async function handleScopeChange(): Promise<void> {
   }
 }
 
-watch(activeTab, async (tab) => {
+watch(activeTab, async () => {
   try {
-    if (tab === 'improvement') await improvementTaskTabRef.value?.loadList()
-    else if (tab === 'issue') await auditIssueTabRef.value?.loadList()
-    else if (tab === 'rectification') await auditRectificationTabRef.value?.loadList()
-    else if (tab === 'supervision') await auditSupervisionTabRef.value?.loadList()
+    await loadActiveTabList()
   } catch (error) {
     if (isQualityScopeStaleError(error)) {
       return
@@ -188,27 +184,12 @@ onActivated(async () => {
       <QualityPageContextBar show-title title="持续改进与审核闭环" />
     </template>
 
-    <QualityPlanGateStrip
-      v-if="planGateMode"
-      :mode="planGateMode"
-      class="iwb__empty"
-    />
+    <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="iwb__empty" />
 
     <template v-else>
-      <UiEmpty
-        v-if="signalsLoadFailed"
-        size="sm"
-        title="加载失败"
-        class="iwb__empty"
-      />
+      <UiEmpty v-if="signalsLoadFailed" size="sm" title="加载失败" class="iwb__empty" />
 
-      <SignalBand
-        v-else
-        :metrics="signals"
-        variant="panel"
-        compact
-        class="iwb__signals"
-      />
+      <SignalBand v-else :metrics="signals" variant="panel" compact class="iwb__signals" />
 
       <UiEmpty
         v-if="
@@ -223,13 +204,7 @@ onActivated(async () => {
         class="iwb__empty"
       />
 
-      <UiSectionTabs
-        v-model="activeTab"
-        :items="iwbTabItems"
-        compact
-        divided
-        class="iwb__tabs"
-      />
+      <UiSectionTabs v-model="activeTab" :items="iwbTabItems" compact divided class="iwb__tabs" />
       <ImprovementTaskTab
         v-if="activeTab === 'improvement'"
         ref="improvementTaskTabRef"

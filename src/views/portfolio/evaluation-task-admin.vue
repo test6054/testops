@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
+import type { PortfolioEvaluationTaskStatusEnum } from '@/apis/portfolio/enums'
 import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
 import type {
@@ -22,8 +22,8 @@ import {
   PortfolioEvaluationSceneDescription,
   PortfolioEvaluationTaskAdvanceActionCode,
   PortfolioEvaluationTaskStatusDescription,
-  PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
+  PortfolioEvaluationTeacherNoticeStatusEnum,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
@@ -153,7 +153,7 @@ interface PortfolioEvaluationTaskForm {
   endTime: string
 }
 
-type PortfolioEvaluationTaskStatusFilter = '' | PortfolioEvaluationTaskStatusCode
+type PortfolioEvaluationTaskStatusFilter = '' | PortfolioEvaluationTaskStatusEnum
 
 const form = reactive<PortfolioEvaluationTaskForm>({
   taskName: '',
@@ -217,15 +217,15 @@ function evaluationSceneLabel(scene?: PortfolioEvaluationSceneCode | string): st
   )
 }
 
-function taskStatusLabel(status: PortfolioEvaluationTaskStatusCode): string {
+function taskStatusLabel(status: PortfolioEvaluationTaskStatusEnum): string {
   return strictEnumLabel(PortfolioEvaluationTaskStatusDescription, status, '多元评价任务状态')
 }
 
-function taskStatusTone(status: PortfolioEvaluationTaskStatusCode) {
+function taskStatusTone(status: PortfolioEvaluationTaskStatusEnum) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TASK_STATUS_TONE, status, '多元评价任务状态')
 }
 
-function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): string {
+function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusEnum): string {
   return strictEnumLabel(
     PortfolioEvaluationTeacherNoticeStatusDescription,
     status,
@@ -233,7 +233,7 @@ function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): 
   )
 }
 
-function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusCode) {
+function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusEnum) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE, status, '评价材料通知状态')
 }
 
@@ -243,8 +243,8 @@ function canReturnNotice(notice: PortfolioEvaluationTeacherNoticeVO | null): boo
     return false
   }
   return (
-    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.MATERIAL_CONFIRM
-    || notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
+    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusEnum.MATERIAL_CONFIRM
+    || notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusEnum.CONFIRMED
   )
 }
 

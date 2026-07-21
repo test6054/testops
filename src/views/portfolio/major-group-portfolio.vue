@@ -34,6 +34,7 @@ import {
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
 import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioDoubleHighTaskStatusDescription } from '@/types/enums/portfolio-double-high-task-status-enum'
 import {
   ALL_PORTFOLIO_MAJOR_GROUP_SECTION_CODES,
   PortfolioMajorGroupSectionCode,
@@ -154,6 +155,21 @@ const activeSectionColumns = computed(() =>
     : sectionColumns,
 )
 
+/** TASK 分区状态按双高任务枚举契约映射中文；其他分区沿用 statusLabel。 */
+function sectionStatusDisplay(record: PortfolioMajorGroupPortfolioSectionItemVO): string {
+  if (activeSection.value === PortfolioMajorGroupSectionCode.TASK) {
+    if (!record.taskStatus) {
+      throw new Error('枚举合同不同步：双高任务状态缺失')
+    }
+    return strictEnumLabel(
+      PortfolioDoubleHighTaskStatusDescription,
+      record.taskStatus,
+      '双高任务状态',
+    )
+  }
+  return record.statusLabel
+}
+
 function sectionLabel(code: PortfolioMajorGroupSectionCode): string {
   return PortfolioMajorGroupSectionDescription[code]
 }
@@ -166,12 +182,9 @@ function complianceTypeLabel(code: string): string {
   )
 }
 
-function alertStatusLabel(code: string): string {
-  return strictEnumLabel(
-    PortfolioAlertStatusDescription,
-    code as PortfolioAlertStatusCode,
-    '预警状态',
-  )
+function alertStatusLabel(code?: PortfolioAlertStatusCode): string {
+  if (!code) return '—'
+  return strictEnumLabel(PortfolioAlertStatusDescription, code, '预警状态')
 }
 
 async function loadPortfolio() {
@@ -504,7 +517,7 @@ watch(
             <ul class="major-group-portfolio__section-summary">
               <li v-for="item in portfolio.sections" :key="item.sectionCode">
                 <strong>{{
-                  sectionLabel(item.sectionCode as PortfolioMajorGroupSectionCode)
+                  sectionLabel(item.sectionCode)
                 }}</strong>
                 <span>{{ item.itemCount }} 条</span>
               </li>
@@ -526,7 +539,10 @@ watch(
             @page-change="onSectionPageChange"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'ownerIdentityLayers'">
+              <template v-if="column.key === 'statusLabel'">
+                {{ sectionStatusDisplay(record) }}
+              </template>
+              <template v-else-if="column.key === 'ownerIdentityLayers'">
                 <PortfolioOwnerIdentityLayersCell
                   :layers="record.ownerIdentityLayers"
                   :note="record.ownerMultiIdentityNote"

@@ -25,6 +25,7 @@ import {
   PortfolioExportApprovalStatusDescription,
 } from '@/types/enums/portfolio-export-approval-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -110,12 +111,9 @@ function endOperation(key: string) {
   if (operationKey.value === key) operationKey.value = ''
 }
 
-function exportTypeLabel(code: string): string {
-  return strictEnumLabel(
-    PortfolioExportTypeDescription,
-    code as PortfolioExportTypeCode,
-    '导出类型',
-  )
+function exportTypeLabel(code?: PortfolioExportTypeCode): string {
+  if (!code) return '—'
+  return strictEnumLabel(PortfolioExportTypeDescription, code, '导出类型')
 }
 
 function approvalStatusLabel(code: string): string {
@@ -321,7 +319,18 @@ watch(
         @page-change="onPageChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'exportType'">
+          <template v-if="column.key === 'subjectTeacherUserId'">
+            <template v-if="record.subjectTeacherUserId">
+              {{
+                formatPortfolioTeacherDisplay(
+                  record.subjectTeacherName,
+                  record.subjectTeacherNumber,
+                )
+              }}
+            </template>
+            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'exportType'">
             {{ exportTypeLabel(record.exportType) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">

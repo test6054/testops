@@ -3,12 +3,17 @@ import type {
   ScanWorkOrderLifecycleVO,
   ScanWorkOrderPortfolioContextVO,
 } from '@/apis/mark/scanner-work-order'
+import type {PortfolioAiTaskTypeCode} from '@/types/enums/portfolio-ai-task-type-enum';
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
 import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { buildPortfolioIntakeScanReturnTo } from '@/composables/usePortfolioIntake'
+import {
+  ALL_PORTFOLIO_AI_TASK_TYPE_CODES
+  
+} from '@/types/enums/portfolio-ai-task-type-enum'
 import {
   ALL_PORTFOLIO_COLLECT_MODE_CODES,
   PortfolioCollectModeDescription,
@@ -28,7 +33,9 @@ export function usePortfolioScanSession() {
     ALL_PORTFOLIO_COLLECT_MODE_CODES.find((code) => code === route.query.collectMode),
   )
   const teacherId = computed(() => String(route.query.teacherId ?? ''))
-  const taskType = computed(() => String(route.query.taskType ?? ''))
+  const taskType = computed<PortfolioAiTaskTypeCode | undefined>(() =>
+    ALL_PORTFOLIO_AI_TASK_TYPE_CODES.find((code) => code === route.query.taskType),
+  )
   const templateCode = computed(() => String(route.query.templateCode ?? ''))
   const categoryId = computed(() => String(route.query.categoryId ?? ''))
   const archiveRecordId = computed(() => String(route.query.archiveRecordId ?? ''))
@@ -72,7 +79,7 @@ export function usePortfolioScanSession() {
         teacherId: teacherId.value,
         gapTaskId: gapTaskId.value || undefined,
         categoryId: categoryId.value || undefined,
-        taskType: taskType.value || undefined,
+        taskType: taskType.value,
         templateCode: templateCode.value || undefined,
         archiveRecordId: archiveRecordId.value || undefined,
         dispatchTicketId: dispatchTicketId.value,
@@ -121,7 +128,7 @@ export function usePortfolioScanSession() {
         teacherId: teacherId.value,
         gapTaskId: gapTaskId.value || undefined,
         categoryId: categoryId.value || undefined,
-        taskType: taskType.value || undefined,
+        taskType: taskType.value,
         templateCode: templateCode.value || undefined,
         archiveRecordId: archiveRecordId.value || undefined,
         dispatchTicketId: dispatchTicketId.value,

@@ -59,6 +59,9 @@
               {{ candidateStatusLabel(record) }}
             </UiTag>
           </template>
+          <template v-else-if="column.key === 'evidenceRef'">
+            {{ formatPortfolioArchiveEvidenceRef(record.evidenceRef) }}
+          </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
               :items="[
@@ -116,6 +119,7 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePolling } from '@/composables/usePolling'
 import { showUserError } from '@/utils/error-handler'
+import { formatPortfolioArchiveEvidenceRef } from '@/utils/portfolio-archive-evidence'
 import { containsPortfolioPiiPlaceholder } from '@/utils/portfolio-pii-placeholder'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -133,7 +137,7 @@ const emit = defineEmits<{
 const candidateColumns: ColumnsType = [
   { title: '字段', key: 'fieldLabel', width: 140, fixed: 'left' },
   { title: '候选值', key: 'candidateValue', width: 220 },
-  { title: '证据引用', dataIndex: 'evidenceRef', key: 'evidenceRef' },
+  { title: '证据引用', key: 'evidenceRef', width: 180 },
   { title: '状态', key: 'confirmStatus', width: 120 },
   { title: '操作', key: 'actions', width: 160 },
 ]

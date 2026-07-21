@@ -34,8 +34,8 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import {
+  formatPortfolioTeacherPkDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
-  resolvePortfolioTeacherDisplayName,
 } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -80,22 +80,7 @@ function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' 
 }
 
 function resolveTeacherTitle(teacher: PortfolioTeacherPkCompareTeacherVO): string {
-  if (teacher.displayName?.trim()) {
-    return teacher.teacherNumber?.trim()
-      ? `${teacher.displayName} · ${teacher.teacherNumber}`
-      : teacher.displayName
-  }
-  const catalogTeacher = teachers.value.find((item) => item.userId === teacher.teacherUserId)
-  if (!catalogTeacher) {
-    return `教师 ${teacher.teacherUserId}`
-  }
-  const displayName = resolvePortfolioTeacherDisplayName(catalogTeacher)
-  if (!displayName) {
-    return `教师 ${teacher.teacherUserId}`
-  }
-  return catalogTeacher.teacherNumber?.trim()
-    ? `${displayName} · ${catalogTeacher.teacherNumber}`
-    : displayName
+  return formatPortfolioTeacherPkDisplay(teacher.displayName, teacher.teacherNumber)
 }
 
 function mergeTeacherOptions(rows: PortfolioTeacherSummaryVO[]) {

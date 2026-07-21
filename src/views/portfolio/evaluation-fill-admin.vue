@@ -22,7 +22,7 @@ import {
   PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES,
   PortfolioEvaluationModeDescription,
   PortfolioEvaluationSceneDescription,
-  PortfolioEvaluationTaskStatusCode,
+  PortfolioEvaluationTaskStatusEnum,
 } from '@/apis/portfolio/enums'
 import {
   portfolioEvaluationEntryApi,
@@ -44,13 +44,14 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { useQueryTable } from '@/composables/useQueryTable'
 import {
-  PortfolioMultiSourceEvaluatorTypeCode,
+  PortfolioMultiSourceEvaluatorTypeEnum,
   PortfolioMultiSourceEvaluatorTypeOptions,
 } from '@/types/enums/portfolio-multi-source-evaluator-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
 import { buildEmptyPageResult } from '@/utils/page-result'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const route = useRoute()
@@ -107,13 +108,13 @@ const fillForm = reactive<{
   indicatorCode: string
   score?: number
   commentText: string
-  evaluatorSourceType: string
+  evaluatorSourceType: PortfolioMultiSourceEvaluatorTypeEnum
 }>({
   subjectTeacherUserId: '',
   indicatorCode: '',
   score: undefined,
   commentText: '',
-  evaluatorSourceType: PortfolioMultiSourceEvaluatorTypeCode.PEER,
+  evaluatorSourceType: PortfolioMultiSourceEvaluatorTypeEnum.PEER,
 })
 
 /** 被评教师：生命周期参评/写禁预检 */
@@ -126,7 +127,7 @@ const { lifecycleState, archiveWriteForbidden, archiveWriteBlockMessage, reloadL
 /** 更正复核允许 hold 教师改结论；进行中评价仍 hard 拦参评 hold（PF-P0-264/265）。 */
 const evaluationParticipationForbidden = computed(() => {
   const task = tasks.value.find((item) => item.id === selectedTaskId.value)
-  if (task?.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW) {
+  if (task?.taskStatus === PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW) {
     return false
   }
   return Boolean(
@@ -146,7 +147,7 @@ const evaluationParticipationBlockMessage = computed(() => {
 })
 const correctionHeldSubjectHint = computed(() => {
   const task = tasks.value.find((item) => item.id === selectedTaskId.value)
-  if (task?.taskStatus !== PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW) {
+  if (task?.taskStatus !== PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW) {
     return ''
   }
   if (!lifecycleState.value?.evaluationHeld) {
@@ -168,7 +169,7 @@ function assertEvaluationParticipable(actionLabel?: string): boolean {
 const selectedTask = computed(() => tasks.value.find((item) => item.id === selectedTaskId.value))
 /** 归档更正复核：跳过原评价时间窗与参评 hold 前端误拦（对齐 BE requireEntryOperationTask / PF-P0-264）。 */
 const isCorrectionReviewTask = computed(
-  () => selectedTask.value?.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW,
+  () => selectedTask.value?.taskStatus === PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW,
 )
 /** 进行中评价：下拉排除参评 hold；更正复核：全量展示并标注 lifecycle。 */
 const participableSubjectTeacherOptions = computed(() => {
@@ -178,7 +179,7 @@ const participableSubjectTeacherOptions = computed(() => {
   return subjectTeacherOptions.value.filter((teacher) => !teacher.evaluationHeld)
 })
 function subjectTeacherOptionLabel(teacher: PortfolioEvaluationSubjectTeacherOptionVO): string {
-  const name = teacher.fullName || teacher.teacherUserId
+  const base = formatPortfolioTeacherDisplay(teacher.fullName, teacher.teacherNumber)
   const layers = teacher.ownerIdentityLayers ?? []
   const layerText = layers
     .map((layer) => layer.identityTypeLabel || layer.displayName || layer.identityType)
@@ -186,9 +187,9 @@ function subjectTeacherOptionLabel(teacher: PortfolioEvaluationSubjectTeacherOpt
     .join('/')
   if (teacher.evaluationHeld) {
     const status = teacher.lifecycleStatusLabel || teacher.lifecycleStatus || '参评hold'
-    return layerText ? `${name}（${layerText} · ${status}）` : `${name}（${status}）`
+    return layerText ? `${base}（${layerText} · ${status}）` : `${base}（${status}）`
   }
-  return layerText ? `${name}（${layerText}）` : name
+  return layerText ? `${base}（${layerText}）` : base
 }
 const isByIndicator = computed(() => selectedTask.value?.evaluationMode === 'BY_INDICATOR')
 const entryWritableStatuses = computed(() =>
@@ -313,7 +314,10 @@ function summaryRowKey(record: unknown): string {
 
 function subjectTeacherLabel(teacherUserId: string): string {
   const option = subjectTeacherOptions.value.find((item) => item.teacherUserId === teacherUserId)
-  return option ? `${option.fullName} (${teacherUserId})` : teacherUserId
+  if (!option) {
+    throw new Error(`被评教师 ${teacherUserId} 不在当前任务可选列表中`)
+  }
+  return formatPortfolioTeacherDisplay(option.fullName, option.teacherNumber)
 }
 
 const selectableTasks = computed(() => {
@@ -424,7 +428,8 @@ async function loadSummary() {
   }
 }
 
-async function saveEntry() {
+/** 冻结任务、教师、指标与评分后执行生命周期预检和评价写入。 */
+async function saveEntry(): Promise<void> {
   if (saving.value) {
     return
   }
@@ -436,32 +441,46 @@ async function saveEntry() {
     showFormValidationMessage(fillWindowBlockedReason.value || '当前不可填报')
     return
   }
-  if (!fillForm.subjectTeacherUserId.trim() || fillForm.score === undefined) {
+  const subjectTeacherUserId = fillForm.subjectTeacherUserId.trim()
+  const score = fillForm.score
+  if (!subjectTeacherUserId || score === undefined) {
     showFormValidationMessage('请填写被评教师与得分')
     return
   }
-  await reloadLifecycleState()
-  if (!assertEvaluationParticipable('评价填报')) {
+  if (!fillForm.evaluatorSourceType) {
+    showFormValidationMessage('请选择评价来源类型')
     return
   }
-  if (!fillForm.evaluatorSourceType.trim()) {
-    showFormValidationMessage('请选择评价来源类型（§8.53）')
-    return
-  }
-  if (isByIndicator.value && !fillForm.indicatorCode.trim()) {
+  const byIndicator = isByIndicator.value
+  const indicatorCode = fillForm.indicatorCode.trim()
+  if (byIndicator && !indicatorCode) {
     showFormValidationMessage('以指标为主模式须选择指标')
     return
   }
+  const context = {
+    evaluationTaskId: selectedTaskId.value,
+    subjectTeacherUserId,
+    indicatorCode: byIndicator ? indicatorCode : undefined,
+    score,
+    commentText: fillForm.commentText.trim() || undefined,
+    evaluatorSourceType: fillForm.evaluatorSourceType,
+  }
   saving.value = true
   try {
-    await portfolioEvaluationEntryApi.save({
-      evaluationTaskId: selectedTaskId.value,
-      subjectTeacherUserId: fillForm.subjectTeacherUserId.trim(),
-      indicatorCode: isByIndicator.value ? fillForm.indicatorCode.trim() : undefined,
-      score: fillForm.score,
-      commentText: fillForm.commentText.trim() || undefined,
-      evaluatorSourceType: fillForm.evaluatorSourceType.trim(),
-    })
+    await reloadLifecycleState()
+    const currentIndicatorCode = isByIndicator.value ? fillForm.indicatorCode.trim() : undefined
+    if (
+      selectedTaskId.value !== context.evaluationTaskId
+      || fillForm.subjectTeacherUserId.trim() !== context.subjectTeacherUserId
+      || currentIndicatorCode !== context.indicatorCode
+    ) {
+      showFormValidationMessage('填报目标已变化，请重新确认后保存')
+      return
+    }
+    if (!assertEvaluationParticipable('评价填报')) {
+      return
+    }
+    await portfolioEvaluationEntryApi.save(context)
     void message.success('评价已保存')
     fillForm.score = undefined
     fillForm.commentText = ''
@@ -559,6 +578,7 @@ onMounted(async () => {
           placeholder="选择已发布任务"
           style="width: 280px"
           size="sm"
+          :disabled="saving"
           :loading="loading"
           :options="
             selectableTasks.map((task) => ({
@@ -567,7 +587,7 @@ onMounted(async () => {
             }))
           "
         />
-        <UiButton size="sm" @click="loadTasks"> 刷新任务 </UiButton>
+        <UiButton size="sm" :disabled="saving" @click="loadTasks"> 刷新任务 </UiButton>
         <span v-if="fillWindowBlockedReason" class="fill-window-hint">{{
           fillWindowBlockedReason
         }}</span>
@@ -590,6 +610,7 @@ onMounted(async () => {
             allow-search
             option-filter-prop="label"
             size="sm"
+            :disabled="saving"
             :options="
               participableSubjectTeacherOptions.map((teacher) => ({
                 value: teacher.teacherUserId,
@@ -605,6 +626,7 @@ onMounted(async () => {
             allow-search
             option-filter-prop="label"
             size="sm"
+            :disabled="saving"
             :options="
               indicatorOptions.map((indicator) => ({
                 value: indicator.indicatorCode,
@@ -617,15 +639,23 @@ onMounted(async () => {
             v-model="fillForm.score"
             placeholder="得分"
             style="width: 100px"
+            :disabled="saving"
           />
           <UiSelect
             v-model="fillForm.evaluatorSourceType"
             placeholder="评价来源"
             style="width: 160px"
             size="sm"
+            :disabled="saving"
             :options="PortfolioMultiSourceEvaluatorTypeOptions"
           />
-          <UiInput size="sm" v-model="fillForm.commentText" placeholder="评语" style="flex: 1" />
+          <UiInput
+            size="sm"
+            v-model="fillForm.commentText"
+            placeholder="评语"
+            style="flex: 1"
+            :disabled="saving"
+          />
           <UiButton
             size="sm"
             variant="primary"

@@ -415,6 +415,7 @@ const headerSignalMetrics = computed<SignalMetric[]>(() =>
     key: metric.key,
     label: metric.label,
     value: metricValue(metric.count),
+    unit: '条',
     tone: metric.tone,
     clickable: true,
     active: metric.active,
@@ -445,7 +446,6 @@ const recommendedDutyAction = computed(() => {
       key: 'reload-overview',
       tone: 'error' as const,
       title: '运营概览未加载成功',
-      description: '队列数字不可用，请先恢复概览后再分工处置。',
       actionLabel: '重新加载概览',
     }
   }
@@ -457,7 +457,6 @@ const recommendedDutyAction = computed(() => {
         key: 'page-register-blocked',
         tone: 'error' as const,
         title: `当前推荐：处理 ${pageBlocked} 条页登记阻断`,
-        description: '页登记阻断会阻断续扫，优先进入异常处置。',
         actionLabel: '进入异常处置',
       }
     }
@@ -467,7 +466,6 @@ const recommendedDutyAction = computed(() => {
         key: 'partial-tail',
         tone: 'warning' as const,
         title: `当前推荐：确认 ${partialTail} 条余页未切卷`,
-        description: '切卷余页需教师确认忽略或人工合并。',
         actionLabel: '进入余页处置',
       }
     }
@@ -478,7 +476,6 @@ const recommendedDutyAction = computed(() => {
         key: 'failed-ticket',
         tone: 'error' as const,
         title: `当前推荐：清理 ${failedTickets} 条失败派单`,
-        description: '失败派单影响现场续扫，优先打开失败队列分工处理。',
         actionLabel: '打开失败派单',
       }
     }
@@ -488,7 +485,6 @@ const recommendedDutyAction = computed(() => {
         key: 'failed-work-order',
         tone: 'error' as const,
         title: `当前推荐：处理 ${failedOrders} 条失败工单`,
-        description: '失败工单需回看批次与影像后分工处理。',
         actionLabel: '进入失败工单',
       }
     }
@@ -499,7 +495,6 @@ const recommendedDutyAction = computed(() => {
           key: 'mixed-batch',
           tone: 'warning' as const,
           title: `当前推荐：复核 ${mixedPending} 条混扫待办`,
-          description: '混扫待办在归档复核链结案。',
           actionLabel: '打开混扫复核',
         }
       }
@@ -510,7 +505,6 @@ const recommendedDutyAction = computed(() => {
         key: 'suspended-dispatch',
         tone: 'warning' as const,
         title: `当前推荐：跟进 ${suspended} 条挂起派单`,
-        description: '挂起派单通常对应设备/现场待确认，可转派或恢复处理。',
         actionLabel: '查看挂起派单',
       }
     }
@@ -520,7 +514,6 @@ const recommendedDutyAction = computed(() => {
         key: 'pending-dispatch',
         tone: 'warning' as const,
         title: `当前推荐：领取 ${pending} 条待处理派单`,
-        description: '待处理派单可供现场继续扫描或补扫。',
         actionLabel: '打开待处理派单',
       }
     }
@@ -534,7 +527,6 @@ const recommendedDutyAction = computed(() => {
       key: healthyAction.key,
       tone: 'success' as const,
       title: '当前无待处置积压',
-      description: '队列正常，可切换其它 Tab 查看日志或运营数据。',
       actionLabel: healthyAction.actionLabel,
       tab: healthyAction.tab,
     }
@@ -556,16 +548,32 @@ const dutyContextSubtitle = computed(() => {
   return `${domainSubtitlePrefix.value} · 当前无积压`
 })
 
+function resetOverviewMetrics() {
+  failedTicketCount.value = null
+  failedWorkOrderCount.value = null
+  pageRegisterBlockedCount.value = null
+  committingWorkOrderCount.value = null
+  partialTailPendingCount.value = null
+  pendingDispatchCount.value = null
+  processingDispatchCount.value = null
+  suspendedDispatchCount.value = null
+  archiveMixedPendingTotal.value = null
+}
+
 async function loadOverview() {
   overviewLoading.value = true
   overviewLoadFailed.value = false
   try {
     let overview
     if (props.domain === 'exam') {
-      if (!props.examId?.trim()) {
-        throw new Error('考试 ID 缺失，无法加载扫描运营概览')
+      const examId = props.examId?.trim()
+      if (!examId) {
+        resetOverviewMetrics()
+        overviewLoadFailed.value = true
+        showUserError(null, '考试信息缺失，无法加载扫描运营概览')
+        return
       }
-      overview = await loadExamScanOpsOverview(props.examId)
+      overview = await loadExamScanOpsOverview(examId)
     } else if (props.domain === 'archive') {
       overview = await loadArchiveScanOpsOverview()
     } else {
@@ -580,15 +588,7 @@ async function loadOverview() {
     processingDispatchCount.value = overview.processingDispatchCount ?? null
     suspendedDispatchCount.value = overview.suspendedDispatchCount ?? null
   } catch (error) {
-    failedTicketCount.value = null
-    failedWorkOrderCount.value = null
-    pageRegisterBlockedCount.value = null
-    committingWorkOrderCount.value = null
-    partialTailPendingCount.value = null
-    pendingDispatchCount.value = null
-    processingDispatchCount.value = null
-    suspendedDispatchCount.value = null
-    archiveMixedPendingTotal.value = null
+    resetOverviewMetrics()
     overviewLoadFailed.value = true
     showUserError(error, '扫描运营概览加载失败')
     return
@@ -740,9 +740,9 @@ watch(
       <UiAlertStrip
         v-if="recommendedDutyAction"
         dense
+        :show-icon="false"
         :tone="recommendedDutyAction.tone"
         :title="recommendedDutyAction.title"
-        :description="recommendedDutyAction.description"
         class="scan-ops__recommend"
       >
         <template #actions>

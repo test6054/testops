@@ -63,6 +63,16 @@ import {
   ALL_AI_TASK_BUSINESS_TYPE_CODES,
 } from '@/types/enums/ai-task-business-type-enum'
 import {
+  AiTaskFailurePhaseCode,
+  AiTaskFailurePhaseDescription,
+  ALL_AI_TASK_FAILURE_PHASE_CODES,
+} from '@/types/enums/ai-task-failure-phase-enum'
+import {
+  AiTaskShardFailurePhaseCode,
+  AiTaskShardFailurePhaseDescription,
+  ALL_AI_TASK_SHARD_FAILURE_PHASE_CODES,
+} from '@/types/enums/ai-task-shard-failure-phase-enum'
+import {
   AiTaskStatusCode,
   AiTaskStatusDescription,
   ALL_AI_TASK_STATUS_CODES,
@@ -148,6 +158,11 @@ import {
   ExternalPullConfirmationStatusDescription,
 } from '@/types/enums/external-pull-confirmation-status-enum'
 import {
+  ALL_EXTERNAL_PULL_FAILURE_PHASE_CODES,
+  ExternalPullFailurePhaseCode,
+  ExternalPullFailurePhaseDescription,
+} from '@/types/enums/external-pull-failure-phase-enum'
+import {
   ALL_EXTERNAL_PULL_TASK_STATUS_CODES,
   ExternalPullTaskStatusCode,
   ExternalPullTaskStatusDescription,
@@ -208,6 +223,11 @@ import {
   ScaleTypeDescription,
 } from '@/types/enums/scale-type-enum'
 import {
+  ALL_SCORE_BATCH_FAILURE_PHASE_CODES,
+  ScoreBatchFailurePhaseCode,
+  ScoreBatchFailurePhaseDescription,
+} from '@/types/enums/score-batch-failure-phase-enum'
+import {
   ALL_SCORE_BATCH_STATUS_CODES,
   ScoreBatchStatusCode,
   ScoreBatchStatusDescription,
@@ -252,6 +272,10 @@ export {
   AiProviderTypeDescription,
   AiTaskBusinessTypeCode,
   AiTaskBusinessTypeDescription,
+  AiTaskFailurePhaseCode,
+  AiTaskFailurePhaseDescription,
+  AiTaskShardFailurePhaseCode,
+  AiTaskShardFailurePhaseDescription,
   AiTaskStatusCode,
   AiTaskStatusDescription,
   AiTaskTypeCode,
@@ -267,6 +291,8 @@ export {
   ALL_AI_OUTPUT_VALIDATION_CODES,
   ALL_AI_PROVIDER_TYPE_CODES,
   ALL_AI_TASK_BUSINESS_TYPE_CODES,
+  ALL_AI_TASK_FAILURE_PHASE_CODES,
+  ALL_AI_TASK_SHARD_FAILURE_PHASE_CODES,
   ALL_AI_TASK_STATUS_CODES,
   ALL_AI_TASK_TYPE_CODES,
   ALL_ARCHIVE_BUSINESS_TYPE_CODES,
@@ -284,6 +310,7 @@ export {
   ALL_EXTERNAL_PULL_AUDIT_CHECK_STATUS_CODES,
   ALL_EXTERNAL_PULL_AUDIT_EVENT_CODES,
   ALL_EXTERNAL_PULL_CONFIRMATION_STATUS_CODES,
+  ALL_EXTERNAL_PULL_FAILURE_PHASE_CODES,
   ALL_EXTERNAL_PULL_TASK_STATUS_CODES,
   ALL_EXTERNAL_SOURCE_TYPE_CODES,
   ALL_IMPROVEMENT_TASK_STATUS_CODES,
@@ -296,6 +323,7 @@ export {
   ALL_REPORT_STATUS_CODES,
   ALL_REPORT_TYPE_CODES,
   ALL_SCALE_TYPE_CODES,
+  ALL_SCORE_BATCH_FAILURE_PHASE_CODES,
   ALL_SCORE_BATCH_STATUS_CODES,
   ALL_SQL_SAFETY_STATUS_CODES,
   ALL_SUPPORT_LEVEL_CODES,
@@ -330,6 +358,8 @@ export {
   ExternalPullAuditEventDescription,
   ExternalPullConfirmationStatusCode,
   ExternalPullConfirmationStatusDescription,
+  ExternalPullFailurePhaseCode,
+  ExternalPullFailurePhaseDescription,
   ExternalPullTaskStatusCode,
   ExternalPullTaskStatusDescription,
   ExternalSourceTypeCode,
@@ -354,6 +384,8 @@ export {
   ReportTypeDescription,
   ScaleTypeCode,
   ScaleTypeDescription,
+  ScoreBatchFailurePhaseCode,
+  ScoreBatchFailurePhaseDescription,
   ScoreBatchStatusCode,
   ScoreBatchStatusDescription,
   SqlSafetyStatusCode,

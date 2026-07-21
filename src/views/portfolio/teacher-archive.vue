@@ -65,6 +65,7 @@ import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAcce
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
+import { formatPortfolioArchiveEvidenceRef } from '@/utils/portfolio-archive-evidence'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -171,7 +172,7 @@ const recordColumns: ColumnsType = [
 const fieldColumns: ColumnsType = [
   { title: '字段', key: 'fieldLabel', width: 160, fixed: 'left' },
   { title: '值', dataIndex: 'fieldValue', key: 'fieldValue' },
-  { title: '证据', dataIndex: 'evidenceRef', key: 'evidenceRef', width: 120 },
+  { title: '证据', key: 'evidenceRef', width: 180 },
   { title: '操作', key: 'actions', width: 88 },
 ]
 
@@ -955,6 +956,19 @@ async function openRecordFromRouteQuery() {
   await openRecordById(recordId)
 }
 
+/** 打开档案关联的智能结果；taskId 仅作深链，不在页面展示。 */
+async function openReferencedAiTask() {
+  const taskId = recordDetail.value?.referenceAiTaskId
+  if (!taskId) {
+    return
+  }
+  const query: Record<string, string> = { taskId }
+  if (targetTeacherId.value) {
+    query.teacherId = targetTeacherId.value
+  }
+  await router.push({ path: '/portfolio/ai-orchestration', query })
+}
+
 const archiveMoreActionItems = computed(() => [
   {
     key: 'preview',
@@ -1289,6 +1303,9 @@ watch(
               <p class="teacher-archive__timeline-meta">
                 {{ archiveRecordSourceTypeLabel(item.sourceType) }}
                 · {{ item.eventTime }}
+                <template v-if="item.referenceAiSourceLabel">
+                  · {{ item.referenceAiSourceLabel }}
+                </template>
               </p>
             </li>
           </ul>
@@ -1341,10 +1358,18 @@ watch(
           <p class="teacher-archive__detail-meta">
             更新时间 {{ recordDetail.updateTime }} · 参与评价
             {{ recordDetail.evaluationIncluded ? '是' : '否' }}
-            <template v-if="recordDetail.referenceAiTaskId">
-              · 智能任务 {{ recordDetail.referenceAiTaskId }}
+            <template v-if="recordDetail.referenceAiSourceLabel">
+              · {{ recordDetail.referenceAiSourceLabel }}
             </template>
           </p>
+          <div
+            v-if="recordDetail.referenceAiTaskId && recordDetail.referenceAiSourceLabel"
+            class="teacher-archive__ai-link"
+          >
+            <UiButton size="sm" variant="outline" @click="openReferencedAiTask">
+              查看智能结果
+            </UiButton>
+          </div>
           <UiDataTable
             v-if="recordDetail.fields.length"
             row-key="fieldCode"
@@ -1366,6 +1391,9 @@ watch(
                 >
                   更正中
                 </UiTag>
+              </template>
+              <template v-else-if="column.key === 'evidenceRef'">
+                {{ formatPortfolioArchiveEvidenceRef(record.evidenceRef) }}
               </template>
               <template v-else-if="column.key === 'actions'">
                 <UiTableActions

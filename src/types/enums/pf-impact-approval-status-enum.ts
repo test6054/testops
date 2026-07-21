@@ -20,7 +20,7 @@ export const PfImpactApprovalStatusDescription: Record<PfImpactApprovalStatusCod
   [PfImpactApprovalStatusCode.REJECTED]: '已驳回',
 }
 
-export function pfImpactApprovalAllowsPublish(status?: string | null): boolean {
+export function pfImpactApprovalAllowsPublish(status?: PfImpactApprovalStatusCode | null): boolean {
   return (
     status === PfImpactApprovalStatusCode.NOT_REQUIRED
     || status === PfImpactApprovalStatusCode.APPROVED

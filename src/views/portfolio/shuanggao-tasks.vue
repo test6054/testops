@@ -5,6 +5,7 @@ import type {
   PortfolioDoubleHighTaskVO,
 } from '@/apis/portfolio/double-high'
 import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
+import type { PortfolioDoubleHighStageReviewStatusCode } from '@/types/enums/portfolio-double-high-stage-review-status-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -36,6 +37,9 @@ import {
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
+import {
+  PortfolioDoubleHighStageReviewStatusDescription,
+} from '@/types/enums/portfolio-double-high-stage-review-status-enum'
 import {
   ALL_PORTFOLIO_DOUBLE_HIGH_TASK_STATUS_CODES,
   PortfolioDoubleHighTaskStatusCode,
@@ -237,15 +241,13 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 220 },
 ]
 
-function taskStatusLabel(code: string): string {
-  return strictEnumLabel(
-    PortfolioDoubleHighTaskStatusDescription,
-    code as PortfolioDoubleHighTaskStatusCode,
-    '任务状态',
-  )
+function taskStatusLabel(code: PortfolioDoubleHighTaskStatusCode): string {
+  return strictEnumLabel(PortfolioDoubleHighTaskStatusDescription, code, '任务状态')
 }
 
-function taskStatusTone(code: string): 'blue' | 'green' | 'orange' | 'gray' {
+function taskStatusTone(
+  code: PortfolioDoubleHighTaskStatusCode,
+): 'blue' | 'green' | 'orange' | 'gray' {
   switch (code) {
     case PortfolioDoubleHighTaskStatusCode.PUBLISHED:
       return 'blue'
@@ -258,6 +260,13 @@ function taskStatusTone(code: string): 'blue' | 'green' | 'orange' | 'gray' {
     default:
       return 'gray'
   }
+}
+
+function stageReviewStatusLabel(code?: PortfolioDoubleHighStageReviewStatusCode): string {
+  if (!code) {
+    return '未提交'
+  }
+  return strictEnumLabel(PortfolioDoubleHighStageReviewStatusDescription, code, '阶段审核状态')
 }
 
 function isTaskResponsible(row: PortfolioDoubleHighTaskVO): boolean {
@@ -966,7 +975,7 @@ watch(
               </div>
               <div class="shuanggao-tasks__stage-meta">
                 截止：{{ stage.stageDeadline || '未设' }} · 审核：{{
-                  stage.reviewStatus || '未提交'
+                  stageReviewStatusLabel(stage.reviewStatus)
                 }}
                 <span v-if="stage.submitTime"> · 提交 {{ stage.submitTime }}</span>
                 <span v-if="stage.reviewedTime"> · 审核 {{ stage.reviewedTime }}</span>

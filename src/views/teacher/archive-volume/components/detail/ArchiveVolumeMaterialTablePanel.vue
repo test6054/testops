@@ -115,11 +115,7 @@
           >
             下载
           </UiTextAction>
-          <UiTextAction
-            v-if="canMaintainMaterial"
-            tone="primary"
-            @click="openTagModal(record)"
-          >
+          <UiTextAction v-if="canMaintainMaterial" tone="primary" @click="openTagModal(record)">
             编辑标签
           </UiTextAction>
           <UiTextAction
@@ -1274,5 +1270,17 @@ async function submitSharedRef() {
 .material-status-icon {
   font-size: 12px;
   line-height: 1;
+}
+
+.material-status-icon--ok {
+  color: var(--dp-success);
+}
+
+.material-status-icon--missing {
+  color: var(--dp-error);
+}
+
+.material-status-icon--pending {
+  color: var(--dp-text-muted);
 }
 </style>

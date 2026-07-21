@@ -2,8 +2,10 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioIndustryEducationProjectVO,
+  PortfolioPolicyLedgerReviewRequest,
   PortfolioVirtualTeachingRoomActivityVO,
 } from '@/apis/portfolio/policy-ledger'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref } from 'vue'
 import {
@@ -17,6 +19,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
@@ -24,7 +27,13 @@ import {
   usePortfolioPageScope,
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
+import { promptInputAsync } from '@/composables/usePromptInputDialog'
+import {
+  PortfolioPolicyLedgerReviewStatusCode,
+  PortfolioPolicyLedgerReviewStatusDescription,
+} from '@/types/enums/portfolio-policy-ledger-review-status-enum'
 import { showUserError } from '@/utils/error-handler'
+import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
@@ -38,22 +47,24 @@ const virtualTotal = ref(0)
 const industryTotal = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(10)
+const pageRequestToken = ref(0)
+const formEpoch = ref(0)
+const operationKey = ref('')
 
 const reviewStatusOptions = [
   { label: '全部状态', value: '' },
-  { label: '草稿', value: 'DRAFT' },
-  { label: '待审核', value: 'PENDING_REVIEW' },
-  { label: '已通过', value: 'APPROVED' },
-  { label: '已退回', value: 'REJECTED' },
+  { label: '草稿', value: PortfolioPolicyLedgerReviewStatusCode.DRAFT },
+  { label: '待审核', value: PortfolioPolicyLedgerReviewStatusCode.PENDING_REVIEW },
+  { label: '已通过', value: PortfolioPolicyLedgerReviewStatusCode.APPROVED },
+  { label: '已退回', value: PortfolioPolicyLedgerReviewStatusCode.REJECTED },
 ]
-const reviewFilter = ref('')
+const reviewFilter = ref<PortfolioPolicyLedgerReviewStatusCode | ''>('')
 
 const virtualForm = reactive({
   roomName: '',
   activityTitle: '',
   activityType: 'JOINT_PREP',
   roleCode: 'MEMBER',
-  reviewStatus: 'APPROVED',
   partnerEnterprise: '',
   leadUnit: '',
 })
@@ -62,7 +73,6 @@ const industryForm = reactive({
   projectType: 'INDUSTRY_COLLEGE',
   stageCode: 'ACCEPT',
   roleCode: 'LEADER',
-  reviewStatus: 'APPROVED',
   enterpriseName: '',
 })
 const saving = ref(false)
@@ -75,6 +85,7 @@ const virtualColumns: ColumnsType = [
   { title: '多身份', key: 'ownerIdentityLayers', width: 220 },
   { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   { title: '状态', key: 'reviewStatus', width: 100 },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 const industryColumns: ColumnsType = [
   { title: '项目', dataIndex: 'projectName', key: 'projectName' },
@@ -84,12 +95,15 @@ const industryColumns: ColumnsType = [
   { title: '多身份', key: 'ownerIdentityLayers', width: 220 },
   { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   { title: '状态', key: 'reviewStatus', width: 100 },
+  { title: '操作', key: 'actions', width: 200 },
 ]
 
-function statusTone(status?: string): 'blue' | 'orange' | 'green' | 'gray' | 'red' {
-  if (status === 'APPROVED') return 'green'
-  if (status === 'PENDING_REVIEW') return 'orange'
-  if (status === 'REJECTED') return 'red'
+function statusTone(
+  status?: PortfolioPolicyLedgerReviewStatusCode,
+): 'blue' | 'orange' | 'green' | 'gray' | 'red' {
+  if (status === PortfolioPolicyLedgerReviewStatusCode.APPROVED) return 'green'
+  if (status === PortfolioPolicyLedgerReviewStatusCode.PENDING_REVIEW) return 'orange'
+  if (status === PortfolioPolicyLedgerReviewStatusCode.REJECTED) return 'red'
   return 'gray'
 }
 
@@ -108,31 +122,51 @@ async function loadPage() {
     industryRows.value = []
     return
   }
+  const currentToken = ++pageRequestToken.value
+  const teacherId = targetTeacherId.value
+  const ledgerType = tab.value
+  const requestedPage = pageNum.value
+  const requestedFilter = reviewFilter.value
   loading.value = true
   try {
-    if (tab.value === 'virtual') {
+    if (ledgerType === 'virtual') {
       const page = await portfolioVirtualTeachingRoomActivityApi.page({
-        pageNum: pageNum.value,
+        pageNum: requestedPage,
         pageSize: pageSize.value,
-        teacherUserId: targetTeacherId.value || undefined,
-        reviewStatus: reviewFilter.value || undefined,
+        teacherUserId: teacherId || undefined,
+        reviewStatus: requestedFilter || undefined,
       })
+      if (
+        currentToken !== pageRequestToken.value
+        || tab.value !== ledgerType
+        || targetTeacherId.value !== teacherId
+      ) {
+        return
+      }
       virtualRows.value = page.list ?? []
       virtualTotal.value = page.total ?? 0
     } else {
       const page = await portfolioIndustryEducationProjectApi.page({
-        pageNum: pageNum.value,
+        pageNum: requestedPage,
         pageSize: pageSize.value,
-        teacherUserId: targetTeacherId.value || undefined,
-        reviewStatus: reviewFilter.value || undefined,
+        teacherUserId: teacherId || undefined,
+        reviewStatus: requestedFilter || undefined,
       })
+      if (
+        currentToken !== pageRequestToken.value
+        || tab.value !== ledgerType
+        || targetTeacherId.value !== teacherId
+      ) {
+        return
+      }
       industryRows.value = page.list ?? []
       industryTotal.value = page.total ?? 0
     }
   } catch (error) {
+    if (currentToken !== pageRequestToken.value) return
     showUserError(error, '加载政策专项台账失败')
   } finally {
-    loading.value = false
+    if (currentToken === pageRequestToken.value) loading.value = false
   }
 }
 
@@ -148,22 +182,25 @@ async function saveVirtual() {
     void message.warning('请填写教研室名称与活动标题')
     return
   }
+  const teacherId = targetTeacherId.value
+  const currentFormEpoch = formEpoch.value
   saving.value = true
   try {
     await portfolioVirtualTeachingRoomActivityApi.save({
-      teacherUserId: targetTeacherId.value,
+      teacherUserId: teacherId,
       roomName: virtualForm.roomName.trim(),
       activityTitle: virtualForm.activityTitle.trim(),
       activityType: virtualForm.activityType,
       roleCode: virtualForm.roleCode,
-      reviewStatus: virtualForm.reviewStatus,
       partnerEnterprise: virtualForm.partnerEnterprise || undefined,
       leadUnit: virtualForm.leadUnit || undefined,
     })
     void message.success('虚拟教研室活动已保存')
-    virtualForm.roomName = ''
-    virtualForm.activityTitle = ''
-    await loadPage()
+    if (formEpoch.value === currentFormEpoch && targetTeacherId.value === teacherId) {
+      virtualForm.roomName = ''
+      virtualForm.activityTitle = ''
+      void loadPage()
+    }
   } catch (error) {
     showUserError(error, '保存虚拟教研室活动失败')
   } finally {
@@ -183,20 +220,23 @@ async function saveIndustry() {
     void message.warning('请填写项目名称')
     return
   }
+  const teacherId = targetTeacherId.value
+  const currentFormEpoch = formEpoch.value
   saving.value = true
   try {
     await portfolioIndustryEducationProjectApi.save({
-      teacherUserId: targetTeacherId.value,
+      teacherUserId: teacherId,
       projectName: industryForm.projectName.trim(),
       projectType: industryForm.projectType,
       stageCode: industryForm.stageCode,
       roleCode: industryForm.roleCode,
-      reviewStatus: industryForm.reviewStatus,
       enterpriseName: industryForm.enterpriseName || undefined,
     })
     void message.success('产教项目已保存')
-    industryForm.projectName = ''
-    await loadPage()
+    if (formEpoch.value === currentFormEpoch && targetTeacherId.value === teacherId) {
+      industryForm.projectName = ''
+      void loadPage()
+    }
   } catch (error) {
     showUserError(error, '保存产教项目失败')
   } finally {
@@ -204,8 +244,113 @@ async function saveIndustry() {
   }
 }
 
+type PolicyLedgerRecord
+  = PortfolioVirtualTeachingRoomActivityVO | PortfolioIndustryEducationProjectVO
+
+/** 提交当前状态版本对应的政策专项证据，服务端生成并冻结证据指纹。 */
+async function submitLedgerReview(kind: 'virtual' | 'industry', record: PolicyLedgerRecord) {
+  const key = `${kind}:submit:${record.id}`
+  if (operationKey.value) return
+  operationKey.value = key
+  try {
+    const api
+      = kind === 'virtual'
+        ? portfolioVirtualTeachingRoomActivityApi
+        : portfolioIndustryEducationProjectApi
+    await api.submitReview({ id: record.id, statusVersion: record.statusVersion })
+    void message.success('已提交审核')
+    void loadPage()
+  } catch (error) {
+    showUserError(error, '提交政策专项审核失败')
+  } finally {
+    if (operationKey.value === key) operationKey.value = ''
+  }
+}
+
+/** 按冻结证据指纹和状态版本完成四眼审核，拒绝对陈旧对象写入。 */
+async function reviewLedger(
+  kind: 'virtual' | 'industry',
+  record: PolicyLedgerRecord,
+  approved: boolean,
+) {
+  if (!record.evidenceFingerprint) {
+    showUserError(new Error('待审核对象缺少冻结证据指纹'))
+    return
+  }
+  const reviewOpinion = await promptInputAsync({
+    title: approved ? '审核通过' : '退回修改',
+    placeholder: approved ? '请填写通过依据' : '请填写退回原因和修改要求',
+    required: true,
+    emptyErrorMessage: '审核意见不能为空',
+    okText: approved ? '确认通过' : '确认退回',
+    okType: approved ? 'primary' : 'danger',
+    type: approved ? 'success' : 'error',
+  })
+  if (!reviewOpinion) return
+  const key = `${kind}:review:${record.id}`
+  if (operationKey.value) return
+  const request: PortfolioPolicyLedgerReviewRequest = {
+    id: record.id,
+    statusVersion: record.statusVersion,
+    evidenceFingerprint: record.evidenceFingerprint,
+    approved,
+    reviewOpinion,
+  }
+  operationKey.value = key
+  try {
+    const api
+      = kind === 'virtual'
+        ? portfolioVirtualTeachingRoomActivityApi
+        : portfolioIndustryEducationProjectApi
+    await api.review(request)
+    void message.success(approved ? '审核已通过' : '已退回修改')
+    void loadPage()
+  } catch (error) {
+    showUserError(error, approved ? '审核通过失败' : '退回审核失败')
+  } finally {
+    if (operationKey.value === key) operationKey.value = ''
+  }
+}
+
+/** 按后端审核状态机投影当前行允许的唯一动作集合。 */
+function ledgerActions(record: PolicyLedgerRecord): UiTableRowActionItem[] {
+  const disabled = Boolean(operationKey.value)
+  if (
+    record.reviewStatus === PortfolioPolicyLedgerReviewStatusCode.DRAFT
+    || record.reviewStatus === PortfolioPolicyLedgerReviewStatusCode.REJECTED
+  ) {
+    return [{ key: 'submit', label: '提交审核', disabled }]
+  }
+  if (
+    record.reviewStatus === PortfolioPolicyLedgerReviewStatusCode.PENDING_REVIEW
+    && canPickTeachers.value
+  ) {
+    return [
+      { key: 'approve', label: '通过', disabled },
+      { key: 'reject', label: '退回', tone: 'danger', disabled },
+    ]
+  }
+  return []
+}
+
+/** 将表格动作映射到提交/审核状态机，不在页面拼装其他状态写入口。 */
+function handleLedgerAction(
+  kind: 'virtual' | 'industry',
+  record: PolicyLedgerRecord,
+  action: string,
+) {
+  if (action === 'submit') {
+    void submitLedgerReview(kind, record)
+  } else if (action === 'approve') {
+    void reviewLedger(kind, record, true)
+  } else if (action === 'reject') {
+    void reviewLedger(kind, record, false)
+  }
+}
+
 usePortfolioScopedLoader(
   () => {
+    formEpoch.value += 1
     pageNum.value = 1
     void loadPage()
   },
@@ -305,12 +450,6 @@ onMounted(() => {
             { label: '外部导师', value: 'EXTERNAL_MENTOR' },
           ]"
         />
-        <UiSelect
-          size="sm"
-          v-model="virtualForm.reviewStatus"
-          style="width: 120px"
-          :options="reviewStatusOptions.filter((o) => o.value)"
-        />
         <UiButton
           size="sm"
           variant="primary"
@@ -359,9 +498,19 @@ onMounted(() => {
           <template v-else-if="column.key === 'reviewStatus'">
             <UiTag :tone="statusTone(record.reviewStatus)">
               {{
-                record.reviewStatusLabel || record.reviewStatus
+                strictEnumLabel(
+                  PortfolioPolicyLedgerReviewStatusDescription,
+                  record.reviewStatus,
+                  '政策专项审核状态',
+                )
               }}
             </UiTag>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiTableActions
+              :items="ledgerActions(record)"
+              @action="(action) => handleLedgerAction('virtual', record, action)"
+            />
           </template>
         </template>
         <template #emptyText>
@@ -406,12 +555,6 @@ onMounted(() => {
             { label: '核心', value: 'CORE' },
             { label: '参与', value: 'MEMBER' },
           ]"
-        />
-        <UiSelect
-          size="sm"
-          v-model="industryForm.reviewStatus"
-          style="width: 120px"
-          :options="reviewStatusOptions.filter((o) => o.value)"
         />
         <UiButton
           size="sm"
@@ -461,9 +604,19 @@ onMounted(() => {
           <template v-else-if="column.key === 'reviewStatus'">
             <UiTag :tone="statusTone(record.reviewStatus)">
               {{
-                record.reviewStatusLabel || record.reviewStatus
+                strictEnumLabel(
+                  PortfolioPolicyLedgerReviewStatusDescription,
+                  record.reviewStatus,
+                  '政策专项审核状态',
+                )
               }}
             </UiTag>
+          </template>
+          <template v-else-if="column.key === 'actions'">
+            <UiTableActions
+              :items="ledgerActions(record)"
+              @action="(action) => handleLedgerAction('industry', record, action)"
+            />
           </template>
         </template>
         <template #emptyText>

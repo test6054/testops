@@ -26,6 +26,7 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -48,8 +49,7 @@ const importModalOpen = ref(false)
 const saving = ref(false)
 const removingId = ref('')
 const exporting = ref(false)
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const {
   loading,
   rows,
@@ -60,18 +60,11 @@ const {
   loadPage,
   search,
   handlePageChange,
-} = useQueryTable(
-  (params) =>
-    portfolioDevelopmentRecordApi.page({
-      ...params,
-      recordType: activeType.value,
-    }),
-  {
-    onLoaded: (list) => {
-      const userIds = list.map((row) => row.teacherUserId).filter((id): id is string => Boolean(id))
-      void hydrateTeacherLabels([...new Set(userIds)])
-    },
-  },
+} = useQueryTable((params) =>
+  portfolioDevelopmentRecordApi.page({
+    ...params,
+    recordType: activeType.value,
+  }),
 )
 interface DevelopmentRecordForm {
   recordTitle: string
@@ -288,7 +281,7 @@ function switchTab(type: RecordType) {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
-            {{ teacherLabel(record.teacherUserId) }}
+            {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'affiliationStaffNo'">
             {{ record.affiliationStaffNo || '—' }}

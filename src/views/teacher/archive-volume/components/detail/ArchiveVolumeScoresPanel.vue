@@ -364,4 +364,27 @@ watch(
   border-top: 1px solid var(--dp-border);
   padding-top: var(--dp-space-3);
 }
+
+.material-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-1);
+}
+
+.material-status-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.material-status-icon--ok {
+  color: var(--dp-success);
+}
+
+.material-status-icon--missing {
+  color: var(--dp-error);
+}
+
+.material-status-icon--pending {
+  color: var(--dp-text-muted);
+}
 </style>

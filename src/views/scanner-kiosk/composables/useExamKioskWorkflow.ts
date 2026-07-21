@@ -1353,6 +1353,27 @@ export function useExamKioskWorkflow() {
     handleError(error, fallback)
   }
 
+  /** 本地任务启动后独立同步账本与工作台；同步失败不得回滚已运行的扫描任务。 */
+  async function syncStartedScanJobContext(scanJobId: string): Promise<void> {
+    const syncResults = await Promise.allSettled([
+      refreshPageLedger(),
+      refreshKioskContext(),
+    ])
+    if (currentJob.value?.scanJobId !== scanJobId) {
+      return
+    }
+    const failedSurfaces: string[] = []
+    if (syncResults[0].status === 'rejected') {
+      failedSurfaces.push('页级账本')
+    }
+    if (syncResults[1].status === 'rejected') {
+      failedSurfaces.push('工作台上下文')
+    }
+    if (failedSurfaces.length) {
+      errorMessage.value = `扫描任务已启动，但${failedSurfaces.join('、')}同步失败；扫描仍在继续，请稍后刷新重试`
+    }
+  }
+
   function clearReviewBatchAnchor() {
     lastReportedBatchExternalNo.value = ''
     lastPreviewScanJobId.value = ''
@@ -3002,6 +3023,7 @@ export function useExamKioskWorkflow() {
     successMessage.value = ''
     resetBusyState()
     clearReviewBatchAnchor()
+    const localJobStarted = false
     try {
       await refreshKioskContext()
       if (!kioskContext.value) return false
@@ -3102,11 +3124,14 @@ export function useExamKioskWorkflow() {
         replaceTargetPage: lifecycleScanSource.replaceTargetPage,
         resolvedScanConfig: batchLifecycle.resolvedScanConfig,
       })
-      await refreshPageLedger()
-      await refreshKioskContext()
       startJobPolling(currentJob.value.scanJobId)
+      void syncStartedScanJobContext(currentJob.value.scanJobId)
       return true
     } catch (error) {
+      if (localJobStarted) {
+        handleError(error, '本地扫描已启动，但扫描状态同步失败', true)
+        return true
+      }
       await handleScanJobStartFailure(error)
       return false
     } finally {

@@ -1,5 +1,6 @@
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
 import type { PageResult } from '@/types'
+import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfolio-archive-record-source-type-enum'
 import http from '@/config/axios'
 
 /** 对齐后端 PortfolioExpertMaterialScope */
@@ -60,7 +61,7 @@ export interface PortfolioExpertReviewMaterialItemVO {
   categoryName?: string
   academicYear?: string
   documentVersionNo?: number
-  sourceType?: string
+  sourceType?: PortfolioArchiveRecordSourceTypeCode
   hasPrimaryFile: boolean
   /** 主附件文件节点；脱敏强制时不返回；后端 Long */
   fileNodeId?: string
@@ -113,7 +114,6 @@ export const portfolioExpertAssignmentApi = {
     subjectTeacherIds: string[]
     materialScope: PortfolioExpertMaterialScope
     expireDays: number
-    maskRequired: boolean
   }) => http.post<PortfolioExpertAssignmentVO>('/api/portfolio/expert-assignment/create', data),
   page: (data: {
     pageNum: number

@@ -1,5 +1,7 @@
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { PortfolioDoubleHighStageReviewStatusCode } from '@/types/enums/portfolio-double-high-stage-review-status-enum'
+import type { PortfolioDoubleHighTaskStatusCode } from '@/types/enums/portfolio-double-high-task-status-enum'
 import http from '@/config/axios'
 
 export interface PortfolioDoubleHighDimensionScoreVO {
@@ -32,7 +34,7 @@ export interface PortfolioDoubleHighTaskStageVO {
   stageDeadline?: string
   materialRef?: { archiveRecordIds: string[] }
   submitTime?: string
-  reviewStatus?: string
+  reviewStatus?: PortfolioDoubleHighStageReviewStatusCode
   reviewComment?: string
   reviewedTime?: string
 }
@@ -51,7 +53,7 @@ export interface PortfolioDoubleHighTaskVO {
   periodStartDate?: string
   periodEndDate?: string
   acceptanceCriteria?: string
-  taskStatus: string
+  taskStatus: PortfolioDoubleHighTaskStatusCode
   currentStageIndex: number
   totalStageCount: number
   acceptanceFileNodeId?: string
@@ -85,7 +87,7 @@ export interface PortfolioDoubleHighMonitorGetRequest {
 export interface PortfolioDoubleHighTaskPageRequest extends QueryDto {
   departmentId?: string
   portfolioOrgId?: string
-  taskStatus?: string
+  taskStatus?: PortfolioDoubleHighTaskStatusCode
   constructionPeriodLabel?: string
   keyword?: string
 }
@@ -122,8 +124,7 @@ export const portfolioDoubleHighApi = {
     http.post<PortfolioDoubleHighMonitorVO>(`${BASE}/monitor/get`, data),
   pageTasks: (data: PortfolioDoubleHighTaskPageRequest) =>
     http.post<PageResult<PortfolioDoubleHighTaskVO>>(`${BASE}/task/page`, data),
-  getTask: (data: { id: string }) =>
-    http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/get`, data),
+  getTask: (data: { id: string }) => http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/get`, data),
   listEvidenceArchives: (data: { id: string }) =>
     http.post<PortfolioDoubleHighEvidenceArchiveVO[]>(`${BASE}/task/evidence-archives/list`, data),
   createTask: (data: {
@@ -150,8 +151,12 @@ export const portfolioDoubleHighApi = {
   }) => http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/stage/submit`, data),
   enterStageReview: (data: { id: string }) =>
     http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/stage/enter-review`, data),
-  reviewStage: (data: { id: string, stageIndex: number, approved: boolean, reviewComment?: string }) =>
-    http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/stage/review`, data),
+  reviewStage: (data: {
+    id: string
+    stageIndex: number
+    approved: boolean
+    reviewComment?: string
+  }) => http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/stage/review`, data),
   voidTask: (data: { id: string, voidReason: string }) =>
     http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/void`, data),
   archiveTask: (data: { id: string }) =>

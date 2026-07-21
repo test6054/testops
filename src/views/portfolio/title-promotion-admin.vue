@@ -73,6 +73,7 @@ import {
   PortfolioTitlePromotionTaskStatusDescription,
 } from '@/types/enums/portfolio-title-promotion-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -1246,7 +1247,10 @@ onMounted(() => {
             @page-change="onAppPageChange"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'lifecycleStatus'">
+              <template v-if="column.key === 'teacherUserId'">
+                {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
+              </template>
+              <template v-else-if="column.key === 'lifecycleStatus'">
                 <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
                   {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
                 </UiTag>

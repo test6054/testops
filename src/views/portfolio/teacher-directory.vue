@@ -818,7 +818,8 @@ async function exportTransferPackage() {
   }
 }
 
-async function importTransferPackageFromFile(event: Event) {
+/** 上传迁入包时冻结目标教师与详情代际，禁止旧文件导入到后切换的教师。 */
+async function importTransferPackageFromFile(event: Event): Promise<void> {
   if (!detail.value?.userId) {
     return
   }
@@ -830,19 +831,27 @@ async function importTransferPackageFromFile(event: Event) {
   if (!file) {
     return
   }
+  const targetTeacherUserId = detail.value.userId
+  const detailGeneration = detailRequestToken.value
   if (!assertCurrentTeacherArchiveWritable('导入迁出包')) {
     input.value = ''
     return
   }
-  const operation = `lifecycle:import:${detail.value.userId}`
+  const operation = `lifecycle:import:${targetTeacherUserId}`
   if (!beginOperation(operation)) {
     input.value = ''
     return
   }
   try {
     const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
+    if (
+      detailRequestToken.value !== detailGeneration
+      || detail.value?.userId !== targetTeacherUserId
+    ) {
+      return
+    }
     const result = await portfolioTeacherLifecycleApi.importTransferPackage({
-      targetTeacherUserId: detail.value.userId,
+      targetTeacherUserId,
       fileNodeId: uploaded.id,
     })
     void message.success(

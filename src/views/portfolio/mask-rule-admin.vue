@@ -53,7 +53,9 @@ const columns: ColumnsType = [
   { title: '字段类型', key: 'fieldType', width: 140 },
   { title: '导出范围', key: 'exportScope', width: 120 },
   { title: '脱敏策略', key: 'maskStrategy', width: 120 },
-  { title: '状态', key: 'enabled', width: 80 },
+  { title: '配置状态', key: 'enabled', width: 90 },
+  { title: '实际生效', key: 'effective', width: 110 },
+  { title: '最近应用', dataIndex: 'lastAppliedTime', key: 'lastAppliedTime', width: 170 },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
 ]
 
@@ -177,8 +179,13 @@ onMounted(() => {
             {{ strategyLabel(record.maskStrategy) }}
           </template>
           <template v-else-if="column.key === 'enabled'">
-            <UiTag :tone="record.enabled ? 'green' : 'gray'">
+            <UiTag :tone="record.enabled ? 'blue' : 'gray'">
               {{ record.enabled ? '启用' : '停用' }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'effective'">
+            <UiTag :tone="record.effective ? 'green' : 'orange'">
+              {{ record.effective ? '已实际应用' : record.enabled ? '等待消费者' : '未生效' }}
             </UiTag>
           </template>
         </template>
