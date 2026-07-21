@@ -4,11 +4,11 @@ import type {
   PortfolioTeachingExtensionActivityVO,
   PortfolioTeachingExtensionCategoryVO,
 } from '@/apis/portfolio/teaching-extension'
+import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -50,8 +50,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 const route = useRoute()
 const router = useRouter()
 
@@ -72,6 +72,7 @@ const uploadingFile = ref(false)
 const attachmentInputRef = ref<HTMLInputElement | null>(null)
 const kindFilter = ref<PortfolioTeachingExtensionKindCode | ''>('')
 const requestToken = ref(0)
+const formEpoch = ref(0)
 const recommendationIntentConsumed = ref(false)
 
 const form = reactive({
@@ -99,9 +100,9 @@ const isTraining = computed(() => form.activityKind === PortfolioTeachingExtensi
 
 function canEditActivity(row: PortfolioTeachingExtensionActivityVO) {
   return (
-    !row.archiveRecordId
-    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT
-    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    !row.archiveRecordId ||
+    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
+    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 }
 
@@ -144,7 +145,9 @@ function kindLabel(kind: PortfolioTeachingExtensionKindCode) {
   return strictEnumLabel(PortfolioTeachingExtensionKindDescription, kind, '活动大类')
 }
 
-function resetForm() {
+function resetForm(): void {
+  formEpoch.value += 1
+  uploadingFile.value = false
   editing.value = null
   form.activityKind = PortfolioTeachingExtensionKindCode.TRAINING
   form.categoryCode = ''
@@ -223,10 +226,10 @@ async function loadData() {
       }
     }
     if (
-      typeof route.query.recommendationId === 'string'
-      && !recommendationIntentConsumed.value
-      && !readonlyMode.value
-      && !modalOpen.value
+      typeof route.query.recommendationId === 'string' &&
+      !recommendationIntentConsumed.value &&
+      !readonlyMode.value &&
+      !modalOpen.value
     ) {
       openModal()
     }
@@ -246,7 +249,7 @@ async function loadData() {
   }
 }
 
-function openModal(row?: PortfolioTeachingExtensionActivityVO) {
+function openModal(row?: PortfolioTeachingExtensionActivityVO): void {
   if (row?.archiveRecordId && !canEditActivity(row)) {
     void message.info('该培训活动的档案正在审核或已正式归档，不可修改')
     return
@@ -255,6 +258,8 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
     showFormValidationMessage('管理员查看模式下不可新增活动')
     return
   }
+  formEpoch.value += 1
+  uploadingFile.value = false
   editing.value = row || null
   form.activityKind = row?.activityKind || PortfolioTeachingExtensionKindCode.TRAINING
   form.categoryCode = row?.categoryCode || ''
@@ -268,10 +273,10 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
   form.fileId = row?.fileId || ''
   form.attachmentName = row?.fileId ? `附件 ${row.fileId}` : ''
   if (!row && !recommendationIntentConsumed.value) {
-    form.trainingRecommendationId
-      = typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
-    form.activityName
-      = typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
+    form.trainingRecommendationId =
+      typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
+    form.activityName =
+      typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
     recommendationIntentConsumed.value = true
   }
   modalOpen.value = true
@@ -279,10 +284,10 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
 
 async function saveActivity() {
   if (
-    saving.value
-    || Boolean(deletingActivityId.value)
-    || Boolean(deletingCategoryId.value)
-    || Boolean(submittingTrainingId.value)
+    saving.value ||
+    Boolean(deletingActivityId.value) ||
+    Boolean(deletingCategoryId.value) ||
+    Boolean(submittingTrainingId.value)
   ) {
     return
   }
@@ -456,25 +461,44 @@ function openAttachmentPicker() {
   attachmentInputRef.value?.click()
 }
 
-async function onAttachmentPick(event: Event) {
+/** 上传结果绑定教师、活动和表单代际，过期文件不得写入当前表单。 */
+async function onAttachmentPick(event: Event): Promise<void> {
   if (!(event.target instanceof HTMLInputElement)) {
     return
   }
-  const file = event.target.files?.[0]
+  const input = event.target
+  const file = input.files?.[0]
   if (!file) {
     return
+  }
+  const context = {
+    teacherId: targetTeacherId.value,
+    activityId: editing.value?.id,
+    epoch: formEpoch.value,
   }
   uploadingFile.value = true
   try {
     const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
+    if (
+      formEpoch.value !== context.epoch ||
+      targetTeacherId.value !== context.teacherId ||
+      editing.value?.id !== context.activityId
+    ) {
+      return
+    }
     form.fileId = uploaded.id
     form.attachmentName = uploaded.nodeName
     void message.success('证明材料已上传')
   } catch (error) {
+    if (formEpoch.value !== context.epoch) {
+      return
+    }
     showUserError(error, '证明材料上传失败')
   } finally {
-    uploadingFile.value = false
-    event.target.value = ''
+    if (formEpoch.value === context.epoch) {
+      uploadingFile.value = false
+    }
+    input.value = ''
   }
 }
 
@@ -584,9 +608,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               <UiButton
                 size="sm"
                 v-if="
-                  !readonlyMode
-                    && record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING
-                    && !record.archiveRecordId
+                  !readonlyMode &&
+                  record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING &&
+                  !record.archiveRecordId
                 "
                 variant="ghost"
                 :loading="submittingTrainingId === record.id"

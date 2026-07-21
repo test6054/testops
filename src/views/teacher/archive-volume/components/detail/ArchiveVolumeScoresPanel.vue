@@ -90,9 +90,6 @@ import type {
   ArchiveVolumeExamGateResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
 import {
   ArchiveMaterialTypeCode,
   ArchiveMaterialTypeDescription,
@@ -103,6 +100,9 @@ import {
   getArchiveVolumeExamGate,
   pageArchiveVolumeMaterials,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ARCHIVE_TEACHING_AFFAIRS_SCORE_COMPLETION_HINT } from '@/apis/mark/teaching-affairs-sync'
 import ArchiveExamScoreGatePanel from '@/components/archive-volume/ArchiveExamScoreGatePanel.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -147,8 +147,8 @@ const pageTotal = ref(0)
 
 const showExamGate = computed(
   () =>
-    props.detail.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL
-    && !!props.detail.volume.examId,
+    props.detail.volume.scoreSource === ArchiveScoreSourceCode.MARK_INTERNAL &&
+    !!props.detail.volume.examId,
 )
 
 const showTeachingAffairsGate = computed(
@@ -157,8 +157,8 @@ const showTeachingAffairsGate = computed(
 
 const teachingAffairsGatePassed = computed(
   () =>
-    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED
-    || props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED,
+    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.COMPLETED ||
+    props.detail.volume.scoreCompletionStatus === ArchiveScoreCompletionStatusCode.VERIFIED,
 )
 
 const teachingAffairsGateLabel = computed(() => {
@@ -171,8 +171,8 @@ const teachingAffairsGateLabel = computed(() => {
 const completionTone = computed((): BadgeTone => {
   const code = props.detail.volume.scoreCompletionStatus
   if (
-    code === ArchiveScoreCompletionStatusCode.COMPLETED
-    || code === ArchiveScoreCompletionStatusCode.VERIFIED
+    code === ArchiveScoreCompletionStatusCode.COMPLETED ||
+    code === ArchiveScoreCompletionStatusCode.VERIFIED
   ) {
     return 'green'
   }
@@ -238,7 +238,7 @@ async function loadScoreMaterials(): Promise<void> {
   }
 }
 
-function handlePageChange(event: { current: number, pageSize: number }): void {
+function handlePageChange(event: { current: number; pageSize: number }): void {
   pageNum.value = event.current
   pageSize.value = event.pageSize
   void loadScoreMaterials()
@@ -363,5 +363,28 @@ watch(
 .archive-volume-scores-panel__materials {
   border-top: 1px solid var(--dp-border);
   padding-top: var(--dp-space-3);
+}
+
+.material-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dp-space-1);
+}
+
+.material-status-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.material-status-icon--ok {
+  color: var(--dp-success);
+}
+
+.material-status-icon--missing {
+  color: var(--dp-error);
+}
+
+.material-status-icon--pending {
+  color: var(--dp-text-muted);
 }
 </style>

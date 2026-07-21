@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { PortfolioCourseArchiveCourseVO } from '@/apis/portfolio/course-archive'
+import { portfolioCourseArchiveApi } from '@/apis/portfolio/course-archive'
 import type { PortfolioProcessSessionVO } from '@/apis/portfolio/process-session'
+import { portfolioProcessSessionApi } from '@/apis/portfolio/process-session'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
 /**
  * 教学全过程过程记录：讲授课程锚定 + 课次三段（准备/过程/反馈）独立落库。
@@ -9,8 +11,6 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import { portfolioCourseArchiveApi } from '@/apis/portfolio/course-archive'
-import { portfolioProcessSessionApi } from '@/apis/portfolio/process-session'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -45,8 +45,8 @@ defineOptions({ name: 'PortfolioTeacherProcessJournal' })
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 const loading = ref(false)
 const sessionsLoading = ref(false)
 const saving = ref(false)
@@ -60,7 +60,7 @@ const linking = ref(false)
 const linkSessionId = ref<string | undefined>()
 const linkCategoryId = ref<string | undefined>()
 const linkSubmitForReview = ref(true)
-const categoryOptions = ref<{ value: string, label: string, code?: string }[]>([])
+const categoryOptions = ref<{ value: string; label: string; code?: string }[]>([])
 const categoriesLoading = ref(false)
 
 const form = reactive({
@@ -104,8 +104,8 @@ async function loadCourses() {
     })
     courses.value = overview.courses ?? []
     if (
-      selectedCourseId.value
-      && !courses.value.some((item) => item.taughtCourseId === selectedCourseId.value)
+      selectedCourseId.value &&
+      !courses.value.some((item) => item.taughtCourseId === selectedCourseId.value)
     ) {
       selectedCourseId.value = ''
     }
@@ -144,9 +144,9 @@ async function loadSessions() {
 function flattenCategories(
   nodes: PortfolioArchiveCategoryTreeNodeVO[] | undefined,
   prefix = '',
-): { value: string, label: string, code?: string }[] {
+): { value: string; label: string; code?: string }[] {
   // 仅列出已发布模板的分类：租户可配类目通过档案模板治理 + 系统预置 PROCESS_SESSION
-  const rows: { value: string, label: string, code?: string }[] = []
+  const rows: { value: string; label: string; code?: string }[] = []
   for (const node of nodes ?? []) {
     const label = `${prefix}${node.categoryName || node.categoryCode || node.id}`
     if (node.id && node.publishedVersionId) {
@@ -528,7 +528,9 @@ usePortfolioScopedLoader(loadCourses, () => targetTeacherId.value)
                   <UiTag v-if="row.selectedForMasterpiece" tone="orange" size="sm">
                     代表作精选
                   </UiTag>
-                  <UiTag v-if="row.linkedArchiveRecordId" tone="green" size="sm">已关联档案</UiTag>
+                  <UiTag v-if="row.linkedArchiveRecordId" tone="green" size="sm">
+                    {{ row.linkedArchiveLabel }}
+                  </UiTag>
                   <UiTag tone="gray" size="sm">{{ segmentSummary(row) }}</UiTag>
                 </div>
               </div>

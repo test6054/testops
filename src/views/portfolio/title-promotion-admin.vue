@@ -9,12 +9,12 @@ import type {
   PortfolioTitleTaskCriteriaItem,
   PortfolioTitleTaskCriteriaVO,
 } from '@/apis/portfolio/title-promotion'
+import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import TitlePromotionFlowPanel from '@/components/portfolio/TitlePromotionFlowPanel.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -73,6 +73,7 @@ import {
   PortfolioTitlePromotionTaskStatusDescription,
 } from '@/types/enums/portfolio-title-promotion-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -81,7 +82,7 @@ const router = useRouter()
 const route = useRoute()
 const canManageSchoolWorkflow = computed(() => userStore.isTenantAdmin)
 const tabItems = computed(() => {
-  const items: Array<{ key: 'task' | 'application', label: string }> = []
+  const items: Array<{ key: 'task' | 'application'; label: string }> = []
   if (canManageSchoolWorkflow.value) {
     items.push({ key: 'task', label: '申报任务' })
   }
@@ -160,7 +161,7 @@ const criteriaOpen = ref(false)
 const criteriaTask = ref<PortfolioTitlePromotionTaskVO | null>(null)
 const criteriaList = ref<PortfolioTitleTaskCriteriaVO[]>([])
 const criteriaTemplates = ref<PortfolioTitleCriteriaTemplateVO[]>([])
-const criteriaCategoryOptions = ref<Array<{ value: string, label: string }>>([])
+const criteriaCategoryOptions = ref<Array<{ value: string; label: string }>>([])
 const selectedTemplateIds = ref<string[]>([])
 const changeLogs = ref<PortfolioTitleTaskCriteriaChangeLogVO[]>([])
 const emergencyReason = ref('')
@@ -186,8 +187,8 @@ async function bindActionTeacherAndAssert(
   teacherUserId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value
-    = teacherUserId != null && String(teacherUserId).trim() !== '' ? String(teacherUserId) : undefined
+  actionTeacherId.value =
+    teacherUserId != null && String(teacherUserId).trim() !== '' ? String(teacherUserId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
@@ -493,7 +494,7 @@ async function openCriteria(row: PortfolioTitlePromotionTaskVO) {
     criteriaBaseline.value = criteriaFingerprint()
     try {
       const tree = await portfolioArchiveTemplateApi.listCategoryTree()
-      const options: Array<{ value: string, label: string }> = []
+      const options: Array<{ value: string; label: string }> = []
       const visit = (nodes: PortfolioArchiveCategoryTreeNodeVO[]) => {
         for (const node of nodes) {
           if (node.status === PortfolioArchiveCategoryStatusCode.ACTIVE) {
@@ -587,8 +588,8 @@ const jobCategoryOptions = ALL_PORTFOLIO_TITLE_JOB_CATEGORY_CODES.map((value) =>
 function canEditCriteriaList() {
   if (!criteriaTask.value) return false
   return (
-    criteriaTask.value.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT
-    || criteriaTask.value.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED
+    criteriaTask.value.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT ||
+    criteriaTask.value.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED
   )
 }
 
@@ -646,12 +647,12 @@ function validateCriteriaDraftList() {
     const code = (item.criteriaCode || '').trim()
     const title = (item.criteriaTitle || '').trim()
     if (
-      !code
-      || !title
-      || !item.gateKind
-      || !item.checkType
-      || !item.satisfyMode
-      || !item.pathCode
+      !code ||
+      !title ||
+      !item.gateKind ||
+      !item.checkType ||
+      !item.satisfyMode ||
+      !item.pathCode
     ) {
       showFormValidationMessage('请完整填写条件编码、标题、门槛、核验类型、满足模式与路径')
       return false
@@ -662,16 +663,16 @@ function validateCriteriaDraftList() {
     }
     codes.add(code)
     if (
-      (item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ANY_OF_GROUP
-        || item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP)
-      && !(item.groupCode || '').trim()
+      (item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ANY_OF_GROUP ||
+        item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP) &&
+      !(item.groupCode || '').trim()
     ) {
       showFormValidationMessage(`组满足模式必须填写组编码：${code}`)
       return false
     }
     if (
-      item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
-      && (!item.groupMinimumCount || item.groupMinimumCount < 1)
+      item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP &&
+      (!item.groupMinimumCount || item.groupMinimumCount < 1)
     ) {
       showFormValidationMessage('组内最低满足条数必须为正整数：' + code)
       return false
@@ -681,22 +682,22 @@ function validateCriteriaDraftList() {
       return false
     }
     if (
-      requiresPositiveExpectedValueCheckType(item.checkType)
-      && !/^[1-9]\d*$/.test((item.expectedValue || '').trim())
+      requiresPositiveExpectedValueCheckType(item.checkType) &&
+      !/^[1-9]\d*$/.test((item.expectedValue || '').trim())
     ) {
       showFormValidationMessage('当前核验类型必须填写正整数阈值：' + code)
       return false
     }
     if (
-      item.checkType === PortfolioTitleCriteriaCheckTypeCode.DEGREE_REQUIREMENT
-      && !(item.expectedValue || '').trim()
+      item.checkType === PortfolioTitleCriteriaCheckTypeCode.DEGREE_REQUIREMENT &&
+      !(item.expectedValue || '').trim()
     ) {
       showFormValidationMessage('学历学位要求必须填写期望值：' + code)
       return false
     }
     if (
-      item.checkType === PortfolioTitleCriteriaCheckTypeCode.HONOR_LEVEL
-      && !isPortfolioHonorLevelCode((item.expectedValue || '').trim())
+      item.checkType === PortfolioTitleCriteriaCheckTypeCode.HONOR_LEVEL &&
+      !isPortfolioHonorLevelCode((item.expectedValue || '').trim())
     ) {
       showFormValidationMessage('获奖级别必须填写有效级别编码：' + code)
       return false
@@ -708,26 +709,26 @@ function validateCriteriaDraftList() {
   }
   const researchCriteria = criteriaList.value.filter(
     (item) =>
-      item.checkType === PortfolioTitleCriteriaCheckTypeCode.PUBLICATION_COUNT
-      || item.checkType === PortfolioTitleCriteriaCheckTypeCode.PROJECT_COUNT,
+      item.checkType === PortfolioTitleCriteriaCheckTypeCode.PUBLICATION_COUNT ||
+      item.checkType === PortfolioTitleCriteriaCheckTypeCode.PROJECT_COUNT,
   )
   for (let leftIndex = 0; leftIndex < researchCriteria.length; leftIndex++) {
     const left = researchCriteria[leftIndex]
     for (let rightIndex = leftIndex + 1; rightIndex < researchCriteria.length; rightIndex++) {
       const right = researchCriteria[rightIndex]
       if (
-        left.checkType === right.checkType
-        || !left.evidenceCategoryCode
-        || left.evidenceCategoryCode !== right.evidenceCategoryCode
+        left.checkType === right.checkType ||
+        !left.evidenceCategoryCode ||
+        left.evidenceCategoryCode !== right.evidenceCategoryCode
       ) {
         continue
       }
-      const pathOverlap
-        = left.pathCode === PortfolioTitleCriteriaPathCode.COMMON
-          || right.pathCode === PortfolioTitleCriteriaPathCode.COMMON
-          || left.pathCode === right.pathCode
-      const jobOverlap
-        = !left.jobCategory || !right.jobCategory || left.jobCategory === right.jobCategory
+      const pathOverlap =
+        left.pathCode === PortfolioTitleCriteriaPathCode.COMMON ||
+        right.pathCode === PortfolioTitleCriteriaPathCode.COMMON ||
+        left.pathCode === right.pathCode
+      const jobOverlap =
+        !left.jobCategory || !right.jobCategory || left.jobCategory === right.jobCategory
       if (pathOverlap && jobOverlap) {
         showFormValidationMessage(
           `同一申报路径/岗位的论文与项目条件不得复用证据档案分类：${left.evidenceCategoryCode}`,
@@ -1040,8 +1041,8 @@ async function runReview(
   const operation = `${action}:${targetId}`
   if (!beginWorkflowOperation(operation)) return
   try {
-    const negativeAction
-      = action === 'collegeReturn' || action === 'hrReturn' || action === 'hrReject'
+    const negativeAction =
+      action === 'collegeReturn' || action === 'hrReturn' || action === 'hrReject'
     if (negativeAction && !reviewForm.opinion.trim()) {
       showFormValidationMessage('退回或驳回必须填写审核意见')
       return
@@ -1087,13 +1088,13 @@ async function runReview(
   }
 }
 
-function onTaskPageChange(page: { current: number, pageSize: number }) {
+function onTaskPageChange(page: { current: number; pageSize: number }) {
   taskQuery.pageNum = page.current
   taskQuery.pageSize = page.pageSize
   void loadTasks()
 }
 
-function onAppPageChange(page: { current: number, pageSize: number }) {
+function onAppPageChange(page: { current: number; pageSize: number }) {
   appQuery.pageNum = page.current
   appQuery.pageSize = page.pageSize
   void loadApps()
@@ -1246,7 +1247,10 @@ onMounted(() => {
             @page-change="onAppPageChange"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'lifecycleStatus'">
+              <template v-if="column.key === 'teacherUserId'">
+                {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
+              </template>
+              <template v-else-if="column.key === 'lifecycleStatus'">
                 <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
                   {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
                 </UiTag>
@@ -1280,11 +1284,11 @@ onMounted(() => {
                 </UiButton>
                 <UiButton
                   v-if="
-                    record.applicationStatus
-                      === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
-                      || (canManageSchoolWorkflow
-                        && record.applicationStatus
-                          === PortfolioTitlePromotionApplicationStatusCode.HR_PENDING)
+                    record.applicationStatus ===
+                      PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING ||
+                    (canManageSchoolWorkflow &&
+                      record.applicationStatus ===
+                        PortfolioTitlePromotionApplicationStatusCode.HR_PENDING)
                   "
                   size="sm"
                   variant="primary"
@@ -1295,9 +1299,9 @@ onMounted(() => {
                 </UiButton>
                 <UiButton
                   v-if="
-                    canManageSchoolWorkflow
-                      && record.applicationStatus
-                        === PortfolioTitlePromotionApplicationStatusCode.EXPERT_PENDING
+                    canManageSchoolWorkflow &&
+                    record.applicationStatus ===
+                      PortfolioTitlePromotionApplicationStatusCode.EXPERT_PENDING
                   "
                   size="sm"
                   variant="primary"
@@ -1308,10 +1312,10 @@ onMounted(() => {
                 </UiButton>
                 <UiButton
                   v-if="
-                    canManageSchoolWorkflow
-                      && record.applicationStatus
-                        === PortfolioTitlePromotionApplicationStatusCode.PUBLICITY
-                      && !record.publicityStartTime
+                    canManageSchoolWorkflow &&
+                    record.applicationStatus ===
+                      PortfolioTitlePromotionApplicationStatusCode.PUBLICITY &&
+                    !record.publicityStartTime
                   "
                   variant="primary"
                   size="sm"
@@ -1379,20 +1383,20 @@ onMounted(() => {
           {{
             reviewTarget.pathCode
               ? strictEnumLabel(
-                PortfolioTitleCriteriaPathDescription,
-                reviewTarget.pathCode,
-                '申报路径',
-              )
+                  PortfolioTitleCriteriaPathDescription,
+                  reviewTarget.pathCode,
+                  '申报路径',
+                )
               : '-'
           }}
           · 岗位
           {{
             reviewTarget.jobCategory
               ? strictEnumLabel(
-                PortfolioTitleJobCategoryDescription,
-                reviewTarget.jobCategory,
-                '岗位类型',
-              )
+                  PortfolioTitleJobCategoryDescription,
+                  reviewTarget.jobCategory,
+                  '岗位类型',
+                )
               : '全部'
           }}
         </p>
@@ -1420,8 +1424,8 @@ onMounted(() => {
         <div class="title-promo__actions">
           <template
             v-if="
-              reviewTarget.applicationStatus
-                === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
+              reviewTarget.applicationStatus ===
+              PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
             "
           >
             <UiButton
@@ -1443,9 +1447,9 @@ onMounted(() => {
           </template>
           <template
             v-else-if="
-              canManageSchoolWorkflow
-                && reviewTarget.applicationStatus
-                  === PortfolioTitlePromotionApplicationStatusCode.HR_PENDING
+              canManageSchoolWorkflow &&
+              reviewTarget.applicationStatus ===
+                PortfolioTitlePromotionApplicationStatusCode.HR_PENDING
             "
           >
             <UiButton
@@ -1498,20 +1502,20 @@ onMounted(() => {
           {{
             expertTarget.pathCode
               ? strictEnumLabel(
-                PortfolioTitleCriteriaPathDescription,
-                expertTarget.pathCode,
-                '申报路径',
-              )
+                  PortfolioTitleCriteriaPathDescription,
+                  expertTarget.pathCode,
+                  '申报路径',
+                )
               : '-'
           }}
           · 岗位
           {{
             expertTarget.jobCategory
               ? strictEnumLabel(
-                PortfolioTitleJobCategoryDescription,
-                expertTarget.jobCategory,
-                '岗位类型',
-              )
+                  PortfolioTitleJobCategoryDescription,
+                  expertTarget.jobCategory,
+                  '岗位类型',
+                )
               : '全部'
           }}
         </p>
@@ -1691,8 +1695,8 @@ onMounted(() => {
                         item.groupCode = undefined
                       }
                       if (
-                        item.satisfyMode
-                        !== PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
+                        item.satisfyMode !==
+                        PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
                       ) {
                         item.groupMinimumCount = undefined
                       }
@@ -1775,8 +1779,8 @@ onMounted(() => {
                   v-model="item.blockOnFail"
                   type="checkbox"
                   :disabled="
-                    !canEditCriteriaList()
-                      || item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD
+                    !canEditCriteriaList() ||
+                    item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD
                   "
                   @change="
                     () => {

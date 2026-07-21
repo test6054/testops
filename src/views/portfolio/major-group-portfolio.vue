@@ -5,13 +5,14 @@ import type {
   PortfolioMajorGroupPortfolioSectionItemVO,
   PortfolioMajorGroupPortfolioVO,
 } from '@/apis/portfolio/governance'
+import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import type { PortfolioOrgTreeNodeVO } from '@/apis/portfolio/types'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
-import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -29,11 +30,11 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { PortfolioDoubleHighTaskStatusDescription } from '@/types/enums/portfolio-double-high-task-status-enum'
 import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import {
   ALL_PORTFOLIO_MAJOR_GROUP_SECTION_CODES,
   PortfolioMajorGroupSectionCode,
@@ -48,7 +49,7 @@ function readRouteStringParam(value: unknown): string {
 }
 
 function flattenMajorGroupOptions(roots: PortfolioOrgTreeNodeVO[]) {
-  const result: { value: string, label: string }[] = []
+  const result: { value: string; label: string }[] = []
   function walk(nodes: PortfolioOrgTreeNodeVO[], prefix = '') {
     for (const node of nodes) {
       const label = prefix ? `${prefix} / ${node.name}` : node.name
@@ -154,6 +155,21 @@ const activeSectionColumns = computed(() =>
     : sectionColumns,
 )
 
+/** TASK 分区状态按双高任务枚举契约映射中文；其他分区沿用 statusLabel。 */
+function sectionStatusDisplay(record: PortfolioMajorGroupPortfolioSectionItemVO): string {
+  if (activeSection.value === PortfolioMajorGroupSectionCode.TASK) {
+    if (!record.taskStatus) {
+      throw new Error('枚举合同不同步：双高任务状态缺失')
+    }
+    return strictEnumLabel(
+      PortfolioDoubleHighTaskStatusDescription,
+      record.taskStatus,
+      '双高任务状态',
+    )
+  }
+  return record.statusLabel
+}
+
 function sectionLabel(code: PortfolioMajorGroupSectionCode): string {
   return PortfolioMajorGroupSectionDescription[code]
 }
@@ -166,12 +182,9 @@ function complianceTypeLabel(code: string): string {
   )
 }
 
-function alertStatusLabel(code: string): string {
-  return strictEnumLabel(
-    PortfolioAlertStatusDescription,
-    code as PortfolioAlertStatusCode,
-    '预警状态',
-  )
+function alertStatusLabel(code?: PortfolioAlertStatusCode): string {
+  if (!code) return '—'
+  return strictEnumLabel(PortfolioAlertStatusDescription, code, '预警状态')
 }
 
 async function loadPortfolio() {
@@ -313,7 +326,7 @@ async function comparePeriods() {
   }
 }
 
-function onSectionPageChange(page: { current: number, pageSize: number }) {
+function onSectionPageChange(page: { current: number; pageSize: number }) {
   sectionFilter.pageNum = page.current
   sectionFilter.pageSize = page.pageSize
 }
@@ -526,7 +539,10 @@ watch(
             @page-change="onSectionPageChange"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'ownerIdentityLayers'">
+              <template v-if="column.key === 'statusLabel'">
+                {{ sectionStatusDisplay(record) }}
+              </template>
+              <template v-else-if="column.key === 'ownerIdentityLayers'">
                 <PortfolioOwnerIdentityLayersCell
                   :layers="record.ownerIdentityLayers"
                   :note="record.ownerMultiIdentityNote"

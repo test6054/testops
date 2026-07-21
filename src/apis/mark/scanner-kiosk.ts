@@ -32,6 +32,7 @@ import type { ExamScannerPageScanStatusCode } from '@/types/enums/exam-scanner-p
 import type { ExamScannerPageServerReceiveStatusCode } from '@/types/enums/exam-scanner-page-server-receive-status-enum'
 import type { ExamScannerPageUploadStatusCode } from '@/types/enums/exam-scanner-page-upload-status-enum'
 import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
+import type { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
 import type { ScannerKioskBlockReasonCode } from '@/types/enums/scanner-kiosk-block-reason-enum'
 import type { ScannerKioskResumeActionCode } from '@/types/enums/scanner-kiosk-resume-action-enum'
 import type { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
@@ -771,7 +772,7 @@ export interface PortfolioGapTaskSummaryInternalVO {
   updateTime?: string
   courseCode?: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
 }
 
 export interface ScanDispatchAdhocTicketCreateRequest {
@@ -786,7 +787,7 @@ export interface ScanDispatchAdhocTicketCreateRequest {
   collectMode?: PortfolioCollectModeCode
   gapTaskId?: string
   categoryId?: string
-  taskType?: string
+  taskType?: PortfolioAiTaskTypeCode
   templateCode?: string
   archiveRecordId?: string
   materialTags?: string[]

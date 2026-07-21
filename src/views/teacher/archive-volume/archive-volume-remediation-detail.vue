@@ -11,9 +11,9 @@
           <UiButton variant="ghost" size="sm" @click="goRemediationList">返回整改列表</UiButton>
           <UiButton
             v-if="
-              taskDetail
-                && showAssigneeActions
-                && taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
+              taskDetail &&
+              showAssigneeActions &&
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             variant="primary"
             size="sm"
@@ -24,9 +24,9 @@
           </UiButton>
           <UiButton
             v-if="
-              taskDetail
-                && showAssigneeActions
-                && taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              taskDetail &&
+              showAssigneeActions &&
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             variant="primary"
             size="sm"
@@ -52,7 +52,7 @@
         <template #head>
           <div class="archive-remediation-detail__diag-head">
             <span>诊断信息</span>
-            <UiTag v-if="taskDetail.diagnosticCode" tone="red" size="sm">
+            <UiTag v-if="taskDetail.diagnosticCode" tone="gray" size="sm">
               {{ remediationDiagnosticLabel(taskDetail.diagnosticCode) }}
             </UiTag>
           </div>
@@ -86,7 +86,9 @@
         </template>
         <template #toolbar>
           <div class="archive-remediation-detail__flow-toolbar">
-            <span class="archive-remediation-detail__flow-hint">OPEN → IN_PROGRESS → RESUBMITTED → CLOSED</span>
+            <span class="archive-remediation-detail__flow-hint"
+              >待处理 → 处理中 → 已重提 → 已关闭</span
+            >
             <div class="archive-remediation-detail__completion">
               <span class="archive-remediation-detail__completion-label">任务进度</span>
               <ArchiveReadinessRateBar :percent="taskCompletionPercent" />
@@ -190,8 +192,14 @@
         flush
         class="archive-remediation-detail__section"
       >
-        <template #head>协调人验证</template>
-        <div class="archive-remediation-detail__verify">
+        <template #head>协调人核验</template>
+        <div
+          class="archive-remediation-detail__verify"
+          :class="{
+            'archive-remediation-detail__verify--closed':
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.CLOSED,
+          }"
+        >
           <p class="archive-remediation-detail__verify-notes">
             {{ taskDetail.verificationComment || '—' }}
           </p>
@@ -199,9 +207,12 @@
             v-if="taskDetail.verifierNickName || taskDetail.verifiedTime"
             class="archive-remediation-detail__verify-meta"
           >
-            <span v-if="taskDetail.verifierNickName">验证人: {{ taskDetail.verifierNickName }}</span>
+            <span v-if="taskDetail.verifierNickName"
+              >核验人: {{ taskDetail.verifierNickName }}</span
+            >
             <span v-if="taskDetail.verifiedTime">
-              · {{ formatDateTime(taskDetail.verifiedTime) }}</span>
+              · {{ formatDateTime(taskDetail.verifiedTime) }}</span
+            >
           </p>
         </div>
       </WorkbenchSurfaceCard>
@@ -294,8 +305,8 @@
           </template>
           <UiButton
             v-if="
-              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN
-                || taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.OPEN ||
+              taskDetail.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
@@ -373,12 +384,6 @@ import type {
   ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
-import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_REMEDIATION_EVIDENCE_STATUS_TONE,
   ARCHIVE_REMEDIATION_STATUS_TONE,
@@ -396,6 +401,13 @@ import {
   registerRemediationEvidence,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { ArchiveRemediationDiagnosticCode } from '@/types/enums/archive-remediation-diagnostic-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import ArchiveLifecyclePipe from '@/components/archive-volume/ArchiveLifecyclePipe.vue'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
@@ -515,7 +527,7 @@ const signalMetrics = computed<SignalMetric[]>(() => {
       key: 'due',
       label: '截止日',
       value: task.dueTime ? formatDateTime(task.dueTime) : '—',
-      tone: task.dueTime ? 'orange' : undefined,
+      tone: remediationDueTone(task),
     },
   ]
 })
@@ -564,9 +576,9 @@ const showCoordinatorActions = computed(
 /** MVR-384：责任人写入口认 BE canUpdateTask 且非协调人写位；禁止仅凭 assigneeUserId 本地身份放行 */
 const showAssigneeActions = computed(
   () =>
-    !isSupervisionRead.value
-    && taskDetail.value?.canUpdateTask === true
-    && taskDetail.value?.canManageAsCoordinator !== true,
+    !isSupervisionRead.value &&
+    taskDetail.value?.canUpdateTask === true &&
+    taskDetail.value?.canManageAsCoordinator !== true,
 )
 
 /** MVR-192/338：与 BE canCloseWithVerification 同源 */
@@ -602,8 +614,8 @@ const showVerifierPanel = computed(() => {
   const task = taskDetail.value
   if (!task) return false
   if (
-    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
     return Boolean(task.verificationComment || task.verifierNickName || task.verifiedTime)
   }
@@ -624,6 +636,15 @@ function remediationPriorityLabel(code: ArchiveRemediationPriorityCode) {
 
 function remediationPriorityTone(code: ArchiveRemediationPriorityCode) {
   return strictEnumTone(ARCHIVE_REMEDIATION_PRIORITY_TONE, code, 'taskPriority')
+}
+
+/** 整改截止日着色：已关闭不计；已逾期=红，7 天内到期=橙，其余不着色。 */
+function remediationDueTone(task: ArchiveRemediationTaskResponse): BadgeTone | undefined {
+  if (!task.dueTime || task.taskStatus === ArchiveRemediationStatusCode.CLOSED) return undefined
+  const remaining = new Date(task.dueTime).getTime() - Date.now()
+  if (remaining < 0) return 'red'
+  if (remaining <= 7 * 24 * 60 * 60 * 1000) return 'orange'
+  return undefined
 }
 
 function evidenceStatusLabel(code: ArchiveRemediationEvidenceStatusCode) {
@@ -965,6 +986,11 @@ onMounted(() => {
   padding: var(--dp-space-3);
   border-radius: var(--dp-radius-sm);
   background: var(--dp-surface-sunken);
+}
+
+.archive-remediation-detail__verify--closed {
+  background: color-mix(in srgb, var(--dp-success) 8%, var(--dp-surface));
+  border: 1px solid color-mix(in srgb, var(--dp-success) 28%, var(--dp-surface));
 }
 
 .archive-remediation-detail__verify-notes {

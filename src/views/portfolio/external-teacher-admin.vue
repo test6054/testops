@@ -2,6 +2,12 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
 import type { PortfolioExternalTeacherImportBatchStatusCode } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
+  PortfolioExternalTeacherDataStatusCode,
+  PortfolioExternalTeacherDataStatusDescription,
+  PortfolioExternalTeacherImportBatchStatusDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
   PortfolioExternalTeacherPageRequest,
@@ -10,17 +16,11 @@ import type {
   PortfolioExternalTeacherVO,
   PortfolioIndustryMentorContributionVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
-  PortfolioExternalTeacherDataStatusCode,
-  PortfolioExternalTeacherDataStatusDescription,
-  PortfolioExternalTeacherImportBatchStatusDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -74,8 +74,8 @@ const importModalOpen = ref(false)
 type ExternalTeacherFilters = Pick<
   PortfolioExternalTeacherPageRequest,
   'dataStatus' | 'teachSubject' | 'teacherSource' | 'contractStatus'
->
-& Record<string, unknown>
+> &
+  Record<string, unknown>
 
 const {
   loading,
@@ -130,6 +130,7 @@ interface AttachmentItem {
 const attachmentItems = ref<AttachmentItem[]>([])
 const attachmentInputRef = ref<HTMLInputElement>()
 const uploadingAttachment = ref(false)
+const editorEpoch = ref(0)
 
 const form = reactive<PortfolioExternalTeacherSaveRequest>({
   id: undefined,
@@ -266,6 +267,9 @@ function resetForm() {
 
 /** 编辑详情切换或失败时必须回收抽屉上下文，避免误把失败编辑当成新增保存。 */
 function resetEditorContext() {
+  editorEpoch.value += 1
+  uploadingAttachment.value = false
+  detailContribution.value = null
   resetForm()
   editLoading.value = false
 }
@@ -283,7 +287,8 @@ function openAttachmentPicker() {
   attachmentInputRef.value?.click()
 }
 
-async function onAttachmentPick(event: Event) {
+/** 上传结果绑定外聘教师编辑器代际，旧详情附件不得追加到新对象。 */
+async function onAttachmentPick(event: Event): Promise<void> {
   if (!(event.target instanceof HTMLInputElement)) {
     return
   }
@@ -292,10 +297,17 @@ async function onAttachmentPick(event: Event) {
   if (!files?.length) {
     return
   }
+  const context = {
+    externalTeacherId: form.id,
+    epoch: editorEpoch.value,
+  }
   uploadingAttachment.value = true
   try {
     for (const file of Array.from(files)) {
       const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
+      if (editorEpoch.value !== context.epoch || form.id !== context.externalTeacherId) {
+        return
+      }
       attachmentItems.value = [
         ...attachmentItems.value,
         { fileNodeId: uploaded.id, fileName: uploaded.nodeName },
@@ -303,9 +315,14 @@ async function onAttachmentPick(event: Event) {
     }
     void message.success('附件已上传')
   } catch (error) {
+    if (editorEpoch.value !== context.epoch) {
+      return
+    }
     showUserError(error, '附件上传失败')
   } finally {
-    uploadingAttachment.value = false
+    if (editorEpoch.value === context.epoch) {
+      uploadingAttachment.value = false
+    }
     input.value = ''
   }
 }
@@ -357,8 +374,7 @@ async function searchRoster() {
 }
 
 function openCreate() {
-  resetForm()
-  detailContribution.value = null
+  resetEditorContext()
   drawerOpen.value = true
 }
 
@@ -382,8 +398,10 @@ function handleExternalTeacherAction(key: string, record: PortfolioExternalTeach
   }
 }
 
-async function openEdit(id: string) {
+/** 加载指定外聘教师详情，只有当前编辑器代际可以写入共享表单。 */
+async function openEdit(id: string): Promise<void> {
   resetEditorContext()
+  const contextEpoch = editorEpoch.value
   editLoading.value = true
   drawerOpen.value = true
   try {
@@ -391,6 +409,9 @@ async function openEdit(id: string) {
       portfolioExternalTeacherApi.get({ id }),
       portfolioExternalTeacherApi.contributionGet({ id }),
     ])
+    if (editorEpoch.value !== contextEpoch) {
+      return
+    }
     detailContribution.value = contribution
     form.id = detail.id
     form.fullName = detail.fullName
@@ -418,11 +439,16 @@ async function openEdit(id: string) {
       fileName: fileNodeId,
     }))
   } catch (error) {
+    if (editorEpoch.value !== contextEpoch) {
+      return
+    }
     drawerOpen.value = false
     resetEditorContext()
     showUserError(error, '加载外聘教师详情失败')
   } finally {
-    editLoading.value = false
+    if (editorEpoch.value === contextEpoch) {
+      editLoading.value = false
+    }
   }
 }
 

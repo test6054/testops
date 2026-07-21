@@ -13,37 +13,30 @@ export type PortfolioTeacherSelectSource = Pick<
 >
 
 /**
- * 解析教师展示姓名：名册优先 nickName，缺失时回退 userName；二者皆无则 undefined。
+ * 解析教师展示姓名：仅使用 nickName；空白时返回 undefined，不回退 userName。
  */
 export function resolvePortfolioTeacherDisplayName(
   teacher: PortfolioTeacherNameFields,
 ): string | undefined {
   const nickName = teacher.nickName?.trim()
-  if (nickName) {
-    return nickName
-  }
-  const userName = teacher.userName?.trim()
-  if (userName) {
-    return userName
-  }
-  return undefined
+  return nickName || undefined
 }
 
 /**
- * 组装教师下拉 label：展示姓名 + 可选工号；姓名不可解析时不生成 label。
+ * 组装教师下拉 label：nickName 与 teacherNumber 均必填；任一缺失时不生成 label。
  */
 export function formatPortfolioTeacherSelectLabel(
   teacher: PortfolioTeacherNameFields,
 ): string | undefined {
   const displayName = resolvePortfolioTeacherDisplayName(teacher)
-  if (!displayName) {
+  const teacherNumber = teacher.teacherNumber?.trim()
+  if (!displayName || !teacherNumber) {
     return undefined
   }
-  const teacherNumber = teacher.teacherNumber?.trim()
-  return teacherNumber ? `${displayName} · ${teacherNumber}` : displayName
+  return `${displayName} · ${teacherNumber}`
 }
 
-/** 将名册行 VO 转为 Ant Design Select 选项；缺少可展示姓名时跳过。 */
+/** 将名册行 VO 转为 Ant Design Select 选项；缺少 nickName 或 teacherNumber 时跳过。 */
 export function toPortfolioTeacherSelectOption(
   teacher: PortfolioTeacherSelectSource,
 ): { value: string, label: string } | undefined {
@@ -54,7 +47,7 @@ export function toPortfolioTeacherSelectOption(
   return { value: teacher.userId, label }
 }
 
-/** 批量转换名册行 VO 为 Select 选项，跳过缺少姓名的行。 */
+/** 批量转换名册行 VO 为 Select 选项，跳过缺少 nickName 或 teacherNumber 的行。 */
 export function portfolioTeacherSelectOptionsFromSummaries(
   teachers: PortfolioTeacherSummaryVO[],
 ): Array<{ value: string, label: string }> {
@@ -69,4 +62,35 @@ export function formatPortfolioTeacherDetailSelectLabel(
   teacher: Pick<PortfolioTeacherDetailVO, 'nickName' | 'userName' | 'teacherNumber'>,
 ): string | undefined {
   return formatPortfolioTeacherSelectLabel(teacher)
+}
+
+/**
+ * 教师业务展示：姓名与工号均必填（合同字段由后端 edu-user 补齐后下发）。
+ * 任一缺失视为前后端契约错误。
+ */
+export function formatPortfolioTeacherDisplay(
+  teacherName: string | null | undefined,
+  teacherNumber: string | null | undefined,
+): string {
+  const name = teacherName?.trim() ?? ''
+  const number = teacherNumber?.trim() ?? ''
+  if (!name || !number) {
+    throw new Error('教师展示缺少姓名或工号，前后端契约不完整')
+  }
+  return `${name}（${number}）`
+}
+
+/**
+ * PK 脱敏展示：有工号则姓名（工号），无工号仅展示名；姓名缺失视为契约错误。
+ */
+export function formatPortfolioTeacherPkDisplay(
+  displayName: string | null | undefined,
+  teacherNumber: string | null | undefined,
+): string {
+  const name = displayName?.trim() ?? ''
+  if (!name) {
+    throw new Error('教师展示缺少姓名，前后端契约不完整')
+  }
+  const number = teacherNumber?.trim() ?? ''
+  return number ? `${name}（${number}）` : name
 }

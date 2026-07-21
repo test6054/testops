@@ -1,13 +1,20 @@
 import type { PortfolioAnalysisComplianceAlertVO } from '@/apis/portfolio/analysis'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
+import type { PortfolioExportApprovalStatusCode } from '@/types/enums/portfolio-export-approval-status-enum'
+import type { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
+import type { PortfolioMaskExportScopeCode } from '@/types/enums/portfolio-mask-export-scope-enum'
+import type { PortfolioMaskFieldTypeCode } from '@/types/enums/portfolio-mask-field-type-enum'
+import type { PortfolioMaskStrategyCode } from '@/types/enums/portfolio-mask-strategy-enum'
+import type { PortfolioDoubleHighTaskStatusCode } from '@/types/enums/portfolio-double-high-task-status-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 /** 对齐后端 PortfolioExportBusinessRef */
 export interface PortfolioExportBusinessRef {
   teacherId?: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   departmentId?: string
   planYear?: string
   portfolioOrgId?: string
@@ -22,10 +29,10 @@ export interface PortfolioExportBusinessRef {
 export interface PortfolioExportApprovalVO {
   id: string
   applicantUserId: string
-  exportType: string
+  exportType: PortfolioExportTypeCode
   businessRef: PortfolioExportBusinessRef
   exportPurpose: string
-  approvalStatus: string
+  approvalStatus: PortfolioExportApprovalStatusCode
   approverUserId?: string
   approvedTime?: string
   rejectReason?: string
@@ -39,6 +46,10 @@ export interface PortfolioExportApprovalVO {
   revokeTime?: string
   /** 导出标的教师用户 ID（业务引用 teacherId） */
   subjectTeacherUserId?: string
+  /** edu-user 标的教师姓名 */
+  subjectTeacherName?: string
+  /** edu-user 标的教师工号 */
+  subjectTeacherNumber?: string
   lifecycleStatus?: string
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
@@ -75,7 +86,10 @@ export interface PortfolioMajorGroupPortfolioSectionItemVO {
   categoryLabel: string
   recordTitle: string
   periodLabel: string
+  /** 状态编码（TASK 分区为双高任务状态枚举码，与 taskStatus 同值） */
   statusLabel: string
+  /** 双高任务状态（仅 TASK 分区有值） */
+  taskStatus?: PortfolioDoubleHighTaskStatusCode
   contributionFactor?: number | string
   majorGroupMembershipCount?: number
   contributionNote?: string
@@ -100,10 +114,12 @@ export interface PortfolioMajorGroupPortfolioSectionItemVO {
 
 export interface PortfolioMaskRuleVO {
   id: string
-  fieldType: string
-  exportScope: string
-  maskStrategy: string
+  fieldType: PortfolioMaskFieldTypeCode
+  exportScope: PortfolioMaskExportScopeCode
+  maskStrategy: PortfolioMaskStrategyCode
   enabled: boolean
+  effective: boolean
+  lastAppliedTime?: string
   updateTime: string
 }
 
@@ -120,7 +136,7 @@ export interface PortfolioAuditLogVO {
 
 export const portfolioSecurityApi = {
   applyExport: (data: {
-    exportType: string
+    exportType: PortfolioExportTypeCode
     businessRef: PortfolioExportBusinessRef
     exportPurpose: string
   }) => http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/apply', data),
@@ -129,7 +145,7 @@ export const portfolioSecurityApi = {
   pageExport: (data: {
     pageNum: number
     pageSize: number
-    approvalStatus?: string
+    approvalStatus?: PortfolioExportApprovalStatusCode
     applicantUserId?: string
   }) =>
     http.post<PageResult<PortfolioExportApprovalVO>>('/api/portfolio/security/export/page', data),
@@ -138,16 +154,16 @@ export const portfolioSecurityApi = {
   revokeExport: (data: { id: string, revokeReason: string }) =>
     http.post<PortfolioExportApprovalVO>('/api/portfolio/security/export/revoke', data),
   saveMaskRule: (data: {
-    fieldType: string
-    exportScope: string
-    maskStrategy: string
+    fieldType: PortfolioMaskFieldTypeCode
+    exportScope: PortfolioMaskExportScopeCode
+    maskStrategy: PortfolioMaskStrategyCode
     enabled?: boolean
   }) => http.post<PortfolioMaskRuleVO>('/api/portfolio/security/mask-rule/save', data),
   pageMaskRule: (data: {
     pageNum: number
     pageSize: number
-    fieldType?: string
-    exportScope?: string
+    fieldType?: PortfolioMaskFieldTypeCode
+    exportScope?: PortfolioMaskExportScopeCode
     enabled?: boolean
   }) => http.post<PageResult<PortfolioMaskRuleVO>>('/api/portfolio/security/mask-rule/page', data),
   pageAudit: (data: {

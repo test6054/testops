@@ -6,7 +6,7 @@
         <span class="qtype-chart__meta">按分值占比</span>
       </div>
     </template>
-    <UiSkeletonState v-if="loading" variant="text" :rows="4" compact />
+    <UiSkeletonState v-if="loading" variant="list" :rows="4" compact />
     <UiEmpty v-else-if="!data || data.items.length === 0" size="sm" description="暂未配置题目" />
     <div v-else class="qtype-chart__body">
       <div v-for="item in data.items" :key="item.ocrScene" class="qtype-chart__row">
@@ -22,8 +22,12 @@
         <span class="qtype-chart__score">{{ item.totalFullScore }} 分</span>
       </div>
       <footer class="qtype-chart__foot">
-        <span>共 <strong>{{ data.totalQuestionCount }}</strong> 题</span>
-        <span>满分 <strong>{{ data.totalFullScore }}</strong> 分</span>
+        <span
+          >共 <strong>{{ data.totalQuestionCount }}</strong> 题</span
+        >
+        <span
+          >满分 <strong>{{ data.totalFullScore }}</strong> 分</span
+        >
       </footer>
     </div>
   </WorkbenchSurfaceCard>

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import type { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
+import { PortfolioExportTypeDescription } from '@/types/enums/portfolio-export-type-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -22,9 +23,9 @@ import {
   PortfolioExportApprovalStatusCode,
   PortfolioExportApprovalStatusDescription,
 } from '@/types/enums/portfolio-export-approval-status-enum'
-import { PortfolioExportTypeDescription } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 interface ExportFilterModel extends Record<string, unknown> {
@@ -106,12 +107,9 @@ function endOperation(key: string) {
   if (operationKey.value === key) operationKey.value = ''
 }
 
-function exportTypeLabel(code: string): string {
-  return strictEnumLabel(
-    PortfolioExportTypeDescription,
-    code as PortfolioExportTypeCode,
-    '导出类型',
-  )
+function exportTypeLabel(code?: PortfolioExportTypeCode): string {
+  if (!code) return '—'
+  return strictEnumLabel(PortfolioExportTypeDescription, code, '导出类型')
 }
 
 function approvalStatusLabel(code: string): string {
@@ -168,7 +166,7 @@ function onSearch() {
   void loadPage()
 }
 
-function onPageChange(page: { current: number, pageSize: number }) {
+function onPageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -264,7 +262,18 @@ onMounted(() => {
         @page-change="onPageChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'exportType'">
+          <template v-if="column.key === 'subjectTeacherUserId'">
+            <template v-if="record.subjectTeacherUserId">
+              {{
+                formatPortfolioTeacherDisplay(
+                  record.subjectTeacherName,
+                  record.subjectTeacherNumber,
+                )
+              }}
+            </template>
+            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'exportType'">
             {{ exportTypeLabel(record.exportType) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">

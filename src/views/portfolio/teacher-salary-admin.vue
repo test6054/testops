@@ -19,6 +19,7 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const form = reactive<{
@@ -36,16 +37,11 @@ const form = reactive<{
 })
 
 const formTeacherId = computed(() => form.teacherUserId || undefined)
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
-  = useQueryTable(portfolioTeacherSalaryApi.page, {
-    onLoaded: (list) => {
-      void hydrateTeacherLabels(list.map((row) => row.teacherUserId ?? ''))
-    },
-  })
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
+const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } =
+  useQueryTable(portfolioTeacherSalaryApi.page)
 const operationKey = ref('')
 const operating = computed(() => Boolean(operationKey.value))
 
@@ -256,7 +252,7 @@ async function exportCsv() {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
-            {{ teacherLabel(record.teacherUserId) }}
+            {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">

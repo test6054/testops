@@ -60,9 +60,9 @@
       />
       <UiAlertStrip
         v-if="
-          isArchiveGateVisible('fourProperty')
-            && !detail.latestFourPropertyCheck
-            && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+          isArchiveGateVisible('fourProperty') &&
+          !detail.latestFourPropertyCheck &&
+          detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
         title="尚未执行四性检测"
@@ -97,10 +97,10 @@
       </UiAlertStrip>
       <UiAlertStrip
         v-else-if="
-          isArchiveGateVisible('fourProperty')
-            && detail.latestFourPropertyCheck
-            && !detail.latestFourPropertyCheck.overallPassed
-            && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+          isArchiveGateVisible('fourProperty') &&
+          detail.latestFourPropertyCheck &&
+          !detail.latestFourPropertyCheck.overallPassed &&
+          detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
         title="四性检测未通过"
@@ -147,8 +147,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
+              canAdvanceRemediation &&
+              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             size="sm"
             variant="outline"
@@ -159,8 +159,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              canAdvanceRemediation &&
+              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
@@ -203,7 +203,12 @@
 
       <StageWorkbenchShell class="archive-volume-detail__shell">
         <template #context>
-          <ContextBar layout="workbench" show-title :title="workbenchStageLabel">
+          <ContextBar
+            layout="workbench"
+            show-title
+            :title="workbenchStageLabel"
+            :subtitle="workbenchSubtitle"
+          >
             <template v-if="showWorkbenchActions" #actions>
               <UiButton
                 v-if="detailScope.canStartCollecting && !isQualityTab && !isManageTab"
@@ -331,7 +336,7 @@
             :detail="detail"
             :displayed-integrity-result="displayedIntegrityResult"
             :checking-integrity="checkingIntegrity"
-            :can-run-integrity="canRunIntegrityCheck"
+            :can-run-integrity="detailScope.canRunIntegrityCheck"
             :can-allow-material-delay="canAllowMaterialDelay"
             :can-waive-material-missing="canWaiveMaterialMissing"
             :can-waive-integrity="canWaiveIntegrity"
@@ -516,12 +521,6 @@ import type {
   ArchiveVolumeMaterialStatsResponse,
   ArchiveVolumeSubmitChecklistItemVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_REMEDIATION_STATUS_TONE,
   ArchiveCatalogStatusDescription,
@@ -547,6 +546,12 @@ import {
   submitArchiveVolume,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -672,6 +677,17 @@ const workbenchStageLabel = computed(() => {
   return fromNav?.label || '归档任务'
 })
 
+/** 工作台副标题：档号 · 课程（或关联考试） · 卷状态，标识当前归档卷。 */
+const workbenchSubtitle = computed(() => {
+  const volume = detail.value?.volume
+  if (!volume) return undefined
+  const parts: string[] = [volume.archiveNo]
+  const subject = volume.courseName ?? volume.relatedExamName
+  if (subject) parts.push(`${volume.academicYear} ${subject}`)
+  parts.push(strictEnumLabel(ArchiveVolumeStatusDescription, volume.volumeStatus, 'volumeStatus'))
+  return parts.join(' · ')
+})
+
 const isQualityTab = computed(() => isArchiveVolumeQualityTab(activeTab.value))
 const isManageTab = computed(() => isArchiveVolumeManageTab(activeTab.value))
 
@@ -694,13 +710,13 @@ const qualityGuide = computed(
     if (tab === 'integrity') {
       const status = displayedIntegrityResult.value?.integrityStatus ?? d.volume.integrityStatus
       if (
-        status === ArchiveIntegrityStatusCode.UNKNOWN
-        || status === ArchiveIntegrityStatusCode.FAILED
+        status === ArchiveIntegrityStatusCode.UNKNOWN ||
+        status === ArchiveIntegrityStatusCode.FAILED
       ) {
         return {
           title: '先执行完整性自检',
           description: '对照必交材料检查缺件，通过后再做自检清单与四性',
-          actionLabel: canRunIntegrityCheck.value ? '执行完整性自检' : undefined,
+          actionLabel: detailScope.canRunIntegrityCheck ? '执行完整性自检' : undefined,
           actionKey: 'integrity',
         }
       }
@@ -719,8 +735,8 @@ const qualityGuide = computed(
     }
     if (tab === 'self-check') {
       if (
-        d.selfCheckStatus === ArchiveSelfCheckStatusCode.COMPLETED
-        || d.volume.selfCheckConfirmed
+        d.selfCheckStatus === ArchiveSelfCheckStatusCode.COMPLETED ||
+        d.volume.selfCheckConfirmed
       ) {
         return {
           title: '自检清单已完成',
@@ -778,10 +794,10 @@ const showWorkbenchActions = computed(() => {
     return false
   }
   return (
-    detailScope.canStartCollecting
-    || detailScope.showSubmitActions
-    || detailScope.canSubmitVolume
-    || detailScope.showSelfCheckButton
+    detailScope.canStartCollecting ||
+    detailScope.showSubmitActions ||
+    detailScope.canSubmitVolume ||
+    detailScope.showSelfCheckButton
   )
 })
 
@@ -799,9 +815,10 @@ const hubNextStepActions = computed(() => {
       gateTargets.add('appraisal')
     }
   }
-  return nextStepActions.value.filter((action) =>
-    action.targetTabKey !== activeTab.value
-    && (!action.targetTabKey || !gateTargets.has(action.targetTabKey)),
+  return nextStepActions.value.filter(
+    (action) =>
+      action.targetTabKey !== activeTab.value &&
+      (!action.targetTabKey || !gateTargets.has(action.targetTabKey)),
   )
 })
 
@@ -832,20 +849,12 @@ const securityFourPropertyDescription = computed(() =>
   resolveSecurityDiagnosticMessage(displayedFourProperty.value),
 )
 
-const canRunIntegrityCheck = computed(() => {
-  const d = detail.value
-  if (!d || !d.canManageMaterials) return false
-  return (
-    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-    || d.hasOpenRemediationTask
-  )
-})
-
 const canRunFourPropertyCheck = computed(() => {
   const d = detail.value
   if (!d) return false
+  // 与 BE checkFourProperty：COLLECTING→requireCanManageMaterials；SUBMITTED→移交验收岗
   if (d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING) {
-    return d.canManageMaterials
+    return detailScope.capabilities.canManageMaterials === true
   }
   return d.volume.volumeStatus === ArchiveVolumeStatusCode.SUBMITTED && canReviewTransfer.value
 })
@@ -888,14 +897,14 @@ const showAppraisalGuidanceStrip = computed(() => {
 })
 
 /** 归档条件闸门：只置顶一条「下一必做」，其余折叠，避免迎检告警墙。 */
-type ArchiveGateKey
-  = | 'checklistFail'
-    | 'grantsFail'
-    | 'remediation'
-    | 'appraisal'
-    | 'integrity'
-    | 'fourProperty'
-    | 'scoreSubmit'
+type ArchiveGateKey =
+  | 'checklistFail'
+  | 'grantsFail'
+  | 'remediation'
+  | 'appraisal'
+  | 'integrity'
+  | 'fourProperty'
+  | 'scoreSubmit'
 
 const ARCHIVE_GATE_LABEL: Record<ArchiveGateKey, string> = {
   checklistFail: '待办清单加载失败',
@@ -923,9 +932,9 @@ const showFourPropertyGate = computed(() => {
   if (d.fourPropertyStale) return true
   if (showSecurityFourPropertyAlert.value) return true
   return (
-    !!d.latestFourPropertyCheck
-    && !d.latestFourPropertyCheck.overallPassed
-    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+    !!d.latestFourPropertyCheck &&
+    !d.latestFourPropertyCheck.overallPassed &&
+    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
   )
 })
 
@@ -1022,10 +1031,10 @@ const scoresSignalMetrics = computed((): SignalMetric[] => {
     ? strictEnumLabel(ArchiveScoreSourceDescription, d.volume.scoreSource, 'scoreSource')
     : '—'
   const completionCode = d.volume.scoreCompletionStatus
-  const completionOk
-    = completionCode === ArchiveScoreCompletionStatusCode.COMPLETED
-      || completionCode === ArchiveScoreCompletionStatusCode.VERIFIED
-      || completionCode === ArchiveScoreCompletionStatusCode.NOT_REQUIRED
+  const completionOk =
+    completionCode === ArchiveScoreCompletionStatusCode.COMPLETED ||
+    completionCode === ArchiveScoreCompletionStatusCode.VERIFIED ||
+    completionCode === ArchiveScoreCompletionStatusCode.NOT_REQUIRED
   return [
     {
       key: 'completion',
@@ -1235,9 +1244,9 @@ function handleActiveTabSignalClick(key: string): void {
     return
   }
   if (
-    activeTab.value === 'transfer'
-    && key === 'remediation'
-    && showRemediationWorkflowStrip.value
+    activeTab.value === 'transfer' &&
+    key === 'remediation' &&
+    showRemediationWorkflowStrip.value
   ) {
     setActiveTab(focusedRemediationTargetTab.value)
   }
@@ -1374,8 +1383,8 @@ const remediationOpenDescription = computed(() => {
   const d = detail.value
   if (task) {
     if (
-      task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
-      && task.assigneeUserId === currentUserId.value
+      task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED &&
+      task.assigneeUserId === currentUserId.value
     ) {
       return '材料已重提，等待院系协调人复检关闭'
     }
@@ -1397,18 +1406,18 @@ const remediationOpenDescription = computed(() => {
       )
     }
     if (
-      d?.hasBlockingRemediationForSubmit
-      && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-      && detailScope.canSubmitVolume
+      d?.hasBlockingRemediationForSubmit &&
+      d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING &&
+      detailScope.canSubmitVolume
     ) {
       parts.push('须关闭整改任务后再提交归档')
     }
     return parts.join(' · ')
   }
   if (
-    d?.hasBlockingRemediationForSubmit
-    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-    && detailScope.canSubmitVolume
+    d?.hasBlockingRemediationForSubmit &&
+    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING &&
+    detailScope.canSubmitVolume
   ) {
     return '存在未关闭整改任务，须关闭后再提交归档'
   }
@@ -1484,9 +1493,9 @@ const canReviewScanBatches = computed(() => detailScope.capabilities.canReviewSc
 const canAdvanceRemediation = computed(() => {
   const task = focusedRemediationTask.value
   if (
-    !task
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
-    || task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
+    !task ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED ||
+    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
   ) {
     return false
   }
@@ -1498,9 +1507,9 @@ const canManageCoordinatorRemediation = computed(() => {
   const d = detail.value
   const task = focusedRemediationTask.value
   if (
-    !d?.hasOpenRemediationTask
-    || !task
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    !d?.hasOpenRemediationTask ||
+    !task ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
     return false
   }
@@ -1627,8 +1636,8 @@ async function runFourPropertyCheckFromGuide() {
 }
 
 async function runIntegrityCheck() {
-  // MVR-347：与 canRunIntegrityCheck / BE 完整性自检写门禁二次拦截
-  if (!canRunIntegrityCheck.value) {
+  // MVR-347：与 detailScope.canRunIntegrityCheck / BE capabilities 同源二次拦截
+  if (!detailScope.canRunIntegrityCheck) {
     void message.warning('当前账号或卷状态不可执行完整性自检')
     return
   }

@@ -473,7 +473,10 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
   } else if (
     row.itemKind === ScannerExceptionItemKindCode.WORK_ORDER
     || row.itemKind === ScannerExceptionItemKindCode.COMMITTING
-    || row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
+  ) {
+    actions.push({ key: 'goto-handle', label: '查看详情' })
+  } else if (
+    row.itemKind === ScannerExceptionItemKindCode.PAGE_REGISTER_BLOCKED
     || row.itemKind === ScannerExceptionItemKindCode.PARTIAL_TAIL
   ) {
     actions.push({ key: 'goto-handle', label: '前往处理' })
@@ -722,7 +725,7 @@ watch(
 
 <template>
   <div class="scan-exception-panel">
-    <WorkbenchSurfaceCard flush>
+    <WorkbenchSurfaceCard flush embedded>
       <template #toolbar>
         <div class="scan-exception-panel__filters">
           <UiButton

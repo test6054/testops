@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExpertAssignmentVO } from '@/apis/portfolio/expert-assignment'
+import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
@@ -116,7 +115,6 @@ const createForm = reactive({
   subjectTeacherIdsText: '',
   categoryCodesText: '',
   expireDays: 30,
-  maskRequired: true,
 })
 
 const columns: ColumnsType = [
@@ -124,7 +122,7 @@ const columns: ColumnsType = [
   { title: '评价任务', dataIndex: 'evaluationTaskId', key: 'evaluationTaskId', width: 120 },
   { title: '专家用户', dataIndex: 'expertUserId', key: 'expertUserId', width: 120 },
   { title: '被评教师', key: 'subjectTeacherIds', width: 180, ellipsis: true },
-  { title: '脱敏', key: 'maskRequired', width: 80 },
+  { title: '数据保护', key: 'maskRequired', width: 100 },
   { title: '状态', key: 'assignmentStatus', width: 100 },
   { title: '过期时间', dataIndex: 'expireTime', key: 'expireTime', width: 170 },
   { title: '操作', key: 'actions', width: 120 },
@@ -293,7 +291,7 @@ function onSearch() {
   void loadPage()
 }
 
-function onPageChange(page: { current: number, pageSize: number }) {
+function onPageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -306,16 +304,15 @@ function openCreateModal() {
   createForm.subjectTeacherIdsText = ''
   createForm.categoryCodesText = ''
   createForm.expireDays = 30
-  createForm.maskRequired = true
   createOpen.value = true
 }
 
 async function submitCreate() {
   const subjectTeacherIds = [...new Set(parseSubjectTeacherIds(createForm.subjectTeacherIdsText))]
   if (
-    !createForm.evaluationTaskId
-    || !createForm.expertUserId.trim()
-    || subjectTeacherIds.length === 0
+    !createForm.evaluationTaskId ||
+    !createForm.expertUserId.trim() ||
+    subjectTeacherIds.length === 0
   ) {
     showFormValidationMessage('请填写评价任务、专家用户和至少一名被评教师')
     return
@@ -333,7 +330,6 @@ async function submitCreate() {
     subjectTeacherIds,
     materialScope: { categoryCodes },
     expireDays: createForm.expireDays,
-    maskRequired: createForm.maskRequired,
   }
   try {
     const created = await portfolioExpertAssignmentApi.create(request)
@@ -429,9 +425,7 @@ onMounted(async () => {
             {{ record.subjectTeacherIds?.join('、') }}
           </template>
           <template v-else-if="column.key === 'maskRequired'">
-            <UiTag :tone="record.maskRequired ? 'blue' : 'gray'">
-              {{ record.maskRequired ? '是' : '否' }}
-            </UiTag>
+            <UiTag tone="blue">强制脱敏</UiTag>
           </template>
           <template v-else-if="column.key === 'assignmentStatus'">
             <UiTag :tone="statusTone(record.assignmentStatus)">
@@ -513,8 +507,11 @@ onMounted(async () => {
             :disabled="operating"
           />
         </UiFormItem>
-        <UiFormItem label="强制脱敏">
-          <UiSwitch size="sm" v-model="createForm.maskRequired" :disabled="operating" />
+        <UiFormItem label="数据保护">
+          <p class="m-0 text-sm text-[var(--dp-text-secondary)]">
+            外部专家审阅固定使用稳定匿名标识，并隐藏教师、档案、分类、文件节点及 AI
+            自由文本内部信息。
+          </p>
         </UiFormItem>
       </UiForm>
     </UiDialog>

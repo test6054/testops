@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import type {
   PortfolioMaterialRefVO,
   PortfolioMaterialSaveRequest,
@@ -8,25 +12,24 @@ import type {
   PortfolioMaterialVersionVO,
   PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
+import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_MATERIAL_STATUS_OPTIONS,
   PORTFOLIO_MATERIAL_TYPE_OPTIONS,
+  PortfolioMaterialRefFreezeStatusDescription,
+  PortfolioMaterialRefScopeDescription,
   PortfolioMaterialStatusCode,
   PortfolioMaterialStatusDescription,
   PortfolioMaterialTypeCode,
   PortfolioMaterialTypeDescription,
+  PortfolioMaterialVersionStatusDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
-import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -61,8 +64,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 
 interface MaterialFilterModel {
   materialType?: PortfolioMaterialTypeCode
@@ -79,6 +82,18 @@ function materialStatusLabel(status: PortfolioMaterialStatusCode): string {
 
 function materialStatusTone(status: PortfolioMaterialStatusCode) {
   return strictEnumTone(PORTFOLIO_MATERIAL_STATUS_TONE, status, '材料状态')
+}
+
+function materialVersionStatusLabel(status: PortfolioMaterialVersionVO['versionStatus']): string {
+  return strictEnumLabel(PortfolioMaterialVersionStatusDescription, status, '材料版本状态')
+}
+
+function materialRefScopeLabel(scope: PortfolioMaterialRefVO['refScope']): string {
+  return strictEnumLabel(PortfolioMaterialRefScopeDescription, scope, '材料引用范围')
+}
+
+function materialRefFreezeStatusLabel(status: PortfolioMaterialRefVO['freezeStatus']): string {
+  return strictEnumLabel(PortfolioMaterialRefFreezeStatusDescription, status, '材料引用冻结状态')
 }
 
 function ocrStatusLabel(status: ArchiveMaterialOcrStatusCode): string {
@@ -667,7 +682,7 @@ watch(
               {{ materialTypeLabel(record.materialType) }}
             </template>
             <template v-else-if="column.key === 'status'">
-              <UiTag v-if="record.status" :tone="materialStatusTone(record.status)">
+              <UiTag :tone="materialStatusTone(record.status)">
                 {{ materialStatusLabel(record.status) }}
               </UiTag>
             </template>
@@ -755,8 +770,8 @@ watch(
           <ul v-if="versionRows.length" class="teacher-materials__version-list">
             <li v-for="item in versionRows" :key="item.id">
               <strong>v{{ item.versionNo }}</strong>
-              <span>{{ item.versionStatus }}</span>
-              <span>file={{ item.fileNodeId }}</span>
+              <span>{{ materialVersionStatusLabel(item.versionStatus) }}</span>
+              <span>材料文件已关联</span>
               <UiTag v-if="item.freezeReferenced" tone="orange">冻结引用中</UiTag>
             </li>
           </ul>
@@ -765,9 +780,9 @@ watch(
         <UiCard title="业务引用" style="margin-top: 12px">
           <ul v-if="refRows.length" class="teacher-materials__version-list">
             <li v-for="item in refRows" :key="item.id">
-              <strong>{{ item.refScope }}</strong>
+              <strong>{{ materialRefScopeLabel(item.refScope) }}</strong>
               <span>v{{ item.versionNo }}</span>
-              <span>{{ item.freezeStatus }}</span>
+              <span>{{ materialRefFreezeStatusLabel(item.freezeStatus) }}</span>
               <span>{{ item.refLabel || item.refBusinessId }}</span>
             </li>
           </ul>

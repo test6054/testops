@@ -2,7 +2,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PfEligibilityExplainStructDto,
-  PfImpactReportStatusCode,
   PfSceneCode,
   PfScoreExplainStructDto,
   PortfolioEligibilityEvalLogVO,
@@ -13,18 +12,22 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
+import {
+  PF_IMPACT_REPORT_STATUS_TONE,
+  PF_SCORE_RULE_TYPE_OPTIONS,
+  PfImpactApprovalStatusCode,
+  PfImpactApprovalStatusDescription,
+  PfImpactReportStatusCode,
+  PfImpactReportStatusDescription,
+  PfSceneCodeDescription,
+} from '@/apis/portfolio/indicator-types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { defaultTemplateParams } from '@/utils/indicator-template-params'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import {
-  PF_IMPACT_REPORT_STATUS_TONE,
-  PF_SCORE_RULE_TYPE_OPTIONS,
-  PfImpactReportStatusDescription,
-  PfSceneCodeDescription,
-} from '@/apis/portfolio/indicator-types'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -41,9 +44,10 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { defaultTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -71,6 +75,7 @@ const indicatorOpsTabItems = [
   { key: 'impact', label: '影响报告' },
 ]
 const route = useRoute()
+const userStore = useUserStore()
 const operationKey = ref('')
 const operating = computed(() => Boolean(operationKey.value))
 const computing = computed(() => operationKey.value.startsWith('compute:'))
@@ -181,10 +186,55 @@ const evalColumns: ColumnsType = [
 const impactColumns: ColumnsType = [
   { title: '场景', dataIndex: 'sceneCode', key: 'sceneCode', width: 100 },
   { title: '状态', dataIndex: 'reportStatus', key: 'reportStatus', width: 100 },
+  { title: '审批状态', key: 'approvalStatus', width: 110 },
+  { title: '创建人', dataIndex: 'createUser', key: 'createUser', width: 110 },
   { title: '过期', dataIndex: 'expiredTime', key: 'expiredTime', width: 160 },
   { title: '编号', dataIndex: 'id', key: 'id' },
-  { title: '操作', key: 'actions', width: 80 },
+  { title: '操作', key: 'actions', width: 220 },
 ]
+
+function impactApprovalStatusLabel(value?: PfImpactApprovalStatusCode): string {
+  if (!value) return '无需审批'
+  return strictEnumLabel(PfImpactApprovalStatusDescription, value, '影响报告审批状态')
+}
+
+function canReviewImpact(record: PortfolioPublishImpactReportVO): boolean {
+  return (
+    record.reportStatus === PfImpactReportStatusCode.COMPLETED &&
+    record.approvalStatus === PfImpactApprovalStatusCode.PENDING_APPROVAL &&
+    record.createUser !== userStore.userInfo.userId
+  )
+}
+
+/** 独立审批队列执行四眼审批，创建人只能查看本人报告状态。 */
+async function reviewImpact(record: PortfolioPublishImpactReportVO, approved: boolean) {
+  if (!canReviewImpact(record)) return
+  const approvalOpinion = await promptInputAsync({
+    title: approved ? '通过影响报告' : '驳回影响报告',
+    placeholder: approved ? '请填写审批依据' : '请填写驳回原因与修改要求',
+    required: true,
+    emptyErrorMessage: '审批意见不能为空',
+    okText: approved ? '确认通过' : '确认驳回',
+    okType: approved ? 'primary' : 'danger',
+    type: approved ? 'success' : 'error',
+  })
+  if (!approvalOpinion) return
+  const operation = `impact:review:${record.id}`
+  if (!beginOperation(operation)) return
+  try {
+    await portfolioIndicatorTenantApi.approveImpactReport({
+      impactReportId: record.id,
+      approved,
+      approvalOpinion,
+    })
+    void message.success(approved ? '影响报告已审批通过' : '影响报告已驳回')
+    await loadImpactReports()
+  } catch (error) {
+    showUserError(error, approved ? '审批影响报告失败' : '驳回影响报告失败')
+  } finally {
+    endOperation(operation)
+  }
+}
 
 function showComputeResult(result: PortfolioIndicatorScoreComputeResult) {
   requestToken.explain++
@@ -248,9 +298,9 @@ async function runSnapshotCompute() {
   try {
     const result = await portfolioIndicatorTenantApi.computeSnapshot(request)
     if (
-      snapshotForm.snapshotId.trim() !== request.snapshotId
-      || snapshotForm.teacherId.trim() !== request.teacherId
-      || snapshotForm.indicatorCode.trim() !== request.indicatorCode
+      snapshotForm.snapshotId.trim() !== request.snapshotId ||
+      snapshotForm.teacherId.trim() !== request.teacherId ||
+      snapshotForm.indicatorCode.trim() !== request.indicatorCode
     ) {
       return
     }
@@ -479,7 +529,7 @@ async function loadCollectPage() {
   }
 }
 
-function handleCollectPageChange(event: { current: number, pageSize: number }) {
+function handleCollectPageChange(event: { current: number; pageSize: number }) {
   collectPageNum.value = event.current
   collectPageSize.value = event.pageSize
   void loadCollectPage()
@@ -501,7 +551,7 @@ function onTabChange(key: string | number) {
   }
 }
 
-function handlePageChange(event: { current: number, pageSize: number }) {
+function handlePageChange(event: { current: number; pageSize: number }) {
   pageQuery.pageNum = event.current
   pageQuery.pageSize = event.pageSize
   if (activeTab.value === 'compute-log') {
@@ -844,11 +894,33 @@ watch(
                 {{ impactReportStatusLabel(record.reportStatus) }}
               </UiTag>
             </template>
+            <template v-else-if="column.key === 'approvalStatus'">
+              {{ impactApprovalStatusLabel(record.approvalStatus) }}
+            </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
-                :items="[{ key: 'export', label: '导出', disabled: operating }]"
+                :items="[
+                  ...(canReviewImpact(record)
+                    ? [
+                        { key: 'approve', label: '审批通过', disabled: operating },
+                        {
+                          key: 'reject',
+                          label: '驳回',
+                          tone: 'danger' as const,
+                          disabled: operating,
+                        },
+                      ]
+                    : []),
+                  { key: 'export', label: '导出', disabled: operating },
+                ]"
                 split
-                @action="() => exportImpact(record.id)"
+                @action="
+                  (key) => {
+                    if (key === 'approve') reviewImpact(record, true)
+                    else if (key === 'reject') reviewImpact(record, false)
+                    else if (key === 'export') exportImpact(record.id)
+                  }
+                "
               />
             </template>
           </template>

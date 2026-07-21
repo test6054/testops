@@ -12,6 +12,13 @@ import type {
   PortfolioArchiveTemplateDiffSummary,
   PortfolioArchiveTemplateVersionVO,
 } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS,
+  PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS,
+  PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS,
+  PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS,
+  PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
+} from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -26,13 +33,6 @@ import {
   PortfolioArchiveTemplateVersionStatusCode,
   PortfolioArchiveTemplateVersionStatusDescription,
 } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS,
-  PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS,
-  PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS,
-  PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS,
-  PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -69,24 +69,24 @@ interface TreeNode {
 
 function isTreeNode(value: unknown): value is TreeNode {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'key' in value
-    && 'title' in value
-    && 'raw' in value
+    typeof value === 'object' &&
+    value !== null &&
+    'key' in value &&
+    'title' in value &&
+    'raw' in value
   )
 }
 
 function isArchiveFieldRecord(record: unknown): record is PortfolioArchiveFieldDefVO {
   return (
-    typeof record === 'object'
-    && record !== null
-    && 'id' in record
-    && 'templateVersionId' in record
-    && 'fieldCode' in record
-    && 'fieldLabel' in record
-    && 'fieldType' in record
-    && 'sourceType' in record
+    typeof record === 'object' &&
+    record !== null &&
+    'id' in record &&
+    'templateVersionId' in record &&
+    'fieldCode' in record &&
+    'fieldLabel' in record &&
+    'fieldType' in record &&
+    'sourceType' in record
   )
 }
 
@@ -101,13 +101,13 @@ function isArchiveTemplateVersionRecord(
   record: unknown,
 ): record is PortfolioArchiveTemplateVersionVO {
   return (
-    typeof record === 'object'
-    && record !== null
-    && 'id' in record
-    && 'categoryId' in record
-    && 'templateCode' in record
-    && 'versionNo' in record
-    && 'status' in record
+    typeof record === 'object' &&
+    record !== null &&
+    'id' in record &&
+    'categoryId' in record &&
+    'templateCode' in record &&
+    'versionNo' in record &&
+    'status' in record
   )
 }
 
@@ -165,6 +165,8 @@ const historyRequestToken = ref(0)
 const auditFlowRequestToken = ref(0)
 const historyVisible = ref(false)
 const auditFlowCode = ref('')
+const auditFlowState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
+const auditFlowLoadedCategoryId = ref('')
 const categoryVisible = ref(false)
 const fieldVisible = ref(false)
 const publishVisible = ref(false)
@@ -234,7 +236,7 @@ const activeVersion = computed(
 
 const versionOptions = computed(() =>
   versionHistory.value.map(
-    (item): { value: PortfolioArchiveTemplateVersionVO['id'], label: string } => ({
+    (item): { value: PortfolioArchiveTemplateVersionVO['id']; label: string } => ({
       value: item.id,
       label: `${item.versionNo} (${strictEnumLabel(PortfolioArchiveTemplateVersionStatusDescription, item.status, '模板版本状态')})`,
     }),
@@ -243,8 +245,8 @@ const versionOptions = computed(() =>
 
 const canEditFields = computed(
   () =>
-    activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.DRAFT
-    || activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.TRIAL,
+    activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.DRAFT ||
+    activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.TRIAL,
 )
 
 const canDeprecate = computed(() => activeVersion.value?.status === 'PUBLISHED')
@@ -275,7 +277,7 @@ const parsedChangeLogs = computed(() =>
 )
 
 function flattenCategoryOptions(nodes: TreeNode[], excludeId?: string) {
-  const options: { value: string, label: string }[] = []
+  const options: { value: string; label: string }[] = []
   for (const node of nodes) {
     if (excludeId && node.key === excludeId) continue
     options.push({ value: node.key, label: node.title })
@@ -333,6 +335,8 @@ async function loadTree() {
         versionHistory.value = []
         changeLogs.value = []
         auditFlowCode.value = ''
+        auditFlowLoadedCategoryId.value = ''
+        auditFlowState.value = 'idle'
       }
     }
   } catch (error) {
@@ -346,6 +350,8 @@ async function loadTree() {
     versionHistory.value = []
     changeLogs.value = []
     auditFlowCode.value = ''
+    auditFlowLoadedCategoryId.value = ''
+    auditFlowState.value = 'idle'
     treeLoadError.value = '档案分类加载失败，请重试'
     showUserError(error, '加载档案分类失败')
   } finally {
@@ -367,6 +373,9 @@ function findTreeNode(nodes: TreeNode[], key: string): TreeNode | null {
 async function selectCategory(node: TreeNode) {
   const currentToken = ++categoryRequestToken.value
   selectedNode.value = node
+  auditFlowCode.value = ''
+  auditFlowLoadedCategoryId.value = ''
+  auditFlowState.value = 'loading'
   activeVersionId.value = node.raw.draftVersionId ?? node.raw.publishedVersionId ?? null
   fields.value = []
   await loadHistory(currentToken)
@@ -383,33 +392,51 @@ async function loadAuditFlowBinding(expectedToken = categoryRequestToken.value) 
   auditFlowRequestToken.value = currentToken
   if (!selectedCategory.value) {
     auditFlowCode.value = ''
+    auditFlowLoadedCategoryId.value = ''
+    auditFlowState.value = 'idle'
     return
   }
   const categoryId = selectedCategory.value.id
+  auditFlowCode.value = ''
+  auditFlowLoadedCategoryId.value = ''
+  auditFlowState.value = 'loading'
   try {
     const binding = await portfolioArchiveTemplateApi.getAuditFlowBinding({
       categoryId,
     })
     if (
-      expectedToken !== categoryRequestToken.value
-      || auditFlowRequestToken.value !== currentToken
+      expectedToken !== categoryRequestToken.value ||
+      auditFlowRequestToken.value !== currentToken
     ) {
       return
     }
     auditFlowCode.value = binding?.auditFlowCode ?? ''
+    auditFlowLoadedCategoryId.value = categoryId
+    auditFlowState.value = 'ready'
   } catch (error) {
     if (
-      expectedToken !== categoryRequestToken.value
-      || auditFlowRequestToken.value !== currentToken
+      expectedToken !== categoryRequestToken.value ||
+      auditFlowRequestToken.value !== currentToken
     ) {
       return
     }
+    auditFlowCode.value = ''
+    auditFlowLoadedCategoryId.value = ''
+    auditFlowState.value = 'error'
     showUserError(error, '加载审核流绑定失败')
   }
 }
 
 async function bindAuditFlow() {
-  if (!selectedCategory.value || !auditFlowCode.value.trim()) {
+  if (
+    !selectedCategory.value ||
+    auditFlowState.value !== 'ready' ||
+    auditFlowLoadedCategoryId.value !== selectedCategory.value.id
+  ) {
+    void message.error('当前分类审核流尚未就绪，请先重新加载')
+    return
+  }
+  if (!auditFlowCode.value.trim()) {
     void message.error('请先填写审核流编码')
     return
   }
@@ -494,8 +521,8 @@ async function loadHistory(expectedToken = categoryRequestToken.value) {
   try {
     const nextVersionHistory = await portfolioArchiveTemplateApi.listVersionHistory({ categoryId })
     if (
-      expectedToken !== categoryRequestToken.value
-      || historyRequestToken.value !== currentToken
+      expectedToken !== categoryRequestToken.value ||
+      historyRequestToken.value !== currentToken
     ) {
       return
     }
@@ -503,16 +530,16 @@ async function loadHistory(expectedToken = categoryRequestToken.value) {
     try {
       const nextChangeLogs = await portfolioArchiveTemplateApi.listChangeHistory({ categoryId })
       if (
-        expectedToken !== categoryRequestToken.value
-        || historyRequestToken.value !== currentToken
+        expectedToken !== categoryRequestToken.value ||
+        historyRequestToken.value !== currentToken
       ) {
         return
       }
       changeLogs.value = nextChangeLogs ?? []
     } catch (error) {
       if (
-        expectedToken !== categoryRequestToken.value
-        || historyRequestToken.value !== currentToken
+        expectedToken !== categoryRequestToken.value ||
+        historyRequestToken.value !== currentToken
       ) {
         return
       }
@@ -521,8 +548,8 @@ async function loadHistory(expectedToken = categoryRequestToken.value) {
     }
   } catch (error) {
     if (
-      expectedToken !== categoryRequestToken.value
-      || historyRequestToken.value !== currentToken
+      expectedToken !== categoryRequestToken.value ||
+      historyRequestToken.value !== currentToken
     ) {
       return
     }
@@ -532,8 +559,8 @@ async function loadHistory(expectedToken = categoryRequestToken.value) {
     showUserError(error, '加载版本历史失败')
   } finally {
     if (
-      expectedToken === categoryRequestToken.value
-      && historyRequestToken.value === currentToken
+      expectedToken === categoryRequestToken.value &&
+      historyRequestToken.value === currentToken
     ) {
       historyLoading.value = false
     }
@@ -589,8 +616,8 @@ function openEditCategory() {
 
 async function deactivateCategory() {
   if (
-    !selectedCategory.value
-    || selectedCategory.value.status === PortfolioArchiveCategoryStatusCode.INACTIVE
+    !selectedCategory.value ||
+    selectedCategory.value.status === PortfolioArchiveCategoryStatusCode.INACTIVE
   ) {
     return
   }
@@ -1139,25 +1166,37 @@ onMounted(async () => {
               v-model="auditFlowCode"
               placeholder="审核流编码"
               style="width: 220px"
-              :disabled="writing"
+              :disabled="writing || auditFlowState !== 'ready'"
             />
             <UiButton
               variant="primary"
               size="sm"
               :loading="operationKey.startsWith('audit-flow:bind:')"
-              :disabled="writing"
+              :disabled="writing || auditFlowState !== 'ready'"
               @click="bindAuditFlow"
             >
               绑定
             </UiButton>
             <UiButton
               size="sm"
-              :disabled="writing"
+              :disabled="writing || auditFlowState !== 'ready'"
               @click="auditFlowCode = PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE"
             >
               使用默认
             </UiButton>
           </div>
+          <UiAlertStrip
+            v-if="canManageTenant && auditFlowState === 'error'"
+            dense
+            tone="error"
+            title="当前分类审核流加载失败，已禁止绑定"
+          >
+            <template #actions>
+              <UiButton size="sm" variant="outline" @click="loadAuditFlowBinding()">
+                重新加载
+              </UiButton>
+            </template>
+          </UiAlertStrip>
           <div v-if="canManageTenant" class="toolbar">
             <UiButton
               v-if="canViewPublished"

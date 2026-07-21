@@ -11,8 +11,8 @@ export const PortfolioReportingShareFieldCode = {
   OFFICIAL_ARCHIVE_COUNT: 'officialArchiveCount',
 } as const
 
-export type PortfolioReportingShareFieldCodeValue
-  = (typeof PortfolioReportingShareFieldCode)[keyof typeof PortfolioReportingShareFieldCode]
+export type PortfolioReportingShareFieldCodeValue =
+  (typeof PortfolioReportingShareFieldCode)[keyof typeof PortfolioReportingShareFieldCode]
 
 export const PortfolioReportingShareFieldDescription: Record<
   PortfolioReportingShareFieldCodeValue,
@@ -38,6 +38,10 @@ export interface PortfolioReportingTaskVO {
   maskMode: boolean
   taskStatus: PortfolioReportingTaskStatusCode
   previewReady?: boolean
+  previewAsOf?: string
+  previewFingerprint?: string
+  previewTeacherCount?: number
+  previewOfficialArchiveCount?: number
   artifactFileNodeId?: string
   artifactFileName?: string
   approveUser?: string
@@ -55,6 +59,10 @@ export interface PortfolioReportingPreviewVO {
   shareFields: PortfolioReportingShareFieldCodeValue[]
   maskMode: boolean
   dataScopeNote: string
+  asOf: string
+  scopeFingerprint: string
+  teacherIdsHash: string
+  officialArchiveIdsHash: string
 }
 
 export interface PortfolioReportingTaskCreateRequest {
@@ -75,11 +83,11 @@ export const portfolioReportingApi = {
     http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/task/create', data),
   preview: (data: { id: string }) =>
     http.post<PortfolioReportingPreviewVO>('/api/portfolio/reporting/preview', data),
-  requestApproval: (data: { id: string }) =>
+  requestApproval: (data: { id: string; scopeFingerprint: string }) =>
     http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/request-approval', data),
-  approve: (data: { id: string }) =>
+  approve: (data: { id: string; scopeFingerprint: string }) =>
     http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/approve', data),
-  reject: (data: { id: string, rejectReason: string }) =>
+  reject: (data: { id: string; rejectReason: string }) =>
     http.post<PortfolioReportingTaskVO>('/api/portfolio/reporting/reject', data),
   download: (data: { id: string }) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/reporting/download', data),

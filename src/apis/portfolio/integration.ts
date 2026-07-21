@@ -1,5 +1,13 @@
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
+import type { PortfolioConflictTicketStatusEnum } from '@/types/enums/portfolio-conflict-ticket-status-enum'
+import type { PortfolioIdentityUnmatchedStatusEnum } from '@/types/enums/portfolio-identity-unmatched-status-enum'
+import type { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
+import type { PortfolioIntegrationHealthStatusEnum } from '@/types/enums/portfolio-integration-health-status-enum'
+import type { PortfolioIntegrationMessageInboxStatusEnum } from '@/types/enums/portfolio-integration-message-inbox-status-enum'
+import type { PortfolioIntegrationPathwayCodeEnum } from '@/types/enums/portfolio-integration-pathway-code-enum'
+import type { PortfolioNationalTeacherSyncDirectionEnum } from '@/types/enums/portfolio-national-teacher-sync-direction-enum'
+import type { PortfolioSyncTaskStatusEnum } from '@/apis/portfolio/enums'
 import http from '@/config/axios'
 
 export interface PortfolioNationalTeacherInboundRecord {
@@ -39,14 +47,14 @@ export interface PortfolioIntegrationConnectionConfigDto {
   sourceFileNodeId?: string
   importContext?: PortfolioIntegrationExcelImportContextDto
   batchSize?: number
-  syncDirection?: string
+  syncDirection?: PortfolioNationalTeacherSyncDirectionEnum
   inboundRecords?: PortfolioNationalTeacherInboundRecord[]
 }
 
 export interface PortfolioIntegrationDatasourceVO {
   id: string
-  channelCode: string
-  pathwayCode: string
+  channelCode: PortfolioIntegrationChannelCodeEnum
+  pathwayCode: PortfolioIntegrationPathwayCodeEnum
   datasourceName: string
   enabled: boolean
   sourcePriority: number
@@ -82,9 +90,9 @@ export interface PortfolioIntegrationFieldMappingVO {
 export interface PortfolioIntegrationSyncTaskVO {
   id: string
   datasourceConfigId: string
-  channelCode: string
-  pathwayCode: string
-  taskStatus: string
+  channelCode: PortfolioIntegrationChannelCodeEnum
+  pathwayCode: PortfolioIntegrationPathwayCodeEnum
+  taskStatus: PortfolioSyncTaskStatusEnum
   triggerType: string
   successCount: number
   failedCount: number
@@ -95,9 +103,9 @@ export interface PortfolioIntegrationSyncTaskVO {
 }
 
 export interface PortfolioIntegrationHealthChannelVO {
-  channelCode: string
-  pathwayCode: string
-  healthStatus: string
+  channelCode: PortfolioIntegrationChannelCodeEnum
+  pathwayCode: PortfolioIntegrationPathwayCodeEnum
+  healthStatus: PortfolioIntegrationHealthStatusEnum
   lastSuccessTime?: string
   lastFailureTime?: string
   slaBreach: boolean
@@ -112,14 +120,14 @@ export interface PortfolioIntegrationHealthDashboardVO {
 }
 
 export interface PortfolioIntegrationChannelPathwayOption {
-  pathwayCode: string
+  pathwayCode: PortfolioIntegrationPathwayCodeEnum
   pathwayLabel: string
   configurable?: boolean
   executable?: boolean
 }
 
 export interface PortfolioIntegrationChannelPathwayMatrixChannelRow {
-  channelCode: string
+  channelCode: PortfolioIntegrationChannelCodeEnum
   channelLabel: string
   teacherCvChannel?: boolean
   pathways?: PortfolioIntegrationChannelPathwayOption[]
@@ -132,11 +140,11 @@ export interface PortfolioIntegrationChannelPathwayMatrixVO {
 export interface PortfolioIdentityUnmatchedVO {
   id: string
   syncTaskId?: string
-  channelCode: string
+  channelCode: PortfolioIntegrationChannelCodeEnum
   externalTeacherCode?: string
   externalName?: string
   matchHints?: string[]
-  status: string
+  status: PortfolioIdentityUnmatchedStatusEnum
   resolvedTeacherId?: string
   resolveRemark?: string
 }
@@ -144,14 +152,14 @@ export interface PortfolioIdentityUnmatchedVO {
 export interface PortfolioConflictTicketVO {
   id: string
   syncTaskId?: string
-  channelCode: string
+  channelCode: PortfolioIntegrationChannelCodeEnum
   fieldCode: string
   teacherId: string
   externalValue?: string
   localValue?: string
   externalSourcePriority: number
   localSourcePriority: number
-  ticketStatus: string
+  ticketStatus: PortfolioConflictTicketStatusEnum
   resolveRemark?: string
 }
 
@@ -163,10 +171,16 @@ export interface PortfolioIntegrationPayloadFieldDto {
 export interface PortfolioIntegrationMessageInboxVO {
   id: string
   datasourceConfigId: string
-  channelCode: string
+  channelCode: PortfolioIntegrationChannelCodeEnum
   messageKey: string
-  payloadFields: PortfolioIntegrationPayloadFieldDto[]
-  processStatus: string
+  teacherNumber?: string
+  teacherCode?: string
+  teacherName?: string
+  externalRecordKey?: string
+  fields: PortfolioIntegrationPayloadFieldDto[]
+  payloadContractValid?: boolean
+  payloadContractMessage?: string
+  processStatus: PortfolioIntegrationMessageInboxStatusEnum
   processMessage?: string
   retryCount: number
   processedTime?: string
@@ -177,7 +191,7 @@ export interface PortfolioIntegrationCleanLogVO {
   id: string
   syncTaskId: string
   datasourceConfigId: string
-  channelCode: string
+  channelCode: PortfolioIntegrationChannelCodeEnum
   sourceFieldCode: string
   targetFieldCode: string
   rawValue?: string
@@ -266,8 +280,8 @@ const BASE = '/api/portfolio/integration'
 export const portfolioIntegrationApi = {
   saveDatasource(data: {
     id?: string
-    channelCode: string
-    pathwayCode: string
+    channelCode: PortfolioIntegrationChannelCodeEnum
+    pathwayCode: PortfolioIntegrationPathwayCodeEnum
     datasourceName: string
     enabled: boolean
     connectionConfig?: PortfolioIntegrationConnectionConfigDto
@@ -277,8 +291,8 @@ export const portfolioIntegrationApi = {
   pageDatasource(data: {
     pageNum: number
     pageSize: number
-    channelCode?: string
-    pathwayCode?: string
+    channelCode?: PortfolioIntegrationChannelCodeEnum
+    pathwayCode?: PortfolioIntegrationPathwayCodeEnum
     enabled?: boolean
   }) {
     return http.post<PageResult<PortfolioIntegrationDatasourceVO>>(`${BASE}/datasource/page`, data)
@@ -305,26 +319,38 @@ export const portfolioIntegrationApi = {
   pageSyncLog(data: {
     pageNum: number
     pageSize: number
-    channelCode?: string
-    taskStatus?: string
+    channelCode?: PortfolioIntegrationChannelCodeEnum
+    taskStatus?: PortfolioSyncTaskStatusEnum
   }) {
     return http.post<PageResult<PortfolioIntegrationSyncTaskVO>>(`${BASE}/sync/log/page`, data)
   },
-  pageIdentityUnmatched(data: { pageNum: number, pageSize: number, status?: string }) {
+  pageIdentityUnmatched(data: {
+    pageNum: number
+    pageSize: number
+    status?: PortfolioIdentityUnmatchedStatusEnum
+  }) {
     return http.post<PageResult<PortfolioIdentityUnmatchedVO>>(
       `${BASE}/identity/unmatched/page`,
       data,
     )
   },
-  pageConflict(data: { pageNum: number, pageSize: number, ticketStatus?: string }) {
+  pageConflict(data: {
+    pageNum: number
+    pageSize: number
+    ticketStatus?: PortfolioConflictTicketStatusEnum
+  }) {
     return http.post<PageResult<PortfolioConflictTicketVO>>(`${BASE}/conflict/page`, data)
   },
-  resolveConflict(data: { conflictTicketId: string, action: string, resolveRemark?: string }) {
+  resolveConflict(data: {
+    conflictTicketId: string
+    action: PortfolioConflictTicketStatusEnum
+    resolveRemark?: string
+  }) {
     return http.post<void>(`${BASE}/conflict/resolve`, data)
   },
   resolveIdentityUnmatched(data: {
     identityUnmatchedId: string
-    action: string
+    action: PortfolioIdentityUnmatchedStatusEnum
     resolvedTeacherId?: string
     resolvedTeacherNumber?: string
     resolveRemark?: string
@@ -334,11 +360,15 @@ export const portfolioIntegrationApi = {
   enqueueMessage(data: {
     datasourceConfigId: string
     messageKey: string
-    payloadFields: PortfolioIntegrationPayloadFieldDto[]
+    teacherNumber?: string
+    teacherCode?: string
+    teacherName?: string
+    externalRecordKey?: string
+    fields: PortfolioIntegrationPayloadFieldDto[]
   }) {
     return http.post<string>(`${BASE}/message/enqueue`, data)
   },
-  pageFailedMessages(data: { pageNum: number, pageSize: number, datasourceConfigId: string }) {
+  pageFailedMessages(data: { pageNum: number; pageSize: number; datasourceConfigId: string }) {
     return http.post<PageResult<PortfolioIntegrationMessageInboxVO>>(
       `${BASE}/message/failed/page`,
       data,
@@ -347,12 +377,16 @@ export const portfolioIntegrationApi = {
   requeueFailedMessage(data: {
     messageInboxId: string
     processMessage?: string
+    teacherNumber?: string
+    teacherCode?: string
+    teacherName?: string
+    externalRecordKey?: string
     fieldCorrections?: PortfolioIntegrationPayloadFieldDto[]
     triggerSync?: boolean
   }) {
     return http.post<void>(`${BASE}/message/requeue`, data)
   },
-  pageCleanLog(data: { pageNum: number, pageSize: number, datasourceConfigId?: string }) {
+  pageCleanLog(data: { pageNum: number; pageSize: number; datasourceConfigId?: string }) {
     return http.post<PageResult<PortfolioIntegrationCleanLogVO>>(`${BASE}/clean-log/page`, data)
   },
   pageCourseCodeMap(data: {
@@ -378,7 +412,7 @@ export const portfolioIntegrationApi = {
   deleteCourseCodeMap(id: string) {
     return http.post<void>(`${BASE}/course-code-map/delete`, { id })
   },
-  pageDictEntry(data: { pageNum: number, pageSize: number, dictionaryCode?: string }) {
+  pageDictEntry(data: { pageNum: number; pageSize: number; dictionaryCode?: string }) {
     return http.post<PageResult<PortfolioIntegrationDictEntryVO>>(`${BASE}/dict-entry/page`, data)
   },
   saveDictEntry(data: {
@@ -406,19 +440,19 @@ export const portfolioIntegrationApi = {
       data,
     )
   },
-  fixNationalReportIssue(data: { issueId: string, fixRemark?: string }) {
+  fixNationalReportIssue(data: { issueId: string; fixRemark?: string }) {
     return http.post<void>(`${BASE}/national-report/issue/fix`, data)
   },
   getNationalReportBatch(id: string) {
     return http.post<PortfolioNationalReportBatchVO>(`${BASE}/national-report/batch/get`, { id })
   },
-  exportNationalReportPackage(data: { syncTaskId: string, maskMode?: boolean }) {
+  exportNationalReportPackage(data: { syncTaskId: string; maskMode?: boolean }) {
     return http.post<PortfolioArchiveBagExportResultVO>(
       `${BASE}/national-report/package/export`,
       data,
     )
   },
-  retransmitNationalReportIssues(data: { datasourceConfigId: string, sourceSyncTaskId?: string }) {
+  retransmitNationalReportIssues(data: { datasourceConfigId: string; sourceSyncTaskId?: string }) {
     return http.post<PortfolioNationalReportBatchVO>(
       `${BASE}/national-report/issue/retransmit`,
       data,

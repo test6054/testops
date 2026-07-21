@@ -1,9 +1,14 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="待审批查阅" subtitle="跨卷借阅审批">
+      <ContextBar
+        layout="workbench"
+        show-title
+        title="查阅审批"
+        subtitle="涉密档案查阅申请按密级矩阵授权，批准后自动附加水印"
+      >
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goList">返回归档工作台</UiButton>
+          <UiButton variant="ghost" size="sm" @click="goList">查阅台账</UiButton>
         </template>
       </ContextBar>
     </template>
@@ -35,14 +40,30 @@
             <UiTag :tone="archiveAccessStatusTone(record.accessStatus)" size="sm">
               {{ archiveAccessStatusLabel(record.accessStatus) }}
             </UiTag>
-            <span class="approval-card__time">{{ formatDateTime(record.createTime) }}</span>
+            <UiTag
+              v-if="record.securityLevel"
+              :tone="archiveSecurityLevelTagTone(record.securityLevel)"
+              size="sm"
+            >
+              {{
+                strictEnumLabel(
+                  ArchiveSecurityLevelDescription,
+                  record.securityLevel,
+                  'securityLevel',
+                )
+              }}
+            </UiTag>
+            <span class="approval-card__time">申请于 {{ formatDateTime(record.createTime) }}</span>
           </div>
           <p class="approval-card__meta">
             <span v-if="record.archiveNo">{{ record.archiveNo }}</span>
             <span v-if="record.archiveTitle"> · {{ record.archiveTitle }}</span>
             <span v-if="record.departmentName"> · {{ record.departmentName }}</span>
           </p>
-          <p v-if="record.accessReason" class="approval-card__reason">{{ record.accessReason }}</p>
+          <p v-if="record.accessReason" class="approval-card__reason">
+            <span class="approval-card__reason-label">查阅事由</span>
+            {{ record.accessReason }}
+          </p>
           <div v-if="canApprove(record)" class="approval-card__actions">
             <template v-if="rejectingId === record.accessRecordId">
               <UiTextarea
@@ -91,14 +112,24 @@
               </div>
             </template>
             <template v-else>
-              <UiButton size="sm" variant="primary" @click="startApprove(record.accessRecordId)">
+              <UiButton
+                size="sm"
+                variant="primary"
+                status="success"
+                @click="startApprove(record.accessRecordId)"
+              >
                 批准
               </UiButton>
-              <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)">
-                拒绝
+              <UiButton
+                size="sm"
+                variant="outline"
+                status="danger"
+                @click="startReject(record.accessRecordId)"
+              >
+                驳回
               </UiButton>
               <UiButton size="sm" variant="ghost" @click="goVolumeDetail(record.volumeId)">
-                打开卷详情
+                查看卷详情
               </UiButton>
             </template>
           </div>
@@ -110,14 +141,14 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeAccessRecordResponse } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   approveArchiveVolumeAccess,
   listPendingArchiveAccessRecords,
   rejectArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -127,6 +158,10 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import {
+  ArchiveSecurityLevelCode,
+  ArchiveSecurityLevelDescription,
+} from '@/types/enums/archive-security-level-enum'
+import {
   archiveAccessApplicantLabel,
   archiveAccessApprovalCardClass,
   archiveAccessStatusLabel,
@@ -134,6 +169,7 @@ import {
 } from '@/utils/archive-access-record-ui'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'TeacherArchiveVolumeAccessPending' })
 
@@ -146,6 +182,11 @@ const approvingId = ref('')
 const rejectingId = ref('')
 const approveComment = ref('')
 const rejectComment = ref('')
+
+/** 密级标签色调：机密用紫色突出，其余密级灰色。 */
+function archiveSecurityLevelTagTone(level: ArchiveSecurityLevelCode): 'purple' | 'gray' {
+  return level === ArchiveSecurityLevelCode.CONFIDENTIAL ? 'purple' : 'gray'
+}
 
 function canApprove(record: ArchiveVolumeAccessRecordResponse): boolean {
   // MVR-189：与 BE listPendingAccessRecords canApprove 同源，屏蔽申请人自批自驳
@@ -166,7 +207,7 @@ async function loadRecords(): Promise<void> {
 }
 
 function goList(): void {
-  void router.push({ name: 'TeacherArchiveVolumeList' })
+  void router.push({ name: 'TeacherArchiveVolumeLedger' })
 }
 
 function goVolumeDetail(volumeId: string): void {
@@ -282,5 +323,10 @@ onMounted(() => {
 .archive-access-pending__load-error p {
   margin: 0;
   color: var(--dp-text-secondary);
+}
+
+.approval-card__reason-label {
+  margin-right: var(--dp-space-2);
+  color: var(--dp-text-muted);
 }
 </style>

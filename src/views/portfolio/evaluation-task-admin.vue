@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
-import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
-import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
-import type {
-  PortfolioEvaluationMaterialPreviewVO,
-  PortfolioEvaluationTeacherNoticeVO,
-} from '@/apis/portfolio/types'
-import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
+import type { PortfolioEvaluationTaskStatusEnum } from '@/apis/portfolio/enums'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES,
@@ -22,15 +13,24 @@ import {
   PortfolioEvaluationSceneDescription,
   PortfolioEvaluationTaskAdvanceActionCode,
   PortfolioEvaluationTaskStatusDescription,
-  PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
+  PortfolioEvaluationTeacherNoticeStatusEnum,
 } from '@/apis/portfolio/enums'
+import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
+import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import type {
+  PortfolioEvaluationMaterialPreviewVO,
+  PortfolioEvaluationTeacherNoticeVO,
+} from '@/apis/portfolio/types'
+import { PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE } from '@/apis/portfolio/types'
+import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
-import { PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE } from '@/apis/portfolio/types'
-import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -54,7 +54,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
 const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
-const previewTeacherOptions = ref<Array<{ value: string, label: string }>>([])
+const previewTeacherOptions = ref<Array<{ value: string; label: string }>>([])
 const previewOpen = ref(false)
 const previewLoading = ref(false)
 const previewTaskId = ref('')
@@ -153,7 +153,7 @@ interface PortfolioEvaluationTaskForm {
   endTime: string
 }
 
-type PortfolioEvaluationTaskStatusFilter = '' | PortfolioEvaluationTaskStatusCode
+type PortfolioEvaluationTaskStatusFilter = '' | PortfolioEvaluationTaskStatusEnum
 
 const form = reactive<PortfolioEvaluationTaskForm>({
   taskName: '',
@@ -217,15 +217,15 @@ function evaluationSceneLabel(scene?: PortfolioEvaluationSceneCode | string): st
   )
 }
 
-function taskStatusLabel(status: PortfolioEvaluationTaskStatusCode): string {
+function taskStatusLabel(status: PortfolioEvaluationTaskStatusEnum): string {
   return strictEnumLabel(PortfolioEvaluationTaskStatusDescription, status, '多元评价任务状态')
 }
 
-function taskStatusTone(status: PortfolioEvaluationTaskStatusCode) {
+function taskStatusTone(status: PortfolioEvaluationTaskStatusEnum) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TASK_STATUS_TONE, status, '多元评价任务状态')
 }
 
-function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): string {
+function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusEnum): string {
   return strictEnumLabel(
     PortfolioEvaluationTeacherNoticeStatusDescription,
     status,
@@ -233,7 +233,7 @@ function noticeStatusLabel(status: PortfolioEvaluationTeacherNoticeStatusCode): 
   )
 }
 
-function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusCode) {
+function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusEnum) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE, status, '评价材料通知状态')
 }
 
@@ -243,8 +243,8 @@ function canReturnNotice(notice: PortfolioEvaluationTeacherNoticeVO | null): boo
     return false
   }
   return (
-    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.MATERIAL_CONFIRM
-    || notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
+    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusEnum.MATERIAL_CONFIRM ||
+    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusEnum.CONFIRMED
   )
 }
 
@@ -354,9 +354,9 @@ async function loadMaterialPreview() {
       teacherId,
     })
     if (
-      currentToken !== previewRequestToken.value
-      || previewTaskId.value !== taskId
-      || previewTeacherId.value !== teacherId
+      currentToken !== previewRequestToken.value ||
+      previewTaskId.value !== taskId ||
+      previewTeacherId.value !== teacherId
     ) {
       return
     }
@@ -370,9 +370,9 @@ async function loadMaterialPreview() {
         teacherId,
       })
       if (
-        currentToken !== previewRequestToken.value
-        || previewTaskId.value !== taskId
-        || previewTeacherId.value !== teacherId
+        currentToken !== previewRequestToken.value ||
+        previewTaskId.value !== taskId ||
+        previewTeacherId.value !== teacherId
       ) {
         return
       }
@@ -380,9 +380,9 @@ async function loadMaterialPreview() {
       returnDueTime.value = previewNotice.value?.dueTime ?? nextPreview.endTime ?? ''
     } catch (error) {
       if (
-        currentToken !== previewRequestToken.value
-        || previewTaskId.value !== taskId
-        || previewTeacherId.value !== teacherId
+        currentToken !== previewRequestToken.value ||
+        previewTaskId.value !== taskId ||
+        previewTeacherId.value !== teacherId
       ) {
         return
       }
@@ -391,9 +391,9 @@ async function loadMaterialPreview() {
     }
   } catch (error) {
     if (
-      currentToken !== previewRequestToken.value
-      || previewTaskId.value !== taskId
-      || previewTeacherId.value !== teacherId
+      currentToken !== previewRequestToken.value ||
+      previewTaskId.value !== taskId ||
+      previewTeacherId.value !== teacherId
     ) {
       return
     }
@@ -402,9 +402,9 @@ async function loadMaterialPreview() {
     showUserError(error, '加载材料预览失败')
   } finally {
     if (
-      currentToken === previewRequestToken.value
-      && previewTaskId.value === taskId
-      && previewTeacherId.value === teacherId
+      currentToken === previewRequestToken.value &&
+      previewTaskId.value === taskId &&
+      previewTeacherId.value === teacherId
     ) {
       previewLoading.value = false
     }
@@ -461,8 +461,8 @@ async function createTask() {
     return
   }
   if (
-    form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
-    && !form.targetIndicatorCode.trim()
+    form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON &&
+    !form.targetIndicatorCode.trim()
   ) {
     showFormValidationMessage('按人评价须填写画像回流目标指标编码')
     return
@@ -536,7 +536,7 @@ async function voidDraftTask(id: string) {
   }
 }
 
-function handleTaskAdminAction(key: string, record: { id: string, taskStatus?: string }) {
+function handleTaskAdminAction(key: string, record: { id: string; taskStatus?: string }) {
   if (key === 'preview') {
     openMaterialPreview(record.id)
     return

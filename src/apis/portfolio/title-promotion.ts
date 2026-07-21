@@ -91,6 +91,10 @@ export interface PortfolioTitlePromotionApplicationVO {
   taskName?: string
   targetTitleLevel?: string
   teacherUserId: string
+  /** edu-user 教师姓名 */
+  teacherName?: string
+  /** edu-user 教师工号 */
+  teacherNumber?: string
   applicationNo?: string
   applicationStatus: PortfolioTitlePromotionApplicationStatusCode
   pathCode?: PortfolioTitleCriteriaPathCode
@@ -275,7 +279,7 @@ export const portfolioTitlePromotionApi = {
       { id },
     ),
 
-  getMineByTask: (data: { taskId: string, teacherUserId?: string }) =>
+  getMineByTask: (data: { taskId: string; teacherUserId?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO | null>(
       '/api/portfolio/title-promotion/application/mine-by-task',
       data,
@@ -310,43 +314,43 @@ export const portfolioTitlePromotionApi = {
       data,
     ),
 
-  collegeApprove: (data: { id: string, opinion?: string }) =>
+  collegeApprove: (data: { id: string; opinion?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/college-approve',
       data,
     ),
 
-  collegeReturn: (data: { id: string, opinion?: string }) =>
+  collegeReturn: (data: { id: string; opinion?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/college-return',
       data,
     ),
 
-  hrApprove: (data: { id: string, opinion?: string }) =>
+  hrApprove: (data: { id: string; opinion?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/hr-approve',
       data,
     ),
 
-  hrReturn: (data: { id: string, opinion?: string }) =>
+  hrReturn: (data: { id: string; opinion?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/hr-return',
       data,
     ),
 
-  hrReject: (data: { id: string, opinion?: string }) =>
+  hrReject: (data: { id: string; opinion?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/hr-reject',
       data,
     ),
 
-  expertReview: (data: { id: string, opinion?: string, approve: boolean }) =>
+  expertReview: (data: { id: string; opinion?: string; approve: boolean }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/expert-review',
       data,
     ),
 
-  startPublicity: (data: { id: string, days: number, remark?: string }) =>
+  startPublicity: (data: { id: string; days: number; remark?: string }) =>
     http.post<PortfolioTitlePromotionApplicationVO>(
       '/api/portfolio/title-promotion/application/start-publicity',
       data,
@@ -371,18 +375,19 @@ export const portfolioTitlePromotionApi = {
       data,
     ),
 
-  saveCriteriaTemplate: (data: Partial<PortfolioTitleCriteriaTemplateVO> & {
-    templateCode: string
-    templateTitle: string
-    gateKind: PortfolioTitleCriteriaGateKindCode
-    checkType: PortfolioTitleCriteriaCheckTypeCode
-    satisfyMode: PortfolioTitleCriteriaSatisfyModeCode
-    pathCode: PortfolioTitleCriteriaPathCode
-    blockOnFail: boolean
-  }) =>
-    http.post<string>('/api/portfolio/title-promotion/criteria-template/save', data),
+  saveCriteriaTemplate: (
+    data: Partial<PortfolioTitleCriteriaTemplateVO> & {
+      templateCode: string
+      templateTitle: string
+      gateKind: PortfolioTitleCriteriaGateKindCode
+      checkType: PortfolioTitleCriteriaCheckTypeCode
+      satisfyMode: PortfolioTitleCriteriaSatisfyModeCode
+      pathCode: PortfolioTitleCriteriaPathCode
+      blockOnFail: boolean
+    },
+  ) => http.post<string>('/api/portfolio/title-promotion/criteria-template/save', data),
 
-  enableCriteriaTemplate: (data: { id: string, enabled: boolean }) =>
+  enableCriteriaTemplate: (data: { id: string; enabled: boolean }) =>
     http.post<void>('/api/portfolio/title-promotion/criteria-template/enable', data),
 
   getCriteriaTemplate: (data: { id: string }) =>
@@ -406,7 +411,7 @@ export const portfolioTitlePromotionApi = {
       data,
     ),
 
-  copyTaskCriteriaFromTemplate: (data: { taskId: string, templateIds: string[] }) =>
+  copyTaskCriteriaFromTemplate: (data: { taskId: string; templateIds: string[] }) =>
     http.post<PortfolioTitleTaskCriteriaVO[]>(
       '/api/portfolio/title-promotion/task-criteria/copy-from-template',
       data,
@@ -422,11 +427,7 @@ export const portfolioTitlePromotionApi = {
       data,
     ),
 
-  pageTaskCriteriaChangeLog: (data: {
-    taskId: string
-    pageNum?: number
-    pageSize?: number
-  }) =>
+  pageTaskCriteriaChangeLog: (data: { taskId: string; pageNum?: number; pageSize?: number }) =>
     http.post<PageResult<PortfolioTitleTaskCriteriaChangeLogVO>>(
       '/api/portfolio/title-promotion/task-criteria/change-log/page',
       data,

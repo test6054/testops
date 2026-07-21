@@ -2,6 +2,7 @@ import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-ident
 import type { PortfolioArchiveBagSectionTypeCode } from '@/types/enums/portfolio-archive-bag-section-type-enum'
 import type { PortfolioArchiveBagSourceTypeCode } from '@/types/enums/portfolio-archive-bag-source-type-enum'
 import type { PortfolioCompletenessLevelCode } from '@/types/enums/portfolio-completeness-level-enum'
+import type { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 
 export {
@@ -35,10 +36,9 @@ export interface PortfolioArchiveBagAssembleVO {
   ownerMultiIdentityNote?: string
 }
 
-
 export interface PortfolioArchiveBagLatestExportVO {
   exportLogId: string
-  exportType: string
+  exportType: PortfolioExportTypeCode
   exportedTime: string
   fileNodeId: string
   rowCount: number
@@ -153,7 +153,6 @@ export interface PortfolioArchiveScoreResultVO {
   /** 多身份贡献说明；层数大于 1 时非空 */
   ownerMultiIdentityNote?: string
 }
-
 
 export interface PortfolioArchiveBagTeacherRequest {
   teacherId?: string

@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import type { PortfolioAnalysisAnnualReportVO } from '@/apis/portfolio/analysis'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioEvaluationTeacherNoticeVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE } from '@/apis/portfolio/types'
 import type { PortfolioAnnualReportTaskStatusCode } from '@/types/enums/portfolio-annual-report-task-status-enum'
+import { PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import {
-  PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
+  PortfolioEvaluationTeacherNoticeStatusEnum,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
@@ -26,15 +28,14 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
-import { strictEnumLabel } from '@/utils/strict-enum'
+import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { evaluationHeld, evaluationHoldBlockMessage, assertEvaluationParticipable }
-  = usePortfolioArchiveWriteGuard()
+const { evaluationHeld, evaluationHoldBlockMessage, assertEvaluationParticipable } =
+  usePortfolioArchiveWriteGuard()
 const reportYear = ref(String(new Date().getFullYear()))
 const loading = ref(false)
 const generating = ref(false)
@@ -44,7 +45,7 @@ const annualNotices = ref<PortfolioEvaluationTeacherNoticeVO[]>([])
 
 const hasPendingAnnualNotices = computed(() =>
   annualNotices.value.some(
-    (notice) => notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED,
+    (notice) => notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusEnum.CONFIRMED,
   ),
 )
 const submittingNoticeId = ref('')
@@ -74,6 +75,14 @@ function annualNoticeStatusLabel(notice: PortfolioEvaluationTeacherNoticeVO): st
   )
 }
 
+function annualNoticeStatusTone(notice: PortfolioEvaluationTeacherNoticeVO) {
+  return strictEnumTone(
+    PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
+    notice.noticeStatus,
+    '年度考核材料状态',
+  )
+}
+
 /**
  * 加载当前教师当前年度的真实年度报告任务；没有任务时保留空态，不推断或制造考核提交状态。
  */
@@ -95,16 +104,16 @@ async function loadAnnualReport() {
       pageSize: 1,
     })
     if (
-      scopeRequestToken.value !== currentScopeToken
-      || reportRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken ||
+      reportRequestToken.value !== currentToken
     ) {
       return
     }
     annualReport.value = page.list[0] ?? null
   } catch (error) {
     if (
-      scopeRequestToken.value !== currentScopeToken
-      || reportRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken ||
+      reportRequestToken.value !== currentToken
     ) {
       return
     }
@@ -112,8 +121,8 @@ async function loadAnnualReport() {
     showUserError(error, '加载失败')
   } finally {
     if (
-      scopeRequestToken.value === currentScopeToken
-      && reportRequestToken.value === currentToken
+      scopeRequestToken.value === currentScopeToken &&
+      reportRequestToken.value === currentToken
     ) {
       loading.value = false
     }
@@ -140,16 +149,16 @@ async function loadAnnualReviewNotices() {
       pageSize: 100,
     })
     if (
-      scopeRequestToken.value !== currentScopeToken
-      || noticeRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken ||
+      noticeRequestToken.value !== currentToken
     ) {
       return
     }
     annualNotices.value = page.list
   } catch (error) {
     if (
-      scopeRequestToken.value !== currentScopeToken
-      || noticeRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken ||
+      noticeRequestToken.value !== currentToken
     ) {
       return
     }
@@ -300,22 +309,12 @@ usePortfolioScopedLoader(
               </p>
             </div>
             <div class="annual-review__notice-actions">
-              <UiTag
-                size="sm"
-                :tone="
-                  notice.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
-                    ? 'green'
-                    : notice.noticeStatus
-                      === PortfolioEvaluationTeacherNoticeStatusCode.RETURNED_SUPPLEMENT
-                      ? 'orange'
-                      : 'blue'
-                "
-              >
+              <UiTag size="sm" :tone="annualNoticeStatusTone(notice)">
                 {{ annualNoticeStatusLabel(notice) }}
               </UiTag>
               <UiButton
                 size="sm"
-                v-if="notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED"
+                v-if="notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusEnum.CONFIRMED"
                 variant="primary"
                 :loading="submittingNoticeId === notice.id"
                 :disabled="

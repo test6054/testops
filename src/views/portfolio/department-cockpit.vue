@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { PortfolioDepartmentPortraitVO } from '@/apis/portfolio/analysis'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -25,7 +26,6 @@ import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioCockpitAskPanel from '@/views/portfolio/components/PortfolioCockpitAskPanel.vue'
@@ -180,12 +180,9 @@ function complianceTypeLabel(code: string): string {
   )
 }
 
-function alertStatusLabel(code: string): string {
-  return strictEnumLabel(
-    PortfolioAlertStatusDescription,
-    code as PortfolioAlertStatusCode,
-    '预警状态',
-  )
+function alertStatusLabel(code?: PortfolioAlertStatusCode): string {
+  if (!code) return '—'
+  return strictEnumLabel(PortfolioAlertStatusDescription, code, '预警状态')
 }
 
 async function loadSummary() {
@@ -237,8 +234,8 @@ async function syncDepartmentContext() {
   const currentToken = ++departmentSyncToken.value
   const queryDepartmentId = readRouteStringParam(route.query.departmentId)
   if (
-    queryDepartmentId
-    && departmentOptions.value.some((option) => option.value === queryDepartmentId)
+    queryDepartmentId &&
+    departmentOptions.value.some((option) => option.value === queryDepartmentId)
   ) {
     departmentId.value = queryDepartmentId
     return
@@ -304,7 +301,9 @@ watch(
         :subtitle="summary?.departmentName || portrait?.departmentName"
       >
         <template #actions>
-          <UiButton size="sm" :disabled="!departmentId" @click="goDeptOneTable()"> 部门一张表 </UiButton>
+          <UiButton size="sm" :disabled="!departmentId" @click="goDeptOneTable()">
+            部门一张表
+          </UiButton>
         </template>
       </ContextBar>
     </template>

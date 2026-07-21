@@ -15,7 +15,7 @@ import type {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioEvaluationModeCode,
   PortfolioEvaluationSceneCode,
-  PortfolioEvaluationTaskStatusCode,
+  PortfolioEvaluationTaskStatusEnum,
   PortfolioExternalTeacherDataStatusCode,
   PortfolioExternalTeacherImportBatchStatusCode,
   PortfolioKeyTeacherRegistryStatusCode,
@@ -29,17 +29,18 @@ import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PortfolioArchiveScoreRuleTypeCode } from '@/types/enums/portfolio-archive-score-rule-type-enum'
-import type { PortfolioImportQualityGradeCode } from '@/types/enums/portfolio-import-quality-grade-enum'
-import type { PortfolioPlanningSyncConflictStrategyCode } from '@/types/enums/portfolio-planning-sync-conflict-strategy-enum'
-import type { PortfolioPlanningSyncOrgScopeCode } from '@/types/enums/portfolio-planning-sync-org-scope-enum'
-import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfolio-portrait-template-status-enum'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import http from '@/config/axios'
-import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
   PortfolioArchiveScoreRuleTypeDescription,
 } from '@/types/enums/portfolio-archive-score-rule-type-enum'
+import type { PortfolioImportQualityGradeCode } from '@/types/enums/portfolio-import-quality-grade-enum'
+import type { PortfolioPlanningSyncConflictStrategyCode } from '@/types/enums/portfolio-planning-sync-conflict-strategy-enum'
+import type { PortfolioPlanningSyncOrgScopeCode } from '@/types/enums/portfolio-planning-sync-org-scope-enum'
+import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfolio-portrait-template-status-enum'
+import type { PortfolioMultiSourceEvaluatorTypeEnum } from '@/types/enums/portfolio-multi-source-evaluator-type-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import http from '@/config/axios'
+import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const portfolioArchiveBagApi = {
@@ -55,7 +56,7 @@ export const portfolioArchiveBagApi = {
 
 export type {
   PortfolioEvaluationModeCode,
-  PortfolioEvaluationTaskStatusCode,
+  PortfolioEvaluationTaskStatusEnum,
 } from '@/apis/portfolio/enums'
 export {
   ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
@@ -232,7 +233,7 @@ export interface PortfolioDualTeacherCertYearCountVO {
 }
 
 export interface PortfolioDualTeacherStatusCountVO {
-  applicationStatus: string
+  applicationStatus: PortfolioDualTeacherApplicationStatusCode
   count: number
 }
 
@@ -415,7 +416,7 @@ export interface PortfolioDevelopmentPlanVO {
   planTitle: string
   planStatus: PortfolioDevelopmentPlanStatusCode
   planYear: string
-  planType?: string
+  planType?: PortfolioDevelopmentPlanTypeCode
   portfolioOrgId?: string
   ownerUserId?: string
   planSummary?: string
@@ -462,14 +463,14 @@ export interface PortfolioDevelopmentPlanItemSaveRequest {
 }
 
 export interface PortfolioDevelopmentPlanYearStatVO {
-  planStatus: string
+  planStatus: PortfolioDevelopmentPlanStatusCode
   planCount: number
 }
 
 export interface PortfolioDevelopmentPlanOrgStatVO {
   portfolioOrgId?: string
   orgName?: string
-  planStatus: string
+  planStatus: PortfolioDevelopmentPlanStatusCode
   planCount: number
 }
 
@@ -656,6 +657,10 @@ export interface PortfolioDevelopmentRecordVO {
   awardUnit?: string
   recordDate?: string
   teacherUserId?: string
+  /** edu-user 教师姓名 */
+  teacherName?: string
+  /** edu-user 教师工号 */
+  teacherNumber?: string
   descriptionText?: string
   fileId?: string
   createTime?: string
@@ -716,7 +721,7 @@ export interface PortfolioDevelopmentRecordPageRequest extends QueryDto {
 
 export interface PortfolioDevelopmentRecordComprehensivePageRequest extends QueryDto {
   searchText?: string
-  recordTypes?: string[]
+  recordTypes?: PortfolioDevelopmentRecordTypeCode[]
   levelCode?: string
   nationalOnly?: boolean
   teacherUserId?: string
@@ -798,6 +803,10 @@ export const portfolioDevelopmentRecordApi = {
 export interface PortfolioKeyTeacherRegistryVO {
   id: string
   teacherUserId: string
+  /** edu-user 教师姓名 */
+  teacherName?: string
+  /** edu-user 教师工号 */
+  teacherNumber?: string
   registryType: PortfolioKeyTeacherRegistryTypeCode
   specialtyName?: string
   majorGroupName?: string
@@ -858,7 +867,8 @@ export const portfolioKeyTeacherApi = {
 export interface PortfolioDoubleDutyRegistryVO {
   id: string
   teacherUserId: string
-  teacherName?: string
+  teacherName: string
+  teacherNumber: string
   departmentName?: string
   adminPostName?: string
   teachingPostName?: string
@@ -881,7 +891,7 @@ export interface PortfolioDoubleDutyRegistryVO {
 }
 
 export interface PortfolioDoubleDutyStatusCountVO {
-  registryStatus: string
+  registryStatus: PortfolioKeyTeacherRegistryStatusCode
   count: number
 }
 
@@ -933,6 +943,10 @@ export const portfolioDoubleDutyApi = {
 export interface PortfolioTeacherSalaryVO {
   id: string
   teacherUserId: string
+  /** edu-user 教师姓名 */
+  teacherName?: string
+  /** edu-user 教师工号 */
+  teacherNumber?: string
   salaryMonth: string
   baseAmount?: number
   performanceAmount?: number
@@ -988,6 +1002,10 @@ export const portfolioTeacherSalaryApi = {
 export interface PortfolioTeacherLibraryBorrowVO {
   id: string
   teacherUserId: string
+  /** edu-user 教师姓名 */
+  teacherName?: string
+  /** edu-user 教师工号 */
+  teacherNumber?: string
   bookTitle: string
   bookIsbn?: string
   borrowTime?: string
@@ -1093,6 +1111,10 @@ export interface PortfolioTeacherRecommendCandidateVO {
   id: string
   runId: string
   teacherUserId: string
+  /** edu-user 教师姓名 */
+  teacherName: string
+  /** edu-user 教师工号 */
+  teacherNumber: string
   rankOrder: number
   ruleScore?: number
   reasonText?: string
@@ -1121,6 +1143,10 @@ export interface PortfolioTeacherRecommendRunVO {
 
 export interface PortfolioTeacherRecommendExplainCandidateItemVO {
   teacherUserId: string
+  /** edu-user 教师姓名 */
+  teacherName: string
+  /** edu-user 教师工号 */
+  teacherNumber: string
   reasonText: string
   lifecycleStatus?: string
   lifecycleStatusLabel?: string
@@ -1294,7 +1320,6 @@ export interface PortfolioPortraitTemplateSaveRequest {
   academicYear?: string
   layout: PortfolioPortraitLayoutWidgetDto[]
   chartConfig?: PortfolioPortraitChartConfigEntryDto[]
-  templateStatus?: PortfolioPortraitTemplateStatusCode
 }
 
 export interface PortfolioPortraitTemplateListRequest {
@@ -1308,6 +1333,10 @@ export const portfolioPortraitTemplateApi = {
     http.post<PortfolioPortraitTemplateVO>('/api/portfolio/portrait-template/get', data),
   save: (data: PortfolioPortraitTemplateSaveRequest) =>
     http.post<string>('/api/portfolio/portrait-template/save', data),
+  activate: (data: { id: string }) =>
+    http.post<void>('/api/portfolio/portrait-template/activate', data),
+  deactivate: (data: { id: string }) =>
+    http.post<void>('/api/portfolio/portrait-template/deactivate', data),
 }
 
 export {
@@ -1326,6 +1355,7 @@ export interface PortfolioEvaluationWorkgroupMemberOptionVO {
 export interface PortfolioEvaluationSubjectTeacherOptionVO {
   teacherUserId: string
   fullName: string
+  teacherNumber: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
   lifecycleStatus?: string
   /** 生命周期状态中文标签 */
@@ -1352,8 +1382,8 @@ export interface PortfolioEvaluationTaskFillContextVO {
   taskName: string
   evaluationMode: PortfolioEvaluationModeCode
   targetIndicatorCode?: string
-  taskStatus: PortfolioEvaluationTaskStatusCode
-  suspendedFromStatus?: PortfolioEvaluationTaskStatusCode
+  taskStatus: PortfolioEvaluationTaskStatusEnum
+  suspendedFromStatus?: PortfolioEvaluationTaskStatusEnum
   workgroupId?: string
   startTime?: string
   endTime?: string
@@ -1369,7 +1399,7 @@ export interface PortfolioEvaluationTaskVO {
   /** §8.48 任务业务场景 */
   sceneCode?: PortfolioEvaluationSceneCode
   targetIndicatorCode?: string
-  taskStatus: PortfolioEvaluationTaskStatusCode
+  taskStatus: PortfolioEvaluationTaskStatusEnum
   workgroupId?: string
   startTime?: string
   endTime?: string
@@ -1383,7 +1413,7 @@ export interface PortfolioEvaluationTaskVO {
 }
 
 export interface PortfolioEvaluationTaskPageRequest extends QueryDto {
-  taskStatus?: PortfolioEvaluationTaskStatusCode
+  taskStatus?: PortfolioEvaluationTaskStatusEnum
   /** §8.48 任务业务场景筛选 */
   sceneCode?: PortfolioEvaluationSceneCode
   /** PF-P0-293：站内信/待办深链定位评价任务 */
@@ -1445,7 +1475,7 @@ export interface PortfolioEvaluationEntryVO {
   score: number
   commentText?: string
   evaluatorUserId: string
-  evaluatorSourceType?: string
+  evaluatorSourceType?: PortfolioMultiSourceEvaluatorTypeEnum
   evaluatorSourceTypeLabel?: string
   createTime?: string
   updateTime?: string
@@ -1484,6 +1514,10 @@ export interface PortfolioEvaluationComprehensiveTaskItemVO {
 
 export interface PortfolioEvaluationComprehensiveTeacherRowVO {
   subjectTeacherUserId: string
+  /** edu-user 被评教师姓名 */
+  subjectTeacherName?: string
+  /** edu-user 被评教师工号 */
+  subjectTeacherNumber?: string
   /** 涉及业务场景编码（多场景 / 拼接） */
   involvedSceneCodes?: string
   /** 涉及业务场景名称（多场景 / 拼接） */
@@ -1527,8 +1561,8 @@ export interface PortfolioEvaluationEntrySaveRequest {
   indicatorCode?: string
   score: number
   commentText?: string
-  /** §8.53 评价来源类型 */
-  evaluatorSourceType: string
+  /** 评价来源类型 */
+  evaluatorSourceType: PortfolioMultiSourceEvaluatorTypeEnum
 }
 
 export interface PortfolioEvaluationComprehensiveAnalysisRequest {

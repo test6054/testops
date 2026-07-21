@@ -6,7 +6,9 @@ import type {
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
+import { AiTaskStatusDescription } from '@/apis/quality/types'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -17,9 +19,7 @@ import {
   PortfolioTeacherRecommendSceneCode,
   PortfolioTeacherRecommendSceneDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import { aiTaskApi } from '@/apis/quality/ai-task'
-import { AiTaskStatusDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -37,6 +37,10 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  formatPortfolioTeacherDisplay,
+  formatPortfolioTeacherPkDisplay,
+} from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -70,7 +74,7 @@ const pkForm = reactive({
 
 const candidateColumns: ColumnsType = [
   { title: '排名', dataIndex: 'rankOrder', key: 'rankOrder', width: 64 },
-  { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 100 },
+  { title: '教师', key: 'teacher', width: 180 },
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '评分', dataIndex: 'ruleScore', key: 'ruleScore', width: 80 },
@@ -461,7 +465,10 @@ watch(
           @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'identityLayers'">
+            <template v-if="column.key === 'teacher'">
+              {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
+            </template>
+            <template v-else-if="column.key === 'identityLayers'">
               <PortfolioOwnerIdentityLayersCell
                 :layers="record.ownerIdentityLayers"
                 :note="record.ownerMultiIdentityNote"
@@ -532,7 +539,9 @@ watch(
       </div>
       <div v-if="pkResult" class="pk-grid">
         <div v-for="teacher in pkResult.teachers" :key="teacher.teacherUserId" class="pk-col">
-          <div class="pk-title">教师 {{ teacher.teacherUserId }}</div>
+          <div class="pk-title">
+            {{ formatPortfolioTeacherPkDisplay(teacher.displayName, teacher.teacherNumber) }}
+          </div>
           <div v-for="row in teacher.dimensionRows" :key="row.dimensionCode" class="pk-row">
             {{ row.dimensionLabel }}：{{ row.dimensionScore }}
           </div>
@@ -542,9 +551,8 @@ watch(
     <UiDrawer v-model:open="explainDrawerOpen" title="智能解释状态" width="560">
       <UiSpin :spinning="explainLoading">
         <template v-if="explainStatus">
-          <p>运行编号 {{ explainStatus.runId }}</p>
           <p v-if="explainStatus.explainTaskId">
-            任务编号 {{ explainStatus.explainTaskId }}
+            智能解释已提交
             <UiButton size="sm" style="margin-left: 8px" @click="openExplainAiTask">
               打开智能任务中心
             </UiButton>
@@ -553,7 +561,9 @@ watch(
           <p v-if="explainStatus.status">状态 {{ aiTaskStatusLabel(explainStatus.status) }}</p>
           <ul v-if="explainStatus.candidateItems?.length" class="explain-list">
             <li v-for="item in explainStatus.candidateItems" :key="item.teacherUserId">
-              <strong>教师 {{ item.teacherUserId }}</strong>
+              <strong>{{
+                formatPortfolioTeacherDisplay(item.teacherName, item.teacherNumber)
+              }}</strong>
               <pre class="explain-text">{{ item.reasonText }}</pre>
             </li>
           </ul>

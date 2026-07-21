@@ -20,45 +20,46 @@
     </template>
 
     <template #signal>
-      <SignalBand variant="panel" :metrics="settingsSignalMetrics" />
+      <div class="archive-volume-settings__signal-stack">
+        <UiAlertStrip
+          v-if="s1TipVisible"
+          class="archive-volume-settings__s1-tip"
+          :tone="s1TipTone"
+          :title="s1TipTitle"
+          :description="s1TipDescription"
+          dense
+        >
+          <template #actions>
+            <UiButton
+              v-if="s1PrimaryActionLabel"
+              size="sm"
+              variant="primary"
+              @click="goS1PrimaryAction"
+            >
+              {{ s1PrimaryActionLabel }}
+            </UiButton>
+            <UiButton
+              v-if="s1ShowExamListSecondary"
+              size="sm"
+              variant="outline"
+              @click="goExamListForArchive"
+            >
+              考试列表
+            </UiButton>
+            <UiButton
+              v-if="s1AttentionLoadFailed"
+              size="sm"
+              variant="outline"
+              :loading="s1AttentionLoading"
+              @click="loadS1AutoCreateAttention"
+            >
+              重试
+            </UiButton>
+          </template>
+        </UiAlertStrip>
+        <SignalBand variant="panel" :metrics="settingsSignalMetrics" />
+      </div>
     </template>
-
-    <UiAlertStrip
-      v-if="s1TipVisible"
-      class="archive-volume-settings__s1-tip"
-      :tone="s1TipTone"
-      :title="s1TipTitle"
-      :description="s1TipDescription"
-      dense
-    >
-      <template #actions>
-        <UiButton
-          v-if="s1PrimaryActionLabel"
-          size="sm"
-          :variant="s1TipTone === 'warning' ? 'primary' : 'outline'"
-          @click="goS1PrimaryAction"
-        >
-          {{ s1PrimaryActionLabel }}
-        </UiButton>
-        <UiButton
-          v-if="s1ShowExamListSecondary"
-          size="sm"
-          variant="outline"
-          @click="goExamListForArchive"
-        >
-          考试列表
-        </UiButton>
-        <UiButton
-          v-if="s1AttentionLoadFailed"
-          size="sm"
-          variant="outline"
-          :loading="s1AttentionLoading"
-          @click="loadS1AutoCreateAttention"
-        >
-          重试
-        </UiButton>
-      </template>
-    </UiAlertStrip>
 
     <WorkbenchSurfaceCard flush class="archive-volume-settings__surface">
       <template #head>
@@ -138,10 +139,16 @@
                   />
                 </template>
                 <template v-else-if="column.key === 'scopeDepartmentId'">
+                  <span
+                    v-if="dutyRows[index].tenantWide"
+                    class="archive-volume-settings__duty-wide"
+                  >
+                    —（全校）
+                  </span>
                   <UiSelect
+                    v-else
                     v-model="dutyRows[index].scopeDepartmentId"
                     :options="departmentOptions"
-                    :disabled="dutyRows[index].tenantWide"
                     placeholder="院系（可选）"
                     allow-search
                   />
@@ -164,6 +171,9 @@
                 </template>
               </template>
             </UiDataTable>
+            <div class="archive-volume-settings__duty-footer">
+              共 {{ dutyRows.length }} 条职责授权
+            </div>
           </WorkbenchSurfaceCard>
         </UiForm>
       </section>
@@ -254,10 +264,7 @@
             </UiButton>
           </template>
         </UiEmpty>
-        <UiForm
-          v-else
-          :disabled="collaborationLoading || saving || !canManageArchiveConfig"
-        >
+        <UiForm v-else :disabled="collaborationLoading || saving || !canManageArchiveConfig">
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>协作与提交策略</span>
@@ -448,10 +455,6 @@ import type {
   ArchiveSecurityPolicyItemRequest,
   ArchiveTenantCollaborationPolicySaveRequest,
 } from '@/apis/mark/archive-config'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_DUTY_TYPE_OPTIONS,
   ArchiveDutyTypeCode,
@@ -464,6 +467,10 @@ import {
   saveArchiveDutyGrants,
   saveArchiveSecurityPolicy,
 } from '@/apis/mark/archive-config'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import { ARCHIVE_SECURITY_LEVEL_OPTIONS } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
@@ -580,7 +587,7 @@ const kioskHubListModeOptions = ALL_ARCHIVE_KIOSK_HUB_LIST_MODE_CODES.map((value
   value,
   label: strictEnumLabel(ArchiveKioskHubListModeDescription, value, '一体机派单中枢列表模式'),
 }))
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 const tenantTemplateSetCount = ref(0)
 
 function goArchiveList() {
@@ -602,10 +609,29 @@ function goCreateHistorySupplement() {
 }
 
 const settingsSignalMetrics = computed((): SignalMetric[] => [
-  { key: 'templateSets', label: '模板母版', value: tenantTemplateSetCount.value, unit: '套' },
-  { key: 'duty', label: '档案岗位', value: dutyRows.value.length, unit: '条' },
-  { key: 'policy', label: '密级矩阵', value: policyRows.value.length, unit: '条' },
-  { key: 'deadline', label: '时限策略', value: deadlineRows.value.length, unit: '条' },
+  {
+    key: 'templateSets',
+    label: '模板母版',
+    value: tenantTemplateSetCount.value,
+    unit: '套',
+    iconTone: 'blue',
+    helper: '平台母版 + 本校副本',
+  },
+  { key: 'duty', label: '档案岗位', value: dutyRows.value.length, unit: '条', helper: '职责授权' },
+  {
+    key: 'policy',
+    label: '密级矩阵',
+    value: policyRows.value.length,
+    unit: '条',
+    helper: '按职责限制最高密级',
+  },
+  {
+    key: 'deadline',
+    label: '时限策略',
+    value: deadlineRows.value.length,
+    unit: '条',
+    helper: '租户默认 + 院系覆盖',
+  },
 ])
 
 function dutyRowKey(row: DutyRow) {
@@ -624,9 +650,9 @@ function validateDutyRows(): boolean {
       return false
     }
     if (
-      !row.tenantWide
-      && !row.scopeDepartmentId
-      && row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
+      !row.tenantWide &&
+      !row.scopeDepartmentId &&
+      row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
     ) {
       showFormValidationMessage('非全校授权须选择院系')
       return false
@@ -1061,7 +1087,24 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .archive-volume-settings__s1-tip {
-  margin-bottom: var(--dp-space-4);
+  margin-bottom: 0;
+}
+
+.archive-volume-settings__signal-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dp-space-4);
+}
+
+.archive-volume-settings__duty-wide {
+  color: var(--dp-text-muted);
+}
+
+.archive-volume-settings__duty-footer {
+  padding: var(--dp-space-2) var(--dp-space-4);
+  border-top: 1px solid var(--dp-border-subtle);
+  font-size: 12px;
+  color: var(--dp-text-muted);
 }
 .archive-volume-settings__panel {
   display: flex;

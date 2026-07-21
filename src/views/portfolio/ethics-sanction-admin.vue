@@ -5,10 +5,10 @@ import type {
   PortfolioEthicsReviewLogVO,
   PortfolioEthicsSanctionVO,
 } from '@/apis/portfolio/ethics-sanction'
+import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -48,6 +48,7 @@ import {
   PortfolioEthicsSanctionStatusDescription,
 } from '@/types/enums/portfolio-ethics-sanction-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -104,7 +105,7 @@ const reviewForm = reactive({
 })
 
 const columns: ColumnsType = [
-  { title: '教师编号', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
+  { title: '教师', dataIndex: 'teacherId', key: 'teacherId', width: 160 },
   { title: '事件', key: 'eventType', width: 110 },
   { title: '起止', key: 'dateRange', width: 200 },
   { title: '影响', key: 'impactScope', width: 120 },
@@ -139,39 +140,23 @@ const conclusionOptions = ALL_PORTFOLIO_ETHICS_REVIEW_CONCLUSION_CODES.map((code
   label: PortfolioEthicsReviewConclusionDescription[code],
 }))
 
-function statusLabel(code: string) {
-  return strictEnumLabel(
-    PortfolioEthicsSanctionStatusDescription,
-    code as PortfolioEthicsSanctionStatusCode,
-    '处分状态',
-  )
+function statusLabel(code: PortfolioEthicsSanctionStatusCode) {
+  return strictEnumLabel(PortfolioEthicsSanctionStatusDescription, code, '处分状态')
 }
 
-function eventLabel(code: string) {
-  return strictEnumLabel(
-    PortfolioEthicsEventTypeDescription,
-    code as PortfolioEthicsEventTypeCode,
-    '事件类型',
-  )
+function eventLabel(code: PortfolioEthicsEventTypeCode) {
+  return strictEnumLabel(PortfolioEthicsEventTypeDescription, code, '事件类型')
 }
 
-function impactLabel(code: string) {
-  return strictEnumLabel(
-    PortfolioEthicsImpactScopeDescription,
-    code as PortfolioEthicsImpactScopeCode,
-    '影响范围',
-  )
+function impactLabel(code: PortfolioEthicsImpactScopeCode) {
+  return strictEnumLabel(PortfolioEthicsImpactScopeDescription, code, '影响范围')
 }
 
-function conclusionLabel(code: string) {
-  return strictEnumLabel(
-    PortfolioEthicsReviewConclusionDescription,
-    code as PortfolioEthicsReviewConclusionCode,
-    '复核结论',
-  )
+function conclusionLabel(code: PortfolioEthicsReviewConclusionCode) {
+  return strictEnumLabel(PortfolioEthicsReviewConclusionDescription, code, '复核结论')
 }
 
-function statusTone(code: string) {
+function statusTone(code: PortfolioEthicsSanctionStatusCode) {
   if (code === PortfolioEthicsSanctionStatusCode.PENDING_REVIEW) return 'yellow'
   if (code === PortfolioEthicsSanctionStatusCode.RELEASED) return 'green'
   return 'red'
@@ -204,10 +189,10 @@ function openEdit(row: PortfolioEthicsSanctionVO) {
   }
   editingId.value = row.id
   form.teacherId = row.teacherId
-  form.eventType = row.eventType as PortfolioEthicsEventTypeCode
+  form.eventType = row.eventType
   form.handlingBasis = row.handlingBasis
   form.dateRange = [row.sanctionStartDate, row.sanctionEndDate]
-  form.impactScope = row.impactScope as PortfolioEthicsImpactScopeCode
+  form.impactScope = row.impactScope
   form.releaseCondition = row.releaseCondition
   form.reviewDepartment = row.reviewDepartment
   form.publicSummary = row.publicSummary
@@ -331,10 +316,10 @@ async function saveSanction() {
     return
   }
   if (
-    !form.handlingBasis.trim()
-    || !form.releaseCondition.trim()
-    || !form.reviewDepartment.trim()
-    || !form.publicSummary.trim()
+    !form.handlingBasis.trim() ||
+    !form.releaseCondition.trim() ||
+    !form.reviewDepartment.trim() ||
+    !form.publicSummary.trim()
   ) {
     void message.error('请填写处理依据、解除条件、复核部门和公开摘要')
     return
@@ -374,9 +359,9 @@ async function submitReview() {
   }
   if (!reviewTarget.value || writing.value) return
   if (
-    (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
-      || reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN)
-    && !reviewForm.newSanctionEndDate
+    (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND ||
+      reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN) &&
+    !reviewForm.newSanctionEndDate
   ) {
     void message.error(
       reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
@@ -403,7 +388,7 @@ async function submitReview() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -511,7 +496,10 @@ onMounted(async () => {
           @page-change="handlePageChange"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'eventType'">
+            <template v-if="column.key === 'teacherId'">
+              {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
+            </template>
+            <template v-else-if="column.key === 'eventType'">
               {{ eventLabel(record.eventType) }}
             </template>
             <template v-else-if="column.key === 'dateRange'">
@@ -558,7 +546,7 @@ onMounted(async () => {
             <template v-else-if="column.key === 'actions'">
               <UiButton size="sm" variant="soft" @click="openDetail(record)"> 详情 </UiButton>
               <UiButton
-                v-if="record.sanctionStatus === 'IN_EFFECT'"
+                v-if="record.sanctionStatus === PortfolioEthicsSanctionStatusCode.IN_EFFECT"
                 size="sm"
                 variant="soft"
                 @click="openEdit(record)"
@@ -566,7 +554,7 @@ onMounted(async () => {
                 编辑
               </UiButton>
               <UiButton
-                v-if="record.sanctionStatus === 'PENDING_REVIEW'"
+                v-if="record.sanctionStatus === PortfolioEthicsSanctionStatusCode.PENDING_REVIEW"
                 size="sm"
                 variant="primary"
                 @click="openReview(record)"
@@ -619,19 +607,28 @@ onMounted(async () => {
 
     <UiDrawer v-model:open="reviewOpen" title="期满复核" width="480">
       <div v-if="reviewTarget" class="ethics-admin__form">
-        <p>教师 {{ reviewTarget.teacherId }} · 原结束日 {{ reviewTarget.sanctionEndDate }}</p>
+        <p>
+          {{ formatPortfolioTeacherDisplay(reviewTarget.teacherName, reviewTarget.teacherNumber) }}
+          · 原结束日 {{ reviewTarget.sanctionEndDate }}
+        </p>
         <label>复核结论</label>
         <UiSelect v-model="reviewForm.reviewConclusion" size="sm" :options="conclusionOptions" />
         <label
           v-if="
-            reviewForm.reviewConclusion === 'EXTEND' || reviewForm.reviewConclusion === 'MAINTAIN'
+            reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND ||
+            reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN
           "
         >
-          {{ reviewForm.reviewConclusion === 'EXTEND' ? '新结束日期' : '下一次复核截止日期' }}
+          {{
+            reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
+              ? '新结束日期'
+              : '下一次复核截止日期'
+          }}
         </label>
         <UiDatePicker
           v-if="
-            reviewForm.reviewConclusion === 'EXTEND' || reviewForm.reviewConclusion === 'MAINTAIN'
+            reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND ||
+            reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN
           "
           v-model="reviewForm.newSanctionEndDate"
           size="sm"
@@ -681,7 +678,7 @@ onMounted(async () => {
         <ul v-else class="ethics-admin__logs">
           <li v-for="log in reviewLogs" :key="log.id">
             {{ log.createTime }} · {{ conclusionLabel(log.reviewConclusion) }} ·
-            {{ log.fromStatus }} → {{ log.toStatus }}
+            {{ statusLabel(log.fromStatus) }} → {{ statusLabel(log.toStatus) }}
             <span v-if="log.newEndDate"> · 结束日 {{ log.newEndDate }}</span>
           </li>
         </ul>

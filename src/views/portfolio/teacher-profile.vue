@@ -8,13 +8,16 @@ import type {
   PortfolioTeacherTaughtCourseSaveRequest,
   PortfolioTeacherTaughtCourseVO,
 } from '@/apis/portfolio/teacher-profile'
+import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
+import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { portfolioTeacherCohortProfileApi } from '@/apis/portfolio/teacher-cohort-profile'
-import { portfolioTeacherProfileApi } from '@/apis/portfolio/teacher-profile'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -29,6 +32,7 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
@@ -40,15 +44,14 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 
@@ -91,10 +94,10 @@ const academicExperiences = ref<PortfolioTeacherAcademicExperienceVO[]>([])
 const academicAppointments = ref<PortfolioTeacherAcademicAppointmentVO[]>([])
 
 type CvKind = 'education' | 'academicExperience' | 'academicAppointment'
-type CvRecord
-  = | PortfolioTeacherEducationVO
-    | PortfolioTeacherAcademicExperienceVO
-    | PortfolioTeacherAcademicAppointmentVO
+type CvRecord =
+  | PortfolioTeacherEducationVO
+  | PortfolioTeacherAcademicExperienceVO
+  | PortfolioTeacherAcademicAppointmentVO
 
 const cvForm = reactive({
   schoolName: '',
@@ -114,11 +117,15 @@ const profileForm = reactive({
 const cohortProfileForm = reactive({ jobLevel: '', majorGroupCode: '', majorGroupName: '' })
 const savingCohortProfile = ref(false)
 
-const courseForm = reactive<PortfolioTeacherTaughtCourseSaveRequest>({
+interface CourseEditorForm extends Omit<PortfolioTeacherTaughtCourseSaveRequest, 'semester'> {
+  semester?: SemesterCode
+}
+
+const courseForm = reactive<CourseEditorForm>({
   courseCode: '',
   courseName: '',
   academicYear: '',
-  semester: '',
+  semester: undefined,
   personalHours: undefined,
   totalHours: undefined,
   studentCount: undefined,
@@ -187,7 +194,7 @@ function resetCourseEditorContext() {
   courseForm.courseCode = ''
   courseForm.courseName = ''
   courseForm.academicYear = ''
-  courseForm.semester = ''
+  courseForm.semester = undefined
   courseForm.personalHours = undefined
   courseForm.totalHours = undefined
   courseForm.studentCount = undefined
@@ -324,9 +331,9 @@ async function loadCvRecords() {
       portfolioTeacherProfileApi.listAcademicAppointments(request),
     ])
     if (
-      requestToken.value !== scopeToken
-      || cvRequestToken.value !== currentToken
-      || targetTeacherId.value !== teacherId
+      requestToken.value !== scopeToken ||
+      cvRequestToken.value !== currentToken ||
+      targetTeacherId.value !== teacherId
     ) {
       return
     }
@@ -574,7 +581,7 @@ function openCourseModal(row?: PortfolioTeacherTaughtCourseVO) {
   courseForm.courseCode = row?.courseCode || ''
   courseForm.courseName = row?.courseName || ''
   courseForm.academicYear = row?.academicYear || ''
-  courseForm.semester = row?.semester || ''
+  courseForm.semester = row?.semester
   courseForm.personalHours = row?.personalHours
   courseForm.totalHours = row?.totalHours
   courseForm.studentCount = row?.studentCount
@@ -592,6 +599,10 @@ async function saveCourse() {
   if (!(await confirmProxyWrite('保存授课课程'))) {
     return
   }
+  if (!courseForm.semester) {
+    showFormValidationMessage('请选择学期')
+    return
+  }
 
   courseSaving.value = true
   try {
@@ -600,7 +611,7 @@ async function saveCourse() {
       courseCode: courseForm.courseCode.trim(),
       courseName: courseForm.courseName.trim(),
       academicYear: courseForm.academicYear.trim(),
-      semester: courseForm.semester.trim(),
+      semester: courseForm.semester,
       personalHours: courseForm.personalHours,
       totalHours: courseForm.totalHours,
       studentCount: courseForm.studentCount,
@@ -650,7 +661,7 @@ async function removeCourse(row: PortfolioTeacherTaughtCourseVO) {
   }
 }
 
-function onCoursePageChange(pageEvent: { current: number, pageSize: number }) {
+function onCoursePageChange(pageEvent: { current: number; pageSize: number }) {
   coursePageNum.value = pageEvent.current
   coursePageSize.value = pageEvent.pageSize
   void loadCourses()
@@ -983,7 +994,12 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
         <UiInput v-model="courseForm.academicYear" size="sm" placeholder="如 2025-2026" />
       </UiFormItem>
       <UiFormItem label="学期" required compact>
-        <UiInput v-model="courseForm.semester" size="sm" placeholder="如 1 / 2" />
+        <UiSelect
+          v-model="courseForm.semester"
+          size="sm"
+          placeholder="选择学期"
+          :options="SemesterOptions"
+        />
       </UiFormItem>
       <UiFormItem label="本人学时" compact>
         <UiInputNumber v-model="courseForm.personalHours" size="sm" :min="0" />

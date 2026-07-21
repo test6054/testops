@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDevelopmentRecordStatusDescription,
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDevelopmentRecordTypeDescription,
 } from '@/apis/portfolio/enums'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -26,11 +26,12 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 
 const RECORD_TAB_KEYS: PortfolioDevelopmentRecordTypeCode[] = [
   PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
@@ -48,8 +49,7 @@ const importModalOpen = ref(false)
 const saving = ref(false)
 const removingId = ref('')
 const exporting = ref(false)
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const {
   loading,
   rows,
@@ -60,18 +60,11 @@ const {
   loadPage,
   search,
   handlePageChange,
-} = useQueryTable(
-  (params) =>
-    portfolioDevelopmentRecordApi.page({
-      ...params,
-      recordType: activeType.value,
-    }),
-  {
-    onLoaded: (list) => {
-      const userIds = list.map((row) => row.teacherUserId).filter((id): id is string => Boolean(id))
-      void hydrateTeacherLabels([...new Set(userIds)])
-    },
-  },
+} = useQueryTable((params) =>
+  portfolioDevelopmentRecordApi.page({
+    ...params,
+    recordType: activeType.value,
+  }),
 )
 interface DevelopmentRecordForm {
   recordTitle: string
@@ -288,7 +281,7 @@ function switchTab(type: RecordType) {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
-            {{ teacherLabel(record.teacherUserId) }}
+            {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'affiliationStaffNo'">
             {{ record.affiliationStaffNo || '—' }}

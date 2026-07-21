@@ -1,3 +1,4 @@
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
@@ -35,7 +36,7 @@ export interface PortfolioTeacherTaughtCourseVO {
   courseName: string
   externalCourseCode?: string
   academicYear: string
-  semester: string
+  semester: SemesterCode
   personalHours?: number
   totalHours?: number
   studentCount?: number
@@ -64,7 +65,7 @@ export interface PortfolioTeacherTaughtCourseSaveRequest {
   courseCode: string
   courseName: string
   academicYear: string
-  semester: string
+  semester: SemesterCode
   personalHours?: number
   totalHours?: number
   studentCount?: number

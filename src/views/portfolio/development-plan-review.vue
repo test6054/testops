@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -11,7 +12,6 @@ import {
   PortfolioDevelopmentPlanStatusCode,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -105,6 +105,9 @@ const reviewTargetId = ref('')
 const reviewAction = ref<'approve' | 'return'>('approve')
 const auditOpinion = ref('')
 const reviewOwnerTeacherId = ref<string | undefined>(undefined)
+const reviewOperationToken = ref(0)
+const reviewPreparing = ref(false)
+const reviewSubmitting = ref(false)
 const {
   archiveWriteForbidden,
   archiveWriteBlockMessage,
@@ -155,9 +158,20 @@ async function loadPage() {
 
 /** 深链规划或筛选范围变化时必须失效旧审核目标，避免上一条规划弹窗残留到当前上下文。 */
 function resetReviewContext() {
+  reviewOperationToken.value += 1
+  reviewPreparing.value = false
+  reviewSubmitting.value = false
   reviewModalOpen.value = false
   reviewTargetId.value = ''
+  reviewOwnerTeacherId.value = undefined
   auditOpinion.value = ''
+}
+
+/** 关闭审核弹窗时作废尚未写入的预检上下文。 */
+function handleReviewModalOpenChange(open: boolean): void {
+  if (!open && !reviewSubmitting.value) {
+    resetReviewContext()
+  }
 }
 
 /**
@@ -190,23 +204,49 @@ function handleSearch() {
   void loadPage()
 }
 
-function handlePageChange(event: { current: number, pageSize: number }) {
+function handlePageChange(event: { current: number; pageSize: number }) {
   pageNum.value = event.current
   pageSize.value = event.pageSize
   resetReviewContext()
   void loadPage()
 }
 
-async function openReview(id: string, action: 'approve' | 'return') {
+/** 冻结规划、教师与动作后执行生命周期预检。 */
+async function openReview(id: string, action: 'approve' | 'return'): Promise<void> {
+  if (reviewPreparing.value || reviewSubmitting.value || reviewModalOpen.value) {
+    showFormValidationMessage('请先完成当前规划审核')
+    return
+  }
+  const plan = rows.value.find((item) => item.id === id)
+  if (!plan) {
+    showFormValidationMessage('规划已不在当前列表，请刷新后重试')
+    return
+  }
+  const ownerTeacherId = plan.ownerUserId ? String(plan.ownerUserId) : undefined
+  const operationToken = reviewOperationToken.value + 1
+  reviewOperationToken.value = operationToken
+  reviewPreparing.value = true
   reviewTargetId.value = id
   reviewAction.value = action
   auditOpinion.value = ''
-  const plan = rows.value.find((item) => item.id === id)
-  reviewOwnerTeacherId.value = plan?.ownerUserId ? String(plan.ownerUserId) : undefined
-  if (reviewOwnerTeacherId.value) {
-    await reloadLifecycleState()
+  reviewOwnerTeacherId.value = ownerTeacherId
+  try {
+    if (ownerTeacherId) {
+      await reloadLifecycleState()
+    }
+    if (
+      reviewOperationToken.value !== operationToken ||
+      reviewTargetId.value !== id ||
+      reviewOwnerTeacherId.value !== ownerTeacherId
+    ) {
+      return
+    }
+    reviewModalOpen.value = true
+  } finally {
+    if (reviewOperationToken.value === operationToken) {
+      reviewPreparing.value = false
+    }
   }
-  reviewModalOpen.value = true
 }
 
 function handlePlanReviewRowAction(key: string, planId: string) {
@@ -214,7 +254,8 @@ function handlePlanReviewRowAction(key: string, planId: string) {
   else if (key === 'return') void openReview(planId, 'return')
 }
 
-async function confirmReview() {
+/** 复检冻结的规划审核上下文并提交，禁止预检与写目标错配。 */
+async function confirmReview(): Promise<void> {
   if (!reviewTargetId.value) {
     return
   }
@@ -222,31 +263,61 @@ async function confirmReview() {
     showFormValidationMessage('请填写退回意见')
     return
   }
-  if (reviewOwnerTeacherId.value) {
-    await reloadLifecycleState()
-    const actionLabel = reviewAction.value === 'approve' ? '发展规划院系通过' : '发展规划院系退回'
-    if (!assertArchiveWritable(actionLabel)) {
+  if (reviewSubmitting.value) {
+    return
+  }
+  const context = {
+    operationToken: reviewOperationToken.value,
+    planId: reviewTargetId.value,
+    ownerTeacherId: reviewOwnerTeacherId.value,
+    action: reviewAction.value,
+    auditOpinion: auditOpinion.value.trim() || undefined,
+  }
+  reviewSubmitting.value = true
+  try {
+    if (context.ownerTeacherId) {
+      await reloadLifecycleState()
+    }
+    if (
+      reviewOperationToken.value !== context.operationToken ||
+      reviewTargetId.value !== context.planId ||
+      reviewOwnerTeacherId.value !== context.ownerTeacherId ||
+      reviewAction.value !== context.action
+    ) {
       return
     }
-  }
-  try {
-    if (reviewAction.value === 'approve') {
+    const actionLabel = context.action === 'approve' ? '发展规划院系通过' : '发展规划院系退回'
+    if (context.ownerTeacherId && !assertArchiveWritable(actionLabel)) {
+      return
+    }
+    if (context.action === 'approve') {
       await portfolioDevelopmentPlanApi.departmentApprove({
-        id: reviewTargetId.value,
-        auditOpinion: auditOpinion.value.trim() || undefined,
+        id: context.planId,
+        auditOpinion: context.auditOpinion,
       })
       void message.success('已通过')
     } else {
       await portfolioDevelopmentPlanApi.departmentReturn({
-        id: reviewTargetId.value,
-        auditOpinion: auditOpinion.value.trim() || undefined,
+        id: context.planId,
+        auditOpinion: context.auditOpinion,
       })
       void message.success('已退回')
     }
-    reviewModalOpen.value = false
+    if (reviewOperationToken.value !== context.operationToken) {
+      return
+    }
+    reviewSubmitting.value = false
+    resetReviewContext()
     await loadPage()
   } catch (error) {
+    if (reviewOperationToken.value !== context.operationToken) {
+      return
+    }
     showUserError(error, '审核发展规划失败')
+  } finally {
+    if (reviewOperationToken.value === context.operationToken) {
+      reviewSubmitting.value = false
+    }
   }
 }
 
@@ -369,6 +440,7 @@ watch(
     <UiDialog
       v-model:open="reviewModalOpen"
       :title="reviewAction === 'approve' ? '科室审核通过' : '科室审核退回'"
+      @update:open="handleReviewModalOpenChange"
     >
       <UiAlertStrip
         v-if="reviewOwnerTeacherId && archiveWriteForbidden"
@@ -383,10 +455,18 @@ watch(
         :rows="3"
       />
       <template #footer>
-        <UiButton size="sm" variant="outline" @click="reviewModalOpen = false">取消</UiButton>
+        <UiButton
+          size="sm"
+          variant="outline"
+          :disabled="reviewSubmitting"
+          @click="resetReviewContext"
+        >
+          取消
+        </UiButton>
         <UiButton
           size="sm"
           variant="primary"
+          :loading="reviewSubmitting"
           :disabled="Boolean(reviewOwnerTeacherId && archiveWriteForbidden)"
           @click="confirmReview"
         >

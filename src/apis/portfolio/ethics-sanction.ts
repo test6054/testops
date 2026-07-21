@@ -9,18 +9,22 @@ import http from '@/config/axios'
 export interface PortfolioEthicsSanctionVO {
   id: string
   teacherId: string
-  eventType: string
+  /** edu-user 教师姓名 */
+  teacherName?: string
+  /** edu-user 教师工号 */
+  teacherNumber?: string
+  eventType: PortfolioEthicsEventTypeCode
   handlingBasis: string
   sanctionStartDate: string
   sanctionEndDate: string
-  impactScope: string
+  impactScope: PortfolioEthicsImpactScopeCode
   releaseCondition: string
   reviewDepartment: string
-  sanctionStatus: string
+  sanctionStatus: PortfolioEthicsSanctionStatusCode
   constraintActive: boolean
   publicSummary: string
   detailDescription?: string
-  lastReviewConclusion?: string
+  lastReviewConclusion?: PortfolioEthicsReviewConclusionCode
   lastReviewOpinion?: string
   lastReviewedTime?: string
   updateTime: string
@@ -34,7 +38,6 @@ export interface PortfolioEthicsSanctionVO {
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 多身份说明 */
   ownerMultiIdentityNote?: string
-
 }
 
 export interface PortfolioEthicsConstraintStatusVO {
@@ -58,9 +61,9 @@ export interface PortfolioEthicsConstraintStatusVO {
 export interface PortfolioEthicsReviewLogVO {
   id: string
   sanctionId: string
-  fromStatus: string
-  toStatus: string
-  reviewConclusion: string
+  fromStatus: PortfolioEthicsSanctionStatusCode
+  toStatus: PortfolioEthicsSanctionStatusCode
+  reviewConclusion: PortfolioEthicsReviewConclusionCode
   reviewOpinion?: string
   previousEndDate?: string
   newEndDate?: string
@@ -96,7 +99,8 @@ export const portfolioEthicsSanctionApi = {
     teacherId?: string
     sanctionStatus?: PortfolioEthicsSanctionStatusCode
     constraintActive?: number
-  }) => http.post<PageResult<PortfolioEthicsSanctionVO>>('/api/portfolio/ethics-sanction/page', data),
+  }) =>
+    http.post<PageResult<PortfolioEthicsSanctionVO>>('/api/portfolio/ethics-sanction/page', data),
 
   get: (data: { id: string }) =>
     http.post<PortfolioEthicsSanctionVO>('/api/portfolio/ethics-sanction/get', data),
@@ -111,7 +115,10 @@ export const portfolioEthicsSanctionApi = {
     http.post<PortfolioEthicsReviewLogVO[]>('/api/portfolio/ethics-sanction/review-log/list', data),
 
   getConstraint: (data: { teacherId: string }) =>
-    http.post<PortfolioEthicsConstraintStatusVO>('/api/portfolio/ethics-sanction/constraint/get', data),
+    http.post<PortfolioEthicsConstraintStatusVO>(
+      '/api/portfolio/ethics-sanction/constraint/get',
+      data,
+    ),
 }
 
 export type { PortfolioEthicsSanctionStatusCode }

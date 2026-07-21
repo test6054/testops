@@ -84,7 +84,24 @@
               size="middle"
               empty-description="暂无院系统计数据"
               @page-change="loadDepartmentCompletions"
-            />
+            >
+              <template #bodyCell="{ column, record }">
+                <div v-if="column.key === 'completionRate'" class="archive-volume-statistics__rate">
+                  <span class="archive-volume-statistics__rate-track">
+                    <span
+                      class="archive-volume-statistics__rate-fill"
+                      :style="{
+                        width: `${completionRateView(record.completionRate).pct}%`,
+                        background: completionRateView(record.completionRate).color,
+                      }"
+                    />
+                  </span>
+                  <span class="archive-volume-statistics__rate-text">
+                    {{ completionRateView(record.completionRate).pct }}%
+                  </span>
+                </div>
+              </template>
+            </UiDataTable>
           </WorkbenchSurfaceCard>
 
           <WorkbenchSurfaceCard flush>
@@ -193,12 +210,6 @@ import type {
   ArchiveVolumeDestructionLedgerRowResponse,
   ArchiveVolumeStatisticsSummaryVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_DESTRUCTION_STATUS_TONE,
   ArchiveDestructionStatusDescription,
@@ -210,6 +221,12 @@ import {
   pageStatisticsDepartmentCompletions,
   pageStatisticsMissingMaterials,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -253,7 +270,7 @@ const {
 
 const statsTab = ref('overview')
 const statsTabs = computed(() => {
-  const items: Array<{ key: string, label: string }> = []
+  const items: Array<{ key: string; label: string }> = []
   if (canViewStatisticsKpi.value) items.push({ key: 'overview', label: '迎评统计' })
   if (canViewDestructionLedger.value) items.push({ key: 'destruction', label: '销毁清册' })
   return items
@@ -272,7 +289,7 @@ const statisticsSummary = ref<ArchiveVolumeStatisticsSummaryVO | null>(null)
 const departmentRows = ref<ArchiveDepartmentCompletionVO[]>([])
 const missingRows = ref<ArchiveMissingMaterialStatVO[]>([])
 const destructionRows = ref<ArchiveVolumeDestructionLedgerRowResponse[]>([])
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 
 interface ArchiveVolumeStatisticsFilterForm extends Record<string, unknown> {
   academicYearStartYear: number | undefined
@@ -328,7 +345,7 @@ const filterFields = computed<FilterField[]>(() => [
   ...buildAcademicYearSemesterTripleFilterFields(),
   {
     key: 'departmentId',
-    label: '学院',
+    label: '院系',
     type: 'select',
     options: scopedDepartmentOptions.value,
     allowClear: !departmentFilterDisabled.value,
@@ -350,19 +367,14 @@ const destructionFilterFields = computed<FilterField[]>(() => [
 
 const deptColumns: ColumnsType<ArchiveDepartmentCompletionVO> = [
   { title: '院系', dataIndex: 'departmentName' },
-  { title: '总数', dataIndex: 'totalCount', width: 80 },
+  { title: '归档卷数', dataIndex: 'totalCount', width: 90 },
   { title: '已入库', dataIndex: 'storedCount', width: 80 },
-  {
-    title: '完成率',
-    dataIndex: 'completionRate',
-    width: 100,
-    customRender: ({ text }) => formatCompletionRate(Number(text)),
-  },
+  { title: '完成率', key: 'completionRate', dataIndex: 'completionRate', width: 140 },
 ]
 
 const missingColumns: ColumnsType<ArchiveMissingMaterialStatVO> = [
   { title: '材料类型', key: 'materialType' },
-  { title: '缺项卷数', dataIndex: 'missingVolumeCount', width: 120 },
+  { title: '缺交卷数', dataIndex: 'missingVolumeCount', width: 120 },
 ]
 
 const destructionColumns: ColumnsType<ArchiveVolumeDestructionLedgerRowResponse> = [
@@ -409,7 +421,7 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
   return [
     {
       key: 'total',
-      label: '归档任务总数',
+      label: '归档卷总数',
       displayValue: summary.totalVolumeCount,
       signalValue: summary.totalVolumeCount,
       unit: '卷',
@@ -426,8 +438,16 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
       clickable: summary.storedVolumeCount > 0,
     },
     {
+      key: 'rate',
+      label: '平均完成率',
+      displayValue: `${avgCompletionRate}%`,
+      signalValue: `${avgCompletionRate}%`,
+      badgeTone: avgCompletionRate >= 90 ? 'green' : avgCompletionRate < 70 ? 'orange' : 'blue',
+      clickable: false,
+    },
+    {
       key: 'overdue',
-      label: '逾期卷',
+      label: '逾期未完成',
       displayValue: summary.overdueVolumeCount,
       signalValue: summary.overdueVolumeCount,
       unit: '卷',
@@ -436,7 +456,7 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
     },
     {
       key: 'dept',
-      label: '院系',
+      label: '覆盖院系',
       displayValue: summary.departmentRowCount,
       signalValue: summary.departmentRowCount,
       unit: '个',
@@ -445,26 +465,28 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
     },
     {
       key: 'missing',
-      label: '缺项类型',
+      label: '缺交材料种类',
       displayValue: summary.missingMaterialKindCount,
       signalValue: summary.missingMaterialKindCount,
-      unit: '项',
+      unit: '种',
       badgeTone: summary.missingMaterialKindCount > 0 ? 'orange' : 'gray',
       clickable: summary.missingMaterialKindCount > 0,
-    },
-    {
-      key: 'rate',
-      label: '平均完成率',
-      displayValue: `${avgCompletionRate}%`,
-      signalValue: `${avgCompletionRate}%`,
-      badgeTone: avgCompletionRate >= 90 ? 'green' : avgCompletionRate < 70 ? 'orange' : 'blue',
-      clickable: false,
     },
   ]
 })
 
-function formatCompletionRate(rate: number): string {
-  return `${Math.round(rate * 100)}%`
+/** 完成率单元格视图模型：百分比与按阈值着色的进度条颜色，供模板插槽渲染。 */
+function completionRateView(rate: number): { pct: number; color: string } {
+  const pct = Math.round(rate * 100)
+  const color =
+    pct >= 90
+      ? 'var(--dp-success)'
+      : pct >= 70
+        ? 'var(--dp-primary)'
+        : pct >= 50
+          ? 'var(--dp-warning)'
+          : 'var(--dp-error)'
+  return { pct, color }
 }
 
 function handleSignalMetricClick(key: string) {
@@ -503,8 +525,8 @@ function applyScopedDepartmentDefault() {
     filterForm.departmentId = scopeIds[0]
   }
   const destructionScopeIds = destructionLedgerScopedDepartmentIds.value
-  destructionFilterForm.departmentId
-    = destructionScopeIds.length === 1 ? destructionScopeIds[0] : undefined
+  destructionFilterForm.departmentId =
+    destructionScopeIds.length === 1 ? destructionScopeIds[0] : undefined
 }
 
 async function loadDepartments() {
@@ -643,8 +665,8 @@ function handleReset() {
 
 function handleDestructionReset() {
   destructionFilterForm.keyword = ''
-  destructionFilterForm.departmentId
-    = destructionLedgerScopedDepartmentIds.value.length === 1
+  destructionFilterForm.departmentId =
+    destructionLedgerScopedDepartmentIds.value.length === 1
       ? destructionLedgerScopedDepartmentIds.value[0]
       : undefined
   destructionPagination.pageNum = 1
@@ -705,10 +727,10 @@ async function exportDestructionExcel() {
 
 watch(statsTab, (tab) => {
   if (
-    pageInitialized.value
-    && tab === 'destruction'
-    && destructionRows.value.length === 0
-    && !grantsLoadFailed.value
+    pageInitialized.value &&
+    tab === 'destruction' &&
+    destructionRows.value.length === 0 &&
+    !grantsLoadFailed.value
   ) {
     void loadDestructionLedger()
   }
@@ -734,9 +756,9 @@ async function initPage() {
   statsTab.value = canViewStatisticsKpi.value ? 'overview' : 'destruction'
   await loadDepartments()
   if (
-    canViewStatisticsKpi.value
-    && filterForm.academicYearStartYear != null
-    && filterForm.semester
+    canViewStatisticsKpi.value &&
+    filterForm.academicYearStartYear != null &&
+    filterForm.semester
   ) {
     await loadStatistics()
   }
@@ -758,7 +780,35 @@ onMounted(() => {
 }
 
 .archive-volume-statistics__export {
+  display: flex;
+  justify-content: flex-end;
   margin-top: var(--dp-space-2);
+}
+
+.archive-volume-statistics__rate {
+  display: flex;
+  align-items: center;
+  gap: var(--dp-space-2);
+}
+
+.archive-volume-statistics__rate-track {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--dp-radius-full);
+  background: var(--dp-surface-sunken);
+  overflow: hidden;
+}
+
+.archive-volume-statistics__rate-fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--dp-radius-full);
+}
+
+.archive-volume-statistics__rate-text {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--dp-text-secondary);
 }
 
 .archive-volume-statistics__error {

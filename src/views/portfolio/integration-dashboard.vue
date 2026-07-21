@@ -17,6 +17,11 @@ import type {
   PortfolioIntegrationSyncTaskVO,
   PortfolioNationalReportIssueVO,
 } from '@/apis/portfolio/integration'
+import {
+  PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS,
+  PORTFOLIO_INTEGRATION_PASSWORD_MASK,
+  portfolioIntegrationApi,
+} from '@/apis/portfolio/integration'
 import type {
   PortfolioArchiveCategoryTreeNodeVO,
   PortfolioTargetFieldDefinition,
@@ -25,12 +30,13 @@ import type {
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import {
-  PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS,
-  PORTFOLIO_INTEGRATION_PASSWORD_MASK,
-  portfolioIntegrationApi,
-} from '@/apis/portfolio/integration'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import { PortfolioConflictTicketStatusEnum } from '@/types/enums/portfolio-conflict-ticket-status-enum'
+import { PortfolioIdentityUnmatchedStatusEnum } from '@/types/enums/portfolio-identity-unmatched-status-enum'
+import { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
+import { PortfolioIntegrationHealthStatusEnum } from '@/types/enums/portfolio-integration-health-status-enum'
+import { PortfolioIntegrationPathwayCodeEnum } from '@/types/enums/portfolio-integration-pathway-code-enum'
+import { PortfolioNationalTeacherSyncDirectionEnum } from '@/types/enums/portfolio-national-teacher-sync-direction-enum'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
   QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
@@ -87,8 +93,8 @@ async function bindActionTeacherAndAssert(
   teacherId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value
-    = teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
+  actionTeacherId.value =
+    teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
@@ -183,8 +189,8 @@ const dictEntryQuery = reactive({
 })
 const dsForm = reactive({
   id: undefined as string | undefined,
-  channelCode: 'HR_PERSONNEL',
-  pathwayCode: 'OPENAPI',
+  channelCode: PortfolioIntegrationChannelCodeEnum.HR_PERSONNEL,
+  pathwayCode: PortfolioIntegrationPathwayCodeEnum.OPENAPI,
   datasourceName: '人事主数据',
   enabled: true,
   jdbcUrl: '',
@@ -209,7 +215,7 @@ const dsForm = reactive({
   importContextConfirmManualConflicts: false,
   importContextExpectedConfigUpdateToken: '',
   batchSize: 100 as number | undefined,
-  syncDirection: 'OUTBOUND' as 'OUTBOUND' | 'INBOUND',
+  syncDirection: PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND,
   inboundRecords: [] as Array<{
     teacherNumber: string
     teacherName: string
@@ -219,16 +225,30 @@ const dsForm = reactive({
 })
 
 const isHrOpenApi = computed(
-  () => dsForm.channelCode === 'HR_PERSONNEL' && dsForm.pathwayCode === 'OPENAPI',
+  () =>
+    dsForm.channelCode === PortfolioIntegrationChannelCodeEnum.HR_PERSONNEL &&
+    dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
 )
 const isNationalTeacherOpenApi = computed(
-  () => dsForm.channelCode === 'NATIONAL_TEACHER_SYSTEM' && dsForm.pathwayCode === 'OPENAPI',
+  () =>
+    dsForm.channelCode === PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM &&
+    dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
 )
-const isJdbcPathway = computed(() => dsForm.pathwayCode === 'JDBC')
-const isSoapPathway = computed(() => dsForm.pathwayCode === 'SOAP')
-const isExcelPathway = computed(() => dsForm.pathwayCode === 'EXCEL_IMPORT')
-const isMessagePathway = computed(() => dsForm.pathwayCode === 'MESSAGE_PUSH')
-const isScientificResearchChannel = computed(() => dsForm.channelCode === 'SCIENTIFIC_RESEARCH')
+const isJdbcPathway = computed(
+  () => dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.JDBC,
+)
+const isSoapPathway = computed(
+  () => dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.SOAP,
+)
+const isExcelPathway = computed(
+  () => dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.EXCEL_IMPORT,
+)
+const isMessagePathway = computed(
+  () => dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.MESSAGE_PUSH,
+)
+const isScientificResearchChannel = computed(
+  () => dsForm.channelCode === PortfolioIntegrationChannelCodeEnum.SCIENTIFIC_RESEARCH,
+)
 const scientificResearchFactKindHint = ALL_PORTFOLIO_SCIENTIFIC_RESEARCH_FACT_KIND_CODES.map(
   (code) => `${code}=${PortfolioScientificResearchFactKindDescription[code]}`,
 ).join('；')
@@ -240,7 +260,7 @@ const channelPathwayMatrix = ref<PortfolioIntegrationChannelPathwayMatrixVO | nu
 const datasourceChannelOptions = computed(() => {
   const rows = channelPathwayMatrix.value?.channels ?? []
   if (rows.length === 0) {
-    return [] as Array<{ value: string, label: string }>
+    return [] as Array<{ value: string; label: string }>
   }
   return rows.map((row) => ({ value: row.channelCode, label: row.channelLabel }))
 })
@@ -254,8 +274,8 @@ const datasourcePathwayOptions = computed(() => {
 
 function resetDatasourceForm() {
   dsForm.id = undefined
-  dsForm.channelCode = 'HR_PERSONNEL'
-  dsForm.pathwayCode = 'OPENAPI'
+  dsForm.channelCode = PortfolioIntegrationChannelCodeEnum.HR_PERSONNEL
+  dsForm.pathwayCode = PortfolioIntegrationPathwayCodeEnum.OPENAPI
   dsForm.datasourceName = '人事主数据'
   dsForm.enabled = true
   dsForm.jdbcUrl = ''
@@ -280,7 +300,7 @@ function resetDatasourceForm() {
   dsForm.importContextConfirmManualConflicts = false
   dsForm.importContextExpectedConfigUpdateToken = ''
   dsForm.batchSize = 100
-  dsForm.syncDirection = 'OUTBOUND'
+  dsForm.syncDirection = PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND
   dsForm.inboundRecords = []
 }
 
@@ -307,39 +327,49 @@ function clearPathwayConfigFields() {
   dsForm.importContextConfirmManualConflicts = false
   dsForm.importContextExpectedConfigUpdateToken = ''
   dsForm.batchSize = 100
-  dsForm.syncDirection = 'OUTBOUND'
+  dsForm.syncDirection = PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND
   dsForm.inboundRecords = []
 }
 
 function changeDatasourceChannel(value: SelectValue) {
-  const channelCode = typeof value === 'string' ? value : String(value ?? '')
+  const channelCode = value as PortfolioIntegrationChannelCodeEnum
   dsForm.channelCode = channelCode
-  const pathways
-    = (channelPathwayMatrix.value?.channels ?? [])
+  const pathways =
+    (channelPathwayMatrix.value?.channels ?? [])
       .find((item) => item.channelCode === channelCode)
-      ?.pathways
-?.filter((item) => item.configurable !== false) ?? []
-  dsForm.pathwayCode = pathways[0]?.pathwayCode ?? ''
+      ?.pathways?.filter((item) => item.configurable !== false) ?? []
+  dsForm.pathwayCode = pathways[0]?.pathwayCode ?? PortfolioIntegrationPathwayCodeEnum.OPENAPI
   clearPathwayConfigFields()
 }
 
 function changeDatasourcePathway(value: SelectValue) {
-  dsForm.pathwayCode = typeof value === 'string' ? value : String(value ?? '')
+  dsForm.pathwayCode = value as PortfolioIntegrationPathwayCodeEnum
   clearPathwayConfigFields()
-  if (dsForm.channelCode === 'SCIENTIFIC_RESEARCH' && dsForm.pathwayCode === 'EXCEL_IMPORT') {
+  if (
+    dsForm.channelCode === PortfolioIntegrationChannelCodeEnum.SCIENTIFIC_RESEARCH &&
+    dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.EXCEL_IMPORT
+  ) {
     dsForm.excelImportSceneKey = 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT'
   }
 }
 
-function applyNationalTeacherPreset(direction: 'OUTBOUND' | 'INBOUND') {
+function applyNationalTeacherPreset(direction: PortfolioNationalTeacherSyncDirectionEnum) {
   const existed = datasources.value.find(
-    (item) => item.channelCode === 'NATIONAL_TEACHER_SYSTEM' && item.pathwayCode === 'OPENAPI',
+    (item) =>
+      item.channelCode === PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM &&
+      item.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
   )
   if (existed) {
     fillDatasourceForm(existed)
     dsForm.syncDirection = direction
-    dsForm.datasourceName = direction === 'OUTBOUND' ? '全国教师系统上报' : '全国教师系统回流'
-    if (direction === 'INBOUND' && dsForm.inboundRecords.length === 0) {
+    dsForm.datasourceName =
+      direction === PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND
+        ? '全国教师系统上报'
+        : '全国教师系统回流'
+    if (
+      direction === PortfolioNationalTeacherSyncDirectionEnum.INBOUND &&
+      dsForm.inboundRecords.length === 0
+    ) {
       dsForm.inboundRecords = [
         { teacherNumber: '', teacherName: '', title: '', employmentStatus: '' },
       ]
@@ -350,12 +380,15 @@ function applyNationalTeacherPreset(direction: 'OUTBOUND' | 'INBOUND') {
     return
   }
   resetDatasourceForm()
-  dsForm.channelCode = 'NATIONAL_TEACHER_SYSTEM'
-  dsForm.pathwayCode = 'OPENAPI'
-  dsForm.datasourceName = direction === 'OUTBOUND' ? '全国教师系统上报' : '全国教师系统回流'
+  dsForm.channelCode = PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM
+  dsForm.pathwayCode = PortfolioIntegrationPathwayCodeEnum.OPENAPI
+  dsForm.datasourceName =
+    direction === PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND
+      ? '全国教师系统上报'
+      : '全国教师系统回流'
   dsForm.syncDirection = direction
-  dsForm.inboundRecords
-    = direction === 'INBOUND'
+  dsForm.inboundRecords =
+    direction === PortfolioNationalTeacherSyncDirectionEnum.INBOUND
       ? [{ teacherNumber: '', teacherName: '', title: '', employmentStatus: '' }]
       : []
 }
@@ -378,11 +411,11 @@ function buildConnectionConfig(): PortfolioIntegrationConnectionConfigDto | unde
     return undefined
   }
   if (isNationalTeacherOpenApi.value) {
-    if (dsForm.syncDirection === 'OUTBOUND') {
-      return { syncDirection: 'OUTBOUND' }
+    if (dsForm.syncDirection === PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND) {
+      return { syncDirection: PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND }
     }
     return {
-      syncDirection: 'INBOUND',
+      syncDirection: PortfolioNationalTeacherSyncDirectionEnum.INBOUND,
       inboundRecords: dsForm.inboundRecords
         .filter((item) => item.teacherNumber.trim())
         .map((item) => ({
@@ -424,13 +457,13 @@ function buildConnectionConfig(): PortfolioIntegrationConnectionConfigDto | unde
       expectedConfigUpdateToken: dsForm.importContextExpectedConfigUpdateToken.trim() || undefined,
     }
     const hasImportContext = Boolean(
-      importContext.fileName
-      || importContext.defaultRecordType
-      || importContext.defaultCategoryCode
-      || importContext.defaultLevelCode
-      || importContext.confirmManualConflicts
-      || importContext.expectedConfigUpdateToken
-      || importContext.commit === false,
+      importContext.fileName ||
+      importContext.defaultRecordType ||
+      importContext.defaultCategoryCode ||
+      importContext.defaultLevelCode ||
+      importContext.confirmManualConflicts ||
+      importContext.expectedConfigUpdateToken ||
+      importContext.commit === false,
     )
     return {
       excelImportSceneKey: dsForm.excelImportSceneKey,
@@ -458,7 +491,7 @@ function fillDatasourceForm(row: PortfolioIntegrationDatasourceVO) {
   if (!config) {
     return
   }
-  if (row.pathwayCode === 'JDBC') {
+  if (row.pathwayCode === PortfolioIntegrationPathwayCodeEnum.JDBC) {
     dsForm.jdbcUrl = config.jdbcUrl ?? ''
     dsForm.username = config.username ?? ''
     dsForm.password = config.password ?? PORTFOLIO_INTEGRATION_PASSWORD_MASK
@@ -467,7 +500,7 @@ function fillDatasourceForm(row: PortfolioIntegrationDatasourceVO) {
     dsForm.initialWatermark = config.initialWatermark ?? ''
     return
   }
-  if (row.pathwayCode === 'SOAP') {
+  if (row.pathwayCode === PortfolioIntegrationPathwayCodeEnum.SOAP) {
     dsForm.endpointUrl = config.endpointUrl ?? ''
     dsForm.soapAction = config.soapAction ?? ''
     dsForm.requestEnvelope = config.requestEnvelope ?? ''
@@ -475,10 +508,10 @@ function fillDatasourceForm(row: PortfolioIntegrationDatasourceVO) {
     dsForm.readTimeoutSeconds = config.readTimeoutSeconds ?? 60
     return
   }
-  if (row.pathwayCode === 'EXCEL_IMPORT') {
-    dsForm.excelImportSceneKey
-      = config.excelImportSceneKey
-        ?? (row.channelCode === 'SCIENTIFIC_RESEARCH'
+  if (row.pathwayCode === PortfolioIntegrationPathwayCodeEnum.EXCEL_IMPORT) {
+    dsForm.excelImportSceneKey =
+      config.excelImportSceneKey ??
+      (row.channelCode === PortfolioIntegrationChannelCodeEnum.SCIENTIFIC_RESEARCH
         ? 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT'
         : 'PORTFOLIO_DEVELOPMENT_RECORD')
     dsForm.sourceFileNodeId = config.sourceFileNodeId ?? ''
@@ -492,12 +525,15 @@ function fillDatasourceForm(row: PortfolioIntegrationDatasourceVO) {
     dsForm.importContextExpectedConfigUpdateToken = importContext?.expectedConfigUpdateToken ?? ''
     return
   }
-  if (row.pathwayCode === 'MESSAGE_PUSH') {
+  if (row.pathwayCode === PortfolioIntegrationPathwayCodeEnum.MESSAGE_PUSH) {
     dsForm.batchSize = config.batchSize ?? 100
     return
   }
-  if (row.channelCode === 'NATIONAL_TEACHER_SYSTEM') {
-    dsForm.syncDirection = config.syncDirection === 'INBOUND' ? 'INBOUND' : 'OUTBOUND'
+  if (row.channelCode === PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM) {
+    dsForm.syncDirection =
+      config.syncDirection === PortfolioNationalTeacherSyncDirectionEnum.INBOUND
+        ? PortfolioNationalTeacherSyncDirectionEnum.INBOUND
+        : PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND
     dsForm.inboundRecords = (config.inboundRecords ?? []).map((item) => ({
       teacherNumber: item.teacherNumber ?? '',
       teacherName: item.teacherName ?? '',
@@ -560,10 +596,19 @@ const requeueMessage = ref('管理员修正字段后重入队')
 const messageEnqueueForm = reactive({
   datasourceConfigId: '',
   messageKey: '',
-  payloadFields: [
-    { fieldCode: 'teacher_number', fieldValue: '' },
-    { fieldCode: 'teacher_name', fieldValue: '' },
+  teacherNumber: '',
+  teacherCode: '',
+  teacherName: '',
+  externalRecordKey: '',
+  fields: [
+    { fieldCode: 'achievement_title', fieldValue: '' },
   ] as PortfolioIntegrationPayloadFieldDto[],
+})
+const requeueEnvelope = reactive({
+  teacherNumber: '',
+  teacherCode: '',
+  teacherName: '',
+  externalRecordKey: '',
 })
 
 const datasourceOptions = computed(() =>
@@ -571,7 +616,7 @@ const datasourceOptions = computed(() =>
 )
 const messageDatasourceOptions = computed(() =>
   datasources.value
-    .filter((item) => item.pathwayCode === 'MESSAGE_PUSH')
+    .filter((item) => item.pathwayCode === PortfolioIntegrationPathwayCodeEnum.MESSAGE_PUSH)
     .map((item) => ({ value: item.id, label: item.datasourceName })),
 )
 
@@ -638,11 +683,23 @@ const conflictColumns: ColumnsType = [
 const failedMessageColumns: ColumnsType = [
   { title: '渠道', dataIndex: 'channelCode', key: 'channelCode', width: 130 },
   { title: '消息键', dataIndex: 'messageKey', key: 'messageKey', width: 210, ellipsis: true },
+  { title: '契约', key: 'payloadContract', width: 90 },
   { title: '重试次数', dataIndex: 'retryCount', key: 'retryCount', width: 90 },
   { title: '失败原因', dataIndex: 'processMessage', key: 'processMessage', ellipsis: true },
   { title: '失败时间', dataIndex: 'processedTime', key: 'processedTime', width: 170 },
   { title: '操作', key: 'actions', width: 190, fixed: 'right' },
 ]
+
+const MESSAGE_ENVELOPE_RESERVED_FIELD_CODES = new Set([
+  'teacher_number',
+  'teacher_code',
+  'teacher_name',
+  'external_record_key',
+])
+
+function hasReservedBagFieldCode(fields: Array<{ fieldCode: string }>) {
+  return fields.some((item) => MESSAGE_ENVELOPE_RESERVED_FIELD_CODES.has(item.fieldCode.trim()))
+}
 
 const cleanLogColumns: ColumnsType = [
   { title: '渠道', dataIndex: 'channelCode', key: 'channelCode', width: 130 },
@@ -762,8 +819,8 @@ async function changeMappingCategory(value: SelectValue) {
       categoryId: category.categoryId,
     })
     if (
-      requestToken.archiveFields !== currentToken
-      || mappingForm.targetCategoryCode !== categoryCode
+      requestToken.archiveFields !== currentToken ||
+      mappingForm.targetCategoryCode !== categoryCode
     ) {
       return
     }
@@ -812,8 +869,8 @@ async function loadDatasources() {
     datasources.value = res.list ?? []
     datasourceTotal.value = res.total ?? 0
     if (
-      selectedDatasourceId.value
-      && !datasources.value.some((item) => item.id === selectedDatasourceId.value)
+      selectedDatasourceId.value &&
+      !datasources.value.some((item) => item.id === selectedDatasourceId.value)
     ) {
       selectedDatasourceId.value = ''
       mappings.value = []
@@ -987,7 +1044,7 @@ async function fixNationalReportIssue(row: PortfolioNationalReportIssueVO) {
   }
 }
 
-function onNationalIssuePageChange(page: { current: number, pageSize: number }) {
+function onNationalIssuePageChange(page: { current: number; pageSize: number }) {
   nationalIssueQuery.pageNum = page.current
   nationalIssueQuery.pageSize = page.pageSize
   void loadNationalIssues()
@@ -1020,7 +1077,9 @@ async function exportNationalReportForIssue(row: PortfolioNationalReportIssueVO)
 
 async function retransmitNationalReportIssues() {
   const nationalDatasource = datasources.value.find(
-    (item) => item.channelCode === 'NATIONAL_TEACHER_SYSTEM' && item.pathwayCode === 'OPENAPI',
+    (item) =>
+      item.channelCode === PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM &&
+      item.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
   )
   if (!nationalDatasource) {
     showFormValidationMessage('请先配置并启用全国教师系统 OPENAPI 数据源')
@@ -1100,8 +1159,8 @@ async function loadFailedMessages() {
   try {
     const result = await portfolioIntegrationApi.pageFailedMessages(request)
     if (
-      requestToken.failedMessages !== currentToken
-      || failedMessageDatasourceId.value !== datasourceConfigId
+      requestToken.failedMessages !== currentToken ||
+      failedMessageDatasourceId.value !== datasourceConfigId
     ) {
       return
     }
@@ -1122,7 +1181,11 @@ async function loadFailedMessages() {
 async function enqueueInboundMessage() {
   const datasourceConfigId = messageEnqueueForm.datasourceConfigId.trim()
   const messageKey = messageEnqueueForm.messageKey.trim()
-  const payloadFields = messageEnqueueForm.payloadFields
+  const teacherNumber = messageEnqueueForm.teacherNumber.trim()
+  const teacherCode = messageEnqueueForm.teacherCode.trim()
+  const teacherName = messageEnqueueForm.teacherName.trim()
+  const externalRecordKey = messageEnqueueForm.externalRecordKey.trim()
+  const fields = messageEnqueueForm.fields
     .map((item) => ({
       fieldCode: item.fieldCode.trim(),
       fieldValue: item.fieldValue.trim(),
@@ -1136,16 +1199,18 @@ async function enqueueInboundMessage() {
     showFormValidationMessage('请填写消息幂等键')
     return
   }
-  if (!payloadFields.length) {
-    showFormValidationMessage('请至少填写一个有效消息字段')
+  if (!teacherNumber && !teacherCode) {
+    showFormValidationMessage('信封须填写教师工号或教师编码')
     return
   }
-  if (
-    !payloadFields.some(
-      (item) => item.fieldCode === 'teacher_number' || item.fieldCode === 'teacher_code',
+  if (!fields.length) {
+    showFormValidationMessage('业务字段袋不能为空')
+    return
+  }
+  if (hasReservedBagFieldCode(fields)) {
+    showFormValidationMessage(
+      '字段袋不得包含 teacher_number/teacher_code/teacher_name/external_record_key',
     )
-  ) {
-    showFormValidationMessage('消息字段须包含教师工号 teacher_number 或 teacher_code')
     return
   }
   const operation = 'message:enqueue'
@@ -1154,7 +1219,11 @@ async function enqueueInboundMessage() {
     const inboxId = await portfolioIntegrationApi.enqueueMessage({
       datasourceConfigId,
       messageKey,
-      payloadFields,
+      teacherNumber: teacherNumber || undefined,
+      teacherCode: teacherCode || undefined,
+      teacherName: teacherName || undefined,
+      externalRecordKey: externalRecordKey || undefined,
+      fields,
     })
     void message.success(`消息已入站，收件箱 ID：${inboxId}`)
     if (!failedMessageDatasourceId.value) {
@@ -1171,15 +1240,15 @@ async function enqueueInboundMessage() {
 }
 
 function addEnqueuePayloadField() {
-  messageEnqueueForm.payloadFields.push({ fieldCode: '', fieldValue: '' })
+  messageEnqueueForm.fields.push({ fieldCode: '', fieldValue: '' })
 }
 
 function removeEnqueuePayloadField(index: number) {
-  if (messageEnqueueForm.payloadFields.length <= 1) {
-    showFormValidationMessage('至少保留一个消息字段')
+  if (messageEnqueueForm.fields.length <= 1) {
+    showFormValidationMessage('至少保留一个业务字段')
     return
   }
-  messageEnqueueForm.payloadFields.splice(index, 1)
+  messageEnqueueForm.fields.splice(index, 1)
 }
 
 async function loadCleanLogs() {
@@ -1266,7 +1335,10 @@ async function saveDatasource() {
     showFormValidationMessage('请填写数据源名称')
     return
   }
-  if (isNationalTeacherOpenApi.value && dsForm.syncDirection === 'INBOUND') {
+  if (
+    isNationalTeacherOpenApi.value &&
+    dsForm.syncDirection === PortfolioNationalTeacherSyncDirectionEnum.INBOUND
+  ) {
     const validRows = dsForm.inboundRecords.filter((item) => item.teacherNumber.trim())
     if (validRows.length === 0) {
       endOperation(operation)
@@ -1380,14 +1452,17 @@ async function triggerSync(row: PortfolioIntegrationDatasourceVO) {
   }
 }
 
-async function resolveConflict(row: PortfolioConflictTicketVO, action: string) {
+async function resolveConflict(
+  row: PortfolioConflictTicketVO,
+  action: PortfolioConflictTicketStatusEnum,
+) {
   const conflictTicketId = row.id
   const operation = `conflict:${conflictTicketId}:${action}`
   if (!beginOperation(operation)) return
-  const actionLabel
-    = action === 'RESOLVED_USE_EXTERNAL'
+  const actionLabel =
+    action === PortfolioConflictTicketStatusEnum.RESOLVED_USE_EXTERNAL
       ? '冲突采用外部'
-      : action === 'RESOLVED_USE_LOCAL'
+      : action === PortfolioConflictTicketStatusEnum.RESOLVED_USE_LOCAL
         ? '冲突保留本地'
         : '忽略冲突单'
   if (!(await bindActionTeacherAndAssert(row.teacherId, actionLabel))) {
@@ -1395,8 +1470,8 @@ async function resolveConflict(row: PortfolioConflictTicketVO, action: string) {
     return
   }
   if (
-    action === 'IGNORED'
-    && !(await confirmAsync({
+    action === PortfolioConflictTicketStatusEnum.IGNORED &&
+    !(await confirmAsync({
       title: '确认忽略冲突单？',
       content: '忽略后该冲突单将结束处理，外部值和本地值都不会自动覆盖另一方。',
       type: 'warning',
@@ -1409,7 +1484,8 @@ async function resolveConflict(row: PortfolioConflictTicketVO, action: string) {
     await portfolioIntegrationApi.resolveConflict({
       conflictTicketId,
       action,
-      resolveRemark: action === 'IGNORED' ? '管理端忽略冲突' : '管理端确认处置',
+      resolveRemark:
+        action === PortfolioConflictTicketStatusEnum.IGNORED ? '管理端忽略冲突' : '管理端确认处置',
     })
     void message.success('冲突已处理')
     conflictQuery.pageNum = 1
@@ -1423,32 +1499,32 @@ async function resolveConflict(row: PortfolioConflictTicketVO, action: string) {
 
 async function resolveIdentityUnmatched(
   row: PortfolioIdentityUnmatchedVO,
-  action: 'RESOLVED' | 'IGNORED',
+  action: PortfolioIdentityUnmatchedStatusEnum,
 ) {
   const identityUnmatchedId = row.id
-  if (action === 'RESOLVED' && !identityResolveTeacherId.value) {
+  if (action === PortfolioIdentityUnmatchedStatusEnum.RESOLVED && !identityResolveTeacherId.value) {
     showFormValidationMessage('绑定本地教师须选择教师')
     return
   }
   if (
-    action === 'RESOLVED'
-    && needsTeacherNumber(row)
-    && !identityResolveTeacherNumber.value.trim()
+    action === PortfolioIdentityUnmatchedStatusEnum.RESOLVED &&
+    needsTeacherNumber(row) &&
+    !identityResolveTeacherNumber.value.trim()
   ) {
     showFormValidationMessage('缺少工号待匹配须补录工号')
     return
   }
   const operation = `identity:${identityUnmatchedId}:${action}`
   if (!beginOperation(operation)) return
-  if (action === 'RESOLVED') {
+  if (action === PortfolioIdentityUnmatchedStatusEnum.RESOLVED) {
     if (!(await bindActionTeacherAndAssert(identityResolveTeacherId.value, '身份绑定本地教师'))) {
       endOperation(operation)
       return
     }
   }
   if (
-    action === 'IGNORED'
-    && !(await confirmAsync({
+    action === PortfolioIdentityUnmatchedStatusEnum.IGNORED &&
+    !(await confirmAsync({
       title: '确认忽略身份待匹配？',
       content: '忽略后该外部教师记录不会绑定到本地教师，本次同步数据也不会进入教师档案。',
       type: 'warning',
@@ -1463,10 +1539,16 @@ async function resolveIdentityUnmatched(
     await portfolioIntegrationApi.resolveIdentityUnmatched({
       identityUnmatchedId,
       action,
-      resolvedTeacherId: action === 'RESOLVED' ? resolvedTeacherId : undefined,
+      resolvedTeacherId:
+        action === PortfolioIdentityUnmatchedStatusEnum.RESOLVED ? resolvedTeacherId : undefined,
       resolvedTeacherNumber:
-        action === 'RESOLVED' && needsTeacherNumber(row) ? resolvedTeacherNumber : undefined,
-      resolveRemark: action === 'RESOLVED' ? '管理端绑定本地教师' : '管理端忽略待匹配',
+        action === PortfolioIdentityUnmatchedStatusEnum.RESOLVED && needsTeacherNumber(row)
+          ? resolvedTeacherNumber
+          : undefined,
+      resolveRemark:
+        action === PortfolioIdentityUnmatchedStatusEnum.RESOLVED
+          ? '管理端绑定本地教师'
+          : '管理端忽略待匹配',
     })
     void message.success('身份待匹配已处置')
     identityResolveTeacherId.value = ''
@@ -1483,43 +1565,89 @@ async function resolveIdentityUnmatched(
 
 function openFailedMessageFix(row: PortfolioIntegrationMessageInboxVO) {
   selectedFailedMessage.value = row
-  const fields = (row.payloadFields ?? []).map((item) => ({
+  requeueEnvelope.teacherNumber = row.teacherNumber ?? ''
+  requeueEnvelope.teacherCode = row.teacherCode ?? ''
+  requeueEnvelope.teacherName = row.teacherName ?? ''
+  requeueEnvelope.externalRecordKey = row.externalRecordKey ?? ''
+  const sourceFields =
+    row.payloadContractValid === false
+      ? [{ fieldCode: 'achievement_title', fieldValue: '' }]
+      : (row.fields ?? [])
+  payloadFieldEdits.value = sourceFields.map((item) => ({
     fieldCode: item.fieldCode,
     fieldValue: item.fieldValue ?? '',
   }))
-  if (
-    !fields.some((item) => item.fieldCode === 'teacher_number' || item.fieldCode === 'teacher_code')
-  ) {
-    fields.unshift({ fieldCode: 'teacher_number', fieldValue: '' })
-  }
-  payloadFieldEdits.value = fields.length
-    ? fields
-    : [{ fieldCode: 'teacher_number', fieldValue: '' }]
-  requeueMessage.value = '管理员修正字段后重入队'
+  requeueMessage.value =
+    row.payloadContractValid === false ? '管理员整包替换非法载荷后重入队' : '管理员修正字段后重入队'
   failedMessageDrawerOpen.value = true
+}
+
+function addRequeuePayloadField() {
+  payloadFieldEdits.value.push({ fieldCode: '', fieldValue: '' })
+}
+
+function removeRequeuePayloadField(index: number) {
+  if (payloadFieldEdits.value.length <= 1) {
+    showFormValidationMessage('至少保留一个业务字段')
+    return
+  }
+  payloadFieldEdits.value.splice(index, 1)
 }
 
 async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, corrected = false) {
   const messageInboxId = row.id
   const datasourceConfigId = row.datasourceConfigId
-  let fieldCorrections: Array<{ fieldCode: string, fieldValue: string }> | undefined
+  if (!corrected && row.payloadContractValid === false) {
+    showFormValidationMessage('非法载荷不可原样重试，请打开修正重放并整包替换信封与字段袋')
+    return
+  }
+  let fieldCorrections: Array<{ fieldCode: string; fieldValue: string }> | undefined
+  let teacherNumber: string | undefined
+  let teacherCode: string | undefined
+  let teacherName: string | undefined
+  let externalRecordKey: string | undefined
   if (corrected) {
+    teacherNumber = requeueEnvelope.teacherNumber.trim() || undefined
+    teacherCode = requeueEnvelope.teacherCode.trim() || undefined
+    teacherName = requeueEnvelope.teacherName.trim() || undefined
+    externalRecordKey = requeueEnvelope.externalRecordKey.trim() || undefined
     fieldCorrections = payloadFieldEdits.value
       .map((item) => ({
         fieldCode: item.fieldCode.trim(),
         fieldValue: item.fieldValue.trim(),
       }))
       .filter((item) => item.fieldCode && item.fieldValue)
-    if (!fieldCorrections.length) {
-      showFormValidationMessage('请至少填写一个有效字段修正')
+    if (row.payloadContractValid === false) {
+      if (!teacherNumber && !teacherCode) {
+        showFormValidationMessage('非法载荷须整包替换：请填写教师工号或教师编码')
+        return
+      }
+      if (!fieldCorrections.length) {
+        showFormValidationMessage('非法载荷须整包替换：请填写完整业务字段袋')
+        return
+      }
+    } else if (
+      !teacherNumber &&
+      !teacherCode &&
+      !teacherName &&
+      !externalRecordKey &&
+      !fieldCorrections.length
+    ) {
+      showFormValidationMessage('请至少修正信封身份键或一个业务字段')
+      return
+    }
+    if (fieldCorrections.length && hasReservedBagFieldCode(fieldCorrections)) {
+      showFormValidationMessage(
+        '字段袋不得包含 teacher_number/teacher_code/teacher_name/external_record_key',
+      )
       return
     }
   }
   const operation = `failed-message:${messageInboxId}`
   if (!beginOperation(operation)) return
   if (
-    !corrected
-    && !(await confirmAsync({
+    !corrected &&
+    !(await confirmAsync({
       title: '确认使用原载荷重试？',
       content: '原载荷将放回普通收件箱并触发同步；若错误原因尚未消除，消息会再次进入异常状态。',
       type: 'warning',
@@ -1533,6 +1661,10 @@ async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, cor
     await portfolioIntegrationApi.requeueFailedMessage({
       messageInboxId,
       processMessage,
+      teacherNumber,
+      teacherCode,
+      teacherName,
+      externalRecordKey,
       fieldCorrections,
       triggerSync: true,
     })
@@ -1584,10 +1716,10 @@ function editCourseCodeMap(row: PortfolioCourseCodeMapVO) {
 
 async function saveCourseCodeMap() {
   if (
-    !courseCodeMapForm.sourceSystemCode.trim()
-    || !courseCodeMapForm.sourceCourseCode.trim()
-    || !courseCodeMapForm.canonicalCourseCode.trim()
-    || !courseCodeMapForm.canonicalCourseName.trim()
+    !courseCodeMapForm.sourceSystemCode.trim() ||
+    !courseCodeMapForm.sourceCourseCode.trim() ||
+    !courseCodeMapForm.canonicalCourseCode.trim() ||
+    !courseCodeMapForm.canonicalCourseName.trim()
   ) {
     showFormValidationMessage('请填写来源系统、源课程编码和规范课程编码/名称')
     return
@@ -1665,9 +1797,9 @@ function editDictEntry(row: PortfolioIntegrationDictEntryVO) {
 
 async function saveDictEntry() {
   if (
-    !dictEntryForm.dictionaryCode.trim()
-    || !dictEntryForm.sourceValue.trim()
-    || !dictEntryForm.targetValue.trim()
+    !dictEntryForm.dictionaryCode.trim() ||
+    !dictEntryForm.sourceValue.trim() ||
+    !dictEntryForm.targetValue.trim()
   ) {
     showFormValidationMessage('请填写字典编码、源值和规范值')
     return
@@ -1739,49 +1871,49 @@ function searchDictEntries() {
   void loadDictEntries()
 }
 
-function onDatasourcePageChange(page: { current: number, pageSize: number }) {
+function onDatasourcePageChange(page: { current: number; pageSize: number }) {
   datasourceQuery.pageNum = page.current
   datasourceQuery.pageSize = page.pageSize
   void loadDatasources()
 }
 
-function onSyncTaskPageChange(page: { current: number, pageSize: number }) {
+function onSyncTaskPageChange(page: { current: number; pageSize: number }) {
   syncTaskQuery.pageNum = page.current
   syncTaskQuery.pageSize = page.pageSize
   void loadSyncTasks()
 }
 
-function onUnmatchedPageChange(page: { current: number, pageSize: number }) {
+function onUnmatchedPageChange(page: { current: number; pageSize: number }) {
   unmatchedQuery.pageNum = page.current
   unmatchedQuery.pageSize = page.pageSize
   void loadUnmatched()
 }
 
-function onConflictPageChange(page: { current: number, pageSize: number }) {
+function onConflictPageChange(page: { current: number; pageSize: number }) {
   conflictQuery.pageNum = page.current
   conflictQuery.pageSize = page.pageSize
   void loadConflicts()
 }
 
-function onFailedMessagePageChange(page: { current: number, pageSize: number }) {
+function onFailedMessagePageChange(page: { current: number; pageSize: number }) {
   failedMessageQuery.pageNum = page.current
   failedMessageQuery.pageSize = page.pageSize
   void loadFailedMessages()
 }
 
-function onCleanLogPageChange(page: { current: number, pageSize: number }) {
+function onCleanLogPageChange(page: { current: number; pageSize: number }) {
   cleanLogQuery.pageNum = page.current
   cleanLogQuery.pageSize = page.pageSize
   void loadCleanLogs()
 }
 
-function onCourseCodeMapPageChange(page: { current: number, pageSize: number }) {
+function onCourseCodeMapPageChange(page: { current: number; pageSize: number }) {
   courseCodeMapQuery.pageNum = page.current
   courseCodeMapQuery.pageSize = page.pageSize
   void loadCourseCodeMaps()
 }
 
-function onDictEntryPageChange(page: { current: number, pageSize: number }) {
+function onDictEntryPageChange(page: { current: number; pageSize: number }) {
   dictEntryQuery.pageNum = page.current
   dictEntryQuery.pageSize = page.pageSize
   void loadDictEntries()
@@ -1822,18 +1954,20 @@ onMounted(async () => {
         <span class="integration-dashboard__panel-title">数据源配置</span>
       </template>
       <div class="integration-dashboard__preset-bar">
-        <span class="integration-dashboard__preset-label">全国教师系统（同渠道仅一条 OPENAPI，切换方向即编辑现有配置）</span>
+        <span class="integration-dashboard__preset-label"
+          >全国教师系统（同渠道仅一条 OPENAPI，切换方向即编辑现有配置）</span
+        >
         <UiButton
           size="sm"
           :disabled="writing || editingDatasource"
-          @click="applyNationalTeacherPreset('OUTBOUND')"
+          @click="applyNationalTeacherPreset(PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND)"
         >
           上报方向
         </UiButton>
         <UiButton
           size="sm"
           :disabled="writing || editingDatasource"
-          @click="applyNationalTeacherPreset('INBOUND')"
+          @click="applyNationalTeacherPreset(PortfolioNationalTeacherSyncDirectionEnum.INBOUND)"
         >
           回流方向
         </UiButton>
@@ -1892,12 +2026,12 @@ onMounted(async () => {
           size="sm"
           v-model="dsForm.syncDirection"
           :options="[
-            { value: 'OUTBOUND', label: '上报校验' },
-            { value: 'INBOUND', label: '回流比对' },
+            { value: PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND, label: '上报校验' },
+            { value: PortfolioNationalTeacherSyncDirectionEnum.INBOUND, label: '回流比对' },
           ]"
           :disabled="writing"
         />
-        <template v-if="dsForm.syncDirection === 'INBOUND'">
+        <template v-if="dsForm.syncDirection === PortfolioNationalTeacherSyncDirectionEnum.INBOUND">
           <div class="integration-dashboard__inbound-head">
             <strong>回流记录</strong>
             <UiButton variant="primary" size="sm" :disabled="writing" @click="addInboundRecord">
@@ -2025,11 +2159,11 @@ onMounted(async () => {
           :options="
             isScientificResearchChannel
               ? PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS.filter(
-                (item) => item.value === 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
-              )
+                  (item) => item.value === 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
+                )
               : PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS.filter(
-                (item) => item.value !== 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
-              )
+                  (item) => item.value !== 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
+                )
           "
           :disabled="writing || isScientificResearchChannel"
         />
@@ -2571,7 +2705,12 @@ onMounted(async () => {
         @page-change="onUnmatchedPageChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'actions' && record.status === 'PENDING'">
+          <template
+            v-if="
+              column.key === 'actions' &&
+              record.status === PortfolioIdentityUnmatchedStatusEnum.PENDING
+            "
+          >
             <template v-if="identityResolveRowId === record.id">
               <UiSelect
                 size="sm"
@@ -2615,7 +2754,9 @@ onMounted(async () => {
               size="sm"
               :loading="operationKey === `identity:${record.id}:RESOLVED`"
               :disabled="writing"
-              @click="resolveIdentityUnmatched(record, 'RESOLVED')"
+              @click="
+                resolveIdentityUnmatched(record, PortfolioIdentityUnmatchedStatusEnum.RESOLVED)
+              "
             >
               确认绑定
             </UiButton>
@@ -2624,7 +2765,9 @@ onMounted(async () => {
               variant="ghost"
               :loading="operationKey === `identity:${record.id}:IGNORED`"
               :disabled="writing"
-              @click="resolveIdentityUnmatched(record, 'IGNORED')"
+              @click="
+                resolveIdentityUnmatched(record, PortfolioIdentityUnmatchedStatusEnum.IGNORED)
+              "
             >
               忽略
             </UiButton>
@@ -2716,29 +2859,45 @@ onMounted(async () => {
         @page-change="onConflictPageChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'actions' && record.ticketStatus === 'OPEN'">
+          <template
+            v-if="
+              column.key === 'actions' &&
+              record.ticketStatus === PortfolioConflictTicketStatusEnum.OPEN
+            "
+          >
             <UiButton
               size="sm"
-              :loading="operationKey === `conflict:${record.id}:RESOLVED_USE_LOCAL`"
+              :loading="
+                operationKey ===
+                `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.RESOLVED_USE_LOCAL}`
+              "
               :disabled="writing"
-              @click="resolveConflict(record, 'RESOLVED_USE_LOCAL')"
+              @click="resolveConflict(record, PortfolioConflictTicketStatusEnum.RESOLVED_USE_LOCAL)"
             >
               保留本地
             </UiButton>
             <UiButton
               size="sm"
-              :loading="operationKey === `conflict:${record.id}:RESOLVED_USE_EXTERNAL`"
+              :loading="
+                operationKey ===
+                `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.RESOLVED_USE_EXTERNAL}`
+              "
               :disabled="writing"
-              @click="resolveConflict(record, 'RESOLVED_USE_EXTERNAL')"
+              @click="
+                resolveConflict(record, PortfolioConflictTicketStatusEnum.RESOLVED_USE_EXTERNAL)
+              "
             >
               采用外部
             </UiButton>
             <UiButton
               size="sm"
               variant="ghost"
-              :loading="operationKey === `conflict:${record.id}:IGNORED`"
+              :loading="
+                operationKey ===
+                `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.IGNORED}`
+              "
               :disabled="writing"
-              @click="resolveConflict(record, 'IGNORED')"
+              @click="resolveConflict(record, PortfolioConflictTicketStatusEnum.IGNORED)"
             >
               忽略
             </UiButton>
@@ -2770,10 +2929,38 @@ onMounted(async () => {
           placeholder="外部系统消息唯一键，重复投递返回同一收件箱"
           :disabled="writing"
         />
-        <label>消息字段</label>
+        <label>教师工号</label>
+        <UiInput
+          size="sm"
+          v-model="messageEnqueueForm.teacherNumber"
+          placeholder="信封身份键 teacherNumber"
+          :disabled="writing"
+        />
+        <label>教师编码</label>
+        <UiInput
+          size="sm"
+          v-model="messageEnqueueForm.teacherCode"
+          placeholder="可选，与工号二选一"
+          :disabled="writing"
+        />
+        <label>教师姓名</label>
+        <UiInput
+          size="sm"
+          v-model="messageEnqueueForm.teacherName"
+          placeholder="可选"
+          :disabled="writing"
+        />
+        <label>外部记录键</label>
+        <UiInput
+          size="sm"
+          v-model="messageEnqueueForm.externalRecordKey"
+          placeholder="可选，缺省用消息幂等键"
+          :disabled="writing"
+        />
+        <label>业务字段袋</label>
         <div class="integration-dashboard__payload-editor">
           <div
-            v-for="(item, index) in messageEnqueueForm.payloadFields"
+            v-for="(item, index) in messageEnqueueForm.fields"
             :key="`enqueue-field-${index}`"
             class="integration-dashboard__payload-field"
           >
@@ -2838,12 +3025,17 @@ onMounted(async () => {
         @page-change="onFailedMessagePageChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'actions'">
+          <template v-if="column.key === 'payloadContract'">
+            <UiTag :tone="record.payloadContractValid === false ? 'red' : 'green'">
+              {{ record.payloadContractValid === false ? '非法' : '合法' }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'actions'">
             <UiButton
               size="sm"
               variant="ghost"
               :loading="operationKey === `failed-message:${record.id}`"
-              :disabled="writing"
+              :disabled="writing || record.payloadContractValid === false"
               @click="requeueFailedMessage(record)"
             >
               原载荷重试
@@ -2854,7 +3046,7 @@ onMounted(async () => {
               :disabled="writing"
               @click="openFailedMessageFix(record)"
             >
-              修正重放
+              {{ record.payloadContractValid === false ? '整包替换' : '修正重放' }}
             </UiButton>
           </template>
         </template>
@@ -2891,7 +3083,13 @@ onMounted(async () => {
       <ul v-else-if="health && !loadState.health" class="integration-dashboard__health-list">
         <li v-for="item in health.channels" :key="`${item.channelCode}-${item.pathwayCode}`">
           <strong>{{ item.channelCode }}</strong> / {{ item.pathwayCode }}
-          <UiTag :tone="item.healthStatus === 'HEALTHY' ? 'green' : 'orange'">
+          <UiTag
+            :tone="
+              item.healthStatus === PortfolioIntegrationHealthStatusEnum.HEALTHY
+                ? 'green'
+                : 'orange'
+            "
+          >
             {{ item.healthStatus }}
           </UiTag>
           <span v-if="item.maturityScore">成熟度 {{ item.maturityScore }}</span>
@@ -2915,6 +3113,14 @@ onMounted(async () => {
       <UiTag tone="red">{{ selectedFailedMessage.channelCode }}</UiTag>
       <strong>{{ selectedFailedMessage.messageKey }}</strong>
       <span>{{ selectedFailedMessage.processMessage }}</span>
+      <span
+        v-if="selectedFailedMessage.payloadContractValid === false"
+        class="integration-dashboard__hint"
+      >
+        载荷契约非法：{{
+          selectedFailedMessage.payloadContractMessage
+        }}；须整包替换信封与字段袋，禁止原样重试。
+      </span>
       <label>修正说明</label>
       <UiInput
         size="sm"
@@ -2922,14 +3128,46 @@ onMounted(async () => {
         placeholder="说明修正内容与重放依据"
         :disabled="writing"
       />
-      <label>字段修正</label>
-      <div
-        v-for="(item, index) in payloadFieldEdits"
-        :key="`${item.fieldCode}-${index}`"
-        class="integration-dashboard__payload-field"
-      >
-        <span>{{ item.fieldCode }}</span>
-        <UiInput size="sm" v-model="item.fieldValue" :disabled="writing" />
+      <label>教师工号</label>
+      <UiInput size="sm" v-model="requeueEnvelope.teacherNumber" :disabled="writing" />
+      <label>教师编码</label>
+      <UiInput size="sm" v-model="requeueEnvelope.teacherCode" :disabled="writing" />
+      <label>教师姓名</label>
+      <UiInput size="sm" v-model="requeueEnvelope.teacherName" :disabled="writing" />
+      <label>外部记录键</label>
+      <UiInput size="sm" v-model="requeueEnvelope.externalRecordKey" :disabled="writing" />
+      <label>业务字段袋</label>
+      <div class="integration-dashboard__payload-editor">
+        <div
+          v-for="(item, index) in payloadFieldEdits"
+          :key="`requeue-field-${index}`"
+          class="integration-dashboard__payload-field"
+        >
+          <UiInput
+            size="sm"
+            v-model="item.fieldCode"
+            placeholder="字段编码"
+            :disabled="writing || selectedFailedMessage.payloadContractValid !== false"
+          />
+          <UiInput size="sm" v-model="item.fieldValue" placeholder="字段值" :disabled="writing" />
+          <UiButton
+            size="sm"
+            variant="ghost"
+            :disabled="writing || selectedFailedMessage.payloadContractValid !== false"
+            @click="removeRequeuePayloadField(index)"
+          >
+            删除
+          </UiButton>
+        </div>
+        <UiButton
+          v-if="selectedFailedMessage.payloadContractValid === false"
+          size="sm"
+          variant="ghost"
+          :disabled="writing"
+          @click="addRequeuePayloadField"
+        >
+          添加字段
+        </UiButton>
       </div>
     </div>
   </UiDrawer>

@@ -14,23 +14,40 @@
       </div>
       <p class="section-desc">选定目录模板套、密级与成绩事实；模板决定材料目录与自查项。</p>
 
-      <UiFormItem
-        label="目录模板套"
-        name="templateSetCode"
-        required
-        tooltip="含平台母版与本校副本；创建任务后按此套解析材料目录与自查项。"
-      >
-        <UiSelect
-          size="sm"
-          v-model="templateSetCodeSelectValue"
-          :options="templateSetOptions"
-          :loading="templateLoading"
-          placeholder="请选择模板套"
-          allow-search
-          option-filter-prop="label"
-          @change="handleTemplateChange"
-        />
-      </UiFormItem>
+      <UiRow :gutter="24" class="create-form__split-row">
+        <UiCol :span="12">
+          <UiFormItem
+            label="目录模板套"
+            name="templateSetCode"
+            required
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
+            <UiSelect
+              size="sm"
+              v-model="templateSetCodeSelectValue"
+              :options="templateSetOptions"
+              :loading="templateLoading"
+              placeholder="请选择目录模板套"
+              allow-search
+              option-filter-prop="label"
+              @change="handleTemplateChange"
+            />
+            <template #extra>含平台母版与本校副本；创建任务后按此套解析材料目录与自查项。</template>
+          </UiFormItem>
+        </UiCol>
+        <UiCol :span="12">
+          <UiFormItem label="考核形式" :label-col="labelCol" :wrapper-col="wrapperCol">
+            <UiSelect
+              size="sm"
+              v-model="planForm.examForm"
+              :options="ARCHIVE_EXAM_FORM_OPTIONS"
+              allow-clear
+              placeholder="可选"
+            />
+          </UiFormItem>
+        </UiCol>
+      </UiRow>
 
       <UiFormItem label="成绩事实源" name="scoreSource" required>
         <UiRadioGroup
@@ -43,17 +60,6 @@
       </UiFormItem>
 
       <UiRow :gutter="24" class="create-form__split-row">
-        <UiCol :span="12">
-          <UiFormItem label="考核形式" :label-col="labelCol" :wrapper-col="wrapperCol">
-            <UiSelect
-              size="sm"
-              v-model="planForm.examForm"
-              :options="ARCHIVE_EXAM_FORM_OPTIONS"
-              allow-clear
-              placeholder="可选"
-            />
-          </UiFormItem>
-        </UiCol>
         <UiCol :span="12">
           <UiFormItem
             label="密级"
@@ -69,20 +75,23 @@
             />
           </UiFormItem>
         </UiCol>
+        <UiCol :span="12">
+          <UiFormItem
+            label="归档责任人"
+            name="responsibleUserId"
+            required
+            tooltip="缺省为当前用户；责任人可登记材料并提交本任务。"
+            :label-col="labelCol"
+            :wrapper-col="wrapperCol"
+          >
+            <TeacherSelector
+              :value="planForm.responsibleUserId"
+              placeholder="默认当前用户"
+              @change="handleResponsibleChange"
+            />
+          </UiFormItem>
+        </UiCol>
       </UiRow>
-
-      <UiFormItem
-        label="归档责任人"
-        name="responsibleUserId"
-        required
-        tooltip="缺省为当前用户；责任人可登记材料并提交本任务。"
-      >
-        <TeacherSelector
-          :value="planForm.responsibleUserId"
-          placeholder="默认当前用户"
-          @change="handleResponsibleChange"
-        />
-      </UiFormItem>
 
       <UiRow :gutter="24" class="create-form__split-row">
         <UiCol :span="12">
@@ -122,7 +131,7 @@
 
       <UiFormItem
         v-if="requiresScoreProof"
-        label="成绩证明"
+        label="成绩证明（线下确认时上传）"
         tooltip="线下成绩已核实时可上传成绩证明；未上传时任务保持待确认。"
       >
         <div class="score-proof-field">
@@ -139,6 +148,7 @@
             文件编号：{{ planForm.scoreProofFileId }}
           </span>
         </div>
+        <template #extra>支持 PDF / JPG / PNG / Word / Excel。</template>
       </UiFormItem>
     </div>
   </UiForm>
@@ -147,16 +157,16 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import type { UiOptionValue } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   ARCHIVE_EXAM_FORM_OPTIONS,
   ARCHIVE_SECURITY_LEVEL_OPTIONS,
   ArchiveScoreSourceDescription,
   discardArchiveTaskScoreProof,
 } from '@/apis/mark/archive-volume'
+import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import type { UiOptionValue } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -198,7 +208,7 @@ const emit = defineEmits<{
     code: string | null,
     name: string,
     examForm?: ArchiveExamFormCode,
-    retention?: { defaultPermanentRetention?: boolean, defaultRetentionYears?: number },
+    retention?: { defaultPermanentRetention?: boolean; defaultRetentionYears?: number },
   ]
   'responsible-change': [userId: string | null, nickName: string]
   'update:plan-form-ref': [form: FormInstance | undefined]

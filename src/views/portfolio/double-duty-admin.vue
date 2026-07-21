@@ -23,6 +23,7 @@ import {
 } from '@/types/enums/portfolio-key-teacher-registry-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -46,8 +47,8 @@ const {
 } = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
-  = useQueryTable(portfolioDoubleDutyApi.page)
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } =
+  useQueryTable(portfolioDoubleDutyApi.page)
 
 const columns: ColumnsType = [
   { title: '教师', key: 'teacher', width: 120 },
@@ -225,7 +226,7 @@ async function exportRoster() {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacher'">
-            {{ record.teacherName }}
+            {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
             <span v-if="record.departmentName" class="dept-hint">{{ record.departmentName }}</span>
           </template>
           <template v-else-if="column.key === 'registryStatus'">

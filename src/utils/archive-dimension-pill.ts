@@ -12,7 +12,7 @@ import {
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /** 原型 dim-pill 语义色，对应 exam-prototype.html `.dim-pill--*`。 */
-export type ArchiveDimPillTone = 'ok' | 'warn' | 'info' | 'pending' | 'error'
+export type ArchiveDimPillTone = 'ok' | 'warn' | 'info' | 'pending' | 'error' | 'purple'
 
 export interface ArchiveDimPillItem {
   tone: ArchiveDimPillTone
@@ -62,8 +62,11 @@ export function appraisalStatusDimTone(status: ArchiveAppraisalStatusCode): Arch
   if (status === ArchiveAppraisalStatusCode.REMINDER_SENT || status === ArchiveAppraisalStatusCode.REQUESTED) {
     return 'warn'
   }
-  if (status === ArchiveAppraisalStatusCode.APPROVED || status === ArchiveAppraisalStatusCode.OPINION_RECORDED) {
+  if (status === ArchiveAppraisalStatusCode.APPROVED) {
     return 'ok'
+  }
+  if (status === ArchiveAppraisalStatusCode.OPINION_RECORDED) {
+    return 'purple'
   }
   if (status === ArchiveAppraisalStatusCode.REJECTED) {
     return 'error'
@@ -100,7 +103,7 @@ export function buildArchiveVolumeDimPills(record: ArchiveVolumeResponse): Archi
     pills.push({ tone: 'warn', label: '定密待确认' })
   }
   if (record.securityLevel === 'CONFIDENTIAL') {
-    pills.push({ tone: 'error', label: '机密' })
+    pills.push({ tone: 'purple', label: '机密' })
   }
   return pills
 }

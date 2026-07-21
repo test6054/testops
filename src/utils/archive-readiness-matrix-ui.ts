@@ -1,5 +1,8 @@
-/** 就绪矩阵单元格语义色：1=全绿，(0,1)=黄，0=红。 */
-export function readinessRateCellClass(rate: number): string {
+/** 就绪矩阵单元格语义色：无数据=空态，1=全绿，(0,1)=黄，0=红。 */
+export function readinessRateCellClass(rate?: number): string {
+  if (rate === undefined || rate === null) {
+    return 'matrix-cell matrix-cell--empty'
+  }
   if (rate >= 1) {
     return 'matrix-cell matrix-cell--good'
   }

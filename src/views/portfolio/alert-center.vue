@@ -4,11 +4,16 @@ import type {
   PortfolioAnalysisAlertVO,
   PortfolioAnalysisComplianceAlertVO,
 } from '@/apis/portfolio/analysis'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioAlertTypeCode } from '@/types/enums/portfolio-alert-type-enum'
+import {
+  ALL_PORTFOLIO_ALERT_TYPE_CODES,
+  PortfolioAlertTypeDescription,
+} from '@/types/enums/portfolio-alert-type-enum'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -27,15 +32,11 @@ import {
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
 import {
-  ALL_PORTFOLIO_ALERT_TYPE_CODES,
-  PortfolioAlertTypeDescription,
-} from '@/types/enums/portfolio-alert-type-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import {
   PortfolioComplianceScopeTypeCode,
   PortfolioComplianceScopeTypeDescription,
 } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import { showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -58,8 +59,8 @@ const portraitTotal = ref(0)
 const complianceTotal = ref(0)
 const loading = computed(
   () =>
-    Boolean(actionId.value)
-    || (activeTab.value === 'portrait' ? portraitLoading.value : complianceLoading.value),
+    Boolean(actionId.value) ||
+    (activeTab.value === 'portrait' ? portraitLoading.value : complianceLoading.value),
 )
 
 const portraitFilter = reactive({
@@ -127,12 +128,22 @@ function alertTypeLabel(code: string): string {
   )
 }
 
-function alertStatusLabel(code: string): string {
-  return strictEnumLabel(
-    PortfolioAlertStatusDescription,
-    code as PortfolioAlertStatusCode,
-    '预警状态',
-  )
+function alertStatusLabel(code?: PortfolioAlertStatusCode): string {
+  if (!code) return '—'
+  return strictEnumLabel(PortfolioAlertStatusDescription, code, '预警状态')
+}
+
+function alertStatusTone(code: PortfolioAlertStatusCode): 'red' | 'orange' | 'green' | 'gray' {
+  if (code === PortfolioAlertStatusCode.OPEN) {
+    return 'red'
+  }
+  if (code === PortfolioAlertStatusCode.ACKNOWLEDGED) {
+    return 'orange'
+  }
+  if (code === PortfolioAlertStatusCode.RESOLVED) {
+    return 'green'
+  }
+  return 'gray'
 }
 
 function complianceTypeLabel(code: string): string {
@@ -149,16 +160,6 @@ function scopeTypeLabel(code: string): string {
     code as PortfolioComplianceScopeTypeCode,
     '合规预警范围',
   )
-}
-
-function alertStatusTone(code: string): 'red' | 'orange' | 'green' | 'gray' {
-  if (code === PortfolioAlertStatusCode.OPEN) {
-    return 'red'
-  }
-  if (code === PortfolioAlertStatusCode.ACKNOWLEDGED) {
-    return 'orange'
-  }
-  return 'green'
 }
 
 async function loadPortraitAlerts() {
@@ -235,13 +236,13 @@ function reloadActiveTab() {
   void loadComplianceAlerts()
 }
 
-function onPortraitPageChange(page: { current: number, pageSize: number }) {
+function onPortraitPageChange(page: { current: number; pageSize: number }) {
   portraitFilter.pageNum = page.current
   portraitFilter.pageSize = page.pageSize
   void loadPortraitAlerts()
 }
 
-function onCompliancePageChange(page: { current: number, pageSize: number }) {
+function onCompliancePageChange(page: { current: number; pageSize: number }) {
   complianceFilter.pageNum = page.current
   complianceFilter.pageSize = page.pageSize
   void loadComplianceAlerts()
@@ -387,10 +388,11 @@ onMounted(() => {
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'teacher'">
               <div class="alert-center__teacher">
-                <strong>{{ record.teacherName || `教师 ${record.teacherId}` }}</strong>
-                <span class="alert-center__sub">
-                  {{ record.teacherNumber || record.teacherId }}
-                  <template v-if="record.departmentName"> · {{ record.departmentName }} </template>
+                <strong>{{
+                  formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber)
+                }}</strong>
+                <span v-if="record.departmentName" class="alert-center__sub">
+                  {{ record.departmentName }}
                 </span>
                 <div
                   v-if="record.lifecycleStatus || record.ownerIdentityLayers?.length"
@@ -404,8 +406,8 @@ onMounted(() => {
                         ? 'green'
                         : record.lifecycleStatus === 'TEMP_HOLD'
                           ? 'orange'
-                          : record.lifecycleStatus === 'SEALED'
-                            || record.lifecycleStatus === 'TRANSFERRED'
+                          : record.lifecycleStatus === 'SEALED' ||
+                              record.lifecycleStatus === 'TRANSFERRED'
                             ? 'red'
                             : 'gray'
                     "
@@ -499,8 +501,8 @@ onMounted(() => {
             </template>
             <template v-else-if="column.key === 'department'">
               {{
-                record.departmentName
-                  || (record.departmentId ? `院系 ${record.departmentId}` : '全校')
+                record.departmentName ||
+                (record.departmentId ? `院系 ${record.departmentId}` : '全校')
               }}
             </template>
             <template v-else-if="column.key === 'alertType'">

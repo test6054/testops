@@ -1,3 +1,4 @@
+import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import http from '@/config/axios'
@@ -45,7 +46,7 @@ export interface PortfolioHonorArchivePrepareVO {
   honorRecordId: string
   archiveRecordId: string
   categoryId: string
-  archiveRecordStatus: string
+  archiveRecordStatus: PortfolioArchiveRecordStatusCode
   missingRequiredFieldCodes: string[]
 }
 

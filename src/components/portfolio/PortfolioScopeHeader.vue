@@ -58,9 +58,19 @@ const workShellOptions = computed(() =>
 )
 
 const activeWorkShell = computed(() => accessScope.value?.defaultWorkShell)
+const queryTeacherId = computed(() =>
+  typeof route.query.teacherId === 'string' ? route.query.teacherId : '')
+const canFollowTeacherQuery = computed(() => canPickTeachers.value || canReviewPortfolio.value)
+const canUseQueryTeacher = computed(() =>
+  Boolean(
+    queryTeacherId.value
+    && (canFollowTeacherQuery.value || queryTeacherId.value === currentUserId.value),
+  ))
 
 const selectedTeacherId = computed({
-  get: () => portfolioStore.currentTeacherId || resolveDefaultTeacherId(),
+  get: () => canUseQueryTeacher.value
+    ? queryTeacherId.value
+    : portfolioStore.currentTeacherId || resolveDefaultTeacherId(),
   set: (value: string) => {
     const teacherId = value || ''
     if (teacherId) {
@@ -112,8 +122,6 @@ function backToSelf() {
 function clearTeacherSelection() {
   selectedTeacherId.value = ''
 }
-
-const canFollowTeacherQuery = computed(() => canPickTeachers.value || canReviewPortfolio.value)
 
 async function loadTeacherOptions(keyword?: string) {
   if (!canPickTeachers.value) {

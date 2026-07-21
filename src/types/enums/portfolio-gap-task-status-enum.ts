@@ -6,6 +6,7 @@ export enum PortfolioGapTaskStatusCode {
   SUBMITTED = 'SUBMITTED',
   REVIEWING = 'REVIEWING',
   CLOSED = 'CLOSED',
+  SUSPENDED = 'SUSPENDED',
 }
 
 export const ALL_PORTFOLIO_GAP_TASK_STATUS_CODES: readonly PortfolioGapTaskStatusCode[] = [
@@ -15,6 +16,7 @@ export const ALL_PORTFOLIO_GAP_TASK_STATUS_CODES: readonly PortfolioGapTaskStatu
   PortfolioGapTaskStatusCode.SUBMITTED,
   PortfolioGapTaskStatusCode.REVIEWING,
   PortfolioGapTaskStatusCode.CLOSED,
+  PortfolioGapTaskStatusCode.SUSPENDED,
 ]
 
 export const PortfolioGapTaskStatusDescription: Record<PortfolioGapTaskStatusCode, string> = {
@@ -24,4 +26,5 @@ export const PortfolioGapTaskStatusDescription: Record<PortfolioGapTaskStatusCod
   [PortfolioGapTaskStatusCode.SUBMITTED]: '已提交',
   [PortfolioGapTaskStatusCode.REVIEWING]: '审核中',
   [PortfolioGapTaskStatusCode.CLOSED]: '已关闭',
+  [PortfolioGapTaskStatusCode.SUSPENDED]: '已暂停',
 }

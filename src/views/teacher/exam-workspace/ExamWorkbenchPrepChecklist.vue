@@ -19,7 +19,9 @@
             <span class="prep-checklist__step-title">{{ step.title }}</span>
             <UiTag :tone="statusTone(step.status)" size="sm">{{ step.statusText }}</UiTag>
           </div>
-          <p v-if="step.advisoryReason" class="prep-checklist__advisory">{{ step.advisoryReason }}</p>
+          <p v-if="step.advisoryReason" class="prep-checklist__advisory">
+            {{ step.advisoryReason }}
+          </p>
         </div>
         <UiButton
           v-if="step.status !== 'completed'"
@@ -29,12 +31,7 @@
         >
           去处理
         </UiButton>
-        <UiButton
-          v-else
-          size="sm"
-          variant="ghost"
-          @click="emit('step-navigate', step.key)"
-        >
+        <UiButton v-else size="sm" variant="ghost" @click="emit('step-navigate', step.key)">
           查看
         </UiButton>
       </li>
@@ -43,12 +40,17 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamWorkbenchPrepStepResponse, WorkbenchStageStatusCode } from '@/apis/mark/exam-progress'
+import type {
+  ExamWorkbenchPrepStepResponse,
+  WorkbenchStageStatusCode,
+} from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
+import { WORKSPACE_STAGE_STATUS_TONE } from '@/constants/mark-workspace-nav'
+import { strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ExamWorkbenchPrepChecklist' })
 
@@ -62,17 +64,8 @@ const emit = defineEmits<{
 
 const completedCount = computed(() => props.steps.filter((s) => s.status === 'completed').length)
 
-const STATUS_TONE: Record<WorkbenchStageStatusCode, BadgeTone> = {
-  completed: 'green',
-  active: 'blue',
-  warning: 'orange',
-  error: 'red',
-  blocked: 'red',
-  pending: 'default',
-}
-
 function statusTone(status: WorkbenchStageStatusCode): BadgeTone {
-  return STATUS_TONE[status] ?? 'default'
+  return strictEnumTone(WORKSPACE_STAGE_STATUS_TONE, status, '考试准备阶段状态')
 }
 </script>
 

@@ -4,6 +4,10 @@ import type {
   PortfolioCorrectionImpactVO,
   PortfolioCorrectionSummaryVO,
 } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
+  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
@@ -16,10 +20,6 @@ import {
   PortfolioCorrectionRequestStatusCode,
   PortfolioCorrectionRequestStatusDescription,
 } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
-  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -34,6 +34,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -95,8 +96,8 @@ async function bindActionTeacherAndAssert(
   teacherId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value
-    = teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
+  actionTeacherId.value =
+    teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
@@ -386,7 +387,7 @@ void loadPage()
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherName'">
-            {{ record.teacherName }}
+            {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
@@ -421,7 +422,8 @@ void loadPage()
 
     <UiDrawer v-model:open="rejectDrawerOpen" title="驳回纠错" width="420">
       <p v-if="rejectTarget" class="correction-admin__reject-meta">
-        {{ rejectTarget.teacherName }} · {{ rejectTarget.fieldLabel ?? rejectTarget.fieldCode }}
+        {{ formatPortfolioTeacherDisplay(rejectTarget.teacherName, rejectTarget.teacherNumber) }} ·
+        {{ rejectTarget.fieldLabel ?? rejectTarget.fieldCode }}
       </p>
       <UiTextarea
         v-model="rejectForm.handleOpinion"
@@ -466,8 +468,8 @@ void loadPage()
               {{
                 impactDetail.recomputeStatus === PortfolioCorrectionImpactRecomputeStatusCode.FAILED
                   ? '重新重算'
-                  : impactDetail.recomputeStatus
-                    === PortfolioCorrectionImpactRecomputeStatusCode.RUNNING
+                  : impactDetail.recomputeStatus ===
+                      PortfolioCorrectionImpactRecomputeStatusCode.RUNNING
                     ? '接管重试'
                     : '执行重算'
               }}

@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherLibraryBorrowStatsVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
-import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -23,6 +23,7 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const stats = ref<PortfolioTeacherLibraryBorrowStatsVO | null>(null)
@@ -42,14 +43,9 @@ const {
   assertArchiveWritable,
   reloadLifecycleState,
 } = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
-  = useQueryTable(portfolioTeacherLibraryApi.page, {
-    onLoaded: async (list) => {
-      await hydrateTeacherLabels(list.map((row) => row.teacherUserId ?? ''))
-    },
-  })
+const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } =
+  useQueryTable(portfolioTeacherLibraryApi.page)
 const statsLoading = ref(false)
 const statsLoadError = ref(false)
 const statsRequestToken = ref(0)
@@ -146,9 +142,9 @@ async function saveBorrow() {
     return
   }
   if (
-    !dayjs(form.borrowTime).isValid()
-    || !dayjs(form.dueTime).isValid()
-    || dayjs(form.dueTime).isBefore(dayjs(form.borrowTime))
+    !dayjs(form.borrowTime).isValid() ||
+    !dayjs(form.dueTime).isValid() ||
+    dayjs(form.dueTime).isBefore(dayjs(form.borrowTime))
   ) {
     showFormValidationMessage('应还时间不能早于借阅时间')
     return
@@ -348,7 +344,7 @@ void loadStats()
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'teacherUserId'">
-            {{ teacherLabel(record.teacherUserId) }}
+            {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
@@ -367,9 +363,9 @@ void loadStats()
               :items="[
                 ...(!record.returnTime
                   ? [
-                    { key: 'edit', label: '编辑', disabled: operating },
-                    { key: 'return', label: '归还', disabled: operating },
-                  ]
+                      { key: 'edit', label: '编辑', disabled: operating },
+                      { key: 'return', label: '归还', disabled: operating },
+                    ]
                   : []),
               ]"
               split

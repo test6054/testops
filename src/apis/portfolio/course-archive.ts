@@ -1,3 +1,4 @@
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import type {
   PortfolioMultiIdentityLayerVO,
   PortfolioTeachingWorkloadByIdentityVO,
@@ -19,7 +20,7 @@ export interface PortfolioCourseArchiveCourseVO {
   courseCode: string
   courseName: string
   academicYear?: string
-  semester?: string
+  semester?: SemesterCode
   completedFrameworkCount: number
   totalFrameworkCount: number
   frameworks: PortfolioCourseArchiveFrameworkVO[]
@@ -51,7 +52,6 @@ export interface PortfolioCourseArchiveOverviewVO {
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 多身份贡献说明；层数大于 1 时非空 */
   ownerMultiIdentityNote?: string
-
 }
 
 export interface PortfolioCourseArchiveOverviewRequest {

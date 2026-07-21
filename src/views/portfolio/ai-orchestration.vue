@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioAiJobSummaryVO } from '@/apis/portfolio/types'
+import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -14,7 +15,6 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
@@ -46,11 +46,19 @@ function readRouteStringParam(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
+type AnalysisPollOutcome =
+  | AiTaskStatusCode.SUCCEEDED
+  | AiTaskStatusCode.FAILED
+  | AiTaskStatusCode.CANCELLED
+  | 'TIMEOUT'
+  | 'ABORTED'
+  | 'CONTRACT_ERROR'
+
 const route = useRoute()
 const { targetTeacherId, scopeReady } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 const { canPickTeachers, canManageTeacherAi } = usePortfolioTeacherAccess()
 
 const activeTab = ref<'ask' | 'policy'>(
@@ -186,8 +194,8 @@ function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
 const supportedOrchestrationAnalysis = computed(() => {
   const type = analysisDetail.value?.analysisType
   return (
-    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA
-    || type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
+    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA ||
+    type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
   )
 })
 
@@ -254,9 +262,9 @@ async function loadRegisteredMaterial(materialId: string) {
 
 async function ensureMaterialRegistered(taskToken: number): Promise<string | null> {
   if (
-    registeredMaterialId.value
-    && registeredMaterialFileNodeId.value === materialFileNodeId.value
-    && registeredMaterialType.value === materialType.value
+    registeredMaterialId.value &&
+    registeredMaterialFileNodeId.value === materialFileNodeId.value &&
+    registeredMaterialType.value === materialType.value
   ) {
     return registeredMaterialId.value
   }
@@ -283,53 +291,60 @@ async function ensureMaterialRegistered(taskToken: number): Promise<string | nul
   return materialId
 }
 
-function applyOrchestrationAnalysisDetail(detail: PortfolioAiAnalysisDetailVO) {
+function applyOrchestrationAnalysisDetail(detail: PortfolioAiAnalysisDetailVO): boolean {
   if (detail.analysisType === PortfolioAiAnalysisTypeCode.POLICY_MATCH) {
     activeTab.value = 'policy'
   } else if (detail.analysisType === PortfolioAiAnalysisTypeCode.MATERIAL_QA) {
     activeTab.value = 'ask'
   } else {
     showFormValidationMessage('该智能任务不属于智能问数或政策核验')
-    return
+    return false
   }
   analysisDetail.value = detail
   if (detail.fileNodeId) {
     materialFileNodeId.value = detail.fileNodeId
   }
+  return true
 }
 
-async function pollAnalysis(taskId: string, taskToken = orchestrationToken.value) {
+/** 轮询智能任务并返回受控终态，调用方只能在结果成功落地后提示完成。 */
+async function pollAnalysis(
+  taskId: string,
+  taskToken = orchestrationToken.value,
+): Promise<AnalysisPollOutcome> {
   polling.value = true
   try {
     for (let attempt = 0; attempt < 60; attempt++) {
       if (orchestrationToken.value !== taskToken) {
-        return
+        return 'ABORTED'
       }
       const task = await portfolioAiJobApi.get(taskId)
       if (orchestrationToken.value !== taskToken) {
-        return
+        return 'ABORTED'
       }
-      if (task.status === 'SUCCEEDED') {
+      if (task.status === AiTaskStatusCode.SUCCEEDED) {
         const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
         if (orchestrationToken.value !== taskToken) {
-          return
+          return 'ABORTED'
         }
-        applyOrchestrationAnalysisDetail(detail)
-        return
+        return applyOrchestrationAnalysisDetail(detail)
+          ? AiTaskStatusCode.SUCCEEDED
+          : 'CONTRACT_ERROR'
       }
       if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
         if (orchestrationToken.value !== taskToken) {
-          return
+          return 'ABORTED'
         }
         showUserError(null, '智能任务失败，请在任务列表查看原因后重新提交')
-        return
+        return task.status
       }
       await sleep(2000)
     }
     if (orchestrationToken.value !== taskToken) {
-      return
+      return 'ABORTED'
     }
     showUserError(null, '智能任务超时，请在任务列表查看结果')
+    return 'TIMEOUT'
   } finally {
     if (orchestrationToken.value === taskToken) {
       polling.value = false
@@ -381,11 +396,13 @@ async function submitAsk() {
       return
     }
     void message.info('问数任务已提交，正在等待结果…')
-    await pollAnalysis(submitResult.taskId, taskToken)
+    const outcome = await pollAnalysis(submitResult.taskId, taskToken)
     if (orchestrationToken.value !== taskToken) {
       return
     }
-    void message.success('问数完成')
+    if (outcome === AiTaskStatusCode.SUCCEEDED) {
+      void message.success('问数完成')
+    }
   } catch (error) {
     if (orchestrationToken.value !== taskToken) {
       return
@@ -449,11 +466,13 @@ async function submitPolicyCheck() {
       return
     }
     void message.info('政策核验任务已提交，正在等待结果…')
-    await pollAnalysis(submitResult.taskId, taskToken)
+    const outcome = await pollAnalysis(submitResult.taskId, taskToken)
     if (orchestrationToken.value !== taskToken) {
       return
     }
-    void message.success('政策核验完成')
+    if (outcome === AiTaskStatusCode.SUCCEEDED) {
+      void message.success('政策核验完成')
+    }
   } catch (error) {
     if (orchestrationToken.value !== taskToken) {
       return
@@ -591,8 +610,7 @@ usePortfolioScopedLoader(
             <li v-for="task in materialTaskRows" :key="task.id">
               <div>
                 <strong>{{ PortfolioAiTaskTypeDescription[task.taskType] }}</strong>
-                <span class="ai-orchestration__meta">
-                  #{{ task.id }} · {{ task.createTime || '时间未记录' }}</span>
+                <span class="ai-orchestration__meta">{{ task.createTime || '时间未记录' }}</span>
               </div>
               <UiTag
                 :tone="
@@ -707,8 +725,8 @@ usePortfolioScopedLoader(
 
         <template
           v-if="
-            supportedOrchestrationAnalysis
-              && isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)
+            supportedOrchestrationAnalysis &&
+            isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)
           "
         >
           <p v-if="analysisDetail.reportScene" class="ai-orchestration__meta">
@@ -737,8 +755,8 @@ usePortfolioScopedLoader(
 
         <template
           v-else-if="
-            supportedOrchestrationAnalysis
-              && isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)
+            supportedOrchestrationAnalysis &&
+            isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)
           "
         >
           <p v-if="analysisDetail.conclusionCode" class="ai-orchestration__meta">

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import type { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
+import { PortfolioAiTaskTypeDescription } from '@/types/enums/portfolio-ai-task-type-enum'
 import type { PortfolioCollectModeCode } from '@/types/enums/portfolio-collect-mode-enum'
+import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
 import { computed, onUnmounted, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import { PortfolioCollectModeDescription } from '@/types/enums/portfolio-collect-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { isScannerKioskBrowserPage } from '@/utils/kiosk-auth'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -18,8 +20,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "confirm": []
-  "cancel": []
+  confirm: []
+  cancel: []
 }>()
 
 function portfolioCollectModeLabel(value: PortfolioCollectModeCode | undefined): string {
@@ -27,6 +29,13 @@ function portfolioCollectModeLabel(value: PortfolioCollectModeCode | undefined):
     throw new Error(`档案袋采集模式缺少展示映射：${String(value)}`)
   }
   return strictEnumLabel(PortfolioCollectModeDescription, value, '档案袋采集模式')
+}
+
+function portfolioAiTaskTypeLabel(value: PortfolioAiTaskTypeCode | undefined): string {
+  if (!value) {
+    return '—'
+  }
+  return strictEnumLabel(PortfolioAiTaskTypeDescription, value, '档案袋 AI 任务类型')
 }
 
 const previewUrl = ref('')
@@ -126,7 +135,11 @@ function handleOk() {
         </div>
         <div>
           <dt>任务</dt>
-          <dd>{{ portfolioSnapshot.gapTaskTitle || portfolioSnapshot.taskType || '—' }}</dd>
+          <dd>
+            {{
+              portfolioSnapshot.gapTaskTitle || portfolioAiTaskTypeLabel(portfolioSnapshot.taskType)
+            }}
+          </dd>
         </div>
         <div>
           <dt>模式</dt>

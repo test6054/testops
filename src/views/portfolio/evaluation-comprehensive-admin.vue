@@ -6,7 +6,12 @@ import type {
   PortfolioEvaluationComprehensiveTeacherRowVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
+import {
+  portfolioEvaluationEntryApi,
+  portfolioEvaluationTaskApi,
+} from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -15,11 +20,6 @@ import {
   PortfolioEvaluationModeDescription,
   PortfolioEvaluationSceneDescription,
 } from '@/apis/portfolio/enums'
-import {
-  portfolioEvaluationEntryApi,
-  portfolioEvaluationTaskApi,
-} from '@/apis/portfolio/teacher-platform'
-import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -30,8 +30,8 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
-import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { loadAllPages } from '@/utils/load-all-pages'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -56,7 +56,6 @@ const filter = reactive<PortfolioEvaluationComprehensiveFilter>({
   workgroupId: '',
   selectedTaskIds: [],
 })
-const { hydrateTeacherLabels, teacherLabel } = usePortfolioTeacherSearch()
 
 const kpiItems = computed<UiStatPanelItem[]>(() => {
   if (!analysis.value) {
@@ -100,9 +99,7 @@ const taskColumns: ColumnsType<PortfolioEvaluationComprehensiveTaskItemVO> = [
   { title: '平均分', dataIndex: 'averageScore', key: 'averageScore', width: 88, align: 'right' },
 ]
 
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): BadgeTone {
+function lifecycleTagTone(record: { lifecycleStatus?: string }): BadgeTone {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -216,7 +213,6 @@ async function runAnalysis() {
     }
     analysis.value = result
     analysisParamsSnapshot.value = params
-    await hydrateTeacherLabels(result.teacherRows.map((row) => row.subjectTeacherUserId))
   } catch (error) {
     if (currentToken !== analysisRequestToken.value) {
       return
@@ -363,7 +359,12 @@ onMounted(async () => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'subjectTeacherUserId'">
-              {{ teacherLabel(record.subjectTeacherUserId) }}
+              {{
+                formatPortfolioTeacherDisplay(
+                  record.subjectTeacherName,
+                  record.subjectTeacherNumber,
+                )
+              }}
             </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">

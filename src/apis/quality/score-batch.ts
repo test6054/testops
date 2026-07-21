@@ -1,4 +1,4 @@
-import type { DataSourceModeCode, ScoreBatchStatusCode } from './types'
+import type { DataSourceModeCode, ScoreBatchFailurePhaseCode, ScoreBatchStatusCode } from './types'
 import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 /**
  * 成绩导入批次 API - 对接 edu-quality / ScoreBatchController
@@ -42,6 +42,7 @@ export interface ScoreBatchVO {
   totalRows?: number
   successRows?: number
   errorRows?: number
+  failurePhase?: ScoreBatchFailurePhaseCode
   errorSummary?: string
   confirmedUserId?: string
   confirmedTime?: string
@@ -136,8 +137,7 @@ export const scoreBatchApi = {
     http.post<PageResult<ScoreBatchVO>>(`${BASE}/page`, data, config),
   statusCounts: (data: ScoreBatchQueryRequest, config?: ExtendedAxiosRequestConfig) =>
     http.post<QualityStatusCountsResponse>(`${BASE}/status-counts`, data, config),
-  detail: (id: string) =>
-    http.post<ScoreBatchVO>(`${BASE}/detail`, { id }),
+  detail: (id: string) => http.post<ScoreBatchVO>(`${BASE}/detail`, { id }),
   preview: (id: string) => http.post<ScoreImportPreviewVO>(`${BASE}/preview`, { id }),
   /**
    * 注册成绩批次（platform Excel 导入由 ScoreBatchExcelImportSceneHandler 内部调用，页面不直调）。

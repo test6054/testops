@@ -14,6 +14,7 @@
  */
 
 import type { LocationQueryValue } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type {
   AgentHealthStatusCode,
   ScanJobListResponse,
@@ -21,29 +22,6 @@ import type {
   ScannerDeviceInfo,
   ScannerListResponse,
 } from '@/apis/mark/scanner-agent-local'
-import type {
-  ExamScannerBatchResponse,
-  ExamScannerBoundPaperItemVO,
-  ExamScannerKioskBatchHistoryRequest,
-  ExamScannerKioskBindExamCandidatePageRequest,
-  ExamScannerKioskBindExamCandidateVO,
-  ExamScannerKioskContextVO,
-  ExamScannerPageLedgerVO,
-  ExamScannerScanConfigOptionsVO,
-  ExamScannerScanConfigVO,
-} from '@/apis/mark/scanner-kiosk'
-import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
-import type { SemesterCode } from '@/types/enums'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import {
-  ScannerColorModeCode,
-  ScannerColorModeDescription,
-  ScannerDuplexModeCode,
-  ScannerDuplexModeDescription,
-  ScannerEndpointOnlineStatusDescription,
-} from '@/apis/mark/exam-mark-scanner'
-import { ScanAttentionTypeCode, ScanAttentionTypeDescription } from '@/apis/mark/exam-scan'
 import {
   AgentHealthStatusDescription,
   AgentUpdateStatusCode,
@@ -77,6 +55,17 @@ import {
   setPreferredLocalScanner,
   startScanJob,
 } from '@/apis/mark/scanner-agent-local'
+import type {
+  ExamScannerBatchResponse,
+  ExamScannerBoundPaperItemVO,
+  ExamScannerKioskBatchHistoryRequest,
+  ExamScannerKioskBindExamCandidatePageRequest,
+  ExamScannerKioskBindExamCandidateVO,
+  ExamScannerKioskContextVO,
+  ExamScannerPageLedgerVO,
+  ExamScannerScanConfigOptionsVO,
+  ExamScannerScanConfigVO,
+} from '@/apis/mark/scanner-kiosk'
 import {
   bindScannerKioskExam,
   discardScannedPage,
@@ -97,16 +86,27 @@ import {
   ScannerKioskScanModeCode,
   ScannerKioskScanModeDescription,
 } from '@/apis/mark/scanner-kiosk'
+import type { ScanWorkOrderLifecycleVO } from '@/apis/mark/scanner-work-order'
 import {
   commitExamScanWorkOrder,
   discardExamScanWorkOrder,
   retryExamScanWorkOrderPageRegister,
   startExamScanWorkOrder,
 } from '@/apis/mark/scanner-work-order'
+import type { SemesterCode } from '@/types/enums'
+import { getSemesterDescription, SemesterOptions } from '@/types/enums'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import {
+  ScannerColorModeCode,
+  ScannerColorModeDescription,
+  ScannerDuplexModeCode,
+  ScannerDuplexModeDescription,
+  ScannerEndpointOnlineStatusDescription,
+} from '@/apis/mark/exam-mark-scanner'
+import { ScanAttentionTypeCode, ScanAttentionTypeDescription } from '@/apis/mark/exam-scan'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useScanLiveStream } from '@/composables/useScanLiveStream'
-import { getSemesterDescription, SemesterOptions } from '@/types/enums'
 import { DirectScanProviderChainDescription } from '@/types/enums/direct-scan-provider-chain-enum'
 import { ExamScannerPageUploadStatusCode } from '@/types/enums/exam-scanner-page-upload-status-enum'
 import {
@@ -1351,6 +1351,27 @@ export function useExamKioskWorkflow() {
       return
     }
     handleError(error, fallback)
+  }
+
+  /** 本地任务启动后独立同步账本与工作台；同步失败不得回滚已运行的扫描任务。 */
+  async function syncStartedScanJobContext(scanJobId: string): Promise<void> {
+    const syncResults = await Promise.allSettled([
+      refreshPageLedger(),
+      refreshKioskContext(),
+    ])
+    if (currentJob.value?.scanJobId !== scanJobId) {
+      return
+    }
+    const failedSurfaces: string[] = []
+    if (syncResults[0].status === 'rejected') {
+      failedSurfaces.push('页级账本')
+    }
+    if (syncResults[1].status === 'rejected') {
+      failedSurfaces.push('工作台上下文')
+    }
+    if (failedSurfaces.length) {
+      errorMessage.value = `扫描任务已启动，但${failedSurfaces.join('、')}同步失败；扫描仍在继续，请稍后刷新重试`
+    }
   }
 
   function clearReviewBatchAnchor() {
@@ -3002,6 +3023,7 @@ export function useExamKioskWorkflow() {
     successMessage.value = ''
     resetBusyState()
     clearReviewBatchAnchor()
+    let localJobStarted = false
     try {
       await refreshKioskContext()
       if (!kioskContext.value) return false
@@ -3102,11 +3124,15 @@ export function useExamKioskWorkflow() {
         replaceTargetPage: lifecycleScanSource.replaceTargetPage,
         resolvedScanConfig: batchLifecycle.resolvedScanConfig,
       })
-      await refreshPageLedger()
-      await refreshKioskContext()
+      localJobStarted = true
       startJobPolling(currentJob.value.scanJobId)
+      void syncStartedScanJobContext(currentJob.value.scanJobId)
       return true
     } catch (error) {
+      if (localJobStarted) {
+        handleError(error, '本地扫描已启动，但扫描状态同步失败', true)
+        return true
+      }
       await handleScanJobStartFailure(error)
       return false
     } finally {

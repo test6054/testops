@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -8,7 +9,6 @@ import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -29,8 +29,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 
 const route = useRoute()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 
 /** 管理员代办：可代写草稿，不可把申请错绑到操作人本人。 */
 const isProxyMode = computed(() =>
@@ -60,6 +60,7 @@ const attachmentInputRef = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
 const application = ref<PortfolioDualTeacherApplicationVO | null>(null)
 const applicationRequestToken = ref(0)
+const applicationFormEpoch = ref(0)
 const operationPending = computed(() => saving.value || submitting.value || uploading.value)
 
 const form = reactive({
@@ -70,8 +71,9 @@ const form = reactive({
 })
 
 /** 申请单作用域变化时清空旧表单，避免旧加载结果回写当前申请页。 */
-function resetApplicationContext() {
+function resetApplicationContext(): void {
   applicationRequestToken.value += 1
+  applicationFormEpoch.value += 1
   saving.value = false
   submitting.value = false
   uploading.value = false
@@ -97,32 +99,32 @@ const canEdit = computed(() => {
   }
   // 驳回或已通过后可发起新单：清空 form.id 后进入可编辑
   if (
-    status === PortfolioDualTeacherApplicationStatusCode.REJECTED
-    || status === PortfolioDualTeacherApplicationStatusCode.APPROVED
+    status === PortfolioDualTeacherApplicationStatusCode.REJECTED ||
+    status === PortfolioDualTeacherApplicationStatusCode.APPROVED
   ) {
     return !form.id
   }
   return (
-    status === PortfolioDualTeacherApplicationStatusCode.DRAFT
-    || status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED
-    || status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
+    status === PortfolioDualTeacherApplicationStatusCode.DRAFT ||
+    status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED ||
+    status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
   )
 })
 
 /** 已认定通过且仍绑定旧单时，允许发起年度复核（新建申请）。 */
 const canStartReReview = computed(() => {
   return (
-    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED
-    && !!form.id
-    && !operationPending.value
+    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED &&
+    !!form.id &&
+    !operationPending.value
   )
 })
 
 /** 复核填写中：已通过态下已清空申请主键，尚未保存新草稿。 */
 const reReviewDrafting = computed(() => {
   return (
-    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED
-    && !form.id
+    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED &&
+    !form.id
   )
 })
 
@@ -131,6 +133,7 @@ function startReReview() {
   if (!canStartReReview.value) {
     return
   }
+  applicationFormEpoch.value += 1
   form.id = ''
   form.certLevel = application.value?.certLevel ?? ''
   form.certYear = String(new Date().getFullYear())
@@ -229,7 +232,8 @@ function openAttachmentPicker() {
   attachmentInputRef.value?.click()
 }
 
-async function onAttachmentPick(event: Event) {
+/** 上传结果绑定教师、申请单和表单代际，旧申请附件不得追加到新表单。 */
+async function onAttachmentPick(event: Event): Promise<void> {
   if (!(event.target instanceof HTMLInputElement)) {
     return
   }
@@ -242,10 +246,22 @@ async function onAttachmentPick(event: Event) {
     input.value = ''
     return
   }
+  const context = {
+    teacherId: targetTeacherId.value,
+    applicationId: form.id || undefined,
+    epoch: applicationFormEpoch.value,
+  }
   uploading.value = true
   try {
     for (const file of Array.from(files)) {
       const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
+      if (
+        applicationFormEpoch.value !== context.epoch ||
+        targetTeacherId.value !== context.teacherId ||
+        (form.id || undefined) !== context.applicationId
+      ) {
+        return
+      }
       if (!attachmentItems.value.some((item) => item.fileNodeId === uploaded.id)) {
         attachmentItems.value = [
           ...attachmentItems.value,
@@ -255,9 +271,14 @@ async function onAttachmentPick(event: Event) {
     }
     void message.success('附件已上传')
   } catch (error) {
+    if (applicationFormEpoch.value !== context.epoch) {
+      return
+    }
     showUserError(error, '附件上传失败')
   } finally {
-    uploading.value = false
+    if (applicationFormEpoch.value === context.epoch) {
+      uploading.value = false
+    }
     input.value = ''
   }
 }
@@ -447,7 +468,9 @@ watch(
             <ul v-if="attachmentItems.length" class="attachment-list">
               <li v-for="item in attachmentItems" :key="item.fileNodeId">
                 <span>{{ item.fileName }}</span>
-                <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)">移除</a>
+                <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)"
+                  >移除</a
+                >
               </li>
             </ul>
           </UiFormItem>

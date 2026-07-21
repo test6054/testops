@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationRereviewOrderVO } from '@/apis/portfolio/evaluation-publicity'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import type {
   PortfolioEvaluationTaskVO,
   PortfolioEvaluationWorkgroupOptionVO,
+} from '@/apis/portfolio/teacher-platform'
+import {
+  portfolioEvaluationTaskApi,
+  portfolioEvaluationWorkgroupApi,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
@@ -18,14 +23,9 @@ import {
   PortfolioEvaluationSceneDescription,
   PortfolioEvaluationTaskAdvanceActionCode,
   PortfolioEvaluationTaskAdvanceActionDescription,
-  PortfolioEvaluationTaskStatusCode,
   PortfolioEvaluationTaskStatusDescription,
+  PortfolioEvaluationTaskStatusEnum,
 } from '@/apis/portfolio/enums'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
-import {
-  portfolioEvaluationTaskApi,
-  portfolioEvaluationWorkgroupApi,
-} from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -41,38 +41,39 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const ADVANCE_ACTIONS: Partial<
-  Record<PortfolioEvaluationTaskStatusCode, PortfolioEvaluationTaskAdvanceActionCode>
+  Record<PortfolioEvaluationTaskStatusEnum, PortfolioEvaluationTaskAdvanceActionCode>
 > = {
-  [PortfolioEvaluationTaskStatusCode.PUBLISHED]:
+  [PortfolioEvaluationTaskStatusEnum.PUBLISHED]:
     PortfolioEvaluationTaskAdvanceActionCode.START_PRELIMINARY_REVIEW,
-  [PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW]:
+  [PortfolioEvaluationTaskStatusEnum.PRELIMINARY_REVIEW]:
     PortfolioEvaluationTaskAdvanceActionCode.START_SCHOOL_REVIEW,
-  [PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW]:
+  [PortfolioEvaluationTaskStatusEnum.SCHOOL_REVIEW]:
     PortfolioEvaluationTaskAdvanceActionCode.START_EXPERT_REVIEW,
-  [PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW]:
+  [PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW]:
     PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY,
 }
 
 function canArchiveTask(task: PortfolioEvaluationTaskVO): boolean {
   return (
-    (task.taskStatus === PortfolioEvaluationTaskStatusCode.PUBLICITY
-      || task.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING)
-    && task.publicityExpiredAwaitingArchive === true
+    (task.taskStatus === PortfolioEvaluationTaskStatusEnum.PUBLICITY ||
+      task.taskStatus === PortfolioEvaluationTaskStatusEnum.OBJECTION_HANDLING) &&
+    task.publicityExpiredAwaitingArchive === true
   )
 }
 
 function canSuspendTask(task: PortfolioEvaluationTaskVO): boolean {
   return [
-    PortfolioEvaluationTaskStatusCode.PUBLISHED,
-    PortfolioEvaluationTaskStatusCode.PRELIMINARY_REVIEW,
-    PortfolioEvaluationTaskStatusCode.SCHOOL_REVIEW,
-    PortfolioEvaluationTaskStatusCode.EXPERT_REVIEW,
-    PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY,
-    PortfolioEvaluationTaskStatusCode.PUBLICITY,
-    PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING,
+    PortfolioEvaluationTaskStatusEnum.PUBLISHED,
+    PortfolioEvaluationTaskStatusEnum.PRELIMINARY_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.SCHOOL_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW,
+    PortfolioEvaluationTaskStatusEnum.RESULT_SUMMARY,
+    PortfolioEvaluationTaskStatusEnum.PUBLICITY,
+    PortfolioEvaluationTaskStatusEnum.OBJECTION_HANDLING,
   ].includes(task.taskStatus)
 }
 
@@ -84,7 +85,7 @@ function advanceActionLabel(action: PortfolioEvaluationTaskAdvanceActionCode): s
   )
 }
 
-function taskStatusLabel(status: PortfolioEvaluationTaskStatusCode): string {
+function taskStatusLabel(status: PortfolioEvaluationTaskStatusEnum): string {
   return strictEnumLabel(PortfolioEvaluationTaskStatusDescription, status, '多元评价任务状态')
 }
 
@@ -97,7 +98,7 @@ function evaluationSceneLabel(scene?: PortfolioEvaluationSceneCode | string): st
   )
 }
 
-function taskStatusTone(status: PortfolioEvaluationTaskStatusCode) {
+function taskStatusTone(status: PortfolioEvaluationTaskStatusEnum) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TASK_STATUS_TONE, status, '多元评价任务状态')
 }
 
@@ -128,13 +129,13 @@ const workgroupsLoading = ref(false)
 const workgroups = ref<PortfolioEvaluationWorkgroupOptionVO[]>([])
 const writing = computed(
   () =>
-    creating.value
-    || Boolean(advancingId.value)
-    || Boolean(archivingId.value)
-    || publishing.value
-    || completeRereviewSubmitting.value
-    || cancelRereviewSubmitting.value
-    || completeRereviewLoading.value,
+    creating.value ||
+    Boolean(advancingId.value) ||
+    Boolean(archivingId.value) ||
+    publishing.value ||
+    completeRereviewSubmitting.value ||
+    cancelRereviewSubmitting.value ||
+    completeRereviewLoading.value,
 )
 const publishForm = reactive({
   publicityTitle: '',
@@ -252,8 +253,8 @@ async function applyDeepLinkedTask(taskId: string) {
   }
   scrollToHighlightedTask()
   if (
-    !autoOpenedCompleteRereview.value
-    && matched.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW
+    !autoOpenedCompleteRereview.value &&
+    matched.taskStatus === PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW
   ) {
     autoOpenedCompleteRereview.value = true
     await openCompleteRereview(matched)
@@ -301,17 +302,17 @@ async function submitCreateTask() {
     return
   }
   if (
-    !createForm.taskName.trim()
-    || !createForm.workgroupId
-    || !createForm.startTime
-    || !createForm.endTime
+    !createForm.taskName.trim() ||
+    !createForm.workgroupId ||
+    !createForm.startTime ||
+    !createForm.endTime
   ) {
     showFormValidationMessage('请填写任务名称、工作组和评价时间窗')
     return
   }
   if (
-    createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
-    && !createForm.targetIndicatorCode.trim()
+    createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON &&
+    !createForm.targetIndicatorCode.trim()
   ) {
     showFormValidationMessage('按人评价须填写画像回流目标指标编码')
     return
@@ -347,7 +348,7 @@ async function submitCreateTask() {
 }
 
 function nextAction(
-  status: PortfolioEvaluationTaskStatusCode,
+  status: PortfolioEvaluationTaskStatusEnum,
 ): PortfolioEvaluationTaskAdvanceActionCode | undefined {
   return ADVANCE_ACTIONS[status]
 }
@@ -386,9 +387,9 @@ async function advanceTask(
   } catch (error) {
     const errText = error instanceof Error ? error.message : String(error ?? '')
     if (
-      action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY
-      && !forceDespiteScoreVariance
-      && (errText.includes('评分 max-min') || errText.includes('forceDespiteScoreVariance'))
+      action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY &&
+      !forceDespiteScoreVariance &&
+      (errText.includes('评分 max-min') || errText.includes('forceDespiteScoreVariance'))
     ) {
       const confirmed = await confirmAsync({
         title: '评分离散过大，是否强制进入结果汇总？',
@@ -646,9 +647,9 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
   const actions: UiTableRowActionItem[] = []
   const advance = nextAction(row.taskStatus)
   // 行内仅 1 个 primary：阶段主动作优先（恢复 > 发布 > 异议 > 推进 > 归档）
-  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.SUSPENDED) {
+  if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.SUSPENDED) {
     actions.push({ key: 'resume', label: '恢复任务', tone: 'primary', disabled: writing.value })
-  } else if (row.taskStatus === PortfolioEvaluationTaskStatusCode.RESULT_SUMMARY) {
+  } else if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.RESULT_SUMMARY) {
     actions.push({ key: 'publish', label: '发布公示', tone: 'primary', disabled: writing.value })
     if (advance) {
       actions.push({
@@ -657,7 +658,7 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
         disabled: writing.value,
       })
     }
-  } else if (row.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING) {
+  } else if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.OBJECTION_HANDLING) {
     actions.push({ key: 'objection', label: '处理异议', tone: 'primary' })
     if (advance) {
       actions.push({
@@ -681,7 +682,7 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
       disabled: writing.value,
     })
   }
-  if (row.taskStatus !== PortfolioEvaluationTaskStatusCode.SUSPENDED && canSuspendTask(row)) {
+  if (row.taskStatus !== PortfolioEvaluationTaskStatusEnum.SUSPENDED && canSuspendTask(row)) {
     actions.push({ key: 'suspend', label: '暂停任务', tone: 'danger', disabled: writing.value })
   }
   if (canArchiveTask(row) && !actions.some((item) => item.key === 'archive')) {
@@ -691,7 +692,7 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
       disabled: writing.value,
     })
   }
-  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.ARCHIVED) {
+  if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.ARCHIVED) {
     actions.push({
       key: 'rereview',
       label: '发起更正复核',
@@ -699,7 +700,7 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
       disabled: writing.value,
     })
   }
-  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW) {
+  if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.CORRECTION_REVIEW) {
     actions.push({
       key: 'fillCorrection',
       label: '去改结论',
@@ -712,7 +713,7 @@ function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionIt
     })
   }
   // PF-P0-317：草稿可作废，发布后走关闭/归档等终态路径
-  if (row.taskStatus === PortfolioEvaluationTaskStatusCode.DRAFT) {
+  if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.DRAFT) {
     actions.push({
       key: 'void',
       label: '作废',
@@ -982,7 +983,10 @@ void loadPage()
         <li v-for="order in completeRereviewOrders" :key="String(order.id)">
           工单 #{{ order.id }}
           <template v-if="order.subjectTeacherUserId">
-            · 教师 {{ order.subjectTeacherUserId }}
+            ·
+            {{
+              formatPortfolioTeacherDisplay(order.subjectTeacherName, order.subjectTeacherNumber)
+            }}
           </template>
           <template v-else> · 整任务</template>
           <template v-if="order.lifecycleStatusLabel || order.lifecycleStatus">

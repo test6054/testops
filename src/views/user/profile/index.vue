@@ -310,7 +310,6 @@ onActivated(() => {
   }
 }
 
-
 .profile-page__layout {
   display: grid;
   gap: var(--dp-space-4);
@@ -320,7 +319,3 @@ onActivated(() => {
   min-width: 0;
 }
 </style>
-
-
-
-
