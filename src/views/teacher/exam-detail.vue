@@ -56,24 +56,36 @@
       class="exam-overview__empty"
     />
 
-    <ExamWorkbenchOverviewDashboard
-      v-else
-      :detail="detail"
-      :marking-progress="markingProgress ?? null"
-      :stages="snapshot.stages"
-      :dashboard-panel="snapshot.dashboardPanel"
-      :suggested-stage-title="suggestedStage?.title"
-      :suggested-stage-status="suggestedStageStatus"
-      :recommended-primary-label="recommendedPrimaryLabel"
-      :recommended-secondary-label="recommendedSecondaryLabel"
-      :recommended-primary-disabled="recommendedPrimaryDisabled"
-      :recommended-primary-disabled-reason="recommendedPrimaryDisabledReason"
-      @stage-click="handleStageClick"
-      @primary-action="runRecommendedPrimaryAction"
-      @secondary-action="runRecommendedSecondaryAction"
-      @enter-quality="goMarkQuality"
-      @todo-navigate="handleTodoNavigate"
-    />
+    <template v-else>
+      <div class="exam-overview__merged">
+        <ExamWorkbenchPrepChecklist
+          :steps="snapshot.prepSteps"
+          @step-navigate="handlePrepStepNavigate"
+        />
+        <ExamQuestionTypeChart
+          :data="questionTypeDistribution"
+          :loading="questionTypeLoading"
+        />
+      </div>
+
+      <ExamWorkbenchOverviewDashboard
+        :detail="detail"
+        :marking-progress="markingProgress ?? null"
+        :stages="snapshot.stages"
+        :dashboard-panel="snapshot.dashboardPanel"
+        :suggested-stage-title="suggestedStage?.title"
+        :suggested-stage-status="suggestedStageStatus"
+        :recommended-primary-label="recommendedPrimaryLabel"
+        :recommended-secondary-label="recommendedSecondaryLabel"
+        :recommended-primary-disabled="recommendedPrimaryDisabled"
+        :recommended-primary-disabled-reason="recommendedPrimaryDisabledReason"
+        @stage-click="handleStageClick"
+        @primary-action="runRecommendedPrimaryAction"
+        @secondary-action="runRecommendedSecondaryAction"
+        @enter-quality="goMarkQuality"
+        @todo-navigate="handleTodoNavigate"
+      />
+    </template>
   </StageWorkbenchShell>
 
   <ExamEditDrawer
@@ -85,13 +97,14 @@
 
 <script lang="ts" setup>
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import type { ExamWorkbenchStageKeyCode } from '@/apis/mark/exam-progress'
+import type { ExamQuestionTypeDistributionResponse, ExamWorkbenchStageKeyCode } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
 import { storeToRefs } from 'pinia'
-import { computed, onActivated, ref } from 'vue'
+import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { EXAM_KIND_TONE, ExamKindDescription, ExamStatusCode } from '@/apis/mark/exam'
+import { getQuestionTypeDistribution } from '@/apis/mark/exam-progress'
 import ExamEditDrawer from '@/components/mark/ExamEditDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -112,7 +125,9 @@ import {
 } from '@/utils/exam-workspace-entry-gates'
 import { navigateToMarkStage } from '@/utils/mark-stage-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import ExamQuestionTypeChart from '@/views/teacher/exam-workspace/ExamQuestionTypeChart.vue'
 import ExamWorkbenchOverviewDashboard from '@/views/teacher/exam-workspace/ExamWorkbenchOverviewDashboard.vue'
+import ExamWorkbenchPrepChecklist from '@/views/teacher/exam-workspace/ExamWorkbenchPrepChecklist.vue'
 
 defineOptions({ name: 'TeacherExamWorkspaceOverview' })
 
@@ -142,6 +157,30 @@ const pageLoading = computed(
   () =>
     (snapshotLoading.value && !snapshot.value)
     || (examDetailLoading?.value === true && !detail.value),
+)
+
+const questionTypeDistribution = ref<ExamQuestionTypeDistributionResponse | null>(null)
+const questionTypeLoading = ref(false)
+
+async function loadQuestionTypeDistribution(): Promise<void> {
+  const id = examId.value
+  if (!id) return
+  questionTypeLoading.value = true
+  try {
+    questionTypeDistribution.value = await getQuestionTypeDistribution(id)
+  } catch {
+    questionTypeDistribution.value = null
+  } finally {
+    questionTypeLoading.value = false
+  }
+}
+
+watch(
+  examId,
+  () => {
+    void loadQuestionTypeDistribution()
+  },
+  { immediate: true },
 )
 
 const editDrawerOpen = ref(false)
@@ -304,6 +343,10 @@ function goPrepWorkbench(): void {
   void router.push({ name: 'TeacherExamWorkspacePrep', params: { examId: examId.value } })
 }
 
+function handlePrepStepNavigate(_stepKey: string): void {
+  goPrepWorkbench()
+}
+
 function goScanMonitor(): void {
   void router.push({ name: 'TeacherExamWorkspaceScanMonitor', params: { examId: examId.value } })
 }
@@ -415,5 +458,16 @@ onActivated(() => {
 
 .exam-overview__empty {
   padding: 20px 0;
+}
+
+.exam-overview__merged {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: var(--dp-space-4);
+  margin-bottom: var(--dp-space-4);
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

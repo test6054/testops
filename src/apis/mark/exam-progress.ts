@@ -526,3 +526,28 @@ export function listExamScanMonitorDevices(
     examId,
   })
 }
+
+/** 题型分布单项 - 对应 ExamQuestionTypeDistributionItemResponse */
+export interface ExamQuestionTypeDistributionItemResponse {
+  ocrScene: import('@/types/enums/mark-ocr-scene-enum').MarkOcrSceneCode
+  ocrSceneMessage: string
+  questionCount: number
+  totalFullScore: number
+}
+
+/** 考试题型分布响应 - 对应 ExamQuestionTypeDistributionResponse */
+export interface ExamQuestionTypeDistributionResponse {
+  items: ExamQuestionTypeDistributionItemResponse[]
+  totalQuestionCount: number
+  totalFullScore: number
+}
+
+/** 查询考试题型分布（按 ocr_scene 聚合题数与满分）。 */
+export function getQuestionTypeDistribution(
+  examId: string,
+): Promise<ExamQuestionTypeDistributionResponse> {
+  return http.post<ExamQuestionTypeDistributionResponse>(
+    '/api/mark/exams/question-type-distribution',
+    { examId },
+  )
+}
