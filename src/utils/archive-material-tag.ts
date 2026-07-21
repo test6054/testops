@@ -32,14 +32,14 @@ function normalizeMaterialTagsCore(raw: string[]): string[] | null {
       continue
     }
     if (trimmed.length > 64) {
-      message.warning('标签名称不能超过 64 字符')
+      void message.warning('标签名称不能超过 64 字符')
       return null
     }
     seen.add(trimmed)
     normalized.push(trimmed)
   }
   if (normalized.length > 32) {
-    message.warning('单材料标签数量不能超过 32 个')
+    void message.warning('单材料标签数量不能超过 32 个')
     return null
   }
   return normalized

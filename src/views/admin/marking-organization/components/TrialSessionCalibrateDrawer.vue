@@ -114,7 +114,7 @@ async function submit(): Promise<void> {
       calibrationSummary: calibrationSummary.value.trim(),
       discussionNotes: discussionNotes.value.trim() || undefined,
     })
-    message.success('试评校准结论已提交')
+    void message.success('试评校准结论已提交')
     emit('update:open', false)
     emit('success')
   } catch (error) {

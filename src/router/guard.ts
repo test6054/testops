@@ -272,7 +272,7 @@ export const setupRouterGuard = (router: Router) => {
         ? { timedOut: false as const, result: await runProtectedRouteGuard(to) }
         : await runBeforeEachWithTimeout(() => runProtectedRouteGuard(to))
     if (guardOutcome.timedOut) {
-      message.warning('网络较慢，页面已先行展示，部分数据仍在加载')
+      void message.warning('网络较慢，页面已先行展示，部分数据仍在加载')
       schedulePostTimeoutAuthRecovery(to)
       return
     }

@@ -300,7 +300,7 @@ const handleReadAll = async () => {
   try {
     readAllLoading.value = true
     await Promise.all([markAllAsRead(), markAllAnnouncementsAsRead()])
-    message.success('已全部标记为已读')
+    void message.success('已全部标记为已读')
     messageList.value = []
     emit('readall-success')
   } catch (error) {

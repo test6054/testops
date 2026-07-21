@@ -767,7 +767,7 @@ function handleWrongBookPageChange(pageEvent: { current: number, pageSize: numbe
 
 async function loadDetail() {
   if (!examId.value) {
-    message.warning('考试信息缺失，无法加载成绩详情')
+    void message.warning('考试信息缺失，无法加载成绩详情')
     return
   }
   loading.value = true
@@ -789,7 +789,7 @@ async function loadDetail() {
 function goAppeal(id: string) {
   // MVR-320：与 canSubmitReview / BE canSubmitReviewRequest 二次拦截
   if (!detail.value || !canSubmitReview(detail.value)) {
-    message.warning('当前暂不能提交复核申请')
+    void message.warning('当前暂不能提交复核申请')
     return
   }
   router.push({ name: 'StudentAppeal', query: { examId: id } })
@@ -803,7 +803,7 @@ function canApplyReviewOnQuestion(q: StudentQuestionScoreVO): boolean {
 function goAppealForQuestion(q: StudentQuestionScoreVO): void {
   // MVR-320：与 canApplyReviewOnQuestion / BE canSubmitReviewRequest 二次拦截
   if (!canApplyReviewOnQuestion(q)) {
-    message.warning('当前暂不能提交复核申请')
+    void message.warning('当前暂不能提交复核申请')
     return
   }
   if (!detail.value?.examId || !q.layoutQuestionId) return
@@ -881,7 +881,7 @@ function masteryTone(level: StudentAiDiagnosisItemResponse['masteryLevel']): Bad
  */
 async function selectQuestion(question: StudentQuestionScoreVO): Promise<void> {
   if (!detail.value || detail.value.finalScoreStatus !== FinalScoreStatusCode.PUBLISHED) {
-    message.warning('成绩尚未发布，暂不能查看答题明细')
+    void message.warning('成绩尚未发布，暂不能查看答题明细')
     return
   }
   if (!detail.value.examId) {

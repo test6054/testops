@@ -230,7 +230,7 @@ async function submitCreate(): Promise<void> {
       remark: createForm.remark?.trim() || undefined,
     }
     const nextOrganization = await createOrganization(request)
-    message.success('阅卷组织已创建')
+    void message.success('阅卷组织已创建')
     createDrawerOpen.value = false
     await refreshSnapshot()
     if (nextOrganization.id) {

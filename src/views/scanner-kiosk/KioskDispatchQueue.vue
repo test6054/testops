@@ -88,7 +88,7 @@ onMounted(async () => {
     await queue.loadQueue()
   }
   if (route.query.scanCommitted === '1') {
-    message.success('扫描已提交，可继续处理下一单')
+    void message.success('扫描已提交，可继续处理下一单')
     const nextQuery: Record<string, string> = {}
     const tab = resolveStatusFilter(route.query.tab)
     if (tab) {

@@ -108,7 +108,7 @@ const onModify = async () => {
     await router.push({
       path: '/login',
     })
-    message.success('修改成功')
+    void message.success('修改成功')
   } catch {
   } finally {
     loading.value = false

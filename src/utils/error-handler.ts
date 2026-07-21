@@ -376,14 +376,14 @@ export function getUserProcessFailureMessage(
  */
 export function showUserError(error: unknown, fallback = '操作失败') {
   if (isErrorHandled(error)) return
-  message.error(getUserErrorMessage(error, fallback))
+  void message.error(getUserErrorMessage(error, fallback))
 }
 
 /**
  * 表单 / 步骤校验提示：统一走 feedback message.warning；禁止拉丁字母。
  */
 export function showFormValidationMessage(text: string): void {
-  message.warning(toUserFacingChinese(text, '请检查填写内容'))
+  void message.warning(toUserFacingChinese(text, '请检查填写内容'))
 }
 
 /**
@@ -521,7 +521,7 @@ export function showErrorMessage(standardError: StandardError, config: ErrorHand
       placement: 'topRight',
     })
   } else {
-    message.error({
+    void message.error({
       content: displayMessage,
       icon: () => iconVNode,
       duration: 3,

@@ -416,7 +416,7 @@ service.interceptors.response.use(
 
         // TOKEN_KICKED 特殊处理：被踢出不可恢复，直接清除
         if (response.data.code === BUSINESS_CODE.TOKEN_KICKED) {
-          message.warning({
+          void message.warning({
             content: response.data.msg || '您的账号已在其他设备登录，当前会话已失效',
             duration: 3,
           })
@@ -514,7 +514,7 @@ service.interceptors.response.use(
       // TOKEN_KICKED(4007) 不可恢复，直接登出
       const bodyCode = response?.data?.code
       if (bodyCode === BUSINESS_CODE.TOKEN_KICKED) {
-        message.warning({
+        void message.warning({
           content: response?.data?.msg || '您的账号已在其他设备登录，当前会话已失效',
           duration: 3,
         })

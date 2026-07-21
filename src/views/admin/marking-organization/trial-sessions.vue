@@ -185,7 +185,7 @@ function openCreateDialog(): void {
     return
   }
   if (canCreateSession.value !== true) {
-    message.warning(sessionCreateWorkflow.value.disabledTooltip || `当前不可创建试评会话`)
+    void message.warning(sessionCreateWorkflow.value.disabledTooltip || `当前不可创建试评会话`)
     return
   }
   createDialogOpen.value = true

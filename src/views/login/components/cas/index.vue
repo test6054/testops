@@ -317,11 +317,11 @@ const handleCasLogin = async () => {
   }
   if (!resolvedTenantId.value) {
     schoolError.value = '请先选择学校'
-    message.error('请先选择学校')
+    void message.error('请先选择学校')
     return
   }
   if (!casEnabled.value) {
-    message.error('该学校尚未开通统一身份认证')
+    void message.error('该学校尚未开通统一身份认证')
     return
   }
 
@@ -375,13 +375,13 @@ const handleCasCallback = async (ticket: string, tenantId: string) => {
     }
 
     if (shouldEnforcePasswordChange(userStore.userInfo)) {
-      message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
+      void message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
       await router.push('/change-password')
       return
     }
 
     await router.push(getDefaultRoute(authStore.userRole))
-    message.success('统一认证登录成功')
+    void message.success('统一认证登录成功')
     emit('login-success')
   } catch (error: unknown) {
     const msg = getUserErrorMessage(error, '统一认证登录失败，请重试')

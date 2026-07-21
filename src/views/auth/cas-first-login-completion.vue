@@ -387,7 +387,7 @@ async function finalizeLogin(
   }
 
   if (shouldEnforcePasswordChange(userStore.userInfo)) {
-    message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
+    void message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
     await router.push('/change-password')
     return
   }
@@ -415,7 +415,7 @@ async function handleSubmit(): Promise<void> {
       title: shouldRenderField('title') ? form.title?.trim() : undefined,
     })
     await finalizeLogin(result)
-    message.success('统一认证补录完成')
+    void message.success('统一认证补录完成')
   } catch (error: unknown) {
     submitErrorMessage.value = getUserErrorMessage(error, '统一认证补录提交失败，请检查后重试')
     showUserError(error, '统一认证补录提交失败')
