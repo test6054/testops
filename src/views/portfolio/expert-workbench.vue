@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExpertAssignmentVO } from '@/apis/portfolio/expert-assignment'
-import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
@@ -22,8 +24,9 @@ import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 /**
- * 外部专家工作台：仅列出本人有效授权，进入脱敏审阅与评价填报（US-E-01 / J8）。
+ * 外部专家工作台：默认列出本人有效授权；站内信 assignmentId 深链可命中吊销/过期态（PF-P0-400）。
  */
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const loading = ref(false)
@@ -31,6 +34,8 @@ const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const requestToken = ref(0)
 const rows = ref<PortfolioExpertAssignmentVO[]>([])
 const total = ref(0)
+const focusedAssignmentId = ref('')
+const deepLinkNoticeVisible = ref(true)
 const pagination = reactive({
   current: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
@@ -45,14 +50,75 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 220 },
 ]
 
-function statusLabel(code?: PortfolioExpertAssignmentStatusCode): string {
-  return strictEnumLabel(PortfolioExpertAssignmentStatusDescription, code!, '专家授权状态')
+function readRouteStringParam(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0].trim()
+  }
+  return ''
 }
 
-function statusTone(code?: string): 'green' | 'gray' | 'orange' {
+function statusLabel(code?: PortfolioExpertAssignmentStatusCode | string): string {
+  return strictEnumLabel(
+    PortfolioExpertAssignmentStatusDescription,
+    code as PortfolioExpertAssignmentStatusCode,
+    '专家授权状态',
+  )
+}
+
+function statusTone(code?: string): 'green' | 'gray' | 'orange' | 'red' {
   if (code === PortfolioExpertAssignmentStatusCode.ACTIVE) return 'green'
   if (code === PortfolioExpertAssignmentStatusCode.EXPIRED) return 'orange'
+  if (code === PortfolioExpertAssignmentStatusCode.REVOKED) return 'red'
   return 'gray'
+}
+
+const focusedAssignment = computed(() => {
+  if (!focusedAssignmentId.value) {
+    return null
+  }
+  return rows.value.find((row) => String(row.id) === focusedAssignmentId.value) ?? null
+})
+
+const deepLinkAlert = computed(() => {
+  const row = focusedAssignment.value
+  if (!row) {
+    return null
+  }
+  const taskName = row.evaluationTaskName || `评价任务#${row.evaluationTaskId || ''}`
+  const status = statusLabel(row.assignmentStatus)
+  if (row.assignmentStatus === PortfolioExpertAssignmentStatusCode.REVOKED) {
+    return {
+      tone: 'warning' as const,
+      title: '评审授权已吊销',
+      description: `「${taskName}」授权状态：${status}。请停止审阅与填报；如需继续请联系评价组织方。`,
+    }
+  }
+  if (row.assignmentStatus === PortfolioExpertAssignmentStatusCode.EXPIRED) {
+    return {
+      tone: 'warning' as const,
+      title: '评审授权已过期',
+      description: `「${taskName}」授权状态：${status}。请停止审阅与填报；如需继续请联系评价组织方重新授权。`,
+    }
+  }
+  return {
+    tone: 'info' as const,
+    title: '站内信定位授权',
+    description: `「${taskName}」授权状态：${status}。可进入脱敏审阅或评价填报。`,
+  }
+})
+
+function assignmentRowClassName(record: PortfolioExpertAssignmentVO): string {
+  if (focusedAssignmentId.value && String(record.id) === focusedAssignmentId.value) {
+    return 'expert-workbench__row--focus'
+  }
+  return ''
+}
+
+function canEnterReview(row: PortfolioExpertAssignmentVO): boolean {
+  return row.assignmentStatus === PortfolioExpertAssignmentStatusCode.ACTIVE
 }
 
 async function loadAssignments() {
@@ -69,15 +135,24 @@ async function loadAssignments() {
   beginLoad()
   loading.value = true
   try {
+    const deepId = focusedAssignmentId.value
     const result = await portfolioExpertAssignmentApi.page({
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
+      id: deepId || undefined,
       expertUserId: String(expertUserId),
-      assignmentStatus: PortfolioExpertAssignmentStatusCode.ACTIVE,
+      // 深链精确命中时不限 ACTIVE，否则吊销/过期授权永远不在列表
+      assignmentStatus: deepId ? undefined : PortfolioExpertAssignmentStatusCode.ACTIVE,
     })
     if (requestToken.value !== currentToken) return
     rows.value = result.list ?? []
     total.value = result.total ?? 0
+    if (deepId) {
+      const hit = rows.value.some((row) => String(row.id) === deepId)
+      if (!hit) {
+        void message.warning(`未找到授权 assignmentId=${deepId}，请确认是否属于当前专家账号`)
+      }
+    }
     okLoad()
   } catch (error) {
     if (requestToken.value !== currentToken) return
@@ -90,13 +165,34 @@ async function loadAssignments() {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }) {
+/**
+ * PF-P0-400：消费站内信 jumpUrl `/portfolio/expert/workbench?assignmentId=`
+ * 吊销/过期通知须能命中对应授权并展示状态，禁止落到空白有效列表。
+ */
+async function applyAssignmentDeepLink() {
+  const assignmentId = readRouteStringParam(route.query.assignmentId)
+  focusedAssignmentId.value = assignmentId
+  deepLinkNoticeVisible.value = true
+  if (assignmentId) {
+    pagination.current = 1
+  }
+  await loadAssignments()
+}
+
+function onPageChange(page: { current: number; pageSize: number }) {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
+  if (focusedAssignmentId.value) {
+    focusedAssignmentId.value = ''
+  }
   void loadAssignments()
 }
 
 function goReview(row: PortfolioExpertAssignmentVO) {
+  if (!canEnterReview(row)) {
+    void message.warning('当前授权不可进入脱敏审阅（已吊销或已过期）')
+    return
+  }
   void router.push({
     path: '/portfolio/expert/review',
     query: { assignmentId: row.id },
@@ -104,6 +200,10 @@ function goReview(row: PortfolioExpertAssignmentVO) {
 }
 
 function goFill(row: PortfolioExpertAssignmentVO) {
+  if (!canEnterReview(row)) {
+    void message.warning('当前授权不可进入评价填报（已吊销或已过期）')
+    return
+  }
   void router.push({
     path: '/portfolio/expert/evaluation-fill',
     query: { evaluationTaskId: row.evaluationTaskId },
@@ -111,8 +211,18 @@ function goFill(row: PortfolioExpertAssignmentVO) {
 }
 
 onMounted(() => {
-  void loadAssignments()
+  void applyAssignmentDeepLink()
 })
+
+watch(
+  () => route.query.assignmentId,
+  (next, prev) => {
+    if (next === prev) {
+      return
+    }
+    void applyAssignmentDeepLink()
+  },
+)
 </script>
 
 <template>
@@ -122,9 +232,20 @@ onMounted(() => {
         layout="workbench"
         show-title
         title="专家评审工作台"
-        subtitle="仅展示本人有效授权范围内的评审任务；不可访问无关档案与敏感字段"
+        subtitle="默认展示本人有效授权；吊销/过期站内信可深链定位对应授权"
       />
     </template>
+    <UiAlertStrip
+      v-if="deepLinkAlert && deepLinkNoticeVisible"
+      class="expert-workbench__deeplink"
+      :tone="deepLinkAlert.tone"
+      size="sm"
+      dense
+      closable
+      :title="deepLinkAlert.title"
+      :description="deepLinkAlert.description"
+      @close="deepLinkNoticeVisible = false"
+    />
     <UiCard :loading="loading">
       <UiDataTable
         :load-error="loadError"
@@ -133,6 +254,7 @@ onMounted(() => {
         :total="total"
         :current="pagination.current"
         :page-size="pagination.pageSize"
+        :row-class-name="assignmentRowClassName"
         row-key="id"
         flat
         empty-kind="first-run"
@@ -151,14 +273,35 @@ onMounted(() => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'actions'">
-            <UiButton size="sm" variant="soft" @click="goReview(record)">脱敏审阅</UiButton>
-            <UiButton size="sm" variant="primary" class="expert-workbench__fill" @click="goFill(record)">
+            <UiButton
+              size="sm"
+              variant="soft"
+              :disabled="!canEnterReview(record)"
+              @click="goReview(record)"
+            >
+              脱敏审阅
+            </UiButton>
+            <UiButton
+              size="sm"
+              variant="primary"
+              class="expert-workbench__fill"
+              :disabled="!canEnterReview(record)"
+              @click="goFill(record)"
+            >
               评价填报
             </UiButton>
           </template>
         </template>
         <template #emptyText>
-          <UiEmpty size="sm" title="暂无有效授权" description="当前账号没有 ACTIVE 且未过期的外部专家授权。" />
+          <UiEmpty
+            size="sm"
+            title="暂无授权记录"
+            :description="
+              focusedAssignmentId
+                ? '深链授权不存在或不属于当前专家。'
+                : '当前账号没有 ACTIVE 且未过期的外部专家授权。'
+            "
+          />
         </template>
       </UiDataTable>
     </UiCard>
@@ -168,5 +311,13 @@ onMounted(() => {
 <style scoped>
 .expert-workbench__fill {
   margin-left: 8px;
+}
+
+.expert-workbench__deeplink {
+  margin-bottom: 12px;
+}
+
+:deep(.expert-workbench__row--focus > td) {
+  background: color-mix(in srgb, var(--dp-primary, #1677ff) 10%, transparent);
 }
 </style>

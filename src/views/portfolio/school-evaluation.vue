@@ -40,6 +40,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -109,6 +110,9 @@ const publishing = ref(false)
 const requestToken = ref(0)
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
+/** 租户管理员：可新建/推进；工作组成员仅可读台账与深链定位 */
+const isTenantAdmin = computed(() => Boolean(userStore.isTenantAdmin))
 const rows = ref<PortfolioEvaluationTaskVO[]>([])
 const pageNum = ref(1)
 const sceneFilter = ref<PortfolioEvaluationSceneCode | undefined>(undefined)
@@ -645,6 +649,10 @@ async function cancelRereviewOrder(order: PortfolioEvaluationRereviewOrderVO): P
 /** 组装学校评价任务行内操作。 */
 function buildTaskRowActions(row: PortfolioEvaluationTaskVO): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
+  // PF-P0-403：非租户管理员（工作组成员）仅查看台账/深链，不展示写动作
+  if (!isTenantAdmin.value) {
+    return actions
+  }
   const advance = nextAction(row.taskStatus)
   // 行内仅 1 个 primary：阶段主动作优先（恢复 > 发布 > 异议 > 推进 > 归档）
   if (row.taskStatus === PortfolioEvaluationTaskStatusEnum.SUSPENDED) {
@@ -784,10 +792,17 @@ void loadPage()
         layout="workbench"
         show-title
         title="学校评价"
-        subtitle="评价任务状态推进、公示发布与归档"
+        :subtitle="isTenantAdmin
+          ? '评价任务状态推进、公示发布与归档'
+          : '工作组任务台账：查看状态与站内信深链定位'"
       >
         <template #actions>
-          <UiButton size="sm" variant="primary" @click="() => void openCreateModal()">
+          <UiButton
+            v-if="isTenantAdmin"
+            size="sm"
+            variant="primary"
+            @click="() => void openCreateModal()"
+          >
             新建任务
           </UiButton>
           <UiSelect
@@ -851,7 +866,8 @@ void loadPage()
       <WorkbenchContextGateStrip
         v-else
         tag="无任务"
-        body="暂无评价任务，请先新建任务"
+        :body="isTenantAdmin ? '暂无评价任务，请先新建任务' : '暂无可查看的评价任务'"
+        :hide-cta="!isTenantAdmin"
         cta-label="新建任务"
         @cta="() => void openCreateModal()"
       />
