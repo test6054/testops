@@ -454,7 +454,7 @@ async function submitReadPage() {
 
 function openAccessRequest() {
   // MVR-299：与 canRequestAccess 同源二次拦截
-  if (props.canRequestAccess !== true) {
+  if (!props.canRequestAccess) {
     void message.warning('当前账号无发起借阅权限')
     return
   }
@@ -469,7 +469,7 @@ function resolveAccessMaterialId(record: ArchiveVolumeAccessRecordResponse): str
 
 async function submitAccessRequest() {
   if (accessSubmitting.value) return
-  if (props.canRequestAccess !== true) {
+  if (!props.canRequestAccess) {
     void message.warning('当前账号无发起借阅权限')
     return
   }

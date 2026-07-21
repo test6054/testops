@@ -417,7 +417,7 @@ async function handleSubmit(): Promise<void> {
     return
   }
   // MVR-372：写 handler 二次拦截；父卡仅隐藏入口不能替代
-  if (props.canManageReviewerWrites !== true) {
+  if (!props.canManageReviewerWrites) {
     showUserError(null, '仅本场阅卷组织成员或主考可修正答案并生效')
     return
   }

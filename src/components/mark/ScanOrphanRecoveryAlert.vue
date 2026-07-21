@@ -78,7 +78,7 @@ const canRecover = computed(
   () =>
     Boolean(props.examId)
     && props.orphanPendingEventCount > 0
-    && props.canManageOwnerBatchAction === trues === true,
+    && props.canManageOwnerBatchActions,
 )
 
 const description = computed(() => {

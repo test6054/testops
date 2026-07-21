@@ -521,7 +521,7 @@ const superviseForm = reactive({
 
 const canRequestAppraisal = computed(() => {
   const vol = props.detail.volume
-  if (props.canManageAppraisal !== true) return false
+  if (!props.canManageAppraisal) return false
   const status = vol.appraisalStatus
   if (!(
     status === ArchiveAppraisalStatusCode.NOT_DUE
@@ -540,7 +540,7 @@ const canRequestAppraisal = computed(() => {
 
 const canApproveAppraisal = computed(
   () =>
-    props.canManageAppraisal === true
+    props.canManageAppraisal
     && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.REQUESTED
     && Boolean(props.detail.appraisalRequestUserId)
     && props.detail.appraisalRequestUserId !== props.currentUserId,
@@ -550,13 +550,13 @@ const canRejectAppraisal = computed(() => canApproveAppraisal.value)
 
 const canRecordAppraisalOpinion = computed(
   () =>
-    props.canManageAppraisal === true
+    props.canManageAppraisal
     && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.APPROVED,
 )
 
 const canRequestDestruction = computed(
   () =>
-    props.canManageAppraisal === true
+    props.canManageAppraisal
     && props.detail.volume.appraisalStatus === ArchiveAppraisalStatusCode.OPINION_RECORDED
     && props.detail.appraisalDecision === ArchiveAppraisalDecisionCode.DESTROY
     && (props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.NONE
@@ -565,7 +565,7 @@ const canRequestDestruction = computed(
 
 const canApproveDestructionAction = computed(() => {
   if (
-    props.canApproveDestruction !== true
+    !props.canApproveDestruction
     || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.REQUESTED
   ) {
     return false
@@ -576,7 +576,7 @@ const canApproveDestructionAction = computed(() => {
 
 const canExecuteDestruction = computed(
   () =>
-    props.canApproveDestruction === true
+    props.canApproveDestruction
     && props.detail.volume.volumeStatus === ArchiveVolumeStatusCode.STORED
     && props.detail.volume.destructionStatus === ArchiveDestructionStatusCode.APPROVED
     && Boolean(props.detail.destructionRequestUserId)
@@ -588,7 +588,7 @@ const canExecuteDestruction = computed(
 /** MVR-199：与 BE assertDestructionWitnessSeparated 同源，申请/审批/执行人不可见监销确认 */
 const canSuperviseDestruction = computed(() => {
   if (
-    props.canApproveDestruction !== true
+    !props.canApproveDestruction
     || props.detail.volume.destructionStatus !== ArchiveDestructionStatusCode.EXECUTED
     || !props.detail.destructionExecutionUserId
     || !props.currentUserId
@@ -596,16 +596,11 @@ const canSuperviseDestruction = computed(() => {
     return false
   }
   const selfId = props.currentUserId
-  if (props.detail.destructionRequestUserId && props.detail.destructionRequestUserId === selfId) {
-    return false
-  }
-  if (props.detail.destructionApproverUserId && props.detail.destructionApproverUserId === selfId) {
-    return false
-  }
-  if (props.detail.destructionExecutionUserId === selfId) {
-    return false
-  }
-  return true
+  return (
+    props.detail.destructionRequestUserId !== selfId
+    && props.detail.destructionApproverUserId !== selfId
+    && props.detail.destructionExecutionUserId !== selfId
+  )
 })
 
 const destructionApprovalTitle = computed(() =>

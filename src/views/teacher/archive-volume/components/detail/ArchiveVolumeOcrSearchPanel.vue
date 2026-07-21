@@ -346,12 +346,12 @@ function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): bool
 }
 
 function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
-  return (
-    props.canMaintainMaterial === true
-    && Boolean(record.fileId)
+  return Boolean(
+    props.canMaintainMaterial
+    && record.fileId
     && (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING
       || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
-      || !record.ocrStatus)
+      || !record.ocrStatus),
   )
 }
 
@@ -417,7 +417,7 @@ function goGlobalSearch(): void {
 
 async function handleBatchOcr(): Promise<void> {
   // MVR-312：与 canMaintainMaterial / 按钮 v-if 同源二次拦截
-  if (props.canMaintainMaterial !== true) {
+  if (!props.canMaintainMaterial) {
     void message.warning('当前账号无维护材料识别权限')
     return
   }
@@ -454,7 +454,7 @@ function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
   // MVR-421：与 canTriggerMaterialOcr 同源二次闸（维护权∧fileId∧PENDING/FAILED/空态）
   if (!canTriggerMaterialOcr(material)) {
     void message.warning(
-      (props.canMaintainMaterial !== true) === true
+      !props.canMaintainMaterial
         ? '当前账号无维护材料识别权限'
         : '当前材料不可触发文字识别（无文件或识别状态不允许）',
     )

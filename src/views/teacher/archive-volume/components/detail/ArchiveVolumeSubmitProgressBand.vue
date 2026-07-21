@@ -39,7 +39,7 @@ watch(
 
 const pendingCount = computed(() => {
   const fromItems = props.blockingItems?.filter((item) => item.passed !== true).length ?? 0
-  if (props.canSubmitVolume !== true === true && fromItems > 0) {
+  if (!props.canSubmitVolume && fromItems > 0) {
     return fromItems
   }
   if (props.progress?.pendingBlockingCount != null) {
@@ -89,7 +89,6 @@ const submitReady = computed(() => props.canSubmitVolume === true)
 <style scoped>
 .archive-volume-submit-progress-band {
   margin-bottom: var(--dp-space-4);
-  border-left: 3px solid color-mix(in srgb, var(--dp-primary) 50%, transparent);
 }
 
 .archive-volume-submit-progress-band__head {
