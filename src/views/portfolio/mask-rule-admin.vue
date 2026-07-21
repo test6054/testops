@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioMaskRuleVO } from '@/apis/portfolio/governance'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref } from 'vue'
-import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
@@ -54,7 +54,10 @@ const columns: ColumnsType = [
   { title: '导出范围', key: 'exportScope', width: 120 },
   { title: '脱敏策略', key: 'maskStrategy', width: 120 },
   { title: '配置状态', key: 'enabled', width: 90 },
+  { title: '消费者覆盖', key: 'consumerSupported', width: 110 },
+  { title: '执行记录', key: 'consumerApplied', width: 100 },
   { title: '实际生效', key: 'effective', width: 110 },
+  { title: '消费者说明', dataIndex: 'consumerDescription', key: 'consumerDescription', width: 260 },
   { title: '最近应用', dataIndex: 'lastAppliedTime', key: 'lastAppliedTime', width: 170 },
   { title: '更新时间', dataIndex: 'updateTime', key: 'updateTime', width: 170 },
 ]
@@ -126,7 +129,7 @@ async function saveRule() {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }) {
+function onPageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -183,9 +186,37 @@ onMounted(() => {
               {{ record.enabled ? '启用' : '停用' }}
             </UiTag>
           </template>
+          <template v-else-if="column.key === 'consumerSupported'">
+            <UiTag :tone="record.consumerSupported ? 'green' : 'red'">
+              {{ record.consumerSupported ? '已覆盖' : '未覆盖' }}
+            </UiTag>
+          </template>
+          <template v-else-if="column.key === 'consumerApplied'">
+            <UiTag :tone="record.consumerApplied ? 'green' : 'orange'">
+              {{ record.consumerApplied ? '已执行' : '未执行' }}
+            </UiTag>
+          </template>
           <template v-else-if="column.key === 'effective'">
-            <UiTag :tone="record.effective ? 'green' : 'orange'">
-              {{ record.effective ? '已实际应用' : record.enabled ? '等待消费者' : '未生效' }}
+            <UiTag
+              :tone="
+                record.effective
+                  ? 'green'
+                  : !record.enabled
+                    ? 'gray'
+                    : record.consumerSupported
+                      ? 'orange'
+                      : 'red'
+              "
+            >
+              {{
+                record.effective
+                  ? '已实际生效'
+                  : !record.enabled
+                    ? '未启用'
+                    : record.consumerSupported
+                      ? '待执行验证'
+                      : '无消费者'
+              }}
             </UiTag>
           </template>
         </template>

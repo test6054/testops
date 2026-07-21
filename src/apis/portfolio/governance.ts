@@ -121,6 +121,9 @@ export interface PortfolioMaskRuleVO {
   exportScope: PortfolioMaskExportScopeCode
   maskStrategy: PortfolioMaskStrategyCode
   enabled: boolean
+  consumerSupported: boolean
+  consumerDescription: string
+  consumerApplied: boolean
   effective: boolean
   lastAppliedTime?: string
   updateTime: string
