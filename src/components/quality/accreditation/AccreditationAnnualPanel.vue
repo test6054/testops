@@ -5,9 +5,9 @@ import type {
   AnnualEvaluationPlanSaveRequest,
   AnnualEvaluationPlanVO,
 } from '@/apis/quality/accreditation'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -117,7 +117,7 @@ async function loadPlans() {
   }
 }
 
-function handlePlanPageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePlanPageChange(pageEvent: { current: number, pageSize: number }) {
   planPageNum.value = pageEvent.current
   planPageSize.value = pageEvent.pageSize
   void loadPlans()
@@ -160,7 +160,7 @@ async function loadPlanCourses() {
   }
 }
 
-function handleCoursePageChange(pageEvent: { current: number; pageSize: number }) {
+function handleCoursePageChange(pageEvent: { current: number, pageSize: number }) {
   coursePageNum.value = pageEvent.current
   coursePageSize.value = pageEvent.pageSize
   void loadPlanCourses()

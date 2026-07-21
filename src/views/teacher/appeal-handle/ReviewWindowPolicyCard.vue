@@ -129,8 +129,11 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
-import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import type { ExamReviewWindowPolicy, GradeReviewReasonTypeCode } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   activateReviewWindow,
   closeReviewWindow,
@@ -144,9 +147,6 @@ import {
   VisibleMaterialScopeCode,
   VisibleMaterialScopeDescription,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -163,7 +163,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{ (e: 'changed'): void }>()
 
 function reviewWindowStatusColor(status: ReviewWindowPolicyStatusCode): BadgeTone {
@@ -258,7 +258,7 @@ const form = reactive<{
   allowedReasonTypes: [],
 })
 
-const scopeOptions: { label: string; value: VisibleMaterialScopeCode }[] = [
+const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
   {
     label: strictEnumLabel(
       VisibleMaterialScopeDescription,
@@ -352,8 +352,8 @@ async function persistPolicy(activateImmediately: boolean): Promise<void> {
   }
   // MVR-211：已 ACTIVE 时不得把关闭时间改到当前之前（对齐 BE assertReviewWindowPolicyTimesValid）
   if (
-    policy.value?.policyStatus === ReviewWindowPolicyStatusCode.ACTIVE &&
-    new Date(form.closeTime.replace(' ', 'T')).getTime() <= Date.now()
+    policy.value?.policyStatus === ReviewWindowPolicyStatusCode.ACTIVE
+    && new Date(form.closeTime.replace(' ', 'T')).getTime() <= Date.now()
   ) {
     void message.warning('复核窗口已激活，关闭时间不得早于当前时间；如需结束请使用关闭窗口')
     return

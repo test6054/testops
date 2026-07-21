@@ -5,6 +5,11 @@ import type {
   AuditIssueSaveRequest,
   AuditIssueVO,
 } from '@/apis/quality/audit-issue'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
+import type { QualityScopeRequestToken } from '@/composables/useScopeRequestGuard'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref } from 'vue'
 import {
   AUDIT_ISSUE_SEVERITY_OPTIONS,
   AUDIT_ISSUE_SEVERITY_TONE,
@@ -15,17 +20,6 @@ import {
   AuditIssueSourceCode,
   AuditIssueSourceDescription,
 } from '@/apis/quality/audit-issue'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
-import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
-import type { QualityScopeRequestToken } from '@/composables/useScopeRequestGuard'
-import {
-  assertQualityScopeFresh,
-  beginQualityScopeRequest,
-  isQualityScopeStaleError,
-} from '@/composables/useScopeRequestGuard'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref } from 'vue'
 import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
   AUDIT_ISSUE_STATUS_COLOR,
@@ -56,7 +50,13 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import {
+  assertQualityScopeFresh,
+  beginQualityScopeRequest,
+  isQualityScopeStaleError,
+} from '@/composables/useScopeRequestGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -280,7 +280,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
   }
 }
 
-function handleIssuePageChange(page: { current: number; pageSize: number }) {
+function handleIssuePageChange(page: { current: number, pageSize: number }) {
   issueQuery.pageNum = page.current
   issueQuery.pageSize = page.pageSize
   loadList()
@@ -354,10 +354,10 @@ async function submitIssueEditor() {
     }
   }
   if (
-    !issueEditor.issueCode.trim() ||
-    !issueEditor.issueTitle.trim() ||
-    !issueEditor.issueSource ||
-    !issueEditor.severity
+    !issueEditor.issueCode.trim()
+    || !issueEditor.issueTitle.trim()
+    || !issueEditor.issueSource
+    || !issueEditor.severity
   ) {
     void message.error('请填写编码、标题、来源、严重程度')
     return

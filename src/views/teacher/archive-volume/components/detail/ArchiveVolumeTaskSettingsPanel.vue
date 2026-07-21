@@ -2,13 +2,18 @@
 import type { Rule } from 'ant-design-vue/es/form'
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { ArchiveTenantTemplateSetResponse } from '@/apis/mark/archive-platform-template'
-import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveExamFormCode,
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
   ArchiveVolumeTaskSettingsUpdateRequest,
 } from '@/apis/mark/archive-volume'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { CourseListVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import type { UiOptionValue } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import {
   ARCHIVE_EXAM_FORM_OPTIONS,
   ARCHIVE_SECURITY_LEVEL_OPTIONS,
@@ -19,13 +24,8 @@ import {
   ArchiveVolumeSourceTypeDescription,
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import { pageExams } from '@/apis/mark/exam'
-import type { CourseListVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
-import type { UiOptionValue } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { TeacherSelector } from '@/components/quality/selectors'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
@@ -66,7 +66,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'open-materials': []
-  updated: []
+  "updated": []
 }>()
 
 const COURSE_ASSESSMENT_PLATFORM_CODES = new Set(['PLATFORM_PAPER_FULL', 'PLATFORM_NONPAPER_FULL'])
@@ -97,8 +97,8 @@ const saving = ref(false)
 const templateLoading = ref(false)
 const departmentLoading = ref(false)
 const relatedExamLoading = ref(false)
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
-const relatedExamOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const relatedExamOptions = ref<Array<{ value: string, label: string }>>([])
 const templateSetOptions = ref<
   Array<{
     value: string
@@ -132,8 +132,8 @@ const form = reactive<TaskSettingsForm>({
 const volume = computed(() => props.detail.volume)
 const identityLocked = computed(
   () =>
-    volume.value.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING ||
-    Boolean(volume.value.examId),
+    volume.value.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING
+    || Boolean(volume.value.examId),
 )
 const canEdit = computed(() => props.canManageCollaborators === true)
 const canEditTemplate = computed(
@@ -744,9 +744,9 @@ onMounted(() => {
                   :disabled="!canEdit || form.permanentRetention"
                 />
                 <span class="retention-field__unit">年</span>
-                <UiCheckbox v-model="form.permanentRetention" :disabled="!canEdit"
-                  >永久保管</UiCheckbox
-                >
+                <UiCheckbox v-model="form.permanentRetention" :disabled="!canEdit">
+                  永久保管
+                </UiCheckbox>
               </div>
             </UiFormItem>
           </UiCol>

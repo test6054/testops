@@ -23,10 +23,10 @@
 
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
-import { exportArchiveVolumeEvents } from '@/apis/mark/archive-volume'
 import message from 'ant-design-vue/es/message'
 import { ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
+import { exportArchiveVolumeEvents } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'

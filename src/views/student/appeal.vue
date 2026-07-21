@@ -279,31 +279,10 @@ import type {
   GradeReviewEvidenceFileRefVO,
   StudentGradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import {
-  countMyPendingReviewRequests,
-  GRADE_REVIEW_REASON_TYPE_OPTIONS,
-  GradeReviewReasonTypeCode,
-  GradeReviewReasonTypeDescription,
-  GradeReviewRequestStatusCode,
-  GradeReviewRequestStatusDescription,
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_OPTIONS,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
 import type {
   StudentExamItemVO,
   StudentExamStatsResponse,
   StudentQuestionScoreVO,
-} from '@/apis/mark/student-exam'
-import {
-  canSubmitReview,
-  getMyExamStats,
-  getMyScoreDetail,
-  pageMyExams,
-  ReviewWindowPolicyStatusCode,
-  ReviewWindowPolicyStatusDescription,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -319,6 +298,27 @@ import {
   FinalScoreStatusCode,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
+import {
+  countMyPendingReviewRequests,
+  GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  GradeReviewReasonTypeCode,
+  GradeReviewReasonTypeDescription,
+  GradeReviewRequestStatusCode,
+  GradeReviewRequestStatusDescription,
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_OPTIONS,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
+import {
+  canSubmitReview,
+  getMyExamStats,
+  getMyScoreDetail,
+  pageMyExams,
+  ReviewWindowPolicyStatusCode,
+  ReviewWindowPolicyStatusDescription,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
+} from '@/apis/mark/student-exam'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -395,7 +395,7 @@ const requestFilterForm = reactive<{
   examId: undefined,
 })
 
-const examFilterOptions = ref<Array<{ value: string; label: string }>>([])
+const examFilterOptions = ref<Array<{ value: string, label: string }>>([])
 
 const requestFilterFields = computed<FilterField[]>(() => [
   {
@@ -469,8 +469,8 @@ const selectedExamSubmitBlockedReason = computed(() => {
     return '成绩未发布或已更正待重发，暂不能提交复核'
   }
   if (
-    exam.reviewWindowStatus !== ReviewWindowPolicyStatusCode.ACTIVE ||
-    exam.reviewWindowWithinTime === false
+    exam.reviewWindowStatus !== ReviewWindowPolicyStatusCode.ACTIVE
+    || exam.reviewWindowWithinTime === false
   ) {
     return '当前不在复核窗口开放时间内'
   }
@@ -641,9 +641,9 @@ async function loadRequests() {
     requestPagination.current = result.pageNum ?? requestPagination.current
     requestPagination.pageSize = result.pageSize ?? requestPagination.pageSize
     if (
-      requests.value.length === 0 &&
-      requestPagination.total > 0 &&
-      requestPagination.current > 1
+      requests.value.length === 0
+      && requestPagination.total > 0
+      && requestPagination.current > 1
     ) {
       requestPagination.current -= 1
       await Promise.all([loadRequests(), loadPendingRequestCount()])
@@ -657,7 +657,7 @@ async function loadRequests() {
   }
 }
 
-function handleRequestPageChange(pageInfo: { current: number; pageSize: number }): void {
+function handleRequestPageChange(pageInfo: { current: number, pageSize: number }): void {
   requestPagination.current = pageInfo.current
   requestPagination.pageSize = pageInfo.pageSize
   void loadRequests()

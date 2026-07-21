@@ -7,7 +7,6 @@ import type {
   ReportSaveRequest,
   ReportVO,
 } from '@/apis/quality/report'
-import { reportApi } from '@/apis/quality/report'
 /**
  * 质量评价 - 报告生成与确认台
  *
@@ -29,6 +28,7 @@ import { LoadingOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
+import { reportApi } from '@/apis/quality/report'
 import {
   ALL_REPORT_STATUS_CODES,
   ALL_REPORT_TYPE_CODES,
@@ -180,13 +180,13 @@ const detailVisible = ref(false)
 const detailRecord = ref<ReportVO | null>(null)
 const detailLoading = ref(false)
 
-const reportTypeOptions: Array<{ value: ReportTypeCode; label: string }> =
-  ALL_REPORT_TYPE_CODES.map((value) => ({
+const reportTypeOptions: Array<{ value: ReportTypeCode, label: string }>
+  = ALL_REPORT_TYPE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(ReportTypeDescription, value, '报告类型'),
   }))
-const statusOptions: Array<{ value: ReportStatusCode; label: string }> =
-  ALL_REPORT_STATUS_CODES.map((value) => ({
+const statusOptions: Array<{ value: ReportStatusCode, label: string }>
+  = ALL_REPORT_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(ReportStatusDescription, value, '报告状态'),
   }))
@@ -318,7 +318,7 @@ useQualityScopedLoader(handleScopeChange, {
   reloadOnActivated: false,
 })
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -548,8 +548,8 @@ function reportTitle(record: ReportVO): string {
 async function handleExport(record: ReportVO) {
   const currentExport = record.exportStatus
   if (
-    currentExport === ReportExportStatusCode.PENDING ||
-    currentExport === ReportExportStatusCode.PROCESSING
+    currentExport === ReportExportStatusCode.PENDING
+    || currentExport === ReportExportStatusCode.PROCESSING
   ) {
     void message.info(
       `${reportTitle(record)}当前处于「${exportStatusLabel(currentExport)}」，请等待完成`,
@@ -591,8 +591,8 @@ function resumeExportPollingForList() {
 }
 
 async function downloadReportExportFile(record: ReportVO, kind: 'word' | 'pdf' | 'excel') {
-  const fileId =
-    kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
+  const fileId
+    = kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
   if (!fileId) {
     void message.warning('该格式文件尚未生成')
     return
@@ -675,7 +675,7 @@ const exportBuckets = computed(() => buildReportExportBuckets(reportStatusCounts
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const order: Array<{ key: ReportStatusCode; title: string }> = [
+  const order: Array<{ key: ReportStatusCode, title: string }> = [
     { key: ReportStatusCode.DRAFT, title: '草稿' },
     { key: ReportStatusCode.SUBMITTED, title: '待确认' },
     { key: ReportStatusCode.CONFIRMED, title: '已确认' },
@@ -823,7 +823,7 @@ const reportResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleReportResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
+function handleReportResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
   const record = list.value.find((r) => r.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'detail') openDetail(record)
 }
@@ -845,9 +845,9 @@ function buildReportActions(record: ReportVO): UiTableRowActionItem[] {
     })
   }
   if (
-    record.status === ReportStatusCode.SUBMITTED ||
-    record.status === ReportStatusCode.CONFIRMED ||
-    record.status === ReportStatusCode.ARCHIVED
+    record.status === ReportStatusCode.SUBMITTED
+    || record.status === ReportStatusCode.CONFIRMED
+    || record.status === ReportStatusCode.ARCHIVED
   ) {
     actions.push({
       key: 'export',
@@ -1193,8 +1193,7 @@ onBeforeUnmount(() => {
           <UiDescriptionsItem label="学年 / 学期">
             {{ detailRecord.schoolYear
             }}<span v-if="detailRecord.semester">
-              / {{ formatSemester(detailRecord.semester) }}</span
-            >
+              / {{ formatSemester(detailRecord.semester) }}</span>
           </UiDescriptionsItem>
           <UiDescriptionsItem label="Word 文件">
             <UiTextAction

@@ -5,17 +5,17 @@ import type {
   ArchivePlatformTemplateSetResponse,
   ArchivePlatformTemplateSetSaveRequest,
 } from '@/apis/mark/archive-platform-template'
-import {
-  listArchivePlatformTemplateSets,
-  previewArchivePlatformTemplateSet,
-  saveArchivePlatformTemplateSet,
-} from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveTemplateMaterialEditRow,
   ArchiveTemplateSelfCheckEditRow,
 } from '@/views/teacher/archive-volume/components/archive-template-editor-types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
+import {
+  listArchivePlatformTemplateSets,
+  previewArchivePlatformTemplateSet,
+  saveArchivePlatformTemplateSet,
+} from '@/apis/mark/archive-platform-template'
 import {
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
@@ -299,9 +299,7 @@ onMounted(loadPlatformSets)
         <template #toolbar>
           <div class="archive-platform-admin__toolbar-row">
             <span v-if="loadFailed" class="archive-platform-admin__hint">平台模板加载失败</span>
-            <span v-else-if="platformSets.length === 0" class="archive-platform-admin__hint"
-              >尚未配置任何平台模板</span
-            >
+            <span v-else-if="platformSets.length === 0" class="archive-platform-admin__hint">尚未配置任何平台模板</span>
             <span v-else class="archive-platform-admin__hint">共 {{ platformSets.length }} 套</span>
             <div class="archive-platform-admin__actions">
               <UiButton

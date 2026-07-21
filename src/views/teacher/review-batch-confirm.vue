@@ -130,20 +130,20 @@ import type {
   ExamGradeBatchConfirmFailureItem,
   ExamGradeBatchConfirmResponse,
 } from '@/apis/mark/exam-grade'
-import { batchConfirmQuestionGrades } from '@/apis/mark/exam-grade'
 import type { GradeSourceCode, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { batchConfirmQuestionGrades } from '@/apis/mark/exam-grade'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
   listReviewTasks,
   ReviewTaskStatusCode,
 } from '@/apis/mark/exam-review-task'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -288,8 +288,8 @@ async function loadTasks(): Promise<void> {
     rows.value = records
     pagination.total = result.total
     // MVR-328：列表有项时仅认行级 can===true；空列表用制卷摘要 can===true 补齐
-    canManageReviewerWrites.value =
-      records.length > 0
+    canManageReviewerWrites.value
+      = records.length > 0
         ? records[0].canManageReviewerWrites === true
         : layoutSummary?.canManageReviewerWrites === true
     initScoreDraft(records)
@@ -306,7 +306,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number; pageSize: number }): void {
+function onPageChange(page: { current: number, pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()

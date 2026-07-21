@@ -59,10 +59,10 @@
           {{
             record.failureCategory
               ? strictEnumLabel(
-                  ArchiveAutoCreateFailureCategoryDescription,
-                  record.failureCategory,
-                  'failureCategory',
-                )
+                ArchiveAutoCreateFailureCategoryDescription,
+                record.failureCategory,
+                'failureCategory',
+              )
               : '—'
           }}
         </template>
@@ -72,8 +72,8 @@
         <template v-else-if="column.key === 'actions'">
           <UiButton
             v-if="
-              canManageExternalFondsRetry &&
-              record.pendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
+              canManageExternalFondsRetry
+                && record.pendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
             "
             variant="primary"
             size="sm"
@@ -84,12 +84,11 @@
           </UiButton>
           <span
             v-else-if="
-              !canManageExternalFondsRetry &&
-              record.pendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
+              !canManageExternalFondsRetry
+                && record.pendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
             "
             class="archive-ext-fonds-retry__muted"
-            >仅教务协调可重试</span
-          >
+          >仅教务协调可重试</span>
           <span v-else class="archive-ext-fonds-retry__muted">调度重试中</span>
         </template>
       </template>
@@ -137,9 +136,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveExternalFondsPendingResponse } from '@/apis/mark/archive-volume'
-import { pageExternalFondsPending, retryExternalFondsAutoCreate } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
+import { pageExternalFondsPending, retryExternalFondsAutoCreate } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiPagination from '@/components/ui-guide/ui/Pagination.vue'

@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   approveArchiveVolumeDepartmentReview,
   getArchiveVolumeDetail,
   rejectArchiveVolumeDepartmentReview,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -25,7 +25,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  completed: []
+  "completed": []
   'open-detail': [volumeId: string, tabKey?: string]
 }>()
 
@@ -42,8 +42,8 @@ const actionBusy = computed(() => approving.value || rejecting.value)
 
 const canApprove = computed(
   () =>
-    detail.value?.volume.volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING &&
-    detail.value?.capabilities?.canApproveDepartmentReview === true,
+    detail.value?.volume.volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
+    && detail.value?.capabilities?.canApproveDepartmentReview === true,
 )
 
 const canShowSummary = computed(

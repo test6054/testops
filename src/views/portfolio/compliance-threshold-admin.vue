@@ -4,9 +4,9 @@ import type {
   PortfolioComplianceMetricVO,
   PortfolioComplianceThresholdVO,
 } from '@/apis/portfolio/compliance'
-import { portfolioComplianceApi } from '@/apis/portfolio/compliance'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioComplianceApi } from '@/apis/portfolio/compliance'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
@@ -95,8 +95,8 @@ const metricColumns: ColumnsType = [
 
 const needsDenominator = computed(
   () =>
-    form.metricCode === PortfolioComplianceAlertTypeCode.C002 ||
-    form.metricCode === PortfolioComplianceAlertTypeCode.C003,
+    form.metricCode === PortfolioComplianceAlertTypeCode.C002
+    || form.metricCode === PortfolioComplianceAlertTypeCode.C003,
 )
 
 function metricLabel(code: string) {
@@ -237,8 +237,8 @@ async function saveRow() {
   if (writing.value) {
     return
   }
-  const ordered =
-    form.compareDirection === PortfolioComplianceCompareDirectionCode.LOWER_IS_WORSE
+  const ordered
+    = form.compareDirection === PortfolioComplianceCompareDirectionCode.LOWER_IS_WORSE
       ? form.targetValue > form.yellowThreshold && form.yellowThreshold > form.redThreshold
       : form.targetValue < form.yellowThreshold && form.yellowThreshold < form.redThreshold
   if (!ordered) {

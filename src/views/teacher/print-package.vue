@@ -202,19 +202,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchPrintPackagePanelResponse } from '@/apis/mark/exam-progress'
-import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
 import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
-import {
-  generatePrintPackage,
-  isLayoutNotReadyError,
-  pagePrintPackageItems,
-  pagePrintPackages,
-  PRINT_PACKAGE_ANSWER_SHEET_HINT,
-  PRINT_PACKAGE_EXTERNAL_PRINT_HINT,
-  PRINT_PACKAGE_FLOW_HINT,
-  PRINT_PACKAGE_STATUS_TONE,
-  PrintPackageStatusDescription,
-} from '@/apis/mark/print-package'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
@@ -227,6 +215,18 @@ import {
   ExamPrintSourceModeCode,
   getExamDetail,
 } from '@/apis/mark/exam'
+import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
+import {
+  generatePrintPackage,
+  isLayoutNotReadyError,
+  pagePrintPackageItems,
+  pagePrintPackages,
+  PRINT_PACKAGE_ANSWER_SHEET_HINT,
+  PRINT_PACKAGE_EXTERNAL_PRINT_HINT,
+  PRINT_PACKAGE_FLOW_HINT,
+  PRINT_PACKAGE_STATUS_TONE,
+  PrintPackageStatusDescription,
+} from '@/apis/mark/print-package'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -443,7 +443,7 @@ async function loadPackageList() {
   }
 }
 
-function handlePackagePageChange(pageEvent: { current: number; pageSize: number }): void {
+function handlePackagePageChange(pageEvent: { current: number, pageSize: number }): void {
   pagination.pageNum = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   loadPackageList()
@@ -619,7 +619,7 @@ async function loadDetailItems(): Promise<void> {
   }
 }
 
-function handleDetailPageChange(pageEvent: { current: number; pageSize: number }): void {
+function handleDetailPageChange(pageEvent: { current: number, pageSize: number }): void {
   detailPagination.pageNum = pageEvent.current
   detailPagination.pageSize = pageEvent.pageSize
   void loadDetailItems()

@@ -5,14 +5,14 @@ import type {
   PortfolioReportingShareFieldCodeValue,
   PortfolioReportingTaskVO,
 } from '@/apis/portfolio/reporting'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ALL_PORTFOLIO_REPORTING_SHARE_FIELD_CODES,
   portfolioReportingApi,
   PortfolioReportingShareFieldCode,
   PortfolioReportingShareFieldDescription,
 } from '@/apis/portfolio/reporting'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -178,8 +178,8 @@ function statusTone(code: string): 'blue' | 'green' | 'red' | 'gray' {
 
 function canPreview(row: PortfolioReportingTaskVO): boolean {
   return (
-    row.taskStatus === PortfolioReportingTaskStatusCode.DRAFT ||
-    row.taskStatus === PortfolioReportingTaskStatusCode.REJECTED
+    row.taskStatus === PortfolioReportingTaskStatusCode.DRAFT
+    || row.taskStatus === PortfolioReportingTaskStatusCode.REJECTED
   )
 }
 
@@ -230,7 +230,7 @@ function onSearch() {
   void loadPage()
 }
 
-function onPageChange(page: { current: number; pageSize: number }) {
+function onPageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -253,27 +253,27 @@ function openCreateModal() {
 async function submitCreate() {
   const shareFields = [...createForm.shareFields]
   if (
-    !createForm.taskTitle.trim() ||
-    !createForm.reportPurpose.trim() ||
-    shareFields.length === 0
+    !createForm.taskTitle.trim()
+    || !createForm.reportPurpose.trim()
+    || shareFields.length === 0
   ) {
     showFormValidationMessage('请填写标题、用途与共享字段')
     return
   }
   if (
-    createForm.maskMode &&
-    shareFields.some(
+    createForm.maskMode
+    && shareFields.some(
       (code) =>
-        code === PortfolioReportingShareFieldCode.TEACHER_USER_ID ||
-        code === PortfolioReportingShareFieldCode.TEACHER_NUMBER,
+        code === PortfolioReportingShareFieldCode.TEACHER_USER_ID
+        || code === PortfolioReportingShareFieldCode.TEACHER_NUMBER,
     )
   ) {
     showFormValidationMessage('脱敏报送不能共享教师用户编号或工号')
     return
   }
   if (
-    createForm.scopeType === PortfolioReportingScopeTypeCode.DEPARTMENT &&
-    !createForm.departmentId.trim()
+    createForm.scopeType === PortfolioReportingScopeTypeCode.DEPARTMENT
+    && !createForm.departmentId.trim()
   ) {
     showFormValidationMessage('院系报送须填写院系编号')
     return
@@ -530,9 +530,9 @@ onMounted(() => {
                 value: code,
                 label: PortfolioReportingShareFieldDescription[code],
                 disabled:
-                  createForm.maskMode &&
-                  (code === PortfolioReportingShareFieldCode.TEACHER_USER_ID ||
-                    code === PortfolioReportingShareFieldCode.TEACHER_NUMBER),
+                  createForm.maskMode
+                  && (code === PortfolioReportingShareFieldCode.TEACHER_USER_ID
+                    || code === PortfolioReportingShareFieldCode.TEACHER_NUMBER),
               }))
             "
           />

@@ -5,6 +5,13 @@ import type {
   PortfolioIndustryPackVO,
   PortfolioTenantIndicatorConfigVO,
 } from '@/apis/portfolio/indicator-types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  portfolioIndicatorPlatformApi,
+  portfolioIndicatorTenantApi,
+} from '@/apis/portfolio/indicator'
 import {
   PF_SCENE_CODE_OPTIONS,
   PfIndicatorStatusDescription,
@@ -13,13 +20,6 @@ import {
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  portfolioIndicatorPlatformApi,
-  portfolioIndicatorTenantApi,
-} from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -117,8 +117,8 @@ const filteredConfigs = computed(() => {
   }
   return configRows.value.filter(
     (row) =>
-      row.indicatorCode.toLowerCase().includes(keyword) ||
-      row.indicatorName.toLowerCase().includes(keyword),
+      row.indicatorCode.toLowerCase().includes(keyword)
+      || row.indicatorName.toLowerCase().includes(keyword),
   )
 })
 
@@ -256,9 +256,9 @@ async function saveEdit() {
   const indicatorCode = editForm.indicatorCode
   if (!indicatorCode) return
   if (
-    editForm.standardScore != null &&
-    editForm.capScore != null &&
-    editForm.capScore < editForm.standardScore
+    editForm.standardScore != null
+    && editForm.capScore != null
+    && editForm.capScore < editForm.standardScore
   ) {
     showFormValidationMessage('封顶分不能低于标准分')
     return

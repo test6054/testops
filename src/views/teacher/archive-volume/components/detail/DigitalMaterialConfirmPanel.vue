@@ -3,12 +3,12 @@ import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, ref } from 'vue'
 import {
   ArchiveMaterialTypeDescription,
   confirmArchiveDigitalMaterials,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiCheckboxGroup from '@/components/ui-guide/ui/UiCheckboxGroup.vue'
@@ -50,10 +50,10 @@ const canConfirm = computed(() => props.detail.capabilities?.canConfirmDigitalMa
 
 const showPanel = computed(
   () =>
-    canConfirm.value &&
-    confirmableMaterials.value.length > 0 &&
-    (props.detail.volume.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING ||
-      confirmableMaterials.value.some(
+    canConfirm.value
+    && confirmableMaterials.value.length > 0
+    && (props.detail.volume.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING
+      || confirmableMaterials.value.some(
         (item) => item.deliveryMode === ArchiveMaterialDeliveryModeCode.DIGITAL_CONFIRM,
       )),
 )

@@ -6,9 +6,9 @@ import type {
   TrainingPlanStatusAuditVO,
   TrainingPlanVO,
 } from '@/apis/quality/training-plan'
-import { trainingPlanApi } from '@/apis/quality/training-plan'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, ref } from 'vue'
+import { trainingPlanApi } from '@/apis/quality/training-plan'
 import { ConfirmationStatusCode, ConfirmationStatusDescription } from '@/apis/quality/types'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
@@ -81,18 +81,18 @@ const drawerTitle = computed(() =>
 )
 const canConfirm = computed(
   () =>
-    hasConfirmPermission.value &&
-    selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.SUBMITTED,
+    hasConfirmPermission.value
+    && selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.SUBMITTED,
 )
 const canRevoke = computed(
   () =>
-    hasConfirmPermission.value &&
-    selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.CONFIRMED,
+    hasConfirmPermission.value
+    && selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.CONFIRMED,
 )
 const canRemind = computed(
   () =>
-    hasSubmitPermission.value &&
-    selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.SUBMITTED,
+    hasSubmitPermission.value
+    && selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.SUBMITTED,
 )
 const failedChecklistDescription = computed(() => {
   const items = checklist.value?.failedItems ?? []
@@ -148,7 +148,7 @@ function switchTab(tab: ReviewTab): void {
   void loadPage()
 }
 
-function handlePageChange(page: { current: number; pageSize: number }): void {
+function handlePageChange(page: { current: number, pageSize: number }): void {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadPage()
@@ -280,9 +280,9 @@ onActivated(() => {
     <template #context>
       <QualityPageContextBar>
         <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadPage"
-            >刷新队列</UiButton
-          >
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadPage">
+            刷新队列
+          </UiButton>
         </template>
       </QualityPageContextBar>
     </template>
@@ -293,14 +293,16 @@ onActivated(() => {
           size="sm"
           :variant="activeTab === 'pending' ? 'primary' : 'ghost'"
           @click="switchTab('pending')"
-          >待院审</UiButton
         >
+          待院审
+        </UiButton>
         <UiButton
           size="sm"
           :variant="activeTab === 'published' ? 'primary' : 'ghost'"
           @click="switchTab('published')"
-          >已发布方案</UiButton
         >
+          已发布方案
+        </UiButton>
       </div>
 
       <UiAlertStrip v-if="activeTab === 'pending'" tone="info" title="待院审方案已锁定结构" />
@@ -412,8 +414,9 @@ onActivated(() => {
               variant="primary"
               :loading="submitting"
               @click="confirmPlan"
-              >确认发布</UiButton
             >
+              确认发布
+            </UiButton>
             <UiButton
               size="sm"
               v-if="canConfirm"
@@ -422,16 +425,18 @@ onActivated(() => {
               :disabled="reviewComment.trim().length < 10"
               :loading="submitting"
               @click="returnPlan"
-              >退回整改</UiButton
             >
+              退回整改
+            </UiButton>
             <UiButton
               size="sm"
               v-if="canRemind"
               variant="outline"
               :loading="submitting"
               @click="remindPlan"
-              >催办确认人</UiButton
             >
+              催办确认人
+            </UiButton>
             <UiButton
               size="sm"
               v-if="canRevoke"
@@ -440,8 +445,9 @@ onActivated(() => {
               :disabled="reviewComment.trim().length < 10"
               :loading="submitting"
               @click="revokePlan"
-              >撤回发布</UiButton
             >
+              撤回发布
+            </UiButton>
           </div>
         </section>
 

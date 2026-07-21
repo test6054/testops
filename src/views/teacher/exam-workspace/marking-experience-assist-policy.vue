@@ -24,8 +24,8 @@
             </div>
             <div
               v-if="
-                policy?.tenantExperienceAssistEnabled &&
-                (canManageReviewerWrites || canDisableExperienceAssist)
+                policy?.tenantExperienceAssistEnabled
+                  && (canManageReviewerWrites || canDisableExperienceAssist)
               "
               class="experience-assist-policy__head-actions"
             >
@@ -187,15 +187,7 @@ import type {
   ExamQuestionExperienceAssistBindingResponse,
   GradingExperienceAssistReadinessResponse,
 } from '@/apis/mark/grading-experience-assist'
-import {
-  disableExamGradingExperienceAssistPolicy,
-  getExamGradingExperienceAssistPolicy,
-  getExamGradingExperienceAssistReadiness,
-  pageExamExperienceAssistBindings,
-  saveExamExperienceAssistBinding,
-} from '@/apis/mark/grading-experience-assist'
 import type { ExamExperienceAssistPolicyConfigMode } from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
-import ExamExperienceAssistPolicyEnableModal from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
 import type {
   BadgeTone,
   FilterField,
@@ -205,6 +197,14 @@ import type {
 import type { ExperienceAssistBindingFilterQuery } from '@/utils/experience-assist-binding-filter'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import {
+  disableExamGradingExperienceAssistPolicy,
+  getExamGradingExperienceAssistPolicy,
+  getExamGradingExperienceAssistReadiness,
+  pageExamExperienceAssistBindings,
+  saveExamExperienceAssistBinding,
+} from '@/apis/mark/grading-experience-assist'
+import ExamExperienceAssistPolicyEnableModal from '@/components/mark/ExamExperienceAssistPolicyEnableModal.vue'
 import QuestionExperienceAssistBindingModal from '@/components/mark/QuestionExperienceAssistBindingModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -393,28 +393,28 @@ const canDisableExperienceAssist = computed(() => policy.value?.canDisableExperi
 
 const canEnable = computed(() =>
   Boolean(
-    canManageReviewerWrites.value &&
-    policy.value?.tenantExperienceAssistEnabled &&
-    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN &&
-    !bindingsLoading.value &&
-    unresolvedSubjectiveCount.value === 0,
+    canManageReviewerWrites.value
+    && policy.value?.tenantExperienceAssistEnabled
+    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN
+    && !bindingsLoading.value
+    && unresolvedSubjectiveCount.value === 0,
   ),
 )
 
 const canDisable = computed(() =>
   Boolean(
-    canDisableExperienceAssist.value &&
-    policy.value?.enabled &&
-    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
+    canDisableExperienceAssist.value
+    && policy.value?.enabled
+    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
   ),
 )
 
 const canEditConfig = computed(() =>
   Boolean(
-    canManageReviewerWrites.value &&
-    policy.value?.tenantExperienceAssistEnabled &&
-    policy.value?.enabled &&
-    policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
+    canManageReviewerWrites.value
+    && policy.value?.tenantExperienceAssistEnabled
+    && policy.value?.enabled
+    && policy.value?.policyStatus !== GradingExperienceAssistPolicyStatusCode.FROZEN,
   ),
 )
 
@@ -433,7 +433,7 @@ const subjectiveQuestionCount = computed(() => readiness.value?.subjectiveQuesti
 
 /** 单行策略摘要：多条件互斥，避免多条 warning 叠占笔记本屏 */
 const policyAlert = computed(
-  (): { tone: UiAlertStripTone; title: string; description: string } | null => {
+  (): { tone: UiAlertStripTone, title: string, description: string } | null => {
     if (policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN) {
       return {
         tone: 'warning',
@@ -458,9 +458,9 @@ const policyAlert = computed(
       }
     }
     if (
-      requiresExplicitBinding.value &&
-      unboundSubjectiveCount.value > 0 &&
-      !policy.value?.enabled
+      requiresExplicitBinding.value
+      && unboundSubjectiveCount.value > 0
+      && !policy.value?.enabled
     ) {
       return {
         tone: 'warning',
@@ -469,9 +469,9 @@ const policyAlert = computed(
       }
     }
     if (
-      !requiresExplicitBinding.value &&
-      needsExplicitBindingCount.value > 0 &&
-      policy.value?.enabled
+      !requiresExplicitBinding.value
+      && needsExplicitBindingCount.value > 0
+      && policy.value?.enabled
     ) {
       return {
         tone: 'warning',
@@ -496,8 +496,8 @@ function resolutionLabel(
 ): string {
   if (!status) return '—'
   if (
-    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING &&
-    row?.experienceCaseId
+    status === GradingExperienceAssistQuestionResolutionCode.NEEDS_EXPLICIT_BINDING
+    && row?.experienceCaseId
   ) {
     return '定标引用失效'
   }
@@ -653,8 +653,8 @@ function openBindingModal(row: ExamQuestionExperienceAssistBindingResponse): voi
 
 function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
   if (
-    !examId.value ||
-    policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
+    !examId.value
+    || policy.value?.policyStatus === GradingExperienceAssistPolicyStatusCode.FROZEN
   ) {
     return
   }

@@ -4,13 +4,13 @@ import type {
   ArchiveVolumeSignOffRoleCode,
   ArchiveVolumeSubmitChecklistResponse,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES,
   confirmArchiveVolumeSelfCheck,
   previewArchiveVolumeSubmitChecklist,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -33,7 +33,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  confirmed: []
+  "confirmed": []
 }>()
 
 const loading = ref(false)
@@ -44,7 +44,7 @@ const materialCompleteConfirmed = ref(false)
 const gradingNormConfirmed = ref(false)
 const reason = ref('')
 const signOffState = ref<
-  Record<ArchiveVolumeSignOffRoleCode, { confirmed: boolean; signatoryName: string }>
+  Record<ArchiveVolumeSignOffRoleCode, { confirmed: boolean, signatoryName: string }>
 >({
   PROPOSER: { confirmed: false, signatoryName: '' },
   REVIEWER: { confirmed: false, signatoryName: '' },
@@ -58,8 +58,8 @@ const baseBlockingItems = computed(
   () =>
     checklist.value?.blockingItems?.filter(
       (item) =>
-        !item.passed &&
-        item.dimension !== ArchiveVolumeSubmitChecklistDimensionCode.DEPARTMENT_REVIEW,
+        !item.passed
+        && item.dimension !== ArchiveVolumeSubmitChecklistDimensionCode.DEPARTMENT_REVIEW,
     ) ?? [],
 )
 
@@ -68,8 +68,8 @@ const formSignOffReady = computed(() => {
   if (items.length !== ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.length) return false
   return ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.every(
     (role) =>
-      signOffState.value[role].confirmed &&
-      signOffState.value[role].signatoryName.trim().length > 0,
+      signOffState.value[role].confirmed
+      && signOffState.value[role].signatoryName.trim().length > 0,
   )
 })
 
@@ -81,9 +81,9 @@ const canConfirm = computed(() => {
   const scorer = signOffState.value.SCORER.signatoryName.trim()
   const rechecker = signOffState.value.RECHECKER.signatoryName.trim()
   if (
-    scorer &&
-    rechecker &&
-    scorer.localeCompare(rechecker, undefined, { sensitivity: 'accent' }) === 0
+    scorer
+    && rechecker
+    && scorer.localeCompare(rechecker, undefined, { sensitivity: 'accent' }) === 0
   ) {
     return false
   }

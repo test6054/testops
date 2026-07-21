@@ -193,6 +193,12 @@ import type {
   ArchiveVolumeDestructionLedgerRowResponse,
   ArchiveVolumeStatisticsSummaryVO,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_DESTRUCTION_STATUS_TONE,
   ArchiveDestructionStatusDescription,
@@ -204,12 +210,6 @@ import {
   pageStatisticsDepartmentCompletions,
   pageStatisticsMissingMaterials,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -253,7 +253,7 @@ const {
 
 const statsTab = ref('overview')
 const statsTabs = computed(() => {
-  const items: Array<{ key: string; label: string }> = []
+  const items: Array<{ key: string, label: string }> = []
   if (canViewStatisticsKpi.value) items.push({ key: 'overview', label: '迎评统计' })
   if (canViewDestructionLedger.value) items.push({ key: 'destruction', label: '销毁清册' })
   return items
@@ -272,7 +272,7 @@ const statisticsSummary = ref<ArchiveVolumeStatisticsSummaryVO | null>(null)
 const departmentRows = ref<ArchiveDepartmentCompletionVO[]>([])
 const missingRows = ref<ArchiveMissingMaterialStatVO[]>([])
 const destructionRows = ref<ArchiveVolumeDestructionLedgerRowResponse[]>([])
-const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const departmentOptions = ref<Array<{ value: string, label: string }>>([])
 
 interface ArchiveVolumeStatisticsFilterForm extends Record<string, unknown> {
   academicYearStartYear: number | undefined
@@ -503,8 +503,8 @@ function applyScopedDepartmentDefault() {
     filterForm.departmentId = scopeIds[0]
   }
   const destructionScopeIds = destructionLedgerScopedDepartmentIds.value
-  destructionFilterForm.departmentId =
-    destructionScopeIds.length === 1 ? destructionScopeIds[0] : undefined
+  destructionFilterForm.departmentId
+    = destructionScopeIds.length === 1 ? destructionScopeIds[0] : undefined
 }
 
 async function loadDepartments() {
@@ -643,8 +643,8 @@ function handleReset() {
 
 function handleDestructionReset() {
   destructionFilterForm.keyword = ''
-  destructionFilterForm.departmentId =
-    destructionLedgerScopedDepartmentIds.value.length === 1
+  destructionFilterForm.departmentId
+    = destructionLedgerScopedDepartmentIds.value.length === 1
       ? destructionLedgerScopedDepartmentIds.value[0]
       : undefined
   destructionPagination.pageNum = 1
@@ -705,10 +705,10 @@ async function exportDestructionExcel() {
 
 watch(statsTab, (tab) => {
   if (
-    pageInitialized.value &&
-    tab === 'destruction' &&
-    destructionRows.value.length === 0 &&
-    !grantsLoadFailed.value
+    pageInitialized.value
+    && tab === 'destruction'
+    && destructionRows.value.length === 0
+    && !grantsLoadFailed.value
   ) {
     void loadDestructionLedger()
   }
@@ -734,9 +734,9 @@ async function initPage() {
   statsTab.value = canViewStatisticsKpi.value ? 'overview' : 'destruction'
   await loadDepartments()
   if (
-    canViewStatisticsKpi.value &&
-    filterForm.academicYearStartYear != null &&
-    filterForm.semester
+    canViewStatisticsKpi.value
+    && filterForm.academicYearStartYear != null
+    && filterForm.semester
   ) {
     await loadStatistics()
   }

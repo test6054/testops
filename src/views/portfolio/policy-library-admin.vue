@@ -6,9 +6,9 @@ import type {
   PortfolioPolicyDocumentVO,
   PortfolioPolicyIndicatorMappingVO,
 } from '@/apis/portfolio/policy'
-import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -238,11 +238,11 @@ async function saveDraft() {
   const documentTitle = form.documentTitle.trim()
   const topicCategory = form.topicCategory.trim()
   if (
-    !documentCode ||
-    !documentTitle ||
-    !topicCategory ||
-    !form.publishDate ||
-    !form.fullTextContent.trim()
+    !documentCode
+    || !documentTitle
+    || !topicCategory
+    || !form.publishDate
+    || !form.fullTextContent.trim()
   ) {
     showFormValidationMessage('请完整填写文号、标题、主题分类、发布日期和政策全文')
     return
@@ -400,12 +400,12 @@ async function saveMappings() {
   const incomplete = mappingRows.value.some(
     (item) =>
       Boolean(
-        item.clauseCode.trim() ||
-        item.clauseTitle.trim() ||
-        item.indicatorCode.trim() ||
-        item.materialRequirement.trim(),
-      ) &&
-      (!item.clauseCode.trim() || !item.clauseTitle.trim() || !item.indicatorCode.trim()),
+        item.clauseCode.trim()
+        || item.clauseTitle.trim()
+        || item.indicatorCode.trim()
+        || item.materialRequirement.trim(),
+      )
+      && (!item.clauseCode.trim() || !item.clauseTitle.trim() || !item.indicatorCode.trim()),
   )
   if (incomplete) {
     showFormValidationMessage('每条指标映射必须完整填写条款编码、条款标题和指标编码')
@@ -463,11 +463,11 @@ async function submitSupersede() {
   const documentTitle = supersedeForm.documentTitle.trim()
   const topicCategory = supersedeForm.topicCategory.trim()
   if (
-    !documentCode ||
-    !documentTitle ||
-    !topicCategory ||
-    !supersedeForm.publishDate ||
-    !supersedeForm.fullTextContent.trim()
+    !documentCode
+    || !documentTitle
+    || !topicCategory
+    || !supersedeForm.publishDate
+    || !supersedeForm.fullTextContent.trim()
   ) {
     showFormValidationMessage('请完整填写修订版文号、标题、主题分类、发布日期和全文')
     return
@@ -501,7 +501,7 @@ function onSearch() {
   void loadPage()
 }
 
-function onPageChange(page: { current: number; pageSize: number }) {
+function onPageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -550,9 +550,9 @@ onMounted(() => {
                 { key: 'preview', label: '预览', disabled: writing },
                 ...(record.documentStatus === PortfolioPolicyDocumentStatusCode.DRAFT
                   ? [
-                      { key: 'edit', label: '编辑', disabled: writing },
-                      { key: 'publish', label: '发布', disabled: writing },
-                    ]
+                    { key: 'edit', label: '编辑', disabled: writing },
+                    { key: 'publish', label: '发布', disabled: writing },
+                  ]
                   : []),
                 ...(record.documentStatus === PortfolioPolicyDocumentStatusCode.EFFECTIVE
                   ? [{ key: 'supersede', label: '修订', disabled: writing }]
@@ -704,9 +704,9 @@ onMounted(() => {
             </UiButton>
           </div>
           <div class="policy-admin__mapping-actions">
-            <UiButton variant="primary" size="sm" :disabled="writing" @click="addMappingRow"
-              >新增映射</UiButton
-            >
+            <UiButton variant="primary" size="sm" :disabled="writing" @click="addMappingRow">
+              新增映射
+            </UiButton>
             <UiButton
               size="sm"
               variant="primary"

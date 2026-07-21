@@ -3,9 +3,9 @@
     <template #head>
       <div class="archive-volume-access-panel__head">
         <h3 class="archive-volume-access-panel__title">查阅/借阅审批</h3>
-        <UiButton v-if="canRequestAccess" variant="primary" size="sm" @click="openAccessRequest"
-          >发起借阅</UiButton
-        >
+        <UiButton v-if="canRequestAccess" variant="primary" size="sm" @click="openAccessRequest">
+          发起借阅
+        </UiButton>
       </div>
     </template>
 
@@ -78,8 +78,8 @@
 
         <div
           v-if="
-            record.accessStatus === ArchiveAccessStatusCode.PENDING &&
-            canApproveAccessRecord(record)
+            record.accessStatus === ArchiveAccessStatusCode.PENDING
+              && canApproveAccessRecord(record)
           "
           class="approval-card__actions"
         >
@@ -135,9 +135,9 @@
             </div>
           </template>
           <template v-else>
-            <UiButton size="sm" variant="primary" @click="startApprove(record.accessRecordId)"
-              >批准</UiButton
-            >
+            <UiButton size="sm" variant="primary" @click="startApprove(record.accessRecordId)">
+              批准
+            </UiButton>
             <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)">
               拒绝
             </UiButton>
@@ -146,8 +146,8 @@
 
         <div
           v-if="
-            record.accessStatus === ArchiveAccessStatusCode.ACTIVE &&
-            record.applicantUserId === currentUserId
+            record.accessStatus === ArchiveAccessStatusCode.ACTIVE
+              && record.applicantUserId === currentUserId
           "
           class="approval-card__actions"
         >
@@ -247,6 +247,8 @@ import type {
   ArchiveVolumeAccessRecordResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   approveArchiveVolumeAccess,
   ArchiveAccessStatusCode,
@@ -257,8 +259,6 @@ import {
   rejectArchiveVolumeAccess,
   requestArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'

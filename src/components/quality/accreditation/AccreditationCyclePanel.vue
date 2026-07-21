@@ -9,6 +9,10 @@ import type {
   AccreditationCycleVO,
   SelfAssessmentReviewDecisionRequest,
 } from '@/apis/quality/accreditation'
+import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
   AccreditationConclusionTypeCode,
@@ -17,11 +21,7 @@ import {
   AccreditationCycleStatusDescription,
   SelfAssessmentReviewDecisionCode,
 } from '@/apis/quality/accreditation'
-import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
 import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -54,7 +54,7 @@ const props = defineProps<{
   cockpit?: AccreditationCockpitVO
 }>()
 
-const emit = defineEmits<{ refresh: []; 'go-ai-report': [] }>()
+const emit = defineEmits<{ "refresh": [], 'go-ai-report': [] }>()
 
 type AccreditationCycleMenuAction = 'application' | 'self' | 'review' | 'conclusion' | 'delete'
 
@@ -273,8 +273,8 @@ function openReview(row: AccreditationCycleVO) {
 async function submitReview() {
   if (!activeRow.value) return
   if (
-    reviewForm.reviewDecision === SelfAssessmentReviewDecisionCode.SUPPLEMENT_REQUIRED &&
-    !reviewForm.supplementDeadline
+    reviewForm.reviewDecision === SelfAssessmentReviewDecisionCode.SUPPLEMENT_REQUIRED
+    && !reviewForm.supplementDeadline
   ) {
     void message.error('需补正时必须填写补正截止日期')
     return
@@ -562,8 +562,8 @@ defineExpose({ openCreate, loadCycles })
           <UiInput
             size="sm"
             :value="
-              standards.find((item) => item.id === form.accreditationStandardId)?.standardName ||
-              form.accreditationStandardId
+              standards.find((item) => item.id === form.accreditationStandardId)?.standardName
+                || form.accreditationStandardId
             "
             disabled
           />
@@ -622,10 +622,10 @@ defineExpose({ openCreate, loadCycles })
           {{
             detailRecord.conclusionType
               ? strictEnumLabel(
-                  AccreditationConclusionTypeDescription,
-                  detailRecord.conclusionType,
-                  '认证结论类型',
-                )
+                AccreditationConclusionTypeDescription,
+                detailRecord.conclusionType,
+                '认证结论类型',
+              )
               : '—'
           }}
         </dd>

@@ -8,6 +8,13 @@ import type {
   AuditSupervisionSaveRequest,
   AuditSupervisionVO,
 } from '@/apis/quality/audit-supervision'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type {
+  QualitySelectorChangeValue,
+  WorkbenchSignalRefreshHandler,
+} from '@/composables/quality/improvement'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref } from 'vue'
 import {
   AUDIT_SUPERVISION_CONCLUSION_OPTIONS,
   AUDIT_SUPERVISION_CONCLUSION_TONE,
@@ -17,14 +24,6 @@ import {
   AuditSupervisionScopeCode,
   AuditSupervisionScopeDescription,
 } from '@/apis/quality/audit-supervision'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type {
-  QualitySelectorChangeValue,
-  WorkbenchSignalRefreshHandler,
-} from '@/composables/quality/improvement'
-import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref } from 'vue'
 import { AuditSupervisionTypeCode, AuditSupervisionTypeDescription } from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
@@ -51,6 +50,7 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   assertQualityScopeFresh,
@@ -87,7 +87,7 @@ const supColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 160 },
 ]
 
-const supervisionTypeOptions: Array<{ value: AuditSupervisionTypeCode; label: string }> = [
+const supervisionTypeOptions: Array<{ value: AuditSupervisionTypeCode, label: string }> = [
   { value: AuditSupervisionTypeCode.DAILY, label: AuditSupervisionTypeDescription.DAILY },
   { value: AuditSupervisionTypeCode.SPECIAL, label: AuditSupervisionTypeDescription.SPECIAL },
   {
@@ -304,7 +304,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
   }
 }
 
-function handleSupPageChange(page: { current: number; pageSize: number }) {
+function handleSupPageChange(page: { current: number, pageSize: number }) {
   supQuery.pageNum = page.current
   supQuery.pageSize = page.pageSize
   loadList()
@@ -384,9 +384,9 @@ function openSupEdit(record: AuditSupervisionVO) {
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim() ||
-    !supEditor.supervisionTitle.trim() ||
-    !supEditor.supervisionType
+    !supEditor.supervisionCode.trim()
+    || !supEditor.supervisionTitle.trim()
+    || !supEditor.supervisionType
   ) {
     void message.error('请填写编码、标题、督导类型')
     return
@@ -672,8 +672,9 @@ defineExpose({
             status="danger"
             variant="ghost"
             @click="removeSupervisionFindingItem(index)"
-            >删除</UiButton
           >
+            删除
+          </UiButton>
         </div>
         <UiRow :gutter="12">
           <UiCol :span="6">
@@ -786,9 +787,9 @@ defineExpose({
       </UiRow>
       <UiDivider orientation="left">证据明细</UiDivider>
       <div class="iwb-tab__detail-toolbar">
-        <UiButton size="sm" variant="primary" @click="addSupervisionEvidenceItem"
-          >新增证据</UiButton
-        >
+        <UiButton size="sm" variant="primary" @click="addSupervisionEvidenceItem">
+          新增证据
+        </UiButton>
       </div>
       <div
         v-for="(item, index) in supEditor.evidenceItems"
@@ -802,8 +803,9 @@ defineExpose({
             status="danger"
             variant="ghost"
             @click="removeSupervisionEvidenceItem(index)"
-            >删除</UiButton
           >
+            删除
+          </UiButton>
         </div>
         <UiRow :gutter="12">
           <UiCol :span="6">

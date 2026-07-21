@@ -6,19 +6,18 @@ import type {
   PortfolioTitlePromotionTaskVO,
   PortfolioTitleTaskCriteriaVO,
 } from '@/apis/portfolio/title-promotion'
-import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import type {
   PortfolioArchiveCategoryTreeNodeVO,
   PortfolioArchiveRecordSummaryVO,
 } from '@/apis/portfolio/types'
 import type { PortfolioTitleJobCategoryCode } from '@/types/enums/portfolio-title-job-category-enum'
-import { PortfolioTitleJobCategoryDescription } from '@/types/enums/portfolio-title-job-category-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import { PortfolioArchiveRecordStatusCode } from '@/apis/portfolio/enums'
+import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import TitlePromotionFlowPanel from '@/components/portfolio/TitlePromotionFlowPanel.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -47,6 +46,7 @@ import { PortfolioTitleCriteriaGateKindDescription } from '@/types/enums/portfol
 import { PortfolioTitleCriteriaPathCode } from '@/types/enums/portfolio-title-criteria-path-code-enum'
 import { PortfolioTitleCriteriaSatisfyModeCode } from '@/types/enums/portfolio-title-criteria-satisfy-mode-enum'
 import { PortfolioTitleEvidenceTypeCode } from '@/types/enums/portfolio-title-evidence-type-enum'
+import { PortfolioTitleJobCategoryDescription } from '@/types/enums/portfolio-title-job-category-enum'
 import {
   PortfolioTitlePromotionApplicationStatusCode,
   PortfolioTitlePromotionApplicationStatusDescription,
@@ -58,8 +58,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 const route = useRoute()
 const router = useRouter()
 
@@ -113,8 +113,8 @@ const selectedTask = computed(() =>
 const taskCriteria = computed<PortfolioTitleTaskCriteriaVO[]>(() => {
   const list = selectedTask.value?.taskCriteria || []
   return list.filter((item) => {
-    const pathOk =
-      item.pathCode === PortfolioTitleCriteriaPathCode.COMMON || item.pathCode === pathCode.value
+    const pathOk
+      = item.pathCode === PortfolioTitleCriteriaPathCode.COMMON || item.pathCode === pathCode.value
     const jobOk = !item.jobCategory || item.jobCategory === jobCategory.value
     return pathOk && jobOk
   })
@@ -122,8 +122,8 @@ const taskCriteria = computed<PortfolioTitleTaskCriteriaVO[]>(() => {
 const jobOptions = computed(() => {
   const set = new Set<PortfolioTitleJobCategoryCode>()
   for (const item of selectedTask.value?.taskCriteria || []) {
-    const pathOk =
-      item.pathCode === PortfolioTitleCriteriaPathCode.COMMON || item.pathCode === pathCode.value
+    const pathOk
+      = item.pathCode === PortfolioTitleCriteriaPathCode.COMMON || item.pathCode === pathCode.value
     if (pathOk && item.jobCategory) {
       set.add(item.jobCategory)
     }
@@ -135,8 +135,8 @@ const jobOptions = computed(() => {
 })
 const applicationEditable = computed(
   () =>
-    !matchResult.value?.id ||
-    [
+    !matchResult.value?.id
+    || [
       PortfolioTitlePromotionApplicationStatusCode.DRAFT,
       PortfolioTitlePromotionApplicationStatusCode.COLLEGE_RETURNED,
       PortfolioTitlePromotionApplicationStatusCode.HR_RETURNED,
@@ -171,8 +171,8 @@ function recordOptionsForCriteria(criteria: PortfolioTitleTaskCriteriaVO) {
   return records.value
     .filter(
       (item) =>
-        !criteria.evidenceCategoryCode ||
-        categoryCodeById.value[item.categoryId] === criteria.evidenceCategoryCode,
+        !criteria.evidenceCategoryCode
+        || categoryCodeById.value[item.categoryId] === criteria.evidenceCategoryCode,
     )
     .map((item) => ({
       value: item.id,
@@ -197,9 +197,9 @@ function formatGroupHint(criteria: PortfolioTitleTaskCriteriaVO): string | undef
 
 function isEvidenceSelectable(criteria: PortfolioTitleTaskCriteriaVO): boolean {
   return (
-    !criteria.autoEvaluable &&
-    criteria.checkType !== PortfolioTitleCriteriaCheckTypeCode.COMMITMENT_CONFIRMED &&
-    criteria.checkType !== PortfolioTitleCriteriaCheckTypeCode.MANUAL_CHECK
+    !criteria.autoEvaluable
+    && criteria.checkType !== PortfolioTitleCriteriaCheckTypeCode.COMMITMENT_CONFIRMED
+    && criteria.checkType !== PortfolioTitleCriteriaCheckTypeCode.MANUAL_CHECK
   )
 }
 
@@ -250,8 +250,8 @@ function buildEvidenceItems(): PortfolioTitleEvidenceItem[] {
 function applyApplicationToForm(app: PortfolioTitlePromotionApplicationVO) {
   applicationId.value = app.id
   if (
-    app.pathCode === PortfolioTitleCriteriaPathCode.EXCEPTION ||
-    app.pathCode === PortfolioTitleCriteriaPathCode.NORMAL
+    app.pathCode === PortfolioTitleCriteriaPathCode.EXCEPTION
+    || app.pathCode === PortfolioTitleCriteriaPathCode.NORMAL
   ) {
     pathCode.value = app.pathCode
   }
@@ -266,8 +266,8 @@ function applyApplicationToForm(app: PortfolioTitlePromotionApplicationVO) {
       continue
     }
     if (
-      item.evidenceType === PortfolioTitleEvidenceTypeCode.OFFICIAL_RECORD &&
-      item.evidenceRefId
+      item.evidenceType === PortfolioTitleEvidenceTypeCode.OFFICIAL_RECORD
+      && item.evidenceRefId
     ) {
       const list = nextEvidence[item.taskCriteriaId] || []
       list.push(item.evidenceRefId)
@@ -631,9 +631,9 @@ watch(
   async () => {
     const deepTaskId = readRouteStringParam(route.query.taskId)
     if (
-      deepTaskId &&
-      publishedTasks.value.some((item) => item.id === deepTaskId) &&
-      selectedTaskId.value !== deepTaskId
+      deepTaskId
+      && publishedTasks.value.some((item) => item.id === deepTaskId)
+      && selectedTaskId.value !== deepTaskId
     ) {
       suppressTaskWatch.value = true
       selectedTaskId.value = deepTaskId
@@ -783,15 +783,9 @@ usePortfolioScopedLoader(
               <UiTag :tone="matchResult.performancePass ? 'green' : 'orange'">
                 {{ matchResult.performancePass ? '业绩规则通过' : '业绩规则未全部满足' }}
               </UiTag>
-              <span class="promotion-scene__metric"
-                >匹配分 {{ matchResult.matchScore || '-' }}</span
-              >
-              <span class="promotion-scene__metric"
-                >材料 {{ matchResult.materialRate || '-' }}</span
-              >
-              <span class="promotion-scene__metric"
-                >业绩 {{ matchResult.performanceRate || '-' }}</span
-              >
+              <span class="promotion-scene__metric">匹配分 {{ matchResult.matchScore || '-' }}</span>
+              <span class="promotion-scene__metric">材料 {{ matchResult.materialRate || '-' }}</span>
+              <span class="promotion-scene__metric">业绩 {{ matchResult.performanceRate || '-' }}</span>
               <span class="promotion-scene__metric">硬门槛 {{ matchResult.hardRate || '-' }}</span>
               <UiTag
                 v-if="matchResult.lifecycleStatus"
@@ -801,8 +795,8 @@ usePortfolioScopedLoader(
                     ? 'green'
                     : matchResult.lifecycleStatus === 'TEMP_HOLD'
                       ? 'orange'
-                      : matchResult.lifecycleStatus === 'SEALED' ||
-                          matchResult.lifecycleStatus === 'TRANSFERRED'
+                      : matchResult.lifecycleStatus === 'SEALED'
+                        || matchResult.lifecycleStatus === 'TRANSFERRED'
                         ? 'red'
                         : 'gray'
                 "

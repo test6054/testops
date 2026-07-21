@@ -46,22 +46,22 @@
 
 <script setup lang="ts">
 import type { MappingEditableRow } from './ExamQuestionCourseGoalMappingTable.vue'
-import ExamQuestionCourseGoalMappingTable from './ExamQuestionCourseGoalMappingTable.vue'
 import type {
   ExamQuestionCourseGoalMappingWorkspaceVO,
   QualityCourseGoalForMarkVO,
 } from '@/apis/mark/exam-question-course-goal-mapping'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import {
   deleteExamQuestionCourseGoalMapping,
   loadExamQuestionCourseGoalMappingWorkspace,
   saveExamQuestionCourseGoalMapping,
 } from '@/apis/mark/exam-question-course-goal-mapping'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { ExamQuestionCourseGoalMappingStatusCode } from '@/types/enums/exam-question-course-goal-mapping-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import ExamQuestionCourseGoalMappingTable from './ExamQuestionCourseGoalMappingTable.vue'
 
 defineOptions({ name: 'ExamQuestionCourseGoalMappingCard' })
 

@@ -380,6 +380,14 @@ import type {
   AbsentStudentSnapshotResponse,
   AttendanceReconcileResponse,
 } from '@/apis/mark/absence'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ABSENCE_REASON_OPTIONS,
   ABSENCE_REASON_TONE,
@@ -400,15 +408,6 @@ import {
   ScorePolicyCode,
   ScorePolicyDescription,
 } from '@/apis/mark/absence'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { deriveMakeupExam, getExamDetail } from '@/apis/mark/exam'
 import { getScorePanel } from '@/apis/mark/exam-progress'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -436,6 +435,7 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { ExamKindCode } from '@/types/enums/exam-kind-enum'
 import { ExamStatusCode } from '@/types/enums/exam-status-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -591,8 +591,8 @@ function scorePolicyLabel(policy: ScorePolicyCode): string {
 
 function isPendingMakeupRecord(record: AbsenceRecordResponse): boolean {
   return (
-    record.absenceStatus === AbsenceStatusCode.CONFIRMED &&
-    record.scorePolicy === ScorePolicyCode.PENDING_MAKEUP
+    record.absenceStatus === AbsenceStatusCode.CONFIRMED
+    && record.scorePolicy === ScorePolicyCode.PENDING_MAKEUP
   )
 }
 
@@ -743,7 +743,7 @@ async function loadAbsentStudents(): Promise<void> {
   }
 }
 
-function handleAbsentStudentPageChange(page: { current: number; pageSize: number }): void {
+function handleAbsentStudentPageChange(page: { current: number, pageSize: number }): void {
   absentStudentPagination.pageNum = page.current
   absentStudentPagination.pageSize = page.pageSize
   void loadAbsentStudents()
@@ -806,7 +806,7 @@ async function loadRecords(): Promise<void> {
   }
 }
 
-function handleRecordPageChange(page: { current: number; pageSize: number }): void {
+function handleRecordPageChange(page: { current: number, pageSize: number }): void {
   recordPagination.pageNum = page.current
   recordPagination.pageSize = page.pageSize
   void loadRecords()
@@ -873,7 +873,7 @@ function openConfirmModal(studentUserId: string, displayName: string): void {
 const repairingScoreZero = ref(false)
 
 const absenceMoreActionItems = computed(() => {
-  const items: { key: string; label: string; disabled?: boolean }[] = []
+  const items: { key: string, label: string, disabled?: boolean }[] = []
   // MVR-326：派生补考仅主考；仅认 BE canManageOwnerAbsenceMakeup===true
   if (canManageOwnerAbsenceMakeup.value === true && pendingMakeupCount.value > 0) {
     items.push({ key: 'deriveMakeup', label: `派生补考 ${pendingMakeupCount.value}` })
@@ -960,7 +960,7 @@ async function handleConfirm(): Promise<void> {
 const revokeModalOpen = ref(false)
 const revoking = ref(false)
 const revokeTargetName = ref('')
-const revokeForm = reactive<{ studentUserId: string; revokeReason: string }>({
+const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
   studentUserId: '',
   revokeReason: '',
 })
@@ -1039,13 +1039,13 @@ const deriveForm = reactive<{
 const deriveValid = computed(() => {
   const [startTime, endTime] = deriveForm.examWindow ?? []
   return Boolean(
-    deriveForm.academicYear.trim() &&
-    deriveForm.semester &&
-    deriveForm.examName.trim() &&
-    deriveForm.examNo.trim() &&
-    startTime &&
-    endTime &&
-    startTime < endTime,
+    deriveForm.academicYear.trim()
+    && deriveForm.semester
+    && deriveForm.examName.trim()
+    && deriveForm.examNo.trim()
+    && startTime
+    && endTime
+    && startTime < endTime,
   )
 })
 

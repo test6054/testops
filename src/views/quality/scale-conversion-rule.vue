@@ -9,11 +9,11 @@ import type {
   ScaleConversionRuleSignalSummaryVO,
   ScaleConversionRuleVO,
 } from '@/apis/quality/scale-conversion-rule'
-import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import { ALL_SCALE_TYPE_CODES, ScaleTypeCode, ScaleTypeDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -50,7 +50,7 @@ const query = reactive<ScaleConversionRuleQueryRequest>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleTypeCode; label: string }[] = ALL_SCALE_TYPE_CODES.map(
+const scaleTypeOptions: { value: ScaleTypeCode, label: string }[] = ALL_SCALE_TYPE_CODES.map(
   (value) => ({
     value,
     label: strictEnumLabel(ScaleTypeDescription, value, '量表类型'),
@@ -194,7 +194,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()

@@ -115,26 +115,26 @@ import type {
   ExamManualSupplementDeviceItemResponse,
   ExamManualSupplementPaperPageStatusResponse,
 } from '@/apis/mark/manual-supplement'
-import {
-  getManualSupplementPaperPageStatus,
-  listManualSupplementDevices,
-} from '@/apis/mark/manual-supplement'
 import type {
   ExamTeacherScanSupplementPrepareResponse,
   ExamTeacherScanSupplementResponse,
 } from '@/apis/mark/scan-source'
-import { prepareTeacherScanSupplement, teacherSupplementScanSource } from '@/apis/mark/scan-source'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import type {
   ManualSupplementDirectFormModel,
   ManualSupplementSupplementFormModel,
 } from '@/components/mark/manual-supplement/ManualSupplementFormCore.vue'
-import ManualSupplementFormCore from '@/components/mark/manual-supplement/ManualSupplementFormCore.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { getExamDetail } from '@/apis/mark/exam'
 import { getScannerBatchDetail } from '@/apis/mark/exam-scan'
+import {
+  getManualSupplementPaperPageStatus,
+  listManualSupplementDevices,
+} from '@/apis/mark/manual-supplement'
+import { prepareTeacherScanSupplement, teacherSupplementScanSource } from '@/apis/mark/scan-source'
+import ManualSupplementFormCore from '@/components/mark/manual-supplement/ManualSupplementFormCore.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -178,7 +178,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  success: []
+  "success": []
   'continue-next': []
 }>()
 const resolvedContext = ref<ManualSupplementWizardContext | null>(null)
@@ -252,10 +252,10 @@ const targetPageOptions = computed(() => {
     }))
   }
   if (scenario.value === 'missing-page') {
-    const pageNos =
-      activeContext.value?.missingTemplatePageNos ??
-      paperPageStatus.value?.missingTemplatePageNos ??
-      []
+    const pageNos
+      = activeContext.value?.missingTemplatePageNos
+        ?? paperPageStatus.value?.missingTemplatePageNos
+        ?? []
     return pageNos.map((pageNo) => ({
       value: pageNo,
       label: `缺第 ${pageNo} 页`,
@@ -298,10 +298,10 @@ const classScopeWarning = computed(() =>
 
 const submitDisabled = computed(
   () =>
-    declaredClassIds.value.length === 0 ||
-    prepareLoading.value ||
-    prepareContext.value?.canSubmitManualSupplement !== true ||
-    (scenario.value === 'file-import' && webDevices.value.length === 0),
+    declaredClassIds.value.length === 0
+    || prepareLoading.value
+    || prepareContext.value?.canSubmitManualSupplement !== true
+    || (scenario.value === 'file-import' && webDevices.value.length === 0),
 )
 
 const successMessage = computed(() => {
@@ -315,7 +315,7 @@ const successMessage = computed(() => {
 
 function resolveDeviceFromKey(
   deviceKey?: string,
-): { scannerDeviceId: string; scannerStationId: string } | null {
+): { scannerDeviceId: string, scannerStationId: string } | null {
   if (!deviceKey) return null
   const [scannerDeviceId, scannerStationId] = deviceKey.split('::')
   if (!scannerDeviceId || !scannerStationId) return null
@@ -490,9 +490,9 @@ function applyContextDefaults(): void {
     return
   }
   supplementForm.paperInstanceId = ctx.paperInstanceId
-  supplementForm.targetPageNo =
-    ctx.targetPageNo ??
-    (scenario.value === 'missing-page'
+  supplementForm.targetPageNo
+    = ctx.targetPageNo
+      ?? (scenario.value === 'missing-page'
       ? (ctx.missingTemplatePageNos?.[0] ?? targetPageOptions.value[0]?.value)
       : targetPageOptions.value[0]?.value)
   supplementForm.replaceTargetPage = scenario.value === 'replace'

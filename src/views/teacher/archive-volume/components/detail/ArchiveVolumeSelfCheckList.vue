@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ArchiveSelfCheckStatusCode } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted } from 'vue'
 import {
   ARCHIVE_SELF_CHECK_STATUS_TONE,
   ArchiveSelfCheckStatusDescription,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -34,7 +34,7 @@ const props = withDefaults(
   },
 )
 const emit = defineEmits<{
-  refreshed: []
+  "refreshed": []
   'open-sign-off': []
 }>()
 const authStore = useAuthStore()
@@ -91,7 +91,7 @@ async function handleToggle(templateItemId: string, checked: boolean) {
   emit('refreshed')
 }
 
-function handleRowClick(item: { templateItemId: string; checked?: boolean }) {
+function handleRowClick(item: { templateItemId: string, checked?: boolean }) {
   if (props.readonly !== false || checking.value || loadFailed.value) return
   void handleToggle(item.templateItemId, !item.checked)
 }

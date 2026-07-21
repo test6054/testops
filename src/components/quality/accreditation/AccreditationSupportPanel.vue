@@ -4,12 +4,12 @@ import type {
   ProgramSupportProfileSaveRequest,
   ProgramSupportProfileVO,
 } from '@/apis/quality/accreditation'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import type { FacultyProfileSaveRequest, FacultyProfileVO } from '@/apis/quality/faculty-profile'
-import { facultyProfileApi } from '@/apis/quality/faculty-profile'
 import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { accreditationApi } from '@/apis/quality/accreditation'
+import { facultyProfileApi } from '@/apis/quality/faculty-profile'
 import { TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -316,8 +316,8 @@ function validateFacultyForm() {
   }
   if (facultyForm.hasTeachingEthicsTraining !== true) missing.push('师德师风培训完成状态')
   if (
-    typeof facultyForm.ethicsTrainingDate !== 'string' ||
-    !facultyForm.ethicsTrainingDate.trim()
+    typeof facultyForm.ethicsTrainingDate !== 'string'
+    || !facultyForm.ethicsTrainingDate.trim()
   ) {
     missing.push('培训日期')
   }
@@ -325,38 +325,38 @@ function validateFacultyForm() {
     missing.push('承担课程')
   }
   if (
-    typeof facultyForm.teachingEvaluation !== 'string' ||
-    !facultyForm.teachingEvaluation.trim()
+    typeof facultyForm.teachingEvaluation !== 'string'
+    || !facultyForm.teachingEvaluation.trim()
   ) {
     missing.push('教学评价结果')
   }
   if (
-    typeof facultyForm.engineeringPracticeExperience !== 'string' ||
-    !facultyForm.engineeringPracticeExperience.trim()
+    typeof facultyForm.engineeringPracticeExperience !== 'string'
+    || !facultyForm.engineeringPracticeExperience.trim()
   ) {
     missing.push('工程实践经历')
   }
   if (
-    typeof facultyForm.engineeringAbilityEvidence !== 'string' ||
-    !facultyForm.engineeringAbilityEvidence.trim()
+    typeof facultyForm.engineeringAbilityEvidence !== 'string'
+    || !facultyForm.engineeringAbilityEvidence.trim()
   ) {
     missing.push('工程能力支撑证据')
   }
   if (
-    typeof facultyForm.teacherDevelopmentRecord !== 'string' ||
-    !facultyForm.teacherDevelopmentRecord.trim()
+    typeof facultyForm.teacherDevelopmentRecord !== 'string'
+    || !facultyForm.teacherDevelopmentRecord.trim()
   ) {
     missing.push('教师发展记录')
   }
   if (
-    typeof facultyForm.teachingReformContribution !== 'string' ||
-    !facultyForm.teachingReformContribution.trim()
+    typeof facultyForm.teachingReformContribution !== 'string'
+    || !facultyForm.teachingReformContribution.trim()
   ) {
     missing.push('教学改革与持续改进记录')
   }
   if (
-    typeof facultyForm.graduationDesignGuidance !== 'string' ||
-    !facultyForm.graduationDesignGuidance.trim()
+    typeof facultyForm.graduationDesignGuidance !== 'string'
+    || !facultyForm.graduationDesignGuidance.trim()
   ) {
     missing.push('毕业设计或工程项目指导情况')
   }
@@ -443,7 +443,7 @@ function resetFacultyFilters() {
   loadFacultyProfiles()
 }
 
-function handleFacultyPageChange(pageEvent: { current: number; pageSize: number }) {
+function handleFacultyPageChange(pageEvent: { current: number, pageSize: number }) {
   facultyQuery.pageNum = pageEvent.current
   facultyQuery.pageSize = pageEvent.pageSize
   loadFacultyProfiles()
@@ -481,8 +481,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
             <span
               v-if="profile?.profileStatus === ProgramSupportProfileStatusCode.CONFIRMED"
               class="confirmed"
-              >已确认</span
-            >
+            >已确认</span>
             <span v-else-if="profile" class="draft">草稿</span>
             <span v-else class="draft">尚未建档</span>
             <div class="actions">

@@ -43,18 +43,18 @@
 
 <script lang="ts" setup>
 import type { GradingExperienceAssistCandidateResponse } from '@/apis/mark/grading-experience-assist'
+import type { ExperienceRecommendationCode } from '@/types/enums/experience-recommendation-enum'
+import message from 'ant-design-vue/es/message'
+import { ref, watch } from 'vue'
 import {
   listExamExperienceAssistCandidates,
   saveExamExperienceAssistBinding,
 } from '@/apis/mark/grading-experience-assist'
-import type { ExperienceRecommendationCode } from '@/types/enums/experience-recommendation-enum'
-import { ExperienceRecommendationDescription } from '@/types/enums/experience-recommendation-enum'
-import message from 'ant-design-vue/es/message'
-import { ref, watch } from 'vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import { ExperienceRecommendationDescription } from '@/types/enums/experience-recommendation-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 

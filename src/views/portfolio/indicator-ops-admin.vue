@@ -13,19 +13,18 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_IMPACT_REPORT_STATUS_TONE,
   PF_SCORE_RULE_TYPE_OPTIONS,
   PfImpactReportStatusDescription,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { defaultTemplateParams } from '@/utils/indicator-template-params'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -44,6 +43,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { defaultTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -248,9 +248,9 @@ async function runSnapshotCompute() {
   try {
     const result = await portfolioIndicatorTenantApi.computeSnapshot(request)
     if (
-      snapshotForm.snapshotId.trim() !== request.snapshotId ||
-      snapshotForm.teacherId.trim() !== request.teacherId ||
-      snapshotForm.indicatorCode.trim() !== request.indicatorCode
+      snapshotForm.snapshotId.trim() !== request.snapshotId
+      || snapshotForm.teacherId.trim() !== request.teacherId
+      || snapshotForm.indicatorCode.trim() !== request.indicatorCode
     ) {
       return
     }
@@ -479,7 +479,7 @@ async function loadCollectPage() {
   }
 }
 
-function handleCollectPageChange(event: { current: number; pageSize: number }) {
+function handleCollectPageChange(event: { current: number, pageSize: number }) {
   collectPageNum.value = event.current
   collectPageSize.value = event.pageSize
   void loadCollectPage()
@@ -501,7 +501,7 @@ function onTabChange(key: string | number) {
   }
 }
 
-function handlePageChange(event: { current: number; pageSize: number }) {
+function handlePageChange(event: { current: number, pageSize: number }) {
   pageQuery.pageNum = event.current
   pageQuery.pageSize = event.pageSize
   if (activeTab.value === 'compute-log') {

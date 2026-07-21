@@ -36,12 +36,12 @@ const form = reactive<{
 })
 
 const formTeacherId = computed(() => form.teacherUserId || undefined)
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } =
-  useQueryTable(portfolioTeacherSalaryApi.page, {
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
+  = useQueryTable(portfolioTeacherSalaryApi.page, {
     onLoaded: (list) => {
       void hydrateTeacherLabels(list.map((row) => row.teacherUserId ?? ''))
     },

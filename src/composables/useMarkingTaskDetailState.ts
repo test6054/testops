@@ -1,22 +1,11 @@
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
-import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import {
-  AI_ABILITY_TONE,
-  AI_EXECUTION_STATUS_TONE,
-  AiAbilityDescription,
-  AiExecutionStatusDescription,
-  listAiExecutionsForQuestion,
-  rescoreQuestionByAi,
-} from '@/apis/mark/exam-grade'
 import type { QualityDecisionCode } from '@/apis/mark/exam-scan'
-import { QUALITY_DECISION_TONE, QualityDecisionDescription } from '@/apis/mark/exam-scan'
 import type { PaperInstanceDisplayVO } from '@/apis/mark/exam-score'
 import type { MarkAiReferenceExperienceAuditResponse } from '@/apis/mark/grading-experience-assist'
 import type {
@@ -26,6 +15,24 @@ import type {
   MarkingTaskSubmittedQuestionScoreResponse,
   QuestionMarkingGroupQuestionResponse,
 } from '@/apis/mark/marking-organization'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
+import message from 'ant-design-vue/es/message'
+import { storeToRefs } from 'pinia'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
+import { getExamDetail } from '@/apis/mark/exam'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
+import {
+  AI_ABILITY_TONE,
+  AI_EXECUTION_STATUS_TONE,
+  AiAbilityDescription,
+  AiExecutionStatusDescription,
+  listAiExecutionsForQuestion,
+  rescoreQuestionByAi,
+} from '@/apis/mark/exam-grade'
+import { QUALITY_DECISION_TONE, QualityDecisionDescription } from '@/apis/mark/exam-scan'
 import {
   AllocationUnitCode,
   AllocationUnitDescription,
@@ -35,13 +42,6 @@ import {
   MarkingTaskStatusCode,
   MarkingTaskStatusDescription,
 } from '@/apis/mark/marking-organization'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { GradingExperienceReferenceMatchModeCode } from '@/types/enums/grading-experience-reference-match-mode-enum'
-import message from 'ant-design-vue/es/message'
-import { storeToRefs } from 'pinia'
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
   MarkingTaskStreamEventTypeCode,
   MarkingTaskStreamSubscribeScopeCode,
@@ -104,8 +104,8 @@ function scanPageQualityTone(status: QualityDecisionCode): BadgeTone {
 
 function resolvePaperInstanceId(display: PaperInstanceDisplayVO): string | undefined {
   if (
-    display.displayMode === PaperInstanceDisplayModeCode.REAL_NAME ||
-    display.displayMode === PaperInstanceDisplayModeCode.ANONYMOUS
+    display.displayMode === PaperInstanceDisplayModeCode.REAL_NAME
+    || display.displayMode === PaperInstanceDisplayModeCode.ANONYMOUS
   ) {
     return display.paperInstanceId
   }
@@ -137,7 +137,7 @@ export function useMarkingTaskDetailState() {
   const sessionPausedAlert = ref(false)
   const withdrawToastVisible = ref(false)
   let withdrawToastTimer: ReturnType<typeof setTimeout> | null = null
-  const form = reactive<{ score?: number; annotationNote?: string }>({
+  const form = reactive<{ score?: number, annotationNote?: string }>({
     score: undefined,
     annotationNote: '',
   })
@@ -158,16 +158,16 @@ export function useMarkingTaskDetailState() {
    */
   const isScoreReadOnly = computed(
     () =>
-      isReadOnly.value ||
-      taskRecycledBlocked.value ||
-      examDetail.value?.status !== ExamStatusCode.ACTIVE,
+      isReadOnly.value
+      || taskRecycledBlocked.value
+      || examDetail.value?.status !== ExamStatusCode.ACTIVE,
   )
   const isWholePaperTask = computed(() => task.value?.taskUnit === AllocationUnitCode.WHOLE_PAPER)
   const usesWholePaperWorkspace = computed(
     () =>
-      task.value?.taskUnit === AllocationUnitCode.WHOLE_PAPER ||
-      task.value?.taskUnit === AllocationUnitCode.SELECTED_QUESTIONS ||
-      task.value?.taskUnit === AllocationUnitCode.RANDOM_QUESTIONS,
+      task.value?.taskUnit === AllocationUnitCode.WHOLE_PAPER
+      || task.value?.taskUnit === AllocationUnitCode.SELECTED_QUESTIONS
+      || task.value?.taskUnit === AllocationUnitCode.RANDOM_QUESTIONS,
   )
   const canSubmit = computed(() => {
     if (taskRecycledBlocked.value) return false
@@ -305,8 +305,8 @@ export function useMarkingTaskDetailState() {
         return
       }
       if (
-        event.eventType === MarkingTaskStreamEventTypeCode.TASK_RECYCLED &&
-        event.taskId === taskId.value
+        event.eventType === MarkingTaskStreamEventTypeCode.TASK_RECYCLED
+        && event.taskId === taskId.value
       ) {
         taskRecycledBlocked.value = true
         if (task.value && event.taskStatus) {
@@ -331,9 +331,9 @@ export function useMarkingTaskDetailState() {
         return
       }
       if (
-        event.eventType === MarkingTaskStreamEventTypeCode.TASK_WITHDRAWN &&
-        event.taskId === taskId.value &&
-        task.value
+        event.eventType === MarkingTaskStreamEventTypeCode.TASK_WITHDRAWN
+        && event.taskId === taskId.value
+        && task.value
       ) {
         task.value = { ...task.value, taskStatus: MarkingTaskStatusCode.IN_PROGRESS }
         taskRecycledBlocked.value = false

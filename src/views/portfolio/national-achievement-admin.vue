@@ -5,14 +5,14 @@ import type {
   PortfolioNationalAchievementCatalogVO,
   PortfolioNationalAchievementRequirementSaveItem,
 } from '@/apis/portfolio/national-achievement'
+import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref } from 'vue'
 import {
   PortfolioAchievementEvidenceTypeCode,
   PortfolioAchievementEvidenceTypeDescription,
   portfolioNationalAchievementApi,
 } from '@/apis/portfolio/national-achievement'
-import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -540,10 +540,9 @@ void loadCatalogs()
             />
           </UiFormItem>
           <div class="achievement-admin__requirements-head">
-            <strong>标准要求（权重合计 100）</strong
-            ><UiButton variant="primary" size="sm" :disabled="operating" @click="addRequirement"
-              >新增要求</UiButton
-            >
+            <strong>标准要求（权重合计 100）</strong><UiButton variant="primary" size="sm" :disabled="operating" @click="addRequirement">
+              新增要求
+            </UiButton>
           </div>
           <div
             v-for="(requirement, index) in form.requirements"

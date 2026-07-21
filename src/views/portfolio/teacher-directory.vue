@@ -5,17 +5,7 @@ import type {
   PortfolioTeacherLifecycleEventVO,
   PortfolioTeacherLifecycleStateVO,
 } from '@/apis/portfolio/teacher-lifecycle'
-import {
-  PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
-  PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
-  portfolioTeacherLifecycleApi,
-} from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioIndustryMentorContributionVO } from '@/apis/portfolio/teacher-platform'
-import {
-  portfolioExternalTeacherApi,
-  portfolioTeacherLibraryApi,
-  portfolioTeacherSalaryApi,
-} from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioCompletenessLevelCode,
   PortfolioTeacherDetailVO,
@@ -26,7 +16,6 @@ import type {
 } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
-import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -42,6 +31,16 @@ import {
   PortfolioTeacherIdentityTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import {
+  PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
+  PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
+  portfolioTeacherLifecycleApi,
+} from '@/apis/portfolio/teacher-lifecycle'
+import {
+  portfolioExternalTeacherApi,
+  portfolioTeacherLibraryApi,
+  portfolioTeacherSalaryApi,
+} from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -61,6 +60,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -363,7 +363,7 @@ function handleSearch() {
   loadPage()
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadPage()
@@ -444,8 +444,8 @@ function hasActiveExternalIdentity(identities: PortfolioTeacherIdentityVO[] | un
   }
   return identities.some(
     (item) =>
-      item.identityStatus === PortfolioTeacherIdentityStatusCode.ACTIVE &&
-      PORTFOLIO_EXTERNAL_IDENTITY_TYPES.has(item.identityType),
+      item.identityStatus === PortfolioTeacherIdentityStatusCode.ACTIVE
+      && PORTFOLIO_EXTERNAL_IDENTITY_TYPES.has(item.identityType),
   )
 }
 
@@ -503,8 +503,8 @@ async function loadIndustryMentorContribution(
       return
     }
     industryMentorContribution.value = null
-    industryMentorContributionError.value =
-      error instanceof Error ? error.message : '加载产业导师贡献度失败'
+    industryMentorContributionError.value
+      = error instanceof Error ? error.message : '加载产业导师贡献度失败'
   }
 }
 
@@ -560,7 +560,7 @@ async function reloadDetail() {
   }
 }
 
-function openIdentityCreate(context: { userId: string; nickName?: string; departmentId?: string }) {
+function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
   if (interactionLocked.value) return
   if (!assertCurrentTeacherArchiveWritable('新增教师身份')) return
   identityMode.value = 'create'
@@ -609,9 +609,9 @@ async function submitIdentity() {
     return
   }
   if (
-    identityEditor.validFrom &&
-    identityEditor.validTo &&
-    identityEditor.validFrom > identityEditor.validTo
+    identityEditor.validFrom
+    && identityEditor.validTo
+    && identityEditor.validFrom > identityEditor.validTo
   ) {
     showFormValidationMessage('有效截止日期不能早于有效起始日期')
     return
@@ -692,9 +692,9 @@ const lifecycleStatusLabel = computed(() => {
     return '—'
   }
   return (
-    lifecycleState.value?.lifecycleStatusLabel ||
-    PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL[status] ||
-    status
+    lifecycleState.value?.lifecycleStatusLabel
+    || PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL[status]
+    || status
   )
 })
 

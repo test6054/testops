@@ -115,9 +115,9 @@ export function useMarkingRecentSubmit() {
           return task
         } catch (error) {
           lastError = error
-          const canRetry =
-            isWithdrawScoreConfirmLockConflict(error) &&
-            attempt < WITHDRAW_LOCK_RETRY_DELAYS_MS.length
+          const canRetry
+            = isWithdrawScoreConfirmLockConflict(error)
+              && attempt < WITHDRAW_LOCK_RETRY_DELAYS_MS.length
           if (!canRetry) {
             break
           }

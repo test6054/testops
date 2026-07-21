@@ -2,12 +2,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
 import type { PortfolioExternalTeacherImportBatchStatusCode } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
-  PortfolioExternalTeacherDataStatusCode,
-  PortfolioExternalTeacherDataStatusDescription,
-  PortfolioExternalTeacherImportBatchStatusDescription,
-} from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
   PortfolioExternalTeacherPageRequest,
@@ -16,11 +10,17 @@ import type {
   PortfolioExternalTeacherVO,
   PortfolioIndustryMentorContributionVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import {
+  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
+  PortfolioExternalTeacherDataStatusCode,
+  PortfolioExternalTeacherDataStatusDescription,
+  PortfolioExternalTeacherImportBatchStatusDescription,
+} from '@/apis/portfolio/enums'
+import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -74,8 +74,8 @@ const importModalOpen = ref(false)
 type ExternalTeacherFilters = Pick<
   PortfolioExternalTeacherPageRequest,
   'dataStatus' | 'teachSubject' | 'teacherSource' | 'contractStatus'
-> &
-  Record<string, unknown>
+>
+& Record<string, unknown>
 
 const {
   loading,

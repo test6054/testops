@@ -5,6 +5,9 @@ import type {
   AnnualReportMaterialSaveRequest,
   AnnualReportMaterialVO,
 } from '@/apis/quality/accreditation'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   accreditationApi,
   ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES,
@@ -16,9 +19,6 @@ import {
   AnnualReportMaterialStatusCode,
   AnnualReportMaterialStatusDescription,
 } from '@/apis/quality/accreditation'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -50,8 +50,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{ refresh: [] }>()
 
-const MATERIAL_STATUS_OPTIONS: { label: string; value: AnnualReportMaterialStatusCode }[] =
-  ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES.map((value) => ({
+const MATERIAL_STATUS_OPTIONS: { label: string, value: AnnualReportMaterialStatusCode }[]
+  = ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(AnnualReportMaterialStatusDescription, value, '年报材料状态'),
   }))
@@ -122,17 +122,17 @@ const canMutateMaterial = computed(() => canMutateAnnualReportMaterial(props.act
 
 function canEdit(record: AnnualReportMaterialVO) {
   return (
-    canMutateMaterial.value &&
-    (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT ||
-      record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
+    canMutateMaterial.value
+    && (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT
+      || record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
   )
 }
 
 function canSubmit(record: AnnualReportMaterialVO) {
   return (
-    canMutateMaterial.value &&
-    (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT ||
-      record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
+    canMutateMaterial.value
+    && (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT
+      || record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
   )
 }
 
@@ -321,8 +321,8 @@ function openReview(record: AnnualReportMaterialVO, status: AnnualReportMaterial
     void message.error('仅已提交材料可审核')
     return
   }
-  reviewDrawerTitle.value =
-    status === AnnualReportMaterialReviewStatusCode.APPROVED
+  reviewDrawerTitle.value
+    = status === AnnualReportMaterialReviewStatusCode.APPROVED
       ? '审核通过年度报备材料'
       : '退回年度报备材料'
   reviewForm.id = record.id
@@ -341,8 +341,8 @@ async function submitReview() {
     return
   }
   if (
-    reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED &&
-    !reviewForm.reviewComment.trim()
+    reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED
+    && !reviewForm.reviewComment.trim()
   ) {
     void message.error('退回材料必须填写审核意见')
     return
@@ -417,7 +417,7 @@ function resetFilters() {
   loadMaterials()
 }
 
-function handlePageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePageChange(pageEvent: { current: number, pageSize: number }) {
   query.pageNum = pageEvent.current
   query.pageSize = pageEvent.pageSize
   loadMaterials()

@@ -37,12 +37,12 @@
 
 <script lang="ts" setup>
 import type { ExamGradingExperienceAssistPolicyResponse } from '@/apis/mark/grading-experience-assist'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   enableExamGradingExperienceAssistPolicy,
   saveExamGradingExperienceAssistPolicy,
 } from '@/apis/mark/grading-experience-assist'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -135,8 +135,8 @@ async function handleConfirm(): Promise<void> {
     maxExperienceItems: form.maxExperienceItems,
   }
   try {
-    const policy =
-      props.mode === 'edit'
+    const policy
+      = props.mode === 'edit'
         ? await saveExamGradingExperienceAssistPolicy(payload)
         : await enableExamGradingExperienceAssistPolicy(payload)
     void message.success(props.mode === 'edit' ? '本场定标阈值已保存' : '已启用本场经验辅助评阅')

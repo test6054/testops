@@ -3,28 +3,14 @@ import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import { getExamDetail } from '@/apis/mark/exam'
 import type { ExamScoreSummaryItemResponse } from '@/apis/mark/exam-score'
-import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import type { MarkOcrConfigResponse } from '@/apis/mark/ocr-config'
-import {
-  checkMarkOcrHealth,
-  getCurrentMarkOcrConfig,
-  saveMarkOcrConfig,
-} from '@/apis/mark/ocr-config'
 import type { PaddleOcrInstanceResponse } from '@/apis/mark/ocr-paddle-instance'
-import { pagePaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
 import type {
   MarkOcrPlatformProviderResponse,
   MarkOcrPlatformProviderSaveRequest,
 } from '@/apis/mark/ocr-platform-provider'
-import {
-  checkMarkOcrPlatformProviderHealth,
-  listMarkOcrPlatformProviders,
-  saveMarkOcrPlatformProvider,
-} from '@/apis/mark/ocr-platform-provider'
 import type { MarkOcrPaperSliceVO, MarkOcrRecognizeResponse } from '@/apis/mark/ocr-recognition'
-import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
 import type { SignalMetric } from '@/types/workbench'
 import ApiOutlined from '@ant-design/icons-vue/ApiOutlined'
 import ClusterOutlined from '@ant-design/icons-vue/ClusterOutlined'
@@ -32,8 +18,22 @@ import ExperimentOutlined from '@ant-design/icons-vue/ExperimentOutlined'
 import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { getExamDetail } from '@/apis/mark/exam'
 import { BindingStatusCode, BindingStatusDescription } from '@/apis/mark/exam-binding'
+import { pageExamScoreSummary } from '@/apis/mark/exam-score'
 import { FinalScoreStatusDescription } from '@/apis/mark/final-score-status'
+import {
+  checkMarkOcrHealth,
+  getCurrentMarkOcrConfig,
+  saveMarkOcrConfig,
+} from '@/apis/mark/ocr-config'
+import { pagePaddleOcrInstances } from '@/apis/mark/ocr-paddle-instance'
+import {
+  checkMarkOcrPlatformProviderHealth,
+  listMarkOcrPlatformProviders,
+  saveMarkOcrPlatformProvider,
+} from '@/apis/mark/ocr-platform-provider'
+import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
 import {
   MARK_OCR_HEALTH_STATUS_TONE,
   MARK_OCR_PAPER_CUT_CAPABILITY,
@@ -277,11 +277,11 @@ const paperCutCapability = computed(() => {
 
 const canRecognize = computed(() =>
   Boolean(
-    ocrDebugReady.value &&
-    currentConfig.value?.providerType &&
-    currentConfig.value.enabled &&
-    debugForm.value.paperInstanceId &&
-    debugForm.value.responseSliceId,
+    ocrDebugReady.value
+    && currentConfig.value?.providerType
+    && currentConfig.value.enabled
+    && debugForm.value.paperInstanceId
+    && debugForm.value.responseSliceId,
   ),
 )
 const currentPaperSlice = computed(() =>
@@ -490,10 +490,10 @@ function openPlatformProviderEditor(record: MarkOcrPlatformProviderResponse): vo
   platformProviderEditor.ocrEndpoint = record.ocrEndpoint || ''
   platformProviderEditor.handwritingEndpoint = record.handwritingEndpoint || ''
   platformProviderEditor.docAnalysisEndpoint = record.docAnalysisEndpoint || ''
-  platformProviderEditor.handwritingCompositionCreateTaskEndpoint =
-    record.handwritingCompositionCreateTaskEndpoint || ''
-  platformProviderEditor.handwritingCompositionGetResultEndpoint =
-    record.handwritingCompositionGetResultEndpoint || ''
+  platformProviderEditor.handwritingCompositionCreateTaskEndpoint
+    = record.handwritingCompositionCreateTaskEndpoint || ''
+  platformProviderEditor.handwritingCompositionGetResultEndpoint
+    = record.handwritingCompositionGetResultEndpoint || ''
   platformProviderEditorVisible.value = true
 }
 

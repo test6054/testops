@@ -464,6 +464,23 @@ import type {
   GradingExperienceStatsResponse,
   QuestionSignatureResponse,
 } from '@/apis/mark/grading-experience'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import {
+  AI_ANALYSIS_FLOW_HINT,
+  AI_ANALYSIS_STATUS_TONE,
+  AiAnalysisStatusCode,
+  AiAnalysisStatusDescription,
+} from '@/apis/mark/ai-analysis-status'
 import {
   confirmExperienceCase,
   deprecateExperienceCase,
@@ -481,24 +498,7 @@ import {
   pageSignatures,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
-import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
-import type {
-  BadgeTone,
-  FilterField,
-  UiSectionTabItem,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import {
-  AI_ANALYSIS_FLOW_HINT,
-  AI_ANALYSIS_STATUS_TONE,
-  AiAnalysisStatusCode,
-  AiAnalysisStatusDescription,
-} from '@/apis/mark/ai-analysis-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -881,18 +881,18 @@ const deprecatingExperience = ref(false)
 
 const canConfirmExperience = computed(
   () =>
-    canManageExperienceCaseLifecycle.value &&
-    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT &&
-    detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
-    Boolean(detailExperience.value?.id),
+    canManageExperienceCaseLifecycle.value
+    && detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT
+    && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
+    && Boolean(detailExperience.value?.id),
 )
 
 const canDeprecateExperience = computed(
   () =>
-    canManageExperienceCaseLifecycle.value &&
-    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED &&
-    detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
-    Boolean(detailExperience.value?.id),
+    canManageExperienceCaseLifecycle.value
+    && detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED
+    && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
+    && Boolean(detailExperience.value?.id),
 )
 
 async function handleConfirmExperience(): Promise<void> {

@@ -1,14 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationRereviewOrderVO } from '@/apis/portfolio/evaluation-publicity'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import type {
   PortfolioEvaluationTaskVO,
   PortfolioEvaluationWorkgroupOptionVO,
-} from '@/apis/portfolio/teacher-platform'
-import {
-  portfolioEvaluationTaskApi,
-  portfolioEvaluationWorkgroupApi,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
@@ -26,6 +21,11 @@ import {
   PortfolioEvaluationTaskStatusCode,
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import {
+  portfolioEvaluationTaskApi,
+  portfolioEvaluationWorkgroupApi,
+} from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -58,9 +58,9 @@ const ADVANCE_ACTIONS: Partial<
 
 function canArchiveTask(task: PortfolioEvaluationTaskVO): boolean {
   return (
-    (task.taskStatus === PortfolioEvaluationTaskStatusCode.PUBLICITY ||
-      task.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING) &&
-    task.publicityExpiredAwaitingArchive === true
+    (task.taskStatus === PortfolioEvaluationTaskStatusCode.PUBLICITY
+      || task.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING)
+    && task.publicityExpiredAwaitingArchive === true
   )
 }
 
@@ -128,13 +128,13 @@ const workgroupsLoading = ref(false)
 const workgroups = ref<PortfolioEvaluationWorkgroupOptionVO[]>([])
 const writing = computed(
   () =>
-    creating.value ||
-    Boolean(advancingId.value) ||
-    Boolean(archivingId.value) ||
-    publishing.value ||
-    completeRereviewSubmitting.value ||
-    cancelRereviewSubmitting.value ||
-    completeRereviewLoading.value,
+    creating.value
+    || Boolean(advancingId.value)
+    || Boolean(archivingId.value)
+    || publishing.value
+    || completeRereviewSubmitting.value
+    || cancelRereviewSubmitting.value
+    || completeRereviewLoading.value,
 )
 const publishForm = reactive({
   publicityTitle: '',
@@ -252,8 +252,8 @@ async function applyDeepLinkedTask(taskId: string) {
   }
   scrollToHighlightedTask()
   if (
-    !autoOpenedCompleteRereview.value &&
-    matched.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW
+    !autoOpenedCompleteRereview.value
+    && matched.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW
   ) {
     autoOpenedCompleteRereview.value = true
     await openCompleteRereview(matched)
@@ -301,17 +301,17 @@ async function submitCreateTask() {
     return
   }
   if (
-    !createForm.taskName.trim() ||
-    !createForm.workgroupId ||
-    !createForm.startTime ||
-    !createForm.endTime
+    !createForm.taskName.trim()
+    || !createForm.workgroupId
+    || !createForm.startTime
+    || !createForm.endTime
   ) {
     showFormValidationMessage('请填写任务名称、工作组和评价时间窗')
     return
   }
   if (
-    createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON &&
-    !createForm.targetIndicatorCode.trim()
+    createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
+    && !createForm.targetIndicatorCode.trim()
   ) {
     showFormValidationMessage('按人评价须填写画像回流目标指标编码')
     return
@@ -386,9 +386,9 @@ async function advanceTask(
   } catch (error) {
     const errText = error instanceof Error ? error.message : String(error ?? '')
     if (
-      action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY &&
-      !forceDespiteScoreVariance &&
-      (errText.includes('评分 max-min') || errText.includes('forceDespiteScoreVariance'))
+      action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY
+      && !forceDespiteScoreVariance
+      && (errText.includes('评分 max-min') || errText.includes('forceDespiteScoreVariance'))
     ) {
       const confirmed = await confirmAsync({
         title: '评分离散过大，是否强制进入结果汇总？',

@@ -4,22 +4,22 @@ import type {
   ArchiveMaterialCatalogTemplateResponse,
   ArchiveTenantTemplateSetResponse,
 } from '@/apis/mark/archive-platform-template'
-import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeStartCollectingCheckItem,
   ArchiveVolumeStartCollectingPrecheckResponse,
   ArchiveVolumeTaskSettingsUpdateRequest,
 } from '@/apis/mark/archive-volume'
+import type { UiSelectOption } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
+import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import {
   precheckArchiveStartCollecting,
   startArchiveCollecting,
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
-import type { UiSelectOption } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -89,11 +89,11 @@ const warnCount = computed(
 const readyCount = computed(() => readinessRows.value.filter((row) => row.ready).length)
 const canCommit = computed(
   () =>
-    isDraft.value &&
-    props.canStartCollecting === true &&
-    precheck.value?.canStart === true &&
-    blockingCount.value === 0 &&
-    !precheckError.value,
+    isDraft.value
+    && props.canStartCollecting === true
+    && precheck.value?.canStart === true
+    && blockingCount.value === 0
+    && !precheckError.value,
 )
 
 const templateSetOptions = computed((): UiSelectOption[] =>

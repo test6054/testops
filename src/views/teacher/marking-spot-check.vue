@@ -176,6 +176,10 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { MyPendingSpotCheckItemResponse } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import {
   countMyPendingSpotChecks,
   handleSpotCheck,
@@ -185,10 +189,6 @@ import {
   SpotCheckStatusCode,
   SpotCheckStatusDescription,
 } from '@/apis/mark/marking-quality'
-import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
@@ -284,7 +284,7 @@ async function loadList(): Promise<void> {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }): void {
+function handlePageChange(page: { current: number, pageSize: number }): void {
   pagination.pageNum = page.current
   pagination.pageSize = page.pageSize
   void loadList()
@@ -335,8 +335,8 @@ const valid = computed(() => Boolean(targetItem.value?.id && form.conclusion))
  */
 function canHandleSpotCheckItem(item: MyPendingSpotCheckItemResponse): boolean {
   if (
-    item.spotCheckStatus !== SpotCheckStatusCode.PENDING &&
-    item.spotCheckStatus !== SpotCheckStatusCode.IN_PROGRESS
+    item.spotCheckStatus !== SpotCheckStatusCode.PENDING
+    && item.spotCheckStatus !== SpotCheckStatusCode.IN_PROGRESS
   ) {
     return false
   }

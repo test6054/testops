@@ -4,9 +4,9 @@ import type {
   PortfolioTeachingPhilosophySaveRequest,
   PortfolioTeachingPhilosophyVO,
 } from '@/apis/portfolio/teaching-philosophy'
-import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
+import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -32,8 +32,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const saving = ref(false)

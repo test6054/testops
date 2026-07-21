@@ -5,15 +5,12 @@ import type {
   ProcessEvaluationNodeUpdateRequest,
   ProcessEvaluationNodeVO,
 } from '@/apis/quality/process-evaluation'
-import { processNodeApi } from '@/apis/quality/process-evaluation'
 import type {
   ProcessEvaluationRecordSaveRequest,
   ProcessEvaluationRecordUpdateRequest,
   ProcessEvaluationRecordVO,
 } from '@/apis/quality/process-evaluation-record'
-import { processRecordApi } from '@/apis/quality/process-evaluation-record'
 import type { ProcessEvaluationSignalSummaryVO } from '@/apis/quality/workbench'
-import { workbenchApi } from '@/apis/quality/workbench'
 /**
  * 过程性评价节点配置 + 节点记录管理
  *
@@ -33,6 +30,8 @@ import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { processNodeApi } from '@/apis/quality/process-evaluation'
+import { processRecordApi } from '@/apis/quality/process-evaluation-record'
 import {
   CONFIRMATION_STATUS_COLOR,
   CONFIRMATION_STATUS_TRANSIT_MAP,
@@ -44,6 +43,7 @@ import {
   ProcessNodeTypeCode,
   ProcessNodeTypeDescription,
 } from '@/apis/quality/types'
+import { workbenchApi } from '@/apis/quality/workbench'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityIngestPageShell from '@/components/quality/QualityIngestPageShell.vue'
@@ -126,8 +126,8 @@ function isNodeMutable(node: ProcessEvaluationNodeVO): boolean {
 
 function isRecordMutable(record: ProcessEvaluationRecordVO): boolean {
   return (
-    record.confirmationStatus === ConfirmationStatusCode.DRAFT ||
-    record.confirmationStatus === ConfirmationStatusCode.RETURNED
+    record.confirmationStatus === ConfirmationStatusCode.DRAFT
+    || record.confirmationStatus === ConfirmationStatusCode.RETURNED
   )
 }
 
@@ -184,7 +184,7 @@ async function loadNodes() {
   }
 }
 
-function handleNodePageChange(page: { current: number; pageSize: number }) {
+function handleNodePageChange(page: { current: number, pageSize: number }) {
   nodePageNum.value = page.current
   nodePageSize.value = page.pageSize
   void loadNodes()
@@ -432,7 +432,7 @@ async function loadRecords() {
   }
 }
 
-function handleRecordPageChange(page: { current: number; pageSize: number }) {
+function handleRecordPageChange(page: { current: number, pageSize: number }) {
   recordPageNum.value = page.current
   recordPageSize.value = page.pageSize
   void loadRecords()
@@ -687,7 +687,7 @@ function handleProcessRecordAction(key: string, record: ProcessEvaluationRecordV
 const importExcelVisible = ref(false)
 const importConfirmationStatus = ref<ConfirmationStatusCode>(ConfirmationStatusCode.SUBMITTED)
 
-const importConfirmationStatusOptions: { label: string; value: ConfirmationStatusCode }[] = [
+const importConfirmationStatusOptions: { label: string, value: ConfirmationStatusCode }[] = [
   { label: ConfirmationStatusDescription.DRAFT, value: ConfirmationStatusCode.DRAFT },
   { label: ConfirmationStatusDescription.SUBMITTED, value: ConfirmationStatusCode.SUBMITTED },
   { label: ConfirmationStatusDescription.CONFIRMED, value: ConfirmationStatusCode.CONFIRMED },
@@ -790,7 +790,7 @@ async function queryConfirmedByGoal() {
   }
 }
 
-function handleConfirmedByGoalPageChange(page: { current: number; pageSize: number }) {
+function handleConfirmedByGoalPageChange(page: { current: number, pageSize: number }) {
   confirmedByGoalPageNum.value = page.current
   confirmedByGoalPageSize.value = page.pageSize
   void queryConfirmedByGoal()

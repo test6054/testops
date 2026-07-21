@@ -7,11 +7,13 @@ import type {
   AccreditationCycleVO,
   AccreditationEvidenceVO,
 } from '@/apis/quality/accreditation'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import type {
   SelfAssessmentSectionEvidenceRefItem,
   SelfAssessmentSectionVO,
 } from '@/apis/quality/self-assessment-section'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import {
   SELF_ASSESSMENT_SECTION_CONTENT_STATUS_TONE,
   selfAssessmentSectionApi,
@@ -19,8 +21,6 @@ import {
   SelfAssessmentSectionEvidenceRefTypeCode,
   SelfAssessmentSectionKeyCode,
 } from '@/apis/quality/self-assessment-section'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiSearchBox from '@/components/ui-guide/ui/SearchBox.vue'
@@ -217,8 +217,8 @@ async function openEvidenceDrawer() {
   selectedEvidenceIds.value = editor.evidenceRefs
     .filter(
       (item) =>
-        item.refType === SelfAssessmentSectionEvidenceRefTypeCode.ACCREDITATION_EVIDENCE &&
-        item.accreditationEvidenceId,
+        item.refType === SelfAssessmentSectionEvidenceRefTypeCode.ACCREDITATION_EVIDENCE
+        && item.accreditationEvidenceId,
     )
     .map((item) => item.accreditationEvidenceId!)
   await loadEvidenceOptions()

@@ -120,6 +120,10 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
@@ -129,10 +133,6 @@ import {
   RejudgePlanStatusDescription,
   RejudgeTriggerTypeDescription,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -289,7 +289,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -437,9 +437,9 @@ function isRejudgePlanSubmitterSelf(row: ExamRejudgePlan): boolean {
 
 function canDecideRejudgePlan(row: ExamRejudgePlan): boolean {
   return (
-    canManageReviewerWrites.value === true &&
-    row.planStatus === 'PENDING_APPROVAL' &&
-    !isRejudgePlanSubmitterSelf(row)
+    canManageReviewerWrites.value === true
+    && row.planStatus === 'PENDING_APPROVAL'
+    && !isRejudgePlanSubmitterSelf(row)
   )
 }
 

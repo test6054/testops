@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
-import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
+import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -18,7 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  released: []
+  "released": []
 }>()
 
 const submitting = ref(false)

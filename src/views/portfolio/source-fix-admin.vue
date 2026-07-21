@@ -366,14 +366,18 @@ watch(
             {{ triggerLabel(record.triggerType) }}
           </template>
           <template v-else-if="column.key === 'eventStatus'">
-            <UiTag :tone="statusTone(record.eventStatus)">{{
-              statusLabel(record.eventStatus)
-            }}</UiTag>
+            <UiTag :tone="statusTone(record.eventStatus)">
+              {{
+                statusLabel(record.eventStatus)
+              }}
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'alertStatus'">
-            <UiTag :tone="alertTone(record.alertStatus)">{{
-              alertLabel(record.alertStatus)
-            }}</UiTag>
+            <UiTag :tone="alertTone(record.alertStatus)">
+              {{
+                alertLabel(record.alertStatus)
+              }}
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'counts'">
             {{ record.affectedTeacherCount ?? 0 }}/{{ record.affectedIndicatorCount ?? 0 }}/{{
@@ -420,13 +424,17 @@ watch(
           <div v-if="detail.dataSourceCode">数据源：{{ detail.dataSourceCode }}</div>
           <div>
             状态：
-            <UiTag :tone="statusTone(detail.eventStatus)">{{
-              statusLabel(detail.eventStatus)
-            }}</UiTag>
+            <UiTag :tone="statusTone(detail.eventStatus)">
+              {{
+                statusLabel(detail.eventStatus)
+              }}
+            </UiTag>
             告警：
-            <UiTag :tone="alertTone(detail.alertStatus)">{{
-              alertLabel(detail.alertStatus)
-            }}</UiTag>
+            <UiTag :tone="alertTone(detail.alertStatus)">
+              {{
+                alertLabel(detail.alertStatus)
+              }}
+            </UiTag>
           </div>
           <div>影响摘要：{{ detail.impactSummary || '—' }}</div>
           <div>重算结果：{{ detail.recomputeResult || '—' }}</div>

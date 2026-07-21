@@ -174,16 +174,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewQuestionProgressItemResponse } from '@/apis/mark/exam-progress'
-import { getReviewQuestionProgressSummary } from '@/apis/mark/exam-progress'
 import type { ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import {
-  getReviewArbitrationSummary,
-  listReviewTasks,
-  REVIEW_TASK_STATUS_TONE,
-  ReviewTaskStatusCode,
-  ReviewTaskStatusDescription,
-  ReviewTaskTypeCode,
-} from '@/apis/mark/exam-review-task'
 import type {
   BadgeTone,
   FilterField,
@@ -194,6 +185,15 @@ import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { getReviewQuestionProgressSummary } from '@/apis/mark/exam-progress'
+import {
+  getReviewArbitrationSummary,
+  listReviewTasks,
+  REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+  ReviewTaskTypeCode,
+} from '@/apis/mark/exam-review-task'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -241,7 +241,7 @@ const statusTab = ref<StatusTabKey>('pending')
 const filterQuestion = ref('')
 const filterTeacherUserId = ref('')
 const expandedRowKeys = ref<string[]>([])
-const questionOptions = ref<Array<{ label: string; value: string }>>([])
+const questionOptions = ref<Array<{ label: string, value: string }>>([])
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 
 const actionableCount = computed(() => pendingCount.value + inProgressMineCount.value)
@@ -429,8 +429,8 @@ function isActionableTask(record: ReviewTaskItemResponse): boolean {
     return true
   }
   return (
-    record.status === ReviewTaskStatusCode.IN_PROGRESS &&
-    record.assignedTeacherUserId === currentUserId.value
+    record.status === ReviewTaskStatusCode.IN_PROGRESS
+    && record.assignedTeacherUserId === currentUserId.value
   )
 }
 
@@ -461,7 +461,7 @@ function resetFilters(): void {
   void loadTasks()
 }
 
-function handlePageChange(event: { current: number; pageSize: number }): void {
+function handlePageChange(event: { current: number, pageSize: number }): void {
   pageNum.value = event.current
   pageSize.value = event.pageSize
   void loadTasks()

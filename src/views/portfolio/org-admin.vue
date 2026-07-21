@@ -57,11 +57,11 @@ interface TreeNode {
 
 function isTreeNode(value: unknown): value is TreeNode {
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    'key' in value &&
-    'title' in value &&
-    'raw' in value
+    typeof value === 'object'
+    && value !== null
+    && 'key' in value
+    && 'title' in value
+    && 'raw' in value
   )
 }
 
@@ -332,13 +332,13 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.orgName = ''
     unitEditor.orgCode = ''
     unitEditor.parentPortfolioOrgId = selectedNode.value?.portfolioOrgId
-    unitEditor.anchorDepartmentId =
-      selectedRaw.value?.anchorDepartmentId ??
-      (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
+    unitEditor.anchorDepartmentId
+      = selectedRaw.value?.anchorDepartmentId
+        ?? (selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT
         ? selectedRaw.value.id
         : undefined)
-    unitEditor.anchorMajorId =
-      selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
+    unitEditor.anchorMajorId
+      = selectedRaw.value?.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR
         ? selectedRaw.value.id
         : selectedRaw.value?.anchorMajorId
     unitEditor.sortOrder = 0
@@ -461,9 +461,9 @@ async function submitAlias() {
     return
   }
   if (
-    aliasEditor.effectiveFrom &&
-    aliasEditor.effectiveTo &&
-    aliasEditor.effectiveFrom > aliasEditor.effectiveTo
+    aliasEditor.effectiveFrom
+    && aliasEditor.effectiveTo
+    && aliasEditor.effectiveFrom > aliasEditor.effectiveTo
   ) {
     showFormValidationMessage('生效截止日期不能早于生效起始日期')
     return

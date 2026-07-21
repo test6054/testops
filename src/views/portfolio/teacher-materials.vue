@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveMaterialOcrStatusCode } from '@/apis/mark/archive-ocr-status'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import type {
   PortfolioMaterialRefVO,
   PortfolioMaterialSaveRequest,
@@ -12,11 +8,14 @@ import type {
   PortfolioMaterialVersionVO,
   PortfolioMaterialVO,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_MATERIAL_STATUS_OPTIONS,
@@ -27,6 +26,7 @@ import {
   PortfolioMaterialTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
+import { PORTFOLIO_MATERIAL_STATUS_TONE } from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -61,8 +61,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 interface MaterialFilterModel {
   materialType?: PortfolioMaterialTypeCode

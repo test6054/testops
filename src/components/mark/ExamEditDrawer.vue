@@ -168,16 +168,15 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ExamUpdateRequest } from '@/apis/mark/exam'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
 import {
   ExamGradingStrategyCode,
   ExamGradingStrategyDescription,
   getExamDetail,
   updateExam,
 } from '@/apis/mark/exam'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import DepartmentSelector from '@/components/quality/selectors/DepartmentSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -192,6 +191,7 @@ import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -204,7 +204,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [open: boolean]
-  saved: []
+  "saved": []
 }>()
 
 type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
@@ -343,8 +343,8 @@ async function loadDetail(examId: string): Promise<void> {
     examForm.examNo = detail.examNo
     examForm.academicYear = detail.academicYear ?? ''
     examForm.semester = detail.semester
-    examForm.examWindow =
-      detail.examStartTime && detail.examEndTime
+    examForm.examWindow
+      = detail.examStartTime && detail.examEndTime
         ? [detail.examStartTime, detail.examEndTime]
         : undefined
     examForm.scoreCompositionMode = detail.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
@@ -363,11 +363,11 @@ async function loadDetail(examId: string): Promise<void> {
 function buildUpdateRequest(): ExamUpdateRequest | null {
   const [startTime, endTime] = examForm.examWindow ?? []
   if (
-    !props.examId ||
-    !examForm.courseId ||
-    !examForm.referenceDepartmentId ||
-    !startTime ||
-    !endTime
+    !props.examId
+    || !examForm.courseId
+    || !examForm.referenceDepartmentId
+    || !startTime
+    || !endTime
   ) {
     return null
   }

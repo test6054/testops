@@ -12,9 +12,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 5. PENDING / FAILED 可 POST /update-status { id, status: 'CANCELLED' } 取消
  */
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { QualityCourseVO } from '@/apis/quality/quality-course'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type {
   QualityStatusCountsResponse,
   ScoreBatchQueryRequest,
@@ -22,9 +20,7 @@ import type {
   ScoreBatchUpdateRequest,
   ScoreBatchVO,
 } from '@/apis/quality/score-batch'
-import { scoreBatchApi } from '@/apis/quality/score-batch'
 import type { ScoreRecordVO } from '@/apis/quality/score-record'
-import { scoreRecordApi } from '@/apis/quality/score-record'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -40,6 +36,10 @@ import { downloadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { downloadExcelImportTemplate } from '@/apis/platform/excel-import'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
+import { scoreBatchApi } from '@/apis/quality/score-batch'
+import { scoreRecordApi } from '@/apis/quality/score-record'
 import {
   ALL_DATA_SOURCE_MODE_CODES,
   ALL_SCORE_BATCH_STATUS_CODES,
@@ -98,8 +98,8 @@ const batches = ref<ScoreBatchVO[]>([])
 const total = ref(0)
 const batchStatusCounts = ref<QualityStatusCountsResponse | null>(null)
 const loading = ref(false)
-const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel } =
-  useQualityTableExport()
+const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel }
+  = useQualityTableExport()
 const uploading = ref(false)
 const uploadFileNodeId = ref<string>()
 const uploadFileName = ref<string>()
@@ -270,17 +270,17 @@ function hasGeneratedRowStatistics(
   record: Pick<ScoreBatchVO, 'totalRows' | 'successRows' | 'errorRows'> | ScoreImportPreviewSummary,
 ): boolean {
   return (
-    record.totalRows !== undefined &&
-    record.successRows !== undefined &&
-    record.errorRows !== undefined
+    record.totalRows !== undefined
+    && record.successRows !== undefined
+    && record.errorRows !== undefined
   )
 }
 
 function scoreBatchRowStatisticsText(record: ScoreBatchVO): string {
   if (
-    record.status === ScoreBatchStatusCode.PENDING ||
-    record.status === ScoreBatchStatusCode.PARSING ||
-    record.status === ScoreBatchStatusCode.CANCELLED
+    record.status === ScoreBatchStatusCode.PENDING
+    || record.status === ScoreBatchStatusCode.PARSING
+    || record.status === ScoreBatchStatusCode.CANCELLED
   ) {
     return '未生成'
   }
@@ -331,7 +331,7 @@ const statusBuckets = computed(() => buildScoreBatchStatusBuckets(batchStatusCou
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatusCode; title: string }> = [
+  const stageOrder: Array<{ key: ScoreBatchStatusCode, title: string }> = [
     { key: ScoreBatchStatusCode.PENDING, title: '待处理' },
     { key: ScoreBatchStatusCode.PARSING, title: '解析中' },
     { key: ScoreBatchStatusCode.PREVIEW_READY, title: '预览就绪' },
@@ -545,7 +545,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadBatches()
@@ -607,7 +607,7 @@ async function loadPreviewDiagnostics(batchId: string) {
   }
 }
 
-function handlePreviewPageChange(pageEvent: { current: number; pageSize: number }) {
+function handlePreviewPageChange(pageEvent: { current: number, pageSize: number }) {
   previewPageNum.value = pageEvent.current
   previewPageSize.value = pageEvent.pageSize
   if (!previewBatch.value) return
@@ -839,9 +839,9 @@ async function submitEditor() {
 
 function canEdit(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PENDING ||
-    status === ScoreBatchStatusCode.FAILED ||
-    status === ScoreBatchStatusCode.CANCELLED
+    status === ScoreBatchStatusCode.PENDING
+    || status === ScoreBatchStatusCode.FAILED
+    || status === ScoreBatchStatusCode.CANCELLED
   )
 }
 
@@ -896,16 +896,16 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleBatchResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
+function handleBatchResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
   const record = batches.value.find((b) => b.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'preview') openPreview(record)
 }
 
 function canDelete(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PENDING ||
-    status === ScoreBatchStatusCode.FAILED ||
-    status === ScoreBatchStatusCode.CANCELLED
+    status === ScoreBatchStatusCode.PENDING
+    || status === ScoreBatchStatusCode.FAILED
+    || status === ScoreBatchStatusCode.CANCELLED
   )
 }
 
@@ -924,9 +924,9 @@ async function handleDelete(record: ScoreBatchVO) {
 
 function canValidate(record: ScoreBatchVO) {
   return (
-    record.status === ScoreBatchStatusCode.PREVIEW_READY &&
-    (record.errorRows ?? 0) === 0 &&
-    (record.successRows ?? 0) > 0
+    record.status === ScoreBatchStatusCode.PREVIEW_READY
+    && (record.errorRows ?? 0) === 0
+    && (record.successRows ?? 0) > 0
   )
 }
 function canConfirm(status: ScoreBatchStatusCode) {
@@ -934,9 +934,9 @@ function canConfirm(status: ScoreBatchStatusCode) {
 }
 function canPreview(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PREVIEW_READY ||
-    status === ScoreBatchStatusCode.VALIDATED ||
-    status === ScoreBatchStatusCode.FAILED
+    status === ScoreBatchStatusCode.PREVIEW_READY
+    || status === ScoreBatchStatusCode.VALIDATED
+    || status === ScoreBatchStatusCode.FAILED
   )
 }
 function canCancel(status: ScoreBatchStatusCode) {
@@ -1228,9 +1228,9 @@ onMounted(async () => {
             </template>
             <template
               v-else-if="
-                column.key === 'schoolYear' ||
-                column.key === 'semester' ||
-                column.key === 'createTime'
+                column.key === 'schoolYear'
+                  || column.key === 'semester'
+                  || column.key === 'createTime'
               "
             >
               <template v-if="column.key === 'schoolYear'">

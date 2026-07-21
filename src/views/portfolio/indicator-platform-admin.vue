@@ -10,6 +10,12 @@ import type {
   PortfolioIndustryPackDefDto,
   PortfolioIndustryPackVO,
 } from '@/apis/portfolio/indicator-types'
+import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import {
   PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS,
   PF_INDICATOR_STATUS_OPTIONS,
@@ -21,17 +27,6 @@ import {
   PfScoreRuleTypeCode,
   PfScoreRuleTypeDescription,
 } from '@/apis/portfolio/indicator-types'
-import type { PortfolioIndustryPackDefForm } from '@/utils/indicator-industry-pack-def'
-import {
-  buildIndustryPackDefFromForm,
-  toIndustryPackDefForm,
-} from '@/utils/indicator-industry-pack-def'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { defaultTemplateParams } from '@/utils/indicator-template-params'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioIndicatorPlatformApi } from '@/apis/portfolio/indicator'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -58,6 +53,11 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  buildIndustryPackDefFromForm,
+  toIndustryPackDefForm,
+} from '@/utils/indicator-industry-pack-def'
+import { defaultTemplateParams } from '@/utils/indicator-template-params'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function dataSourceLabel(value: PfIndicatorDataSourceChannelCode): string {
@@ -226,11 +226,11 @@ const packDefForm = reactive<PortfolioIndustryPackDefForm>({
 })
 const interactionLocked = computed(
   () =>
-    writing.value ||
-    detailOpen.value ||
-    templateDrawerOpen.value ||
-    packDrawerOpen.value ||
-    importModalOpen.value,
+    writing.value
+    || detailOpen.value
+    || templateDrawerOpen.value
+    || packDrawerOpen.value
+    || importModalOpen.value,
 )
 
 /** 平台指标资产写操作必须串行，避免定义、模板、行业包和种子导入并发改写全租户真源。 */
@@ -358,13 +358,13 @@ async function loadTemplates() {
   }
 }
 
-function handleDefinitionPageChange(event: { current: number; pageSize: number }) {
+function handleDefinitionPageChange(event: { current: number, pageSize: number }) {
   query.pageNum = event.current
   query.pageSize = event.pageSize
   void loadPage()
 }
 
-function handleTemplatePageChange(event: { current: number; pageSize: number }) {
+function handleTemplatePageChange(event: { current: number, pageSize: number }) {
   templateQuery.pageNum = event.current
   templateQuery.pageSize = event.pageSize
   void loadTemplates()
@@ -480,10 +480,10 @@ async function saveDefinition() {
   const indicatorCode = editForm.indicatorCode.trim()
   const indicatorName = editForm.indicatorName.trim()
   if (
-    !indicatorCode ||
-    !indicatorName ||
-    !editForm.dimensionL1Name.trim() ||
-    !editForm.dimensionL2Name.trim()
+    !indicatorCode
+    || !indicatorName
+    || !editForm.dimensionL1Name.trim()
+    || !editForm.dimensionL2Name.trim()
   ) {
     showFormValidationMessage('请完整填写指标编码、名称和两级维度')
     return
@@ -758,9 +758,7 @@ onMounted(async () => {
               {{ indicatorCode }} ·
               {{ defaultDataSource ? dataSourceLabel(defaultDataSource) : '—' }} ·
               {{ status ? indicatorStatusLabel(status) : '—' }}
-              <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)"
-                >详情</a
-              >
+              <a v-if="indicatorCode" class="detail-link" @click.stop="openDetail(indicatorCode)">详情</a>
             </span>
           </template>
         </UiTree>

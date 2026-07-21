@@ -222,7 +222,6 @@
 import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -259,6 +258,7 @@ import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'PortfolioMaterialIntakePanel' })
 
@@ -269,8 +269,8 @@ const emit = defineEmits<{
 const route = useRoute()
 const { targetTeacherId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 
 const fileNodeId = ref<string>()
 const fileName = ref<string>()
@@ -324,8 +324,8 @@ const showRegisterStart = computed(() => {
     return true
   }
   return (
-    status.value.stage === PortfolioMaterialIntakeStageCode.CATEGORY_PENDING ||
-    status.value.stage === PortfolioMaterialIntakeStageCode.UPLOADED
+    status.value.stage === PortfolioMaterialIntakeStageCode.CATEGORY_PENDING
+    || status.value.stage === PortfolioMaterialIntakeStageCode.UPLOADED
   )
 })
 
@@ -343,8 +343,8 @@ const reassignBlocked = computed(() => {
     return false
   }
   return (
-    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
-    status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
+    || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
   )
 })
 
@@ -354,16 +354,16 @@ const reassignAllowed = computed(() => {
   }
   const recordStatus = status.value.recordStatus
   return (
-    recordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
-    recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    recordStatus === PortfolioArchiveRecordStatusCode.DRAFT
+    || recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 })
 
 const reassignReady = computed(
   () =>
-    reassignAllowed.value &&
-    Boolean(categoryIdModel.value) &&
-    categoryIdModel.value !== status.value?.categoryId,
+    reassignAllowed.value
+    && Boolean(categoryIdModel.value)
+    && categoryIdModel.value !== status.value?.categoryId,
 )
 
 const clearedFieldsHint = computed(() => {
@@ -445,14 +445,14 @@ const archiveActionHint = computed(() => {
     return '请先登记材料'
   }
   if (
-    status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM ||
-    (status.value.pendingCandidateCount ?? 0) > 0
+    status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
+    || (status.value.pendingCandidateCount ?? 0) > 0
   ) {
     return '请先确认智能候选字段后再保存或提交'
   }
   if (
-    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
-    status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
+    || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
   ) {
     return '材料处理中，请等待完成后再保存或提交'
   }
@@ -472,8 +472,8 @@ const archiveActionHint = computed(() => {
     return '审核已退回，请修改字段后保存并重新提交'
   }
   if (
-    status.value.stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
-    status.value.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+    status.value.stage === PortfolioMaterialIntakeStageCode.SUBMITTED
+    || status.value.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
   ) {
     return '材料已提交，可在审核进度页查看状态'
   }

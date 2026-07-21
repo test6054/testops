@@ -6,7 +6,6 @@ import type {
   PortfolioAchievementGapAnalysisVO,
   PortfolioNationalAchievementCatalogVO,
 } from '@/apis/portfolio/national-achievement'
-import { portfolioNationalAchievementApi } from '@/apis/portfolio/national-achievement'
 import type {
   PortfolioDevelopmentPlanAchievementAttainmentItemVO,
   PortfolioDevelopmentPlanCompletionVO,
@@ -19,7 +18,6 @@ import type {
   PortfolioPlanningSyncConfigSaveRequest,
   PortfolioPlanningSyncConfigVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import { ReloadOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
@@ -39,6 +37,8 @@ import {
   PortfolioDevelopmentPlanTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
+import { portfolioNationalAchievementApi } from '@/apis/portfolio/national-achievement'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -47,7 +47,6 @@ import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
-import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -61,6 +60,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { useQueryTable } from '@/composables/useQueryTable'
@@ -80,8 +80,8 @@ import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 const historyImportModalOpen = ref(false)
 const historyBatchDetailOpen = ref(false)
@@ -129,10 +129,10 @@ const historyPlanTypeOptions = [
 
 const historyWriteBusy = computed(
   () =>
-    historyConfigLoading.value ||
-    historyConfigSaving.value ||
-    Boolean(historyRollbackBatchId.value) ||
-    historyImportModalOpen.value,
+    historyConfigLoading.value
+    || historyConfigSaving.value
+    || Boolean(historyRollbackBatchId.value)
+    || historyImportModalOpen.value,
 )
 const historyImportAvailable = computed(
   () => Boolean(historySyncConfig.value?.enabled) && !historyConfigLoading.value,
@@ -140,8 +140,8 @@ const historyImportAvailable = computed(
 const historyImportContext = computed(() => ({
   expectedConfigUpdateToken: historySyncConfig.value?.updateToken,
   confirmManualConflicts:
-    historySyncConfig.value?.conflictStrategy ===
-    PortfolioPlanningSyncConflictStrategyCode.MANUAL_CONFIRM,
+    historySyncConfig.value?.conflictStrategy
+    === PortfolioPlanningSyncConflictStrategyCode.MANUAL_CONFIRM,
 }))
 const {
   loading: historyBatchLoading,
@@ -255,8 +255,8 @@ async function saveHistorySyncConfig() {
     return
   }
   if (
-    historySyncForm.yearFrom < minimumHistoryYear ||
-    historySyncForm.yearTo > maximumHistoryYear
+    historySyncForm.yearFrom < minimumHistoryYear
+    || historySyncForm.yearTo > maximumHistoryYear
   ) {
     showFormValidationMessage(
       `历史规划年度须在 ${minimumHistoryYear} 年至 ${maximumHistoryYear} 年之间`,
@@ -272,8 +272,8 @@ async function saveHistorySyncConfig() {
     return
   }
   if (
-    historySyncForm.orgScopeType === PortfolioPlanningSyncOrgScopeCode.ORG_UNIT &&
-    !historySyncForm.portfolioOrgId
+    historySyncForm.orgScopeType === PortfolioPlanningSyncOrgScopeCode.ORG_UNIT
+    && !historySyncForm.portfolioOrgId
   ) {
     showFormValidationMessage('请选择同步组织范围')
     return
@@ -323,8 +323,8 @@ function openHistoryImport() {
 
 function canRollbackHistoryBatch(status: PortfolioDevelopmentPlanHistoryImportBatchStatusCode) {
   return (
-    status === PortfolioDevelopmentPlanHistoryImportBatchStatusCode.COMPLETED ||
-    status === PortfolioDevelopmentPlanHistoryImportBatchStatusCode.STAGED
+    status === PortfolioDevelopmentPlanHistoryImportBatchStatusCode.COMPLETED
+    || status === PortfolioDevelopmentPlanHistoryImportBatchStatusCode.STAGED
   )
 }
 
@@ -418,7 +418,7 @@ const route = useRoute()
 const showAdminStats = computed(() => canPickTeachers.value)
 
 const planTabItems = computed(() => {
-  const items: Array<{ key: string; label: string }> = [
+  const items: Array<{ key: string, label: string }> = [
     { key: 'plans', label: '规划管理' },
     { key: 'items', label: '规划明细' },
   ]
@@ -596,8 +596,8 @@ const selectedPlan = computed(
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
   return (
-    status === PortfolioDevelopmentPlanStatusCode.DRAFT ||
-    status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    status === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   )
 })
 
@@ -721,8 +721,8 @@ async function openPlanFromQuery() {
     }
   }
   if (
-    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT ||
-    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    target?.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || target?.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   ) {
     activeTab.value = 'plans'
   }
@@ -766,8 +766,8 @@ function buildDevelopmentPlanRowActions(
 ): UiTableRowActionItem[] {
   const actions: UiTableRowActionItem[] = []
   if (
-    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT ||
-    record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    record.planStatus === PortfolioDevelopmentPlanStatusCode.DRAFT
+    || record.planStatus === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   ) {
     actions.push({ key: 'submit', label: '提交', tone: 'primary' })
   }
@@ -1068,9 +1068,7 @@ watch(
           placeholder="年度"
         />
         <UiButton size="sm" variant="outline" @click="loadPage"> 刷新 </UiButton>
-        <span v-if="showAdminStats" class="stats"
-          >{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span
-        >
+        <span v-if="showAdminStats" class="stats">{{ form.planYear }} 年已通过 {{ approvedCount }} 项</span>
       </div>
       <UiSectionTabs v-model="activeTab" :items="planTabItems" compact divided />
       <template v-if="activeTab === 'plans'">
@@ -1242,9 +1240,7 @@ watch(
                 >
                   {{ record.achievementLinkStatus === 'LOCKED' ? '已锁定' : '草稿关联' }}
                 </UiTag>
-                <span v-if="record.achievementCompletionRate != null"
-                  >完成度 {{ record.achievementCompletionRate }}%</span
-                >
+                <span v-if="record.achievementCompletionRate != null">完成度 {{ record.achievementCompletionRate }}%</span>
               </div>
             </template>
             <template v-else-if="column.key === 'milestoneText'">
@@ -1314,11 +1310,9 @@ watch(
           <span>待审 {{ completion.pendingPlanCount }}</span>
           <span>退回 {{ completion.returnedPlanCount }}</span>
           <span>审批完成率 {{ completion.completionRatePercent }}%</span>
-          <span
-            >明细项 {{ completion.completedPlanItemCount }}/{{
-              completion.totalPlanItemCount
-            }}</span
-          >
+          <span>明细项 {{ completion.completedPlanItemCount }}/{{
+            completion.totalPlanItemCount
+          }}</span>
           <span>明细完成率 {{ completion.planItemCompletionRatePercent }}%</span>
           <span>平均完成度 {{ completion.averageItemCompletionPercent }}%</span>
         </div>

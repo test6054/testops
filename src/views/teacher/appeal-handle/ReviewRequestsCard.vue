@@ -16,9 +16,7 @@
           @search="handleSearch"
           @reset="handleFilterReset"
         />
-        <span v-if="pagination.total > 0" class="appeal-section__count"
-          >{{ pagination.total }} 条</span
-        >
+        <span v-if="pagination.total > 0" class="appeal-section__count">{{ pagination.total }} 条</span>
       </div>
 
       <UiDataTable
@@ -145,6 +143,9 @@ import type {
   GradeReviewReasonTypeCode,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   claimReviewRequest,
   getReviewSummary,
@@ -157,9 +158,6 @@ import {
   REVIEW_REQUEST_STATUS_OPTIONS,
   REVIEW_REQUEST_STATUS_TONE,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -180,7 +178,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string; reloadToken: number }>()
+const props = defineProps<{ examId: string, reloadToken: number }>()
 const emit = defineEmits<{
   (e: 'handled'): void
   (e: 'pending-change', count: number): void
@@ -200,7 +198,7 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: GradeReviewRequestStatusCode; keyword: string }>({
+const filterForm = reactive<{ status?: GradeReviewRequestStatusCode, keyword: string }>({
   keyword: '',
 })
 
@@ -258,9 +256,9 @@ const handleTitle = computed(() =>
 /** MVR-194：与 BE assertGradeReviewOperatorSeparatedFromStudent 同源 */
 function isGradeReviewApplicantSelf(record: GradeReviewRequestItemResponse): boolean {
   return Boolean(
-    currentUserId.value &&
-    record.studentUserId &&
-    String(record.studentUserId) === String(currentUserId.value),
+    currentUserId.value
+    && record.studentUserId
+    && String(record.studentUserId) === String(currentUserId.value),
   )
 }
 
@@ -281,9 +279,9 @@ function canHandleReviewRequest(record: GradeReviewRequestItemResponse): boolean
     return false
   }
   return (
-    record.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW &&
-    Boolean(currentUserId.value) &&
-    record.reviewerUserId === currentUserId.value
+    record.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW
+    && Boolean(currentUserId.value)
+    && record.reviewerUserId === currentUserId.value
   )
 }
 
@@ -372,8 +370,8 @@ async function loadPendingCount(): Promise<void> {
   try {
     const summary = await getReviewSummary(props.examId)
     canManageReviewerWrites.value = summary.canManageReviewerWrites === true
-    pendingCount.value =
-      summary.pendingRequestCount + summary.inReviewRequestCount + summary.approvedRequestCount
+    pendingCount.value
+      = summary.pendingRequestCount + summary.inReviewRequestCount + summary.approvedRequestCount
     emit('pending-change', pendingCount.value)
   } catch (error) {
     pendingCount.value = 0
@@ -421,7 +419,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()

@@ -242,6 +242,19 @@
 <script lang="ts" setup>
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ExamPageQueryRequest, ExamWorkbenchSummaryResponse } from '@/apis/mark/exam'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   closeExam,
   countExamWorkbenchScopes,
@@ -254,20 +267,6 @@ import {
   ExamStatusDescription,
   pageExamWorkbench,
 } from '@/apis/mark/exam'
-import type {
-  BadgeTone,
-  FilterField,
-  UiSectionTabItem,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import ExamEditDrawer from '@/components/mark/ExamEditDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -293,6 +292,7 @@ import { useMarkDashboardFilterOptions } from '@/composables/useMarkDashboardFil
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
+import { formatSemester } from '@/types/enums/semester-enum'
 import { getDefaultAcademicYearAndSemester } from '@/utils/academic-year'
 import {
   buildOptionalAcademicYearSemesterQuery,
@@ -720,9 +720,9 @@ function isExamPriorityRow(exam: ExamWorkbenchSummaryResponse): boolean {
   if (listTab.value === 'priority') return true
   if (exam.status !== ExamStatusCode.ACTIVE) return false
   return (
-    getScanAttentionCount(exam) > 0 ||
-    getPendingConfirmCount(exam) > 0 ||
-    getExamGradingPercent(exam) < 50
+    getScanAttentionCount(exam) > 0
+    || getPendingConfirmCount(exam) > 0
+    || getExamGradingPercent(exam) < 50
   )
 }
 
@@ -844,8 +844,8 @@ function getLoadingRefByScope(scope: ExamListScopeCode): typeof priorityLoading 
 
 function buildScopeCountQuery(): ExamPageQueryRequest {
   const [startTime, endTime] = filterForm.dateRange ?? []
-  const termQuery =
-    buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
+  const termQuery
+    = buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
   return {
     status: filterForm.status,
     ...termQuery,
@@ -861,8 +861,8 @@ function buildWorkbenchQuery(
   pageSize: number,
 ): Parameters<typeof pageExamWorkbench>[0] {
   const [startTime, endTime] = filterForm.dateRange ?? []
-  const termQuery =
-    buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
+  const termQuery
+    = buildOptionalAcademicYearSemesterQuery(filterForm.academicYear, filterForm.semester) ?? {}
   return {
     listScope: scope,
     pageNum,
@@ -974,7 +974,7 @@ function handleReset(): void {
   void reloadListAndCounts()
 }
 
-function handleUiPageChange(page: { current: number; pageSize: number }): void {
+function handleUiPageChange(page: { current: number, pageSize: number }): void {
   const scope = tabToScope(listTab.value)
   const paginationState = getPaginationByScope(scope)
   paginationState.current = page.current

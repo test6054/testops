@@ -9,20 +9,20 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 只有 CONFIRMED + enabled 的实例进入达成度计算。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProfessionAlgorithmProfileQueryRequest,
   ProfessionAlgorithmProfileSaveRequest,
   ProfessionAlgorithmProfileSignalSummaryVO,
   ProfessionAlgorithmProfileVO,
 } from '@/apis/quality/profession-algorithm-profile'
-import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
 import type { ProfessionAlgorithmTemplateVO } from '@/apis/quality/profession-algorithm-template'
-import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
+import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -391,18 +391,18 @@ function openEdit(record: ProfessionAlgorithmProfileVO) {
 
 async function submitEditor() {
   if (
-    !editor.profileCode.trim() ||
-    !editor.profileName.trim() ||
-    !editor.templateId ||
-    !editor.programId
+    !editor.profileCode.trim()
+    || !editor.profileName.trim()
+    || !editor.templateId
+    || !editor.programId
   ) {
     void message.error('请填写编码、名称、模板、专业')
     return
   }
-  const hasOverride =
-    editor.overrideAggregationStrategy ||
-    editor.overrideWeightStrategy ||
-    editor.overrideThresholdStrategy
+  const hasOverride
+    = editor.overrideAggregationStrategy
+      || editor.overrideWeightStrategy
+      || editor.overrideThresholdStrategy
   if (hasOverride && !editor.overrideReason?.trim()) {
     void message.error('存在模板策略调整时必须填写覆盖原因')
     return
@@ -482,8 +482,8 @@ function buildAlgorithmProfileActions(
     actions.push({ key: 'edit', label: '编辑' })
   }
   if (
-    record.confirmationStatus === ConfirmationStatusCode.DRAFT ||
-    record.confirmationStatus === ConfirmationStatusCode.RETURNED
+    record.confirmationStatus === ConfirmationStatusCode.DRAFT
+    || record.confirmationStatus === ConfirmationStatusCode.RETURNED
   ) {
     actions.push({ key: 'confirm', label: '确认', tone: 'primary' })
   }
@@ -529,7 +529,7 @@ async function handleDelete(record: ProfessionAlgorithmProfileVO) {
   })
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()

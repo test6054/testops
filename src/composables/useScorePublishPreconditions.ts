@@ -1,11 +1,11 @@
 import type { Ref } from 'vue'
-import { computed, ref } from 'vue'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
-import { FinalScoreRiskReasonCode } from '@/apis/mark/exam-score'
 import message from 'ant-design-vue/es/message'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAbsenceExamStats } from '@/apis/mark/absence'
+import { FinalScoreRiskReasonCode } from '@/apis/mark/exam-score'
 import { showUserError } from '@/utils/error-handler'
 
 /**

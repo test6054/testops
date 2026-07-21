@@ -161,8 +161,9 @@
         :loading="creating"
         :disabled="!createValid"
         @click="handleCreate"
-        >创建</UiButton
       >
+        创建
+      </UiButton>
     </template>
     <UiForm layout="vertical">
       <UiFormItem label="导出类型" required>
@@ -294,6 +295,15 @@ import type {
   ExportTaskResponse,
   ExportTaskStatusSummaryResponse,
 } from '@/apis/mark/exam-export'
+import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import {
   ALL_EXPORT_SCOPE_CODES,
   ALL_EXPORT_TASK_STATUS_CODES,
@@ -311,16 +321,7 @@ import {
   getExportTaskStatusSummary,
   listExportTasks,
 } from '@/apis/mark/exam-export'
-import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
 import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import CloudDownloadOutlined from '@ant-design/icons-vue/CloudDownloadOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -396,7 +397,7 @@ const loading = ref(false)
 const loadFailed = ref(false)
 const downloadingId = ref<string | undefined>(undefined)
 const questionOptions = ref<
-  Array<{ value: string; label: string; disabled?: boolean; title?: string }>
+  Array<{ value: string, label: string, disabled?: boolean, title?: string }>
 >([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 const layoutRoiGap = computed(() => {
@@ -540,8 +541,8 @@ function activeTasksHiddenByStatusFilter(): boolean {
 function listHasActiveExportTask(taskList: ExportTaskResponse[]): boolean {
   return taskList.some(
     (task) =>
-      task.taskStatus === ExportTaskStatusCode.PENDING ||
-      task.taskStatus === ExportTaskStatusCode.GENERATING,
+      task.taskStatus === ExportTaskStatusCode.PENDING
+      || task.taskStatus === ExportTaskStatusCode.GENERATING,
   )
 }
 
@@ -640,7 +641,7 @@ function handleTaskFilterReset(): void {
   void loadTasks()
 }
 
-function handleTaskPageChange(page: { current: number; pageSize: number }): void {
+function handleTaskPageChange(page: { current: number, pageSize: number }): void {
   taskPagination.pageNum = page.current
   taskPagination.pageSize = page.pageSize
   void loadTasks()
@@ -788,8 +789,8 @@ function exportTaskFailureMessageText(task: ExportTaskResponse): string | undefi
 }
 
 function clippedExportTaskFailureMessage(task: ExportTaskResponse): string {
-  const messageText =
-    exportTaskFailureMessageText(task) ?? '导出任务未完成，请查看失败原因后重新发起导出'
+  const messageText
+    = exportTaskFailureMessageText(task) ?? '导出任务未完成，请查看失败原因后重新发起导出'
   return messageText.length > 24 ? `${messageText.slice(0, 24)}…` : messageText
 }
 
@@ -944,8 +945,8 @@ function resetCreateForm(): void {
 
 watch([canManageOwnerImageArchiveExport, () => createForm.exportType], () => {
   if (
-    createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE &&
-    !canManageOwnerImageArchiveExport.value
+    createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE
+    && !canManageOwnerImageArchiveExport.value
   ) {
     createForm.exportType = ExportTypeCode.SCORE_EXCEL
     createForm.exportScope = firstSupportedExportScope(createForm.exportType)
@@ -967,10 +968,10 @@ async function loadQuestionOptions(examId: string | undefined): Promise<void> {
     }
     questionOptions.value = [...buildExamLayoutQuestionOptions(template.questions)].sort(
       (left, right) => {
-        const leftSort =
-          template.questions.find((q) => q.layoutQuestionId === left.value)?.sortNo ?? 0
-        const rightSort =
-          template.questions.find((q) => q.layoutQuestionId === right.value)?.sortNo ?? 0
+        const leftSort
+          = template.questions.find((q) => q.layoutQuestionId === left.value)?.sortNo ?? 0
+        const rightSort
+          = template.questions.find((q) => q.layoutQuestionId === right.value)?.sortNo ?? 0
         return leftSort - rightSort
       },
     )
@@ -994,8 +995,8 @@ async function handleCreate(): Promise<void> {
   if (!selectedExamId.value || !createValid.value) return
   if (creating.value) return
   if (
-    createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE &&
-    !canManageOwnerImageArchiveExport.value
+    createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE
+    && !canManageOwnerImageArchiveExport.value
   ) {
     void message.warning('仅考试主考可创建影像归档包导出任务')
     return

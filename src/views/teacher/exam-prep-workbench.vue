@@ -3,17 +3,16 @@
  * 考试准备聚合工作台：Signal 五 KPI、信息双栏、横向步骤流水线（含主操作）、制卷形态配置。
  */
 import type { ExamPrintSourceModeCode } from '@/apis/mark/exam'
-import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
 import type { ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
-import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import type { SignalMetric } from '@/types/workbench'
 import type { PrepStepCard } from '@/utils/exam-prep-step-ui'
-import { buildPrepStepCards, resolvePrepStepRouteLocation } from '@/utils/exam-prep-step-ui'
 import EditOutlined from '@ant-design/icons-vue/EditOutlined'
 import ScanOutlined from '@ant-design/icons-vue/ScanOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { ExamMaterialLayoutModeCode, saveMaterialLayout } from '@/apis/mark/exam'
+import { loadExamLayoutDesign } from '@/apis/mark/exam-layout-design'
 import { WorkbenchNextActionKeyCode } from '@/apis/mark/exam-progress'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -30,6 +29,7 @@ import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar
 import { useMarkExamContext } from '@/composables/useMarkExamContext'
 import { MARK_WORKBENCH_CONTEXT_KEY } from '@/composables/useMarkWorkbenchContext'
 import { showUserError } from '@/utils/error-handler'
+import { buildPrepStepCards, resolvePrepStepRouteLocation } from '@/utils/exam-prep-step-ui'
 import {
   canEnterReviewBatch,
   canStartScanRegistration,
@@ -77,8 +77,8 @@ const scanEntryEnabled = computed(() =>
 )
 const scanEntryDisabledReason = computed(
   () =>
-    resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN) ??
-    prepBlockingReasons.value[0],
+    resolveNextActionDisabledReason(nextActions.value, WorkbenchNextActionKeyCode.START_SCAN)
+    ?? prepBlockingReasons.value[0],
 )
 const reviewEntryEnabled = computed(() =>
   canEnterReviewBatch(nextActions.value, markingProgress.value),
@@ -158,10 +158,10 @@ const contextPrimaryAction = computed(() => {
   }
   // MVR-267：保存制卷形态仅主考；与 BE requireExamOwnerPermission 对齐
   if (
-    canManageOwnerExamPrepWrites.value &&
-    layoutDirty.value &&
-    !layoutModeLocked.value &&
-    draftLayoutMode.value
+    canManageOwnerExamPrepWrites.value
+    && layoutDirty.value
+    && !layoutModeLocked.value
+    && draftLayoutMode.value
   ) {
     return {
       label: '保存制卷形态',
@@ -191,9 +191,9 @@ const layoutDirty = computed(() => {
     return false
   }
   return (
-    draftLayoutMode.value !== detail.materialLayoutMode ||
-    (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER &&
-      draftPrintSource.value !== detail.printSourceMode)
+    draftLayoutMode.value !== detail.materialLayoutMode
+    || (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER
+      && draftPrintSource.value !== detail.printSourceMode)
   )
 })
 
@@ -425,8 +425,8 @@ watch(
             </UiButton>
             <UiTooltip
               :title="
-                contextPrimaryAction?.tooltip ??
-                (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
+                contextPrimaryAction?.tooltip
+                  ?? (contextPrimaryAction?.disabled ? scanEntryDisabledReason : undefined)
               "
             >
               <UiButton

@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanStatusCode } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDeptOneTableSummaryVO,
+  PortfolioDeptOneTableTeacherRowVO,
+  PortfolioDeptTeacherSegmentItemVO,
+} from '@/apis/portfolio/teacher'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
   PortfolioCompletenessLevelCode,
   PortfolioCompletenessLevelDescription,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
-import type {
-  PortfolioDeptOneTableSummaryVO,
-  PortfolioDeptOneTableTeacherRowVO,
-  PortfolioDeptTeacherSegmentItemVO,
-} from '@/apis/portfolio/teacher'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -318,9 +318,9 @@ async function exportDeptOneTable() {
       completenessLevel,
     })
     if (
-      filter.departmentId !== departmentId ||
-      (filter.planYear.trim() || undefined) !== planYear ||
-      (completenessLevelFilter.value || undefined) !== completenessLevel
+      filter.departmentId !== departmentId
+      || (filter.planYear.trim() || undefined) !== planYear
+      || (completenessLevelFilter.value || undefined) !== completenessLevel
     ) {
       return
     }
@@ -337,7 +337,7 @@ function structureCount(key: (typeof titleStructureRows)[number]['key']) {
   return summary.value?.[key] ?? 0
 }
 
-function handleTeacherPageChange(page: { current: number; pageSize: number }) {
+function handleTeacherPageChange(page: { current: number, pageSize: number }) {
   teacherQuery.pageNum = page.current
   teacherQuery.pageSize = page.pageSize
   void loadTeachers()
@@ -403,8 +403,8 @@ onMounted(async () => {
   await loadTree()
   const queryDepartmentId = readRouteStringParam(route.query.departmentId)
   if (
-    queryDepartmentId &&
-    departmentOptions.value.some((option) => option.value === queryDepartmentId)
+    queryDepartmentId
+    && departmentOptions.value.some((option) => option.value === queryDepartmentId)
   ) {
     filter.departmentId = queryDepartmentId
   }

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { PortfolioProcessSessionVO } from '@/apis/portfolio/process-session'
-import { portfolioProcessSessionApi } from '@/apis/portfolio/process-session'
 import type { PortfolioMasterpieceContributionVO } from '@/apis/portfolio/types'
 /**
  * 教学代表作只读预览：聚合简历/数据/陈述/过程入口/发展/成果，供本人与院审阅读。
@@ -8,6 +7,7 @@ import type { PortfolioMasterpieceContributionVO } from '@/apis/portfolio/types'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import { portfolioProcessSessionApi } from '@/apis/portfolio/process-session'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'

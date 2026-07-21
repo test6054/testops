@@ -79,19 +79,18 @@ import type {
   CourseAchievementItemResponse,
   CourseObjectiveAchievementResponse,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import {
   CourseObjectiveDimensionDescription,
   generateAchievement,
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -105,6 +104,7 @@ import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPi
 import { loadExamsForCourseAcademicYearSemester } from '@/composables/useCrossExamDefaultScope'
 import { useExamSummariesReviewerWriteCapability } from '@/composables/useExamIdsReviewerWriteCapability'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildOptionalAcademicYearSemesterQuery,
   buildRequiredAcademicYearSemesterQuery,

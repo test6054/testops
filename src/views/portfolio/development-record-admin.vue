@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDevelopmentRecordStatusDescription,
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDevelopmentRecordTypeDescription,
 } from '@/apis/portfolio/enums'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -29,8 +29,8 @@ import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 const RECORD_TAB_KEYS: PortfolioDevelopmentRecordTypeCode[] = [
   PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
@@ -48,8 +48,8 @@ const importModalOpen = ref(false)
 const saving = ref(false)
 const removingId = ref('')
 const exporting = ref(false)
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
 const {
   loading,
   rows,

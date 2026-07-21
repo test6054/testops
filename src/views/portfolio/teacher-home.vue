@@ -4,7 +4,6 @@ import type {
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
-import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -15,6 +14,7 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioOnboardingApi } from '@/apis/portfolio/onboarding'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
+import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
 import PortfolioProgressCompareDrawer from '@/components/portfolio/PortfolioProgressCompareDrawer.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
@@ -44,8 +44,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 const router = useRouter()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const portrait = ref<PortfolioTeacherPortraitVO | null>(null)
@@ -87,8 +87,8 @@ const portraitDataInsufficient = computed(() => {
     return false
   }
   return (
-    portrait.value.officialRecordCount === 0 &&
-    portrait.value.dimensions.every(
+    portrait.value.officialRecordCount === 0
+    && portrait.value.dimensions.every(
       (item) => item.readiness === PortfolioPortraitDimensionReadinessCode.PENDING,
     )
   )
@@ -266,9 +266,9 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     ? { teacherId: targetTeacherId.value }
     : {}
   if (
-    item.archiveRecordId &&
-    (item.todoType === PortfolioTodoTypeCode.ARCHIVE_RETURNED ||
-      item.todoType === PortfolioTodoTypeCode.ARCHIVE_DRAFT)
+    item.archiveRecordId
+    && (item.todoType === PortfolioTodoTypeCode.ARCHIVE_RETURNED
+      || item.todoType === PortfolioTodoTypeCode.ARCHIVE_DRAFT)
   ) {
     query.recordId = item.archiveRecordId
   }
@@ -294,8 +294,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED ||
-    item.todoType === PortfolioTodoTypeCode.CORRECTION_IN_PROGRESS
+    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED
+    || item.todoType === PortfolioTodoTypeCode.CORRECTION_IN_PROGRESS
   ) {
     if (item.categoryId) {
       query.categoryId = item.categoryId
@@ -311,8 +311,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.GAP_PENDING ||
-    item.todoType === PortfolioTodoTypeCode.GAP_RETURNED
+    item.todoType === PortfolioTodoTypeCode.GAP_PENDING
+    || item.todoType === PortfolioTodoTypeCode.GAP_RETURNED
   ) {
     void router.push({
       path: `/portfolio/teacher/gap/${item.refId}`,
@@ -321,8 +321,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.EVALUATION_MATERIAL_CONFIRM ||
-    item.todoType === PortfolioTodoTypeCode.EVALUATION_RETURNED_SUPPLEMENT
+    item.todoType === PortfolioTodoTypeCode.EVALUATION_MATERIAL_CONFIRM
+    || item.todoType === PortfolioTodoTypeCode.EVALUATION_RETURNED_SUPPLEMENT
   ) {
     void router.push({
       path: '/portfolio/teacher/evaluation',
@@ -345,8 +345,8 @@ function openTodo(item: PortfolioTodoSummaryVO) {
     return
   }
   if (
-    item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_DRAFT ||
-    item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_RETURNED
+    item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_DRAFT
+    || item.todoType === PortfolioTodoTypeCode.DUAL_TEACHER_RETURNED
   ) {
     // PF-P0-287：待办 refId=申请单 id，深链 applicationId + teacherId 代办 scope
     void router.push({
@@ -460,8 +460,8 @@ function handleCockpitMetricClick(key: string, context?: { academicYear?: string
     void (async () => {
       const cachedGapTodo = todos.value.find(
         (item) =>
-          item.todoType === PortfolioTodoTypeCode.GAP_PENDING ||
-          item.todoType === PortfolioTodoTypeCode.GAP_RETURNED,
+          item.todoType === PortfolioTodoTypeCode.GAP_PENDING
+          || item.todoType === PortfolioTodoTypeCode.GAP_RETURNED,
       )
       if (cachedGapTodo) {
         openTodo(cachedGapTodo)
@@ -774,8 +774,8 @@ onUnmounted(() => {
                   </p>
                   <p
                     v-if="
-                      workbenchSummary.completenessPercent === 0 &&
-                      (workbenchSummary.requiredCategoryDone ?? 0) === 0
+                      workbenchSummary.completenessPercent === 0
+                        && (workbenchSummary.requiredCategoryDone ?? 0) === 0
                     "
                     class="teacher-home__onboarding"
                   >
@@ -850,18 +850,18 @@ onUnmounted(() => {
               <span class="teacher-home__more-label">发展与认定</span>
               <div class="teacher-home__more-actions">
                 <UiButton size="sm" variant="ghost" @click="goPromotionScene">职称材料包</UiButton>
-                <UiButton size="sm" variant="ghost" @click="goDualTeacherApply"
-                  >资格与认定</UiButton
-                >
+                <UiButton size="sm" variant="ghost" @click="goDualTeacherApply">
+                  资格与认定
+                </UiButton>
                 <UiButton size="sm" variant="ghost" @click="goOneTable">教师一张表</UiButton>
               </div>
             </li>
             <li>
               <span class="teacher-home__more-label">维护</span>
               <div class="teacher-home__more-actions">
-                <UiButton size="sm" variant="ghost" :loading="loading" @click="reloadHomeData"
-                  >刷新数据</UiButton
-                >
+                <UiButton size="sm" variant="ghost" :loading="loading" @click="reloadHomeData">
+                  刷新数据
+                </UiButton>
               </div>
             </li>
             <li>
@@ -914,8 +914,8 @@ onUnmounted(() => {
                 <p v-if="item.dueTime" class="teacher-home__meta">截止 {{ item.dueTime }}</p>
                 <UiButton
                   v-if="
-                    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED &&
-                    canManageOwnPrivacy
+                    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED
+                      && canManageOwnPrivacy
                   "
                   size="sm"
                   variant="soft"

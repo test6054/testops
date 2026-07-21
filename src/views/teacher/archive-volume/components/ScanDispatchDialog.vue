@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
-import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
+import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -29,7 +29,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  created: [
+  "created": [
     payload: {
       ticketId: string
       kioskUrl: string

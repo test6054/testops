@@ -35,8 +35,8 @@ function stepClass(step: ObeJourneyStepVO): string {
 function goStep(step: ObeJourneyStepVO): void {
   if (!step.routeName) return
   if (
-    PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName) &&
-    qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
+    PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName)
+    && qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
   ) {
     void message.warning('培养方案尚未确认。请先完成确认，再进入达成度结果与质量报告')
     void router.push(buildQualityPlanWorkbenchLocation(QUALITY_PLAN_GATE_REASON_UNCONFIRMED))

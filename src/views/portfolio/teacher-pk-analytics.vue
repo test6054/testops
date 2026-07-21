@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherPkSessionVO } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type {
   PortfolioTeacherPkCompareTeacherVO,
   PortfolioTeacherPkCompareVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
@@ -18,6 +17,7 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -27,7 +27,6 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
-import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
@@ -38,6 +37,7 @@ import {
   portfolioTeacherSelectOptionsFromSummaries,
   resolvePortfolioTeacherDisplayName,
 } from '@/utils/portfolio-teacher-display'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const operation = ref<'preview' | 'create' | 'detail' | 'export' | null>(null)
 const historyLoading = ref(false)
@@ -171,7 +171,7 @@ async function createPkSession() {
       sessionPurpose: purpose,
       maskMode: maskMode.value,
     })
-    message.success('对比会话已保存')
+    void message.success('对比会话已保存')
     query.pageNum = 1
     await loadSessionPage()
   } catch (error) {
@@ -251,7 +251,7 @@ async function exportSession(row: PortfolioTeacherPkSessionVO) {
       maskMode: row.maskMode,
     })
     await downloadPortfolioExcelExport(result)
-    message.success('已开始下载教师对比报告')
+    void message.success('已开始下载教师对比报告')
   } catch (error) {
     showUserError(error, '导出教师对比报告失败')
   } finally {
@@ -309,7 +309,11 @@ onUnmounted(() => {
               :filter-option="false"
               option-label-prop="label"
               :disabled="operationPending"
-              @focus="() => loadTeachers()"
+              @focus="
+                () => {
+                  void loadTeachers()
+                }
+              "
               @search="handleTeacherSearch"
             />
           </label>
@@ -333,7 +337,11 @@ onUnmounted(() => {
               variant="outline"
               :loading="operation === 'preview'"
               :disabled="operationPending"
-              @click="previewPkCompare"
+              @click="
+                () => {
+                  void previewPkCompare()
+                }
+              "
             >
               仅预览
             </UiButton>
@@ -342,7 +350,11 @@ onUnmounted(() => {
               variant="primary"
               :loading="operation === 'create'"
               :disabled="operationPending"
-              @click="createPkSession"
+              @click="
+                () => {
+                  void createPkSession()
+                }
+              "
             >
               保存并生成对比
             </UiButton>
@@ -379,9 +391,9 @@ onUnmounted(() => {
             >
               <div
                 v-if="
-                  teacher.lifecycleStatus ||
-                  teacher.evaluationHeld ||
-                  teacher.ownerIdentityLayers?.length
+                  teacher.lifecycleStatus
+                    || teacher.evaluationHeld
+                    || teacher.ownerIdentityLayers?.length
                 "
                 class="teacher-pk__identity-bar"
               >

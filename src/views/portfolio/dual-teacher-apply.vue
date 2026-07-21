@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { PortfolioDualTeacherApplicationVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -9,6 +8,7 @@ import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -29,8 +29,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 
 const route = useRoute()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 /** 管理员代办：可代写草稿，不可把申请错绑到操作人本人。 */
 const isProxyMode = computed(() =>
@@ -97,32 +97,32 @@ const canEdit = computed(() => {
   }
   // 驳回或已通过后可发起新单：清空 form.id 后进入可编辑
   if (
-    status === PortfolioDualTeacherApplicationStatusCode.REJECTED ||
-    status === PortfolioDualTeacherApplicationStatusCode.APPROVED
+    status === PortfolioDualTeacherApplicationStatusCode.REJECTED
+    || status === PortfolioDualTeacherApplicationStatusCode.APPROVED
   ) {
     return !form.id
   }
   return (
-    status === PortfolioDualTeacherApplicationStatusCode.DRAFT ||
-    status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED ||
-    status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
+    status === PortfolioDualTeacherApplicationStatusCode.DRAFT
+    || status === PortfolioDualTeacherApplicationStatusCode.COLLEGE_RETURNED
+    || status === PortfolioDualTeacherApplicationStatusCode.ACADEMIC_RETURNED
   )
 })
 
 /** 已认定通过且仍绑定旧单时，允许发起年度复核（新建申请）。 */
 const canStartReReview = computed(() => {
   return (
-    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED &&
-    !!form.id &&
-    !operationPending.value
+    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED
+    && !!form.id
+    && !operationPending.value
   )
 })
 
 /** 复核填写中：已通过态下已清空申请主键，尚未保存新草稿。 */
 const reReviewDrafting = computed(() => {
   return (
-    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED &&
-    !form.id
+    application.value?.applicationStatus === PortfolioDualTeacherApplicationStatusCode.APPROVED
+    && !form.id
   )
 })
 
@@ -447,9 +447,7 @@ watch(
             <ul v-if="attachmentItems.length" class="attachment-list">
               <li v-for="item in attachmentItems" :key="item.fileNodeId">
                 <span>{{ item.fileName }}</span>
-                <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)"
-                  >移除</a
-                >
+                <a v-if="canEdit && !operationPending" @click="removeAttachment(item.fileNodeId)">移除</a>
               </li>
             </ul>
           </UiFormItem>

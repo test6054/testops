@@ -4,30 +4,21 @@ import type {
   AssessmentGoalWeightSaveRequest,
   AssessmentGoalWeightVO,
 } from '@/apis/quality/assessment-goal-weight'
-import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
 import type { AssessmentItemSaveRequest, AssessmentItemVO } from '@/apis/quality/assessment-item'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { CourseGoalSaveRequest, CourseGoalVO } from '@/apis/quality/course-goal'
-import { courseGoalApi } from '@/apis/quality/course-goal'
 import type { CourseGoalAssessmentRuleSaveRequest } from '@/apis/quality/course-goal-assessment-rule'
-import { courseGoalAssessmentRuleApi } from '@/apis/quality/course-goal-assessment-rule'
 import type {
   CourseGoalRequirementSaveRequest,
   CourseGoalRequirementVO,
 } from '@/apis/quality/course-goal-requirement'
-import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
 import type { GraduationRequirementVO } from '@/apis/quality/graduation-requirement'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type {
   QualityCourseEditorForm,
   QualityCourseSaveRequest,
   QualityCourseVO,
 } from '@/apis/quality/quality-course'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type { RequirementIndicatorVO } from '@/apis/quality/requirement-indicator'
-import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import type { RubricItemSaveRequest, RubricItemVO } from '@/apis/quality/rubric-item'
-import { rubricItemApi } from '@/apis/quality/rubric-item'
 /**
  * 质量评价课程 - 支撑矩阵工作台（3-in-1）
  *
@@ -56,13 +47,21 @@ import { rubricItemApi } from '@/apis/quality/rubric-item'
  */
 import type { CourseListVO } from '@/apis/quality/user-catalog'
 import type { QualityCourseMatrixSignalSummaryVO } from '@/apis/quality/workbench'
-import { workbenchApi } from '@/apis/quality/workbench'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { assessmentGoalWeightApi } from '@/apis/quality/assessment-goal-weight'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
+import { courseGoalApi } from '@/apis/quality/course-goal'
+import { courseGoalAssessmentRuleApi } from '@/apis/quality/course-goal-assessment-rule'
+import { courseGoalRequirementApi } from '@/apis/quality/course-goal-requirement'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
 import {
   AggregationFunctionCode,
   AggregationFunctionDescription,
@@ -76,6 +75,7 @@ import {
   SupportLevelCode,
   SupportLevelDescription,
 } from '@/apis/quality/types'
+import { workbenchApi } from '@/apis/quality/workbench'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
@@ -269,7 +269,7 @@ async function loadGoalTable() {
   }
 }
 
-function handleGoalPageChange(page: { current: number; pageSize: number }) {
+function handleGoalPageChange(page: { current: number, pageSize: number }) {
   goalPageNum.value = page.current
   goalPageSize.value = page.pageSize
   void loadGoalTable()
@@ -408,7 +408,7 @@ async function loadItemTable() {
   }
 }
 
-function handleItemPageChange(page: { current: number; pageSize: number }) {
+function handleItemPageChange(page: { current: number, pageSize: number }) {
   itemPageNum.value = page.current
   itemPageSize.value = page.pageSize
   void loadItemTable()
@@ -647,10 +647,10 @@ const signals = computed<SignalMetric[]>(() => {
   const courseGoalWeightedCount = summary.courseGoalWeightedCount ?? goalsWeighted.value
   const courseGoalHealthyCount = summary.courseGoalHealthyCount ?? goalsHealthy.value
   const goalsCoverageOk = courseGoalTotal === 0 || courseGoalCoveredCount === courseGoalTotal
-  const itemsHealthOk =
-    assessmentItemWeightedCount === 0 || assessmentItemHealthyCount === assessmentItemWeightedCount
-  const goalsWeightHealthOk =
-    courseGoalWeightedCount === 0 || courseGoalHealthyCount === courseGoalWeightedCount
+  const itemsHealthOk
+    = assessmentItemWeightedCount === 0 || assessmentItemHealthyCount === assessmentItemWeightedCount
+  const goalsWeightHealthOk
+    = courseGoalWeightedCount === 0 || courseGoalHealthyCount === courseGoalWeightedCount
   return [
     {
       key: 'goals',
@@ -696,8 +696,8 @@ const signals = computed<SignalMetric[]>(() => {
           ? `${assessmentItemHealthyCount}/${assessmentItemWeightedCount}`
           : '0/0',
       tone:
-        assessmentItemWeightedCount > 0 &&
-        assessmentItemHealthyCount === assessmentItemWeightedCount
+        assessmentItemWeightedCount > 0
+        && assessmentItemHealthyCount === assessmentItemWeightedCount
           ? 'green'
           : assessmentItemWeightedCount > 0
             ? 'red'
@@ -805,8 +805,8 @@ const supportMatrixCells = computed<MatrixCell[]>(() => {
         ? `R::${support.requirementId}`
         : null
     if (!colKey) continue
-    const tone: MatrixCell['tone'] =
-      support.supportLevel === SupportLevelCode.HIGH
+    const tone: MatrixCell['tone']
+      = support.supportLevel === SupportLevelCode.HIGH
         ? 'red'
         : support.supportLevel === SupportLevelCode.MEDIUM
           ? 'orange'
@@ -1000,13 +1000,13 @@ async function submitCourse() {
   const semester = courseEditor.semester
   const selectedSemester = ALL_SEMESTER_CODES.find((code) => code === semester)
   if (
-    !courseEditor.programId.trim() ||
-    !courseEditor.trainingPlanId.trim() ||
-    !courseEditor.courseId.trim() ||
-    !courseEditor.courseCode.trim() ||
-    !courseEditor.courseName.trim() ||
-    !courseEditor.schoolYear.trim() ||
-    !selectedSemester
+    !courseEditor.programId.trim()
+    || !courseEditor.trainingPlanId.trim()
+    || !courseEditor.courseId.trim()
+    || !courseEditor.courseCode.trim()
+    || !courseEditor.courseName.trim()
+    || !courseEditor.schoolYear.trim()
+    || !selectedSemester
   ) {
     void message.error('请填写专业、培养方案、目录课程、编码、名称、学年、学期')
     return
@@ -1236,9 +1236,9 @@ async function submitSupport() {
     return
   }
   if (
-    supportEditor.supportWeight == null ||
-    supportEditor.supportWeight <= 0 ||
-    supportEditor.supportWeight > 1
+    supportEditor.supportWeight == null
+    || supportEditor.supportWeight <= 0
+    || supportEditor.supportWeight > 1
   ) {
     void message.error('权重必须在 (0, 1] 之间')
     return
@@ -1282,11 +1282,11 @@ function handleSupportCellClick(cellEvent: {
   const goalSupports = supportsOfGoal(cellEvent.row.key)
   const matched = goalSupports.find(
     (s) =>
-      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId) ||
-      (colMeta.reqId &&
-        !colMeta.indicatorId &&
-        s.requirementId === colMeta.reqId &&
-        !s.indicatorId),
+      (colMeta.indicatorId && s.indicatorId === colMeta.indicatorId)
+      || (colMeta.reqId
+        && !colMeta.indicatorId
+        && s.requirementId === colMeta.reqId
+        && !s.indicatorId),
   )
   if (matched) openSupportEdit(matched)
   else openSupportCreate(cellEvent.row.key, cellEvent.col.key)
@@ -1600,7 +1600,7 @@ async function loadRubricDrawerPage() {
   }
 }
 
-function handleRubricDrawerPageChange(pageEvent: { current: number; pageSize: number }) {
+function handleRubricDrawerPageChange(pageEvent: { current: number, pageSize: number }) {
   rubricDrawerPageNum.value = pageEvent.current
   rubricDrawerPageSize.value = pageEvent.pageSize
   void loadRubricDrawerPage()
@@ -1642,9 +1642,9 @@ function openRubricEdit(record: RubricItemVO) {
 async function submitRubric() {
   if (!guardCourseMatrixEditable('保存评分量规')) return
   if (
-    !rubricEditor.rubricName.trim() ||
-    rubricEditor.fullScore == null ||
-    rubricEditor.fullScore <= 0
+    !rubricEditor.rubricName.trim()
+    || rubricEditor.fullScore == null
+    || rubricEditor.fullScore <= 0
   ) {
     void message.error('请填写名称与满分')
     return
@@ -1863,20 +1863,20 @@ onMounted(async () => {
 
 /* ========== 字典 ========== */
 
-const supportLevelOptions: { value: SupportLevelCode; label: string }[] =
-  ALL_SUPPORT_LEVEL_CODES.map((value) => ({
+const supportLevelOptions: { value: SupportLevelCode, label: string }[]
+  = ALL_SUPPORT_LEVEL_CODES.map((value) => ({
     value,
     label: strictEnumLabel(SupportLevelDescription, value, '支撑度'),
   }))
 
-const aggregationOptions: { value: AggregationFunctionCode; label: string }[] =
-  ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
+const aggregationOptions: { value: AggregationFunctionCode, label: string }[]
+  = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
     value,
     label: aggregationFunctionLabel(value),
   }))
 
-const itemTypeOptions: { value: AssessmentItemTypeCode; label: string }[] =
-  ALL_ASSESSMENT_ITEM_TYPE_CODES.map((value) => ({
+const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
+  = ALL_ASSESSMENT_ITEM_TYPE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(AssessmentItemTypeDescription, value, '考核项类型'),
   }))
@@ -1899,8 +1899,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode; label: string }[] =
           <UiTag v-if="currentCourse?.schoolYear" tone="blue">
             {{ currentCourse.schoolYear
             }}<span v-if="currentCourse.semester">
-              · {{ formatSemester(currentCourse.semester) }}</span
-            >
+              · {{ formatSemester(currentCourse.semester) }}</span>
           </UiTag>
           <UiTag v-if="currentCourse?.creditValue != null" tone="gray">
             {{ currentCourse.creditValue }} 学分
@@ -2106,13 +2105,12 @@ const itemTypeOptions: { value: AssessmentItemTypeCode; label: string }[] =
                   <UiTag v-if="record.complexEngineeringFlag" tone="orange"> 复杂工程 </UiTag>
                   <span
                     v-if="
-                      !record.civicObjectiveFlag &&
-                      !record.aiLiteracyFlag &&
-                      !record.complexEngineeringFlag
+                      !record.civicObjectiveFlag
+                        && !record.aiLiteracyFlag
+                        && !record.complexEngineeringFlag
                     "
                     class="qcm__muted"
-                    >-</span
-                  >
+                  >-</span>
                 </div>
               </template>
               <template v-else-if="column.key === 'actions'">

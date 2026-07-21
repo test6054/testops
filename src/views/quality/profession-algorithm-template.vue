@@ -8,18 +8,18 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *      平台维护，专业负责人在创建实例时基于模板继承字段。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProfessionAlgorithmTemplateQueryRequest,
   ProfessionAlgorithmTemplateSaveRequest,
   ProfessionAlgorithmTemplateSignalSummaryVO,
   ProfessionAlgorithmTemplateVO,
 } from '@/apis/quality/profession-algorithm-template'
-import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
+import { professionAlgorithmTemplateApi } from '@/apis/quality/profession-algorithm-template'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -286,7 +286,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()

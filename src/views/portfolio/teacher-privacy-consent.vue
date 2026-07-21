@@ -7,10 +7,10 @@ import type {
   PortfolioPrivacyConsentNoticeVO,
   PortfolioPrivacyConsentVO,
 } from '@/apis/portfolio/privacy-consent'
-import { portfolioPrivacyConsentApi } from '@/apis/portfolio/privacy-consent'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioPrivacyConsentApi } from '@/apis/portfolio/privacy-consent'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -221,9 +221,9 @@ watch(
           >
             撤回同意
           </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="submitting" @click="goHome"
-            >返回首页</UiButton
-          >
+          <UiButton size="sm" variant="outline" :disabled="submitting" @click="goHome">
+            返回首页
+          </UiButton>
         </template>
         <template v-else>
           <UiButton

@@ -4,11 +4,11 @@ import type {
   PortfolioTeacherHonorCategoryVO,
   PortfolioTeacherHonorVO,
 } from '@/apis/portfolio/teacher-honor'
-import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -43,8 +43,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 const router = useRouter()
 
 const loading = ref(false)

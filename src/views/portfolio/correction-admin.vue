@@ -4,10 +4,6 @@ import type {
   PortfolioCorrectionImpactVO,
   PortfolioCorrectionSummaryVO,
 } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
-  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
@@ -19,6 +15,10 @@ import {
   PortfolioCorrectionRequestStatusCode,
   PortfolioCorrectionRequestStatusDescription,
 } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
+  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -92,8 +92,8 @@ async function bindActionTeacherAndAssert(
   teacherId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value =
-    teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
+  actionTeacherId.value
+    = teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
@@ -432,8 +432,8 @@ void loadPage()
               {{
                 impactDetail.recomputeStatus === PortfolioCorrectionImpactRecomputeStatusCode.FAILED
                   ? '重新重算'
-                  : impactDetail.recomputeStatus ===
-                      PortfolioCorrectionImpactRecomputeStatusCode.RUNNING
+                  : impactDetail.recomputeStatus
+                    === PortfolioCorrectionImpactRecomputeStatusCode.RUNNING
                     ? '接管重试'
                     : '执行重算'
               }}

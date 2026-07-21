@@ -6,32 +6,31 @@ import type {
   PortfolioAppointmentPeriodEvaluationVO,
   PortfolioPortraitCreditCurveVO,
 } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
-import {
-  PortfolioArchiveRecordStatusDescription,
-  PortfolioPortraitDimensionReadinessCode,
-  PortfolioPortraitDimensionReadinessDescription,
-  PortfolioPortraitIndicatorEvidenceTypeDescription,
-} from '@/apis/portfolio/enums'
 import type { PortfolioDevelopmentPlanCompletionVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioTeacherPortraitCohortCompareVO,
   PortfolioTeacherPortraitIndicatorDetailVO,
   PortfolioTeacherPortraitTrendVO,
   PortfolioTeacherPortraitVO,
 } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
-  PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
-} from '@/apis/portfolio/types'
 import type { PortfolioSuggestionTypeCode } from '@/types/enums/portfolio-suggestion-type-enum'
-import { PortfolioSuggestionTypeDescription } from '@/types/enums/portfolio-suggestion-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
+import {
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioPortraitDimensionReadinessCode,
+  PortfolioPortraitDimensionReadinessDescription,
+  PortfolioPortraitIndicatorEvidenceTypeDescription,
+} from '@/apis/portfolio/enums'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
+import {
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
+  PORTFOLIO_PORTRAIT_DIMENSION_READINESS_TONE,
+} from '@/apis/portfolio/types'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
@@ -58,6 +57,7 @@ import {
   PortfolioPortraitCohortTypeDescription,
 } from '@/types/enums/portfolio-portrait-cohort-type-enum'
 import { PortfolioPortraitStageDescription } from '@/types/enums/portfolio-portrait-stage-code-enum'
+import { PortfolioSuggestionTypeDescription } from '@/types/enums/portfolio-suggestion-type-enum'
 import {
   PortfolioTrainingRecommendStatusCode,
   PortfolioTrainingRecommendStatusDescription,
@@ -77,8 +77,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
-const { archiveWriteForbidden, archiveWriteBlockMessage, reloadLifecycleState } =
-  usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
+const { archiveWriteForbidden, archiveWriteBlockMessage, reloadLifecycleState }
+  = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' {
@@ -286,8 +286,8 @@ async function dismissTrainingRecommendation(item: PortfolioAnalysisTrainingReco
     showUserError(error, '忽略培训推荐失败')
   } finally {
     if (
-      portraitRequestToken.value === requestToken &&
-      trainingRecommendationActionId.value === recommendationId
+      portraitRequestToken.value === requestToken
+      && trainingRecommendationActionId.value === recommendationId
     ) {
       trainingRecommendationActionId.value = ''
     }
@@ -341,7 +341,7 @@ async function loadPlanCompletion() {
   }
 }
 
-function defaultAppointmentPeriodRange(): { periodStart: string; periodEnd: string } {
+function defaultAppointmentPeriodRange(): { periodStart: string, periodEnd: string } {
   const end = new Date()
   const start = new Date(end.getFullYear() - 2, 0, 1)
   const fmt = (d: Date) => {
@@ -385,8 +385,7 @@ async function loadSecondaryPortraitData() {
   ])
   const [
     cohortSettled,
-    trendSettled,
-    ,
+    trendSettled,,    
     suggestionSettled,
     trainingSettled,
     creditSettled,
@@ -813,8 +812,8 @@ watch(creditCategory, (next, prev) => {
               <p>{{ item.recommendReason }}</p>
               <div
                 v-if="
-                  item.recommendStatus === PortfolioTrainingRecommendStatusCode.PENDING &&
-                  !canPickTeachers
+                  item.recommendStatus === PortfolioTrainingRecommendStatusCode.PENDING
+                    && !canPickTeachers
                 "
                 class="teacher-portrait__insight-actions"
               >

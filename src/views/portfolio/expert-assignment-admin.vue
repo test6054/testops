@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExpertAssignmentVO } from '@/apis/portfolio/expert-assignment'
-import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -293,7 +293,7 @@ function onSearch() {
   void loadPage()
 }
 
-function onPageChange(page: { current: number; pageSize: number }) {
+function onPageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -313,9 +313,9 @@ function openCreateModal() {
 async function submitCreate() {
   const subjectTeacherIds = [...new Set(parseSubjectTeacherIds(createForm.subjectTeacherIdsText))]
   if (
-    !createForm.evaluationTaskId ||
-    !createForm.expertUserId.trim() ||
-    subjectTeacherIds.length === 0
+    !createForm.evaluationTaskId
+    || !createForm.expertUserId.trim()
+    || subjectTeacherIds.length === 0
   ) {
     showFormValidationMessage('请填写评价任务、专家用户和至少一名被评教师')
     return

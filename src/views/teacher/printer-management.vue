@@ -306,9 +306,9 @@
           <UiButton size="sm" @click="copyText(activationCodeInfo.activationCode)">
             复制激活码
           </UiButton>
-          <UiButton size="sm" variant="outline" @click="showActivationCodeModal = false"
-            >关闭</UiButton
-          >
+          <UiButton size="sm" variant="outline" @click="showActivationCodeModal = false">
+            关闭
+          </UiButton>
         </div>
       </div>
     </UiDialog>
@@ -330,6 +330,12 @@ import type {
   ScannerAgentDiagnosticStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -349,12 +355,6 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -447,7 +447,7 @@ const deviceSignalMetrics = computed((): SignalMetric[] => [
   },
 ])
 
-const locationOptions = ref<Array<{ label: string; value: string }>>([])
+const locationOptions = ref<Array<{ label: string, value: string }>>([])
 
 function syncSearchForm(next: Record<string, unknown>): void {
   Object.assign(searchForm, next)
@@ -635,7 +635,7 @@ function handleResetSearch(): void {
   void loadDevices()
 }
 
-function handleUiPageChange(page: { current: number; pageSize: number }): void {
+function handleUiPageChange(page: { current: number, pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadDevices()

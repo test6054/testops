@@ -4,14 +4,6 @@ import type {
   PortfolioEvaluationModeCode,
   PortfolioEvaluationSceneCode,
 } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
-  PORTFOLIO_EVALUATION_ENTRY_WRITABLE_STATUSES,
-  PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES,
-  PortfolioEvaluationModeDescription,
-  PortfolioEvaluationSceneDescription,
-  PortfolioEvaluationTaskStatusCode,
-} from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -20,14 +12,22 @@ import type {
   PortfolioEvaluationSubjectTeacherOptionVO,
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
-import {
-  portfolioEvaluationEntryApi,
-  portfolioEvaluationTaskApi,
-} from '@/apis/portfolio/teacher-platform'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import {
+  PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES,
+  PORTFOLIO_EVALUATION_ENTRY_WRITABLE_STATUSES,
+  PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES,
+  PortfolioEvaluationModeDescription,
+  PortfolioEvaluationSceneDescription,
+  PortfolioEvaluationTaskStatusCode,
+} from '@/apis/portfolio/enums'
+import {
+  portfolioEvaluationEntryApi,
+  portfolioEvaluationTaskApi,
+} from '@/apis/portfolio/teacher-platform'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -57,7 +57,7 @@ const route = useRoute()
 const isExternalExpertFill = computed(() => route.name === 'PortfolioExpertEvaluationFill')
 const activeTab = ref('fill')
 const fillTabItems = computed(() => {
-  const items: Array<{ key: string; label: string }> = [{ key: 'fill', label: '在线填报' }]
+  const items: Array<{ key: string, label: string }> = [{ key: 'fill', label: '在线填报' }]
   if (!isExternalExpertFill.value) {
     items.push({ key: 'summary', label: '汇总分析' })
   }
@@ -121,8 +121,8 @@ const fillSubjectTeacherId = computed(() => {
   const raw = fillForm.subjectTeacherUserId
   return raw != null && String(raw).trim() !== '' ? String(raw).trim() : undefined
 })
-const { lifecycleState, archiveWriteForbidden, archiveWriteBlockMessage, reloadLifecycleState } =
-  usePortfolioArchiveWriteGuard({ teacherId: fillSubjectTeacherId })
+const { lifecycleState, archiveWriteForbidden, archiveWriteBlockMessage, reloadLifecycleState }
+  = usePortfolioArchiveWriteGuard({ teacherId: fillSubjectTeacherId })
 /** 更正复核允许 hold 教师改结论；进行中评价仍 hard 拦参评 hold（PF-P0-264/265）。 */
 const evaluationParticipationForbidden = computed(() => {
   const task = tasks.value.find((item) => item.id === selectedTaskId.value)
@@ -140,8 +140,8 @@ const evaluationParticipationBlockMessage = computed(() => {
   if (archiveWriteForbidden.value) {
     return archiveWriteBlockMessage.value
   }
-  const status =
-    lifecycleState.value?.lifecycleStatusLabel || lifecycleState.value?.lifecycleStatus || '非在职'
+  const status
+    = lifecycleState.value?.lifecycleStatusLabel || lifecycleState.value?.lifecycleStatus || '非在职'
   return `教师生命周期为「${status}」，禁止作为被评对象写入评价。`
 })
 const correctionHeldSubjectHint = computed(() => {
@@ -152,8 +152,8 @@ const correctionHeldSubjectHint = computed(() => {
   if (!lifecycleState.value?.evaluationHeld) {
     return ''
   }
-  const status =
-    lifecycleState.value.lifecycleStatusLabel || lifecycleState.value.lifecycleStatus || '参评hold'
+  const status
+    = lifecycleState.value.lifecycleStatusLabel || lifecycleState.value.lifecycleStatus || '参评hold'
   return `当前为归档更正复核：被评教师生命周期「${status}」仍可按开放复核工单改结论（不套用进行中参评 hold）。`
 })
 function assertEvaluationParticipable(actionLabel?: string): boolean {

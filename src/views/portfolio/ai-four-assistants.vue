@@ -90,8 +90,8 @@ const tabItems: UiSectionTabItem[] = ASSISTANTS.map((item) => ({
 const route = useRoute()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 const { canManageTeacherAi } = usePortfolioTeacherAccess()
 const activeKey = ref<AssistantKey>('generate')
 const submitting = ref(false)
@@ -196,8 +196,8 @@ function validateSubmit(): boolean {
     return false
   }
   if (
-    (activeKey.value === 'optimize' || activeKey.value === 'effect') &&
-    !submitForm.sourceText.trim()
+    (activeKey.value === 'optimize' || activeKey.value === 'effect')
+    && !submitForm.sourceText.trim()
   ) {
     showFormValidationMessage('请填写待分析的教学材料正文')
     return false
@@ -362,14 +362,14 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
     return
   }
   if (
-    reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED &&
-    archiveWriteForbidden.value
+    reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED
+    && archiveWriteForbidden.value
   ) {
     return
   }
   if (
-    reviewStatus === PortfolioAiAnalysisReviewStatusCode.REJECTED &&
-    !reviewForm.reviewOpinion.trim()
+    reviewStatus === PortfolioAiAnalysisReviewStatusCode.REJECTED
+    && !reviewForm.reviewOpinion.trim()
   ) {
     showFormValidationMessage('请填写驳回原因')
     return
@@ -400,9 +400,9 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
       reviewOpinion: reviewForm.reviewOpinion.trim() || undefined,
     })
     if (
-      reviewToken.value !== token ||
-      targetTeacherId.value !== targetTeacherScopeId ||
-      activeKey.value !== targetAssistantKey
+      reviewToken.value !== token
+      || targetTeacherId.value !== targetTeacherScopeId
+      || activeKey.value !== targetAssistantKey
     ) {
       return
     }

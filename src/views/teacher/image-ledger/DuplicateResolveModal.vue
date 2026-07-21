@@ -40,9 +40,9 @@
 
 <script lang="ts" setup>
 import type { ExamPaperDuplicateResolutionVO } from '@/apis/mark/image-ledger'
-import { resolveDuplicate } from '@/apis/mark/image-ledger'
 import message from 'ant-design-vue/es/message'
 import { ref, watch } from 'vue'
+import { resolveDuplicate } from '@/apis/mark/image-ledger'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'

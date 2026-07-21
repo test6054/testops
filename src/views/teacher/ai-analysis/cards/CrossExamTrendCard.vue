@@ -107,12 +107,6 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisResponse } from '@/apis/mark/cross-exam-analysis'
-import {
-  generateClassTrend,
-  generateCourseTrend,
-  listCommonClassScopes,
-  listTrends,
-} from '@/apis/mark/cross-exam-analysis'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -122,6 +116,12 @@ import {
   AnalysisScopeTypeCode,
   AnalysisScopeTypeDescription,
 } from '@/apis/mark/analysis-scope-type'
+import {
+  generateClassTrend,
+  generateCourseTrend,
+  listCommonClassScopes,
+  listTrends,
+} from '@/apis/mark/cross-exam-analysis'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
@@ -207,7 +207,7 @@ const historyRows = computed(() =>
 )
 
 const selectedExams = ref<ExamSummaryResponse[]>([])
-const classOptions = ref<{ label: string; value: string }[]>([])
+const classOptions = ref<{ label: string, value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -287,9 +287,9 @@ const examSelectPlaceholder = computed(() => {
 
 const showCommonClassField = computed(
   () =>
-    scopeMode.value === AnalysisScopeTypeCode.CLASS &&
-    !props.scopeOrgClassId?.trim() &&
-    !props.drillClassId?.trim(),
+    scopeMode.value === AnalysisScopeTypeCode.CLASS
+    && !props.scopeOrgClassId?.trim()
+    && !props.drillClassId?.trim(),
 )
 
 const trendFilterFields = computed<FilterField[]>(() => {
@@ -383,7 +383,7 @@ function applyDrillClassSelection(): void {
   }
 }
 
-function mapClassRefsToOptions(classRefs: Array<{ classId: string; className: string }>) {
+function mapClassRefsToOptions(classRefs: Array<{ classId: string, className: string }>) {
   return classRefs.map((classRef) => ({
     value: classRef.classId,
     label: classRef.className,
@@ -550,8 +550,8 @@ async function handleGenerate(): Promise<void> {
   }
   generating.value = true
   try {
-    const generated =
-      scopeMode.value === AnalysisScopeTypeCode.COURSE
+    const generated
+      = scopeMode.value === AnalysisScopeTypeCode.COURSE
         ? await generateCourseTrend({
             courseId,
             academicYear,

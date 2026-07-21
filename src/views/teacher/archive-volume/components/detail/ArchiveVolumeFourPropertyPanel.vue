@@ -145,6 +145,8 @@ import type {
   ArchiveSecurityLevelCode,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref } from 'vue'
 import {
   ARCHIVE_SECURITY_LEVEL_OPTIONS,
   ArchiveSecurityLevelDescription,
@@ -152,8 +154,6 @@ import {
   confirmArchiveVolumeSecurityMark,
   updateArchiveVolumeSecurityLevel,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
 import ConfidentialStatusBar from '@/components/mark/ConfidentialStatusBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -181,7 +181,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  refreshed: []
+  "refreshed": []
   'four-property-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeFourProperty>>]
 }>()
 

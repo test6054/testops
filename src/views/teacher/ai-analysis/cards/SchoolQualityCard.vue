@@ -98,6 +98,11 @@ import type {
   SchoolQualityItemResponse,
   SchoolQualityRatingCode,
 } from '@/apis/mark/school-quality'
+import type { BadgeTone, FilterField, UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, toRef, watch } from 'vue'
 import {
   generateQualityAnalysis,
   listQualityAnalysis,
@@ -108,12 +113,6 @@ import {
   SchoolQualityItemDimensionDescription,
   SchoolQualityRatingDescription,
 } from '@/apis/mark/school-quality'
-import type { BadgeTone, FilterField, UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatSemester } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, toRef, watch } from 'vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
@@ -127,6 +126,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useExamSummariesReviewerWriteCapability } from '@/composables/useExamIdsReviewerWriteCapability'
 import { useChartOption } from '@/hooks/modules/useChartOption'
+import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildOptionalAcademicYearSemesterQuery,
   buildRequiredAcademicYearSemesterQuery,
@@ -208,16 +208,16 @@ const examSelectScopeReferenceDepartmentId = computed(
 )
 const examSelectAutoSelectScoped = computed(
   () =>
-    form.analysisDimension === SchoolQualityDimensionCode.SEMESTER ||
-    form.analysisDimension === SchoolQualityDimensionCode.COURSE,
+    form.analysisDimension === SchoolQualityDimensionCode.SEMESTER
+    || form.analysisDimension === SchoolQualityDimensionCode.COURSE,
 )
 const examSelectReady = computed(() => {
   if (!effectiveAcademicYear.value || !effectiveSemester.value) {
     return false
   }
   if (
-    form.analysisDimension === SchoolQualityDimensionCode.COURSE &&
-    !props.scopeOrgCourseId?.trim()
+    form.analysisDimension === SchoolQualityDimensionCode.COURSE
+    && !props.scopeOrgCourseId?.trim()
   ) {
     return false
   }
@@ -276,14 +276,14 @@ const examSelectHint = computed(() => {
     return '请先在上方范围栏选择学年与学期'
   }
   if (
-    form.analysisDimension === SchoolQualityDimensionCode.COURSE &&
-    !props.scopeOrgCourseId?.trim()
+    form.analysisDimension === SchoolQualityDimensionCode.COURSE
+    && !props.scopeOrgCourseId?.trim()
   ) {
     return '课程维度请先在上方范围栏选择课程'
   }
   if (
-    form.analysisDimension === SchoolQualityDimensionCode.CLASS &&
-    !props.scopeOrgClassId?.trim()
+    form.analysisDimension === SchoolQualityDimensionCode.CLASS
+    && !props.scopeOrgClassId?.trim()
   ) {
     return '班级维度请先在上方范围栏选择班级'
   }
@@ -458,22 +458,22 @@ function qualityListDimensionId(): string | undefined {
 
 async function reload(): Promise<void> {
   if (
-    form.analysisDimension === SchoolQualityDimensionCode.COURSE &&
-    !props.scopeOrgCourseId?.trim()
+    form.analysisDimension === SchoolQualityDimensionCode.COURSE
+    && !props.scopeOrgCourseId?.trim()
   ) {
     showFormValidationMessage('请先在上方范围栏选择课程')
     return
   }
   if (
-    form.analysisDimension === SchoolQualityDimensionCode.CLASS &&
-    !props.scopeOrgClassId?.trim()
+    form.analysisDimension === SchoolQualityDimensionCode.CLASS
+    && !props.scopeOrgClassId?.trim()
   ) {
     showFormValidationMessage('请先在上方范围栏选择班级')
     return
   }
   if (
-    form.analysisDimension === SchoolQualityDimensionCode.SEMESTER &&
-    !ensureRequiredAcademicYearSemester(effectiveAcademicYear.value, effectiveSemester.value)
+    form.analysisDimension === SchoolQualityDimensionCode.SEMESTER
+    && !ensureRequiredAcademicYearSemester(effectiveAcademicYear.value, effectiveSemester.value)
   ) {
     return
   }
@@ -517,15 +517,15 @@ async function handleGenerate(): Promise<void> {
   if (generating.value) return
   const examIds = form.examIds
   if (
-    form.analysisDimension === SchoolQualityDimensionCode.COURSE &&
-    !props.scopeOrgCourseId?.trim()
+    form.analysisDimension === SchoolQualityDimensionCode.COURSE
+    && !props.scopeOrgCourseId?.trim()
   ) {
     showFormValidationMessage('请先在上方范围栏选择课程')
     return
   }
   if (
-    form.analysisDimension === SchoolQualityDimensionCode.CLASS &&
-    !props.scopeOrgClassId?.trim()
+    form.analysisDimension === SchoolQualityDimensionCode.CLASS
+    && !props.scopeOrgClassId?.trim()
   ) {
     showFormValidationMessage('请先在上方范围栏选择班级')
     return

@@ -54,8 +54,8 @@ const {
   assertArchiveWritable,
   reloadLifecycleState,
 } = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
-  usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
+  = usePortfolioTeacherSearch()
 const {
   loading,
   rows,

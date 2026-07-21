@@ -4,12 +4,12 @@ import type {
   PortfolioIndustryEducationProjectVO,
   PortfolioVirtualTeachingRoomActivityVO,
 } from '@/apis/portfolio/policy-ledger'
+import message from 'ant-design-vue/es/message'
+import { onMounted, reactive, ref } from 'vue'
 import {
   portfolioIndustryEducationProjectApi,
   portfolioVirtualTeachingRoomActivityApi,
 } from '@/apis/portfolio/policy-ledger'
-import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref } from 'vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -28,8 +28,8 @@ import { showUserError } from '@/utils/error-handler'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 const tab = ref<'virtual' | 'industry'>('virtual')
 const loading = ref(false)
 const virtualRows = ref<PortfolioVirtualTeachingRoomActivityVO[]>([])
@@ -317,8 +317,9 @@ onMounted(() => {
           :loading="saving"
           :disabled="archiveWriteForbidden"
           @click="saveVirtual"
-          >保存</UiButton
         >
+          保存
+        </UiButton>
       </div>
       <UiDataTable
         :loading="loading"
@@ -353,13 +354,14 @@ onMounted(() => {
               v-if="
                 !record.lifecycleStatus && !record.evaluationHeld && !record.archiveWriteForbidden
               "
-              >—</span
-            >
+            >—</span>
           </template>
           <template v-else-if="column.key === 'reviewStatus'">
-            <UiTag :tone="statusTone(record.reviewStatus)">{{
-              record.reviewStatusLabel || record.reviewStatus
-            }}</UiTag>
+            <UiTag :tone="statusTone(record.reviewStatus)">
+              {{
+                record.reviewStatusLabel || record.reviewStatus
+              }}
+            </UiTag>
           </template>
         </template>
         <template #emptyText>
@@ -417,8 +419,9 @@ onMounted(() => {
           :loading="saving"
           :disabled="archiveWriteForbidden"
           @click="saveIndustry"
-          >保存</UiButton
         >
+          保存
+        </UiButton>
       </div>
       <UiDataTable
         :loading="loading"
@@ -453,13 +456,14 @@ onMounted(() => {
               v-if="
                 !record.lifecycleStatus && !record.evaluationHeld && !record.archiveWriteForbidden
               "
-              >—</span
-            >
+            >—</span>
           </template>
           <template v-else-if="column.key === 'reviewStatus'">
-            <UiTag :tone="statusTone(record.reviewStatus)">{{
-              record.reviewStatusLabel || record.reviewStatus
-            }}</UiTag>
+            <UiTag :tone="statusTone(record.reviewStatus)">
+              {{
+                record.reviewStatusLabel || record.reviewStatus
+              }}
+            </UiTag>
           </template>
         </template>
         <template #emptyText>

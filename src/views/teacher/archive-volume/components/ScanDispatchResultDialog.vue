@@ -46,7 +46,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  cancelled: []
+  "cancelled": []
 }>()
 
 const cancelling = ref(false)
@@ -60,8 +60,8 @@ const previewUrl = computed(() =>
 // MVR-309：状态 + BE canCancelTicket（创建响应/列表同源）
 const canCancel = computed(
   () =>
-    props.payload?.status === ScanDispatchTicketStatusCode.PENDING &&
-    props.payload?.canCancelTicket === true,
+    props.payload?.status === ScanDispatchTicketStatusCode.PENDING
+    && props.payload?.canCancelTicket === true,
 )
 const isPortfolioDispatch = computed(
   () => (props.payload?.taskKind ?? props.taskKind) === ScanTaskKindCode.PORTFOLIO_COLLECT,
@@ -126,9 +126,9 @@ async function loadPendingTickets() {
         taskKind: item.taskKind,
         canCancelTicket: item.canCancelTicket,
         contextLabel:
-          item.portfolioSnapshot?.gapTaskTitle ??
-          item.portfolioSnapshot?.categoryName ??
-          item.archiveSnapshot?.archiveTitle,
+          item.portfolioSnapshot?.gapTaskTitle
+          ?? item.portfolioSnapshot?.categoryName
+          ?? item.archiveSnapshot?.archiveTitle,
         gapTaskId: item.portfolioSnapshot?.gapTaskId,
       }))
   } catch (error) {

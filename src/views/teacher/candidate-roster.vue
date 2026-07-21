@@ -67,9 +67,7 @@
         <div class="exam-scope-classes">
           <div class="exam-scope-classes__head">
             <span class="exam-scope-classes__title">参考班级</span>
-            <span v-if="scopedClassTags.length" class="exam-scope-classes__count"
-              >{{ scopedClassTags.length }} 个</span
-            >
+            <span v-if="scopedClassTags.length" class="exam-scope-classes__count">{{ scopedClassTags.length }} 个</span>
           </div>
           <div v-if="scopedClassTags.length" class="exam-scope-classes__tags">
             <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
@@ -306,23 +304,12 @@
 import type { TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ClassStudentTreeConfirmPayload } from '@/apis/edu/class'
 import type { ExamClassRefVO } from '@/apis/mark/exam'
-import { ExamRosterScopeModeDescription, ExamStatusCode, getExamDetail } from '@/apis/mark/exam'
 import type { ExamCandidateRosterWorkbenchItemResponse } from '@/apis/mark/exam-candidate-roster'
-import { pageCandidateRosterWorkbench } from '@/apis/mark/exam-candidate-roster'
 import type {
   ExamWorkbenchCandidateRosterPanelQueryRequest,
   ExamWorkbenchCandidateRosterPanelResponse,
 } from '@/apis/mark/exam-progress'
-import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
 import type { ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
-import {
-  listExamCandidateStudentUserIds,
-  mergeExamCandidates,
-  previewExamCandidates,
-  removeExamCandidates,
-  saveCurrentExamScope,
-  saveExamClassScope,
-} from '@/apis/mark/exam-scope'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
@@ -332,7 +319,18 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 import message from 'ant-design-vue/es/message'
 import { useRouter } from 'vue-router'
+import { ExamRosterScopeModeDescription, ExamStatusCode, getExamDetail } from '@/apis/mark/exam'
+import { pageCandidateRosterWorkbench } from '@/apis/mark/exam-candidate-roster'
+import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
 import { pageScannerBatches } from '@/apis/mark/exam-scan'
+import {
+  listExamCandidateStudentUserIds,
+  mergeExamCandidates,
+  previewExamCandidates,
+  removeExamCandidates,
+  saveCurrentExamScope,
+  saveExamClassScope,
+} from '@/apis/mark/exam-scope'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import ExamCandidatePaperImagesDrawer from '@/components/exam-workbench/ExamCandidatePaperImagesDrawer.vue'
@@ -400,8 +398,8 @@ let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
 let loadContextSeq = 0
 let loadTableSeq = 0
 
-const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment } =
-  useExamDepartmentClassScope({
+const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment }
+  = useExamDepartmentClassScope({
     selectedClassIds: classIds,
     seedOptions: computed(() =>
       examClassRefs.value.flatMap((item) => {
@@ -561,10 +559,10 @@ const showRosterContextBar = computed(
 
 const candidateRosterWriteAllowed = computed(
   () =>
-    canManageRosterWrites.value &&
-    examStatus.value !== ExamStatusCode.CLOSED &&
-    !classScopeReadOnly.value &&
-    !rosterLocked.value,
+    canManageRosterWrites.value
+    && examStatus.value !== ExamStatusCode.CLOSED
+    && !classScopeReadOnly.value
+    && !rosterLocked.value,
 )
 
 const allowsManualCandidateEdit = computed(
@@ -876,8 +874,8 @@ async function loadExamContext(): Promise<void> {
     }
     examStatus.value = detail.status
     rosterScopeMode.value = detail.rosterScopeMode
-    archiveClassScopeRecoveryAllowed.value =
-      detail.archiveAutoCreateClassScopeRecoveryAllowed === true
+    archiveClassScopeRecoveryAllowed.value
+      = detail.archiveAutoCreateClassScopeRecoveryAllowed === true
     examClassRefs.value = [...(detail.classRefs ?? [])]
     candidateTotal.value = detail.candidateCount ?? 0
     classIds.value = [...new Set(detail.classIds ?? [])]
@@ -913,10 +911,10 @@ async function persistInferredClassScope(): Promise<void> {
     return
   }
   if (
-    !selectedExamId.value ||
-    !classIds.value.length ||
-    classScopeReadOnly.value ||
-    persistClassScopeSaving.value
+    !selectedExamId.value
+    || !classIds.value.length
+    || classScopeReadOnly.value
+    || persistClassScopeSaving.value
   ) {
     return
   }
@@ -944,7 +942,7 @@ function handleRosterReset(): void {
   void reloadRosterData()
 }
 
-function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidatePage()
