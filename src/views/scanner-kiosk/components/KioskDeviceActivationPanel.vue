@@ -23,7 +23,7 @@ const emit = defineEmits<{
 
 const activation = useKioskDeviceActivation()
 
-const formDisabled = computed(() => props.submitLoading || props.canActivate !== true)
+const formDisabled = computed(() => props.submitLoading || !props.canActivate)
 
 const submitDisabled = computed(() => formDisabled.value || !activation.localAgentReachable.value)
 
@@ -35,7 +35,7 @@ const agentOfflineHint = computed(() =>
 
 function handleActivate() {
   // MVR-321：与 canActivate 二次拦截，禁止缺省放行
-  if (props.canActivate !== true || submitDisabled.value) return
+  if (!props.canActivate || submitDisabled.value) return
   emit('submit')
 }
 </script>

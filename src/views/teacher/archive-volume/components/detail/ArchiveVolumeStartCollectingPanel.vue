@@ -4,22 +4,22 @@ import type {
   ArchiveMaterialCatalogTemplateResponse,
   ArchiveTenantTemplateSetResponse,
 } from '@/apis/mark/archive-platform-template'
-import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeStartCollectingCheckItem,
   ArchiveVolumeStartCollectingPrecheckResponse,
   ArchiveVolumeTaskSettingsUpdateRequest,
 } from '@/apis/mark/archive-volume'
+import type { UiSelectOption } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
+import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import {
   precheckArchiveStartCollecting,
   startArchiveCollecting,
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
-import type { UiSelectOption } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -75,7 +75,7 @@ const volume = computed(() => props.detail.volume)
 const collaborators = computed(() => props.detail.collaborators ?? [])
 const isDraft = computed(() => volume.value.volumeStatus === ArchiveVolumeStatusCode.DRAFT)
 const canEditSettings = computed(
-  () => isDraft.value && (props.canManageCollaborator === trues) === true,
+  () => isDraft.value && props.canManageCollaborators,
 )
 
 const readinessRows = computed((): ArchiveVolumeStartCollectingCheckItem[] => {
@@ -91,11 +91,11 @@ const warnCount = computed(
 const readyCount = computed(() => readinessRows.value.filter((row) => row.ready).length)
 const canCommit = computed(
   () =>
-    isDraft.value &&
-    props.canStartCollecting === true &&
-    precheck.value?.canStart === true &&
-    blockingCount.value === 0 &&
-    !precheckError.value,
+    isDraft.value
+    && props.canStartCollecting
+    && precheck.value?.canStart === true
+    && blockingCount.value === 0
+    && !precheckError.value,
 )
 
 const templateSetOptions = computed((): UiSelectOption[] =>
@@ -253,7 +253,7 @@ function syncEditorsFromVolume(): void {
 }
 
 async function loadTemplateSets(): Promise<void> {
-  if (!isDraft.value || props.canManageCollaborators !== true) {
+  if (!isDraft.value || !props.canManageCollaborators) {
     templateSets.value = []
     return
   }
@@ -297,7 +297,7 @@ watch(
     volume.value.archiveDueTime,
     props.detail.materials?.length ?? 0,
     props.detail.collaborators?.length ?? 0,
-    props.canStartCollecting === true,
+    props.canStartCollecting,
   ],
   () => {
     syncEditorsFromVolume()
@@ -330,7 +330,7 @@ function onCheckItemActivate(row: ArchiveVolumeStartCollectingCheckItem): void {
 
 async function saveTaskSettings(): Promise<void> {
   if (savingSettings.value || !canEditSettings.value) return
-  if (props.canManageCollaborators !== true) {
+  if (!props.canManageCollaborators) {
     void message.warning('当前账号无任务设置维护权限')
     return
   }
@@ -413,7 +413,7 @@ async function saveTaskSettings(): Promise<void> {
 
 async function handleStart(): Promise<void> {
   if (starting.value) return
-  if (props.canStartCollecting !== true) {
+  if (!props.canStartCollecting) {
     void message.warning('当前账号无开始收材权限')
     return
   }

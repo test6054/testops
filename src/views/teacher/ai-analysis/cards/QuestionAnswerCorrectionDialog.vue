@@ -18,8 +18,8 @@
           dense
           :title="questionSummary"
           :description="
-            question.questionStem?.trim() ||
-            '提交后会立即更新当前生效标准答案；已有确认成绩时将进入重判计划判定链。'
+            question.questionStem?.trim()
+              || '提交后会立即更新当前生效标准答案；已有确认成绩时将进入重判计划判定链。'
           "
           class="question-answer-correction__strip"
         />
@@ -128,23 +128,23 @@ import type {
   ExamStandardAnswerResponse,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam-standard-answer'
+import type {
+  AnswerEffectiveCorrectionRequest,
+  ExamAnswerEffectiveConfig,
+  ExamQuestionAnalysisRecordResponse,
+} from '@/apis/mark/question-analysis'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import {
   getStandardAnswer,
   OBJECTIVE_COMPARE_POLICY_OPTIONS,
   ObjectiveComparePolicyCode as ObjectiveComparePolicy,
   ObjectiveComparePolicyDescription,
 } from '@/apis/mark/exam-standard-answer'
-import type {
-  AnswerEffectiveCorrectionRequest,
-  ExamAnswerEffectiveConfig,
-  ExamQuestionAnalysisRecordResponse,
-} from '@/apis/mark/question-analysis'
 import {
   correctAnswerAndConfirmEffective,
   getEffectiveAnswerConfig,
 } from '@/apis/mark/question-analysis'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import { QuestionTypeCode, QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
@@ -233,10 +233,10 @@ const showStandardAnswerInput = computed(() => {
     return true
   }
   return (
-    form.comparePolicy !== undefined &&
-    form.comparePolicy !== ObjectiveComparePolicy.CHOICE_SET &&
-    form.comparePolicy !== ObjectiveComparePolicy.NUMERIC_TOLERANCE &&
-    form.comparePolicy !== ObjectiveComparePolicy.AI_GRADE
+    form.comparePolicy !== undefined
+    && form.comparePolicy !== ObjectiveComparePolicy.CHOICE_SET
+    && form.comparePolicy !== ObjectiveComparePolicy.NUMERIC_TOLERANCE
+    && form.comparePolicy !== ObjectiveComparePolicy.AI_GRADE
   )
 })
 
@@ -348,7 +348,7 @@ function applyAnswerToForm(answer: ExamStandardAnswerResponse | null): void {
   form.aiHint = answer.aiHint ?? ''
 }
 
-function formatOptions(options?: Array<{ optionLabel: string; sortNo: number }>): string {
+function formatOptions(options?: Array<{ optionLabel: string, sortNo: number }>): string {
   return (options ?? [])
     .slice()
     .sort((left, right) => left.sortNo - right.sortNo)
@@ -399,8 +399,8 @@ function validateForm(): boolean {
     return false
   }
   if (
-    form.comparePolicy === ObjectiveComparePolicy.AI_GRADE &&
-    !trimToUndefined(form.gradingRubric)
+    form.comparePolicy === ObjectiveComparePolicy.AI_GRADE
+    && !trimToUndefined(form.gradingRubric)
   ) {
     showFormValidationMessage('智能评分策略必须填写评分细则')
     return false

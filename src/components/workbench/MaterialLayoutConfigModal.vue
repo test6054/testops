@@ -39,7 +39,7 @@ const emit = defineEmits<{
 }>()
 
 /** 生命周期锁或非主考时表单只读 */
-const formReadonly = computed(() => props.layoutModeLocked || props.canManageOwnerWrites !== true)
+const formReadonly = computed(() => props.layoutModeLocked || !props.canManageOwnerWrites)
 
 const printSourceHint = computed(() => {
   if (draftLayoutMode.value !== ExamMaterialLayoutModeCode.FULL_PAPER) {
@@ -55,7 +55,7 @@ const printSourceHint = computed(() => {
 })
 
 function handleSave(): void {
-  if (props.canManageOwnerWrites !== true || props.layoutModeLocked) {
+  if (!props.canManageOwnerWrites || props.layoutModeLocked) {
     return
   }
   emit('save')

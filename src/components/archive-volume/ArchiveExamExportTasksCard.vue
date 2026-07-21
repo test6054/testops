@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import type { ExportTaskResponse } from '@/apis/mark/exam-export'
-import { createExportTask, EXPORT_STATUS_TONE, listExportTasks } from '@/apis/mark/exam-export'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { createExportTask, EXPORT_STATUS_TONE, listExportTasks } from '@/apis/mark/exam-export'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -69,8 +69,8 @@ const busyExportTypes = computed(() => {
 
   for (const task of tasks.value) {
     if (
-      task.taskStatus === ExportTaskStatusCode.PENDING ||
-      task.taskStatus === ExportTaskStatusCode.GENERATING
+      task.taskStatus === ExportTaskStatusCode.PENDING
+      || task.taskStatus === ExportTaskStatusCode.GENERATING
     ) {
       set.add(task.exportType)
     }
@@ -86,9 +86,9 @@ const selectableExportTypes = computed(() =>
     label: exportTypeLabel(exportType),
 
     disabled:
-      busyExportTypes.value.has(exportType) ||
-      (exportType === ExportTypeCode.IMAGE_ARCHIVE &&
-        props.canManageOwnerImageArchiveExport !== true),
+      busyExportTypes.value.has(exportType)
+      || (exportType === ExportTypeCode.IMAGE_ARCHIVE
+        && !props.canManageOwnerImageArchiveExport),
 
     checked: selectedTypes.value.includes(exportType),
   })),
@@ -174,7 +174,7 @@ async function loadTasks(): Promise<void> {
 
 async function createSelectedTasks(): Promise<void> {
   // MVR-424：与 v-if canCreate / 父页 gateOpen 同源二次闸；影像包再认主考 can*
-  if (props.canCreate !== true) {
+  if (!props.canCreate) {
     void message.warning('双门禁未满足，暂不可创建导出任务')
     return
   }
@@ -187,8 +187,8 @@ async function createSelectedTasks(): Promise<void> {
   try {
     const blockedImageArchive = selectedTypes.value.some(
       (exportType) =>
-        exportType === ExportTypeCode.IMAGE_ARCHIVE &&
-        props.canManageOwnerImageArchiveExport !== true,
+        exportType === ExportTypeCode.IMAGE_ARCHIVE
+        && !props.canManageOwnerImageArchiveExport,
     )
     if (blockedImageArchive) {
       void message.warning('仅考试主考可创建影像归档包导出任务')

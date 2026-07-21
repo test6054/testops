@@ -2,6 +2,8 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   batchConfirmNormalArchiveScanBatches,
   batchDiscardArchiveScanBatches,
@@ -10,8 +12,6 @@ import {
   ScanBatchQualityFlagCode,
   ScanBatchQualityFlagDescription,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ScanWorkOrderStatusCode,
   ScanWorkOrderStatusDescription,
@@ -70,7 +70,7 @@ const columns: ColumnsType<ArchiveScanBatchSnapshotItemVO> = [
 ]
 
 const rowSelection = computed(() =>
-  props.canReview === true
+  props.canReview
     ? {
         selectedRowKeys: selectedRowKeys.value,
         onChange: (keys: Key[]) => {
@@ -78,8 +78,8 @@ const rowSelection = computed(() =>
         },
         getCheckboxProps: (record: ArchiveScanBatchSnapshotItemVO) => ({
           disabled:
-            record.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED ||
-            record.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
+            record.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED
+            || record.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
         }),
       }
     : undefined,
@@ -109,7 +109,7 @@ async function loadRows() {
 
 function openBatchAction(action: 'confirm-normal' | 'discard') {
   // MVR-305：与 canReview 同源二次拦截
-  if (props.canReview !== true) {
+  if (!props.canReview) {
     void message.warning('当前账号无扫描批次复核权限')
     return
   }
@@ -127,7 +127,7 @@ async function submitBatchAction() {
     return
   }
   // MVR-305：与 canReview 同源二次拦截
-  if (props.canReview !== true) {
+  if (!props.canReview) {
     void message.warning('当前账号无扫描批次复核权限')
     return
   }
@@ -140,11 +140,11 @@ async function submitBatchAction() {
     (row) => row.sourceBatchId && selectedRowKeys.value.includes(String(row.sourceBatchId)),
   )
   if (
-    selectedRows.length !== selectedRowKeys.value.length ||
-    selectedRows.some(
+    selectedRows.length !== selectedRowKeys.value.length
+    || selectedRows.some(
       (row) =>
-        row.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED ||
-        row.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
+        row.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED
+        || row.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
     )
   ) {
     showFormValidationMessage('选中批次状态已变化，请刷新后重新选择')
