@@ -254,6 +254,19 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'teacher/double-high-tasks',
+        name: 'PortfolioTeacherDoubleHighTasks',
+        component: () => import('@/views/portfolio/shuanggao-tasks.vue'),
+        meta: {
+          title: '我的双高任务',
+          roles: ALL_ROLES,
+          icon: 'schedule',
+          hideInMenu: false,
+          keepAlive: true,
+          ...portfolioTeacherMenuMeta,
+        },
+      },
+      {
         path: 'scene/promotion',
         name: 'PortfolioPromotionScene',
         component: () => import('@/views/portfolio/promotion-scene.vue'),
@@ -631,12 +644,22 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/teacher-lifecycle-admin.vue'),
         meta: {
           title: '教师生命周期',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-402：院系审核人/负责人须可进站内信深链审批；BE 按院系 scope 硬拦
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'swap',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioOrgMenuMeta,
+          menuGroup: PORTFOLIO_ORG_MENU_GROUP,
+          menuGroupTitle: '组织与模板',
+          menuGroupIcon: 'apartment',
+          menuGroupOrder: 2,
+          portfolioWorkShells: [
+            ...DEPARTMENT_REVIEW_WORK_SHELLS,
+            ...SCHOOL_GOVERNANCE_WORK_SHELLS,
+            ...CONFIGURATION_WORK_SHELLS,
+          ],
         },
       },
       {
@@ -701,6 +724,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           keepAlive: true,
           ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信深链须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -716,6 +745,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信/菜单须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -731,6 +766,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信深链须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -746,6 +787,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信深链须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -761,6 +808,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信深链须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -776,6 +829,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信深链须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -784,11 +843,18 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/school-evaluation.vue'),
         meta: {
           title: '学校评价',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-403：工作组评审人须可打开站内信深链；新建/推进等写路径 BE 仍 assertTenantWide
+          roles: ALL_ROLES,
           icon: 'audit',
           hideInMenu: false,
           keepAlive: true,
           ...portfolioEvaluationMenuMeta,
+          // 覆盖 menuMeta 的 SCHOOL_GOVERNANCE-only：评审人常在教师/院系壳，否则路由不注册深链 404
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1172,6 +1238,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           keepAlive: true,
           ...portfolioResourceMenuMeta,
+          // PF-P0-404：规划负责人站内信 jump 本路径；须在教师壳注册，否则深链 404
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1187,6 +1259,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信深链须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1202,6 +1280,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信深链须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1412,6 +1496,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信/菜单须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1469,6 +1559,26 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'department/double-high/tasks',
+        name: 'PortfolioDepartmentDoubleHighTasks',
+        component: () => import('@/views/portfolio/shuanggao-tasks.vue'),
+        meta: {
+          title: '双高任务台账',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'schedule',
+          hideInMenu: false,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信深链须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
         path: 'department/report',
         name: 'PortfolioDepartmentReport',
         component: () => import('@/views/portfolio/department-report.vue'),
@@ -1481,6 +1591,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信/菜单须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1495,6 +1611,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           keepAlive: true,
           ...portfolioDepartmentMenuMeta,
+          // PF-P0-405：院系负责人也可能处教师壳；站内信/菜单须注册（requirePortfolioReviewer 仍拦非审核人）
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {

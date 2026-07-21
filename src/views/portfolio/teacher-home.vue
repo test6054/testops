@@ -1,18 +1,20 @@
 <script setup lang="ts">
+import type { PortfolioTeacherLifecycleEventVO } from '@/apis/portfolio/teacher-lifecycle'
 import type {
   PortfolioTeacherPortraitVO,
   PortfolioTeacherWorkbenchSummaryVO,
   PortfolioTodoSummaryVO,
 } from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import {
   PortfolioCompletenessLevelDescription,
   PortfolioPortraitDimensionReadinessCode,
 } from '@/apis/portfolio/enums'
 import { portfolioOnboardingApi } from '@/apis/portfolio/onboarding'
+import { portfolioTeacherLifecycleApi } from '@/apis/portfolio/teacher-lifecycle'
 import { portfolioTodoApi } from '@/apis/portfolio/todo'
 import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioProgressCockpitBand from '@/components/portfolio/PortfolioProgressCockpitBand.vue'
@@ -41,11 +43,131 @@ import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
+const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  evaluationHeld,
+  evaluationHoldBlockMessage,
+  lifecycleStatusLabel,
+  reloadLifecycleState,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard()
+
+/** PF-P0-398：站内信 deep link lifecycleEventId 对应的申报事件。 */
+const deepLinkLifecycleEvent = ref<PortfolioTeacherLifecycleEventVO | null>(null)
+const deepLinkLifecycleNoticeVisible = ref(true)
+
+function readRouteStringParam(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0].trim()
+  }
+  return ''
+}
+
+const lifecycleEventIdFromRoute = computed(() => readRouteStringParam(route.query.lifecycleEventId))
+
+const deepLinkLifecycleAlert = computed(() => {
+  const event = deepLinkLifecycleEvent.value
+  if (!event) {
+    return null
+  }
+  const changeLabel = event.changeTypeLabel || event.changeType || '生命周期变更'
+  const fromLabel = event.fromStatusLabel || event.fromStatus || ''
+  const toLabel = event.toStatusLabel || event.toStatus || ''
+  const statusPath = fromLabel && toLabel ? `${fromLabel} → ${toLabel}` : (toLabel || fromLabel)
+  const comment = (event.approvalComment || '').trim()
+  if (event.approvalStatus === 'APPROVED' || event.approvalStatus === 'APPLIED') {
+    return {
+      tone: 'success' as const,
+      title: '生命周期自助申报已通过',
+      description: [
+        `变更类型：${changeLabel}`,
+        statusPath ? `状态：${statusPath}` : '',
+        comment ? `审批意见：${comment}` : '',
+        lifecycleStatusLabel.value
+          ? `当前在职状态：${lifecycleStatusLabel.value}`
+          : '',
+        evaluationHeld.value ? evaluationHoldBlockMessage.value : '',
+        archiveWriteForbidden.value ? archiveWriteBlockMessage.value : '',
+      ].filter(Boolean).join('；'),
+    }
+  }
+  if (event.approvalStatus === 'REJECTED') {
+    return {
+      tone: 'warning' as const,
+      title: '生命周期自助申报已驳回',
+      description: [
+        `变更类型：${changeLabel}`,
+        comment ? `驳回意见：${comment}` : '驳回意见：（无）',
+        '在职状态未变更，可修正说明后重新申报。',
+        lifecycleStatusLabel.value
+          ? `当前在职状态：${lifecycleStatusLabel.value}`
+          : '',
+      ].filter(Boolean).join('；'),
+    }
+  }
+  if (event.approvalStatus === 'PENDING') {
+    return {
+      tone: 'info' as const,
+      title: '生命周期自助申报待审批',
+      description: [
+        `变更类型：${changeLabel}`,
+        statusPath ? `目标状态：${statusPath}` : '',
+        '当前状态尚未生效，请等待院系审批。',
+      ].filter(Boolean).join('；'),
+    }
+  }
+  return {
+    tone: 'info' as const,
+    title: '生命周期申报事件',
+    description: [
+      `变更类型：${changeLabel}`,
+      event.approvalStatusLabel || event.approvalStatus || '',
+      statusPath ? `状态：${statusPath}` : '',
+    ].filter(Boolean).join('；'),
+  }
+})
+
+/**
+ * PF-P0-398：消费站内信 jumpUrl `/portfolio/teacher/home?lifecycleEventId=`，
+ * 展示申报结果与当前生命周期写禁/参评 hold 语义，禁止误链管理端。
+ */
+async function applyLifecycleEventDeepLink() {
+  const eventId = lifecycleEventIdFromRoute.value
+  deepLinkLifecycleNoticeVisible.value = true
+  if (!eventId) {
+    deepLinkLifecycleEvent.value = null
+    return
+  }
+  const teacherUserId = targetTeacherId.value || currentUserId.value
+  if (!teacherUserId) {
+    deepLinkLifecycleEvent.value = null
+    return
+  }
+  try {
+    await reloadLifecycleState()
+    const page = await portfolioTeacherLifecycleApi.pageEvents({
+      pageNum: 1,
+      pageSize: DEFAULT_LIST_PAGE_SIZE,
+      teacherUserId,
+    })
+    const hit = (page?.list ?? []).find((row) => String(row.id) === eventId) ?? null
+    deepLinkLifecycleEvent.value = hit
+    if (!hit) {
+      void message.warning(`未找到生命周期申报事件 lifecycleEventId=${eventId}，已展示当前在职状态`)
+    }
+  } catch (error) {
+    deepLinkLifecycleEvent.value = null
+    showUserError(error, '加载生命周期申报结果失败')
+  }
+}
 
 const loading = ref(false)
 const portrait = ref<PortfolioTeacherPortraitVO | null>(null)
@@ -661,6 +783,14 @@ usePortfolioScopedLoader(
   { reloadOnActivated: true },
 )
 
+watch(
+  () => [lifecycleEventIdFromRoute.value, targetTeacherId.value, currentUserId.value],
+  () => {
+    void applyLifecycleEventDeepLink()
+  },
+  { immediate: true },
+)
+
 onMounted(() => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
 })
@@ -702,6 +832,26 @@ onUnmounted(() => {
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <div v-else class="teacher-home__layout">
+      <UiAlertStrip
+        v-if="deepLinkLifecycleAlert && deepLinkLifecycleNoticeVisible"
+        class="teacher-home__lifecycle-deeplink"
+        :tone="deepLinkLifecycleAlert.tone"
+        size="sm"
+        dense
+        closable
+        :title="deepLinkLifecycleAlert.title"
+        :description="deepLinkLifecycleAlert.description"
+        @close="deepLinkLifecycleNoticeVisible = false"
+      />
+      <UiAlertStrip
+        v-else-if="evaluationHeld && !archiveWriteForbidden"
+        class="teacher-home__lifecycle-hold"
+        tone="warning"
+        size="sm"
+        dense
+        title="参评已暂挂"
+        :description="evaluationHoldBlockMessage"
+      />
       <UiAlertStrip
         v-if="showSkipPrompt"
         class="teacher-home__skip-prompt"

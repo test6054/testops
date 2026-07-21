@@ -4,7 +4,8 @@ import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -38,10 +39,13 @@ import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
+const route = useRoute()
 const userStore = useUserStore()
 const loading = ref(false)
 /** 列表请求隔离，防翻页/刷新旧响应串写 */
 const pageRequestToken = ref(0)
+/** 站内信深链聚焦的导出审批主键。 */
+const focusedApprovalId = ref('')
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const downloadLoading = ref(false)
 const applyOpen = ref(false)
@@ -162,6 +166,23 @@ async function submitRevoke() {
   }
 }
 
+function readRouteStringParam(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0].trim()
+  }
+  return ''
+}
+
+function exportApprovalRowClassName(record: PortfolioExportApprovalVO): string {
+  if (focusedApprovalId.value && String(record.id) === focusedApprovalId.value) {
+    return 'export-approval-mine__row--focus'
+  }
+  return ''
+}
+
 async function loadPage() {
   beginLoad()
   const applicantUserId = userStore.userInfo.userId
@@ -178,6 +199,7 @@ async function loadPage() {
     const result = await portfolioSecurityApi.pageExport({
       pageNum: query.pageNum,
       pageSize: query.pageSize,
+      id: focusedApprovalId.value || undefined,
       applicantUserId,
     })
     if (currentToken !== pageRequestToken.value) {
@@ -185,6 +207,12 @@ async function loadPage() {
     }
     rows.value = result.list ?? []
     total.value = result.total ?? 0
+    if (focusedApprovalId.value) {
+      const hit = rows.value.some((row) => String(row.id) === focusedApprovalId.value)
+      if (!hit) {
+        void message.warning(`深链审批 approvalId=${focusedApprovalId.value} 不在当前结果中`)
+      }
+    }
     okLoad()
   } catch (error) {
     if (currentToken !== pageRequestToken.value) {
@@ -199,6 +227,19 @@ async function loadPage() {
       loading.value = false
     }
   }
+}
+
+/**
+ * PF-P0-399：站内信 jumpUrl `/portfolio/teacher/export-approval?approvalId=`
+ * 打开时精确命中本人申请，便于下载或查看驳回原因。
+ */
+async function applyExportApprovalDeepLink() {
+  const approvalId = readRouteStringParam(route.query.approvalId)
+  focusedApprovalId.value = approvalId
+  if (approvalId) {
+    query.pageNum = 1
+  }
+  await loadPage()
 }
 
 function onTableChange(changeEvent: UiDataTableChangeEvent) {
@@ -285,8 +326,18 @@ async function submitApply() {
 }
 
 onMounted(() => {
-  void loadPage()
+  void applyExportApprovalDeepLink()
 })
+
+watch(
+  () => route.query.approvalId,
+  (next, prev) => {
+    if (next === prev) {
+      return
+    }
+    void applyExportApprovalDeepLink()
+  },
+)
 </script>
 
 <template>
@@ -317,6 +368,7 @@ onMounted(() => {
         :data-source="rows"
         :loading="loading"
         :load-error="loadError"
+        :row-class-name="exportApprovalRowClassName"
         :pagination="pagination"
         @change="onTableChange"
       >

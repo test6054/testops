@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
-import type { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioSecurityApi } from '@/apis/portfolio/governance'
+import type { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
+import { PortfolioExportTypeDescription } from '@/types/enums/portfolio-export-type-enum'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -22,7 +24,6 @@ import {
   PortfolioExportApprovalStatusCode,
   PortfolioExportApprovalStatusDescription,
 } from '@/types/enums/portfolio-export-approval-status-enum'
-import { PortfolioExportTypeDescription } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -32,12 +33,15 @@ interface ExportFilterModel extends Record<string, unknown> {
   applicantUserId?: string
 }
 
+const route = useRoute()
 const loading = ref(false)
 const loadError = ref(false)
 const requestToken = ref(0)
 const rows = ref<PortfolioExportApprovalVO[]>([])
 const total = ref(0)
 const operationKey = ref('')
+/** 站内信深链聚焦的导出审批主键。 */
+const focusedApprovalId = ref('')
 const writing = computed(() => Boolean(operationKey.value))
 const approveLoading = computed(() => Boolean(operationKey.value))
 const rejectModalOpen = ref(false)
@@ -136,13 +140,31 @@ function approvalStatusTone(code: string): 'blue' | 'green' | 'red' | 'gray' {
   }
 }
 
+function readRouteStringParam(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0].trim()
+  }
+  return ''
+}
+
+function exportApprovalRowClassName(record: PortfolioExportApprovalVO): string {
+  if (focusedApprovalId.value && String(record.id) === focusedApprovalId.value) {
+    return 'export-approval-admin__row--focus'
+  }
+  return ''
+}
+
 async function loadPage() {
   const currentToken = requestToken.value + 1
   requestToken.value = currentToken
   const request = {
     pageNum: query.pageNum,
     pageSize: query.pageSize,
-    approvalStatus: filterForm.approvalStatus,
+    id: focusedApprovalId.value || undefined,
+    approvalStatus: focusedApprovalId.value ? undefined : filterForm.approvalStatus,
     applicantUserId: filterForm.applicantUserId?.trim() || undefined,
   }
   loading.value = true
@@ -152,6 +174,14 @@ async function loadPage() {
     if (requestToken.value !== currentToken) return
     rows.value = result.list ?? []
     total.value = result.total ?? 0
+    if (focusedApprovalId.value) {
+      const hit = rows.value.some((row) => String(row.id) === focusedApprovalId.value)
+      if (!hit) {
+        void message.warning(
+          `深链审批 approvalId=${focusedApprovalId.value} 不在当前结果中，请调整筛选`,
+        )
+      }
+    }
   } catch (error) {
     if (requestToken.value !== currentToken) return
     rows.value = []
@@ -163,12 +193,28 @@ async function loadPage() {
   }
 }
 
+/**
+ * PF-P0-399：站内信 jumpUrl `/portfolio/admin/export-approval?approvalId=`
+ * 打开时精确命中审批行，便于管理员立刻批准/驳回。
+ */
+async function applyExportApprovalDeepLink() {
+  const approvalId = readRouteStringParam(route.query.approvalId)
+  focusedApprovalId.value = approvalId
+  if (approvalId) {
+    query.pageNum = 1
+    // 深链优先精确 id；清空状态筛选避免 PENDING 默认滤掉已决单
+    filterForm.approvalStatus = undefined
+  }
+  await loadPage()
+}
+
 function onSearch() {
   query.pageNum = 1
+  focusedApprovalId.value = ''
   void loadPage()
 }
 
-function onPageChange(page: { current: number, pageSize: number }) {
+function onPageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -235,8 +281,18 @@ async function submitReject() {
 }
 
 onMounted(() => {
-  void loadPage()
+  void applyExportApprovalDeepLink()
 })
+
+watch(
+  () => route.query.approvalId,
+  (next, prev) => {
+    if (next === prev) {
+      return
+    }
+    void applyExportApprovalDeepLink()
+  },
+)
 </script>
 
 <template>
@@ -259,6 +315,7 @@ onMounted(() => {
         :data-source="rows"
         :loading="loading"
         :load-error="loadError"
+        :row-class-name="exportApprovalRowClassName"
         pagination-mode="server"
         :total="total"
         @page-change="onPageChange"

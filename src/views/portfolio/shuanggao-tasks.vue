@@ -4,10 +4,10 @@ import type {
   PortfolioDoubleHighEvidenceArchiveVO,
   PortfolioDoubleHighTaskVO,
 } from '@/apis/portfolio/double-high'
+import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -116,6 +116,11 @@ const busy = computed(
 
 const filterForm = reactive<TaskFilterModel>({})
 const currentUserId = computed(() => userStore.userInfo.userId || '')
+/** 教师壳：责任人实施台账（站内信深链）；隐藏发布与治理动作 */
+const isImplementShell = computed(() => route.path.includes('/teacher/double-high'))
+const isGovernanceShell = computed(() => !isImplementShell.value)
+/** PF-P0-401：站内信 taskId 深链高亮目标 */
+const focusedTaskId = ref('')
 
 const createPortfolioOrgOptions = computed(() => {
   if (!createForm.departmentId) {
@@ -261,7 +266,7 @@ function isTaskResponsible(row: PortfolioDoubleHighTaskVO): boolean {
 
 /** 按责任人/治理角色裁剪操作：责任人不可见审核入口，非责任人不可见实施动作。 */
 function rowActions(row: PortfolioDoubleHighTaskVO) {
-  const items: Array<{ key: string, label: string, tone?: 'danger' }> = [
+  const items: Array<{ key: string; label: string; tone?: 'danger' }> = [
     { key: 'detail', label: '阶段明细' },
   ]
   const responsible = isTaskResponsible(row)
@@ -290,33 +295,39 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
     })
   }
   if (
-    (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED
-      || row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING)
-    && !responsible
+    isGovernanceShell.value &&
+    (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED ||
+      row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING) &&
+    !responsible
   ) {
     if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED) {
       items.push({ key: 'enterReview', label: '进入审核' })
     }
     items.push({ key: 'review', label: '审核阶段' })
   }
-  if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.ACCEPTANCE && !responsible) {
+  if (
+    isGovernanceShell.value &&
+    row.taskStatus === PortfolioDoubleHighTaskStatusCode.ACCEPTANCE &&
+    !responsible
+  ) {
     items.push({ key: 'archive', label: '归档' })
   }
   if (row.acceptanceFileNodeId) {
     items.push({ key: 'downloadAcceptance', label: '下载验收包' })
   }
   if (
-    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.ARCHIVED
-    && row.taskStatus !== PortfolioDoubleHighTaskStatusCode.VOID
+    isGovernanceShell.value &&
+    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.ARCHIVED &&
+    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.VOID
   ) {
     items.push({ key: 'void', label: '作废', tone: 'danger' })
   }
   return items.map((item) => {
     const writeAction = item.key === 'claim' || item.key === 'start' || item.key === 'submit'
-    const writeBlocked
-      = writeAction
-        && (operatorArchiveWriteForbidden.value
-          || (item.key !== 'claim' && Boolean(row.archiveWriteForbidden)))
+    const writeBlocked =
+      writeAction &&
+      (operatorArchiveWriteForbidden.value ||
+        (item.key !== 'claim' && Boolean(row.archiveWriteForbidden)))
     return { ...item, disabled: busy.value || writeBlocked }
   })
 }
@@ -327,11 +338,12 @@ async function loadPage() {
   const request = {
     pageNum: query.pageNum,
     pageSize: query.pageSize,
+    id: focusedTaskId.value || undefined,
     taskStatus: filterForm.taskStatus,
     keyword: filterForm.keyword?.trim() || undefined,
     constructionPeriodLabel: filterForm.constructionPeriodLabel?.trim() || undefined,
-    departmentId: filterForm.departmentId || undefined,
-    portfolioOrgId: filterForm.portfolioOrgId || undefined,
+    departmentId: isImplementShell.value ? undefined : filterForm.departmentId || undefined,
+    portfolioOrgId: isImplementShell.value ? undefined : filterForm.portfolioOrgId || undefined,
   }
   beginLoad()
   loading.value = true
@@ -342,7 +354,12 @@ async function loadPage() {
     }
     rows.value = result.list ?? []
     total.value = result.total ?? 0
-
+    if (focusedTaskId.value) {
+      const hit = rows.value.some((row) => String(row.id) === focusedTaskId.value)
+      if (!hit) {
+        void message.warning(`深链任务 taskId=${focusedTaskId.value} 不在当前结果中`)
+      }
+    }
     okLoad()
   } catch (error) {
     if (pageRequestToken.value !== currentToken) {
@@ -360,11 +377,19 @@ async function loadPage() {
 }
 
 function onSearch() {
+  focusedTaskId.value = ''
   query.pageNum = 1
   void loadPage()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function taskRowClassName(record: PortfolioDoubleHighTaskVO): string {
+  if (focusedTaskId.value && String(record.id) === focusedTaskId.value) {
+    return 'shuanggao-tasks__row--focus'
+  }
+  return ''
+}
+
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -399,8 +424,8 @@ function resetCreateForm() {
   createForm.taskCode = ''
   createForm.taskTitle = ''
   createForm.taskSource = '校级双高'
-  createForm.departmentId
-    = typeof route.query.departmentId === 'string' ? route.query.departmentId : undefined
+  createForm.departmentId =
+    typeof route.query.departmentId === 'string' ? route.query.departmentId : undefined
   createForm.portfolioOrgId = undefined
   createForm.constructionPeriodLabel = ''
   createForm.baselinePeriodLabel = ''
@@ -475,8 +500,8 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
       const evidenceToken = evidenceRequestToken.value + 1
       evidenceRequestToken.value = evidenceToken
       try {
-        const nextArchives
-          = (await portfolioDoubleHighApi.listEvidenceArchives({ id: row.id })) ?? []
+        const nextArchives =
+          (await portfolioDoubleHighApi.listEvidenceArchives({ id: row.id })) ?? []
         if (evidenceRequestToken.value !== evidenceToken || activeTask.value?.id !== row.id) {
           return
         }
@@ -663,13 +688,31 @@ onMounted(() => {
   if (typeof departmentId === 'string' && departmentId) {
     filterForm.departmentId = departmentId
   }
+  const taskId = typeof route.query.taskId === 'string' ? route.query.taskId.trim() : ''
+  if (taskId) {
+    focusedTaskId.value = taskId
+    query.pageNum = 1
+  }
   void loadPage().then(() => {
-    const taskId = route.query.taskId
-    if (typeof taskId === 'string' && taskId) {
+    if (taskId) {
       void openTaskDetailById(taskId)
     }
   })
 })
+
+watch(
+  () => route.query.taskId,
+  (next) => {
+    const taskId = typeof next === 'string' ? next.trim() : ''
+    focusedTaskId.value = taskId
+    if (taskId) {
+      query.pageNum = 1
+      void loadPage().then(() => {
+        void openTaskDetailById(taskId)
+      })
+    }
+  },
+)
 
 watch(
   () => filterForm.departmentId,
@@ -687,17 +730,21 @@ watch(
 </script>
 
 <template>
-  <StageWorkbenchShell title="双高任务台账">
+  <StageWorkbenchShell :title="isImplementShell ? '我的双高任务' : '双高任务台账'">
     <template #context>
       <ContextBar
         layout="workbench"
         show-title
-        title="双高建设任务"
-        subtitle="发布→认领→实施→阶段提交→审核→验收归档"
+        :title="isImplementShell ? '双高任务实施' : '双高建设任务'"
+        :subtitle="
+          isImplementShell
+            ? '认领→实施→阶段提交→查看审核结果'
+            : '发布→认领→实施→阶段提交→审核→验收归档'
+        "
       />
     </template>
     <UiCard>
-      <div class="shuanggao-tasks__toolbar">
+      <div v-if="isGovernanceShell" class="shuanggao-tasks__toolbar">
         <UiButton size="sm" variant="primary" :disabled="busy" @click="openCreateModal">
           发布任务
         </UiButton>
@@ -711,6 +758,7 @@ watch(
         :data-source="rows"
         :loading="loading"
         :load-error="loadError"
+        :row-class-name="taskRowClassName"
         pagination-mode="server"
         :total="total"
         @page-change="handlePageChange"
@@ -883,8 +931,12 @@ watch(
             <UiTag :tone="lifecycleTagTone(detailTask)">
               {{ detailTask.lifecycleStatusLabel || detailTask.lifecycleStatus }}
             </UiTag>
-            <span v-if="detailTask.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>
-            <span v-if="detailTask.archiveWriteForbidden">（档案写禁，禁止认领/实施/阶段提交）</span>
+            <span v-if="detailTask.countsInCurrentFacultyStructure === false"
+              >（不计入当前在岗结构）</span
+            >
+            <span v-if="detailTask.archiveWriteForbidden"
+              >（档案写禁，禁止认领/实施/阶段提交）</span
+            >
           </div>
           <div
             v-if="detailTask.responsibleIdentityLayers?.length"
@@ -1003,6 +1055,10 @@ watch(
 .create-form__stage-index {
   font-size: 13px;
   color: var(--dp-text-secondary);
+}
+
+.shuanggao-tasks__row--focus td {
+  background: color-mix(in srgb, var(--dp-primary, #1677ff) 10%, transparent) !important;
 }
 
 .shuanggao-tasks__toolbar {

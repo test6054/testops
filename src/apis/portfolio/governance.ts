@@ -129,6 +129,7 @@ export const portfolioSecurityApi = {
   pageExport: (data: {
     pageNum: number
     pageSize: number
+    id?: string | number
     approvalStatus?: string
     applicantUserId?: string
   }) =>
