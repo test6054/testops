@@ -4,9 +4,14 @@ import type {
   PortfolioCorrectionImpactVO,
   PortfolioCorrectionSummaryVO,
 } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
+  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { portfolioCorrectionApi } from '@/apis/portfolio/correction'
 import {
   PortfolioCorrectionHandleActionCode,
@@ -15,10 +20,6 @@ import {
   PortfolioCorrectionRequestStatusCode,
   PortfolioCorrectionRequestStatusDescription,
 } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
-  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -76,6 +77,8 @@ const impactRecomputing = ref(false)
 const impactDetail = ref<PortfolioCorrectionImpactVO | null>(null)
 const impactTarget = ref<PortfolioCorrectionSummaryVO | null>(null)
 const impactRequestToken = ref(0)
+const route = useRoute()
+const deepLinkHint = ref('')
 
 const operationPending = computed(() => Boolean(handlingId.value) || impactRecomputing.value)
 
@@ -92,8 +95,8 @@ async function bindActionTeacherAndAssert(
   teacherId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value
-    = teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
+  actionTeacherId.value =
+    teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
@@ -141,6 +144,7 @@ async function loadPage() {
     if (rejectTarget.value && !rows.value.some((item) => item.id === rejectTarget.value?.id)) {
       resetRejectContext()
     }
+    await applyDeepLinkedRequest()
   } catch (error) {
     if (currentToken === listRequestToken.value) {
       rows.value = []
@@ -151,6 +155,29 @@ async function loadPage() {
     if (currentToken === listRequestToken.value) {
       loading.value = false
     }
+  }
+}
+
+/**
+ * PF-P0-386：消费 requestId 深链提示目标工单，站内信可行动。
+ */
+async function applyDeepLinkedRequest() {
+  const requestId = typeof route.query.requestId === 'string' ? route.query.requestId.trim() : ''
+  if (!requestId) {
+    deepLinkHint.value = ''
+    return
+  }
+  const inPage = rows.value.find((item) => item.id === requestId)
+  if (inPage) {
+    deepLinkHint.value = `深链工单 #${requestId}：${inPage.fieldLabel || inPage.fieldCode || ''}（${statusLabel(inPage.requestStatus)}）`
+    return
+  }
+  try {
+    const detail = await portfolioCorrectionApi.getCorrection(requestId)
+    deepLinkHint.value = `深链工单 #${requestId}：${detail.fieldLabel || detail.fieldCode || ''}（${statusLabel(detail.requestStatus)}），请按教师筛选或翻页定位处理`
+  } catch (error) {
+    deepLinkHint.value = ''
+    showUserError(error, '加载深链纠错工单失败')
   }
 }
 
@@ -337,6 +364,13 @@ void loadPage()
       :description="archiveWriteBlockMessage"
     />
 
+    <UiAlertStrip
+      v-if="deepLinkHint"
+      tone="info"
+      title="站内信深链工单"
+      :description="deepLinkHint"
+    />
+
     <UiCard title="纠错工单">
       <UiDataTable
         v-if="rows.length || loading"
@@ -432,8 +466,8 @@ void loadPage()
               {{
                 impactDetail.recomputeStatus === PortfolioCorrectionImpactRecomputeStatusCode.FAILED
                   ? '重新重算'
-                  : impactDetail.recomputeStatus
-                    === PortfolioCorrectionImpactRecomputeStatusCode.RUNNING
+                  : impactDetail.recomputeStatus ===
+                      PortfolioCorrectionImpactRecomputeStatusCode.RUNNING
                     ? '接管重试'
                     : '执行重算'
               }}

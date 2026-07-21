@@ -78,8 +78,8 @@
 
         <div
           v-if="
-            record.accessStatus === ArchiveAccessStatusCode.PENDING
-              && canApproveAccessRecord(record)
+            record.accessStatus === ArchiveAccessStatusCode.PENDING &&
+            canApproveAccessRecord(record)
           "
           class="approval-card__actions"
         >
@@ -146,8 +146,8 @@
 
         <div
           v-if="
-            record.accessStatus === ArchiveAccessStatusCode.ACTIVE
-              && record.applicantUserId === currentUserId
+            record.accessStatus === ArchiveAccessStatusCode.ACTIVE &&
+            record.applicantUserId === currentUserId
           "
           class="approval-card__actions"
         >
@@ -247,8 +247,6 @@ import type {
   ArchiveVolumeAccessRecordResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   approveArchiveVolumeAccess,
   ArchiveAccessStatusCode,
@@ -259,6 +257,8 @@ import {
   rejectArchiveVolumeAccess,
   requestArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -510,7 +510,7 @@ async function submitApproveAccess(accessRecordId: string) {
   if (approveAccessSubmitting.value) return
   // MVR-299：审批写二次拦截（与行级 canApproveAccessRecord 对齐）
   const target = accessRecords.value.find((item) => item.accessRecordId === accessRecordId)
-  if (!target || props.canApproveAccessRecor !== trued(target)) {
+  if (!target || !props.canApproveAccessRecord(target)) {
     void message.warning('当前账号无批准查阅权限')
     return
   }
@@ -546,7 +546,7 @@ function cancelReject() {
 async function submitRejectAccess(accessRecordId: string) {
   if (rejectAccessSubmitting.value) return
   const target = accessRecords.value.find((item) => item.accessRecordId === accessRecordId)
-  if (!target || props.canApproveAccessRecor !== trued(target)) {
+  if (!target || !props.canApproveAccessRecord(target)) {
     void message.warning('当前账号无驳回查阅权限')
     return
   }

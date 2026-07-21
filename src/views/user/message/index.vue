@@ -248,15 +248,6 @@ import type {
   InboxMessageListItemDTO,
   PublishedSystemAnnouncementResponse,
 } from '@/apis/edu/message'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { UserDto } from '@/types/api-types.d'
-import BellOutlined from '@ant-design/icons-vue/BellOutlined'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { storeToRefs } from 'pinia'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   confirmReadAnnouncement,
   getInboxMessages,
@@ -269,6 +260,15 @@ import {
   MessageOperationTypeEnum,
   updateMessageStatus,
 } from '@/apis/edu/message'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { UserDto } from '@/types/api-types.d'
+import BellOutlined from '@ant-design/icons-vue/BellOutlined'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { storeToRefs } from 'pinia'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -324,7 +324,7 @@ const messageTabItems = computed(() => [
 // ─── 站内信 ──────────────────────────────────
 const messages = ref<InboxMessageListItemDTO[]>([])
 const loadingMessages = ref(false)
-const inboxFilter = reactive<{ keyword?: string, isRead?: string }>({})
+const inboxFilter = reactive<{ keyword?: string; isRead?: string }>({})
 const messagePageState = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 const messagePagination = computed(() => ({
   current: messagePageState.pageNum,
@@ -646,6 +646,7 @@ function formatMessageType(type: NotificationTypeEnum): string {
     [NotificationTypeEnum.RESUBMIT_REJECTED]: '重新提交驳回',
     [NotificationTypeEnum.PORTFOLIO_ARCHIVE_RETURNED]: '档案审核退回',
     [NotificationTypeEnum.PORTFOLIO_ARCHIVE_DISMISSED]: '档案审核驳回',
+    [NotificationTypeEnum.PORTFOLIO_ARCHIVE_PASSED]: '档案审核通过',
     [NotificationTypeEnum.PORTFOLIO_TEACHER_ONBOARDING]: '新教师建档',
     [NotificationTypeEnum.PORTFOLIO_GAP_TASK_PENDING]: '档案袋补采任务',
     [NotificationTypeEnum.PORTFOLIO_GAP_LIFECYCLE_SUSPENDED]: '补采生命周期暂停',
@@ -683,6 +684,7 @@ function formatMessageType(type: NotificationTypeEnum): string {
     [NotificationTypeEnum.PORTFOLIO_SOURCE_FIX_ALERT_OPEN]: '源修复重算告警',
     [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_SUBMITTED]: '双高阶段材料待审',
     [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_REJECTED]: '双高阶段材料退回',
+    [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_APPROVED]: '双高阶段材料已通过',
     [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_REVIEW]: '双高阶段审核进行中',
     [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_TASK_VOIDED]: '双高任务已作废',
     [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_TASK_ARCHIVED]: '双高任务已归档',
@@ -707,6 +709,13 @@ function formatMessageType(type: NotificationTypeEnum): string {
     [NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_DEPARTMENT_PENDING]: '年度规划待部门审核',
     [NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_APPROVED]: '年度规划已通过',
     [NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_RETURNED]: '年度规划已退回',
+    [NotificationTypeEnum.PORTFOLIO_ARCHIVE_CORRECTION_PENDING]: '档案纠错待处理',
+    [NotificationTypeEnum.PORTFOLIO_ARCHIVE_CORRECTION_REJECTED]: '档案纠错已驳回',
+    [NotificationTypeEnum.PORTFOLIO_ARCHIVE_CORRECTION_CLOSED]: '档案纠错已关闭',
+    [NotificationTypeEnum.PORTFOLIO_ETHICS_SANCTION_REGISTERED]: '师德处分已登记',
+    [NotificationTypeEnum.PORTFOLIO_ETHICS_SANCTION_PENDING_REVIEW]: '师德处分期满待复核',
+    [NotificationTypeEnum.PORTFOLIO_ETHICS_REVIEW_OVERDUE]: '师德复核逾期督办',
+    [NotificationTypeEnum.PORTFOLIO_ETHICS_REVIEW_CONCLUDED]: '师德复核结论',
     [NotificationTypeEnum.QUALITY_MARK_ASSESSMENT_WEIGHT_MISSING]: '质量评价考核权重缺失',
     [NotificationTypeEnum.MARK_QUALITY_SCORE_SYNC_FAILED]: 'mark 成绩同步失败',
     [NotificationTypeEnum.MARK_ARCHIVE_AUTO_CREATE_FAILED]: '归档卷自动建卷失败',

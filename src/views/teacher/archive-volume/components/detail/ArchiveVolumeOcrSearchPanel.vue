@@ -188,14 +188,6 @@ import type {
   ArchiveVolumeMaterialStatsResponse,
   ArchiveVolumeSearchResponse,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
-  ArchiveMaterialOcrStatusCode,
-  ArchiveMaterialOcrStatusDescription,
-} from '@/apis/mark/archive-ocr-status'
 import {
   ArchiveMaterialTypeDescription,
   batchTriggerArchiveVolumeMaterialOcr,
@@ -204,6 +196,14 @@ import {
   searchArchiveVolumes,
   triggerArchiveVolumeMaterialOcr,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  ARCHIVE_MATERIAL_OCR_STATUS_TONE,
+  ArchiveMaterialOcrStatusCode,
+  ArchiveMaterialOcrStatusDescription,
+} from '@/apis/mark/archive-ocr-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -229,7 +229,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refreshed": [options?: { silent?: boolean }]
+  refreshed: [options?: { silent?: boolean }]
   'navigate-materials': []
 }>()
 
@@ -331,26 +331,27 @@ function highlightSnippet(snippet: string): string {
 
 function canViewMaterialOcr(record: ArchiveVolumeSearchResponse): boolean {
   return (
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
-    || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
-    || record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
 function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED
-    || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
-    || record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.COMPLETED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+    record.ocrStatus === ArchiveMaterialOcrStatusCode.RUNNING
   )
 }
 
 function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    props.canMaintainMaterial === true && Boolean(record.fileId)
-    && (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING
-      || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
-      || !record.ocrStatus)
+    props.canMaintainMaterial === true &&
+    Boolean(record.fileId) &&
+    (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING ||
+      record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED ||
+      !record.ocrStatus)
   )
 }
 
@@ -453,7 +454,8 @@ function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
   // MVR-421：与 canTriggerMaterialOcr 同源二次闸（维护权∧fileId∧PENDING/FAILED/空态）
   if (!canTriggerMaterialOcr(material)) {
     void message.warning(
-      props.canMaintainMaterial !== true === true ? '当前账号无维护材料识别权限'
+      (props.canMaintainMaterial !== true) === true
+        ? '当前账号无维护材料识别权限'
         : '当前材料不可触发文字识别（无文件或识别状态不允许）',
     )
     return

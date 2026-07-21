@@ -1,6 +1,10 @@
 <script lang="ts" setup>
 import { computed } from 'vue'
-import { EXAM_PRINT_SOURCE_MODE_OPTIONS, ExamMaterialLayoutModeCode, ExamPrintSourceModeCode } from '@/apis/mark/exam'
+import {
+  EXAM_PRINT_SOURCE_MODE_OPTIONS,
+  ExamMaterialLayoutModeCode,
+  ExamPrintSourceModeCode,
+} from '@/apis/mark/exam'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -13,26 +17,29 @@ const open = defineModel<boolean>('open', { required: true })
 const draftLayoutMode = defineModel<ExamMaterialLayoutModeCode | undefined>('draftLayoutMode')
 const draftPrintSource = defineModel<ExamPrintSourceModeCode | undefined>('draftPrintSource')
 
-const props = withDefaults(defineProps<{
-  layoutModeLocked: boolean
-  layoutDirty: boolean
-  layoutSaving: boolean
-  materialLayoutSaved: boolean
-  /** MVR-267：仅主考可写；与 BE requireExamOwnerPermission 对齐 */
-  canManageOwnerWrites?: boolean
-  advisoryReason?: string
-  description?: string
-  statusText?: string
-}>(), {
-  canManageOwnerWrites: false,
-})
+const props = withDefaults(
+  defineProps<{
+    layoutModeLocked: boolean
+    layoutDirty: boolean
+    layoutSaving: boolean
+    materialLayoutSaved: boolean
+    /** MVR-267：仅主考可写；与 BE requireExamOwnerPermission 对齐 */
+    canManageOwnerWrites?: boolean
+    advisoryReason?: string
+    description?: string
+    statusText?: string
+  }>(),
+  {
+    canManageOwnerWrites: false,
+  },
+)
 
 const emit = defineEmits<{
   save: []
 }>()
 
 /** 生命周期锁或非主考时表单只读 */
-const formReadonly = computed(() => props.layoutModeLocked || !props.canManageOwnerWrites)
+const formReadonly = computed(() => props.layoutModeLocked || props.canManageOwnerWrites !== true)
 
 const printSourceHint = computed(() => {
   if (draftLayoutMode.value !== ExamMaterialLayoutModeCode.FULL_PAPER) {
@@ -48,7 +55,7 @@ const printSourceHint = computed(() => {
 })
 
 function handleSave(): void {
-  if (!props.canManageOwnerWrites || props.layoutModeLocked) {
+  if (props.canManageOwnerWrites !== true || props.layoutModeLocked) {
     return
   }
   emit('save')

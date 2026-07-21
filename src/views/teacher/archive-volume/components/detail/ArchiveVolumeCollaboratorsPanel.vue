@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ArchiveVolumeMemberDisplayVO } from '@/apis/mark/archive-volume'
+import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -212,7 +212,8 @@ const columns = computed((): ColumnType<CollaboratorTreeRow>[] => {
     { title: '加入时间', key: 'createTimeLabel', width: 156 },
     { title: '能力 / 备注', key: 'meta', ellipsis: true },
   ]
-  return props.canManageCollaborators === true ? [...base, { title: '操作', key: 'actions', width: 200 }]
+  return props.canManageCollaborators === true
+    ? [...base, { title: '操作', key: 'actions', width: 200 }]
     : base
 })
 

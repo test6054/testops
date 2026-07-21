@@ -2,8 +2,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   batchConfirmNormalArchiveScanBatches,
   batchDiscardArchiveScanBatches,
@@ -12,6 +10,8 @@ import {
   ScanBatchQualityFlagCode,
   ScanBatchQualityFlagDescription,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ScanWorkOrderStatusCode,
   ScanWorkOrderStatusDescription,
@@ -70,15 +70,16 @@ const columns: ColumnsType<ArchiveScanBatchSnapshotItemVO> = [
 ]
 
 const rowSelection = computed(() =>
-  props.canReview === true ? {
+  props.canReview === true
+    ? {
         selectedRowKeys: selectedRowKeys.value,
         onChange: (keys: Key[]) => {
           selectedRowKeys.value = keys.map(String)
         },
         getCheckboxProps: (record: ArchiveScanBatchSnapshotItemVO) => ({
           disabled:
-            record.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED
-            || record.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
+            record.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED ||
+            record.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
         }),
       }
     : undefined,
@@ -139,11 +140,11 @@ async function submitBatchAction() {
     (row) => row.sourceBatchId && selectedRowKeys.value.includes(String(row.sourceBatchId)),
   )
   if (
-    selectedRows.length !== selectedRowKeys.value.length
-    || selectedRows.some(
+    selectedRows.length !== selectedRowKeys.value.length ||
+    selectedRows.some(
       (row) =>
-        row.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED
-        || row.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
+        row.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED ||
+        row.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
     )
   ) {
     showFormValidationMessage('选中批次状态已变化，请刷新后重新选择')

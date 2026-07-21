@@ -5,9 +5,10 @@ import type {
   PortfolioEthicsReviewLogVO,
   PortfolioEthicsSanctionVO,
 } from '@/apis/portfolio/ethics-sanction'
+import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
+import { useRoute } from 'vue-router'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -50,7 +51,9 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
+const route = useRoute()
 const loading = ref(false)
+const deepLinkHint = ref('')
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
 const saving = ref(false)
 const reviewing = ref(false)
@@ -328,10 +331,10 @@ async function saveSanction() {
     return
   }
   if (
-    !form.handlingBasis.trim()
-    || !form.releaseCondition.trim()
-    || !form.reviewDepartment.trim()
-    || !form.publicSummary.trim()
+    !form.handlingBasis.trim() ||
+    !form.releaseCondition.trim() ||
+    !form.reviewDepartment.trim() ||
+    !form.publicSummary.trim()
   ) {
     void message.error('请填写处理依据、解除条件、复核部门和公开摘要')
     return
@@ -371,9 +374,9 @@ async function submitReview() {
   }
   if (!reviewTarget.value || writing.value) return
   if (
-    (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
-      || reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN)
-    && !reviewForm.newSanctionEndDate
+    (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND ||
+      reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN) &&
+    !reviewForm.newSanctionEndDate
   ) {
     void message.error(
       reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
@@ -400,7 +403,7 @@ async function submitReview() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -411,8 +414,31 @@ function search() {
   void loadPage()
 }
 
-onMounted(() => {
-  void loadPage()
+/**
+ * PF-P0-389：消费 sanctionId 深链提示目标处分，站内信可行动。
+ */
+async function applySanctionDeepLink() {
+  const sanctionId = typeof route.query.sanctionId === 'string' ? route.query.sanctionId.trim() : ''
+  if (!sanctionId) {
+    deepLinkHint.value = ''
+    return
+  }
+  const inPage = rows.value.find((item) => item.id === sanctionId)
+  if (inPage) {
+    deepLinkHint.value = `深链处分 #${sanctionId}：${inPage.publicSummary || ''}（${statusLabel(inPage.sanctionStatus)}）`
+    return
+  }
+  try {
+    const detail = await portfolioEthicsSanctionApi.get({ id: sanctionId })
+    deepLinkHint.value = `深链处分 #${sanctionId}：${detail.publicSummary || ''}（${statusLabel(detail.sanctionStatus)}），请按教师筛选或翻页定位处理`
+  } catch {
+    deepLinkHint.value = ''
+  }
+}
+
+onMounted(async () => {
+  await loadPage()
+  await applySanctionDeepLink()
 })
 </script>
 
@@ -458,6 +484,13 @@ onMounted(() => {
         <UiButton size="sm" variant="soft" @click="search"> 查询 </UiButton>
       </div>
       <UiSpin :spinning="loading">
+        <a-alert
+          v-if="deepLinkHint"
+          type="info"
+          show-icon
+          class="mb-3"
+          :description="deepLinkHint"
+        />
         <WorkbenchContextGateStrip
           v-if="!loading && !rows.length"
           tag="未登记"
