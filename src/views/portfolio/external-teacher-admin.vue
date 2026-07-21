@@ -2,6 +2,12 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
 import type { PortfolioExternalTeacherImportBatchStatusCode } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
+  PortfolioExternalTeacherDataStatusCode,
+  PortfolioExternalTeacherDataStatusDescription,
+  PortfolioExternalTeacherImportBatchStatusDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
   PortfolioExternalTeacherPageRequest,
@@ -10,17 +16,11 @@ import type {
   PortfolioExternalTeacherVO,
   PortfolioIndustryMentorContributionVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS,
-  PortfolioExternalTeacherDataStatusCode,
-  PortfolioExternalTeacherDataStatusDescription,
-  PortfolioExternalTeacherImportBatchStatusDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioExternalTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -48,6 +48,7 @@ import { PortfolioImportQualityGradeDescription } from '@/types/enums/portfolio-
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const activeTab = ref('roster')
 const externalTabItems = [
@@ -73,30 +74,40 @@ const importModalOpen = ref(false)
 type ExternalTeacherFilters = Pick<
   PortfolioExternalTeacherPageRequest,
   'dataStatus' | 'teachSubject' | 'teacherSource' | 'contractStatus'
->
-& Record<string, unknown>
+> &
+  Record<string, unknown>
 
-const { loading, rows, pageNum, pageSize, pageTotal, filters, loadError, loadPage, search, handlePageChange }
-  = useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
-    (params) =>
-      portfolioExternalTeacherApi.page({
-        pageNum: params.pageNum,
-        pageSize: params.pageSize,
-        dataStatus: params.dataStatus,
-        teachSubject: params.teachSubject?.trim() || undefined,
-        teacherSource: params.teacherSource?.trim() || undefined,
-        contractStatus: params.contractStatus?.trim() || undefined,
-      }),
-    {
-      defaultFilters: (): ExternalTeacherFilters => ({
-        dataStatus: undefined,
-        teachSubject: '',
-        teacherSource: '',
-        contractStatus: '',
-      }),
-      immediate: false,
-    },
-  )
+const {
+  loading,
+  rows,
+  pageNum,
+  pageSize,
+  pageTotal,
+  filters,
+  loadError,
+  loadPage,
+  search,
+  handlePageChange,
+} = useQueryTable<PortfolioExternalTeacherVO, ExternalTeacherFilters>(
+  (params) =>
+    portfolioExternalTeacherApi.page({
+      pageNum: params.pageNum,
+      pageSize: params.pageSize,
+      dataStatus: params.dataStatus,
+      teachSubject: params.teachSubject?.trim() || undefined,
+      teacherSource: params.teacherSource?.trim() || undefined,
+      contractStatus: params.contractStatus?.trim() || undefined,
+    }),
+  {
+    defaultFilters: (): ExternalTeacherFilters => ({
+      dataStatus: undefined,
+      teachSubject: '',
+      teacherSource: '',
+      contractStatus: '',
+    }),
+    immediate: false,
+  },
+)
 const {
   loading: batchLoading,
   rows: batchRows,
@@ -195,12 +206,14 @@ const batchDetailDiagnostics = computed<ExcelImportRowDiagnostic[]>(() => {
         errorCode,
       }))
     }
-    return [{
-      rowIndex: item.rowIndex ?? -(index + 1),
-      valid: false,
-      invalidReason,
-      errorCode,
-    }]
+    return [
+      {
+        rowIndex: item.rowIndex ?? -(index + 1),
+        valid: false,
+        invalidReason,
+        errorCode,
+      },
+    ]
   })
 })
 
@@ -288,7 +301,7 @@ async function onAttachmentPick(event: Event) {
         { fileNodeId: uploaded.id, fileName: uploaded.nodeName },
       ]
     }
-    message.success('附件已上传')
+    void message.success('附件已上传')
   } catch (error) {
     showUserError(error, '附件上传失败')
   } finally {
@@ -447,7 +460,7 @@ async function saveRecord() {
       attachmentFileIds: attachmentFileIds().length ? attachmentFileIds() : undefined,
       dataStatus: form.dataStatus,
     })
-    message.success('外聘教师已保存')
+    void message.success('外聘教师已保存')
     drawerOpen.value = false
     await loadPage()
   } catch (error) {
@@ -472,7 +485,7 @@ async function revokeRecord(id: string) {
   revokingId.value = id
   try {
     await portfolioExternalTeacherApi.revoke({ id })
-    message.success('已停用')
+    void message.success('已停用')
     await loadPage()
   } catch (error) {
     showUserError(error, '停用外聘教师失败')
@@ -506,7 +519,7 @@ async function exportRoster() {
   try {
     const result = await portfolioExternalTeacherApi.exportRoster(buildRosterFilters())
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条`)
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出外聘教师名册失败')
   } finally {
@@ -530,15 +543,12 @@ onMounted(async () => {
         </template>
       </ContextBar>
     </template>
-    <UiSectionTabs
-      v-model="activeTab"
-      :items="externalTabItems"
-      compact
-      divided
-    />
+    <UiSectionTabs v-model="activeTab" :items="externalTabItems" compact divided />
     <template v-if="activeTab === 'roster'">
       <UiCard title="批量导入">
-        <UiButton size="sm" variant="primary" @click="importModalOpen = true"> 表格文件批量导入 </UiButton>
+        <UiButton size="sm" variant="primary" @click="importModalOpen = true">
+          表格文件批量导入
+        </UiButton>
       </UiCard>
       <UiPlatformExcelImportModal
         v-model:open="importModalOpen"
@@ -582,7 +592,15 @@ onMounted(async () => {
             @press-enter="searchRoster"
           />
           <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
-          <UiButton size="sm" variant="outline" :loading="exporting" :disabled="exporting || saving" @click="exportRoster"> 导出台账 </UiButton>
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="exporting"
+            :disabled="exporting || saving"
+            @click="exportRoster"
+          >
+            导出台账
+          </UiButton>
         </div>
         <WorkbenchContextGateStrip
           v-if="!loadError && !loading && rows.length === 0"
@@ -609,8 +627,8 @@ onMounted(async () => {
               column,
               record,
             }: {
-                column: { key?: string }
-                record: PortfolioExternalTeacherVO
+              column: { key?: string }
+              record: PortfolioExternalTeacherVO
             }"
           >
             <template v-if="column.key === 'dataStatus'">
@@ -704,8 +722,8 @@ onMounted(async () => {
               column,
               record,
             }: {
-                column: { key?: string }
-                record: PortfolioExternalTeacherImportBatchVO
+              column: { key?: string }
+              record: PortfolioExternalTeacherImportBatchVO
             }"
           >
             <template v-if="column.key === 'batchStatus'">
@@ -731,89 +749,55 @@ onMounted(async () => {
       <UiSpin :spinning="editLoading">
         <UiForm layout="vertical">
           <UiFormItem label="姓名" required>
-            <UiInput
-              size="sm" v-model="form.fullName"
-            />
+            <UiInput size="sm" v-model="form.fullName" />
           </UiFormItem>
           <UiFormItem label="性别">
-            <UiInput
-              size="sm" v-model="form.gender"
-            />
+            <UiInput size="sm" v-model="form.gender" />
           </UiFormItem>
           <UiFormItem label="专业">
-            <UiInput
-              size="sm" v-model="form.major"
-            />
+            <UiInput size="sm" v-model="form.major" />
           </UiFormItem>
           <UiFormItem label="职称">
-            <UiInput
-              size="sm" v-model="form.title"
-            />
+            <UiInput size="sm" v-model="form.title" />
           </UiFormItem>
           <UiFormItem label="年龄">
-            <UiInputNumber
-              size="sm" v-model="form.age" :min="0" style="width: 100%"
-            />
+            <UiInputNumber size="sm" v-model="form.age" :min="0" style="width: 100%" />
           </UiFormItem>
           <UiFormItem label="身份证号">
-            <UiInput
-              size="sm" v-model="form.idCardNo"
-            />
+            <UiInput size="sm" v-model="form.idCardNo" />
           </UiFormItem>
           <UiFormItem label="聘任学期">
-            <UiInput
-              size="sm" v-model="form.hireTerm"
-            />
+            <UiInput size="sm" v-model="form.hireTerm" />
           </UiFormItem>
           <UiFormItem label="任教科目">
-            <UiInput
-              size="sm" v-model="form.teachSubject"
-            />
+            <UiInput size="sm" v-model="form.teachSubject" />
           </UiFormItem>
           <UiFormItem label="授课学时">
-            <UiInputNumber
-              size="sm" v-model="form.teachHours" style="width: 100%"
-            />
+            <UiInputNumber size="sm" v-model="form.teachHours" style="width: 100%" />
           </UiFormItem>
           <UiFormItem label="任职单位">
-            <UiInput
-              size="sm" v-model="form.employerUnit"
-            />
+            <UiInput size="sm" v-model="form.employerUnit" />
           </UiFormItem>
           <UiFormItem label="任教专业">
-            <UiInput
-              size="sm" v-model="form.teachMajor"
-            />
+            <UiInput size="sm" v-model="form.teachMajor" />
           </UiFormItem>
           <UiFormItem label="教师来源">
-            <UiInput
-              size="sm" v-model="form.teacherSource"
-            />
+            <UiInput size="sm" v-model="form.teacherSource" />
           </UiFormItem>
           <UiFormItem label="试讲成绩">
-            <UiInput
-              size="sm" v-model="form.trialScore"
-            />
+            <UiInput size="sm" v-model="form.trialScore" />
           </UiFormItem>
           <UiFormItem label="行业经历">
-            <UiInput
-              size="sm" v-model="form.industryExperience"
-            />
+            <UiInput size="sm" v-model="form.industryExperience" />
           </UiFormItem>
           <UiFormItem label="合同状态">
-            <UiInput
-              size="sm" v-model="form.contractStatus"
-            />
+            <UiInput size="sm" v-model="form.contractStatus" />
           </UiFormItem>
           <UiFormItem label="联系电话">
-            <UiInput
-              size="sm" v-model="form.contactPhone"
-            />
+            <UiInput size="sm" v-model="form.contactPhone" />
           </UiFormItem>
           <UiFormItem label="联系邮箱">
-            <UiInput
-              size="sm" v-model="form.contactEmail"
-            />
+            <UiInput size="sm" v-model="form.contactEmail" />
           </UiFormItem>
           <UiFormItem label="聘期开始">
             <UiDatePicker
@@ -846,7 +830,12 @@ onMounted(async () => {
               class="sr-only"
               @change="onAttachmentPick"
             />
-            <UiButton variant="primary" size="sm" :loading="uploadingAttachment" @click="openAttachmentPicker">
+            <UiButton
+              variant="primary"
+              size="sm"
+              :loading="uploadingAttachment"
+              @click="openAttachmentPicker"
+            >
               上传附件
             </UiButton>
             <ul v-if="attachmentItems.length" class="attachment-list">
@@ -858,33 +847,28 @@ onMounted(async () => {
           </UiFormItem>
           <div v-if="detailContribution" class="contribution-panel">
             <p class="contribution-panel__title">§8.42 产业导师贡献度</p>
-            <p>综合 {{ detailContribution.contributionScore }} · 聘任 {{ detailContribution.appointmentValidityScore }} · 教学 {{ detailContribution.teachingParticipationScore }} · 实践 {{ detailContribution.practiceGuidanceScore }} · 成果 {{ detailContribution.industryOutcomeScore }} · 考核 {{ detailContribution.assessmentScore }}</p>
-            <p class="contribution-panel__hint">{{ detailContribution.formulaLabel }}</p>
-            <div
-              v-if="detailContribution.ownerIdentityLayers?.length"
-              class="contribution-panel__identity-layers"
-            >
-              <UiTag
-                v-for="(layer, idx) in detailContribution.ownerIdentityLayers"
-                :key="layer.identityId || `${layer.identityType}-${idx}`"
-                size="sm"
-                :tone="layer.externalIdentity ? 'orange' : 'blue'"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-            </div>
-            <p
-              v-if="detailContribution.ownerMultiIdentityNote"
-              class="contribution-panel__hint"
-            >
-              {{ detailContribution.ownerMultiIdentityNote }}
+            <p>
+              综合 {{ detailContribution.contributionScore }} · 聘任
+              {{ detailContribution.appointmentValidityScore }} · 教学
+              {{ detailContribution.teachingParticipationScore }} · 实践
+              {{ detailContribution.practiceGuidanceScore }} · 成果
+              {{ detailContribution.industryOutcomeScore }} · 考核
+              {{ detailContribution.assessmentScore }}
             </p>
+            <p class="contribution-panel__hint">{{ detailContribution.formulaLabel }}</p>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="detailContribution.ownerIdentityLayers"
+              :note="detailContribution.ownerMultiIdentityNote"
+              show-note
+            />
             <p class="contribution-panel__hint">不得作为校内职称评价结论</p>
             <ul v-if="detailContribution.evidenceNotes?.length">
               <li v-for="(note, idx) in detailContribution.evidenceNotes" :key="idx">{{ note }}</li>
             </ul>
           </div>
-          <UiButton size="sm" variant="primary" :loading="saving" @click="saveRecord"> 保存 </UiButton>
+          <UiButton size="sm" variant="primary" :loading="saving" @click="saveRecord">
+            保存
+          </UiButton>
         </UiForm>
       </UiSpin>
     </UiDrawer>

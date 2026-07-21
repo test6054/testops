@@ -279,10 +279,31 @@ import type {
   GradeReviewEvidenceFileRefVO,
   StudentGradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
+import {
+  countMyPendingReviewRequests,
+  GRADE_REVIEW_REASON_TYPE_OPTIONS,
+  GradeReviewReasonTypeCode,
+  GradeReviewReasonTypeDescription,
+  GradeReviewRequestStatusCode,
+  GradeReviewRequestStatusDescription,
+  listMyReviewRequests,
+  REVIEW_REQUEST_STATUS_OPTIONS,
+  REVIEW_REQUEST_STATUS_TONE,
+  submitReviewRequest,
+} from '@/apis/mark/grade-review'
 import type {
   StudentExamItemVO,
   StudentExamStatsResponse,
   StudentQuestionScoreVO,
+} from '@/apis/mark/student-exam'
+import {
+  canSubmitReview,
+  getMyExamStats,
+  getMyScoreDetail,
+  pageMyExams,
+  ReviewWindowPolicyStatusCode,
+  ReviewWindowPolicyStatusDescription,
+  STUDENT_REVIEW_WINDOW_STATUS_TONE,
 } from '@/apis/mark/student-exam'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
@@ -298,27 +319,6 @@ import {
   FinalScoreStatusCode,
   FinalScoreStatusDescription,
 } from '@/apis/mark/final-score-status'
-import {
-  countMyPendingReviewRequests,
-  GRADE_REVIEW_REASON_TYPE_OPTIONS,
-  GradeReviewReasonTypeCode,
-  GradeReviewReasonTypeDescription,
-  GradeReviewRequestStatusCode,
-  GradeReviewRequestStatusDescription,
-  listMyReviewRequests,
-  REVIEW_REQUEST_STATUS_OPTIONS,
-  REVIEW_REQUEST_STATUS_TONE,
-  submitReviewRequest,
-} from '@/apis/mark/grade-review'
-import {
-  canSubmitReview,
-  getMyExamStats,
-  getMyScoreDetail,
-  pageMyExams,
-  ReviewWindowPolicyStatusCode,
-  ReviewWindowPolicyStatusDescription,
-  STUDENT_REVIEW_WINDOW_STATUS_TONE,
-} from '@/apis/mark/student-exam'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -395,7 +395,7 @@ const requestFilterForm = reactive<{
   examId: undefined,
 })
 
-const examFilterOptions = ref<Array<{ value: string, label: string }>>([])
+const examFilterOptions = ref<Array<{ value: string; label: string }>>([])
 
 const requestFilterFields = computed<FilterField[]>(() => [
   {
@@ -405,7 +405,10 @@ const requestFilterFields = computed<FilterField[]>(() => [
     placeholder: '全部状态',
     allowClear: true,
     width: 160,
-    options: REVIEW_REQUEST_STATUS_OPTIONS.map((item) => ({ label: item.label, value: item.value })),
+    options: REVIEW_REQUEST_STATUS_OPTIONS.map((item) => ({
+      label: item.label,
+      value: item.value,
+    })),
   },
   {
     key: 'examId',
@@ -466,8 +469,8 @@ const selectedExamSubmitBlockedReason = computed(() => {
     return '成绩未发布或已更正待重发，暂不能提交复核'
   }
   if (
-    exam.reviewWindowStatus !== ReviewWindowPolicyStatusCode.ACTIVE
-    || exam.reviewWindowWithinTime === false
+    exam.reviewWindowStatus !== ReviewWindowPolicyStatusCode.ACTIVE ||
+    exam.reviewWindowWithinTime === false
   ) {
     return '当前不在复核窗口开放时间内'
   }
@@ -589,7 +592,7 @@ async function loadExams() {
     }
     await loadExamFilterOptions()
     if (appealablePage.total > MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE) {
-      message.warning(
+      void message.warning(
         `可申请考试共 ${appealablePage.total} 场，当前仅展示前 ${MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE} 场，请优先处理临近截止场次`,
       )
     }
@@ -638,9 +641,9 @@ async function loadRequests() {
     requestPagination.current = result.pageNum ?? requestPagination.current
     requestPagination.pageSize = result.pageSize ?? requestPagination.pageSize
     if (
-      requests.value.length === 0
-      && requestPagination.total > 0
-      && requestPagination.current > 1
+      requests.value.length === 0 &&
+      requestPagination.total > 0 &&
+      requestPagination.current > 1
     ) {
       requestPagination.current -= 1
       await Promise.all([loadRequests(), loadPendingRequestCount()])
@@ -654,7 +657,7 @@ async function loadRequests() {
   }
 }
 
-function handleRequestPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handleRequestPageChange(pageInfo: { current: number; pageSize: number }): void {
   requestPagination.current = pageInfo.current
   requestPagination.pageSize = pageInfo.pageSize
   void loadRequests()
@@ -813,7 +816,7 @@ async function submit() {
   try {
     const paperInstanceId = selectedAppealableExam.value.paperInstanceId
     if (!paperInstanceId) {
-      message.error('当前考试信息不完整，暂不能提交复核申请')
+      void message.error('当前考试信息不完整，暂不能提交复核申请')
       return
     }
     await submitReviewRequest({
@@ -827,7 +830,7 @@ async function submit() {
           ? evidenceItems.value.map((item) => item.fileNodeId)
           : undefined,
     })
-    message.success('复核申请已提交')
+    void message.success('复核申请已提交')
     submitModalOpen.value = false
     resetEvidenceFiles()
     // 来源题号已落库，清理状态与 URL 防止刷新再次自动弹出
@@ -855,7 +858,7 @@ watch(
     }
     if (exams.value.some((e) => e.examId === val)) {
       selectedExamId.value = undefined
-      message.warning('该考试当前不在复核窗口内，无法提交新申请')
+      void message.warning('该考试当前不在复核窗口内，无法提交新申请')
     }
   },
 )

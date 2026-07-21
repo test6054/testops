@@ -29,44 +29,35 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  *   - /api/quality/accreditation-standards          认证标准条目
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   GraduationRequirementSaveRequest,
   GraduationRequirementVO,
 } from '@/apis/quality/graduation-requirement'
+import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
 import type {
   RequirementIndicatorSaveRequest,
   RequirementIndicatorVO,
 } from '@/apis/quality/requirement-indicator'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import type {
   RequirementStandardMappingSaveRequest,
   RequirementStandardMappingVO,
 } from '@/apis/quality/requirement-standard-mapping'
+import { requirementStandardMappingApi } from '@/apis/quality/requirement-standard-mapping'
 import type {
   TrainingObjectiveSaveRequest,
   TrainingObjectiveVO,
 } from '@/apis/quality/training-objective'
+import { trainingObjectiveApi } from '@/apis/quality/training-objective'
 import type {
   TrainingObjectiveRequirementSaveRequest,
   TrainingObjectiveRequirementVO,
 } from '@/apis/quality/training-objective-requirement'
-import type { TrainingPlanSaveRequest, TrainingPlanVO } from '@/apis/quality/training-plan'
-import type { CivicDimensionCode } from '@/apis/quality/types'
-import type { TrainingPlanWorkbenchSignalSummaryVO } from '@/apis/quality/workbench'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import { graduationRequirementApi } from '@/apis/quality/graduation-requirement'
-import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
-import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
-import { requirementStandardMappingApi } from '@/apis/quality/requirement-standard-mapping'
-import { trainingObjectiveApi } from '@/apis/quality/training-objective'
 import { trainingObjectiveRequirementApi } from '@/apis/quality/training-objective-requirement'
+import type { TrainingPlanSaveRequest, TrainingPlanVO } from '@/apis/quality/training-plan'
 import { trainingPlanApi } from '@/apis/quality/training-plan'
+import type { CivicDimensionCode } from '@/apis/quality/types'
 import {
   AggregationFunctionCode,
   AggregationFunctionDescription,
@@ -76,7 +67,16 @@ import {
   ConfirmationStatusCode,
   ConfirmationStatusDescription,
 } from '@/apis/quality/types'
+import type { TrainingPlanWorkbenchSignalSummaryVO } from '@/apis/quality/workbench'
 import { workbenchApi } from '@/apis/quality/workbench'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { MatrixCell, MatrixCol, MatrixRow } from '@/components/workbench/matrix-types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { professionAlgorithmProfileApi } from '@/apis/quality/profession-algorithm-profile'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import {
@@ -262,7 +262,7 @@ async function loadObjectives() {
   }
 }
 
-function handleObjectivePageChange(page: { current: number, pageSize: number }) {
+function handleObjectivePageChange(page: { current: number; pageSize: number }) {
   objectivePageNum.value = page.current
   objectivePageSize.value = page.pageSize
   void loadObjectives()
@@ -313,7 +313,7 @@ async function loadRequirements() {
   }
 }
 
-function handleRequirementPageChange(page: { current: number, pageSize: number }) {
+function handleRequirementPageChange(page: { current: number; pageSize: number }) {
   requirementPageNum.value = page.current
   requirementPageSize.value = page.pageSize
   void loadRequirements()
@@ -384,7 +384,7 @@ async function loadSelectedRequirementIndicators() {
   }
 }
 
-function handleIndicatorPageChange(page: { current: number, pageSize: number }) {
+function handleIndicatorPageChange(page: { current: number; pageSize: number }) {
   indicatorPageNum.value = page.current
   indicatorPageSize.value = page.pageSize
   void loadSelectedRequirementIndicators()
@@ -462,7 +462,7 @@ async function loadObjectiveRequirementMappings() {
   }
 }
 
-function handleObjMappingPageChange(page: { current: number, pageSize: number }) {
+function handleObjMappingPageChange(page: { current: number; pageSize: number }) {
   objMappingPageNum.value = page.current
   objMappingPageSize.value = page.pageSize
   void loadObjectiveRequirementMappings()
@@ -561,7 +561,7 @@ async function loadStandardMappings() {
   }
 }
 
-function handleStdMappingPageChange(page: { current: number, pageSize: number }) {
+function handleStdMappingPageChange(page: { current: number; pageSize: number }) {
   stdMappingPageNum.value = page.current
   stdMappingPageSize.value = page.pageSize
   void loadStandardMappings()
@@ -597,30 +597,30 @@ const planConfirmationStatus = computed<ConfirmationStatusCode | undefined>(() =
 
 const canSubmitPlan = computed(
   () =>
-    !!currentPlan.value
-    && (planConfirmationStatus.value === ConfirmationStatusCode.DRAFT
-      || planConfirmationStatus.value === ConfirmationStatusCode.RETURNED),
+    !!currentPlan.value &&
+    (planConfirmationStatus.value === ConfirmationStatusCode.DRAFT ||
+      planConfirmationStatus.value === ConfirmationStatusCode.RETURNED),
 )
 
 const isPlanStructureEditable = computed(
   () =>
-    !!currentPlan.value
-    && planConfirmationStatus.value !== ConfirmationStatusCode.SUBMITTED
-    && planConfirmationStatus.value !== ConfirmationStatusCode.CONFIRMED,
+    !!currentPlan.value &&
+    planConfirmationStatus.value !== ConfirmationStatusCode.SUBMITTED &&
+    planConfirmationStatus.value !== ConfirmationStatusCode.CONFIRMED,
 )
 
 /**
  * 体系搭建阶段：按认证工作流只暴露当前阶段主行动，避免页头「新建/编辑/院审/删除」并陈。
  * 阶段语义：选方案 → 建目标 → 映射毕业要求 → 建观测点 → 权重健康后提交院审。
  */
-type PlanBuildStageKey
-  = | 'select_plan'
-    | 'build_objectives'
-    | 'map_requirements'
-    | 'build_indicators'
-    | 'ready_submit'
-    | 'awaiting_review'
-    | 'confirmed'
+type PlanBuildStageKey =
+  | 'select_plan'
+  | 'build_objectives'
+  | 'map_requirements'
+  | 'build_indicators'
+  | 'ready_submit'
+  | 'awaiting_review'
+  | 'confirmed'
 
 const planBuildStage = computed((): PlanBuildStageKey => {
   if (!qualityStore.currentTrainingPlanId || !currentPlan.value) {
@@ -678,7 +678,8 @@ const planStageGuidance = computed(() => {
       return {
         tone: 'success' as const,
         title: '当前阶段：提交院审',
-        description: '目标 / 毕业要求 / 观测点权重已就绪，请核对后提交学院确认，方可进入达成度与正式报告。',
+        description:
+          '目标 / 毕业要求 / 观测点权重已就绪，请核对后提交学院确认，方可进入达成度与正式报告。',
       }
     case 'awaiting_review':
       return {
@@ -701,8 +702,8 @@ const showPlanMoreActions = ref(false)
 
 function focusPlanStageWorkbench(): void {
   if (
-    planBuildStage.value === 'build_indicators'
-    || (planBuildStage.value === 'map_requirements' && requirements.value.length === 0)
+    planBuildStage.value === 'build_indicators' ||
+    (planBuildStage.value === 'map_requirements' && requirements.value.length === 0)
   ) {
     activeTab.value = 'requirement'
     return
@@ -758,14 +759,14 @@ const planPrimaryStageActionLabel = computed(() => {
 
 const showPlanPrimaryStageAction = computed(
   () =>
-    planBuildStage.value !== 'awaiting_review'
-    && planBuildStage.value !== 'confirmed'
-    && !!planPrimaryStageActionLabel.value,
+    planBuildStage.value !== 'awaiting_review' &&
+    planBuildStage.value !== 'confirmed' &&
+    !!planPrimaryStageActionLabel.value,
 )
 
 function guardPlanStructureEditable(action: string): boolean {
   if (isPlanStructureEditable.value) return true
-  message.error('培养方案已提交院审或确认发布，请先退回或撤回后再' + action)
+  void message.error('培养方案已提交院审或确认发布，请先退回或撤回后再' + action)
   return false
 }
 
@@ -978,12 +979,12 @@ function openPlanEdit() {
 async function submitPlan() {
   if (planEditorMode.value === 'edit' && !guardPlanStructureEditable('编辑方案')) return
   if (
-    !planEditor.programId.trim()
-    || !planEditor.planCode.trim()
-    || !planEditor.planName.trim()
-    || !planEditor.schoolYear.trim()
+    !planEditor.programId.trim() ||
+    !planEditor.planCode.trim() ||
+    !planEditor.planName.trim() ||
+    !planEditor.schoolYear.trim()
   ) {
-    message.error('请选择专业，并填写方案编码、方案名称和入学学年')
+    void message.error('请选择专业，并填写方案编码、方案名称和入学学年')
     return
   }
   planSubmitting.value = true
@@ -1002,12 +1003,12 @@ async function submitPlan() {
     }
     if (planEditorMode.value === 'create') {
       const newId = await trainingPlanApi.create(request)
-      message.success('培养方案已创建')
+      void message.success('培养方案已创建')
       qualityStore.setTrainingPlan(newId)
       await qualityStore.loadTrainingPlanOptions({ programId: planEditor.programId })
     } else {
       await trainingPlanApi.update(request)
-      message.success('培养方案已更新')
+      void message.success('培养方案已更新')
     }
     planEditorVisible.value = false
     await loadCurrentPlan()
@@ -1021,12 +1022,13 @@ async function submitPlanForReview() {
   const plan = currentPlan.value
   void confirmAsync({
     title: `提交培养方案 ${plan.planCode} 进入院审？`,
-    content: '提交后将锁定体系结构，待具备发布权限的学院确认人完成审核后才可进入达成度计算和正式报告。',
+    content:
+      '提交后将锁定体系结构，待具备发布权限的学院确认人完成审核后才可进入达成度计算和正式报告。',
     type: 'info',
     okText: '提交院审',
     onOk: async () => {
       await trainingPlanApi.submit({ id: plan.id, statusVersion: plan.statusVersion })
-      message.success('培养方案已提交院审')
+      void message.success('培养方案已提交院审')
       await loadCurrentPlan()
       await qualityStore.loadTrainingPlanOptions()
     },
@@ -1043,7 +1045,7 @@ async function deletePlan() {
     type: 'error',
     onOk: async () => {
       await trainingPlanApi.delete(planId)
-      message.success('培养方案已删除')
+      void message.success('培养方案已删除')
       qualityStore.setTrainingPlan('')
       currentPlan.value = null
       objectives.value = []
@@ -1103,14 +1105,14 @@ function openObjectiveEdit(record: TrainingObjectiveVO) {
 
 async function submitObjective() {
   if (!objectiveEditor.objectiveCode.trim() || !objectiveEditor.objectiveName.trim()) {
-    message.error('请填写编码与名称')
+    void message.error('请填写编码与名称')
     return
   }
   objectiveSubmitting.value = true
   try {
     if (objectiveEditorMode.value === 'create') await trainingObjectiveApi.create(objectiveEditor)
     else await trainingObjectiveApi.update(objectiveEditor)
-    message.success('培养目标已保存')
+    void message.success('培养目标已保存')
     objectiveEditorVisible.value = false
     await loadObjectives()
   } finally {
@@ -1126,7 +1128,7 @@ async function deleteObjective(record: TrainingObjectiveVO) {
     type: 'error',
     onOk: async () => {
       await trainingObjectiveApi.delete(record.id)
-      message.success('培养目标已删除')
+      void message.success('培养目标已删除')
       if (selectedObjective.value?.id === record.id) selectedObjective.value = null
       await Promise.all([loadObjectives(), loadObjectiveRequirementMappings()])
     },
@@ -1151,7 +1153,7 @@ function openObjMappingCreate() {
   if (!guardPlanStructureEditable('新增映射')) return
   if (!selectedObjective.value) return
   if (requirements.value.length === 0) {
-    message.warning('当前方案下没有毕业要求，请先在「毕业要求与观测点」页签创建')
+    void message.warning('当前方案下没有毕业要求，请先在「毕业要求与观测点」页签创建')
     return
   }
   objMappingEditorMode.value = 'create'
@@ -1196,8 +1198,8 @@ function handleObjectiveRequirementCellClick(cellEvent: {
   if (cellEvent.cell) {
     const mapping = objectiveRequirementMappings.value.find(
       (item) =>
-        item.trainingObjectiveId === cellEvent.row.key
-        && item.graduationRequirementId === cellEvent.col.key,
+        item.trainingObjectiveId === cellEvent.row.key &&
+        item.graduationRequirementId === cellEvent.col.key,
     )
     if (mapping) openObjMappingEdit(mapping)
     return
@@ -1218,15 +1220,15 @@ function handleObjectiveRequirementCellClick(cellEvent: {
 
 async function submitObjMapping() {
   if (!objMappingEditor.graduationRequirementId) {
-    message.error('请选择毕业要求')
+    void message.error('请选择毕业要求')
     return
   }
   if (
-    objMappingEditor.weight == null
-    || objMappingEditor.weight < 0
-    || objMappingEditor.weight > 1
+    objMappingEditor.weight == null ||
+    objMappingEditor.weight < 0 ||
+    objMappingEditor.weight > 1
   ) {
-    message.error('权重必须在 0~1 之间')
+    void message.error('权重必须在 0~1 之间')
     return
   }
   objMappingSubmitting.value = true
@@ -1234,7 +1236,7 @@ async function submitObjMapping() {
     if (objMappingEditorMode.value === 'create')
       await trainingObjectiveRequirementApi.create(objMappingEditor)
     else await trainingObjectiveRequirementApi.update(objMappingEditor)
-    message.success('映射已保存')
+    void message.success('映射已保存')
     objMappingEditorVisible.value = false
     await Promise.all([loadPlanLevelMappings(), loadObjectiveRequirementMappings()])
   } finally {
@@ -1249,7 +1251,7 @@ async function deleteObjMapping(record: TrainingObjectiveRequirementVO) {
     type: 'error',
     onOk: async () => {
       await trainingObjectiveRequirementApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await Promise.all([loadPlanLevelMappings(), loadObjectiveRequirementMappings()])
     },
   })
@@ -1311,7 +1313,7 @@ function openRequirementEdit(record: GraduationRequirementVO) {
 
 async function submitRequirement() {
   if (!requirementEditor.requirementCode.trim() || !requirementEditor.requirementName.trim()) {
-    message.error('请填写编码与名称')
+    void message.error('请填写编码与名称')
     return
   }
   requirementSubmitting.value = true
@@ -1319,7 +1321,7 @@ async function submitRequirement() {
     if (requirementEditorMode.value === 'create')
       await graduationRequirementApi.create(requirementEditor)
     else await graduationRequirementApi.update(requirementEditor)
-    message.success('毕业要求已保存')
+    void message.success('毕业要求已保存')
     requirementEditorVisible.value = false
     await loadRequirements()
     await Promise.all([loadPlanLevelIndicators(), loadSelectedRequirementIndicators()])
@@ -1336,7 +1338,7 @@ async function deleteRequirement(record: GraduationRequirementVO) {
     type: 'error',
     onOk: async () => {
       await graduationRequirementApi.delete(record.id)
-      message.success('毕业要求已删除')
+      void message.success('毕业要求已删除')
       if (selectedRequirement.value?.id === record.id) selectedRequirement.value = null
       await Promise.all([
         loadRequirements(),
@@ -1403,15 +1405,15 @@ function openIndicatorEdit(record: RequirementIndicatorVO) {
 
 async function submitIndicator() {
   if (!indicatorEditor.indicatorCode.trim() || !indicatorEditor.indicatorName.trim()) {
-    message.error('请填写编码与名称')
+    void message.error('请填写编码与名称')
     return
   }
   if (
-    indicatorEditor.requirementWeight == null
-    || indicatorEditor.requirementWeight <= 0
-    || indicatorEditor.requirementWeight > 1
+    indicatorEditor.requirementWeight == null ||
+    indicatorEditor.requirementWeight <= 0 ||
+    indicatorEditor.requirementWeight > 1
   ) {
-    message.error('观测点权重必须在 (0, 1] 之间')
+    void message.error('观测点权重必须在 (0, 1] 之间')
     return
   }
   indicatorSubmitting.value = true
@@ -1419,7 +1421,7 @@ async function submitIndicator() {
     if (indicatorEditorMode.value === 'create')
       await requirementIndicatorApi.create(indicatorEditor)
     else await requirementIndicatorApi.update(indicatorEditor)
-    message.success('观测点已保存')
+    void message.success('观测点已保存')
     indicatorEditorVisible.value = false
     await Promise.all([loadPlanLevelIndicators(), loadSelectedRequirementIndicators()])
   } finally {
@@ -1434,7 +1436,7 @@ async function deleteIndicator(record: RequirementIndicatorVO) {
     type: 'error',
     onOk: async () => {
       await requirementIndicatorApi.delete(record.id)
-      message.success('观测点已删除')
+      void message.success('观测点已删除')
       await Promise.all([loadPlanLevelIndicators(), loadSelectedRequirementIndicators()])
     },
   })
@@ -1442,7 +1444,7 @@ async function deleteIndicator(record: RequirementIndicatorVO) {
 
 async function validateIndicatorWeights(req: GraduationRequirementVO) {
   await requirementIndicatorApi.validateWeights(req.id)
-  message.success(`毕业要求 ${req.requirementCode} 的观测点权重和校验通过`)
+  void message.success(`毕业要求 ${req.requirementCode} 的观测点权重和校验通过`)
 }
 
 /* ========== 编辑器：标准条款映射 ========== */
@@ -1485,12 +1487,12 @@ function openStdMappingEdit(record: RequirementStandardMappingVO) {
 
 async function submitStdMapping() {
   if (!stdEditor.standardId) {
-    message.error('请选择标准条目')
+    void message.error('请选择标准条目')
     return
   }
   if (stdEditorMode.value === 'create') await requirementStandardMappingApi.create(stdEditor)
   else await requirementStandardMappingApi.update(stdEditor)
-  message.success('标准映射已保存')
+  void message.success('标准映射已保存')
   stdEditorVisible.value = false
   await loadStandardMappings()
 }
@@ -1502,7 +1504,7 @@ async function deleteStdMapping(record: RequirementStandardMappingVO) {
     type: 'error',
     onOk: async () => {
       await requirementStandardMappingApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadStandardMappings()
     },
   })
@@ -1656,8 +1658,8 @@ const aggregationOptions = ALL_AGGREGATION_FUNCTION_CODES.map((value) => ({
   label: strictEnumLabel(AggregationFunctionDescription, value, '聚合函数'),
 }))
 
-const civicDimensionOptions: Array<{ value: CivicDimensionCode, label: string }>
-  = ALL_CIVIC_DIMENSION_CODES.map((value) => ({
+const civicDimensionOptions: Array<{ value: CivicDimensionCode; label: string }> =
+  ALL_CIVIC_DIMENSION_CODES.map((value) => ({
     value,
     label: strictEnumLabel(CivicDimensionDescription, value, '课程思政维度'),
   }))
@@ -1700,10 +1702,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
             {{ showPlanMoreActions ? '收起更多' : '更多操作' }}
           </UiTextAction>
           <template v-if="showPlanMoreActions">
-            <UiTextAction
-              v-if="planBuildStage !== 'select_plan'"
-              @click="openPlanCreate"
-            >
+            <UiTextAction v-if="planBuildStage !== 'select_plan'" @click="openPlanCreate">
               新建方案
             </UiTextAction>
             <UiButton
@@ -1866,15 +1865,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
           <UiCol :span="15">
             <UiCard v-if="!selectedObjective" class="tpw__card">
-              <UiAlertStrip
-                tone="info"
-                size="sm"
-                dense
-                inline
-                :show-icon="false"
-              >
+              <UiAlertStrip tone="info" size="sm" dense inline :show-icon="false">
                 <template #default>
-                  <span style="display:inline-flex;align-items:center;gap:8px">
+                  <span style="display: inline-flex; align-items: center; gap: 8px">
                     <UiTag tone="blue" size="sm">未选择</UiTag>
                     <span>请在左侧选择条目后再编辑</span>
                   </span>
@@ -2021,15 +2014,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
           <UiCol :span="15">
             <UiCard v-if="!selectedRequirement" class="tpw__card">
-              <UiAlertStrip
-                tone="info"
-                size="sm"
-                dense
-                inline
-                :show-icon="false"
-              >
+              <UiAlertStrip tone="info" size="sm" dense inline :show-icon="false">
                 <template #default>
-                  <span style="display:inline-flex;align-items:center;gap:8px">
+                  <span style="display: inline-flex; align-items: center; gap: 8px">
                     <UiTag tone="blue" size="sm">未选择</UiTag>
                     <span>请在左侧选择条目后再编辑</span>
                   </span>
@@ -2082,7 +2069,9 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
                         <UiTag v-for="d in record.civicDimensions ?? []" :key="d" tone="purple">
                           {{ strictEnumLabel(CivicDimensionDescription, d, '课程思政维度') }}
                         </UiTag>
-                        <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted">-</span>
+                        <span v-if="!(record.civicDimensions ?? []).length" class="tpw__muted"
+                          >-</span
+                        >
                       </div>
                     </template>
                     <template v-else-if="column.key === 'actions'">
@@ -2189,32 +2178,24 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="方案编码" required>
-              <UiInput
-                size="sm" v-model="planEditor.planCode" placeholder="如 CSE-2024-V1"
-              />
+              <UiInput size="sm" v-model="planEditor.planCode" placeholder="如 CSE-2024-V1" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="方案名称" required>
-              <UiInput
-                size="sm" v-model="planEditor.planName"
-              />
+              <UiInput size="sm" v-model="planEditor.planName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
         <UiRow :gutter="12">
           <UiCol :span="8">
             <UiFormItem label="入学学年" required>
-              <UiInput
-                size="sm" v-model="planEditor.schoolYear" placeholder="如 2024-2025"
-              />
+              <UiInput size="sm" v-model="planEditor.schoolYear" placeholder="如 2024-2025" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="年级">
-              <UiInput
-                size="sm" v-model="planEditor.gradeLevel" placeholder="如 2024 级"
-              />
+              <UiInput size="sm" v-model="planEditor.gradeLevel" placeholder="如 2024 级" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
@@ -2249,16 +2230,12 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
         <UiRow :gutter="12">
           <UiCol :span="8">
             <UiFormItem label="编码" required>
-              <UiInput
-                size="sm" v-model="objectiveEditor.objectiveCode" placeholder="如 PO1"
-              />
+              <UiInput size="sm" v-model="objectiveEditor.objectiveCode" placeholder="如 PO1" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="16">
             <UiFormItem label="名称" required>
-              <UiInput
-                size="sm" v-model="objectiveEditor.objectiveName"
-              />
+              <UiInput size="sm" v-model="objectiveEditor.objectiveName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -2267,7 +2244,10 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
         </UiFormItem>
         <UiFormItem label="排序">
           <UiInputNumber
-            size="sm" v-model="objectiveEditor.sortOrder" :min="0" style="width: 200px"
+            size="sm"
+            v-model="objectiveEditor.sortOrder"
+            :min="0"
+            style="width: 200px"
           />
         </UiFormItem>
       </UiForm>
@@ -2287,9 +2267,13 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
             v-model="objMappingEditor.graduationRequirementId"
             placeholder="请选择毕业要求"
             :disabled="objMappingEditorMode === 'edit'"
-          
             size="sm"
-            :options="requirements.map((r) => ({ value: r.id, label: `${r.requirementCode} · ${r.requirementName}` }))"
+            :options="
+              requirements.map((r) => ({
+                value: r.id,
+                label: `${r.requirementCode} · ${r.requirementName}`,
+              }))
+            "
           />
         </UiFormItem>
         <UiRow :gutter="12">
@@ -2334,9 +2318,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
         <UiRow :gutter="12">
           <UiCol :span="6">
             <UiFormItem label="编码" required>
-              <UiInput
-                size="sm" v-model="requirementEditor.requirementCode" placeholder="如 GR1"
-              />
+              <UiInput size="sm" v-model="requirementEditor.requirementCode" placeholder="如 GR1" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="18">
@@ -2415,16 +2397,12 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
         <UiRow :gutter="12">
           <UiCol :span="6">
             <UiFormItem label="编码" required>
-              <UiInput
-                size="sm" v-model="indicatorEditor.indicatorCode" placeholder="如 1.1"
-              />
+              <UiInput size="sm" v-model="indicatorEditor.indicatorCode" placeholder="如 1.1" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="18">
             <UiFormItem label="名称" required>
-              <UiInput
-                size="sm" v-model="indicatorEditor.indicatorName"
-              />
+              <UiInput size="sm" v-model="indicatorEditor.indicatorName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -2495,15 +2473,17 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
             allow-search
             :filter-option="false"
             @search="handleStandardOptionSearch"
-          
             size="sm"
-            :options="standardOptions.map((s) => ({ value: s.id, label: `${s.standardCode} · ${s.standardName}` }))"
+            :options="
+              standardOptions.map((s) => ({
+                value: s.id,
+                label: `${s.standardCode} · ${s.standardName}`,
+              }))
+            "
           />
         </UiFormItem>
         <UiFormItem label="标准条款">
-          <UiInput
-            size="sm" v-model="stdEditor.standardClause" placeholder="如 §1.3.a"
-          />
+          <UiInput size="sm" v-model="stdEditor.standardClause" placeholder="如 §1.3.a" />
         </UiFormItem>
         <UiFormItem label="覆盖说明">
           <UiTextarea size="sm" v-model="stdEditor.coverageNote" :rows="3" />

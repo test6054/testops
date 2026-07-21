@@ -215,7 +215,14 @@
   >
     <template #footer>
       <UiButton size="sm" variant="outline" @click="createModalOpen = false">取消</UiButton>
-      <UiButton variant="primary" size="sm" :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
+      <UiButton
+        variant="primary"
+        size="sm"
+        :loading="creating"
+        :disabled="!createValid"
+        @click="handleCreate"
+        >创建</UiButton
+      >
     </template>
     <UiForm layout="vertical">
       <UiFormItem label="外部系统类型" required>
@@ -238,7 +245,9 @@
       </UiFormItem>
       <UiFormItem label="外部课程编号">
         <UiInput
-          size="sm" v-model="createForm.externalCourseId" placeholder="如教务系统中的课程编号"
+          size="sm"
+          v-model="createForm.externalCourseId"
+          placeholder="如教务系统中的课程编号"
         />
       </UiFormItem>
       <UiFormItem label="外部成绩项编号">
@@ -369,16 +378,6 @@ import type {
   PassbackRecordResponse,
   ReconcileStatusCode,
 } from '@/apis/mark/teaching-affairs-sync'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
-import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   cancelSyncTask,
   CREATABLE_SYNC_TYPE_OPTIONS,
@@ -407,6 +406,16 @@ import {
   TeachingAffairsSyncTypeCode,
   TeachingAffairsSyncTypeDescription,
 } from '@/apis/mark/teaching-affairs-sync'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import AuditOutlined from '@ant-design/icons-vue/AuditOutlined'
+import FileSyncOutlined from '@ant-design/icons-vue/FileSyncOutlined'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -565,7 +574,7 @@ function handleSyncFilterReset(): void {
   reloadSyncTasksFromFirstPage()
 }
 
-function handleSyncPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handleSyncPageChange(pageInfo: { current: number; pageSize: number }): void {
   syncPagination.pageNum = pageInfo.current
   syncPagination.pageSize = pageInfo.pageSize
   void loadSyncTasks()
@@ -577,8 +586,8 @@ function syncSyncPolling(): void {
   const syncingTask = syncingTaskTotal.value > 0
   const pendingPassback = passbackRecords.value.some(
     (record) =>
-      record.passbackStatus === PassbackStatusCode.PENDING
-      || record.passbackStatus === PassbackStatusCode.SENT,
+      record.passbackStatus === PassbackStatusCode.PENDING ||
+      record.passbackStatus === PassbackStatusCode.SENT,
   )
   const shouldPoll = syncingTask || pendingPassback
   if (shouldPoll && !syncPollTimer) {
@@ -677,7 +686,7 @@ async function withTaskAction(
   actionLoadingId.value = record.id
   try {
     await action()
-    message.success(hint)
+    void message.success(hint)
     await loadAll()
   } catch (error) {
     showUserError(error, `${hint}失败`)
@@ -689,7 +698,7 @@ async function withTaskAction(
 function handleExecute(record: ExamTeachingAffairsSyncTask): void {
   // MVR-420：与 canExecute / 行内 disabled 同源二次闸（PENDING 且未重试）
   if (!canExecute(record)) {
-    message.warning('仅未执行的待处理任务可触发回写')
+    void message.warning('仅未执行的待处理任务可触发回写')
     return
   }
   void withTaskAction(record, () => executeGradePassback(record.id!), '已触发执行回写')
@@ -698,7 +707,7 @@ function handleExecute(record: ExamTeachingAffairsSyncTask): void {
 function handleRetry(record: ExamTeachingAffairsSyncTask): void {
   // MVR-420：与 canRetry / 行内 disabled 同源二次闸
   if (!canRetry(record.taskStatus)) {
-    message.warning('仅失败或部分成功的任务可重试')
+    void message.warning('仅失败或部分成功的任务可重试')
     return
   }
   void withTaskAction(record, () => retrySyncTask(record.id!), '已重试')
@@ -707,7 +716,7 @@ function handleRetry(record: ExamTeachingAffairsSyncTask): void {
 function handleCancel(record: ExamTeachingAffairsSyncTask): void {
   // MVR-420：与 canCancel / 行内 disabled 同源二次闸
   if (!canCancel(record.taskStatus)) {
-    message.warning('当前任务状态不可取消')
+    void message.warning('当前任务状态不可取消')
     return
   }
   void withTaskAction(record, () => cancelSyncTask(record.id!), '已取消')
@@ -759,7 +768,7 @@ async function handleCreate(): Promise<void> {
       externalCourseId: createForm.externalCourseId.trim() || undefined,
       externalLineItemId: createForm.externalLineItemId.trim() || undefined,
     })
-    message.success('已创建同步任务')
+    void message.success('已创建同步任务')
     createModalOpen.value = false
     await loadAll()
   } catch (error) {
@@ -842,7 +851,7 @@ async function handleReconcile(record: ExamTeachingAffairsSyncTask): Promise<voi
   reconciling.value = true
   try {
     await reconcilePassback(record.id)
-    message.success('已执行对账')
+    void message.success('已执行对账')
     await loadAll()
   } catch (error) {
     showUserError(error, '教务回写对账失败')
@@ -856,7 +865,7 @@ async function handleReconcile(record: ExamTeachingAffairsSyncTask): Promise<voi
 const passbackRecords = ref<PassbackRecordResponse[]>([])
 const passbackLoading = ref(false)
 
-const passbackFilterForm = reactive<{ syncTaskId?: string, passbackStatus?: PassbackStatusCode }>(
+const passbackFilterForm = reactive<{ syncTaskId?: string; passbackStatus?: PassbackStatusCode }>(
   {},
 )
 
@@ -961,7 +970,7 @@ function handlePassbackFilterReset(): void {
   reloadPassbackRecordsFromFirstPage()
 }
 
-function handlePassbackPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePassbackPageChange(pageInfo: { current: number; pageSize: number }): void {
   passbackPagination.pageNum = pageInfo.current
   passbackPagination.pageSize = pageInfo.pageSize
   void loadPassbackRecords()

@@ -67,14 +67,21 @@
         <div class="exam-scope-classes">
           <div class="exam-scope-classes__head">
             <span class="exam-scope-classes__title">参考班级</span>
-            <span v-if="scopedClassTags.length" class="exam-scope-classes__count">{{ scopedClassTags.length }} 个</span>
+            <span v-if="scopedClassTags.length" class="exam-scope-classes__count"
+              >{{ scopedClassTags.length }} 个</span
+            >
           </div>
           <div v-if="scopedClassTags.length" class="exam-scope-classes__tags">
             <UiTag v-for="item in scopedClassTags" :key="item.classId" tone="blue" size="sm">
               {{ item.className }}
             </UiTag>
           </div>
-          <UiEmpty v-else size="sm" description="尚未配置参考班级" class="exam-scope-classes__empty" />
+          <UiEmpty
+            v-else
+            size="sm"
+            description="尚未配置参考班级"
+            class="exam-scope-classes__empty"
+          />
         </div>
       </WorkbenchSurfaceCard>
 
@@ -109,7 +116,11 @@
       <WorkbenchSurfaceCard class="roster-page__table-card" flush>
         <template v-if="candidateRosterWriteAllowed" #toolbar>
           <div class="roster-page__filter-stack">
-            <div v-if="allowsManualCandidateEdit" class="roster-page__actions-row dp-space" style="--dp-space-gap: 8px">
+            <div
+              v-if="allowsManualCandidateEdit"
+              class="roster-page__actions-row dp-space"
+              style="--dp-space-gap: 8px"
+            >
               <UiButton
                 size="sm"
                 variant="outline"
@@ -295,12 +306,23 @@
 import type { TablePaginationConfig } from 'ant-design-vue/es/table'
 import type { ClassStudentTreeConfirmPayload } from '@/apis/edu/class'
 import type { ExamClassRefVO } from '@/apis/mark/exam'
+import { ExamRosterScopeModeDescription, ExamStatusCode, getExamDetail } from '@/apis/mark/exam'
 import type { ExamCandidateRosterWorkbenchItemResponse } from '@/apis/mark/exam-candidate-roster'
+import { pageCandidateRosterWorkbench } from '@/apis/mark/exam-candidate-roster'
 import type {
   ExamWorkbenchCandidateRosterPanelQueryRequest,
   ExamWorkbenchCandidateRosterPanelResponse,
 } from '@/apis/mark/exam-progress'
+import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
 import type { ExamCandidateRosterRequest } from '@/apis/mark/exam-scope'
+import {
+  listExamCandidateStudentUserIds,
+  mergeExamCandidates,
+  previewExamCandidates,
+  removeExamCandidates,
+  saveCurrentExamScope,
+  saveExamClassScope,
+} from '@/apis/mark/exam-scope'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
@@ -310,18 +332,7 @@ import UploadOutlined from '@ant-design/icons-vue/UploadOutlined'
 import UserAddOutlined from '@ant-design/icons-vue/UserAddOutlined'
 import message from 'ant-design-vue/es/message'
 import { useRouter } from 'vue-router'
-import { ExamRosterScopeModeDescription, ExamStatusCode, getExamDetail } from '@/apis/mark/exam'
-import { pageCandidateRosterWorkbench } from '@/apis/mark/exam-candidate-roster'
-import { getCandidateRosterPanel } from '@/apis/mark/exam-progress'
 import { pageScannerBatches } from '@/apis/mark/exam-scan'
-import {
-  listExamCandidateStudentUserIds,
-  mergeExamCandidates,
-  previewExamCandidates,
-  removeExamCandidates,
-  saveCurrentExamScope,
-  saveExamClassScope,
-} from '@/apis/mark/exam-scope'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import ClassStudentTreeSelectorDrawer from '@/components/edu/ClassStudentTreeSelectorDrawer.vue'
 import ExamCandidatePaperImagesDrawer from '@/components/exam-workbench/ExamCandidatePaperImagesDrawer.vue'
@@ -351,7 +362,12 @@ import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { CandidateScanProgressStatusCode } from '@/types/enums/candidate-scan-progress-status-enum'
 import { ExamRosterScopeModeCode } from '@/types/enums/exam-roster-scope-mode-enum'
-import { ErrorType, handleError, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  ErrorType,
+  handleError,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import { buildScopedClassTags } from './candidate-roster/class-scope'
 import {
@@ -384,8 +400,8 @@ let classScopeSaveTimer: ReturnType<typeof setTimeout> | null = null
 let loadContextSeq = 0
 let loadTableSeq = 0
 
-const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment }
-  = useExamDepartmentClassScope({
+const { departmentId, classOptionsLoading, classSelectOptions, loadClassesForDepartment } =
+  useExamDepartmentClassScope({
     selectedClassIds: classIds,
     seedOptions: computed(() =>
       examClassRefs.value.flatMap((item) => {
@@ -545,10 +561,10 @@ const showRosterContextBar = computed(
 
 const candidateRosterWriteAllowed = computed(
   () =>
-    canManageRosterWrites.value
-    && examStatus.value !== ExamStatusCode.CLOSED
-    && !classScopeReadOnly.value
-    && !rosterLocked.value,
+    canManageRosterWrites.value &&
+    examStatus.value !== ExamStatusCode.CLOSED &&
+    !classScopeReadOnly.value &&
+    !rosterLocked.value,
 )
 
 const allowsManualCandidateEdit = computed(
@@ -710,18 +726,18 @@ async function loadClassOptionsForExam(_examId: string): Promise<void> {
 async function openAddClassModal(): Promise<void> {
   // MVR-391：与 canManageRosterWrites / classScopeReadOnly 二次拦截
   if (canManageRosterWrites.value !== true || classScopeReadOnly.value) {
-    message.warning('当前账号或考试状态不可维护班级范围')
+    void message.warning('当前账号或考试状态不可维护班级范围')
     return
   }
   if (!departmentId.value) {
-    message.warning('本场考试未配置参考院系，无法新增班级')
+    void message.warning('本场考试未配置参考院系，无法新增班级')
     return
   }
   if (!addableClassOptions.value.length) {
     await loadClassesForDepartment()
   }
   if (!addableClassOptions.value.length) {
-    message.warning('当前院系下没有可新增的班级')
+    void message.warning('当前院系下没有可新增的班级')
     return
   }
   pendingAddClassIds.value = []
@@ -731,7 +747,7 @@ async function openAddClassModal(): Promise<void> {
 async function handleAddClassSubmit(): Promise<void> {
   // MVR-391：与 canManageRosterWrites / classScopeReadOnly 二次拦截
   if (canManageRosterWrites.value !== true || classScopeReadOnly.value) {
-    message.warning('当前账号或考试状态不可维护班级范围')
+    void message.warning('当前账号或考试状态不可维护班级范围')
     return
   }
   if (!pendingAddClassIds.value.length) {
@@ -860,8 +876,8 @@ async function loadExamContext(): Promise<void> {
     }
     examStatus.value = detail.status
     rosterScopeMode.value = detail.rosterScopeMode
-    archiveClassScopeRecoveryAllowed.value
-      = detail.archiveAutoCreateClassScopeRecoveryAllowed === true
+    archiveClassScopeRecoveryAllowed.value =
+      detail.archiveAutoCreateClassScopeRecoveryAllowed === true
     examClassRefs.value = [...(detail.classRefs ?? [])]
     candidateTotal.value = detail.candidateCount ?? 0
     classIds.value = [...new Set(detail.classIds ?? [])]
@@ -893,11 +909,15 @@ async function loadExamContext(): Promise<void> {
 async function persistInferredClassScope(): Promise<void> {
   // MVR-316：与 BE requireExamRosterWritePermission / canManageRosterWrites 二次拦截
   if (!canManageRosterWrites.value) {
-    message.warning('当前账号无名册维护权限')
+    void message.warning('当前账号无名册维护权限')
     return
   }
-  if (!selectedExamId.value || !classIds.value.length || classScopeReadOnly.value
-    || persistClassScopeSaving.value) {
+  if (
+    !selectedExamId.value ||
+    !classIds.value.length ||
+    classScopeReadOnly.value ||
+    persistClassScopeSaving.value
+  ) {
     return
   }
   persistClassScopeSaving.value = true
@@ -905,7 +925,7 @@ async function persistInferredClassScope(): Promise<void> {
     await saveExamClassScope(buildClassScopeSavePayload(classIds.value))
     classScopePersisted.value = true
     lastSavedClassIds.value = [...classIds.value]
-    message.success('参考班级已保存')
+    void message.success('参考班级已保存')
   } catch (error) {
     showUserError(error, '保存参考班级失败')
   } finally {
@@ -924,7 +944,7 @@ function handleRosterReset(): void {
   void reloadRosterData()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void loadCandidatePage()
@@ -933,7 +953,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 function openSelectDrawer(): void {
   // MVR-316：批量纳入考生与名册写能力位同源
   if (!candidateRosterWriteAllowed.value) {
-    message.warning('当前账号无考生名册写权限')
+    void message.warning('当前账号无考生名册写权限')
     return
   }
   if (!classIds.value.length) {
@@ -945,7 +965,7 @@ function openSelectDrawer(): void {
 
 function openImportModal(): void {
   if (!canManageRosterWrites.value) {
-    message.warning('当前账号无名册维护权限')
+    void message.warning('当前账号无名册维护权限')
     return
   }
   showImportModal.value = true
@@ -961,7 +981,7 @@ async function mergeCandidatesWithPreview(
 ): Promise<number> {
   // MVR-318：内部合并入口与 candidateRosterWriteAllowed 同源
   if (!candidateRosterWriteAllowed.value) {
-    message.warning('当前账号无考生名册写权限')
+    void message.warning('当前账号无考生名册写权限')
     return 0
   }
   if (!selectedExamId.value || !candidates.length) {
@@ -979,7 +999,7 @@ async function mergeCandidatesWithPreview(
 async function confirmSaveFullScope(): Promise<void> {
   // MVR-316：与 candidateRosterWriteAllowed / BE requireExamRosterWritePermission 二次拦截
   if (!candidateRosterWriteAllowed.value) {
-    message.warning('当前账号无考生名册写权限')
+    void message.warning('当前账号无考生名册写权限')
     return
   }
   if (!selectedExamId.value || !classIds.value.length) {
@@ -1003,7 +1023,7 @@ async function confirmSaveFullScope(): Promise<void> {
           classIds: [...classIds.value],
           referenceDepartmentId: departmentId.value,
         })
-        message.success('已全量保存考生名册')
+        void message.success('已全量保存考生名册')
         await reloadExamContext()
       } catch (error) {
         showUserError(error, '全量保存名册失败')
@@ -1019,7 +1039,7 @@ async function confirmSaveFullScope(): Promise<void> {
 async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload): Promise<void> {
   // MVR-316：抽屉确认纳入须二次拦截，避免绕过工具栏可见性
   if (!candidateRosterWriteAllowed.value) {
-    message.warning('当前账号无考生名册写权限')
+    void message.warning('当前账号无考生名册写权限')
     return
   }
   if (!selectedExamId.value) {
@@ -1033,13 +1053,13 @@ async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload)
     rosterStudentUserIds.value,
   )
   if (!mergeRequest.length) {
-    message.warning('所选学生均已在名册中或缺少班级信息')
+    void message.warning('所选学生均已在名册中或缺少班级信息')
     return
   }
   contextLoading.value = true
   try {
     const mergedCount = await mergeCandidatesWithPreview(mergeRequest)
-    message.success(`已纳入 ${mergedCount} 名考生`)
+    void message.success(`已纳入 ${mergedCount} 名考生`)
     await reloadExamContext()
   } catch (error) {
     showUserError(error, '纳入考生失败')
@@ -1050,7 +1070,7 @@ async function handleStudentsSelected(selection: ClassStudentTreeConfirmPayload)
 
 function openSingleAddModal(): void {
   if (!canManageRosterWrites.value) {
-    message.warning('当前账号无名册维护权限')
+    void message.warning('当前账号无名册维护权限')
     return
   }
   singleAddClassId.value = classIds.value[0]
@@ -1066,7 +1086,7 @@ function handleSingleStudentChange(_userId: string | null, option?: UserDto): vo
 async function handleSingleAddSubmit(): Promise<void> {
   // MVR-316：单人加入名册与 candidateRosterWriteAllowed 同源二次拦截
   if (!candidateRosterWriteAllowed.value) {
-    message.warning('当前账号无考生名册写权限')
+    void message.warning('当前账号无考生名册写权限')
     return
   }
   if (!selectedExamId.value) {
@@ -1086,7 +1106,7 @@ async function handleSingleAddSubmit(): Promise<void> {
   }
   const studentUserId = String(student.id).trim()
   if (rosterStudentUserIds.value.includes(studentUserId)) {
-    message.warning('该学生已在名册中')
+    void message.warning('该学生已在名册中')
     return
   }
   singleAddSubmitting.value = true
@@ -1094,7 +1114,7 @@ async function handleSingleAddSubmit(): Promise<void> {
     await mergeCandidatesWithPreview([
       examCandidateRosterRequestFromUser(singleAddClassId.value, student),
     ])
-    message.success('已加入名册')
+    void message.success('已加入名册')
     singleAddOpen.value = false
     await reloadExamContext()
   } catch (error) {
@@ -1166,7 +1186,7 @@ async function removeCandidate(studentUserId: string): Promise<void> {
   }
   // MVR-313：写 handler 二次拦截
   if (!candidateRosterWriteAllowed.value) {
-    message.warning('当前账号无考生名册写权限')
+    void message.warning('当前账号无考生名册写权限')
     return
   }
   if (removingStudentUserId.value) {
@@ -1178,7 +1198,7 @@ async function removeCandidate(studentUserId: string): Promise<void> {
       examId: selectedExamId.value,
       studentUserIds: [studentUserId],
     })
-    message.success('已移除')
+    void message.success('已移除')
     await reloadExamContext()
   } catch (error) {
     showUserError(error, '移除考生失败')
@@ -1209,7 +1229,7 @@ watch(classIds, (ids) => {
         lastSavedClassIds.value = [...ids]
         classScopePersisted.value = true
         if (archiveClassScopeRecoveryAllowed.value) {
-          message.success('班级范围已保存，系统正在重新触发自动建卷')
+          void message.success('班级范围已保存，系统正在重新触发自动建卷')
           void router.push({
             name: 'TeacherExamWorkspaceArchivePackage',
             params: { examId: selectedExamId.value! },

@@ -5,17 +5,17 @@ import type {
   ArchivePlatformTemplateSetResponse,
   ArchivePlatformTemplateSetSaveRequest,
 } from '@/apis/mark/archive-platform-template'
+import {
+  listArchivePlatformTemplateSets,
+  previewArchivePlatformTemplateSet,
+  saveArchivePlatformTemplateSet,
+} from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveTemplateMaterialEditRow,
   ArchiveTemplateSelfCheckEditRow,
 } from '@/views/teacher/archive-volume/components/archive-template-editor-types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
-import {
-  listArchivePlatformTemplateSets,
-  previewArchivePlatformTemplateSet,
-  saveArchivePlatformTemplateSet,
-} from '@/apis/mark/archive-platform-template'
 import {
   archiveTemplateScopeLabel,
   archiveTemplateScopeTone,
@@ -112,7 +112,7 @@ function resetEditor() {
 function openCreateEditor() {
   // MVR-381：与 isSuperAdmin / BE requireSuperAdminPermission 二次拦截
   if (isSuperAdmin.value !== true) {
-    message.warning('仅平台超级管理员可维护平台归档模板库')
+    void message.warning('仅平台超级管理员可维护平台归档模板库')
     return
   }
   if (loadFailed.value) return
@@ -140,7 +140,7 @@ function mapMaterialRow(
 async function openEditEditor(setCode: string) {
   // MVR-381：与 isSuperAdmin / BE requireSuperAdminPermission 二次拦截
   if (isSuperAdmin.value !== true) {
-    message.warning('仅平台超级管理员可维护平台归档模板库')
+    void message.warning('仅平台超级管理员可维护平台归档模板库')
     return
   }
   editorDrawerOpen.value = true
@@ -187,7 +187,7 @@ async function loadPlatformSets() {
 async function submitSave() {
   // MVR-317/429：与 BE requireSuperAdminPermission 二次拦截；仅认 isSuperAdmin === true
   if (isSuperAdmin.value !== true) {
-    message.warning('仅平台超级管理员可维护平台归档模板库')
+    void message.warning('仅平台超级管理员可维护平台归档模板库')
     return
   }
   if (saving.value) {
@@ -205,7 +205,7 @@ async function submitSave() {
     return
   }
   if (materialRows.value.length === 0 || selfCheckRows.value.length === 0) {
-    message.warning('材料项与自查项均不能为空')
+    void message.warning('材料项与自查项均不能为空')
     return
   }
   if (!editorMeta.defaultPermanentRetention && editorMeta.defaultRetentionYears == null) {
@@ -215,12 +215,12 @@ async function submitSave() {
   const materialKeys = new Set<string>()
   for (const row of materialRows.value) {
     if (!row.catalogName?.trim()) {
-      message.warning('材料目录名称不能为空')
+      void message.warning('材料目录名称不能为空')
       return
     }
     const key = `${row.materialType}:${row.catalogCode?.trim() ?? ''}`
     if (materialKeys.has(key)) {
-      message.warning(`材料目录项重复：${row.catalogName.trim()}`)
+      void message.warning(`材料目录项重复：${row.catalogName.trim()}`)
       return
     }
     materialKeys.add(key)
@@ -229,11 +229,11 @@ async function submitSave() {
   for (const row of selfCheckRows.value) {
     const itemText = row.itemText?.trim()
     if (!itemText) {
-      message.warning('自查项文本不能为空')
+      void message.warning('自查项文本不能为空')
       return
     }
     if (selfCheckTexts.has(itemText)) {
-      message.warning(`自查项重复：${itemText}`)
+      void message.warning(`自查项重复：${itemText}`)
       return
     }
     selfCheckTexts.add(itemText)
@@ -266,7 +266,7 @@ async function submitSave() {
   saving.value = true
   try {
     await saveArchivePlatformTemplateSet(payload)
-    message.success('平台模板已保存')
+    void message.success('平台模板已保存')
     await loadPlatformSets()
     resetEditor()
   } catch (error) {
@@ -299,7 +299,9 @@ onMounted(loadPlatformSets)
         <template #toolbar>
           <div class="archive-platform-admin__toolbar-row">
             <span v-if="loadFailed" class="archive-platform-admin__hint">平台模板加载失败</span>
-            <span v-else-if="platformSets.length === 0" class="archive-platform-admin__hint">尚未配置任何平台模板</span>
+            <span v-else-if="platformSets.length === 0" class="archive-platform-admin__hint"
+              >尚未配置任何平台模板</span
+            >
             <span v-else class="archive-platform-admin__hint">共 {{ platformSets.length }} 套</span>
             <div class="archive-platform-admin__actions">
               <UiButton
@@ -387,9 +389,7 @@ onMounted(loadPlatformSets)
             </label>
             <label class="archive-template-editor__field">
               <span>名称</span>
-              <UiInput
-                size="sm" v-model="editorMeta.setName" placeholder="模板套名称"
-              />
+              <UiInput size="sm" v-model="editorMeta.setName" placeholder="模板套名称" />
             </label>
             <label class="archive-template-editor__field">
               <span>考核形式</span>
@@ -402,9 +402,7 @@ onMounted(loadPlatformSets)
             </label>
             <label class="archive-template-editor__field">
               <span>发版标签</span>
-              <UiInput
-                size="sm" v-model="editorMeta.releaseTag" placeholder="如 2026-06-30"
-              />
+              <UiInput size="sm" v-model="editorMeta.releaseTag" placeholder="如 2026-06-30" />
             </label>
             <label class="archive-template-editor__field">
               <span>保管期限</span>
@@ -422,9 +420,7 @@ onMounted(loadPlatformSets)
             </label>
             <label class="archive-template-editor__field archive-template-editor__field--wide">
               <span>说明</span>
-              <UiInput
-                size="sm" v-model="editorMeta.description" placeholder="可选"
-              />
+              <UiInput size="sm" v-model="editorMeta.description" placeholder="可选" />
             </label>
           </div>
         </template>

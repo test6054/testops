@@ -1,18 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationObjectionHandleActionCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioEvaluationMaterialCategoryItemVO,
-  PortfolioEvaluationMaterialPreviewVO,
-  PortfolioEvaluationPublicityListItemVO,
-  PortfolioEvaluationTeacherNoticeVO,
-  PortfolioEvaluationTeacherResultSummaryVO,
-} from '@/apis/portfolio/types'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS,
   PortfolioEvaluationObjectionHandleActionDescription,
@@ -23,14 +11,26 @@ import {
   PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import type {
+  PortfolioEvaluationMaterialCategoryItemVO,
+  PortfolioEvaluationMaterialPreviewVO,
+  PortfolioEvaluationPublicityListItemVO,
+  PortfolioEvaluationTeacherNoticeVO,
+  PortfolioEvaluationTeacherResultSummaryVO,
+} from '@/apis/portfolio/types'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
   PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
+import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -66,9 +66,7 @@ function noticeStatusTone(status: PortfolioEvaluationTeacherNoticeStatusCode) {
   return strictEnumTone(PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE, status, '评价通知状态')
 }
 
-function evaluationSceneLabel(
-  scene?: PortfolioEvaluationPublicityListItemVO['sceneCode'],
-): string {
+function evaluationSceneLabel(scene?: PortfolioEvaluationPublicityListItemVO['sceneCode']): string {
   if (!scene) {
     return '—'
   }
@@ -117,11 +115,8 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const {
-  evaluationHeld,
-  evaluationHoldBlockMessage,
-  assertEvaluationParticipable,
-} = usePortfolioArchiveWriteGuard()
+const { evaluationHeld, evaluationHoldBlockMessage, assertEvaluationParticipable } =
+  usePortfolioArchiveWriteGuard()
 const { currentUserId, canPickTeachers } = usePortfolioTeacherAccess()
 
 const loading = ref(false)
@@ -168,8 +163,8 @@ const objectionIndicatorOptions = computed(() => {
 })
 const scoreOrResultDispute = computed(
   () =>
-    objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
-    || objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE,
+    objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE ||
+    objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE,
 )
 const showObjectionIndicatorSelect = computed(
   () => scoreOrResultDispute.value && objectionIndicatorOptions.value.length > 0,
@@ -281,7 +276,9 @@ function evaluationMaterialRowKey(record: unknown): string {
   ].join(':')
 }
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -298,6 +295,8 @@ const publicityColumns: ColumnsType<PortfolioEvaluationPublicityListItemVO> = [
   { title: '公示状态', key: 'publicityStatus', width: 100 },
   { title: '公示期', key: 'publicityWindow', width: 200 },
   { title: '异议 / 复核', key: 'objectionStatus', width: 140 },
+  { title: '原得分', key: 'originalScore', width: 88 },
+  { title: '修正得分', key: 'correctedScore', width: 96 },
   { title: '操作', key: 'actions', width: 180 },
 ]
 
@@ -348,9 +347,9 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
     return false
   }
   return !(
-    canPickTeachers.value
-    && targetTeacherId.value
-    && targetTeacherId.value !== currentUserId.value
+    canPickTeachers.value &&
+    targetTeacherId.value &&
+    targetTeacherId.value !== currentUserId.value
   )
 }
 
@@ -365,7 +364,6 @@ function publicityRowClassName(record: PortfolioEvaluationPublicityListItemVO): 
     ? 'teacher-evaluation__publicity-row--active'
     : ''
 }
-
 
 async function loadNotices() {
   const scopeToken = evaluationRequestToken.value
@@ -441,21 +439,21 @@ async function loadPublicity() {
     }
     const rows = await portfolioEvaluationPublicityApi.listPublicity(listRequest)
     if (
-      evaluationRequestToken.value !== scopeToken
-      || publicityRequestToken.value !== requestToken
+      evaluationRequestToken.value !== scopeToken ||
+      publicityRequestToken.value !== requestToken
     ) {
       return
     }
     publicityRows.value = rows
     // PF-P0-292：publicityId > objectionId > evaluationTaskId 定位目标公示行
-    const matchedRow
-      = (deepLinkedPublicityId.value
+    const matchedRow =
+      (deepLinkedPublicityId.value
         ? publicityRows.value.find((item) => item.publicityId === deepLinkedPublicityId.value)
-        : undefined)
-      || (deepLinkedObjectionId.value
+        : undefined) ||
+      (deepLinkedObjectionId.value
         ? publicityRows.value.find((item) => item.objectionId === deepLinkedObjectionId.value)
-        : undefined)
-      || (deepLinkedEvaluationTaskId.value
+        : undefined) ||
+      (deepLinkedEvaluationTaskId.value
         ? publicityRows.value.find(
             (item) => item.evaluationTaskId === deepLinkedEvaluationTaskId.value,
           )
@@ -466,8 +464,8 @@ async function loadPublicity() {
     }
   } catch (error) {
     if (
-      evaluationRequestToken.value !== scopeToken
-      || publicityRequestToken.value !== requestToken
+      evaluationRequestToken.value !== scopeToken ||
+      publicityRequestToken.value !== requestToken
     ) {
       return
     }
@@ -475,8 +473,8 @@ async function loadPublicity() {
     showUserError(error, '加载评价公示失败')
   } finally {
     if (
-      evaluationRequestToken.value === scopeToken
-      && publicityRequestToken.value === requestToken
+      evaluationRequestToken.value === scopeToken &&
+      publicityRequestToken.value === requestToken
     ) {
       publicityLoading.value = false
     }
@@ -509,7 +507,6 @@ async function exportPublicityExcel(): Promise<void> {
     publicityExporting.value = false
   }
 }
-
 
 async function loadResultSummary(evaluationTaskId: string) {
   const scopeToken = evaluationRequestToken.value
@@ -583,10 +580,7 @@ async function confirmSelected() {
   if (!selectedNotice.value) {
     return
   }
-  if (
-    selectedNotice.value.evaluationHeld
-    || !assertEvaluationParticipable('确认评价材料')
-  ) {
+  if (selectedNotice.value.evaluationHeld || !assertEvaluationParticipable('确认评价材料')) {
     return
   }
   const requestToken = evaluationRequestToken.value
@@ -597,7 +591,7 @@ async function confirmSelected() {
     if (evaluationRequestToken.value !== requestToken) {
       return
     }
-    message.success('材料已确认')
+    void message.success('材料已确认')
     await loadNotices()
   } catch (error) {
     if (evaluationRequestToken.value !== requestToken) {
@@ -665,7 +659,7 @@ async function submitObjection() {
     if (evaluationRequestToken.value !== requestToken) {
       return
     }
-    message.success('异议已提交')
+    void message.success('异议已提交')
     objectionModalOpen.value = false
     await loadPublicity()
     if (objectionTarget.value) {
@@ -715,10 +709,10 @@ function buildNoticeRowActions(record: PortfolioEvaluationTeacherNoticeVO): UiTa
       label: '确认材料',
       tone: 'primary',
       disabled:
-        confirming.value
-        || previewLoading.value
-        || Boolean(record.evaluationHeld)
-        || evaluationHeld.value,
+        confirming.value ||
+        previewLoading.value ||
+        Boolean(record.evaluationHeld) ||
+        evaluationHeld.value,
     })
   }
   return actions
@@ -752,11 +746,11 @@ function buildPublicityRowActions(
       key: 'submitObjection',
       label: '提交异议',
       disabled:
-        evaluationHeld.value
-        || record.lifecycleStatus === 'SEALED'
-        || record.lifecycleStatus === 'TEMP_HOLD'
-        || record.lifecycleStatus === 'TRANSFER_FROZEN'
-        || record.lifecycleStatus === 'TRANSFERRED',
+        evaluationHeld.value ||
+        record.lifecycleStatus === 'SEALED' ||
+        record.lifecycleStatus === 'TEMP_HOLD' ||
+        record.lifecycleStatus === 'TRANSFER_FROZEN' ||
+        record.lifecycleStatus === 'TRANSFERRED',
     })
   }
   return actions
@@ -969,10 +963,10 @@ watch(
               class="teacher-evaluation__identity-material"
             >
               <p class="teacher-evaluation__meta">
-                身份材料：正式档 {{ preview.identityMaterialPackage.officialRecordCount ?? 0 }}
-                · 校内硬性可用 {{ preview.identityMaterialPackage.campusHardUsableCount ?? 0 }}
-                · 仅外部 {{ preview.identityMaterialPackage.externalOnlyCount ?? 0 }}
-                · 共享 {{ preview.identityMaterialPackage.sharedCount ?? 0 }}
+                身份材料：正式档 {{ preview.identityMaterialPackage.officialRecordCount ?? 0 }} ·
+                校内硬性可用 {{ preview.identityMaterialPackage.campusHardUsableCount ?? 0 }} ·
+                仅外部 {{ preview.identityMaterialPackage.externalOnlyCount ?? 0 }} · 共享
+                {{ preview.identityMaterialPackage.sharedCount ?? 0 }}
               </p>
               <p
                 v-if="preview.identityMaterialPackage.citationPolicy"
@@ -1084,13 +1078,7 @@ watch(
               />
             </template>
             <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
-              <UiTag
-                :tone="
-                  record.countsInCurrentFacultyStructure === true
-                    ? 'green'
-                    : 'gray'
-                "
-              >
+              <UiTag :tone="record.countsInCurrentFacultyStructure === true ? 'green' : 'gray'">
                 {{
                   record.countsInCurrentFacultyStructure === true
                     ? '是'
@@ -1125,6 +1113,20 @@ watch(
               </UiTag>
               <span v-else>—</span>
             </template>
+            <template v-else-if="column.key === 'originalScore'">
+              <span>{{
+                record.originalScore != null && record.originalScore !== ''
+                  ? record.originalScore
+                  : '—'
+              }}</span>
+            </template>
+            <template v-else-if="column.key === 'correctedScore'">
+              <span>{{
+                record.correctedScore != null && record.correctedScore !== ''
+                  ? record.correctedScore
+                  : '—'
+              }}</span>
+            </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
                 :items="buildPublicityRowActions(record)"
@@ -1144,7 +1146,9 @@ watch(
         <UiSpin :spinning="resultLoading">
           <template v-if="resultSummary">
             <p class="teacher-evaluation__meta">
-              任务：{{ resultSummary.taskName }} · 场景 {{ evaluationSceneLabel(resultSummary.sceneCode) }} · 条目 {{ resultSummary.entryCount ?? 0 }} 条
+              任务：{{ resultSummary.taskName }} · 场景
+              {{ evaluationSceneLabel(resultSummary.sceneCode) }} · 条目
+              {{ resultSummary.entryCount ?? 0 }} 条
               <template v-if="resultSummary.averageScore != null">
                 · 平均分 {{ resultSummary.averageScore }}
               </template>
@@ -1158,33 +1162,26 @@ watch(
             </p>
             <!-- US-MI / PF-P0-270：结果汇总读模型仅标注结构态，不默认过滤 -->
             <div
-              v-if="resultSummary.lifecycleStatus || resultSummary.evaluationHeld != null || resultSummary.countsInCurrentFacultyStructure != null"
+              v-if="
+                resultSummary.lifecycleStatus ||
+                resultSummary.evaluationHeld != null ||
+                resultSummary.countsInCurrentFacultyStructure != null
+              "
               class="teacher-evaluation__meta teacher-evaluation__result-lifecycle"
             >
-              <UiTag
-                v-if="resultSummary.lifecycleStatus"
-                :tone="lifecycleTagTone(resultSummary)"
-              >
+              <UiTag v-if="resultSummary.lifecycleStatus" :tone="lifecycleTagTone(resultSummary)">
                 {{ resultSummary.lifecycleStatusLabel || resultSummary.lifecycleStatus }}
               </UiTag>
               <UiTag
                 v-if="resultSummary.countsInCurrentFacultyStructure != null"
                 :tone="resultSummary.countsInCurrentFacultyStructure ? 'green' : 'gray'"
               >
-                {{ resultSummary.countsInCurrentFacultyStructure ? '计入当前在岗' : '不计入当前在岗' }}
+                {{
+                  resultSummary.countsInCurrentFacultyStructure ? '计入当前在岗' : '不计入当前在岗'
+                }}
               </UiTag>
-              <UiTag
-                v-if="resultSummary.evaluationHeld"
-                tone="orange"
-              >
-                参评 hold
-              </UiTag>
-              <UiTag
-                v-if="resultSummary.archiveWriteForbidden"
-                tone="red"
-              >
-                档案写禁
-              </UiTag>
+              <UiTag v-if="resultSummary.evaluationHeld" tone="orange"> 参评 hold </UiTag>
+              <UiTag v-if="resultSummary.archiveWriteForbidden" tone="red"> 档案写禁 </UiTag>
             </div>
             <UiDataTable
               v-if="resultSummary.entries?.length"

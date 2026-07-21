@@ -32,8 +32,8 @@
           </UiButton>
           <UiButton
             v-if="
-              isTenantWideCollegeCoordinator
-                && selectedCampaign?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
+              isTenantWideCollegeCoordinator &&
+              selectedCampaign?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
             "
             size="sm"
             variant="outline"
@@ -86,7 +86,7 @@
         :show-icon="false"
       >
         <template #default>
-          <span style="display:inline-flex;align-items:center;gap:8px">
+          <span style="display: inline-flex; align-items: center; gap: 8px">
             <UiTag tone="blue" size="sm">未选择批次</UiTag>
             <span>请选择评估批次后查看整改任务</span>
           </span>
@@ -121,8 +121,8 @@
           <div class="remediation-card__actions">
             <UiButton
               v-if="
-                task.taskStatus === ArchiveRemediationStatusCode.OPEN
-                  || task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+                task.taskStatus === ArchiveRemediationStatusCode.OPEN ||
+                task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
               "
               size="sm"
               variant="outline"
@@ -173,9 +173,7 @@
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="学年结束年">
-              <UiInput
-                size="sm" :value="campaignForm.academicYearEndYear" disabled
-              />
+              <UiInput size="sm" :value="campaignForm.academicYearEndYear" disabled />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
@@ -258,9 +256,7 @@
           />
         </UiFormItem>
         <UiFormItem label="卷编号" required>
-          <UiInput
-            size="sm" v-model="createTaskForm.volumeId"
-          />
+          <UiInput size="sm" v-model="createTaskForm.volumeId" />
         </UiFormItem>
         <UiFormItem label="任务标题" required>
           <UiInput size="sm" v-model="createTaskForm.taskTitle" :maxlength="200" />
@@ -309,11 +305,6 @@ import type {
   ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS,
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
@@ -330,6 +321,12 @@ import {
   pageRemediationTasksByCampaign,
   saveEvaluationCampaign,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -351,7 +348,6 @@ import UiTextAction from '@/components/ui-guide/ui/UiTextAction.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -377,10 +373,7 @@ import ArchiveEvaluationExportTaskModal from '@/views/teacher/archive-volume/com
 defineOptions({ name: 'ArchiveVolumeRemediationPanel' })
 
 const router = useRouter()
-const {
-  isTenantWideCollegeCoordinator,
-  loadGrants,
-} = useArchiveDutyAccess()
+const { isTenantWideCollegeCoordinator, loadGrants } = useArchiveDutyAccess()
 // MVR-339：创建整改仅认 BE open-stats canCreateRemediationTask===true
 const canCreateRemediationTask = ref(false)
 
@@ -462,8 +455,8 @@ const activeCampaignOptions = computed(() =>
 )
 
 function syncSelectedCampaign(campaignId?: string): void {
-  selectedCampaign.value
-    = campaignSelectOptions.value.find((item) => item.campaignId === campaignId) ?? null
+  selectedCampaign.value =
+    campaignSelectOptions.value.find((item) => item.campaignId === campaignId) ?? null
 }
 
 function handleCampaignChange(value: SelectValue): void {
@@ -475,8 +468,8 @@ function handleCampaignChange(value: SelectValue): void {
 
 const canShowCreateRemediationTask = computed(
   () =>
-    canCreateRemediationTask.value
-    && selectedCampaign.value?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
+    canCreateRemediationTask.value &&
+    selectedCampaign.value?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
 )
 
 function remediationStatusLabel(code: ArchiveRemediationStatusCode) {
@@ -550,7 +543,7 @@ function handleTaskPageChange(pageNum: number, pageSize: number): void {
 function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
   // MVR-317：评估批次维护仅租户级学院协调人
   if (!isTenantWideCollegeCoordinator.value) {
-    message.warning('仅租户级学院协调人可维护评估批次')
+    void message.warning('仅租户级学院协调人可维护评估批次')
     return
   }
   campaignForm.campaignId = campaign?.campaignId
@@ -559,8 +552,8 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
   campaignForm.academicYearStartYear = triple.academicYearStartYear
   campaignForm.academicYearEndYear = triple.academicYearEndYear
   campaignForm.semester = triple.semester
-  campaignForm.campaignStatus
-    = campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
+  campaignForm.campaignStatus =
+    campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
   campaignForm.startTime = campaign?.startTime
   campaignForm.endTime = campaign?.endTime
   campaignForm.description = campaign?.description ?? ''
@@ -570,7 +563,7 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
 async function submitCampaign() {
   // MVR-317：与 isTenantWideCollegeCoordinator 二次拦截
   if (!isTenantWideCollegeCoordinator.value) {
-    message.warning('仅租户级学院协调人可维护评估批次')
+    void message.warning('仅租户级学院协调人可维护评估批次')
     return
   }
   if (campaignSaving.value) return
@@ -602,7 +595,7 @@ async function submitCampaign() {
       endTime: campaignForm.endTime,
       description: campaignForm.description.trim() || undefined,
     })
-    message.success(campaignForm.campaignId ? '评估批次已更新' : '评估批次已创建')
+    void message.success(campaignForm.campaignId ? '评估批次已更新' : '评估批次已创建')
     campaignModalOpen.value = false
     await loadCampaigns()
     selectedCampaignId.value = saved.campaignId
@@ -619,7 +612,7 @@ async function submitCampaign() {
 async function handleExportCampaign() {
   // MVR-318：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
   if (!isTenantWideCollegeCoordinator.value) {
-    message.warning('仅全校学院协调人可导出评估材料包')
+    void message.warning('仅全校学院协调人可导出评估材料包')
     return
   }
   if (!selectedCampaignId.value || exporting.value) return
@@ -642,7 +635,7 @@ async function handleExportCampaign() {
 async function handleExportArchiveCampaign() {
   // MVR-318：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
   if (!isTenantWideCollegeCoordinator.value) {
-    message.warning('仅全校学院协调人可导出评估材料包')
+    void message.warning('仅全校学院协调人可导出评估材料包')
     return
   }
   if (!selectedCampaignId.value || exportingArchive.value) return
@@ -665,7 +658,7 @@ async function handleExportArchiveCampaign() {
 function openCreateTaskModal() {
   // MVR-339：与 canCreateRemediationTask / BE createRemediationTask 二次拦截
   if (!canCreateRemediationTask.value) {
-    message.warning('仅学院协调人可创建整改任务')
+    void message.warning('仅学院协调人可创建整改任务')
     return
   }
 
@@ -682,7 +675,7 @@ function openCreateTaskModal() {
 async function submitCreateTask() {
   // MVR-342/353：入口与 open-stats canCreateRemediationTask 二次拦截（卷级再校验 detail canCreateRemediationTask）
   if (canCreateRemediationTask.value !== true) {
-    message.warning('仅学院协调人可创建整改任务')
+    void message.warning('仅学院协调人可创建整改任务')
     return
   }
   if (createTaskSubmitting.value) return
@@ -717,7 +710,7 @@ async function submitCreateTask() {
       assigneeUserId: createTaskForm.assigneeUserId,
       dueTime: createTaskForm.dueTime,
     })
-    message.success('整改任务已创建')
+    void message.success('整改任务已创建')
     createTaskOpen.value = false
     if (createTaskForm.campaignId) {
       selectedCampaignId.value = createTaskForm.campaignId

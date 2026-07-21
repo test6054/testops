@@ -4,19 +4,19 @@ import type {
   IndirectEvaluationFormSaveRequest,
   IndirectEvaluationFormVO,
 } from '@/apis/quality/indirect-form'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
 import type {
   IndirectEvaluationItemSaveRequest,
   IndirectEvaluationItemVO,
   IndirectItemContentRevisionVO,
 } from '@/apis/quality/indirect-item'
+import { indirectItemApi } from '@/apis/quality/indirect-item'
 import type { ScaleConversionRuleVO } from '@/apis/quality/scale-conversion-rule'
+import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { indirectFormApi } from '@/apis/quality/indirect-form'
-import { indirectItemApi } from '@/apis/quality/indirect-item'
 import { indirectResponseApi } from '@/apis/quality/indirect-response'
-import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import { AchievementTargetTypeCode, IndirectFormTypeCode } from '@/apis/quality/types'
 import {
   CourseGoalSelector,
@@ -87,10 +87,10 @@ const selectedForm = defineModel<IndirectEvaluationFormVO | null>('selectedForm'
 const selectedItem = defineModel<IndirectEvaluationItemVO | null>('selectedItem', { default: null })
 
 const emit = defineEmits<{
-  "publish": [record: IndirectEvaluationFormVO]
-  "close": [record: IndirectEvaluationFormVO]
-  "progress": [record: IndirectEvaluationFormVO]
-  "statistics": [record: IndirectEvaluationFormVO]
+  publish: [record: IndirectEvaluationFormVO]
+  close: [record: IndirectEvaluationFormVO]
+  progress: [record: IndirectEvaluationFormVO]
+  statistics: [record: IndirectEvaluationFormVO]
   'copy-link': [record: IndirectEvaluationFormVO]
   'form-deleted': [formId: string]
 }>()
@@ -229,9 +229,9 @@ function handleFormTargetTypeChange() {
   formEditorTrainingPlanId.value = ''
   formEditorGraduationRequirementId.value = ''
   if (
-    formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
-    || formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
-    || formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+    formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
+    formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
+    formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     formEditor.targetId = formEditor.programId || ''
   }
@@ -263,9 +263,9 @@ function handleFormProgramChange(value: string | null | undefined) {
   formEditorTrainingPlanId.value = ''
   formEditorGraduationRequirementId.value = ''
   if (
-    formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
-    || formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
-    || formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+    formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
+    formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
+    formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     formEditor.targetId = id
   } else if (formEditor.targetType !== AchievementTargetTypeCode.COURSE_GOAL) {
@@ -279,9 +279,9 @@ function handleItemTargetTypeChange() {
   itemEditorTrainingPlanId.value = ''
   itemEditorGraduationRequirementId.value = ''
   if (
-    itemEditor.value.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
-    || itemEditor.value.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
-    || itemEditor.value.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+    itemEditor.value.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
+    itemEditor.value.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
+    itemEditor.value.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     itemEditor.value.targetId = formEditor.programId || qualityStore.currentProgramId
   }
@@ -315,9 +315,9 @@ function handleItemProgramChange(value: string | null | undefined) {
   itemEditorTrainingPlanId.value = ''
   itemEditorGraduationRequirementId.value = ''
   if (
-    itemEditor.value.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
-    || itemEditor.value.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
-    || itemEditor.value.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+    itemEditor.value.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
+    itemEditor.value.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
+    itemEditor.value.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
   ) {
     itemEditor.value.targetId = value ?? ''
   } else if (itemEditor.value.targetType !== AchievementTargetTypeCode.COURSE_GOAL) {
@@ -391,7 +391,7 @@ function openFormCreate() {
 
 function openFormEdit(record: IndirectEvaluationFormVO) {
   if (!isFormStructureMutable(record)) {
-    message.error('已发布或已归档的问卷不允许编辑')
+    void message.error('已发布或已归档的问卷不允许编辑')
     return
   }
   formEditorMode.value = 'edit'
@@ -415,7 +415,7 @@ function openFormEdit(record: IndirectEvaluationFormVO) {
 
 async function submitForm() {
   if (!formEditor.formCode.trim() || !formEditor.formName.trim() || !formEditor.targetId.trim()) {
-    message.error('请填写问卷编码、名称，并选择评价对象')
+    void message.error('请填写问卷编码、名称，并选择评价对象')
     return
   }
   const request: IndirectEvaluationFormSaveRequest = {
@@ -432,14 +432,14 @@ async function submitForm() {
   }
   if (formEditorMode.value === 'create') await indirectFormApi.create(request)
   else await indirectFormApi.update(request)
-  message.success('已保存')
+  void message.success('已保存')
   formEditorVisible.value = false
   await loadForms()
 }
 
 async function handleFormDelete(record: IndirectEvaluationFormVO) {
   if (!isFormStructureMutable(record)) {
-    message.error('已发布或已归档的问卷不允许删除')
+    void message.error('已发布或已归档的问卷不允许删除')
     return
   }
   void confirmAsync({
@@ -447,7 +447,7 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
     type: 'error',
     onOk: async () => {
       await indirectFormApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       if (selectedForm.value?.id === record.id) {
         selectedForm.value = null
         emit('form-deleted', record.id)
@@ -457,7 +457,7 @@ async function handleFormDelete(record: IndirectEvaluationFormVO) {
   })
 }
 
-function handleFormPageChange(page: { current: number, pageSize: number }) {
+function handleFormPageChange(page: { current: number; pageSize: number }) {
   formQuery.pageNum = page.current
   formQuery.pageSize = page.pageSize
   loadForms()
@@ -488,7 +488,7 @@ async function loadItems() {
   }
 }
 
-function handleItemPageChange(page: { current: number, pageSize: number }) {
+function handleItemPageChange(page: { current: number; pageSize: number }) {
   itemPageNum.value = page.current
   itemPageSize.value = page.pageSize
   void loadItems()
@@ -537,14 +537,14 @@ function structureEditBlockedMessage(form: IndirectEvaluationFormVO): string {
 
 function openItemCreate() {
   if (!selectedForm.value || !isFormStructureMutable(selectedForm.value)) {
-    message.error(structureEditBlockedMessage(selectedForm.value!))
+    void message.error(structureEditBlockedMessage(selectedForm.value!))
     return
   }
   itemEditorMode.value = 'create'
-  itemEditorQualityCourseId.value
-    = formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
-  itemEditorTrainingPlanId.value
-    = formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
+  itemEditorQualityCourseId.value =
+    formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
+  itemEditorTrainingPlanId.value =
+    formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
   itemEditorGraduationRequirementId.value = formEditorGraduationRequirementId.value
   itemEditor.value = {
     formId: selectedForm.value.id,
@@ -584,10 +584,10 @@ function openItemEdit(record: IndirectEvaluationItemVO) {
   }
   itemEditorMode.value = 'edit'
   itemEditorOriginalItemType.value = record.itemType
-  itemEditorQualityCourseId.value
-    = formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
-  itemEditorTrainingPlanId.value
-    = formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
+  itemEditorQualityCourseId.value =
+    formEditorQualityCourseId.value || qualityStore.currentQualityCourseId
+  itemEditorTrainingPlanId.value =
+    formEditorTrainingPlanId.value || qualityStore.currentTrainingPlanId
   itemEditorGraduationRequirementId.value = ''
   itemEditor.value = {
     id: record.id,
@@ -649,25 +649,25 @@ async function submitItem() {
   }
   const v = itemEditor.value
   if (
-    selectedForm.value?.status === IndirectFormStatusCode.PUBLISHED
-    && v.id
-    && itemEditorOriginalItemType.value
-    && itemEditorOriginalItemType.value !== v.itemType
+    selectedForm.value?.status === IndirectFormStatusCode.PUBLISHED &&
+    v.id &&
+    itemEditorOriginalItemType.value &&
+    itemEditorOriginalItemType.value !== v.itemType
   ) {
-    message.error(PUBLISHED_INDIRECT_ITEM_TYPE_CHANGE_MESSAGE)
+    void message.error(PUBLISHED_INDIRECT_ITEM_TYPE_CHANGE_MESSAGE)
     return
   }
   if (!v.itemCode.trim() || !v.itemText.trim()) {
-    message.error('请填写编码和题面')
+    void message.error('请填写编码和题面')
     return
   }
   if (!isIndirectEvaluationItemType(v.itemType)) {
-    message.error('请选择题型')
+    void message.error('请选择题型')
     return
   }
   if (isScaleItemType(v.itemType)) {
     if (v.scaleMin == null || v.scaleMax == null || v.scaleMin >= v.scaleMax) {
-      message.error('量表最大值必须大于最小值')
+      void message.error('量表最大值必须大于最小值')
       return
     }
     syncScaleLabels()
@@ -675,15 +675,15 @@ async function submitItem() {
   } else if (isSingleChoiceItemType(v.itemType) || isMultiChoiceItemType(v.itemType)) {
     const options = v.choiceOptions ?? []
     if (
-      options.length < 2
-      || options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
+      options.length < 2 ||
+      options.some((option) => !option.optionValue.trim() || !option.optionLabel.trim())
     ) {
-      message.error('选择题至少配置 2 个完整选项')
+      void message.error('选择题至少配置 2 个完整选项')
       return
     }
     const optionValues = new Set(options.map((option) => option.optionValue.trim()))
     if (optionValues.size !== options.length) {
-      message.error('选项值不能重复')
+      void message.error('选项值不能重复')
       return
     }
     v.scaleMin = undefined
@@ -695,7 +695,7 @@ async function submitItem() {
     v.scaleLabels = []
     v.choiceOptions = []
   } else {
-    message.error('题项题型无效，请重新选择')
+    void message.error('题项题型无效，请重新选择')
     return
   }
   if (!itemEditorContentOnlyMode.value) {
@@ -706,7 +706,7 @@ async function submitItem() {
       weight: v.weight,
     })
     if (weightError) {
-      message.error(weightError)
+      void message.error(weightError)
       return
     }
   }
@@ -736,7 +736,7 @@ async function submitItem() {
   try {
     if (itemEditorMode.value === 'create') await indirectItemApi.create(request)
     else await indirectItemApi.update(request)
-    message.success('已保存')
+    void message.success('已保存')
     itemEditorVisible.value = false
     await loadItems()
   } catch (error) {
@@ -746,7 +746,7 @@ async function submitItem() {
 
 async function deleteItem(record: IndirectEvaluationItemVO) {
   if (!selectedForm.value || !isFormStructureMutable(selectedForm.value)) {
-    message.error(structureEditBlockedMessage(selectedForm.value!))
+    void message.error(structureEditBlockedMessage(selectedForm.value!))
     return
   }
   void confirmAsync({
@@ -754,7 +754,7 @@ async function deleteItem(record: IndirectEvaluationItemVO) {
     type: 'error',
     onOk: async () => {
       await indirectItemApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       if (selectedItem.value?.id === record.id) selectedItem.value = null
       await loadItems()
     },
@@ -844,7 +844,7 @@ async function rebuildItemStats(record: IndirectEvaluationItemVO) {
   if (!confirmed) return
   try {
     await indirectResponseApi.rebuildItemStats(record.id)
-    message.success('题项答卷统计已重建')
+    void message.success('题项答卷统计已重建')
     await refreshValidCounts()
   } catch (error) {
     showUserError(error, '重建答卷统计失败')
@@ -1072,8 +1072,8 @@ defineExpose({
             <template v-else-if="column.key === 'validCount'">
               <span
                 :class="
-                  (pendingConfirmCountMap.get(record.id) ?? 0) > 0
-                    || (pendingCountMap.get(record.id) ?? 0) > 0
+                  (pendingConfirmCountMap.get(record.id) ?? 0) > 0 ||
+                  (pendingCountMap.get(record.id) ?? 0) > 0
                     ? 'ie__count-warn'
                     : (validCountMap.get(record.id) ?? 0) > 0
                       ? 'ie__count-strong'
@@ -1110,16 +1110,12 @@ defineExpose({
       <UiRow :gutter="12">
         <UiCol :span="8">
           <UiFormItem label="编码" required>
-            <UiInput
-              size="sm" v-model="formEditor.formCode"
-            />
+            <UiInput size="sm" v-model="formEditor.formCode" />
           </UiFormItem>
         </UiCol>
         <UiCol :span="8">
           <UiFormItem label="问卷类型" required>
-            <UiSelect
-              size="sm" v-model="formEditor.formType" :options="formTypeOptions"
-            />
+            <UiSelect size="sm" v-model="formEditor.formType" :options="formTypeOptions" />
           </UiFormItem>
         </UiCol>
         <UiCol :span="8">
@@ -1134,9 +1130,7 @@ defineExpose({
         </UiCol>
       </UiRow>
       <UiFormItem label="名称" required>
-        <UiInput
-          size="sm" v-model="formEditor.formName"
-        />
+        <UiInput size="sm" v-model="formEditor.formName" />
       </UiFormItem>
       <UiRow :gutter="12">
         <UiCol :span="8">
@@ -1151,10 +1145,10 @@ defineExpose({
         </UiCol>
         <UiCol
           v-if="
-            formEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL
-              || formEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT
-              || formEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR
-              || formEditor.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE
+            formEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL ||
+            formEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT ||
+            formEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR ||
+            formEditor.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE
           "
           :span="8"
         >
@@ -1185,9 +1179,9 @@ defineExpose({
         <UiCol :span="8">
           <UiFormItem
             :label="
-              formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
-                || formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
-                || formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+              formEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
+              formEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
+              formEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
                 ? '所属专业'
                 : '目标对象'
             "
@@ -1241,9 +1235,9 @@ defineExpose({
         </UiCol>
         <UiCol
           v-if="
-            formEditor.targetType !== AchievementTargetTypeCode.PROGRAM_SUMMARY
-              && formEditor.targetType !== AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
-              && formEditor.targetType !== AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+            formEditor.targetType !== AchievementTargetTypeCode.PROGRAM_SUMMARY &&
+            formEditor.targetType !== AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE &&
+            formEditor.targetType !== AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
           "
           :span="8"
         >
@@ -1291,7 +1285,9 @@ defineExpose({
         <UiCol :span="8">
           <UiFormItem label="编码" required>
             <UiInput
-              size="sm" v-model="itemEditor.itemCode" :disabled="itemEditorContentOnlyMode"
+              size="sm"
+              v-model="itemEditor.itemCode"
+              :disabled="itemEditorContentOnlyMode"
             />
           </UiFormItem>
         </UiCol>
@@ -1327,8 +1323,8 @@ defineExpose({
               v-model="itemEditor.itemType"
               :options="INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS"
               :disabled="
-                itemEditorContentOnlyMode
-                  || selectedForm?.status === IndirectFormStatusCode.PUBLISHED
+                itemEditorContentOnlyMode ||
+                selectedForm?.status === IndirectFormStatusCode.PUBLISHED
               "
               placeholder="请选择题型"
             />
@@ -1336,7 +1332,11 @@ defineExpose({
         </UiCol>
         <UiCol :span="12">
           <UiFormItem label="必填">
-            <UiSwitch size="sm" v-model="itemEditor.required" :disabled="itemEditorContentOnlyMode" />
+            <UiSwitch
+              size="sm"
+              v-model="itemEditor.required"
+              :disabled="itemEditorContentOnlyMode"
+            />
           </UiFormItem>
         </UiCol>
       </UiRow>
@@ -1374,9 +1374,9 @@ defineExpose({
             />
             <ProgramSelector
               v-else-if="
-                itemEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY
-                  || itemEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE
-                  || itemEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
+                itemEditor.targetType === AchievementTargetTypeCode.PROGRAM_SUMMARY ||
+                itemEditor.targetType === AchievementTargetTypeCode.CIVIC_GOAL_AGGREGATE ||
+                itemEditor.targetType === AchievementTargetTypeCode.COMPLEX_ENGINEERING_AGGREGATE
               "
               :value="itemEditor.targetId || null"
               :disabled="itemEditorContentOnlyMode"
@@ -1396,10 +1396,10 @@ defineExpose({
       </UiRow>
       <UiFormItem
         v-if="
-          itemEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL
-            || itemEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT
-            || itemEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR
-            || itemEditor.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE
+          itemEditor.targetType === AchievementTargetTypeCode.COURSE_GOAL ||
+          itemEditor.targetType === AchievementTargetTypeCode.GRADUATION_REQUIREMENT ||
+          itemEditor.targetType === AchievementTargetTypeCode.REQUIREMENT_INDICATOR ||
+          itemEditor.targetType === AchievementTargetTypeCode.TRAINING_OBJECTIVE
         "
         label="目标对象"
         required
@@ -1456,9 +1456,10 @@ defineExpose({
           allow-search
           option-filter-prop="label"
           :disabled="itemEditorContentOnlyMode"
-        
           size="sm"
-          :options="scaleRules.map((r) => ({ value: r.id, label: `${r.ruleCode} · ${r.ruleName}` }))"
+          :options="
+            scaleRules.map((r) => ({ value: r.id, label: `${r.ruleCode} · ${r.ruleName}` }))
+          "
         />
       </UiFormItem>
       <template v-if="isScaleItemType(itemEditor.itemType)">
@@ -1496,11 +1497,12 @@ defineExpose({
               class="ie__config-row"
             >
               <UiInputNumber
-                size="sm" :value="label.scaleValue" disabled class="ie__config-value"
+                size="sm"
+                :value="label.scaleValue"
+                disabled
+                class="ie__config-value"
               />
-              <UiInput
-                size="sm" v-model="label.label" placeholder="标签"
-              />
+              <UiInput size="sm" v-model="label.label" placeholder="标签" />
             </div>
           </div>
         </UiFormItem>
@@ -1524,9 +1526,7 @@ defineExpose({
               placeholder="选项值"
               :disabled="itemEditorContentOnlyMode"
             />
-            <UiInput
-              size="sm" v-model="option.optionLabel" placeholder="选项文案"
-            />
+            <UiInput size="sm" v-model="option.optionLabel" placeholder="选项文案" />
             <UiTextAction
               v-if="!itemEditorContentOnlyMode"
               tone="danger"

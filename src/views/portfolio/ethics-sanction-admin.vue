@@ -5,9 +5,9 @@ import type {
   PortfolioEthicsReviewLogVO,
   PortfolioEthicsSanctionVO,
 } from '@/apis/portfolio/ethics-sanction'
+import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -48,6 +48,7 @@ import {
 } from '@/types/enums/portfolio-ethics-sanction-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
@@ -92,7 +93,6 @@ const {
   assertArchiveWritable,
   reloadLifecycleState,
 } = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
-
 
 const reviewForm = reactive({
   reviewConclusion: PortfolioEthicsReviewConclusionCode.RELEASE,
@@ -225,8 +225,9 @@ function openReview(row: PortfolioEthicsSanctionVO) {
   reviewOpen.value = true
 }
 
-
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -323,16 +324,16 @@ async function saveSanction() {
     return
   }
   if (!form.dateRange?.[0] || !form.dateRange?.[1]) {
-    message.error('请选择处分起止日期')
+    void message.error('请选择处分起止日期')
     return
   }
   if (
-    !form.handlingBasis.trim()
-    || !form.releaseCondition.trim()
-    || !form.reviewDepartment.trim()
-    || !form.publicSummary.trim()
+    !form.handlingBasis.trim() ||
+    !form.releaseCondition.trim() ||
+    !form.reviewDepartment.trim() ||
+    !form.publicSummary.trim()
   ) {
-    message.error('请填写处理依据、解除条件、复核部门和公开摘要')
+    void message.error('请填写处理依据、解除条件、复核部门和公开摘要')
     return
   }
   saving.value = true
@@ -350,7 +351,7 @@ async function saveSanction() {
       publicSummary: form.publicSummary.trim(),
       detailDescription: form.detailDescription.trim() || undefined,
     })
-    message.success(editingId.value ? '处分已更新' : '处分已登记并进入约束')
+    void message.success(editingId.value ? '处分已更新' : '处分已登记并进入约束')
     editorOpen.value = false
     await loadPage()
   } catch (error) {
@@ -370,11 +371,11 @@ async function submitReview() {
   }
   if (!reviewTarget.value || writing.value) return
   if (
-    (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
-      || reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN)
-    && !reviewForm.newSanctionEndDate
+    (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND ||
+      reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN) &&
+    !reviewForm.newSanctionEndDate
   ) {
-    message.error(
+    void message.error(
       reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
         ? '延长处分须选择新的结束日期'
         : '维持约束须设定下一次复核截止日期',
@@ -389,7 +390,7 @@ async function submitReview() {
       reviewOpinion: reviewForm.reviewOpinion.trim() || undefined,
       newSanctionEndDate: reviewForm.newSanctionEndDate,
     })
-    message.success('复核结论已提交')
+    void message.success('复核结论已提交')
     reviewOpen.value = false
     await loadPage()
   } catch (error) {
@@ -399,7 +400,7 @@ async function submitReview() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -500,22 +501,15 @@ onMounted(() => {
               <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
-            
+
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
               <span v-else class="text-neutral-400">—</span>
             </template>
             <template v-else-if="column.key === 'identityLayers'">
-              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-                <UiTag
-                  v-for="(layer, idx) in record.ownerIdentityLayers"
-                  :key="`${record.id}-${layer.identityType}-${idx}`"
-                  size="sm"
-                  :tone="layer.externalIdentity ? 'orange' : 'blue'"
-                >
-                  {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-                </UiTag>
-              </div>
-              <span v-else>—</span>
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+              />
             </template>
             <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
               <span>
@@ -559,7 +553,12 @@ onMounted(() => {
     >
       <div class="ethics-admin__form">
         <label>教师用户编号</label>
-        <UiInput v-model="form.teacherId" size="sm" :disabled="!!editingId" placeholder="教师用户编号" />
+        <UiInput
+          v-model="form.teacherId"
+          size="sm"
+          :disabled="!!editingId"
+          placeholder="教师用户编号"
+        />
         <label>事件类型</label>
         <UiSelect v-model="form.eventType" size="sm" :options="eventOptions" />
         <label>处理依据</label>
@@ -579,7 +578,9 @@ onMounted(() => {
       </div>
       <template #footer>
         <UiButton size="sm" variant="soft" @click="editorOpen = false"> 取消 </UiButton>
-        <UiButton size="sm" variant="primary" :loading="saving" @click="saveSanction"> 保存 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="saving" @click="saveSanction">
+          保存
+        </UiButton>
       </template>
     </UiDrawer>
 
@@ -588,11 +589,17 @@ onMounted(() => {
         <p>教师 {{ reviewTarget.teacherId }} · 原结束日 {{ reviewTarget.sanctionEndDate }}</p>
         <label>复核结论</label>
         <UiSelect v-model="reviewForm.reviewConclusion" size="sm" :options="conclusionOptions" />
-        <label v-if="reviewForm.reviewConclusion === 'EXTEND' || reviewForm.reviewConclusion === 'MAINTAIN'">
+        <label
+          v-if="
+            reviewForm.reviewConclusion === 'EXTEND' || reviewForm.reviewConclusion === 'MAINTAIN'
+          "
+        >
           {{ reviewForm.reviewConclusion === 'EXTEND' ? '新结束日期' : '下一次复核截止日期' }}
         </label>
         <UiDatePicker
-          v-if="reviewForm.reviewConclusion === 'EXTEND' || reviewForm.reviewConclusion === 'MAINTAIN'"
+          v-if="
+            reviewForm.reviewConclusion === 'EXTEND' || reviewForm.reviewConclusion === 'MAINTAIN'
+          "
           v-model="reviewForm.newSanctionEndDate"
           size="sm"
         />
@@ -601,7 +608,9 @@ onMounted(() => {
       </div>
       <template #footer>
         <UiButton size="sm" variant="soft" @click="reviewOpen = false"> 取消 </UiButton>
-        <UiButton size="sm" variant="primary" :loading="reviewing" @click="submitReview"> 提交结论 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="reviewing" @click="submitReview">
+          提交结论
+        </UiButton>
       </template>
     </UiDrawer>
 
@@ -614,19 +623,11 @@ onMounted(() => {
           </UiTag>
           <span>有效处分 {{ constraintStatus.activeSanctionCount }} 条</span>
           <span>红线系数 {{ constraintStatus.redlineCoefficient }}</span>
-          <div v-if="constraintStatus.ownerIdentityLayers?.length" class="flex flex-wrap gap-1" style="margin-top: 8px">
-            <UiTag
-              v-for="(layer, idx) in constraintStatus.ownerIdentityLayers"
-              :key="`constraint-${layer.identityType}-${idx}`"
-              size="sm"
-              :tone="layer.externalIdentity ? 'orange' : 'blue'"
-            >
-              {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-            </UiTag>
-          </div>
-          <p v-if="constraintStatus.ownerMultiIdentityNote" class="text-neutral-500" style="margin-top: 4px">
-            {{ constraintStatus.ownerMultiIdentityNote }}
-          </p>
+          <PortfolioOwnerIdentityLayersCell
+            :layers="constraintStatus.ownerIdentityLayers"
+            :note="constraintStatus.ownerMultiIdentityNote"
+            show-note
+          />
           <p v-if="constraintStatus.publicSummary">{{ constraintStatus.publicSummary }}</p>
         </section>
         <p>状态：{{ statusLabel(detailRow.sanctionStatus) }}</p>

@@ -12,7 +12,9 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 5. PENDING / FAILED 可 POST /update-status { id, status: 'CANCELLED' } 取消
  */
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { QualityCourseVO } from '@/apis/quality/quality-course'
+import { qualityCourseApi } from '@/apis/quality/quality-course'
 import type {
   QualityStatusCountsResponse,
   ScoreBatchQueryRequest,
@@ -20,7 +22,9 @@ import type {
   ScoreBatchUpdateRequest,
   ScoreBatchVO,
 } from '@/apis/quality/score-batch'
+import { scoreBatchApi } from '@/apis/quality/score-batch'
 import type { ScoreRecordVO } from '@/apis/quality/score-record'
+import { scoreRecordApi } from '@/apis/quality/score-record'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type {
   AuditTimelineEvent,
@@ -36,10 +40,6 @@ import { downloadFile } from '@/apis/edu/file-management'
 import { getOperationLogPage } from '@/apis/edu/operation-logs'
 import { downloadExcelImportTemplate } from '@/apis/platform/excel-import'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { qualityCourseApi } from '@/apis/quality/quality-course'
-import { scoreBatchApi } from '@/apis/quality/score-batch'
-import { scoreRecordApi } from '@/apis/quality/score-record'
 import {
   ALL_DATA_SOURCE_MODE_CODES,
   ALL_SCORE_BATCH_STATUS_CODES,
@@ -85,7 +85,11 @@ import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserProcessFailureMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const qualityStore = useQualityStore()
@@ -94,8 +98,8 @@ const batches = ref<ScoreBatchVO[]>([])
 const total = ref(0)
 const batchStatusCounts = ref<QualityStatusCountsResponse | null>(null)
 const loading = ref(false)
-const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel }
-  = useQualityTableExport()
+const { exporting: scoreBatchExporting, exportExcel: exportScoreBatchExcel } =
+  useQualityTableExport()
 const uploading = ref(false)
 const uploadFileNodeId = ref<string>()
 const uploadFileName = ref<string>()
@@ -232,7 +236,7 @@ async function handleDownloadScoreTemplate(): Promise<void> {
     const blobResponse = await downloadFile({ nodeId: String(template.fileNodeId) })
     const blob = blobResponse.data
     if (!blob) {
-      message.error('模板文件暂不可下载，请确认文件已生成后再次下载')
+      void message.error('模板文件暂不可下载，请确认文件已生成后再次下载')
       return
     }
     const url = URL.createObjectURL(blob)
@@ -266,17 +270,17 @@ function hasGeneratedRowStatistics(
   record: Pick<ScoreBatchVO, 'totalRows' | 'successRows' | 'errorRows'> | ScoreImportPreviewSummary,
 ): boolean {
   return (
-    record.totalRows !== undefined
-    && record.successRows !== undefined
-    && record.errorRows !== undefined
+    record.totalRows !== undefined &&
+    record.successRows !== undefined &&
+    record.errorRows !== undefined
   )
 }
 
 function scoreBatchRowStatisticsText(record: ScoreBatchVO): string {
   if (
-    record.status === ScoreBatchStatusCode.PENDING
-    || record.status === ScoreBatchStatusCode.PARSING
-    || record.status === ScoreBatchStatusCode.CANCELLED
+    record.status === ScoreBatchStatusCode.PENDING ||
+    record.status === ScoreBatchStatusCode.PARSING ||
+    record.status === ScoreBatchStatusCode.CANCELLED
   ) {
     return '未生成'
   }
@@ -327,7 +331,7 @@ const statusBuckets = computed(() => buildScoreBatchStatusBuckets(batchStatusCou
 
 const stages = computed<WorkbenchStage[]>(() => {
   const b = statusBuckets.value
-  const stageOrder: Array<{ key: ScoreBatchStatusCode, title: string }> = [
+  const stageOrder: Array<{ key: ScoreBatchStatusCode; title: string }> = [
     { key: ScoreBatchStatusCode.PENDING, title: '待处理' },
     { key: ScoreBatchStatusCode.PARSING, title: '解析中' },
     { key: ScoreBatchStatusCode.PREVIEW_READY, title: '预览就绪' },
@@ -524,7 +528,6 @@ async function loadBatchesQuietly(): Promise<void> {
   }
 }
 
-
 const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   if (!qualityStore.currentTrainingPlanId) {
     return 'need-plan'
@@ -542,7 +545,7 @@ async function handleScopeChange(): Promise<void> {
 
 useQualityScopedLoader(handleScopeChange, { watchScope: true, immediate: false })
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadBatches()
@@ -604,7 +607,7 @@ async function loadPreviewDiagnostics(batchId: string) {
   }
 }
 
-function handlePreviewPageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePreviewPageChange(pageEvent: { current: number; pageSize: number }) {
   previewPageNum.value = pageEvent.current
   previewPageSize.value = pageEvent.pageSize
   if (!previewBatch.value) return
@@ -659,7 +662,7 @@ async function submitScoreImport() {
         semester: uploadForm.semester || undefined,
       },
     })
-    message.success('已提交导入任务，解析完成后可预览并确认')
+    void message.success('已提交导入任务，解析完成后可预览并确认')
     uploadFileNodeId.value = undefined
     uploadFileName.value = undefined
     await loadBatches()
@@ -672,7 +675,7 @@ async function submitScoreImport() {
 
 async function openPreview(record: ScoreBatchVO) {
   if (!canPreview(record.status)) {
-    message.warning('当前批次尚未生成可预览结果')
+    void message.warning('当前批次尚未生成可预览结果')
     return
   }
   previewBatch.value = record
@@ -682,7 +685,7 @@ async function openPreview(record: ScoreBatchVO) {
   try {
     const preview = await scoreBatchApi.preview(record.id)
     if (preview.status !== ScoreBatchStatusCode.FAILED && !hasGeneratedRowStatistics(preview)) {
-      message.error('成绩预览结果异常，请重新导入后再试')
+      void message.error('成绩预览结果异常，请重新导入后再试')
       return
     }
     previewSummary.totalRows = preview.totalRows
@@ -709,7 +712,7 @@ async function handleValidate(record: ScoreBatchVO) {
     type: 'info',
     onOk: async () => {
       await scoreBatchApi.validate(record.id)
-      message.success('批次已校验')
+      void message.success('批次已校验')
       await loadBatches()
     },
   })
@@ -722,7 +725,7 @@ async function handleConfirm(record: ScoreBatchVO) {
     type: 'info',
     onOk: async () => {
       await scoreBatchApi.confirm(record.id)
-      message.success('批次已确认')
+      void message.success('批次已确认')
       await loadBatches()
     },
   })
@@ -738,7 +741,7 @@ async function handleCancel(record: ScoreBatchVO) {
         id: record.id,
         status: ScoreBatchStatusCode.CANCELLED,
       })
-      message.success('批次已取消')
+      void message.success('批次已取消')
       await loadBatches()
     },
   })
@@ -751,7 +754,7 @@ async function handleReParse(record: ScoreBatchVO) {
     type: 'warning',
     onOk: async () => {
       await scoreBatchApi.enqueueParse(record.id)
-      message.success('已重新触发解析')
+      void message.success('已重新触发解析')
       await loadBatches()
     },
   })
@@ -801,15 +804,15 @@ async function openEdit(record: ScoreBatchVO) {
 
 async function submitEditor() {
   if (!editor.batchCode.trim() || !editor.batchName.trim()) {
-    message.error('请填写批次编码与名称')
+    void message.error('请填写批次编码与名称')
     return
   }
   if (!editor.qualityCourseId || !editor.assessmentItemId) {
-    message.error('课程与考核环节不能为空')
+    void message.error('课程与考核环节不能为空')
     return
   }
   if (!editor.id) {
-    message.error('批次编号不能为空')
+    void message.error('批次编号不能为空')
     return
   }
   editorSubmitting.value = true
@@ -826,7 +829,7 @@ async function submitEditor() {
       schoolYear: editor.schoolYear?.trim() || undefined,
       semester: editor.semester || undefined,
     })
-    message.success('批次已更新')
+    void message.success('批次已更新')
     editorVisible.value = false
     await loadBatches()
   } finally {
@@ -836,9 +839,9 @@ async function submitEditor() {
 
 function canEdit(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PENDING
-    || status === ScoreBatchStatusCode.FAILED
-    || status === ScoreBatchStatusCode.CANCELLED
+    status === ScoreBatchStatusCode.PENDING ||
+    status === ScoreBatchStatusCode.FAILED ||
+    status === ScoreBatchStatusCode.CANCELLED
   )
 }
 
@@ -893,16 +896,16 @@ const batchResultItems = computed<TaskResultItem[]>(() => {
     }))
 })
 
-function handleBatchResultAction(actionEvent: { item: TaskResultItem, action: { key: string } }) {
+function handleBatchResultAction(actionEvent: { item: TaskResultItem; action: { key: string } }) {
   const record = batches.value.find((b) => b.id === actionEvent.item.id)
   if (record && actionEvent.action.key === 'preview') openPreview(record)
 }
 
 function canDelete(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PENDING
-    || status === ScoreBatchStatusCode.FAILED
-    || status === ScoreBatchStatusCode.CANCELLED
+    status === ScoreBatchStatusCode.PENDING ||
+    status === ScoreBatchStatusCode.FAILED ||
+    status === ScoreBatchStatusCode.CANCELLED
   )
 }
 
@@ -913,7 +916,7 @@ async function handleDelete(record: ScoreBatchVO) {
     type: 'error',
     onOk: async () => {
       await scoreBatchApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadBatches()
     },
   })
@@ -921,9 +924,9 @@ async function handleDelete(record: ScoreBatchVO) {
 
 function canValidate(record: ScoreBatchVO) {
   return (
-    record.status === ScoreBatchStatusCode.PREVIEW_READY
-    && (record.errorRows ?? 0) === 0
-    && (record.successRows ?? 0) > 0
+    record.status === ScoreBatchStatusCode.PREVIEW_READY &&
+    (record.errorRows ?? 0) === 0 &&
+    (record.successRows ?? 0) > 0
   )
 }
 function canConfirm(status: ScoreBatchStatusCode) {
@@ -931,9 +934,9 @@ function canConfirm(status: ScoreBatchStatusCode) {
 }
 function canPreview(status: ScoreBatchStatusCode) {
   return (
-    status === ScoreBatchStatusCode.PREVIEW_READY
-    || status === ScoreBatchStatusCode.VALIDATED
-    || status === ScoreBatchStatusCode.FAILED
+    status === ScoreBatchStatusCode.PREVIEW_READY ||
+    status === ScoreBatchStatusCode.VALIDATED ||
+    status === ScoreBatchStatusCode.FAILED
   )
 }
 function canCancel(status: ScoreBatchStatusCode) {
@@ -1060,11 +1063,7 @@ onMounted(async () => {
       </QualityPageContextBar>
     </template>
 
-    <QualityPlanGateStrip
-      v-if="planGateMode"
-      :mode="planGateMode"
-      class="score-batch__empty"
-    />
+    <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="score-batch__empty" />
 
     <template v-else>
       <StageRail :stages="stages" compact class="score-batch__stages" />
@@ -1229,9 +1228,9 @@ onMounted(async () => {
             </template>
             <template
               v-else-if="
-                column.key === 'schoolYear'
-                  || column.key === 'semester'
-                  || column.key === 'createTime'
+                column.key === 'schoolYear' ||
+                column.key === 'semester' ||
+                column.key === 'createTime'
               "
             >
               <template v-if="column.key === 'schoolYear'">
@@ -1334,7 +1333,10 @@ onMounted(async () => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'errorInfo'">
-            <div class="dp-space dp-space--vertical dp-space--block" style="width: 100%; --dp-space-gap: 8px">
+            <div
+              class="dp-space dp-space--vertical dp-space--block"
+              style="width: 100%; --dp-space-gap: 8px"
+            >
               <div
                 v-for="(errorMessage, idx) in previewErrorMessages(record)"
                 :key="`${record.id}-message-${idx}`"
@@ -1375,16 +1377,12 @@ onMounted(async () => {
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="批次编码" required>
-              <UiInput
-                size="sm" v-model="editor.batchCode"
-              />
+              <UiInput size="sm" v-model="editor.batchCode" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="批次名称" required>
-              <UiInput
-                size="sm" v-model="editor.batchName"
-              />
+              <UiInput size="sm" v-model="editor.batchName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -1401,18 +1399,14 @@ onMounted(async () => {
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="接入模式">
-              <UiInput
-                size="sm" :value="sourceModeLabel(editor.sourceMode)" disabled
-              />
+              <UiInput size="sm" :value="sourceModeLabel(editor.sourceMode)" disabled />
             </UiFormItem>
           </UiCol>
         </UiRow>
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="学年">
-              <UiInput
-                size="sm" v-model="editor.schoolYear" placeholder="例：2024-2025"
-              />
+              <UiInput size="sm" v-model="editor.schoolYear" placeholder="例：2024-2025" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">

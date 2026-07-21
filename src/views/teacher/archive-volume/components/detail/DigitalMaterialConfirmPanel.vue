@@ -3,12 +3,12 @@ import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, ref } from 'vue'
 import {
   ArchiveMaterialTypeDescription,
   confirmArchiveDigitalMaterials,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiCheckboxGroup from '@/components/ui-guide/ui/UiCheckboxGroup.vue'
@@ -50,10 +50,10 @@ const canConfirm = computed(() => props.detail.capabilities?.canConfirmDigitalMa
 
 const showPanel = computed(
   () =>
-    canConfirm.value
-    && confirmableMaterials.value.length > 0
-    && (props.detail.volume.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING
-      || confirmableMaterials.value.some(
+    canConfirm.value &&
+    confirmableMaterials.value.length > 0 &&
+    (props.detail.volume.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING ||
+      confirmableMaterials.value.some(
         (item) => item.deliveryMode === ArchiveMaterialDeliveryModeCode.DIGITAL_CONFIRM,
       )),
 )
@@ -76,7 +76,7 @@ async function handleConfirm() {
   if (confirming.value) return
   // MVR-299：与 showPanel/canConfirmDigitalMaterials 同源二次拦截
   if (canConfirm.value !== true) {
-    message.warning('当前账号无电子材料确认权限')
+    void message.warning('当前账号无电子材料确认权限')
     return
   }
   if (selectedIds.value.length === 0) {
@@ -89,7 +89,7 @@ async function handleConfirm() {
       volumeId: props.volumeId,
       materialIds: selectedIds.value,
     })
-    message.success(`已确认 ${selectedIds.value.length} 项电子材料`)
+    void message.success(`已确认 ${selectedIds.value.length} 项电子材料`)
     selectedIds.value = []
     emit('refreshed')
   } catch (error) {

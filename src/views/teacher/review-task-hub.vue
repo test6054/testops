@@ -133,12 +133,6 @@ import type {
   ReviewTaskItemResponse,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   GRADE_SOURCE_TONE,
   GradeSourceDescription,
@@ -150,6 +144,12 @@ import {
   ReviewTaskTypeDescription,
   ReviewTaskTypeTone,
 } from '@/apis/mark/exam-review-task'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -202,11 +202,11 @@ const filterModel = computed<Record<string, unknown>>({
   get: () => ({ status: statusFilter.value }),
   set: (value) => {
     if (
-      value.status === ReviewTaskStatusCode.PENDING
-      || value.status === ReviewTaskStatusCode.IN_PROGRESS
-      || value.status === ReviewTaskStatusCode.APPROVED
-      || value.status === ReviewTaskStatusCode.REJECTED
-      || value.status === ReviewTaskStatusCode.INVALIDATED
+      value.status === ReviewTaskStatusCode.PENDING ||
+      value.status === ReviewTaskStatusCode.IN_PROGRESS ||
+      value.status === ReviewTaskStatusCode.APPROVED ||
+      value.status === ReviewTaskStatusCode.REJECTED ||
+      value.status === ReviewTaskStatusCode.INVALIDATED
     ) {
       statusFilter.value = value.status
     }
@@ -254,8 +254,8 @@ function handleHubSignalClick(key: string): void {
     return
   }
   if (
-    key === 'in-progress'
-    && (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
+    key === 'in-progress' &&
+    (snapshot.value?.markingProgress?.inProgressReviewTaskCount ?? 0) > 0
   ) {
     statusFilter.value = ReviewTaskStatusCode.IN_PROGRESS
     onFilterChange()
@@ -333,9 +333,10 @@ async function loadTasks(): Promise<void> {
     rows.value = records
     pagination.total = result.total
     // MVR-328：列表有项时仅认行级 can===true；空列表用制卷摘要 can===true 补齐
-    canManageReviewerWrites.value = records.length > 0
-      ? records[0].canManageReviewerWrites === true
-      : layoutSummary?.canManageReviewerWrites === true
+    canManageReviewerWrites.value =
+      records.length > 0
+        ? records[0].canManageReviewerWrites === true
+        : layoutSummary?.canManageReviewerWrites === true
   } catch (error) {
     rows.value = []
     pagination.total = 0
@@ -346,7 +347,7 @@ async function loadTasks(): Promise<void> {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }): void {
+function onPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadTasks()
@@ -381,7 +382,7 @@ function enterReview(record: ReviewTaskItemResponse): void {
   }
   // MVR-394：进入复核写工作台仅认行级 canManageReviewerWrites===true（BE 评阅写∧ACTIVE）
   if (record.canManageReviewerWrites !== true) {
-    message.warning('当前账号无本场复核写权限，无法进入复核工作台')
+    void message.warning('当前账号无本场复核写权限，无法进入复核工作台')
     return
   }
   void router.push({
@@ -397,7 +398,7 @@ function goBatchConfirm(): void {
   }
   // MVR-291/394：无写能力不得导航进批量确认页（页内虽叠闸，避免假入口）
   if (canManageReviewerWrites.value !== true) {
-    message.warning('当前账号无批量复核写权限')
+    void message.warning('当前账号无批量复核写权限')
     return
   }
   void router.push({

@@ -5,13 +5,6 @@ import type {
   PortfolioIndustryPackVO,
   PortfolioTenantIndicatorConfigVO,
 } from '@/apis/portfolio/indicator-types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  portfolioIndicatorPlatformApi,
-  portfolioIndicatorTenantApi,
-} from '@/apis/portfolio/indicator'
 import {
   PF_SCENE_CODE_OPTIONS,
   PfIndicatorStatusDescription,
@@ -20,6 +13,13 @@ import {
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  portfolioIndicatorPlatformApi,
+  portfolioIndicatorTenantApi,
+} from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -117,8 +117,8 @@ const filteredConfigs = computed(() => {
   }
   return configRows.value.filter(
     (row) =>
-      row.indicatorCode.toLowerCase().includes(keyword)
-      || row.indicatorName.toLowerCase().includes(keyword),
+      row.indicatorCode.toLowerCase().includes(keyword) ||
+      row.indicatorName.toLowerCase().includes(keyword),
   )
 })
 
@@ -215,7 +215,7 @@ async function enableAll() {
   }
   try {
     const result = await portfolioIndicatorTenantApi.enableAllConfig()
-    message.success(`已启用 ${result.enabledCount} 项指标`)
+    void message.success(`已启用 ${result.enabledCount} 项指标`)
     const reloads = [loadConfig()]
     if (model.value) reloads.push(loadModel())
     await Promise.all(reloads)
@@ -232,7 +232,7 @@ async function toggleEnabled(record: PortfolioTenantIndicatorConfigVO, enabled: 
   if (!beginOperation(operation)) return
   try {
     await portfolioIndicatorTenantApi.saveConfig({ indicatorCode, enabled })
-    message.success(enabled ? '已启用' : '已停用')
+    void message.success(enabled ? '已启用' : '已停用')
   } catch (error) {
     showUserError(error, '切换指标启用状态失败')
   } finally {
@@ -256,9 +256,9 @@ async function saveEdit() {
   const indicatorCode = editForm.indicatorCode
   if (!indicatorCode) return
   if (
-    editForm.standardScore != null
-    && editForm.capScore != null
-    && editForm.capScore < editForm.standardScore
+    editForm.standardScore != null &&
+    editForm.capScore != null &&
+    editForm.capScore < editForm.standardScore
   ) {
     showFormValidationMessage('封顶分不能低于标准分')
     return
@@ -274,7 +274,7 @@ async function saveEdit() {
   }
   try {
     await portfolioIndicatorTenantApi.saveConfig(request)
-    message.success('配置已保存')
+    void message.success('配置已保存')
     editDrawerOpen.value = false
     await Promise.all([loadConfig(), model.value ? loadModel() : Promise.resolve()])
   } catch (error) {
@@ -301,7 +301,7 @@ async function saveModel() {
       sceneCode: targetSceneCode,
       indicators,
     })
-    message.success('场景模型已保存')
+    void message.success('场景模型已保存')
     if (sceneCode.value === targetSceneCode) await loadModel()
   } catch (error) {
     showUserError(error, '保存场景模型失败')
@@ -326,7 +326,7 @@ async function trialModel() {
     if (sceneCode.value !== targetSceneCode) return
     model.value = result
     modelDirty.value = false
-    message.success(result.trialPassed ? '当前权重已保存，试算通过' : '试算未通过，请检查权重')
+    void message.success(result.trialPassed ? '当前权重已保存，试算通过' : '试算未通过，请检查权重')
   } catch (error) {
     showUserError(error, '场景模型试算失败')
   } finally {
@@ -357,7 +357,7 @@ async function freezeModel() {
   }
   try {
     await portfolioIndicatorTenantApi.freezeModel({ sceneCode: targetSceneCode })
-    message.success('场景模型已冻结')
+    void message.success('场景模型已冻结')
     if (sceneCode.value === targetSceneCode) await loadModel()
   } catch (error) {
     showUserError(error, '冻结场景模型失败')
@@ -392,7 +392,7 @@ async function bindPack() {
   }
   try {
     await portfolioIndicatorTenantApi.bindIndustryPack(request)
-    message.success('行业包已挂载')
+    void message.success('行业包已挂载')
   } catch (error) {
     showUserError(error, '挂载行业包失败')
   } finally {
@@ -406,7 +406,7 @@ async function exportCatalog() {
   try {
     const result = await portfolioIndicatorTenantApi.exportIndicatorCatalog()
     await downloadPortfolioIndicatorExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条`)
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出指标目录失败')
   } finally {
@@ -480,7 +480,12 @@ onMounted(loadConfig)
     <template #context>
       <ContextBar show-title layout="workbench" title="租户指标配置">
         <template #actions>
-          <UiButton size="sm" :loading="exporting" :disabled="interactionLocked" @click="exportCatalog">
+          <UiButton
+            size="sm"
+            :loading="exporting"
+            :disabled="interactionLocked"
+            @click="exportCatalog"
+          >
             导出目录
           </UiButton>
           <UiButton
@@ -512,7 +517,13 @@ onMounted(loadConfig)
             clearable
             :disabled="writing"
           />
-          <UiButton size="sm" variant="primary" :loading="enabling" :disabled="writing" @click="enableAll">
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="enabling"
+            :disabled="writing"
+            @click="enableAll"
+          >
             批量启用 T001–T100
           </UiButton>
           <UiButton size="sm" :loading="loadState.config" :disabled="writing" @click="loadConfig">
@@ -580,9 +591,7 @@ onMounted(loadConfig)
           <UiButton
             size="sm"
             :loading="freezing"
-            :disabled="
-              writing || modelDirty || model?.modelStatus !== PfModelStatusCode.PUBLISHED
-            "
+            :disabled="writing || modelDirty || model?.modelStatus !== PfModelStatusCode.PUBLISHED"
             @click="freezeModel"
           >
             冻结
@@ -663,7 +672,13 @@ onMounted(loadConfig)
             un-checked-children="停用"
             :disabled="writing"
           />
-          <UiButton size="sm" variant="primary" :loading="binding" :disabled="writing" @click="bindPack">
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="binding"
+            :disabled="writing"
+            @click="bindPack"
+          >
             挂载
           </UiButton>
         </div>

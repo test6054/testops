@@ -5,9 +5,6 @@ import type {
   AnnualReportMaterialSaveRequest,
   AnnualReportMaterialVO,
 } from '@/apis/quality/accreditation'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   accreditationApi,
   ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES,
@@ -19,6 +16,9 @@ import {
   AnnualReportMaterialStatusCode,
   AnnualReportMaterialStatusDescription,
 } from '@/apis/quality/accreditation'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import { CourseSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -50,8 +50,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{ refresh: [] }>()
 
-const MATERIAL_STATUS_OPTIONS: { label: string, value: AnnualReportMaterialStatusCode }[]
-  = ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES.map((value) => ({
+const MATERIAL_STATUS_OPTIONS: { label: string; value: AnnualReportMaterialStatusCode }[] =
+  ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(AnnualReportMaterialStatusDescription, value, '年报材料状态'),
   }))
@@ -122,17 +122,17 @@ const canMutateMaterial = computed(() => canMutateAnnualReportMaterial(props.act
 
 function canEdit(record: AnnualReportMaterialVO) {
   return (
-    canMutateMaterial.value
-    && (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT
-      || record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
+    canMutateMaterial.value &&
+    (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT ||
+      record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
   )
 }
 
 function canSubmit(record: AnnualReportMaterialVO) {
   return (
-    canMutateMaterial.value
-    && (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT
-      || record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
+    canMutateMaterial.value &&
+    (record.reportStatus === AnnualReportMaterialStatusCode.DRAFT ||
+      record.reportStatus === AnnualReportMaterialStatusCode.REJECTED)
   )
 }
 
@@ -202,11 +202,11 @@ function resetForm(accreditationCycleId: string) {
 function openCreate() {
   const accreditationCycleId = props.activeCycleId
   if (!accreditationCycleId) {
-    message.error('请先创建认证周期')
+    void message.error('请先创建认证周期')
     return
   }
   if (!canMutateMaterial.value) {
-    message.error(annualMaterialPhaseHint.value || '当前不可新增年度报备材料')
+    void message.error(annualMaterialPhaseHint.value || '当前不可新增年度报备材料')
     return
   }
   materialDrawerTitle.value = '新增年度报备材料'
@@ -216,7 +216,7 @@ function openCreate() {
 
 function openEdit(record: AnnualReportMaterialVO) {
   if (!canEdit(record)) {
-    message.error('仅草稿或退回材料可编辑')
+    void message.error('仅草稿或退回材料可编辑')
     return
   }
   materialDrawerTitle.value = '编辑年度报备材料'
@@ -242,27 +242,27 @@ watch(materialFileName, (name) => {
 
 async function submitMaterial() {
   if (!props.activeCycleId && !form.id) {
-    message.error('请先创建认证周期')
+    void message.error('请先创建认证周期')
     return
   }
   if (!canMutateMaterial.value) {
-    message.error(annualMaterialPhaseHint.value || '当前不可维护年度报备材料')
+    void message.error(annualMaterialPhaseHint.value || '当前不可维护年度报备材料')
     return
   }
   if (!form.reportYear.trim() || !form.materialCategory || !form.materialName.trim()) {
-    message.error('请填写年度、类别与材料名称')
+    void message.error('请填写年度、类别与材料名称')
     return
   }
   if (isCourseEvaluationMaterial(form.materialCategory) && !form.qualityCourseId) {
-    message.error('课程评价与达成度材料必须关联质量评价课程')
+    void message.error('课程评价与达成度材料必须关联质量评价课程')
     return
   }
   if (!isCourseEvaluationMaterial(form.materialCategory) && form.qualityCourseId) {
-    message.error('仅课程评价与达成度材料允许关联质量评价课程')
+    void message.error('仅课程评价与达成度材料允许关联质量评价课程')
     return
   }
   if (!form.storageFileId) {
-    message.error('请先上传年度报备材料文件')
+    void message.error('请先上传年度报备材料文件')
     return
   }
   saving.value = true
@@ -280,10 +280,10 @@ async function submitMaterial() {
     }
     if (form.id) {
       await accreditationApi.annualReportMaterialUpdate(request)
-      message.success('年度报备材料已更新')
+      void message.success('年度报备材料已更新')
     } else {
       form.id = await accreditationApi.annualReportMaterialCreate(request)
-      message.success('年度报备材料已创建')
+      void message.success('年度报备材料已创建')
     }
     materialDrawerOpen.value = false
     await loadMaterials()
@@ -297,18 +297,18 @@ async function submitMaterial() {
 
 async function submitForReview(record: AnnualReportMaterialVO) {
   if (!canSubmit(record)) {
-    message.error('仅草稿或退回材料可提交')
+    void message.error('仅草稿或退回材料可提交')
     return
   }
   if (!record.storageFileId) {
-    message.error('请先上传年度报备材料文件')
+    void message.error('请先上传年度报备材料文件')
     return
   }
   const ok = await confirmAsync({ title: '确认提交该年度报备材料进入审核？' })
   if (!ok) return
   try {
     await accreditationApi.annualReportMaterialSubmit(record.id)
-    message.success('年度报备材料已提交审核')
+    void message.success('年度报备材料已提交审核')
     await loadMaterials()
     emit('refresh')
   } catch (e) {
@@ -318,11 +318,11 @@ async function submitForReview(record: AnnualReportMaterialVO) {
 
 function openReview(record: AnnualReportMaterialVO, status: AnnualReportMaterialReviewStatusCode) {
   if (!canReview(record)) {
-    message.error('仅已提交材料可审核')
+    void message.error('仅已提交材料可审核')
     return
   }
-  reviewDrawerTitle.value
-    = status === AnnualReportMaterialReviewStatusCode.APPROVED
+  reviewDrawerTitle.value =
+    status === AnnualReportMaterialReviewStatusCode.APPROVED
       ? '审核通过年度报备材料'
       : '退回年度报备材料'
   reviewForm.id = record.id
@@ -333,18 +333,18 @@ function openReview(record: AnnualReportMaterialVO, status: AnnualReportMaterial
 
 async function submitReview() {
   if (!canMutateMaterial.value) {
-    message.error(annualMaterialPhaseHint.value || '当前不可审核年度报备材料')
+    void message.error(annualMaterialPhaseHint.value || '当前不可审核年度报备材料')
     return
   }
   if (!reviewForm.id) {
-    message.error('年度报备材料审核对象缺失，请关闭后重新打开')
+    void message.error('年度报备材料审核对象缺失，请关闭后重新打开')
     return
   }
   if (
-    reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED
-    && !reviewForm.reviewComment.trim()
+    reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED &&
+    !reviewForm.reviewComment.trim()
   ) {
-    message.error('退回材料必须填写审核意见')
+    void message.error('退回材料必须填写审核意见')
     return
   }
   reviewSaving.value = true
@@ -354,7 +354,7 @@ async function submitReview() {
       reviewStatus: reviewForm.reviewStatus,
       reviewComment: reviewForm.reviewComment.trim() || undefined,
     })
-    message.success(
+    void message.success(
       reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.APPROVED
         ? '材料已审核通过'
         : '材料已退回',
@@ -371,14 +371,14 @@ async function submitReview() {
 
 async function removeMaterial(record: AnnualReportMaterialVO) {
   if (!canEdit(record)) {
-    message.error('仅草稿或退回材料可删除')
+    void message.error('仅草稿或退回材料可删除')
     return
   }
   const ok = await confirmAsync({ title: '确认删除该年度报备材料？' })
   if (!ok) return
   try {
     await accreditationApi.annualReportMaterialDelete(record.id)
-    message.success('年度报备材料已删除')
+    void message.success('年度报备材料已删除')
     await loadMaterials()
     emit('refresh')
   } catch (e) {
@@ -388,7 +388,7 @@ async function removeMaterial(record: AnnualReportMaterialVO) {
 
 async function downloadMaterial(record: AnnualReportMaterialVO) {
   if (!record.storageFileId) {
-    message.error('年度报备材料文件缺失，无法下载')
+    void message.error('年度报备材料文件缺失，无法下载')
     return
   }
   await handleDownloadFile({ fileId: record.storageFileId, fileName: record.materialName })
@@ -417,7 +417,7 @@ function resetFilters() {
   loadMaterials()
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   query.pageNum = pageEvent.current
   query.pageSize = pageEvent.pageSize
   loadMaterials()
@@ -461,7 +461,6 @@ defineExpose({ loadMaterials, openCreate })
         class="category-select"
         allow-clear
         placeholder="材料类别"
-      
         size="sm"
         :options="ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS"
       />
@@ -470,7 +469,6 @@ defineExpose({ loadMaterials, openCreate })
         class="status-select"
         allow-clear
         placeholder="状态"
-      
         size="sm"
         :options="MATERIAL_STATUS_OPTIONS"
       />
@@ -545,7 +543,10 @@ defineExpose({ loadMaterials, openCreate })
         </template>
       </template>
       <template #empty>
-        <UiEmpty size="sm" description="暂无年度报备材料，请上传持续改进、达成度和支撑条件等原始材料" />
+        <UiEmpty
+          size="sm"
+          description="暂无年度报备材料，请上传持续改进、达成度和支撑条件等原始材料"
+        />
       </template>
     </UiDataTable>
 
@@ -561,12 +562,16 @@ defineExpose({ loadMaterials, openCreate })
       <UiForm layout="vertical">
         <UiFormItem label="年度" required>
           <UiInput
-            size="sm" v-model="form.reportYear" placeholder="如 2025" :disabled="!!form.id"
+            size="sm"
+            v-model="form.reportYear"
+            placeholder="如 2025"
+            :disabled="!!form.id"
           />
         </UiFormItem>
         <UiFormItem label="材料类别" required>
           <UiSelect
-            v-model="form.materialCategory" :disabled="!!form.id"
+            v-model="form.materialCategory"
+            :disabled="!!form.id"
             size="sm"
             :options="ANNUAL_REPORT_MATERIAL_CATEGORY_OPTIONS"
           />
@@ -594,9 +599,7 @@ defineExpose({ loadMaterials, openCreate })
           />
         </UiFormItem>
         <UiFormItem label="材料名称" required>
-          <UiInput
-            size="sm" v-model="form.materialName"
-          />
+          <UiInput size="sm" v-model="form.materialName" />
         </UiFormItem>
         <UiFormItem label="材料说明">
           <UiTextarea size="sm" v-model="form.materialDescription" :rows="3" />
@@ -627,7 +630,10 @@ defineExpose({ loadMaterials, openCreate })
           <UiSelect
             v-model="reviewForm.reviewStatus"
             size="sm"
-            :options="[{ value: 'APPROVED', label: '通过' }, { value: 'REJECTED', label: '退回' }]"
+            :options="[
+              { value: 'APPROVED', label: '通过' },
+              { value: 'REJECTED', label: '退回' },
+            ]"
           />
         </UiFormItem>
         <UiFormItem

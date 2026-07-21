@@ -194,7 +194,9 @@
                       }"
                     />
                   </div>
-                  <span class="quality-dashboard__consistency-rate">{{ item.consistencyRate }}%</span>
+                  <span class="quality-dashboard__consistency-rate"
+                    >{{ item.consistencyRate }}%</span
+                  >
                 </li>
               </ul>
               <UiEmpty v-else size="sm" description="暂无评阅员一致性样本" />
@@ -398,7 +400,7 @@
             class="quality-dashboard__alert"
           >
             <template #default>
-              <span style="display:inline-flex;align-items:center;gap:8px">
+              <span style="display: inline-flex; align-items: center; gap: 8px">
                 <UiTag tone="blue" size="sm">未选择组织</UiTag>
                 <span>请选择阅卷组织后查看题组进度汇总</span>
               </span>
@@ -487,7 +489,7 @@
             class="quality-dashboard__alert"
           >
             <template #default>
-              <span style="display:inline-flex;align-items:center;gap:8px">
+              <span style="display: inline-flex; align-items: center; gap: 8px">
                 <UiTag tone="blue" size="sm">未选择组织</UiTag>
                 <span>请选择阅卷组织后查看质量快照与进度</span>
               </span>
@@ -546,7 +548,11 @@
           <WorkbenchContextGateStrip
             v-else
             tag="无快照"
-            :body="canManageQualityMonitorWrites ? '暂无进度快照，请先生成当前进度' : '暂无进度快照；生成快照需考试主考或阅卷组织负责人'"
+            :body="
+              canManageQualityMonitorWrites
+                ? '暂无进度快照，请先生成当前进度'
+                : '暂无进度快照；生成快照需考试主考或阅卷组织负责人'
+            "
             cta-label="立即快照"
             :hide-cta="!canManageQualityMonitorWrites"
             class="quality-dashboard__alert"
@@ -660,7 +666,10 @@
       </template>
 
       <template v-else-if="activeTab === 'spotcheck'">
-        <WorkbenchSurfaceCard v-if="!canManageQualityMonitorWrites" class="quality-dashboard__inner-panel">
+        <WorkbenchSurfaceCard
+          v-if="!canManageQualityMonitorWrites"
+          class="quality-dashboard__inner-panel"
+        >
           <UiEmpty
             size="sm"
             description="创建抽检任务仅考试主考或阅卷组织负责人可操作；主考/组织负责人/题组负责人请在「我的待处理抽检」结案。"
@@ -674,7 +683,10 @@
           <UiForm layout="vertical" class="quality-dashboard__form quality-dashboard__form--spot">
             <UiFormItem v-if="!isExamWorkspaceRoute" label="阅卷组织" required>
               <UiSelect
-                size="sm" :model-value="selectedOrganizationId" :options="organizationOptions" disabled
+                size="sm"
+                :model-value="selectedOrganizationId"
+                :options="organizationOptions"
+                disabled
               />
             </UiFormItem>
             <UiFormItem v-if="!isExamWorkspaceRoute" label="题组（可选）">
@@ -851,7 +863,10 @@
       </template>
 
       <template v-else-if="activeTab === 'reprocess'">
-        <WorkbenchSurfaceCard v-if="!canManageOwnerBatchReprocess" class="quality-dashboard__inner-panel">
+        <WorkbenchSurfaceCard
+          v-if="!canManageOwnerBatchReprocess"
+          class="quality-dashboard__inner-panel"
+        >
           <UiEmpty
             size="sm"
             description="异常批次重处理仅考试主考可操作；如需重处理请联系主考老师。"
@@ -916,11 +931,19 @@
 import type { DefaultOptionType, SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchQualityPanelResponse } from '@/apis/mark/exam-progress'
+import { getQualityPanel } from '@/apis/mark/exam-progress'
 import type { ExamScannerBatchResponse } from '@/apis/mark/exam-scan'
+import { pageScannerBatches } from '@/apis/mark/exam-scan'
 import type {
   MarkingOrganizationResponse,
   QuestionGroupReviewerResponse,
   QuestionMarkingGroupResponse,
+} from '@/apis/mark/marking-organization'
+import {
+  getOrganization,
+  MarkingOrganizationStatusDescription,
+  QUESTION_GROUP_STATUS_TONE,
+  QuestionMarkingGroupStatusDescription,
 } from '@/apis/mark/marking-organization'
 import type {
   ExamSpotCheckRecordItemResponse,
@@ -931,28 +954,6 @@ import type {
   ReviewerQualityMetricResponse,
   SpotCheckStatusCode,
 } from '@/apis/mark/marking-quality'
-import type {
-  BadgeTone,
-  FilterField,
-  UiBarChartItem,
-  UiSectionTabItem,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
-import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getQualityPanel } from '@/apis/mark/exam-progress'
-import { pageScannerBatches } from '@/apis/mark/exam-scan'
-import {
-  getOrganization,
-  MarkingOrganizationStatusDescription,
-  QUESTION_GROUP_STATUS_TONE,
-  QuestionMarkingGroupStatusDescription,
-} from '@/apis/mark/marking-organization'
 import {
   BatchReprocessScopeCode,
   createSpotCheckTasks,
@@ -973,6 +974,20 @@ import {
   SpotCheckStatusDescription,
   takeProgressSnapshot,
 } from '@/apis/mark/marking-quality'
+import type {
+  BadgeTone,
+  FilterField,
+  UiBarChartItem,
+  UiSectionTabItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import SyncOutlined from '@ant-design/icons-vue/SyncOutlined'
+import WarningOutlined from '@ant-design/icons-vue/WarningOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
@@ -1030,8 +1045,8 @@ const route = useRoute()
 const router = useRouter()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷质控')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷质控')
 
 const {
   examOptions,
@@ -1051,17 +1066,16 @@ const canManageOwnerBatchReprocess = computed(
   () => examQualityPanel.value?.canManageOwnerBatchReprocess === true,
 )
 
-
 type QualityTabKey = 'overview' | 'progress' | 'reviewer' | 'spotcheck' | 'reprocess'
 
 function resolveInitialTab(): QualityTabKey {
   const queryTab = route.query.tab
   if (
-    queryTab === 'overview'
-    || queryTab === 'progress'
-    || queryTab === 'reviewer'
-    || queryTab === 'spotcheck'
-    || queryTab === 'reprocess'
+    queryTab === 'overview' ||
+    queryTab === 'progress' ||
+    queryTab === 'reviewer' ||
+    queryTab === 'spotcheck' ||
+    queryTab === 'reprocess'
   ) {
     return queryTab
   }
@@ -1121,8 +1135,8 @@ const scopeValid = computed(() => Boolean(selectedExamId.value && selectedOrgani
 
 const showGroupScope = computed(
   () =>
-    isExamWorkspaceRoute.value
-    && (activeTab.value === 'progress' || activeTab.value === 'spotcheck'),
+    isExamWorkspaceRoute.value &&
+    (activeTab.value === 'progress' || activeTab.value === 'spotcheck'),
 )
 
 const showProgressGroupSummary = computed(
@@ -1364,7 +1378,7 @@ async function loadExamSpotCheckRecords(): Promise<void> {
   }
 }
 
-function handleExamSpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleExamSpotCheckPageChange(pageEvent: { current: number; pageSize: number }): void {
   examSpotCheckPagination.pageNum = pageEvent.current
   examSpotCheckPagination.pageSize = pageEvent.pageSize
   void loadExamSpotCheckRecords()
@@ -1419,7 +1433,7 @@ async function loadMyPendingSpotChecks(): Promise<void> {
   }
 }
 
-function handleMySpotCheckPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleMySpotCheckPageChange(pageEvent: { current: number; pageSize: number }): void {
   mySpotCheckPagination.pageNum = pageEvent.current
   mySpotCheckPagination.pageSize = pageEvent.pageSize
   void loadMyPendingSpotChecks()
@@ -1493,7 +1507,7 @@ async function loadProgress(): Promise<void> {
 
 async function handleSnapshot(): Promise<void> {
   if (!canManageQualityMonitorWrites.value) {
-    message.warning('仅考试主考或阅卷组织负责人可生成进度快照')
+    void message.warning('仅考试主考或阅卷组织负责人可生成进度快照')
     return
   }
   if (!scopeValid.value) return
@@ -1506,7 +1520,7 @@ async function handleSnapshot(): Promise<void> {
       groupId: selectedGroupId.value,
     })
     await loadProgressHistory()
-    message.success('已生成进度快照')
+    void message.success('已生成进度快照')
   } catch (error) {
     showUserError(error, '阅卷进度快照生成失败')
   } finally {
@@ -1616,7 +1630,7 @@ async function loadReviewerMetrics(): Promise<void> {
   }
 }
 
-function handleReviewerPageChange(event: { current: number, pageSize: number }): void {
+function handleReviewerPageChange(event: { current: number; pageSize: number }): void {
   reviewerPageNum.value = event.current
   reviewerPageSize.value = event.pageSize
   void loadReviewerMetrics()
@@ -1630,7 +1644,7 @@ function handleReviewerFilterReset(): void {
 
 async function handleRefreshMetrics(): Promise<void> {
   if (!canManageQualityMonitorWrites.value) {
-    message.warning('仅考试主考或阅卷组织负责人可重算教师质量指标')
+    void message.warning('仅考试主考或阅卷组织负责人可重算教师质量指标')
     return
   }
   if (!scopeValid.value) return
@@ -1642,7 +1656,7 @@ async function handleRefreshMetrics(): Promise<void> {
       organizationId: selectedOrganizationId.value!,
       groupId: selectedGroupId.value,
     })
-    message.success('已重算教师质量指标')
+    void message.success('已重算教师质量指标')
     await loadReviewerMetrics()
   } catch (error) {
     showUserError(error, '阅卷教师质量指标重算失败')
@@ -1665,7 +1679,7 @@ const spotForm = reactive<{
 
 async function handleCreateSpotCheck(): Promise<void> {
   if (!canManageQualityMonitorWrites.value) {
-    message.warning('仅考试主考或阅卷组织负责人可创建抽检任务')
+    void message.warning('仅考试主考或阅卷组织负责人可创建抽检任务')
     return
   }
   if (!scopeValid.value || !spotForm.sampleRate) return
@@ -1679,7 +1693,7 @@ async function handleCreateSpotCheck(): Promise<void> {
       sampleRate: spotForm.sampleRate,
       targetReviewerUserId: spotForm.targetReviewerUserId || undefined,
     })
-    message.success(`已创建 ${created} 条抽检任务`)
+    void message.success(`已创建 ${created} 条抽检任务`)
     void Promise.all([loadMyPendingSpotChecks(), loadExamSpotCheckRecords()])
   } catch (error) {
     showUserError(error, '阅卷质量抽检任务创建失败')
@@ -1703,10 +1717,10 @@ const reprocessForm = reactive<{
 
 const reprocessValid = computed(() =>
   Boolean(
-    canManageOwnerBatchReprocess.value
-    && selectedExamId.value
-    && reprocessForm.scanBatchId
-    && reprocessForm.reason.trim(),
+    canManageOwnerBatchReprocess.value &&
+    selectedExamId.value &&
+    reprocessForm.scanBatchId &&
+    reprocessForm.reason.trim(),
   ),
 )
 
@@ -1725,7 +1739,7 @@ async function requestReprocess(): Promise<void> {
 
 async function handleReprocess(): Promise<void> {
   if (!canManageOwnerBatchReprocess.value) {
-    message.warning('仅考试主考可触发异常批次重处理')
+    void message.warning('仅考试主考可触发异常批次重处理')
     return
   }
   if (!reprocessValid.value) return
@@ -1738,7 +1752,7 @@ async function handleReprocess(): Promise<void> {
       reason: reprocessForm.reason.trim(),
       scope: reprocessForm.scope,
     })
-    message.success('已触发异常批次重处理')
+    void message.success('已触发异常批次重处理')
     reprocessForm.scanBatchId = ''
     reprocessForm.reason = ''
   } catch (error) {
@@ -1777,8 +1791,8 @@ async function loadExamQualityPanel(): Promise<void> {
     examQualityPanel.value = null
     return
   }
-  const shouldLoad
-    = isExamWorkspaceRoute.value || activeTab.value === 'overview' || activeTab.value === 'spotcheck'
+  const shouldLoad =
+    isExamWorkspaceRoute.value || activeTab.value === 'overview' || activeTab.value === 'spotcheck'
   if (!shouldLoad) {
     examQualityPanel.value = null
     return
@@ -1792,11 +1806,11 @@ async function loadExamQualityPanel(): Promise<void> {
 }
 
 const signalMetrics = computed<SignalMetric[]>(() => {
-  const useExamQualitySignals
-    = examQualityPanel.value
-      && (isExamWorkspaceRoute.value
-        || activeTab.value === 'overview'
-        || activeTab.value === 'spotcheck')
+  const useExamQualitySignals =
+    examQualityPanel.value &&
+    (isExamWorkspaceRoute.value ||
+      activeTab.value === 'overview' ||
+      activeTab.value === 'spotcheck')
   if (useExamQualitySignals) {
     const panel = examQualityPanel.value!
     const summary = panel.qualitySummary
@@ -1845,8 +1859,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
   const reviewerWarning = reviewerStatusStats.value.warning
   const reviewerSuspended = reviewerStatusStats.value.suspended
 
-  const completionRate
-    = typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
+  const completionRate =
+    typeof p?.completionRate === 'number' ? `${p.completionRate.toFixed(1)}%` : '-'
   const recycledCount = p?.recycledTasks ?? 0
   const inProgressCount = p?.inProgressTasks ?? 0
   const finalizedCount = p?.finalizedTasks ?? 0
@@ -2338,12 +2352,16 @@ onActivated(() => {
   padding: 8px 12px;
 }
 
-.quality-dashboard__surface :deep(.quality-dashboard__inner-panel .workbench-surface-card__toolbar) {
+.quality-dashboard__surface
+  :deep(.quality-dashboard__inner-panel .workbench-surface-card__toolbar) {
   padding: 6px 12px;
 }
 
 .quality-dashboard__surface
-  :deep(.quality-dashboard__inner-panel .workbench-surface-card__body:not(.workbench-surface-card__body--flush)) {
+  :deep(
+    .quality-dashboard__inner-panel
+      .workbench-surface-card__body:not(.workbench-surface-card__body--flush)
+  ) {
   padding: 12px;
 }
 </style>

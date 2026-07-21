@@ -4,6 +4,10 @@ import type {
   PortfolioCorrectionImpactVO,
   PortfolioCorrectionSummaryVO,
 } from '@/apis/portfolio/types'
+import {
+  PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
+  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
@@ -15,10 +19,6 @@ import {
   PortfolioCorrectionRequestStatusCode,
   PortfolioCorrectionRequestStatusDescription,
 } from '@/apis/portfolio/enums'
-import {
-  PORTFOLIO_CORRECTION_IMPACT_RECOMPUTE_STATUS_TONE,
-  PORTFOLIO_CORRECTION_REQUEST_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -92,9 +92,8 @@ async function bindActionTeacherAndAssert(
   teacherId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value = teacherId != null && String(teacherId).trim() !== ''
-    ? String(teacherId)
-    : undefined
+  actionTeacherId.value =
+    teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
@@ -110,7 +109,9 @@ const columns: ColumnsType<PortfolioCorrectionSummaryVO> = [
   { title: '操作', key: 'actions', width: 260 },
 ]
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -171,7 +172,7 @@ async function handleRow(
       action,
       ...(handleOpinion ? { handleOpinion } : {}),
     })
-    message.success('处理成功')
+    void message.success('处理成功')
     resetRejectContext()
     await loadPage()
   } catch (error) {
@@ -271,7 +272,7 @@ async function recomputeImpact() {
   impactRecomputing.value = true
   try {
     impactDetail.value = await portfolioCorrectionApi.recomputeImpact(target.id)
-    message.success('纠错影响重算完成')
+    void message.success('纠错影响重算完成')
   } catch (error) {
     showUserError(error, '纠错影响重算失败')
     await openImpact(target)
@@ -357,7 +358,7 @@ void loadPage()
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
-            
+
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else>—</span>
           </template>
@@ -396,7 +397,12 @@ void loadPage()
       />
       <template #footer>
         <UiButton size="sm" variant="ghost" @click="resetRejectContext"> 取消 </UiButton>
-        <UiButton size="sm" variant="primary" :loading="!!handlingId" @click="() => void submitReject()">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="!!handlingId"
+          @click="() => void submitReject()"
+        >
           确认驳回
         </UiButton>
       </template>
@@ -426,8 +432,8 @@ void loadPage()
               {{
                 impactDetail.recomputeStatus === PortfolioCorrectionImpactRecomputeStatusCode.FAILED
                   ? '重新重算'
-                  : impactDetail.recomputeStatus
-                    === PortfolioCorrectionImpactRecomputeStatusCode.RUNNING
+                  : impactDetail.recomputeStatus ===
+                      PortfolioCorrectionImpactRecomputeStatusCode.RUNNING
                     ? '接管重试'
                     : '执行重算'
               }}

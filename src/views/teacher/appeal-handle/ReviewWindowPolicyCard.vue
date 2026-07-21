@@ -129,11 +129,8 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeExamGateResponse } from '@/apis/mark/archive-volume'
-import type { ExamReviewWindowPolicy, GradeReviewReasonTypeCode } from '@/apis/mark/grade-review'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
+import type { ExamReviewWindowPolicy, GradeReviewReasonTypeCode } from '@/apis/mark/grade-review'
 import {
   activateReviewWindow,
   closeReviewWindow,
@@ -147,6 +144,9 @@ import {
   VisibleMaterialScopeCode,
   VisibleMaterialScopeDescription,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -163,7 +163,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewWindowPolicyCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{ (e: 'changed'): void }>()
 
 function reviewWindowStatusColor(status: ReviewWindowPolicyStatusCode): BadgeTone {
@@ -178,9 +178,7 @@ const policy = ref<ExamReviewWindowPolicy | null>(null)
 /** MVR-279：默认拒绝假可写，仅 BE 下发 canManageReviewerWrites=true 时可写 */
 const canManageReviewerWrites = ref(false)
 /** 已持久化策略（能力位壳无 policyStatus / id 时不算） */
-const hasPersistedPolicy = computed(
-  () => Boolean(policy.value?.id || policy.value?.policyStatus),
-)
+const hasPersistedPolicy = computed(() => Boolean(policy.value?.id || policy.value?.policyStatus))
 const loading = ref(false)
 const saving = ref(false)
 const savingAndActivating = ref(false)
@@ -246,7 +244,6 @@ const activateBlockReason = computed(() => {
   return ''
 })
 
-
 const form = reactive<{
   openTime: string
   closeTime: string
@@ -261,7 +258,7 @@ const form = reactive<{
   allowedReasonTypes: [],
 })
 
-const scopeOptions: { label: string, value: VisibleMaterialScopeCode }[] = [
+const scopeOptions: { label: string; value: VisibleMaterialScopeCode }[] = [
   {
     label: strictEnumLabel(
       VisibleMaterialScopeDescription,
@@ -296,8 +293,7 @@ async function refreshUnpublishedBoundGate(): Promise<void> {
   try {
     const gate: ArchiveVolumeExamGateResponse = await getArchiveVolumeExamGate(props.examId)
     unpublishedBoundPaperCount.value = gate.unpublishedBoundPaperCount ?? 0
-  }
-  catch (error) {
+  } catch (error) {
     unpublishedBoundPaperCount.value = null
     showUserError(error, '未发布成绩门禁查询失败')
   }
@@ -340,7 +336,7 @@ async function handleSaveAndActivate(): Promise<void> {
 
 async function persistPolicy(activateImmediately: boolean): Promise<void> {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无复核窗口写权限')
+    void message.warning('当前账号无复核窗口写权限')
     return
   }
   if (saving.value || savingAndActivating.value) {
@@ -351,19 +347,19 @@ async function persistPolicy(activateImmediately: boolean): Promise<void> {
     return
   }
   if (form.openTime >= form.closeTime) {
-    message.warning('关闭时间需晚于开放时间')
+    void message.warning('关闭时间需晚于开放时间')
     return
   }
   // MVR-211：已 ACTIVE 时不得把关闭时间改到当前之前（对齐 BE assertReviewWindowPolicyTimesValid）
   if (
-    policy.value?.policyStatus === ReviewWindowPolicyStatusCode.ACTIVE
-    && new Date(form.closeTime.replace(' ', 'T')).getTime() <= Date.now()
+    policy.value?.policyStatus === ReviewWindowPolicyStatusCode.ACTIVE &&
+    new Date(form.closeTime.replace(' ', 'T')).getTime() <= Date.now()
   ) {
-    message.warning('复核窗口已激活，关闭时间不得早于当前时间；如需结束请使用关闭窗口')
+    void message.warning('复核窗口已激活，关闭时间不得早于当前时间；如需结束请使用关闭窗口')
     return
   }
   if (activateImmediately && !canActivateReviewWindow.value) {
-    message.warning(activateBlockReason.value || '当前不能启用复核窗口')
+    void message.warning(activateBlockReason.value || '当前不能启用复核窗口')
     return
   }
   if (activateImmediately) {
@@ -383,7 +379,7 @@ async function persistPolicy(activateImmediately: boolean): Promise<void> {
     })
     policy.value = saved
     canManageReviewerWrites.value = saved.canManageReviewerWrites === true
-    message.success(activateImmediately ? '复核窗口已保存并启用' : '复核窗口策略已保存')
+    void message.success(activateImmediately ? '复核窗口已保存并启用' : '复核窗口策略已保存')
     emit('changed')
   } catch (e) {
     showUserError(e, activateImmediately ? '保存并启用失败' : '成绩复核窗口保存失败')
@@ -395,20 +391,20 @@ async function persistPolicy(activateImmediately: boolean): Promise<void> {
 
 async function handleActivate(): Promise<void> {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无复核窗口写权限')
+    void message.warning('当前账号无复核窗口写权限')
     return
   }
   if (activating.value || saving.value || savingAndActivating.value || closing.value) {
     return
   }
   if (!canActivateReviewWindow.value) {
-    message.warning(activateBlockReason.value || '当前不能激活复核窗口')
+    void message.warning(activateBlockReason.value || '当前不能激活复核窗口')
     return
   }
   activating.value = true
   try {
     await activateReviewWindow(props.examId)
-    message.success('已激活')
+    void message.success('已激活')
     await reload()
     emit('changed')
   } catch (e) {
@@ -420,7 +416,7 @@ async function handleActivate(): Promise<void> {
 
 async function handleClose(): Promise<void> {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无复核窗口写权限')
+    void message.warning('当前账号无复核窗口写权限')
     return
   }
   if (closing.value || activating.value || saving.value || savingAndActivating.value) {
@@ -429,7 +425,7 @@ async function handleClose(): Promise<void> {
   closing.value = true
   try {
     await closeReviewWindow(props.examId)
-    message.success('已关闭')
+    void message.success('已关闭')
     await reload()
     emit('changed')
   } catch (e) {

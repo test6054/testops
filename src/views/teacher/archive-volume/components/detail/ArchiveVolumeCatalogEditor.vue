@@ -4,13 +4,13 @@ import type {
   ArchiveCatalogStatusCode,
   ArchiveVolumeCatalogLineVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted } from 'vue'
 import {
   ARCHIVE_CATALOG_STATUS_TONE,
   ArchiveCatalogStatusDescription,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -82,10 +82,7 @@ function catalogLine(record: unknown): ArchiveVolumeCatalogLineVO {
   return record as ArchiveVolumeCatalogLineVO
 }
 
-function catalogCellValue(
-  record: unknown,
-  dataIndex: unknown,
-): string | number | undefined {
+function catalogCellValue(record: unknown, dataIndex: unknown): string | number | undefined {
   const row = catalogLine(record)
   if (dataIndex === 'lineNo') return row.lineNo
   if (dataIndex === 'archiveCode') return row.archiveCode
@@ -146,7 +143,7 @@ function updateCatalogLineValue(
 async function handleGenerateDraft() {
   // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）；仅 readonly===false 可写
   if (props.readonly !== false) {
-    message.warning('当前账号无目录编辑权限')
+    void message.warning('当前账号无目录编辑权限')
     return
   }
   await generateDraft()
@@ -156,7 +153,7 @@ async function handleGenerateDraft() {
 async function handleSave() {
   // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）；仅 readonly===false 可写
   if (props.readonly !== false) {
-    message.warning('当前账号无目录编辑权限')
+    void message.warning('当前账号无目录编辑权限')
     return
   }
   await saveCatalog()
@@ -166,7 +163,7 @@ async function handleSave() {
 async function handleConfirm() {
   // MVR-299/380：readonly 二次拦截（父级 canEditCatalog）；仅 readonly===false 可写
   if (props.readonly !== false) {
-    message.warning('当前账号无目录编辑权限')
+    void message.warning('当前账号无目录编辑权限')
     return
   }
   await confirmCatalog()
@@ -250,10 +247,7 @@ defineExpose({ loadCatalog })
 
     <UiSkeletonState v-if="loading" variant="card" compact />
 
-    <div
-      v-else-if="editableLines.length === 0"
-      class="archive-volume-catalog-editor__empty-strip"
-    >
+    <div v-else-if="editableLines.length === 0" class="archive-volume-catalog-editor__empty-strip">
       <span class="archive-volume-catalog-editor__empty-text">尚未生成目录草稿</span>
       <UiButton
         v-if="readonly === false"
@@ -295,7 +289,10 @@ defineExpose({ loadCatalog })
             size="small"
             clearable
             :model-value="catalogCellInputValue(record, column.dataIndex)"
-            @update:model-value="(value: string | number | undefined) => updateCatalogLineValue(index, column.dataIndex, value)"
+            @update:model-value="
+              (value: string | number | undefined) =>
+                updateCatalogLineValue(index, column.dataIndex, value)
+            "
           />
         </template>
       </template>

@@ -27,6 +27,7 @@ import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const REGISTRY_TABS = PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS.map((item) => ({
   key: item.value,
@@ -53,21 +54,30 @@ const {
   assertArchiveWritable,
   reloadLifecycleState,
 } = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, search, handlePageChange }
-  = useQueryTable(
-    (params) =>
-      portfolioKeyTeacherApi.page({
-        ...params,
-        registryType: activeType.value,
-      }),
-    {
-      onLoaded: (list) => {
-        void hydrateTeacherLabels(list.map((row) => row.teacherUserId ?? ''))
-      },
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
+const {
+  loading,
+  rows,
+  pageNum,
+  pageSize,
+  pageTotal,
+  loadError,
+  loadPage,
+  search,
+  handlePageChange,
+} = useQueryTable(
+  (params) =>
+    portfolioKeyTeacherApi.page({
+      ...params,
+      registryType: activeType.value,
+    }),
+  {
+    onLoaded: (list) => {
+      void hydrateTeacherLabels(list.map((row) => row.teacherUserId ?? ''))
     },
-  )
+  },
+)
 
 const columns: ColumnsType = [
   { title: '教师', dataIndex: 'teacherUserId', key: 'teacherUserId', width: 160 },
@@ -81,7 +91,9 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 80 },
 ]
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -113,7 +125,7 @@ async function saveRegistry() {
       appointYear: form.appointYear.trim() || undefined,
       dutyScope: form.dutyScope.trim() || undefined,
     })
-    message.success('已登记')
+    void message.success('已登记')
     form.teacherUserId = ''
     form.specialtyName = ''
     form.majorGroupName = ''
@@ -141,7 +153,7 @@ async function revokeRegistry(id: string, teacherUserId?: string) {
   revokingId.value = id
   try {
     await portfolioKeyTeacherApi.revoke({ id })
-    message.success('已作废')
+    void message.success('已作废')
     await loadPage()
   } catch (error) {
     showUserError(error, '作废重点教师登记失败')
@@ -158,7 +170,7 @@ async function exportRoster() {
   try {
     const result = await portfolioKeyTeacherApi.exportRoster({ registryType: activeType.value })
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条`)
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出重点教师名册失败')
   } finally {
@@ -212,22 +224,33 @@ function switchType(key: string | number) {
           :options="teacherOptions"
           @search="searchTeachers"
         />
+        <UiInput size="sm" v-model="form.specialtyName" placeholder="专业" style="width: 140px" />
         <UiInput
-          size="sm" v-model="form.specialtyName" placeholder="专业" style="width: 140px"
+          size="sm"
+          v-model="form.majorGroupName"
+          placeholder="专业群"
+          style="width: 140px"
         />
-        <UiInput
-          size="sm" v-model="form.majorGroupName" placeholder="专业群" style="width: 140px"
-        />
-        <UiInput
-          size="sm" v-model="form.appointYear" placeholder="聘任年份" style="width: 100px"
-        />
-        <UiInput
-          size="sm" v-model="form.dutyScope" placeholder="职责范围" style="width: 180px"
-        />
-        <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving || !!revokingId || archiveWriteForbidden" @click="saveRegistry"> 登记 </UiButton>
-        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster"> 导出台账 </UiButton>
+        <UiInput size="sm" v-model="form.appointYear" placeholder="聘任年份" style="width: 100px" />
+        <UiInput size="sm" v-model="form.dutyScope" placeholder="职责范围" style="width: 180px" />
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="saving"
+          :disabled="saving || !!revokingId || archiveWriteForbidden"
+          @click="saveRegistry"
+        >
+          登记
+        </UiButton>
+        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster">
+          导出台账
+        </UiButton>
       </div>
-      <UiEmpty size="sm" v-if="!loadError && !loading && rows.length === 0" description="当前筛选无骨干教师记录" />
+      <UiEmpty
+        size="sm"
+        v-if="!loadError && !loading && rows.length === 0"
+        description="当前筛选无骨干教师记录"
+      />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -252,22 +275,15 @@ function switchType(key: string | number) {
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
-            
+
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'identityLayers'">
-            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-              <UiTag
-                v-for="(layer, idx) in record.ownerIdentityLayers"
-                :key="`${record.id}-${layer.identityType}-${idx}`"
-                size="sm"
-                :tone="layer.externalIdentity ? 'orange' : 'blue'"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-            </div>
-            <span v-else>—</span>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+            />
           </template>
           <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
             <span>{{

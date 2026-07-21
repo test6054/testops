@@ -9,11 +9,11 @@ import type {
   ScaleConversionRuleSignalSummaryVO,
   ScaleConversionRuleVO,
 } from '@/apis/quality/scale-conversion-rule'
+import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { scaleConversionRuleApi } from '@/apis/quality/scale-conversion-rule'
 import { ALL_SCALE_TYPE_CODES, ScaleTypeCode, ScaleTypeDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -50,7 +50,7 @@ const query = reactive<ScaleConversionRuleQueryRequest>({
   enabled: undefined,
 })
 
-const scaleTypeOptions: { value: ScaleTypeCode, label: string }[] = ALL_SCALE_TYPE_CODES.map(
+const scaleTypeOptions: { value: ScaleTypeCode; label: string }[] = ALL_SCALE_TYPE_CODES.map(
   (value) => ({
     value,
     label: strictEnumLabel(ScaleTypeDescription, value, '量表类型'),
@@ -194,7 +194,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -237,7 +237,7 @@ function openCreate() {
 function openEdit(record: ScaleConversionRuleVO) {
   editorMode.value = 'edit'
   if (!Array.isArray(record.items) || !record.items.length) {
-    message.error('换算规则数据异常，请返回后重新打开本页')
+    void message.error('换算规则数据异常，请返回后重新打开本页')
     return
   }
   Object.assign(editor, {
@@ -255,7 +255,7 @@ function openEdit(record: ScaleConversionRuleVO) {
 function handleScaleTypeChange(value: SelectValue) {
   const selected = scaleTypeOptions.find((item) => item.value === value)
   if (!selected) {
-    message.error('量表类型选择无效，请重新选择')
+    void message.error('量表类型选择无效，请重新选择')
     return
   }
   const scaleType = selected.value
@@ -264,7 +264,7 @@ function handleScaleTypeChange(value: SelectValue) {
     editor.items = defaultItemsByScaleType(scaleType)
     return
   }
-  message.warning('编辑已有规则时变更量表类型将重置换算项，请确认后重新保存')
+  void message.warning('编辑已有规则时变更量表类型将重置换算项，请确认后重新保存')
   editor.items = defaultItemsByScaleType(scaleType)
 }
 
@@ -274,7 +274,7 @@ function addItem() {
 
 function removeItem(index: number) {
   if (editor.items.length <= 1) {
-    message.error('量表换算规则至少保留一条换算项')
+    void message.error('量表换算规则至少保留一条换算项')
     return
   }
   editor.items.splice(index, 1)
@@ -304,11 +304,11 @@ function scaleTypeLabel(value: ScaleTypeCode): string {
 
 function validateEditor(): ScaleConversionRuleItemSaveRequest[] | null {
   if (!editor.ruleCode.trim() || !editor.ruleName.trim()) {
-    message.error('请填写编码与名称')
+    void message.error('请填写编码与名称')
     return null
   }
   if (!editor.items.length) {
-    message.error('请至少新增一条换算条目')
+    void message.error('请至少新增一条换算条目')
     return null
   }
   const normalizedSourceValues = new Set<string>()
@@ -316,19 +316,19 @@ function validateEditor(): ScaleConversionRuleItemSaveRequest[] | null {
   for (const [index, item] of editor.items.entries()) {
     const sourceValue = item.sourceValue.trim()
     if (!sourceValue) {
-      message.error(`第 ${index + 1} 条原始值不能为空`)
+      void message.error(`第 ${index + 1} 条原始值不能为空`)
       return null
     }
     if (item.normalizedScore === null || item.normalizedScore === undefined) {
-      message.error(`第 ${index + 1} 条换算分值不能为空`)
+      void message.error(`第 ${index + 1} 条换算分值不能为空`)
       return null
     }
     if (Number.isNaN(Number(item.normalizedScore))) {
-      message.error(`第 ${index + 1} 条换算分值不能为空`)
+      void message.error(`第 ${index + 1} 条换算分值不能为空`)
       return null
     }
     if (normalizedSourceValues.has(sourceValue)) {
-      message.error(`原始值重复：${sourceValue}`)
+      void message.error(`原始值重复：${sourceValue}`)
       return null
     }
     normalizedSourceValues.add(sourceValue)
@@ -359,7 +359,7 @@ async function submitEditor() {
     }
     if (editorMode.value === 'create') await scaleConversionRuleApi.create(request)
     else await scaleConversionRuleApi.update(request)
-    message.success('已保存')
+    void message.success('已保存')
     editorVisible.value = false
     await loadList()
   } finally {
@@ -391,7 +391,7 @@ async function handleDelete(record: ScaleConversionRuleVO) {
     type: 'error',
     onOk: async () => {
       await scaleConversionRuleApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadList()
     },
   })
@@ -506,9 +506,7 @@ onActivated(() => {
         <UiRow :gutter="12">
           <UiCol :span="8">
             <UiFormItem label="编码" required>
-              <UiInput
-                size="sm" v-model="editor.ruleCode"
-              />
+              <UiInput size="sm" v-model="editor.ruleCode" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
@@ -528,9 +526,7 @@ onActivated(() => {
           </UiCol>
         </UiRow>
         <UiFormItem label="名称" required>
-          <UiInput
-            size="sm" v-model="editor.ruleName"
-          />
+          <UiInput size="sm" v-model="editor.ruleName" />
         </UiFormItem>
         <UiFormItem label="换算条目" required>
           <div class="scr__items-header">
@@ -543,9 +539,7 @@ onActivated(() => {
                 {{ index + 1 }}
               </div>
               <div class="scr__item-cell scr__item-cell--value">
-                <UiInput
-                  size="sm" v-model="item.sourceValue" placeholder="原始值"
-                />
+                <UiInput size="sm" v-model="item.sourceValue" placeholder="原始值" />
               </div>
               <div class="scr__item-cell scr__item-cell--score">
                 <UiInputNumber

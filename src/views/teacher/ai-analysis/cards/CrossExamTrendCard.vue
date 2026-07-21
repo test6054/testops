@@ -12,7 +12,11 @@
       />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+        v-if="canManageReviewerWrites === true"
+        variant="primary"
+        size="sm"
+        :loading="generating"
+        @click="handleGenerate"
       >
         生成分析
       </UiButton>
@@ -103,6 +107,12 @@
 
 <script lang="ts" setup>
 import type { CrossExamTrendAnalysisResponse } from '@/apis/mark/cross-exam-analysis'
+import {
+  generateClassTrend,
+  generateCourseTrend,
+  listCommonClassScopes,
+  listTrends,
+} from '@/apis/mark/cross-exam-analysis'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
@@ -112,12 +122,6 @@ import {
   AnalysisScopeTypeCode,
   AnalysisScopeTypeDescription,
 } from '@/apis/mark/analysis-scope-type'
-import {
-  generateClassTrend,
-  generateCourseTrend,
-  listCommonClassScopes,
-  listTrends,
-} from '@/apis/mark/cross-exam-analysis'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
 import AiAnalysisMetaCollapse from '@/components/mark/analysis/AiAnalysisMetaCollapse.vue'
@@ -203,7 +207,7 @@ const historyRows = computed(() =>
 )
 
 const selectedExams = ref<ExamSummaryResponse[]>([])
-const classOptions = ref<{ label: string, value: string }[]>([])
+const classOptions = ref<{ label: string; value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -272,9 +276,7 @@ const examSelectAutoSelectLargestCluster = computed(
   () => scopeMode.value === AnalysisScopeTypeCode.COURSE || Boolean(examSelectScopeClassId.value),
 )
 
-const examSelectReady = computed(
-  () => Boolean(form.academicYear?.trim() && form.semester),
-)
+const examSelectReady = computed(() => Boolean(form.academicYear?.trim() && form.semester))
 
 const examSelectPlaceholder = computed(() => {
   if (scopeMode.value === AnalysisScopeTypeCode.CLASS && !examSelectScopeClassId.value) {
@@ -285,9 +287,9 @@ const examSelectPlaceholder = computed(() => {
 
 const showCommonClassField = computed(
   () =>
-    scopeMode.value === AnalysisScopeTypeCode.CLASS
-    && !props.scopeOrgClassId?.trim()
-    && !props.drillClassId?.trim(),
+    scopeMode.value === AnalysisScopeTypeCode.CLASS &&
+    !props.scopeOrgClassId?.trim() &&
+    !props.drillClassId?.trim(),
 )
 
 const trendFilterFields = computed<FilterField[]>(() => {
@@ -381,7 +383,7 @@ function applyDrillClassSelection(): void {
   }
 }
 
-function mapClassRefsToOptions(classRefs: Array<{ classId: string, className: string }>) {
+function mapClassRefsToOptions(classRefs: Array<{ classId: string; className: string }>) {
   return classRefs.map((classRef) => ({
     value: classRef.classId,
     label: classRef.className,
@@ -485,7 +487,7 @@ async function reload(): Promise<void> {
     return
   }
   if (scopeMode.value === AnalysisScopeTypeCode.CLASS && !effectiveClassId.value) {
-    message.warning('班级维度需要选择班级')
+    void message.warning('班级维度需要选择班级')
     return
   }
   loading.value = true
@@ -498,14 +500,13 @@ async function reload(): Promise<void> {
         : {}),
     })
     const count = applyLoadedList(list)
-    if (count === 0) message.info('暂无历史记录')
+    if (count === 0) void message.info('暂无历史记录')
   } catch {
     /* 拦截器已统一 Message 提示 */
   } finally {
     loading.value = false
   }
 }
-
 
 /** MVR-286：默认拒绝假可写；所选考试均须 canManageReviewerWrites */
 const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
@@ -533,7 +534,7 @@ async function handleGenerate(): Promise<void> {
     return
   }
   if (examIds.length < 2) {
-    message.warning('至少需要选择 2 场考试')
+    void message.warning('至少需要选择 2 场考试')
     return
   }
   const academicYear = form.academicYear
@@ -544,13 +545,13 @@ async function handleGenerate(): Promise<void> {
   }
   const classId = effectiveClassId.value
   if (scopeMode.value === AnalysisScopeTypeCode.CLASS && !classId) {
-    message.warning('班级维度需要选择班级')
+    void message.warning('班级维度需要选择班级')
     return
   }
   generating.value = true
   try {
-    const generated
-      = scopeMode.value === AnalysisScopeTypeCode.COURSE
+    const generated =
+      scopeMode.value === AnalysisScopeTypeCode.COURSE
         ? await generateCourseTrend({
             courseId,
             academicYear,
@@ -565,7 +566,7 @@ async function handleGenerate(): Promise<void> {
             examIds,
           })
     adoptGenerated(generated)
-    message.success('已生成趋势分析')
+    void message.success('已生成趋势分析')
   } catch {
     /* 拦截器已统一 Message 提示 */
   } finally {

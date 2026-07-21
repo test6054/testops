@@ -1,22 +1,22 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanStatusCode } from '@/apis/portfolio/enums'
-import type {
-  PortfolioDeptOneTableSummaryVO,
-  PortfolioDeptOneTableTeacherRowVO,
-  PortfolioDeptTeacherSegmentItemVO,
-} from '@/apis/portfolio/teacher'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   PORTFOLIO_DEVELOPMENT_PLAN_STATUS_TONE,
   PortfolioCompletenessLevelCode,
   PortfolioCompletenessLevelDescription,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
+import type {
+  PortfolioDeptOneTableSummaryVO,
+  PortfolioDeptOneTableTeacherRowVO,
+  PortfolioDeptTeacherSegmentItemVO,
+} from '@/apis/portfolio/teacher'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import MarkChart from '@/components/chart/MarkChart.vue'
 import MarkChartCard from '@/components/chart/MarkChartCard.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -38,6 +38,7 @@ import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { loadTree, departmentOptions: loadDepartmentOptions } = usePortfolioOrgTree()
 const route = useRoute()
@@ -317,14 +318,14 @@ async function exportDeptOneTable() {
       completenessLevel,
     })
     if (
-      filter.departmentId !== departmentId
-      || (filter.planYear.trim() || undefined) !== planYear
-      || (completenessLevelFilter.value || undefined) !== completenessLevel
+      filter.departmentId !== departmentId ||
+      (filter.planYear.trim() || undefined) !== planYear ||
+      (completenessLevelFilter.value || undefined) !== completenessLevel
     ) {
       return
     }
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 行`)
+    void message.success(`已导出 ${result.rowCount} 行`)
   } catch (error) {
     showUserError(error, '导出部门一张表失败')
   } finally {
@@ -336,7 +337,7 @@ function structureCount(key: (typeof titleStructureRows)[number]['key']) {
   return summary.value?.[key] ?? 0
 }
 
-function handleTeacherPageChange(page: { current: number, pageSize: number }) {
+function handleTeacherPageChange(page: { current: number; pageSize: number }) {
   teacherQuery.pageNum = page.current
   teacherQuery.pageSize = page.pageSize
   void loadTeachers()
@@ -402,8 +403,8 @@ onMounted(async () => {
   await loadTree()
   const queryDepartmentId = readRouteStringParam(route.query.departmentId)
   if (
-    queryDepartmentId
-    && departmentOptions.value.some((option) => option.value === queryDepartmentId)
+    queryDepartmentId &&
+    departmentOptions.value.some((option) => option.value === queryDepartmentId)
   ) {
     filter.departmentId = queryDepartmentId
   }
@@ -462,7 +463,13 @@ watch(
         subtitle="院系师资结构 · 教师明细 · 职称分布"
       >
         <template #actions>
-          <UiButton size="sm" variant="primary" :loading="exporting" :disabled="!filter.departmentId" @click="exportDeptOneTable">
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="exporting"
+            :disabled="!filter.departmentId"
+            @click="exportDeptOneTable"
+          >
             导出部门一张表
           </UiButton>
         </template>
@@ -663,17 +670,10 @@ watch(
                   }}
                 </template>
                 <template v-else-if="column.key === 'identityLayers'">
-                  <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-                    <UiTag
-                      v-for="(layer, i) in record.ownerIdentityLayers"
-                      :key="`${record.teacherUserId}-${layer.identityType}-${i}`"
-                      size="sm"
-                      :tone="layer.externalIdentity ? 'orange' : 'blue'"
-                    >
-                      {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-                    </UiTag>
-                  </div>
-                  <span v-else>—</span>
+                  <PortfolioOwnerIdentityLayersCell
+                    :layers="record.ownerIdentityLayers"
+                    :note="record.ownerMultiIdentityNote"
+                  />
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions

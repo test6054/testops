@@ -120,10 +120,6 @@ import type {
   RejudgePlanStatusCode,
   RejudgeTriggerTypeCode,
 } from '@/apis/mark/question-analysis'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   approveRejudgePlan,
   executeRejudgePlan,
@@ -133,6 +129,10 @@ import {
   RejudgePlanStatusDescription,
   RejudgeTriggerTypeDescription,
 } from '@/apis/mark/question-analysis'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -289,7 +289,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -297,7 +297,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 
 async function handleApprove(planId: string): Promise<void> {
   if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员或主考可审批重判计划')
+    void message.warning('仅本场阅卷组织成员或主考可审批重判计划')
     return
   }
   if (operatingId.value) return
@@ -305,7 +305,7 @@ async function handleApprove(planId: string): Promise<void> {
   operatingAction.value = 'approve'
   try {
     await approveRejudgePlan({ planId, approved: true })
-    message.success('已审批')
+    void message.success('已审批')
     await reload()
     emit('changed')
   } catch (e) {
@@ -328,7 +328,7 @@ function openRejectModal(planId: string): void {
 
 async function handleReject(): Promise<void> {
   if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员或主考可驳回重判计划')
+    void message.warning('仅本场阅卷组织成员或主考可驳回重判计划')
     return
   }
   if (operatingId.value) return
@@ -341,7 +341,7 @@ async function handleReject(): Promise<void> {
   operatingAction.value = 'reject'
   try {
     await approveRejudgePlan({ planId: rejectPlanId.value, approved: false, reason })
-    message.success('已驳回')
+    void message.success('已驳回')
     rejectModalOpen.value = false
     await reload()
     emit('changed')
@@ -357,7 +357,7 @@ async function handleReject(): Promise<void> {
 function openExecuteModal(planId: string): void {
   // MVR-386：打开执行弹窗与 canManageReviewerWrites / BE execute 二次拦截（对齐 MVR-380 BatchCorrection）
   if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员或主考可执行重判计划')
+    void message.warning('仅本场阅卷组织成员或主考可执行重判计划')
     return
   }
   const row = rows.value.find((item) => item.id === planId)
@@ -371,7 +371,7 @@ function openExecuteModal(planId: string): void {
 
 async function handleExecute(): Promise<void> {
   if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员或主考可执行重判计划')
+    void message.warning('仅本场阅卷组织成员或主考可执行重判计划')
     return
   }
   if (operatingId.value) return
@@ -386,7 +386,7 @@ async function handleExecute(): Promise<void> {
   operatingAction.value = 'execute'
   try {
     await executeRejudgePlan({ planId, executeReason: reason })
-    message.success('重判执行完成')
+    void message.success('重判执行完成')
     executeModalOpen.value = false
     await reload()
     emit('changed')
@@ -437,9 +437,9 @@ function isRejudgePlanSubmitterSelf(row: ExamRejudgePlan): boolean {
 
 function canDecideRejudgePlan(row: ExamRejudgePlan): boolean {
   return (
-    canManageReviewerWrites.value === true
-    && row.planStatus === 'PENDING_APPROVAL'
-    && !isRejudgePlanSubmitterSelf(row)
+    canManageReviewerWrites.value === true &&
+    row.planStatus === 'PENDING_APPROVAL' &&
+    !isRejudgePlanSubmitterSelf(row)
   )
 }
 

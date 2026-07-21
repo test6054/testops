@@ -4,9 +4,9 @@ import type {
   PortfolioComplianceMetricVO,
   PortfolioComplianceThresholdVO,
 } from '@/apis/portfolio/compliance'
+import { portfolioComplianceApi } from '@/apis/portfolio/compliance'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioComplianceApi } from '@/apis/portfolio/compliance'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
@@ -95,8 +95,8 @@ const metricColumns: ColumnsType = [
 
 const needsDenominator = computed(
   () =>
-    form.metricCode === PortfolioComplianceAlertTypeCode.C002
-    || form.metricCode === PortfolioComplianceAlertTypeCode.C003,
+    form.metricCode === PortfolioComplianceAlertTypeCode.C002 ||
+    form.metricCode === PortfolioComplianceAlertTypeCode.C003,
 )
 
 function metricLabel(code: string) {
@@ -237,12 +237,12 @@ async function saveRow() {
   if (writing.value) {
     return
   }
-  const ordered
-    = form.compareDirection === PortfolioComplianceCompareDirectionCode.LOWER_IS_WORSE
+  const ordered =
+    form.compareDirection === PortfolioComplianceCompareDirectionCode.LOWER_IS_WORSE
       ? form.targetValue > form.yellowThreshold && form.yellowThreshold > form.redThreshold
       : form.targetValue < form.yellowThreshold && form.yellowThreshold < form.redThreshold
   if (!ordered) {
-    message.error('目标值、黄线和红线顺序与比较方向不一致')
+    void message.error('目标值、黄线和红线顺序与比较方向不一致')
     return
   }
   saving.value = true
@@ -260,7 +260,7 @@ async function saveRow() {
       counselorRatioStandard: form.counselorRatioStandard,
       enabled: form.enabled,
     })
-    message.success('阈值已保存')
+    void message.success('阈值已保存')
     editorOpen.value = false
     await loadList()
   } catch (error) {
@@ -286,7 +286,7 @@ async function deleteRow(row: PortfolioComplianceThresholdVO) {
   deletingId.value = row.id
   try {
     await portfolioComplianceApi.deleteThreshold({ id: row.id })
-    message.success('阈值已删除')
+    void message.success('阈值已删除')
     await loadList()
   } catch (error) {
     showUserError(error, '删除结构合规阈值失败')
@@ -304,7 +304,7 @@ async function recompute() {
     metricRows.value = await portfolioComplianceApi.recompute({
       scopeType: PortfolioComplianceScopeTypeCode.SCHOOL,
     })
-    message.success('已重算全校结构合规指标')
+    void message.success('已重算全校结构合规指标')
   } catch (error) {
     showUserError(error, '重算结构合规失败')
   } finally {
@@ -322,10 +322,18 @@ onMounted(() => {
     <template #context>
       <ContextBar layout="workbench" show-title title="结构合规阈值" subtitle="配置 C001–C006">
         <template #actions>
-          <UiButton size="sm" variant="soft" :loading="recomputing" :disabled="writing" @click="recompute">
+          <UiButton
+            size="sm"
+            variant="soft"
+            :loading="recomputing"
+            :disabled="writing"
+            @click="recompute"
+          >
             重算全校
           </UiButton>
-          <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate"> 新建阈值 </UiButton>
+          <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate">
+            新建阈值
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -397,9 +405,7 @@ onMounted(() => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'metricCode'">
-              {{
-                metricLabel(record.metricCode)
-              }}
+              {{ metricLabel(record.metricCode) }}
             </template>
             <template v-else-if="column.key === 'fraction'">
               {{ record.numeratorValue ?? '—' }} / {{ record.denominatorValue ?? '—' }}
@@ -417,9 +423,7 @@ onMounted(() => {
             </template>
             <template v-else-if="column.key === 'alertLevel'">
               <UiTag :tone="alertLevelTone(record.alertLevel)">
-                {{
-                  alertLevelLabel(record.alertLevel)
-                }}
+                {{ alertLevelLabel(record.alertLevel) }}
               </UiTag>
             </template>
           </template>

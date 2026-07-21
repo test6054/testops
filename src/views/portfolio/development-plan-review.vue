@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentPlanVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -11,7 +12,6 @@ import {
   PortfolioDevelopmentPlanStatusCode,
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -190,7 +190,7 @@ function handleSearch() {
   void loadPage()
 }
 
-function handlePageChange(event: { current: number, pageSize: number }) {
+function handlePageChange(event: { current: number; pageSize: number }) {
   pageNum.value = event.current
   pageSize.value = event.pageSize
   resetReviewContext()
@@ -235,13 +235,13 @@ async function confirmReview() {
         id: reviewTargetId.value,
         auditOpinion: auditOpinion.value.trim() || undefined,
       })
-      message.success('已通过')
+      void message.success('已通过')
     } else {
       await portfolioDevelopmentPlanApi.departmentReturn({
         id: reviewTargetId.value,
         auditOpinion: auditOpinion.value.trim() || undefined,
       })
-      message.success('已退回')
+      void message.success('已退回')
     }
     reviewModalOpen.value = false
     await loadPage()
@@ -264,7 +264,7 @@ async function exportPlans() {
       planYear: filterForm.planYear,
     })
     await downloadPortfolioExcelExport(result)
-    message.success('规划已导出')
+    void message.success('规划已导出')
   } catch (error) {
     showUserError(error, '导出发展规划失败')
   } finally {
@@ -299,7 +299,15 @@ watch(
     <template #context>
       <ContextBar show-title layout="workbench" title="年度规划审核">
         <template v-if="canPickTeachers" #actions>
-          <UiButton size="sm" variant="primary" :loading="exporting" :disabled="exporting" @click="exportPlans"> 导出表格文件 </UiButton>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="exporting"
+            :disabled="exporting"
+            @click="exportPlans"
+          >
+            导出表格文件
+          </UiButton>
         </template>
       </ContextBar>
     </template>

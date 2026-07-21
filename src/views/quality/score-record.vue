@@ -9,8 +9,11 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * - /api/quality/score-batches: page（按 qualityCourseId 拉批次列表）
  */
 import type { AssessmentItemVO } from '@/apis/quality/assessment-item'
+import { assessmentItemApi } from '@/apis/quality/assessment-item'
 import type { RubricItemVO } from '@/apis/quality/rubric-item'
+import { rubricItemApi } from '@/apis/quality/rubric-item'
 import type { ScoreBatchVO } from '@/apis/quality/score-batch'
+import { scoreBatchApi } from '@/apis/quality/score-batch'
 import type {
   ScoreRecordBatchSummaryVO,
   ScoreRecordRubricScoreRequest,
@@ -18,6 +21,7 @@ import type {
   ScoreRecordUpdateRequest,
   ScoreRecordVO,
 } from '@/apis/quality/score-record'
+import { scoreRecordApi } from '@/apis/quality/score-record'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserDto } from '@/types/api-types.d'
 import type { SignalMetric } from '@/types/workbench'
@@ -25,11 +29,8 @@ import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExportBusinessType } from '@/apis/edu/export'
-import { assessmentItemApi } from '@/apis/quality/assessment-item'
-import { rubricItemApi } from '@/apis/quality/rubric-item'
-import { scoreBatchApi } from '@/apis/quality/score-batch'
-import { scoreRecordApi } from '@/apis/quality/score-record'
-import { ConfirmationStatusCode,
+import {
+  ConfirmationStatusCode,
   SCORE_BATCH_STATUS_COLOR,
   ScoreBatchStatusCode,
   ScoreBatchStatusDescription,
@@ -71,7 +72,11 @@ import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useQualityStore } from '@/stores/modules/quality'
-import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserProcessFailureMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { formatScore } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -128,16 +133,16 @@ const batchPageNum = ref(1)
 const batchPageSize = ref(DEFAULT_LIST_PAGE_SIZE)
 const batchTotal = ref(0)
 const selectedBatch = ref<ScoreBatchVO | null>(null)
-const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel }
-  = useQualityTableExport()
+const { exporting: scoreRecordExporting, exportExcel: exportScoreRecordExcel } =
+  useQualityTableExport()
 
 const isBatchRecordEditable = computed(() => {
   if (!selectedBatch.value) return false
   const status = selectedBatch.value.status
   return (
-    status !== ScoreBatchStatusCode.CONFIRMED
-    && status !== ScoreBatchStatusCode.PARSING
-    && status !== ScoreBatchStatusCode.CANCELLED
+    status !== ScoreBatchStatusCode.CONFIRMED &&
+    status !== ScoreBatchStatusCode.PARSING &&
+    status !== ScoreBatchStatusCode.CANCELLED
   )
 })
 
@@ -202,7 +207,7 @@ async function loadBatches() {
   batchStatusPolling.syncPolling()
 }
 
-function handleBatchPageChange(page: { current: number, pageSize: number }): void {
+function handleBatchPageChange(page: { current: number; pageSize: number }): void {
   batchPageNum.value = page.current
   batchPageSize.value = page.pageSize
   void loadBatches()
@@ -212,8 +217,8 @@ const batchStatusPolling = usePolling(() => refreshBatchesQuietly(), {
   getOptions: () => ({
     intervalMs: 3000,
     when:
-      batches.value.some((batch) => batch.status === ScoreBatchStatusCode.PARSING)
-      || selectedBatch.value?.status === ScoreBatchStatusCode.PARSING,
+      batches.value.some((batch) => batch.status === ScoreBatchStatusCode.PARSING) ||
+      selectedBatch.value?.status === ScoreBatchStatusCode.PARSING,
   }),
   pauseWhenDocumentHidden: true,
 })
@@ -375,7 +380,7 @@ async function loadRecords() {
   }
 }
 
-function handleRecordPageChange(page: { current: number, pageSize: number }): void {
+function handleRecordPageChange(page: { current: number; pageSize: number }): void {
   recordPageNum.value = page.current
   recordPageSize.value = page.pageSize
   void loadRecords()
@@ -551,7 +556,7 @@ function handleEditorStudentChange(value: string | null, option?: UserDto): void
 async function openCreate() {
   if (!selectedBatch.value) return
   if (!isBatchRecordEditable.value) {
-    message.error('批次已确认，不允许新增成绩明细')
+    void message.error('批次已确认，不允许新增成绩明细')
     return
   }
   editorMode.value = 'create'
@@ -587,7 +592,7 @@ async function openCreate() {
 
 async function openEdit(record: ScoreRecordVO) {
   if (!isBatchRecordEditable.value) {
-    message.error('批次已确认，不允许修改成绩明细')
+    void message.error('批次已确认，不允许修改成绩明细')
     return
   }
   editorMode.value = 'edit'
@@ -616,12 +621,12 @@ async function openEdit(record: ScoreRecordVO) {
 
 async function submitEditor() {
   if (!isBatchRecordEditable.value) {
-    message.error('批次已确认，不允许修改成绩明细')
+    void message.error('批次已确认，不允许修改成绩明细')
     return
   }
   const v = editor.value
   if (!v.assessmentItemId || v.score == null || v.fullScore == null) {
-    message.error('请填写考核环节、得分、满分')
+    void message.error('请填写考核环节、得分、满分')
     return
   }
   editorSubmitting.value = true
@@ -645,7 +650,7 @@ async function submitEditor() {
       await scoreRecordApi.create(request)
     } else {
       if (!v.id) {
-        message.error('成绩明细编号缺失，无法更新')
+        void message.error('成绩明细编号缺失，无法更新')
         return
       }
       const request: ScoreRecordUpdateRequest = {
@@ -666,7 +671,7 @@ async function submitEditor() {
       }
       await scoreRecordApi.update(request)
     }
-    message.success('已保存')
+    void message.success('已保存')
     editorVisible.value = false
     await loadRecords()
     await refreshSelectedBatch()
@@ -695,7 +700,7 @@ function handleScoreRecordAction(key: string, record: ScoreRecordVO): void {
 
 async function handleDelete(record: ScoreRecordVO) {
   if (!isBatchRecordEditable.value) {
-    message.error('批次已确认，不允许删除成绩明细')
+    void message.error('批次已确认，不允许删除成绩明细')
     return
   }
   void confirmAsync({
@@ -704,7 +709,7 @@ async function handleDelete(record: ScoreRecordVO) {
     type: 'error',
     onOk: async () => {
       await scoreRecordApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadRecords()
       await refreshSelectedBatch()
     },
@@ -768,7 +773,7 @@ async function queryValidByItem() {
   await loadValidByItemPage()
 }
 
-function handleValidByItemPageChange(page: { current: number, pageSize: number }): void {
+function handleValidByItemPageChange(page: { current: number; pageSize: number }): void {
   validByItemPageNum.value = page.current
   validByItemPageSize.value = page.pageSize
   void loadValidByItemPage()
@@ -835,7 +840,6 @@ onMounted(async () => {
   await handleScopeReload()
 })
 
-
 const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   if (!qualityStore.currentTrainingPlanId) {
     return 'need-plan'
@@ -867,11 +871,7 @@ function handleCourseChange(courseId: string | null) {
       </QualityPageContextBar>
     </template>
 
-    <QualityPlanGateStrip
-      v-if="planGateMode"
-      :mode="planGateMode"
-      class="score-record__empty"
-    />
+    <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="score-record__empty" />
 
     <UiAlertStrip
       v-else-if="!qualityStore.currentQualityCourseId"
@@ -1076,10 +1076,12 @@ function handleCourseChange(courseId: string | null) {
             v-model="editor.assessmentItemId"
             size="sm"
             placeholder="选择考核环节"
-            :options="assessmentItems.map((a) => ({
-              value: a.id,
-              label: `${a.itemCode} · ${a.itemName}（满分 ${a.fullScore}）`,
-            }))"
+            :options="
+              assessmentItems.map((a) => ({
+                value: a.id,
+                label: `${a.itemCode} · ${a.itemName}（满分 ${a.fullScore}）`,
+              }))
+            "
             @change="handleEditorAssessmentChange"
           />
         </UiFormItem>
@@ -1117,16 +1119,12 @@ function handleCourseChange(courseId: string | null) {
         <UiRow :gutter="12">
           <UiCol :span="8">
             <UiFormItem label="得分" required>
-              <UiInputNumber
-                size="sm" v-model="editor.score" :min="0" style="width: 100%"
-              />
+              <UiInputNumber size="sm" v-model="editor.score" :min="0" style="width: 100%" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="满分" required>
-              <UiInputNumber
-                size="sm" v-model="editor.fullScore" :min="0" style="width: 100%"
-              />
+              <UiInputNumber size="sm" v-model="editor.fullScore" :min="0" style="width: 100%" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -1170,9 +1168,7 @@ function handleCourseChange(courseId: string | null) {
           </UiCol>
           <UiCol :span="16">
             <UiFormItem label="无效原因">
-              <UiInput
-                size="sm" v-model="editor.invalidReason" :disabled="editor.validFlag"
-              />
+              <UiInput size="sm" v-model="editor.invalidReason" :disabled="editor.validFlag" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -1193,9 +1189,10 @@ function handleCourseChange(courseId: string | null) {
           class="score-record__valid-select-wide"
           allow-search
           option-filter-prop="label"
-        
           size="sm"
-          :options="assessmentItems.map((a) => ({ value: a.id, label: `${a.itemCode} ${a.itemName}` }))"
+          :options="
+            assessmentItems.map((a) => ({ value: a.id, label: `${a.itemCode} ${a.itemName}` }))
+          "
         />
         <UiButton
           variant="primary"

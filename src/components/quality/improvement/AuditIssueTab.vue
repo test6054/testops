@@ -5,11 +5,6 @@ import type {
   AuditIssueSaveRequest,
   AuditIssueVO,
 } from '@/apis/quality/audit-issue'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
-import type { QualityScopeRequestToken } from '@/composables/useScopeRequestGuard'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref } from 'vue'
 import {
   AUDIT_ISSUE_SEVERITY_OPTIONS,
   AUDIT_ISSUE_SEVERITY_TONE,
@@ -20,6 +15,17 @@ import {
   AuditIssueSourceCode,
   AuditIssueSourceDescription,
 } from '@/apis/quality/audit-issue'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
+import type { QualityScopeRequestToken } from '@/composables/useScopeRequestGuard'
+import {
+  assertQualityScopeFresh,
+  beginQualityScopeRequest,
+  isQualityScopeStaleError,
+} from '@/composables/useScopeRequestGuard'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref } from 'vue'
 import { auditRectificationApi } from '@/apis/quality/audit-rectification'
 import {
   AUDIT_ISSUE_STATUS_COLOR,
@@ -50,13 +56,7 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import {
-  assertQualityScopeFresh,
-  beginQualityScopeRequest,
-  isQualityScopeStaleError,
-} from '@/composables/useScopeRequestGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { showUserError, toUserError } from '@/utils/error-handler'
@@ -280,7 +280,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
   }
 }
 
-function handleIssuePageChange(page: { current: number, pageSize: number }) {
+function handleIssuePageChange(page: { current: number; pageSize: number }) {
   issueQuery.pageNum = page.current
   issueQuery.pageSize = page.pageSize
   loadList()
@@ -320,7 +320,7 @@ function openIssueCreate() {
 
 function openIssueEdit(record: AuditIssueVO) {
   if (!canEditAuditIssue(record.status)) {
-    message.error('当前状态不允许编辑审核问题')
+    void message.error('当前状态不允许编辑审核问题')
     return
   }
   issueEditorMode.value = 'edit'
@@ -349,17 +349,17 @@ async function submitIssueEditor() {
   if (issueEditorMode.value === 'edit' && issueEditor.id) {
     const current = issueList.value.find((item) => item.id === issueEditor.id)
     if (current && !canEditAuditIssue(current.status)) {
-      message.error('当前状态不允许编辑审核问题')
+      void message.error('当前状态不允许编辑审核问题')
       return
     }
   }
   if (
-    !issueEditor.issueCode.trim()
-    || !issueEditor.issueTitle.trim()
-    || !issueEditor.issueSource
-    || !issueEditor.severity
+    !issueEditor.issueCode.trim() ||
+    !issueEditor.issueTitle.trim() ||
+    !issueEditor.issueSource ||
+    !issueEditor.severity
   ) {
-    message.error('请填写编码、标题、来源、严重程度')
+    void message.error('请填写编码、标题、来源、严重程度')
     return
   }
   issueEditorSubmitting.value = true
@@ -382,10 +382,10 @@ async function submitIssueEditor() {
     }
     if (issueEditorMode.value === 'create') {
       await auditIssueApi.create(request)
-      message.success('已登记')
+      void message.success('已登记')
     } else {
       await auditIssueApi.update(request)
-      message.success('已保存')
+      void message.success('已保存')
     }
     issueEditorVisible.value = false
     await loadList({ refreshSignals: true })
@@ -400,7 +400,7 @@ async function handleIssueDelete(record: AuditIssueVO) {
     type: 'error',
     onOk: async () => {
       await auditIssueApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadList({ refreshSignals: true })
     },
   })
@@ -416,7 +416,7 @@ function nextAuditIssueStatuses(status: AuditIssueStatusCode): AuditIssueStatusC
 
 async function changeIssueStatus(record: AuditIssueVO, target: AuditIssueStatusCode) {
   await auditIssueApi.transitStatus({ id: record.id, targetStatus: target })
-  message.success(`已切换到「${issueStatusLabel(target)}」`)
+  void message.success(`已切换到「${issueStatusLabel(target)}」`)
   await loadList({ refreshSignals: true })
 }
 
@@ -568,9 +568,7 @@ defineExpose({
       <UiRow :gutter="12">
         <UiCol :span="6">
           <UiFormItem label="编码" required>
-            <UiInput
-              size="sm" v-model="issueEditor.issueCode"
-            />
+            <UiInput size="sm" v-model="issueEditor.issueCode" />
           </UiFormItem>
         </UiCol>
         <UiCol :span="6">
@@ -593,16 +591,12 @@ defineExpose({
         </UiCol>
         <UiCol :span="6">
           <UiFormItem label="审核年度">
-            <UiInput
-              size="sm" v-model="issueEditor.auditYear"
-            />
+            <UiInput size="sm" v-model="issueEditor.auditYear" />
           </UiFormItem>
         </UiCol>
       </UiRow>
       <UiFormItem label="标题" required>
-        <UiInput
-          size="sm" v-model="issueEditor.issueTitle"
-        />
+        <UiInput size="sm" v-model="issueEditor.issueTitle" />
       </UiFormItem>
       <UiFormItem label="详细描述">
         <UiTextarea size="sm" v-model="issueEditor.issueDescription" :rows="4" />
@@ -610,9 +604,7 @@ defineExpose({
       <UiRow :gutter="12">
         <UiCol :span="8">
           <UiFormItem label="审核轮次">
-            <UiInput
-              size="sm" v-model="issueEditor.auditRound"
-            />
+            <UiInput size="sm" v-model="issueEditor.auditRound" />
           </UiFormItem>
         </UiCol>
         <UiCol :span="8">
@@ -626,9 +618,7 @@ defineExpose({
         </UiCol>
         <UiCol :span="8">
           <UiFormItem label="提出时间">
-            <UiInput
-              size="sm" v-model="issueEditor.raisedTime" placeholder="yyyy-MM-dd HH:mm:ss"
-            />
+            <UiInput size="sm" v-model="issueEditor.raisedTime" placeholder="yyyy-MM-dd HH:mm:ss" />
           </UiFormItem>
         </UiCol>
       </UiRow>

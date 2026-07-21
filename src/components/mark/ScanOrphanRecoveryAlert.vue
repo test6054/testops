@@ -42,9 +42,9 @@
 
 <script lang="ts" setup>
 import type { ExamScannerBatchRecoverOrphanFailureItem } from '@/apis/mark/exam-scan'
+import { recoverOrphanScanEvents } from '@/apis/mark/exam-scan'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { recoverOrphanScanEvents } from '@/apis/mark/exam-scan'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
@@ -52,15 +52,18 @@ import { showUserError } from '@/utils/error-handler'
 
 defineOptions({ name: 'ScanOrphanRecoveryAlert' })
 
-const props = withDefaults(defineProps<{
-  examId: string
-  orphanPendingEventCount: number
-  orphanPendingPageCount: number
-  /** MVR-326：仅认 BE canManageOwnerBatchActions===true */
-  canManageOwnerBatchActions?: boolean
-}>(), {
-  canManageOwnerBatchActions: false,
-})
+const props = withDefaults(
+  defineProps<{
+    examId: string
+    orphanPendingEventCount: number
+    orphanPendingPageCount: number
+    /** MVR-326：仅认 BE canManageOwnerBatchActions===true */
+    canManageOwnerBatchActions?: boolean
+  }>(),
+  {
+    canManageOwnerBatchActions: false,
+  },
+)
 
 const emit = defineEmits<{
   recovered: []
@@ -71,10 +74,11 @@ const failureItems = ref<ExamScannerBatchRecoverOrphanFailureItem[]>([])
 
 const visible = computed(() => props.orphanPendingEventCount > 0)
 
-const canRecover = computed(() =>
-  Boolean(props.examId)
-  && props.orphanPendingEventCount > 0
-  && props.canManageOwnerBatchActions === true,
+const canRecover = computed(
+  () =>
+    Boolean(props.examId) &&
+    props.orphanPendingEventCount > 0 &&
+    props.canManageOwnerBatchActions === true,
 )
 
 const description = computed(() => {
@@ -85,13 +89,16 @@ const description = computed(() => {
   return `${scope}，请联系考试主考老师执行补救。`
 })
 
-const failureSummary = computed(() =>
-  `${failureItems.value.length} 个设备分组未成功聚合，请检查扫描端连接或扫描时间后重试。`,
+const failureSummary = computed(
+  () => `${failureItems.value.length} 个设备分组未成功聚合，请检查扫描端连接或扫描时间后重试。`,
 )
 
-watch(() => props.examId, () => {
-  failureItems.value = []
-})
+watch(
+  () => props.examId,
+  () => {
+    failureItems.value = []
+  },
+)
 
 function failureItemKey(item: ExamScannerBatchRecoverOrphanFailureItem): string {
   return `${item.scannerDeviceId}-${item.scannerStationId ?? ''}`
@@ -101,9 +108,10 @@ function formatFailureItem(item: ExamScannerBatchRecoverOrphanFailureItem): stri
   const deviceLabel = item.scannerStationId
     ? `${item.scannerDeviceId} / ${item.scannerStationId}`
     : item.scannerDeviceId
-  const scopeText = item.eventCount != null
-    ? `（${item.eventCount} 条事件${item.pageCount != null ? `，${item.pageCount} 页` : ''}）`
-    : ''
+  const scopeText =
+    item.eventCount != null
+      ? `（${item.eventCount} 条事件${item.pageCount != null ? `，${item.pageCount} 页` : ''}）`
+      : ''
   return `${deviceLabel}${scopeText}：${item.failureMessage}`
 }
 
@@ -138,13 +146,13 @@ async function handleRecover(): Promise<void> {
     const failCount = response.failedGroups?.length ?? 0
     failureItems.value = response.failedGroups ?? []
     if (successCount > 0 && failCount > 0) {
-      message.warning(`已补救 ${successCount} 个设备分组，${failCount} 个分组失败`)
+      void message.warning(`已补救 ${successCount} 个设备分组，${failCount} 个分组失败`)
     } else if (successCount > 0) {
-      message.success(`已补救 ${successCount} 个扫描批次`)
+      void message.success(`已补救 ${successCount} 个扫描批次`)
     } else if (failCount > 0) {
-      message.error(`补救失败：${failCount} 个设备分组无法聚合`)
+      void message.error(`补救失败：${failCount} 个设备分组无法聚合`)
     } else {
-      message.info('未发现可补救的孤立扫描事件')
+      void message.info('未发现可补救的孤立扫描事件')
     }
     emit('recovered')
   } catch (error) {

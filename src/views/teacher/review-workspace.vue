@@ -1,7 +1,11 @@
 <template>
   <ReviewTaskHub v-if="!taskId" />
   <div v-else class="review-workspace grading-immersion-page grading-workspace-page">
-    <ExamSelectGateStrip v-if="!examId" class="review-workspace__empty" body="缺少考试上下文，请从考试列表进入复核工作台" />
+    <ExamSelectGateStrip
+      v-if="!examId"
+      class="review-workspace__empty"
+      body="缺少考试上下文，请从考试列表进入复核工作台"
+    />
 
     <UiSkeletonState
       v-else-if="loading && !detail"
@@ -88,7 +92,9 @@
                 当前第 {{ currentQueueIndex }} 份，剩余
                 {{ Math.max(0, queueTotal - currentQueueIndex) }} 份待复核
               </span>
-              <span class="review-workspace__keyboard-hint">J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span>
+              <span class="review-workspace__keyboard-hint"
+                >J/K 或 ←/→ 切换份数 · 0-9 快捷给分</span
+              >
             </div>
             <UiProgressBar
               :percent="queueProgressPercent"
@@ -150,7 +156,11 @@
 
           <GradingImmersionSection title="识别答案">
             <template #icon><FileTextOutlined /></template>
-            <UiEmpty size="sm" v-if="!detail?.recognizedAnswer" description="本题暂无文字识别答案" />
+            <UiEmpty
+              size="sm"
+              v-if="!detail?.recognizedAnswer"
+              description="本题暂无文字识别答案"
+            />
             <div v-else class="review-workspace__text-block">{{ detail.recognizedAnswer }}</div>
           </GradingImmersionSection>
 
@@ -431,24 +441,12 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
-import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
-import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
   AI_ABILITY_TONE,
   AI_EXECUTION_STATUS_TONE,
@@ -459,6 +457,7 @@ import {
   rejectQuestionGrade,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
+import type { ReviewTaskDetailResponse, ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
 import {
   claimReviewTask,
   getReviewTaskDetail,
@@ -469,7 +468,18 @@ import {
   ReviewTaskStatusDescription,
   ReviewTaskTypeCode,
 } from '@/apis/mark/exam-review-task'
+import type { ObjectiveComparePolicyCode } from '@/apis/mark/exam-standard-answer'
 import { ObjectiveComparePolicyDescription } from '@/apis/mark/exam-standard-answer'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CheckCircleOutlined from '@ant-design/icons-vue/CheckCircleOutlined'
+import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import FileImageOutlined from '@ant-design/icons-vue/FileImageOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
@@ -689,10 +699,10 @@ const pipelineCurrentIndex = ref(0)
  */
 async function loadReviewQueue(): Promise<void> {
   if (
-    !examId.value
-    || !detail.value?.layoutQuestionId
-    || !detail.value.reviewType
-    || !detail.value.gradeSource
+    !examId.value ||
+    !detail.value?.layoutQuestionId ||
+    !detail.value.reviewType ||
+    !detail.value.gradeSource
   ) {
     reviewQueue.value = []
     return
@@ -750,7 +760,7 @@ function handleQueueJump(): void {
   if (!jumpTarget.value || reviewQueue.value.length === 0) return
   const idx = jumpTarget.value
   if (idx < 1 || idx > reviewQueue.value.length) {
-    message.warning(`请输入 1～${reviewQueue.value.length} 之间的编号`)
+    void message.warning(`请输入 1～${reviewQueue.value.length} 之间的编号`)
     return
   }
   const targetTask = reviewQueue.value[idx - 1]
@@ -775,7 +785,7 @@ function navigateQueueRelative(offset: -1 | 1): void {
   }
   const targetIdx = currentIdx + offset
   if (targetIdx < 0 || targetIdx >= reviewQueue.value.length) {
-    message.info(offset < 0 ? '已是第一份' : '已是最后一份')
+    void message.info(offset < 0 ? '已是第一份' : '已是最后一份')
     return
   }
   const targetTask = reviewQueue.value[targetIdx]
@@ -847,8 +857,8 @@ const canRescoreByAi = computed<boolean>(() => {
   if (!examId.value) return false
   if (!detail.value) return false
   return (
-    detail.value.status === ReviewTaskStatusCode.PENDING
-    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+    detail.value.status === ReviewTaskStatusCode.PENDING ||
+    detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
   )
 })
 
@@ -862,9 +872,9 @@ async function loadTask(): Promise<void> {
   try {
     const loadedDetail = await loadReviewTaskDetail()
     if (
-      generation !== loadTaskGeneration
-      || expectedExamId !== examId.value
-      || expectedTaskId !== taskId.value
+      generation !== loadTaskGeneration ||
+      expectedExamId !== examId.value ||
+      expectedTaskId !== taskId.value
     ) {
       return
     }
@@ -919,8 +929,8 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     reviewTaskId: taskId.value,
   })
   if (
-    preview.status !== ReviewTaskStatusCode.PENDING
-    && preview.status !== ReviewTaskStatusCode.IN_PROGRESS
+    preview.status !== ReviewTaskStatusCode.PENDING &&
+    preview.status !== ReviewTaskStatusCode.IN_PROGRESS
   ) {
     return preview
   }
@@ -936,10 +946,10 @@ async function loadReviewTaskDetail(): Promise<ReviewTaskDetailResponse> {
     if (!isBusinessConflict(error)) {
       throw error
     }
-    const heldByOther
-      = preview.status === ReviewTaskStatusCode.IN_PROGRESS
-        && !!preview.assignedTeacherUserId
-        && preview.assignedTeacherUserId !== currentUserId.value
+    const heldByOther =
+      preview.status === ReviewTaskStatusCode.IN_PROGRESS &&
+      !!preview.assignedTeacherUserId &&
+      preview.assignedTeacherUserId !== currentUserId.value
     if (heldByOther && canManageOwnerReviewOverride.value) {
       ownerOverrideMode.value = true
       claimBlockedByOther.value = false
@@ -1030,7 +1040,7 @@ function openRescoreConfirm(): void {
 /** 实际发起调用，成功后由 loadTask 重拉全量详情以同步重写后的 AI 评分和诊断 */
 async function doRescoreByAi(): Promise<void> {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无阅卷写权限')
+    void message.warning('当前账号无阅卷写权限')
     return
   }
 
@@ -1047,9 +1057,9 @@ async function doRescoreByAi(): Promise<void> {
       referenceExperienceAudit: result.referenceExperienceAudit,
     })
     if (Boolean(result.scored) && result.aiScore != null) {
-      message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
+      void message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
     } else {
-      message.warning(executionDiagnosticText(result.diagnostic))
+      void message.warning(executionDiagnosticText(result.diagnostic))
     }
     await loadTask()
     if (executionsDrawerOpen.value) {
@@ -1115,7 +1125,7 @@ function adoptAiSuggestion(): void {
   if (aiScore == null) return
   gradeForm.teacherReviewScore = aiScore
   void gradeFormRef.value?.validateFields(['teacherReviewScore'])
-  message.success(
+  void message.success(
     isHardJudgeSource.value
       ? `已填入硬判建议分 ${aiScore}，确认后才计入最终成绩`
       : `已填入智能评分 ${aiScore}，可微调后提交`,
@@ -1135,7 +1145,7 @@ async function adoptAiSuggestionAndSubmit(): Promise<void> {
   }
   const ok = await submitGrade()
   if (!ok) return
-  message.success(
+  void message.success(
     isHardJudgeSource.value
       ? '已确认硬判分并提交，正在为你取下一份…'
       : '已采纳智能评分并提交，正在为你取下一份…',
@@ -1148,7 +1158,7 @@ function clearAiSuggestionToManual(): void {
   // MVR-416：与 canConfirm 二次闸，禁止只读/无写权态假可清空写分表单
   if (!canConfirm.value) return
   gradeForm.teacherReviewScore = undefined
-  message.info(
+  void message.info(
     isHardJudgeSource.value
       ? '已清空硬判建议分，请手工输入教师复核评分'
       : '已清空智能评分，请按题目原则手工输入教师复核评分',
@@ -1217,7 +1227,7 @@ function timelineColor(status: AiExecutionStatusCode): string {
 async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   // MVR-418：与 canConfirm / 按钮 disabled 同源二次闸（写权∧PENDING/IN_PROGRESS∧非他人领取）
   if (!canConfirm.value) {
-    message.warning(
+    void message.warning(
       canManageReviewerWrites.value
         ? '当前任务不可提交复核（状态不可写或已被他人领取）'
         : '当前账号无阅卷写权限',
@@ -1234,8 +1244,8 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
   }
   const fullScore = detail.value.fullScore
   const teacherReviewScore = gradeForm.teacherReviewScore
-  const ratio
-    = fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
+  const ratio =
+    fullScore && fullScore > 0 && typeof teacherReviewScore === 'number'
       ? `${Math.round((teacherReviewScore / fullScore) * 100)}%`
       : '-'
   // 取下一份模式下额外提示队列剩余信息，让教师清楚复核会继续
@@ -1259,7 +1269,7 @@ async function openSubmitConfirm(advanceToNext: boolean): Promise<void> {
 async function submitGrade(): Promise<boolean> {
   // MVR-418：与 canConfirm / BE ensureWritableReviewTask 同源二次闸
   if (!canConfirm.value) {
-    message.warning(
+    void message.warning(
       canManageReviewerWrites.value
         ? '当前任务不可提交复核（状态不可写或已被他人领取）'
         : '当前账号无阅卷写权限',
@@ -1293,24 +1303,24 @@ async function submitGrade(): Promise<boolean> {
     return true
   } catch (error) {
     if (isFinalScoreConfirmLockConflict(error)) {
-      message.warning('处理中')
+      void message.warning('处理中')
       return false
     }
     if (isScoreWriteBlockedByFinalScoreGate(error)) {
-      message.warning('最终成绩已确认/发布/更正，不能再改题分')
+      void message.warning('最终成绩已确认/发布/更正，不能再改题分')
       return false
     }
     if (
-      readBusinessResultCode(error) === ResultCode.PARAM_ERROR
-      && getUserErrorMessage(error, '').includes('主考代办')
+      readBusinessResultCode(error) === ResultCode.PARAM_ERROR &&
+      getUserErrorMessage(error, '').includes('主考代办')
     ) {
-      message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
+      void message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
       return false
     }
     if (isBusinessConflict(error) && getUserErrorMessage(error, '').includes('已被其他教师领取')) {
       claimBlockedByOther.value = !canManageOwnerReviewOverride.value
       ownerOverrideMode.value = canManageOwnerReviewOverride.value
-      message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
+      void message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
       return false
     }
     showUserError(error, '确认复核失败')
@@ -1323,7 +1333,7 @@ async function submitGrade(): Promise<boolean> {
 function openRejectConfirm(): void {
   // MVR-418：与 canReject 同源二次闸（可确认且非仲裁任务）
   if (!canReject.value) {
-    message.warning(
+    void message.warning(
       canManageReviewerWrites.value
         ? '当前任务不可驳回（状态不可写、已被他人领取或仲裁任务不可再驳回）'
         : '当前账号无阅卷写权限',
@@ -1344,7 +1354,7 @@ function openRejectConfirm(): void {
 async function handleReject(): Promise<void> {
   // MVR-418：与 canReject / openRejectConfirm 同源二次闸
   if (!canReject.value) {
-    message.warning(
+    void message.warning(
       canManageReviewerWrites.value
         ? '当前任务不可驳回（状态不可写、已被他人领取或仲裁任务不可再驳回）'
         : '当前账号无阅卷写权限',
@@ -1368,7 +1378,7 @@ async function handleReject(): Promise<void> {
       ownerOverrideReason,
     })
     ownerOverrideMode.value = false
-    message.success('已驳回，任务已进入仲裁队列')
+    void message.success('已驳回，任务已进入仲裁队列')
     try {
       await refreshSnapshot()
     } catch (error) {
@@ -1377,24 +1387,24 @@ async function handleReject(): Promise<void> {
     goBack()
   } catch (error) {
     if (isFinalScoreConfirmLockConflict(error)) {
-      message.warning('处理中')
+      void message.warning('处理中')
       return
     }
     if (isScoreWriteBlockedByFinalScoreGate(error)) {
-      message.warning('最终成绩已确认/发布/更正，不能再改题分')
+      void message.warning('最终成绩已确认/发布/更正，不能再改题分')
       return
     }
     if (
-      readBusinessResultCode(error) === ResultCode.PARAM_ERROR
-      && getUserErrorMessage(error, '').includes('主考代办')
+      readBusinessResultCode(error) === ResultCode.PARAM_ERROR &&
+      getUserErrorMessage(error, '').includes('主考代办')
     ) {
-      message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
+      void message.warning(getUserErrorMessage(error, '主考代办须填写代办原因'))
       return
     }
     if (isBusinessConflict(error) && getUserErrorMessage(error, '').includes('已被其他教师领取')) {
       claimBlockedByOther.value = !canManageOwnerReviewOverride.value
       ownerOverrideMode.value = canManageOwnerReviewOverride.value
-      message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
+      void message.warning(getUserErrorMessage(error, '复核任务已被其他教师领取'))
       return
     }
     showUserError(error, '驳回复核失败')
@@ -1407,7 +1417,7 @@ async function handleReject(): Promise<void> {
 async function handleSubmit(): Promise<void> {
   const ok = await submitGrade()
   if (!ok) return
-  message.success('题目复核已确认并关闭任务')
+  void message.success('题目复核已确认并关闭任务')
   await loadTask()
 }
 
@@ -1415,7 +1425,7 @@ async function handleSubmit(): Promise<void> {
 async function handleSubmitAndNext(): Promise<void> {
   const ok = await submitGrade()
   if (!ok) return
-  message.success('已提交，正在为你取下一份…')
+  void message.success('已提交，正在为你取下一份…')
   await takeNextTask()
 }
 
@@ -1426,7 +1436,7 @@ async function handleSubmitAndNext(): Promise<void> {
 async function takeNextTask(): Promise<void> {
   // MVR-317：领取下一份复核与 canManageReviewerWrites / BE 评阅写门禁同源
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无阅卷写权限，无法领取复核任务')
+    void message.warning('当前账号无阅卷写权限，无法领取复核任务')
     return
   }
   if (!examId.value) return
@@ -1438,7 +1448,7 @@ async function takeNextTask(): Promise<void> {
       (item) => item.reviewTaskId !== currentTaskId && item.status === ReviewTaskStatusCode.PENDING,
     )
     if (!candidate) {
-      message.success('同题剩余任务复核完毕，返回考试工作台')
+      void message.success('同题剩余任务复核完毕，返回考试工作台')
       void router.push({
         name: resolveReviewTaskPoolRouteName(),
         params: { examId: examId.value },

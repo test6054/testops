@@ -2,8 +2,6 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { Key } from 'ant-design-vue/es/table/interface'
 import type { ArchiveScanBatchSnapshotItemVO } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   batchConfirmNormalArchiveScanBatches,
   batchDiscardArchiveScanBatches,
@@ -12,6 +10,8 @@ import {
   ScanBatchQualityFlagCode,
   ScanBatchQualityFlagDescription,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   ScanWorkOrderStatusCode,
   ScanWorkOrderStatusDescription,
@@ -23,7 +23,11 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserErrorMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -74,8 +78,8 @@ const rowSelection = computed(() =>
         },
         getCheckboxProps: (record: ArchiveScanBatchSnapshotItemVO) => ({
           disabled:
-            record.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED
-            || record.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
+            record.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED ||
+            record.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
         }),
       }
     : undefined,
@@ -106,7 +110,7 @@ async function loadRows() {
 function openBatchAction(action: 'confirm-normal' | 'discard') {
   // MVR-305：与 canReview 同源二次拦截
   if (props.canReview !== true) {
-    message.warning('当前账号无扫描批次复核权限')
+    void message.warning('当前账号无扫描批次复核权限')
     return
   }
   if (selectedRowKeys.value.length === 0) {
@@ -124,7 +128,7 @@ async function submitBatchAction() {
   }
   // MVR-305：与 canReview 同源二次拦截
   if (props.canReview !== true) {
-    message.warning('当前账号无扫描批次复核权限')
+    void message.warning('当前账号无扫描批次复核权限')
     return
   }
   const reason = actionReason.value.trim()
@@ -136,11 +140,11 @@ async function submitBatchAction() {
     (row) => row.sourceBatchId && selectedRowKeys.value.includes(String(row.sourceBatchId)),
   )
   if (
-    selectedRows.length !== selectedRowKeys.value.length
-    || selectedRows.some(
+    selectedRows.length !== selectedRowKeys.value.length ||
+    selectedRows.some(
       (row) =>
-        row.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED
-        || row.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
+        row.workOrderStatus !== ScanWorkOrderStatusCode.COMMITTED ||
+        row.batchQualityFlag !== ScanBatchQualityFlagCode.SUSPECTED_MIXED,
     )
   ) {
     showFormValidationMessage('选中批次状态已变化，请刷新后重新选择')
@@ -158,7 +162,7 @@ async function submitBatchAction() {
     } else {
       await batchDiscardArchiveScanBatches(payload)
     }
-    message.success(`${actionLabel.value}完成`)
+    void message.success(`${actionLabel.value}完成`)
     actionModalOpen.value = false
     actionReason.value = ''
     emit('refreshed')

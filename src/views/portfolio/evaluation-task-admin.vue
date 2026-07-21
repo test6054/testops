@@ -1,16 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioEvaluationTaskStatusCode} from '@/apis/portfolio/enums';
-import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
-import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
-import type {
-  PortfolioEvaluationMaterialPreviewVO,
-  PortfolioEvaluationTeacherNoticeVO,
-} from '@/apis/portfolio/types'
-import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
+import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
 import {
   PORTFOLIO_EVALUATION_MODE_OPTIONS,
   PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES,
@@ -26,12 +16,21 @@ import {
   PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
 } from '@/apis/portfolio/enums'
+import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
+import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
+import type {
+  PortfolioEvaluationMaterialPreviewVO,
+  PortfolioEvaluationTeacherNoticeVO,
+} from '@/apis/portfolio/types'
+import { PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE } from '@/apis/portfolio/types'
+import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
+import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { portfolioEvaluationTaskApi } from '@/apis/portfolio/teacher-platform'
-import { PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE } from '@/apis/portfolio/types'
-import { evaluationWorkgroupApi } from '@/apis/quality/evaluation-workgroup'
 import { QUALITY_SELECTOR_PAGE_SIZE } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -55,7 +54,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const workgroups = ref<EvaluationWorkgroupVO[]>([])
 const indicatorConfigs = ref<PortfolioTenantIndicatorConfigVO[]>([])
-const previewTeacherOptions = ref<Array<{ value: string, label: string }>>([])
+const previewTeacherOptions = ref<Array<{ value: string; label: string }>>([])
 const previewOpen = ref(false)
 const previewLoading = ref(false)
 const previewTaskId = ref('')
@@ -244,8 +243,8 @@ function canReturnNotice(notice: PortfolioEvaluationTeacherNoticeVO | null): boo
     return false
   }
   return (
-    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.MATERIAL_CONFIRM
-    || notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
+    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.MATERIAL_CONFIRM ||
+    notice?.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
   )
 }
 
@@ -355,9 +354,9 @@ async function loadMaterialPreview() {
       teacherId,
     })
     if (
-      currentToken !== previewRequestToken.value
-      || previewTaskId.value !== taskId
-      || previewTeacherId.value !== teacherId
+      currentToken !== previewRequestToken.value ||
+      previewTaskId.value !== taskId ||
+      previewTeacherId.value !== teacherId
     ) {
       return
     }
@@ -371,9 +370,9 @@ async function loadMaterialPreview() {
         teacherId,
       })
       if (
-        currentToken !== previewRequestToken.value
-        || previewTaskId.value !== taskId
-        || previewTeacherId.value !== teacherId
+        currentToken !== previewRequestToken.value ||
+        previewTaskId.value !== taskId ||
+        previewTeacherId.value !== teacherId
       ) {
         return
       }
@@ -381,9 +380,9 @@ async function loadMaterialPreview() {
       returnDueTime.value = previewNotice.value?.dueTime ?? nextPreview.endTime ?? ''
     } catch (error) {
       if (
-        currentToken !== previewRequestToken.value
-        || previewTaskId.value !== taskId
-        || previewTeacherId.value !== teacherId
+        currentToken !== previewRequestToken.value ||
+        previewTaskId.value !== taskId ||
+        previewTeacherId.value !== teacherId
       ) {
         return
       }
@@ -392,9 +391,9 @@ async function loadMaterialPreview() {
     }
   } catch (error) {
     if (
-      currentToken !== previewRequestToken.value
-      || previewTaskId.value !== taskId
-      || previewTeacherId.value !== teacherId
+      currentToken !== previewRequestToken.value ||
+      previewTaskId.value !== taskId ||
+      previewTeacherId.value !== teacherId
     ) {
       return
     }
@@ -403,9 +402,9 @@ async function loadMaterialPreview() {
     showUserError(error, '加载材料预览失败')
   } finally {
     if (
-      currentToken === previewRequestToken.value
-      && previewTaskId.value === taskId
-      && previewTeacherId.value === teacherId
+      currentToken === previewRequestToken.value &&
+      previewTaskId.value === taskId &&
+      previewTeacherId.value === teacherId
     ) {
       previewLoading.value = false
     }
@@ -443,7 +442,7 @@ async function returnMaterialForSupplement() {
     if (previewTaskId.value !== taskId || previewTeacherId.value !== teacherId) return
     previewNotice.value = updated
     returnReason.value = ''
-    message.success('已退回教师补充材料')
+    void message.success('已退回教师补充材料')
   } catch (error) {
     showUserError(error, '退回补充失败')
   } finally {
@@ -462,8 +461,8 @@ async function createTask() {
     return
   }
   if (
-    form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
-    && !form.targetIndicatorCode.trim()
+    form.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON &&
+    !form.targetIndicatorCode.trim()
   ) {
     showFormValidationMessage('按人评价须填写画像回流目标指标编码')
     return
@@ -490,7 +489,7 @@ async function createTask() {
       startTime: form.startTime,
       endTime: form.endTime,
     })
-    message.success('评价任务已创建')
+    void message.success('评价任务已创建')
     form.taskName = ''
     form.sceneCode = PortfolioEvaluationSceneCode.GENERAL
     form.workgroupId = ''
@@ -526,7 +525,7 @@ async function voidDraftTask(id: string) {
       taskId: id,
       action: PortfolioEvaluationTaskAdvanceActionCode.VOID,
     })
-    message.success('任务已作废')
+    void message.success('任务已作废')
     await loadPage()
   } catch (error) {
     showUserError(error, '作废评价任务失败')
@@ -537,7 +536,7 @@ async function voidDraftTask(id: string) {
   }
 }
 
-function handleTaskAdminAction(key: string, record: { id: string, taskStatus?: string }) {
+function handleTaskAdminAction(key: string, record: { id: string; taskStatus?: string }) {
   if (key === 'preview') {
     openMaterialPreview(record.id)
     return
@@ -564,7 +563,7 @@ async function publishTask(id: string) {
     })
     if (!confirmed) return
     await portfolioEvaluationTaskApi.publish({ id })
-    message.success('任务已发布')
+    void message.success('任务已发布')
     await loadPage()
   } catch (error) {
     showUserError(error, '发布评价任务失败')
@@ -581,7 +580,7 @@ async function exportExcel() {
   try {
     const result = await portfolioEvaluationTaskApi.exportExcel()
     await downloadPortfolioExcelExport(result)
-    message.success('评价任务已导出')
+    void message.success('评价任务已导出')
   } catch (error) {
     showUserError(error, '导出评价任务失败')
   } finally {

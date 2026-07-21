@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioMaskRuleVO } from '@/apis/portfolio/governance'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref } from 'vue'
-import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
@@ -114,7 +114,7 @@ async function saveRule() {
   }
   try {
     await portfolioSecurityApi.saveMaskRule(request)
-    message.success('脱敏规则已保存')
+    void message.success('脱敏规则已保存')
     editorOpen.value = false
     await loadPage()
   } catch (error) {
@@ -124,7 +124,7 @@ async function saveRule() {
   }
 }
 
-function onPageChange(page: { current: number, pageSize: number }) {
+function onPageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -146,7 +146,12 @@ onMounted(() => {
       />
     </template>
     <UiCard>
-      <UiButton size="sm" class="mask-rule-admin__add" :disabled="saving" @click="editorOpen = true">
+      <UiButton
+        size="sm"
+        class="mask-rule-admin__add"
+        :disabled="saving"
+        @click="editorOpen = true"
+      >
         配置规则
       </UiButton>
       <UiDataTable

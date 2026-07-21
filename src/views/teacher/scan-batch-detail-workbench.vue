@@ -423,13 +423,6 @@ import type {
   ScanBatchOrderAuditIssueResponse,
   ScanBatchOrderAuditResponse,
 } from '@/apis/mark/exam-scan'
-import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import { useWindowSize } from '@vueuse/core'
-import message from 'ant-design-vue/es/message'
-import { computed, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import {
   discardScanBatchByTeacher,
   dismissScanBatchCollateAttention,
@@ -448,6 +441,13 @@ import {
   ScanBatchWorkbenchTopActionDescription,
   sealScanBatchByTeacher,
 } from '@/apis/mark/exam-scan'
+import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import { useWindowSize } from '@vueuse/core'
+import message from 'ant-design-vue/es/message'
+import { computed, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { fetchStoragePreviewBlobUrl } from '@/apis/edu/file-management'
 import ScanBatchDiscardDialog from '@/components/mark/ScanBatchDiscardDialog.vue'
 import ScanBatchPageInspectorPanel from '@/components/mark/ScanBatchPageInspectorPanel.vue'
 import ScanBatchPageRail from '@/components/mark/ScanBatchPageRail.vue'
@@ -493,8 +493,8 @@ const route = useRoute()
 const router = useRouter()
 const { selectedExamId } = useWorkspaceExamId()
 const { width: viewportWidth } = useWindowSize()
-const { isExamConfidential, examConfidentialLabel, watermarkLines }
-  = useWorkspaceConfidentialContext()
+const { isExamConfidential, examConfidentialLabel, watermarkLines } =
+  useWorkspaceConfidentialContext()
 
 const pageStatusFilter = ref<ScanBatchWorkbenchPageStatusFilterCode>(
   ScanBatchWorkbenchPageStatusFilterCode.ALL,
@@ -555,8 +555,8 @@ const pageRailEmptyDescription = computed(() => {
     return '原件待自动登记与身份识别'
   }
   if (
-    pageStatusFilter.value !== ScanBatchWorkbenchPageStatusFilterCode.ALL
-    || pageKeyword.value.trim()
+    pageStatusFilter.value !== ScanBatchWorkbenchPageStatusFilterCode.ALL ||
+    pageKeyword.value.trim()
   ) {
     return '当前筛选条件下无匹配页轨'
   }
@@ -617,8 +617,8 @@ const scanBatchPrimaryAction = computed((): ScanBatchWorkbenchTopActionCode | nu
   if (!actions.length) return null
   const preferred = actions.find(
     (action) =>
-      action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER
-      || action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES,
+      action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER ||
+      action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES,
   )
   return preferred || actions[0] || null
 })
@@ -637,8 +637,8 @@ const scanBatchMoreActionItems = computed(() => {
       key: `top-${action}`,
       label: strictEnumLabel(ScanBatchWorkbenchTopActionDescription, action, '扫描批次顶栏动作'),
       danger:
-        action === ScanBatchWorkbenchTopActionCode.DISCARD
-        || action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES,
+        action === ScanBatchWorkbenchTopActionCode.DISCARD ||
+        action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES,
     }))
   if (canViewOriginalImage.value) {
     items.push({ key: 'preview-original', label: '查看原始影像', danger: false })
@@ -652,15 +652,15 @@ const scanBatchMoreActionItems = computed(() => {
 
 function isScanBatchPrimaryVariant(action: ScanBatchWorkbenchTopActionCode): boolean {
   return (
-    action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER
-    || action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES
+    action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER ||
+    action === ScanBatchWorkbenchTopActionCode.RETRY_PROCESSED_IMAGES
   )
 }
 
 function isScanBatchDangerAction(action: ScanBatchWorkbenchTopActionCode): boolean {
   return (
-    action === ScanBatchWorkbenchTopActionCode.DISCARD
-    || action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES
+    action === ScanBatchWorkbenchTopActionCode.DISCARD ||
+    action === ScanBatchWorkbenchTopActionCode.REBUILD_COMPOSITE_PAGES
   )
 }
 
@@ -849,9 +849,9 @@ const selectedPage = computed(() => {
 
 const showPreviewTabs = computed(() =>
   Boolean(
-    canViewOriginalImage.value
-    && selectedPage.value?.identitySliceFileId
-    && selectedPage.value.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
+    canViewOriginalImage.value &&
+    selectedPage.value?.identitySliceFileId &&
+    selectedPage.value.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
   ),
 )
 
@@ -942,8 +942,8 @@ function resolvePageKeyAfterRefresh(
   if (pendingFileOrder !== null) {
     const registered = items.find(
       (item) =>
-        item.fileOrder === pendingFileOrder
-        && item.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
+        item.fileOrder === pendingFileOrder &&
+        item.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING,
     )
     if (registered) {
       return registered.pageKey
@@ -1008,10 +1008,10 @@ async function loadWorkbench(): Promise<void> {
       }
     }
     if (!pageKey && attributionItems.length) {
-      const preferredBucket
-        = attributionItems.find((item) => item.bucketKey === preservedBucketKey)
-          ?? attributionItems.find((item) => item.manualReviewRequired)
-          ?? attributionItems[0]
+      const preferredBucket =
+        attributionItems.find((item) => item.bucketKey === preservedBucketKey) ??
+        attributionItems.find((item) => item.manualReviewRequired) ??
+        attributionItems[0]
       pageKey = preferredBucket?.pages[0]?.pageKey || ''
       if (preferredBucket) {
         selectedBucketKey.value = preferredBucket.bucketKey
@@ -1094,10 +1094,10 @@ async function refreshPagesWindow(): Promise<void> {
 
 async function loadMorePages(): Promise<void> {
   if (
-    !selectedExamId.value
-    || !scanBatchId.value
-    || !pagesNextCursor.value
-    || pagesLoadingMore.value
+    !selectedExamId.value ||
+    !scanBatchId.value ||
+    !pagesNextCursor.value ||
+    pagesLoadingMore.value
   ) {
     return
   }
@@ -1200,9 +1200,9 @@ async function loadPreview(): Promise<void> {
   }
   if (!page.previewUrl) {
     if (
-      page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
-      && canViewOriginalImage.value
-      && page.pageId
+      page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING &&
+      canViewOriginalImage.value &&
+      page.pageId
     ) {
       await loadOriginalPreview(requestSeq)
     }
@@ -1307,13 +1307,13 @@ function handleSelectPage(pageKey: string): void {
 
 function setPreferredReassignTarget(paperInstanceId: string): void {
   preferredTargetPaperInstanceId.value = paperInstanceId
-  message.success('已设置调卷目标，请在右侧页检视面板选择待移动页后执行人工调卷')
+  void message.success('已设置调卷目标，请在右侧页检视面板选择待移动页后执行人工调卷')
 }
 
 async function openOrderAudit(): Promise<void> {
   // MVR-393：「人工合并」属主考写路径入口，打开前叠 canManageOwnerBatchActions===true
   if (!canManageOwnerBatchActions.value) {
-    message.warning('仅本场主考可打开人工合并')
+    void message.warning('仅本场主考可打开人工合并')
     return
   }
   const batch = workbench.value?.batch
@@ -1342,7 +1342,7 @@ async function onDismissCollateAttention(): Promise<void> {
   }
   // MVR-313：与 canManageOwnerBatchActions / BE requireExamOwnerPermission 同源
   if (!canManageOwnerBatchActions.value) {
-    message.warning('仅主考可忽略余页异常')
+    void message.warning('仅主考可忽略余页异常')
     return
   }
   await confirmAsync({
@@ -1356,7 +1356,7 @@ async function onDismissCollateAttention(): Promise<void> {
           examId: selectedExamId.value,
           scanBatchId: batch.scanBatchId,
         })
-        message.success('已忽略余页异常，可继续封存')
+        void message.success('已忽略余页异常，可继续封存')
         await loadWorkbench()
       } catch (error) {
         showUserError(error, '忽略余页异常失败')
@@ -1377,7 +1377,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   }
   // MVR-298：顶栏写动作二次拦截；BE resolveTopActions 已对非主考返回空列表，防拆栏/缓存陈旧
   if (!canManageOwnerBatchActions.value) {
-    message.warning('仅本场主考可执行批次写操作')
+    void message.warning('仅本场主考可执行批次写操作')
     return
   }
   if (action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER) {
@@ -1388,11 +1388,11 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
         scanBatchId: batch.scanBatchId,
       })
       if (response.pageRegisterBlocked) {
-        message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
+        void message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
       } else if (response.pageRegisterPending) {
-        message.warning(response.pageRegisterDiagnostic ?? '页登记待重试')
+        void message.warning(response.pageRegisterDiagnostic ?? '页登记待重试')
       } else {
-        message.success(formatPageRegisterRetryMessage(response))
+        void message.success(formatPageRegisterRetryMessage(response))
       }
       await loadWorkbench()
     } catch (error) {
@@ -1409,7 +1409,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
         examId: selectedExamId.value,
         scanBatchId: batch.scanBatchId,
       })
-      message.success(`已补跑 ${count} 页脱敏处理影像`)
+      void message.success(`已补跑 ${count} 页脱敏处理影像`)
       await loadWorkbench()
       if (selectedPageKey.value) {
         void loadInspector(selectedPageKey.value)
@@ -1441,11 +1441,11 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
             scanBatchId: batch.scanBatchId,
           })
           if (response.pageRegisterBlocked) {
-            message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
+            void message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
           } else if (response.pageRegisterPending) {
-            message.warning(response.pageRegisterDiagnostic ?? '页登记待重试')
+            void message.warning(response.pageRegisterDiagnostic ?? '页登记待重试')
           } else {
-            message.success(formatPageRegisterRetryMessage(response))
+            void message.success(formatPageRegisterRetryMessage(response))
           }
           await loadWorkbench()
         } catch (error) {
@@ -1467,11 +1467,11 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   }
   if (action === ScanBatchWorkbenchTopActionCode.SEAL) {
     if (attributionSealBlockReason.value) {
-      message.warning(attributionSealBlockReason.value)
+      void message.warning(attributionSealBlockReason.value)
       return
     }
     if (!canSealBatch(batch)) {
-      message.warning(batchSealBlockedReason(batch) || '当前批次不满足封存条件')
+      void message.warning(batchSealBlockedReason(batch) || '当前批次不满足封存条件')
       return
     }
     void confirmAsync({
@@ -1488,7 +1488,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
         actionLoading.value = action
         try {
           await sealScanBatchByTeacher({ scanBatchId: batch.scanBatchId })
-          message.success(`扫描批次已封存：${batch.batchNo}`)
+          void message.success(`扫描批次已封存：${batch.batchNo}`)
           await loadWorkbench()
         } catch (error) {
           showUserError(error, '扫描批次封存失败')
@@ -1503,7 +1503,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   if (action === ScanBatchWorkbenchTopActionCode.DISCARD) {
     // MVR-322：打开废弃弹窗前叠主考写能力位
     if (!canManageOwnerBatchActions.value) {
-      message.warning('当前账号不可废弃扫描批次')
+      void message.warning('当前账号不可废弃扫描批次')
       return
     }
     discardModalOpen.value = true
@@ -1512,7 +1512,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   if (action === ScanBatchWorkbenchTopActionCode.SUPPLEMENT) {
     // MVR-322：补扫弹窗同主考写能力位
     if (!canManageOwnerBatchActions.value) {
-      message.warning('当前账号不可提交补扫')
+      void message.warning('当前账号不可提交补扫')
       return
     }
     supplementModalOpen.value = true
@@ -1527,7 +1527,7 @@ async function handleSupplementSuccess(): Promise<void> {
 async function confirmDiscardBatch(reason: string): Promise<void> {
   // MVR-322/376：与 canManageOwnerBatchActions / BE 主考写门禁二次拦截
   if (!canManageOwnerBatchActions.value) {
-    message.warning('当前账号不可废弃扫描批次')
+    void message.warning('当前账号不可废弃扫描批次')
     discardModalOpen.value = false
     return
   }
@@ -1542,7 +1542,7 @@ async function confirmDiscardBatch(reason: string): Promise<void> {
   actionLoading.value = ScanBatchWorkbenchTopActionCode.DISCARD
   try {
     await discardScanBatchByTeacher({ scanBatchId: batch.scanBatchId, discardReason: reason })
-    message.success(`扫描批次已废弃：${batch.batchNo}`)
+    void message.success(`扫描批次已废弃：${batch.batchNo}`)
     discardModalOpen.value = false
     await loadWorkbench()
   } catch (error) {
@@ -1753,7 +1753,8 @@ onUnmounted(() => {
   }
 
   &--exception {
-    border-left: 3px solid var(--dp-danger);
+    border-color: var(--dp-danger);
+    background: color-mix(in srgb, var(--dp-danger) 6%, var(--dp-bg-container));
   }
 }
 

@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDevelopmentRecordStatusDescription,
   PortfolioDevelopmentRecordTypeCode,
 } from '@/apis/portfolio/enums'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -43,13 +43,10 @@ const removingId = ref('')
 const exporting = ref(false)
 const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' })
 const formTeacherId = computed(() => form.teacherUserId || undefined)
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 const {
   loading,
   rows,
@@ -147,7 +144,7 @@ async function saveRecord() {
       descriptionText: form.descriptionText.trim() || undefined,
       teacherUserId: requiresTeacher.value ? form.teacherUserId : undefined,
     })
-    message.success('已保存')
+    void message.success('已保存')
     resetForm()
     await loadPage()
   } catch (error) {
@@ -164,7 +161,7 @@ async function removeRecord(id: string) {
   removingId.value = id
   try {
     await portfolioDevelopmentRecordApi.delete({ id })
-    message.success('已删除')
+    void message.success('已删除')
     await loadPage()
   } catch (error) {
     showUserError(error, '删除发展记录失败')
@@ -186,7 +183,7 @@ async function exportExcel() {
       nationalOnly: props.nationalOnly,
     })
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条`)
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出发展记录失败')
   } finally {
@@ -281,7 +278,13 @@ watch(
             <PortfolioOwnerIdentityLayersCell
               :layers="record.ownerIdentityLayers"
               :note="record.ownerMultiIdentityNote"
-              :row-key="record.id || record.teacherId || record.teacherUserId || record.subjectTeacherUserId || record.userId"
+              :row-key="
+                record.id ||
+                record.teacherId ||
+                record.teacherUserId ||
+                record.subjectTeacherUserId ||
+                record.userId
+              "
             />
           </template>
           <template v-else-if="column.key === 'actions'">

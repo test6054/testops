@@ -1,8 +1,8 @@
 import type { ArchiveEvaluationExportResponse } from '@/apis/mark/archive-volume'
+import { cancelEvaluationExport, getEvaluationExportProgress } from '@/apis/mark/archive-volume'
 import message from 'ant-design-vue/es/message'
 import { ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
-import { cancelEvaluationExport, getEvaluationExportProgress } from '@/apis/mark/archive-volume'
 import { ArchiveEvaluationExportModeCode } from '@/types/enums/archive-evaluation-export-mode-enum'
 import {
   ExportTaskStatusCode,
@@ -38,9 +38,9 @@ let pollAbortRequested = false
 
 function isTerminalStatus(status: ExportTaskStatusCode): boolean {
   return (
-    status === ExportTaskStatusCode.COMPLETED
-    || status === ExportTaskStatusCode.FAILED
-    || status === ExportTaskStatusCode.CANCELLED
+    status === ExportTaskStatusCode.COMPLETED ||
+    status === ExportTaskStatusCode.FAILED ||
+    status === ExportTaskStatusCode.CANCELLED
   )
 }
 
@@ -124,7 +124,7 @@ export async function runArchiveEvaluationExportFlow(
     await downloadFile({ nodeId: result.exportFileId })
     const volumeHint = result.volumeCount != null ? `，共 ${result.volumeCount} 卷` : ''
     const scopeHint = options.scopeHint ? `（${options.scopeHint}）` : ''
-    message.success(`${options.successMessage}${volumeHint}${scopeHint}`)
+    void message.success(`${options.successMessage}${volumeHint}${scopeHint}`)
     return
   }
 
@@ -133,13 +133,13 @@ export async function runArchiveEvaluationExportFlow(
   }
 
   openExportTaskView(result.taskId, options.campaignLabel)
-  message.info(
+  void message.info(
     `批次卷数较多，已转入后台导出（${exportStatusLabel(result.status ?? ExportTaskStatusCode.PENDING)}）`,
   )
   try {
     const terminal = await pollEvaluationExportUntilDone(result.taskId)
     if (terminal.status === ExportTaskStatusCode.CANCELLED) {
-      message.warning('迎评导出已取消')
+      void message.warning('迎评导出已取消')
       return
     }
     if (terminal.status === ExportTaskStatusCode.FAILED) {
@@ -151,7 +151,7 @@ export async function runArchiveEvaluationExportFlow(
     await downloadFile({ nodeId: terminal.exportFileId })
     const volumeHint = terminal.volumeCount != null ? `，共 ${terminal.volumeCount} 卷` : ''
     const scopeHint = options.scopeHint ? `（${options.scopeHint}）` : ''
-    message.success(`${options.successMessage}${volumeHint}${scopeHint}`)
+    void message.success(`${options.successMessage}${volumeHint}${scopeHint}`)
   } finally {
     closeExportTaskView()
   }
@@ -166,7 +166,7 @@ export async function cancelArchiveEvaluationExportTask(): Promise<void> {
   pollAbortRequested = true
   try {
     await cancelEvaluationExport({ taskId: current.taskId })
-    message.success('已提交取消迎评导出任务')
+    void message.success('已提交取消迎评导出任务')
   } catch (error) {
     pollAbortRequested = false
     showUserError(error, '取消迎评导出失败')

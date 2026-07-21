@@ -8,9 +8,7 @@ import {
   withdrawMarkingTask,
 } from '@/apis/mark/marking-withdraw'
 import { showUserError } from '@/utils/error-handler'
-import {
-  isWithdrawScoreConfirmLockConflict,
-} from '@/utils/marking-workflow-conflict'
+import { isWithdrawScoreConfirmLockConflict } from '@/utils/marking-workflow-conflict'
 
 const WITHDRAW_LOCK_RETRY_DELAYS_MS = [800, 1600, 2400] as const
 
@@ -96,7 +94,9 @@ export function useMarkingRecentSubmit() {
     onSuccess?: (task: MarkingTaskResponse) => void,
   ): Promise<MarkingTaskResponse | null> {
     if (!canWithdrawEntry(entry)) {
-      message.warning(`撤销窗口已过期（${formatMarkingWithdrawWindowLabel(entry.withdrawWindowMinutes)}）`)
+      void message.warning(
+        `撤销窗口已过期（${formatMarkingWithdrawWindowLabel(entry.withdrawWindowMinutes)}）`,
+      )
       removeEntry(entry.taskId)
       return null
     }
@@ -110,17 +110,18 @@ export function useMarkingRecentSubmit() {
         try {
           const task = await withdrawMarkingTask({ taskId: entry.taskId })
           removeEntry(entry.taskId)
-          message.success('已撤销提交，原给分已保留为草稿')
+          void message.success('已撤销提交，原给分已保留为草稿')
           onSuccess?.(task)
           return task
         } catch (error) {
           lastError = error
-          const canRetry = isWithdrawScoreConfirmLockConflict(error)
-            && attempt < WITHDRAW_LOCK_RETRY_DELAYS_MS.length
+          const canRetry =
+            isWithdrawScoreConfirmLockConflict(error) &&
+            attempt < WITHDRAW_LOCK_RETRY_DELAYS_MS.length
           if (!canRetry) {
             break
           }
-          message.info('成绩确认处理中，正在重试撤回…')
+          void message.info('成绩确认处理中，正在重试撤回…')
           await sleep(WITHDRAW_LOCK_RETRY_DELAYS_MS[attempt])
         }
       }
@@ -138,7 +139,7 @@ export function useMarkingRecentSubmit() {
   ): Promise<MarkingTaskResponse | null> {
     const entry = latestWithdrawable.value
     if (!entry) {
-      message.warning('没有可撤销的最近提交')
+      void message.warning('没有可撤销的最近提交')
       return null
     }
     return withdrawEntry(entry, onSuccess)

@@ -90,11 +90,8 @@ const tabItems: UiSectionTabItem[] = ASSISTANTS.map((item) => ({
 const route = useRoute()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 const { canManageTeacherAi } = usePortfolioTeacherAccess()
 const activeKey = ref<AssistantKey>('generate')
 const submitting = ref(false)
@@ -128,13 +125,10 @@ const canOperate = computed(() =>
   Boolean(targetTeacherId.value && canManageTeacherAi(targetTeacherId.value)),
 )
 /** 管理员代办：可生成草稿，不可替本人确认入库 */
-const isProxyMode = computed(
-  () =>
-    Boolean(
-      canPickTeachers.value
-      && targetTeacherId.value
-      && targetTeacherId.value !== currentUserId.value,
-    ),
+const isProxyMode = computed(() =>
+  Boolean(
+    canPickTeachers.value && targetTeacherId.value && targetTeacherId.value !== currentUserId.value,
+  ),
 )
 const pendingReview = computed(
   () => activeDetail.value?.reviewStatus === PortfolioAiAnalysisReviewStatusCode.PENDING_REVIEW,
@@ -202,8 +196,8 @@ function validateSubmit(): boolean {
     return false
   }
   if (
-    (activeKey.value === 'optimize' || activeKey.value === 'effect')
-    && !submitForm.sourceText.trim()
+    (activeKey.value === 'optimize' || activeKey.value === 'effect') &&
+    !submitForm.sourceText.trim()
   ) {
     showFormValidationMessage('请填写待分析的教学材料正文')
     return false
@@ -264,7 +258,6 @@ async function openDetail(row: PortfolioAiAnalysisSummaryVO): Promise<void> {
   }
 }
 
-
 function readRouteStringParam(value: unknown): string {
   if (typeof value === 'string') {
     return value.trim()
@@ -319,7 +312,7 @@ async function pollTask(taskId: string, token: number): Promise<void> {
       }
       applyDetail(detail)
       await loadHistory()
-      message.success('智能分析结果已生成，请复核后确认采用')
+      void message.success('智能分析结果已生成，请复核后确认采用')
       return
     }
     if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
@@ -351,7 +344,7 @@ async function submitTask(): Promise<void> {
       materialType: PortfolioMaterialTypeCode.DOCUMENT,
       context: buildTaskContext(),
     })
-    message.info('智能分析任务已提交，正在生成结果')
+    void message.info('智能分析任务已提交，正在生成结果')
     await pollTask(result.taskId, token)
   } catch (error) {
     if (pollToken.value === token) {
@@ -369,14 +362,14 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
     return
   }
   if (
-    reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED
-    && archiveWriteForbidden.value
+    reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED &&
+    archiveWriteForbidden.value
   ) {
     return
   }
   if (
-    reviewStatus === PortfolioAiAnalysisReviewStatusCode.REJECTED
-    && !reviewForm.reviewOpinion.trim()
+    reviewStatus === PortfolioAiAnalysisReviewStatusCode.REJECTED &&
+    !reviewForm.reviewOpinion.trim()
   ) {
     showFormValidationMessage('请填写驳回原因')
     return
@@ -407,15 +400,15 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
       reviewOpinion: reviewForm.reviewOpinion.trim() || undefined,
     })
     if (
-      reviewToken.value !== token
-      || targetTeacherId.value !== targetTeacherScopeId
-      || activeKey.value !== targetAssistantKey
+      reviewToken.value !== token ||
+      targetTeacherId.value !== targetTeacherScopeId ||
+      activeKey.value !== targetAssistantKey
     ) {
       return
     }
     applyDetail(detail)
     await loadHistory()
-    message.success(
+    void message.success(
       reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED
         ? activeKey.value === 'development'
           ? '建议已写入本年度发展规划'
@@ -513,7 +506,11 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
             <UiSelect
               v-model="submitForm.generateScene"
               size="sm"
-              :options="[{ value: 'LESSON_PLAN_FRAME', label: '教案框架' }, { value: 'COURSE_DESCRIPTION', label: '课程描述' }, { value: 'REFLECTION_PROMPT', label: '教学反思提示' }]"
+              :options="[
+                { value: 'LESSON_PLAN_FRAME', label: '教案框架' },
+                { value: 'COURSE_DESCRIPTION', label: '课程描述' },
+                { value: 'REFLECTION_PROMPT', label: '教学反思提示' },
+              ]"
             />
           </UiFormItem>
           <UiFormItem v-if="activeKey === 'generate'" label="生成要求">
@@ -636,12 +633,7 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
 
       <section v-else class="ai-assistants__draft-empty" aria-label="草稿空态">
         <span>生成后草稿显示在此 · 确认写入前不会进入档案</span>
-        <UiButton
-          v-if="loadFailed"
-          size="sm"
-          variant="outline"
-          @click="loadHistory"
-        >
+        <UiButton v-if="loadFailed" size="sm" variant="outline" @click="loadHistory">
           重新加载历史
         </UiButton>
       </section>

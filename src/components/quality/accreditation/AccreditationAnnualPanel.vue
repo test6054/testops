@@ -5,9 +5,9 @@ import type {
   AnnualEvaluationPlanSaveRequest,
   AnnualEvaluationPlanVO,
 } from '@/apis/quality/accreditation'
+import { accreditationApi } from '@/apis/quality/accreditation'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { accreditationApi } from '@/apis/quality/accreditation'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -117,7 +117,7 @@ async function loadPlans() {
   }
 }
 
-function handlePlanPageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePlanPageChange(pageEvent: { current: number; pageSize: number }) {
   planPageNum.value = pageEvent.current
   planPageSize.value = pageEvent.pageSize
   void loadPlans()
@@ -160,7 +160,7 @@ async function loadPlanCourses() {
   }
 }
 
-function handleCoursePageChange(pageEvent: { current: number, pageSize: number }) {
+function handleCoursePageChange(pageEvent: { current: number; pageSize: number }) {
   coursePageNum.value = pageEvent.current
   coursePageSize.value = pageEvent.pageSize
   void loadPlanCourses()
@@ -179,7 +179,7 @@ function resetForm() {
 
 function openCreate() {
   if (!canMutatePlan.value) {
-    message.error(annualPlanHint.value)
+    void message.error(annualPlanHint.value)
     return
   }
   drawerTitle.value = '新建年度评价课程计划'
@@ -189,7 +189,7 @@ function openCreate() {
 
 function openEdit(record: AnnualEvaluationPlanVO) {
   if (!canMutatePlan.value) {
-    message.error(annualPlanHint.value)
+    void message.error(annualPlanHint.value)
     return
   }
   drawerTitle.value = '编辑年度评价课程计划'
@@ -206,15 +206,15 @@ function openEdit(record: AnnualEvaluationPlanVO) {
 
 async function submitPlan() {
   if (!form.planYear.trim() || !form.planTitle.trim()) {
-    message.error('请填写年度与计划标题')
+    void message.error('请填写年度与计划标题')
     return
   }
   if (!canMutatePlan.value) {
-    message.error(annualPlanHint.value)
+    void message.error(annualPlanHint.value)
     return
   }
   if (!form.accreditationCycleId) {
-    message.error('年度评价计划必须绑定当前有效认证周期')
+    void message.error('年度评价计划必须绑定当前有效认证周期')
     return
   }
   const request: AnnualEvaluationPlanSaveRequest = {
@@ -231,10 +231,10 @@ async function submitPlan() {
   try {
     if (form.id) {
       await accreditationApi.annualPlanUpdate(request)
-      message.success('年度评价计划已更新')
+      void message.success('年度评价计划已更新')
     } else {
       await accreditationApi.annualPlanCreate(request)
-      message.success('年度评价计划已保存（已自动纳入全部质量课程）')
+      void message.success('年度评价计划已保存（已自动纳入全部质量课程）')
     }
     drawerOpen.value = false
     await loadPlans()
@@ -246,14 +246,14 @@ async function submitPlan() {
 
 async function removePlan(id: string) {
   if (!canMutatePlan.value) {
-    message.error(annualPlanHint.value)
+    void message.error(annualPlanHint.value)
     return
   }
   const ok = await confirmAsync({ title: '确认删除该年度评价计划？' })
   if (!ok) return
   try {
     await accreditationApi.annualPlanDelete(id)
-    message.success('已删除')
+    void message.success('已删除')
     if (selectedPlan.value?.id === id) selectedPlan.value = undefined
     await loadPlans()
     emit('refresh')
@@ -264,12 +264,12 @@ async function removePlan(id: string) {
 
 async function updateCourseStatus(courseRowId: string, evaluationCompleted: boolean) {
   if (!canMutatePlan.value) {
-    message.error(annualPlanHint.value)
+    void message.error(annualPlanHint.value)
     return
   }
   try {
     await accreditationApi.updateAnnualPlanCourseStatus({ id: courseRowId, evaluationCompleted })
-    message.success(evaluationCompleted ? '已登记课程评价完成' : '已撤销课程评价完成')
+    void message.success(evaluationCompleted ? '已登记课程评价完成' : '已撤销课程评价完成')
     if (selectedPlan.value) {
       await selectPlan(selectedPlan.value.id)
     }
@@ -300,7 +300,12 @@ defineExpose({ openCreate, loadPlans })
   <div class="annual-panel">
     <p v-if="annualPlanHint" class="hint">{{ annualPlanHint }}</p>
     <div class="toolbar">
-      <UiButton size="sm" variant="primary" :disabled="!trainingPlanId || !canMutatePlan" @click="openCreate">
+      <UiButton
+        size="sm"
+        variant="primary"
+        :disabled="!trainingPlanId || !canMutatePlan"
+        @click="openCreate"
+      >
         新建年度计划
       </UiButton>
     </div>
@@ -318,11 +323,7 @@ defineExpose({ openCreate, loadPlans })
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'coverage'">
           <div class="coverage-cell">
-            <UiProgressBar
-              :percent="coveragePercent(record)"
-              size="sm"
-              :show-label="false"
-            />
+            <UiProgressBar :percent="coveragePercent(record)" size="sm" :show-label="false" />
             <span class="coverage-text">
               {{ record.actualCoverageRate ?? 0 }}% / 目标 {{ record.coverageTargetRate ?? 100 }}%
             </span>
@@ -351,7 +352,12 @@ defineExpose({ openCreate, loadPlans })
           须评价 {{ courseProgress.total }} 门，已完成 {{ courseProgress.done }} 门
         </span>
       </div>
-      <UiProgressBar :percent="courseProgress.percent" size="sm" class="course-progress" :show-label="false" />
+      <UiProgressBar
+        :percent="courseProgress.percent"
+        size="sm"
+        class="course-progress"
+        :show-label="false"
+      />
       <UiDataTable
         pagination-mode="server"
         v-model:current="coursePageNum"
@@ -404,14 +410,10 @@ defineExpose({ openCreate, loadPlans })
     >
       <UiForm layout="vertical">
         <UiFormItem label="计划年度" required>
-          <UiInput
-            size="sm" v-model="form.planYear" :disabled="!!form.id"
-          />
+          <UiInput size="sm" v-model="form.planYear" :disabled="!!form.id" />
         </UiFormItem>
         <UiFormItem label="计划标题" required>
-          <UiInput
-            size="sm" v-model="form.planTitle"
-          />
+          <UiInput size="sm" v-model="form.planTitle" />
         </UiFormItem>
         <UiFormItem label="目标覆盖率（%）">
           <UiInputNumber

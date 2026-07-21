@@ -18,8 +18,8 @@
           dense
           :title="questionSummary"
           :description="
-            question.questionStem?.trim()
-              || '提交后会立即更新当前生效标准答案；已有确认成绩时将进入重判计划判定链。'
+            question.questionStem?.trim() ||
+            '提交后会立即更新当前生效标准答案；已有确认成绩时将进入重判计划判定链。'
           "
           class="question-answer-correction__strip"
         />
@@ -44,18 +44,10 @@
 
           <template v-if="showChoiceSetFields">
             <UiFormItem label="声明选项" required>
-              <UiInput
-                size="sm"
-                v-model="form.declaredOptionsText"
-                placeholder="A,B,C,D"
-              />
+              <UiInput size="sm" v-model="form.declaredOptionsText" placeholder="A,B,C,D" />
             </UiFormItem>
             <UiFormItem label="正确选项" required>
-              <UiInput
-                size="sm"
-                v-model="form.choiceOptionsText"
-                placeholder="A 或 A,C"
-              />
+              <UiInput size="sm" v-model="form.choiceOptionsText" placeholder="A 或 A,C" />
             </UiFormItem>
           </template>
 
@@ -81,15 +73,15 @@
               />
             </UiFormItem>
             <UiFormItem label="单位">
-              <UiInput
-                size="sm"
-                v-model="form.numericUnit"
-                placeholder="例如 V、kg、m/s"
-              />
+              <UiInput size="sm" v-model="form.numericUnit" placeholder="例如 V、kg、m/s" />
             </UiFormItem>
           </template>
 
-          <UiFormItem v-if="showStandardAnswerInput" label="标准答案" :required="requireStandardAnswer">
+          <UiFormItem
+            v-if="showStandardAnswerInput"
+            label="标准答案"
+            :required="requireStandardAnswer"
+          >
             <UiTextarea
               size="sm"
               v-model="form.standardAnswer"
@@ -136,20 +128,23 @@ import type {
   ExamStandardAnswerResponse,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam-standard-answer'
-import type {
-  AnswerEffectiveCorrectionRequest,
-  ExamAnswerEffectiveConfig,
-  ExamQuestionAnalysisRecordResponse,
-} from '@/apis/mark/question-analysis'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   getStandardAnswer,
   OBJECTIVE_COMPARE_POLICY_OPTIONS,
   ObjectiveComparePolicyCode as ObjectiveComparePolicy,
   ObjectiveComparePolicyDescription,
 } from '@/apis/mark/exam-standard-answer'
-import { correctAnswerAndConfirmEffective, getEffectiveAnswerConfig } from '@/apis/mark/question-analysis'
+import type {
+  AnswerEffectiveCorrectionRequest,
+  ExamAnswerEffectiveConfig,
+  ExamQuestionAnalysisRecordResponse,
+} from '@/apis/mark/question-analysis'
+import {
+  correctAnswerAndConfirmEffective,
+  getEffectiveAnswerConfig,
+} from '@/apis/mark/question-analysis'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import { QuestionTypeCode, QuestionTypeDescription } from '@/apis/mark/question-type'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
@@ -220,11 +215,15 @@ const dialogTitle = computed(() =>
   props.question ? `修正题 ${props.question.questionNo} 答案并生效` : '修正答案并生效',
 )
 
-const isObjectiveQuestion = computed(() => props.question?.questionType === QuestionTypeCode.OBJECTIVE)
+const isObjectiveQuestion = computed(
+  () => props.question?.questionType === QuestionTypeCode.OBJECTIVE,
+)
 
 const showChoiceSetFields = computed(() => form.comparePolicy === ObjectiveComparePolicy.CHOICE_SET)
 
-const showNumericFields = computed(() => form.comparePolicy === ObjectiveComparePolicy.NUMERIC_TOLERANCE)
+const showNumericFields = computed(
+  () => form.comparePolicy === ObjectiveComparePolicy.NUMERIC_TOLERANCE,
+)
 
 const showStandardAnswerInput = computed(() => {
   if (!props.question) {
@@ -233,10 +232,12 @@ const showStandardAnswerInput = computed(() => {
   if (!isObjectiveQuestion.value) {
     return true
   }
-  return form.comparePolicy !== undefined
-    && form.comparePolicy !== ObjectiveComparePolicy.CHOICE_SET
-    && form.comparePolicy !== ObjectiveComparePolicy.NUMERIC_TOLERANCE
-    && form.comparePolicy !== ObjectiveComparePolicy.AI_GRADE
+  return (
+    form.comparePolicy !== undefined &&
+    form.comparePolicy !== ObjectiveComparePolicy.CHOICE_SET &&
+    form.comparePolicy !== ObjectiveComparePolicy.NUMERIC_TOLERANCE &&
+    form.comparePolicy !== ObjectiveComparePolicy.AI_GRADE
+  )
 })
 
 const requireStandardAnswer = computed(() => {
@@ -347,9 +348,7 @@ function applyAnswerToForm(answer: ExamStandardAnswerResponse | null): void {
   form.aiHint = answer.aiHint ?? ''
 }
 
-function formatOptions(
-  options?: Array<{ optionLabel: string, sortNo: number }>,
-): string {
+function formatOptions(options?: Array<{ optionLabel: string; sortNo: number }>): string {
   return (options ?? [])
     .slice()
     .sort((left, right) => left.sortNo - right.sortNo)
@@ -399,7 +398,10 @@ function validateForm(): boolean {
     showUserError(null, '数值题必须填写标准值')
     return false
   }
-  if (form.comparePolicy === ObjectiveComparePolicy.AI_GRADE && !trimToUndefined(form.gradingRubric)) {
+  if (
+    form.comparePolicy === ObjectiveComparePolicy.AI_GRADE &&
+    !trimToUndefined(form.gradingRubric)
+  ) {
     showFormValidationMessage('智能评分策略必须填写评分细则')
     return false
   }
@@ -439,7 +441,7 @@ async function handleSubmit(): Promise<void> {
   submitting.value = true
   try {
     await correctAnswerAndConfirmEffective(request)
-    message.success('标准答案已修正并生效')
+    void message.success('标准答案已修正并生效')
     emit('corrected')
     emit('close')
   } catch (error) {

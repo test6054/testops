@@ -5,13 +5,18 @@ import type {
   ImprovementTaskSaveRequest,
   ImprovementTaskVO,
 } from '@/apis/quality/improvement-task'
+import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { WorkbenchSignalRefreshHandler } from '@/composables/quality/improvement'
+import {
+  normalizeTextareaLineItems,
+  refreshWorkbenchSignalsAfterMutation,
+  selectedId,
+} from '@/composables/quality/improvement'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
-import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import {
   AiTaskBusinessTypeCode,
   AiTaskTypeCode,
@@ -43,11 +48,6 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import {
-  normalizeTextareaLineItems,
-  refreshWorkbenchSignalsAfterMutation,
-  selectedId,
-} from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import {
@@ -96,7 +96,7 @@ const improvementQuery = reactive<ImprovementTaskQueryRequest>({
   keyword: '',
 })
 
-const improvementStatusOptions: Array<{ value: ImprovementTaskStatusCode, label: string }> = [
+const improvementStatusOptions: Array<{ value: ImprovementTaskStatusCode; label: string }> = [
   { value: ImprovementTaskStatusCode.OPEN, label: ImprovementTaskStatusDescription.OPEN },
   {
     value: ImprovementTaskStatusCode.IN_PROGRESS,
@@ -202,7 +202,7 @@ function handleImprovementFilterSearch(): void {
   void loadList()
 }
 
-function handleImprovementPageChange(page: { current: number, pageSize: number }): void {
+function handleImprovementPageChange(page: { current: number; pageSize: number }): void {
   improvementQuery.pageNum = page.current
   improvementQuery.pageSize = page.pageSize
   void loadList()
@@ -282,9 +282,9 @@ async function loadList(options?: { refreshSignals?: boolean }): Promise<void> {
     improvementQuery.pageSize = page.pageSize
     improvementTotal.value = page.total
     if (
-      improvementList.value.length === 0
-      && improvementTotal.value > 0
-      && improvementQuery.pageNum > 1
+      improvementList.value.length === 0 &&
+      improvementTotal.value > 0 &&
+      improvementQuery.pageNum > 1
     ) {
       improvementQuery.pageNum -= 1
       await loadList(options)
@@ -336,7 +336,7 @@ function openImprovementCreate(): void {
 
 function openImprovementEdit(record: ImprovementTaskVO): void {
   if (!canEditImprovementTask(record.status)) {
-    message.error('当前状态不允许编辑改进任务')
+    void message.error('当前状态不允许编辑改进任务')
     return
   }
   improvementEditorMode.value = 'edit'
@@ -386,25 +386,25 @@ async function submitImprovementEditor(): Promise<void> {
   if (improvementEditorMode.value === 'edit' && improvementEditor.id) {
     const current = improvementList.value.find((item) => item.id === improvementEditor.id)
     if (current && !canEditImprovementTask(current.status)) {
-      message.error('当前状态不允许编辑改进任务')
+      void message.error('当前状态不允许编辑改进任务')
       return
     }
   }
   if (
-    !improvementEditor.taskTitle.trim()
-    || !improvementEditor.problemSummary.trim()
-    || !improvementEditor.proposedAction.trim()
-    || !improvementEditor.programId
-    || !improvementEditor.ownerUserId
-    || !improvementEditor.dueDate
+    !improvementEditor.taskTitle.trim() ||
+    !improvementEditor.problemSummary.trim() ||
+    !improvementEditor.proposedAction.trim() ||
+    !improvementEditor.programId ||
+    !improvementEditor.ownerUserId ||
+    !improvementEditor.dueDate
   ) {
-    message.error('请填写标题、问题概述、改进措施、专业、负责人和截止日期')
+    void message.error('请填写标题、问题概述、改进措施、专业、负责人和截止日期')
     return
   }
   if (
-    improvementEditorMode.value === 'create'
-    && submitAiSuggestionDraft.value
-    && !improvementEditor.achievementResultId
+    improvementEditorMode.value === 'create' &&
+    submitAiSuggestionDraft.value &&
+    !improvementEditor.achievementResultId
   ) {
     showFormValidationMessage('生成智能改进草稿需要先关联达成度计算结果')
     return
@@ -445,18 +445,18 @@ async function submitImprovementEditor(): Promise<void> {
           achievementResultId,
           reportId: improvementTaskId,
         })
-        message.success('改进任务已创建，智能改进草稿已排队生成')
+        void message.success('改进任务已创建，智能改进草稿已排队生成')
         if (res.taskId) {
           aiTaskStore.startPolling(res.taskId)
         } else {
           void startPollingImprovementAiTask(String(improvementTaskId))
         }
       } else {
-        message.success('改进任务已创建')
+        void message.success('改进任务已创建')
       }
     } else {
       await improvementTaskApi.update(request)
-      message.success('已保存修改')
+      void message.success('已保存修改')
     }
     improvementEditorVisible.value = false
     await loadList({ refreshSignals: true })
@@ -478,8 +478,8 @@ async function handleImprovementTransit(
   to: ImprovementTaskStatusCode,
 ): Promise<void> {
   if (
-    record.status === ImprovementTaskStatusCode.SUBMITTED
-    && (to === ImprovementTaskStatusCode.CLOSED || to === ImprovementTaskStatusCode.RETURNED)
+    record.status === ImprovementTaskStatusCode.SUBMITTED &&
+    (to === ImprovementTaskStatusCode.CLOSED || to === ImprovementTaskStatusCode.RETURNED)
   ) {
     const reviewRemark = await promptInputAsync({
       title: to === ImprovementTaskStatusCode.CLOSED ? '复评通过并闭环' : '复评退回任务',
@@ -496,7 +496,7 @@ async function handleImprovementTransit(
       reviewDecision: to === ImprovementTaskStatusCode.CLOSED ? 'APPROVED' : 'REJECTED',
       reviewRemark: reviewRemark || undefined,
     })
-    message.success(to === ImprovementTaskStatusCode.CLOSED ? '已闭环' : '已退回')
+    void message.success(to === ImprovementTaskStatusCode.CLOSED ? '已闭环' : '已退回')
     await loadList({ refreshSignals: true })
     return
   }
@@ -529,7 +529,7 @@ async function handleImprovementTransit(
     progressRemark: remark || undefined,
     rectificationEvidenceItems,
   })
-  message.success('流转成功')
+  void message.success('流转成功')
   await loadList({ refreshSignals: true })
 }
 
@@ -554,7 +554,7 @@ async function handleImprovementAiSuggestion(record: ImprovementTaskVO): Promise
         achievementResultId,
         reportId: record.id,
       })
-      message.success('已提交智能改进草稿任务')
+      void message.success('已提交智能改进草稿任务')
       if (res.taskId) aiTaskStore.startPolling(res.taskId)
     },
   })
@@ -567,7 +567,7 @@ async function handleImprovementDelete(record: ImprovementTaskVO): Promise<void>
     content: '该操作不可恢复',
     onOk: async () => {
       await improvementTaskApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadList({ refreshSignals: true })
     },
   })
@@ -756,9 +756,7 @@ defineExpose({
         </UiCol>
         <UiCol :span="16">
           <UiFormItem label="任务标题" required>
-            <UiInput
-              size="sm" v-model="improvementEditor.taskTitle"
-            />
+            <UiInput size="sm" v-model="improvementEditor.taskTitle" />
           </UiFormItem>
         </UiCol>
       </UiRow>
@@ -827,9 +825,7 @@ defineExpose({
         </UiCol>
         <UiCol :span="12">
           <UiFormItem label="截止日期">
-            <UiInput
-              size="sm" v-model="improvementEditor.dueDate" placeholder="yyyy-MM-dd"
-            />
+            <UiInput size="sm" v-model="improvementEditor.dueDate" placeholder="yyyy-MM-dd" />
           </UiFormItem>
         </UiCol>
       </UiRow>

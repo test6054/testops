@@ -4,12 +4,12 @@ import type {
   PortfolioIndustryEducationProjectVO,
   PortfolioVirtualTeachingRoomActivityVO,
 } from '@/apis/portfolio/policy-ledger'
-import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref } from 'vue'
 import {
   portfolioIndustryEducationProjectApi,
   portfolioVirtualTeachingRoomActivityApi,
 } from '@/apis/portfolio/policy-ledger'
+import message from 'ant-design-vue/es/message'
+import { onMounted, reactive, ref } from 'vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -25,13 +25,11 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 const tab = ref<'virtual' | 'industry'>('virtual')
 const loading = ref(false)
 const virtualRows = ref<PortfolioVirtualTeachingRoomActivityVO[]>([])
@@ -95,7 +93,9 @@ function statusTone(status?: string): 'blue' | 'orange' | 'green' | 'gray' | 're
   return 'gray'
 }
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -138,14 +138,14 @@ async function loadPage() {
 
 async function saveVirtual() {
   if (!targetTeacherId.value) {
-    message.warning('请先选择教师')
+    void message.warning('请先选择教师')
     return
   }
   if (!assertArchiveWritable('登记虚拟教研室活动')) {
     return
   }
   if (!virtualForm.roomName.trim() || !virtualForm.activityTitle.trim()) {
-    message.warning('请填写教研室名称与活动标题')
+    void message.warning('请填写教研室名称与活动标题')
     return
   }
   saving.value = true
@@ -160,7 +160,7 @@ async function saveVirtual() {
       partnerEnterprise: virtualForm.partnerEnterprise || undefined,
       leadUnit: virtualForm.leadUnit || undefined,
     })
-    message.success('虚拟教研室活动已保存')
+    void message.success('虚拟教研室活动已保存')
     virtualForm.roomName = ''
     virtualForm.activityTitle = ''
     await loadPage()
@@ -173,14 +173,14 @@ async function saveVirtual() {
 
 async function saveIndustry() {
   if (!targetTeacherId.value) {
-    message.warning('请先选择教师')
+    void message.warning('请先选择教师')
     return
   }
   if (!assertArchiveWritable('登记产教项目')) {
     return
   }
   if (!industryForm.projectName.trim()) {
-    message.warning('请填写项目名称')
+    void message.warning('请填写项目名称')
     return
   }
   saving.value = true
@@ -194,7 +194,7 @@ async function saveIndustry() {
       reviewStatus: industryForm.reviewStatus,
       enterpriseName: industryForm.enterpriseName || undefined,
     })
-    message.success('产教项目已保存')
+    void message.success('产教项目已保存')
     industryForm.projectName = ''
     await loadPage()
   } catch (error) {
@@ -229,11 +229,7 @@ onMounted(() => {
 
     <PortfolioTeacherPickGate />
 
-    <UiCard
-      v-if="archiveWriteForbidden"
-      class="policy-ledger__block"
-      title="档案写禁"
-    >
+    <UiCard v-if="archiveWriteForbidden" class="policy-ledger__block" title="档案写禁">
       <p class="policy-ledger__hint">{{ archiveWriteBlockMessage }}</p>
     </UiCard>
 
@@ -242,14 +238,22 @@ onMounted(() => {
         <UiButton
           size="sm"
           :variant="tab === 'virtual' ? 'primary' : 'outline'"
-          @click="tab = 'virtual'; pageNum = 1; loadPage()"
+          @click="
+            tab = 'virtual'
+            pageNum = 1
+            loadPage()
+          "
         >
           §8.41 虚拟教研室
         </UiButton>
         <UiButton
           size="sm"
           :variant="tab === 'industry' ? 'primary' : 'outline'"
-          @click="tab = 'industry'; pageNum = 1; loadPage()"
+          @click="
+            tab = 'industry'
+            pageNum = 1
+            loadPage()
+          "
         >
           §8.46 产教项目
         </UiButton>
@@ -258,7 +262,12 @@ onMounted(() => {
           v-model="reviewFilter"
           style="width: 140px"
           :options="reviewStatusOptions"
-          @update:model-value="() => { pageNum = 1; loadPage() }"
+          @update:model-value="
+            () => {
+              pageNum = 1
+              loadPage()
+            }
+          "
         />
       </div>
       <p class="policy-ledger__hint">
@@ -302,31 +311,37 @@ onMounted(() => {
           style="width: 120px"
           :options="reviewStatusOptions.filter((o) => o.value)"
         />
-        <UiButton size="sm" variant="primary" :loading="saving" :disabled="archiveWriteForbidden" @click="saveVirtual">保存</UiButton>
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="saving"
+          :disabled="archiveWriteForbidden"
+          @click="saveVirtual"
+          >保存</UiButton
+        >
       </div>
       <UiDataTable
         :loading="loading"
         :columns="virtualColumns"
         :data-source="virtualRows"
-        :pagination="{ current: pageNum, pageSize, total: virtualTotal, onChange: (p: number) => { pageNum = p; loadPage() } }"
+        :pagination="{
+          current: pageNum,
+          pageSize,
+          total: virtualTotal,
+          onChange: (p: number) => {
+            pageNum = p
+            loadPage()
+          },
+        }"
         row-key="id"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'ownerIdentityLayers'">
-            <div v-if="record.ownerIdentityLayers?.length" class="policy-ledger__identities">
-              <UiTag
-                v-for="(layer, idx) in record.ownerIdentityLayers"
-                :key="layer.identityId || `${layer.identityType}-${idx}`"
-                tone="blue"
-                class="policy-ledger__identity-tag"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-              <p v-if="record.ownerMultiIdentityNote" class="policy-ledger__identity-note">
-                {{ record.ownerMultiIdentityNote }}
-              </p>
-            </div>
-            <span v-else class="policy-ledger__muted">—</span>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+              show-note
+            />
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
@@ -334,10 +349,17 @@ onMounted(() => {
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <UiTag v-if="record.archiveWriteForbidden" tone="red" class="ml-1">档案写禁</UiTag>
-            <span v-if="!record.lifecycleStatus && !record.evaluationHeld && !record.archiveWriteForbidden">—</span>
+            <span
+              v-if="
+                !record.lifecycleStatus && !record.evaluationHeld && !record.archiveWriteForbidden
+              "
+              >—</span
+            >
           </template>
           <template v-else-if="column.key === 'reviewStatus'">
-            <UiTag :tone="statusTone(record.reviewStatus)">{{ record.reviewStatusLabel || record.reviewStatus }}</UiTag>
+            <UiTag :tone="statusTone(record.reviewStatus)">{{
+              record.reviewStatusLabel || record.reviewStatus
+            }}</UiTag>
           </template>
         </template>
         <template #emptyText>
@@ -389,31 +411,37 @@ onMounted(() => {
           style="width: 120px"
           :options="reviewStatusOptions.filter((o) => o.value)"
         />
-        <UiButton size="sm" variant="primary" :loading="saving" :disabled="archiveWriteForbidden" @click="saveIndustry">保存</UiButton>
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="saving"
+          :disabled="archiveWriteForbidden"
+          @click="saveIndustry"
+          >保存</UiButton
+        >
       </div>
       <UiDataTable
         :loading="loading"
         :columns="industryColumns"
         :data-source="industryRows"
-        :pagination="{ current: pageNum, pageSize, total: industryTotal, onChange: (p: number) => { pageNum = p; loadPage() } }"
+        :pagination="{
+          current: pageNum,
+          pageSize,
+          total: industryTotal,
+          onChange: (p: number) => {
+            pageNum = p
+            loadPage()
+          },
+        }"
         row-key="id"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'ownerIdentityLayers'">
-            <div v-if="record.ownerIdentityLayers?.length" class="policy-ledger__identities">
-              <UiTag
-                v-for="(layer, idx) in record.ownerIdentityLayers"
-                :key="layer.identityId || `${layer.identityType}-${idx}`"
-                tone="blue"
-                class="policy-ledger__identity-tag"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-              <p v-if="record.ownerMultiIdentityNote" class="policy-ledger__identity-note">
-                {{ record.ownerMultiIdentityNote }}
-              </p>
-            </div>
-            <span v-else class="policy-ledger__muted">—</span>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+              show-note
+            />
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
@@ -421,10 +449,17 @@ onMounted(() => {
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <UiTag v-if="record.archiveWriteForbidden" tone="red" class="ml-1">档案写禁</UiTag>
-            <span v-if="!record.lifecycleStatus && !record.evaluationHeld && !record.archiveWriteForbidden">—</span>
+            <span
+              v-if="
+                !record.lifecycleStatus && !record.evaluationHeld && !record.archiveWriteForbidden
+              "
+              >—</span
+            >
           </template>
           <template v-else-if="column.key === 'reviewStatus'">
-            <UiTag :tone="statusTone(record.reviewStatus)">{{ record.reviewStatusLabel || record.reviewStatus }}</UiTag>
+            <UiTag :tone="statusTone(record.reviewStatus)">{{
+              record.reviewStatusLabel || record.reviewStatus
+            }}</UiTag>
           </template>
         </template>
         <template #emptyText>

@@ -18,7 +18,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -38,6 +37,7 @@ import {
 } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const activeTab = ref('portrait')
 const tabItems = [
@@ -287,7 +287,7 @@ async function resolvePortraitAlert(
       resolveRemark:
         alertStatus === PortfolioAlertStatusCode.RESOLVED ? '管理端关闭预警' : '管理端已知晓',
     })
-    message.success('画像预警已处置')
+    void message.success('画像预警已处置')
     await loadPortraitAlerts()
   } catch (error) {
     showUserError(error, '画像预警处置失败')
@@ -324,7 +324,7 @@ async function resolveComplianceAlert(
       resolveRemark:
         alertStatus === PortfolioAlertStatusCode.RESOLVED ? '管理端关闭预警' : '管理端已知晓',
     })
-    message.success('合规预警已处置')
+    void message.success('合规预警已处置')
     await loadComplianceAlerts()
   } catch (error) {
     showUserError(error, '合规预警处置失败')

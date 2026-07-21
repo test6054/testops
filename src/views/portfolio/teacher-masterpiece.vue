@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type {PortfolioProcessSessionVO} from '@/apis/portfolio/process-session';
+import type { PortfolioProcessSessionVO } from '@/apis/portfolio/process-session'
+import { portfolioProcessSessionApi } from '@/apis/portfolio/process-session'
 import type { PortfolioMasterpieceContributionVO } from '@/apis/portfolio/types'
 /**
  * 教学代表作只读预览：聚合简历/数据/陈述/过程入口/发展/成果，供本人与院审阅读。
@@ -7,10 +8,6 @@ import type { PortfolioMasterpieceContributionVO } from '@/apis/portfolio/types'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
-import {
-  portfolioProcessSessionApi
-  
-} from '@/apis/portfolio/process-session'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { portfolioTeacherHonorApi } from '@/apis/portfolio/teacher-honor'
 import { portfolioTeachingPhilosophyApi } from '@/apis/portfolio/teaching-philosophy'
@@ -27,6 +24,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { showUserError } from '@/utils/error-handler'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 defineOptions({ name: 'PortfolioTeacherMasterpiece' })
 
@@ -45,8 +43,8 @@ const loadError = ref(false)
 const processSessions = ref<PortfolioProcessSessionVO[]>([])
 const masterpieceContribution = ref<PortfolioMasterpieceContributionVO | null>(null)
 
-const isSelf = computed(
-  () => Boolean(targetTeacherId.value && targetTeacherId.value === currentUserId.value),
+const isSelf = computed(() =>
+  Boolean(targetTeacherId.value && targetTeacherId.value === currentUserId.value),
 )
 
 const teacherRequest = computed(() =>
@@ -66,9 +64,7 @@ async function loadAll() {
       portfolioAnalysisApi.getPortrait(teacherRequest.value).catch(() => null),
       portfolioTeachingPhilosophyApi.list(teacherRequest.value).catch(() => []),
       portfolioTeacherHonorApi.list(teacherRequest.value).catch(() => []),
-      teacherId
-        ? portfolioTeacherApi.get(teacherId).catch(() => null)
-        : Promise.resolve(null),
+      teacherId ? portfolioTeacherApi.get(teacherId).catch(() => null) : Promise.resolve(null),
     ])
     const selectedSessions = await portfolioProcessSessionApi
       .list({ ...teacherRequest.value, selectedOnly: true })
@@ -148,9 +144,7 @@ usePortfolioScopedLoader(loadAll, () => targetTeacherId.value)
             · 正式档案
             <strong>{{ officialCount == null ? '—' : `${officialCount} 条` }}</strong>
           </p>
-          <p class="masterpiece__hint">
-            覆盖度反映填报进度，不等于代表作质量。
-          </p>
+          <p class="masterpiece__hint">覆盖度反映填报进度，不等于代表作质量。</p>
         </UiCard>
 
         <UiCard title="§8.54 代表作贡献度" class="masterpiece__section">
@@ -164,25 +158,11 @@ usePortfolioScopedLoader(loadAll, () => targetTeacherId.value)
               <strong>{{ masterpieceContribution.topItemScore ?? 0 }}</strong>
             </p>
             <p class="masterpiece__hint">{{ masterpieceContribution.formulaLabel }}</p>
-            <div
-              v-if="masterpieceContribution.ownerIdentityLayers?.length"
-              class="masterpiece__identity-layers"
-            >
-              <UiTag
-                v-for="(layer, idx) in masterpieceContribution.ownerIdentityLayers"
-                :key="layer.identityId || `${layer.identityType}-${idx}`"
-                size="sm"
-                :tone="layer.externalIdentity ? 'orange' : 'blue'"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-            </div>
-            <p
-              v-if="masterpieceContribution.ownerMultiIdentityNote"
-              class="masterpiece__hint"
-            >
-              {{ masterpieceContribution.ownerMultiIdentityNote }}
-            </p>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="masterpieceContribution.ownerIdentityLayers"
+              :note="masterpieceContribution.ownerMultiIdentityNote"
+              show-note
+            />
             <p
               v-for="(note, idx) in masterpieceContribution.evidenceNotes || []"
               :key="`mp-note-${idx}`"
@@ -217,7 +197,9 @@ usePortfolioScopedLoader(loadAll, () => targetTeacherId.value)
                 {{ item.sessionDate }} · {{ item.courseName || item.courseCode || '课程' }}
               </span>
               <p v-if="item.prepText" class="masterpiece__body masterpiece__body--pre">
-                准备：{{ item.prepText.length > 200 ? `${item.prepText.slice(0, 200)}…` : item.prepText }}
+                准备：{{
+                  item.prepText.length > 200 ? `${item.prepText.slice(0, 200)}…` : item.prepText
+                }}
               </p>
               <p v-if="item.processText" class="masterpiece__body masterpiece__body--pre">
                 过程：{{

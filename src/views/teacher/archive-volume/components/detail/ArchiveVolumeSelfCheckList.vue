@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ArchiveSelfCheckStatusCode } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted } from 'vue'
 import {
   ARCHIVE_SELF_CHECK_STATUS_TONE,
   ArchiveSelfCheckStatusDescription,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -34,7 +34,7 @@ const props = withDefaults(
   },
 )
 const emit = defineEmits<{
-  'refreshed': []
+  refreshed: []
   'open-sign-off': []
 }>()
 const authStore = useAuthStore()
@@ -82,7 +82,7 @@ function statusTone(code: ArchiveSelfCheckStatusCode): BadgeTone {
 async function handleToggle(templateItemId: string, checked: boolean) {
   // MVR-306/380：与 readonly（!canEditSelfCheck）同源；仅 readonly===false 可写
   if (props.readonly !== false) {
-    message.warning('当前账号无自查项编辑权限')
+    void message.warning('当前账号无自查项编辑权限')
     return
   }
   const item = items.value.find((row) => row.templateItemId === templateItemId)
@@ -91,7 +91,7 @@ async function handleToggle(templateItemId: string, checked: boolean) {
   emit('refreshed')
 }
 
-function handleRowClick(item: { templateItemId: string, checked?: boolean }) {
+function handleRowClick(item: { templateItemId: string; checked?: boolean }) {
   if (props.readonly !== false || checking.value || loadFailed.value) return
   void handleToggle(item.templateItemId, !item.checked)
 }
@@ -111,7 +111,10 @@ defineExpose({ loadSelfCheck })
         <UiTag :tone="statusTone(effectiveStatus)" size="sm">
           {{ statusLabel(effectiveStatus) }}
         </UiTag>
-        <span v-if="items.length > 0 && !loadFailed" class="archive-volume-self-check-list__progress">
+        <span
+          v-if="items.length > 0 && !loadFailed"
+          class="archive-volume-self-check-list__progress"
+        >
           必查 {{ checkedRequiredCount }}/{{ requiredCount }}
         </span>
         <div class="archive-quality-panel__section-actions">

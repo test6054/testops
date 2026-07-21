@@ -37,7 +37,11 @@
           生成当前题
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating" @click="handleGenerateAll"
+          v-if="canManageReviewerWrites === true"
+          variant="outline"
+          size="sm"
+          :loading="generating"
+          @click="handleGenerateAll"
         >
           全量生成
         </UiButton>
@@ -85,7 +89,11 @@
           生成当前题
         </UiButton>
         <UiButton
-          v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerateAll"
+          v-if="canManageReviewerWrites === true"
+          variant="primary"
+          size="sm"
+          :loading="generating"
+          @click="handleGenerateAll"
         >
           全量生成
         </UiButton>
@@ -191,7 +199,11 @@
                 全量生成
               </UiButton>
             </div>
-            <div class="dp-space" v-else-if="tableEmptyKind === 'no-result'" style="--dp-space-gap: 8px">
+            <div
+              class="dp-space"
+              v-else-if="tableEmptyKind === 'no-result'"
+              style="--dp-space-gap: 8px"
+            >
               <UiButton
                 v-if="canManageReviewerWrites === true"
                 variant="outline"
@@ -210,9 +222,9 @@
           <template #bodyCell="{ column, record: item }">
             <ExamQuestionIdentityCells
               v-if="
-                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionType
-                  || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionStem
-                  || column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.fullScore
+                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionType ||
+                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.questionStem ||
+                column.key === EXAM_QUESTION_IDENTITY_COLUMN_KEYS.fullScore
               "
               :column-key="String(column.key)"
               :record="item"
@@ -240,9 +252,9 @@
                   // MVR-387：模板须 === true；ComputedRef 对象 truthy 会导致无写权仍展示行操作
                   ...(canManageReviewerWrites === true
                     ? [
-                      { key: 'correct-answer', label: '修正答案并生效' },
-                      { key: 'regenerate', label: '重新生成' },
-                    ]
+                        { key: 'correct-answer', label: '修正答案并生效' },
+                        { key: 'regenerate', label: '重新生成' },
+                      ]
                     : []),
                 ]"
                 split
@@ -270,28 +282,28 @@ import type {
   ExamLayoutQuestionViewResponse,
   ExamTemplateResponse,
 } from '@/apis/mark/exam-layout-question'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type {
   ExamQuestionAnalysisRecordResponse,
   QuestionAnalysisListQueryRequest,
 } from '@/apis/mark/question-analysis'
-import type { UiDataTableColumn } from '@/components/ui-guide/ui/data-table'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import { message } from 'ant-design-vue'
-import { computed, ref, watch } from 'vue'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import {
   generateAllQuestionAnalysis,
   generateQuestionAnalysis,
   loadQuestionAnalysisChartRows,
   pageQuestionAnalysis,
 } from '@/apis/mark/question-analysis'
+import type { UiDataTableColumn } from '@/components/ui-guide/ui/data-table'
+import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import { message } from 'ant-design-vue'
+import { computed, ref, watch } from 'vue'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkScatterSection from '@/components/chart/MarkScatterSection.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
 import ExamQuestionIdentityCells from '@/components/mark/analysis/ExamQuestionIdentityCells.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
-import { buildNumericColumn } from '@/components/ui-guide/ui/data-table'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -347,11 +359,13 @@ const generatingId = ref<string>('')
 const selectedLayoutQuestionId = ref<string>()
 const questionLoading = ref(false)
 const questionOptions = ref<
-  Array<{ value: string, label: string, disabled?: boolean, title?: string }>
+  Array<{ value: string; label: string; disabled?: boolean; title?: string }>
 >([])
 const layoutSummary = ref<ExamTemplateResponse | null>(null)
 /** MVR-277：修正答案等写动作；与 BE requireExamReviewerPermission 对齐 */
-const canManageReviewerWrites = computed(() => layoutSummary.value?.canManageReviewerWrites === true)
+const canManageReviewerWrites = computed(
+  () => layoutSummary.value?.canManageReviewerWrites === true,
+)
 const layoutRoiGap = computed(() => {
   if (!layoutSummary.value?.configured) {
     return 0
@@ -521,7 +535,7 @@ async function reload(): Promise<void> {
   await Promise.all([loadChartRows(), loadTablePage(1, tablePageSize.value)])
 }
 
-function handleTablePageChange(event: { current: number, pageSize: number }): void {
+function handleTablePageChange(event: { current: number; pageSize: number }): void {
   void loadTablePage(event.current, event.pageSize)
 }
 
@@ -547,8 +561,8 @@ async function loadQuestionOptions(): Promise<void> {
     }
     questionOptions.value = buildExamLayoutQuestionOptions(template.questions)
     if (
-      selectedLayoutQuestionId.value
-      && !template.questions.some(
+      selectedLayoutQuestionId.value &&
+      !template.questions.some(
         (q) => q.layoutQuestionId === selectedLayoutQuestionId.value && q.roiReady,
       )
     ) {
@@ -577,7 +591,7 @@ async function reloadCurrentScope(): Promise<void> {
 
 async function handleGenerateAll(): Promise<void> {
   if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
   if (generating.value) return
@@ -603,7 +617,7 @@ async function handleGenerateAll(): Promise<void> {
 
 async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
   if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
   if (!layoutQuestionId || generating.value) return
@@ -621,9 +635,9 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
       successMessage: '已重新生成',
       onSuccess: async () => {
         await reload()
-        const matched
-          = tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
-            ?? chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
+        const matched =
+          tableRows.value.find((item) => item.layoutQuestionId === layoutQuestionId) ??
+          chartRows.value.find((item) => item.layoutQuestionId === layoutQuestionId)
         generationSummary.value = matched
           ? `已生成题 ${matched.questionNo} 的质量分析，可查看难度、区分度与正确率。`
           : '已生成该题质量分析，可查看难度、区分度与正确率。'
@@ -636,7 +650,7 @@ async function handleGenerateOne(layoutQuestionId: string): Promise<void> {
 
 async function handleGenerateSelected(): Promise<void> {
   if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
   if (!selectedLayoutQuestionId.value) {
@@ -649,12 +663,12 @@ async function handleGenerateSelected(): Promise<void> {
 function handleRowAction(actionKey: string, item: ExamQuestionAnalysisRecordResponse): void {
   // MVR-387：写动作统一 !== true，禁止 truthy/本地身份放行
   if (actionKey === 'correct-answer' && canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员或主考可修正答案并生效')
+    void message.warning('仅本场阅卷组织成员或主考可修正答案并生效')
     return
   }
   if (actionKey === 'regenerate') {
     if (canManageReviewerWrites.value !== true) {
-      message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
+      void message.warning('仅本场阅卷组织成员、主考或管理员可生成分析')
       return
     }
     void handleGenerateOne(item.layoutQuestionId)
@@ -667,7 +681,7 @@ function handleRowAction(actionKey: string, item: ExamQuestionAnalysisRecordResp
 
 function handleOpenSelectedQuestionCorrection(): void {
   if (canManageReviewerWrites.value !== true) {
-    message.warning('仅本场阅卷组织成员或主考可修正答案并生效')
+    void message.warning('仅本场阅卷组织成员或主考可修正答案并生效')
     return
   }
   if (!selectedQuestionForCorrection.value) {

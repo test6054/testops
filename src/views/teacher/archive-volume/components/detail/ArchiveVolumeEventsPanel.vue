@@ -23,10 +23,10 @@
 
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
+import { exportArchiveVolumeEvents } from '@/apis/mark/archive-volume'
 import message from 'ant-design-vue/es/message'
 import { ref } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
-import { exportArchiveVolumeEvents } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { showUserError } from '@/utils/error-handler'
@@ -44,7 +44,7 @@ const exporting = ref(false)
 async function handleExport() {
   // MVR-341：详情壳已可读才挂载；空事件列表不导出（与按钮 disabled 一致）
   if (props.events.length === 0) {
-    message.warning('暂无审计事件可导出')
+    void message.warning('暂无审计事件可导出')
     return
   }
   if (exporting.value) return
@@ -56,7 +56,7 @@ async function handleExport() {
       return
     }
     await downloadFile({ nodeId: result.exportFileId })
-    message.success(`审计日志已导出，共 ${result.eventCount ?? 0} 条`)
+    void message.success(`审计日志已导出，共 ${result.eventCount ?? 0} 条`)
   } catch (error) {
     showUserError(error, '导出审计日志失败')
   } finally {

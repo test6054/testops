@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { PortfolioAnalysisAnnualReportVO } from '@/apis/portfolio/analysis'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
@@ -12,10 +13,8 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
-import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -28,6 +27,7 @@ import {
 import { showUserError } from '@/utils/error-handler'
 import { portfolioTeacherSelectOptionsFromSummaries } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const POLL_INTERVAL_MS = 3000
 
@@ -331,7 +331,9 @@ watch(
           class="annual-report__field annual-report__field--year"
           :maxlength="4"
         />
-        <UiButton size="sm" variant="primary" :loading="loading" @click="generateReport"> 提交生成 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="loading" @click="generateReport">
+          提交生成
+        </UiButton>
       </div>
     </UiCard>
     <UiCard v-if="latestTask" title="最近任务" class="annual-report__result">
@@ -354,7 +356,16 @@ watch(
               <UiTag
                 v-if="latestTask.lifecycleStatus"
                 size="sm"
-                :tone="latestTask.lifecycleStatus === 'ACTIVE' ? 'green' : latestTask.lifecycleStatus === 'TEMP_HOLD' ? 'orange' : latestTask.lifecycleStatus === 'SEALED' || latestTask.lifecycleStatus === 'TRANSFERRED' ? 'red' : 'gray'"
+                :tone="
+                  latestTask.lifecycleStatus === 'ACTIVE'
+                    ? 'green'
+                    : latestTask.lifecycleStatus === 'TEMP_HOLD'
+                      ? 'orange'
+                      : latestTask.lifecycleStatus === 'SEALED' ||
+                          latestTask.lifecycleStatus === 'TRANSFERRED'
+                        ? 'red'
+                        : 'gray'
+                "
               >
                 {{ latestTask.lifecycleStatusLabel || latestTask.lifecycleStatus }}
               </UiTag>
@@ -433,8 +444,8 @@ watch(
             <UiButton
               size="sm"
               :disabled="
-                record.taskStatus !== PortfolioAnnualReportTaskStatusCode.SUCCESS
-                  || !record.aiTaskId
+                record.taskStatus !== PortfolioAnnualReportTaskStatusCode.SUCCESS ||
+                !record.aiTaskId
               "
               @click="openReportDetail(record)"
             >

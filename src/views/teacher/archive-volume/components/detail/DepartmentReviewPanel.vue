@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, ref } from 'vue'
 import {
   approveArchiveVolumeDepartmentReview,
   rejectArchiveVolumeDepartmentReview,
   requestArchiveVolumeDepartmentReview,
   withdrawArchiveVolumeDepartmentReview,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -26,7 +26,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  "refreshed": []
+  refreshed: []
   'navigate-tab': [tabKey: string]
 }>()
 
@@ -39,7 +39,8 @@ const rejectReason = ref('')
 const requestReason = ref('')
 const confirming = ref(false)
 const actionBusy = computed(
-  () => confirming.value || requesting.value || approving.value || rejecting.value || withdrawing.value,
+  () =>
+    confirming.value || requesting.value || approving.value || rejecting.value || withdrawing.value,
 )
 
 const volumeStatus = computed(() => props.detail.volume.volumeStatus)
@@ -53,21 +54,21 @@ const showPanel = computed(() => {
   const status = volumeStatus.value
   if (capabilities.value?.canReviewDepartmentMaterials === true) {
     return (
-      status === ArchiveVolumeStatusCode.COLLECTING
-      || status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
-      || status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
+      status === ArchiveVolumeStatusCode.COLLECTING ||
+      status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING ||
+      status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
     )
   }
   if (
-    status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
-    || status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
+    status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING ||
+    status === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
   ) {
     return true
   }
   if (status === ArchiveVolumeStatusCode.COLLECTING) {
     return (
-      capabilities.value?.canRequestDepartmentReview === true
-      || capabilities.value?.canApproveDepartmentReview === true
+      capabilities.value?.canRequestDepartmentReview === true ||
+      capabilities.value?.canApproveDepartmentReview === true
     )
   }
   return false
@@ -75,20 +76,20 @@ const showPanel = computed(() => {
 
 const canRequest = computed(
   () =>
-    volumeStatus.value === ArchiveVolumeStatusCode.COLLECTING
-    && capabilities.value?.canRequestDepartmentReview === true,
+    volumeStatus.value === ArchiveVolumeStatusCode.COLLECTING &&
+    capabilities.value?.canRequestDepartmentReview === true,
 )
 
 const canApprove = computed(
   () =>
-    volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
-    && capabilities.value?.canApproveDepartmentReview === true,
+    volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING &&
+    capabilities.value?.canApproveDepartmentReview === true,
 )
 
 const canWithdraw = computed(
   () =>
-    volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED
-    && capabilities.value?.canWithdrawDepartmentReview === true,
+    volumeStatus.value === ArchiveVolumeStatusCode.DEPARTMENT_REVIEWED &&
+    capabilities.value?.canWithdrawDepartmentReview === true,
 )
 
 const statusTone = computed(() => {
@@ -107,7 +108,7 @@ async function handleRequest() {
   if (actionBusy.value) return
   // MVR-300：与 canRequest 同源二次拦截
   if (canRequest.value !== true) {
-    message.warning('当前账号无发起院系审核权限')
+    void message.warning('当前账号无发起院系审核权限')
     return
   }
   confirming.value = true
@@ -125,7 +126,7 @@ async function handleRequest() {
       volumeId: props.volumeId,
       reason: requestReason.value.trim() || undefined,
     })
-    message.success('已发起院系审核')
+    void message.success('已发起院系审核')
     requestReason.value = ''
     emit('refreshed')
   } catch (error) {
@@ -139,13 +140,13 @@ async function handleApprove() {
   if (actionBusy.value) return
   // MVR-300：与 canApprove 同源二次拦截
   if (canApprove.value !== true) {
-    message.warning('当前账号无院系审核通过权限')
+    void message.warning('当前账号无院系审核通过权限')
     return
   }
   approving.value = true
   try {
     await approveArchiveVolumeDepartmentReview({ volumeId: props.volumeId })
-    message.success('院系审核已通过')
+    void message.success('院系审核已通过')
     emit('refreshed')
   } catch (error) {
     showUserError(error, '院系审核通过失败')
@@ -158,7 +159,7 @@ async function handleReject() {
   if (actionBusy.value) return
   // MVR-300：与 canApprove 同源二次拦截（驳回同审批职责）
   if (canApprove.value !== true) {
-    message.warning('当前账号无院系审核驳回权限')
+    void message.warning('当前账号无院系审核驳回权限')
     return
   }
   if (!rejectReason.value.trim()) {
@@ -171,7 +172,7 @@ async function handleReject() {
       volumeId: props.volumeId,
       rejectReason: rejectReason.value.trim(),
     })
-    message.success('已驳回院系审核')
+    void message.success('已驳回院系审核')
     rejectOpen.value = false
     rejectReason.value = ''
     emit('refreshed')
@@ -186,7 +187,7 @@ async function handleWithdraw() {
   if (actionBusy.value) return
   // MVR-300：与 canWithdraw 同源二次拦截
   if (canWithdraw.value !== true) {
-    message.warning('当前账号无撤回院系审核权限')
+    void message.warning('当前账号无撤回院系审核权限')
     return
   }
   confirming.value = true
@@ -201,7 +202,7 @@ async function handleWithdraw() {
   withdrawing.value = true
   try {
     await withdrawArchiveVolumeDepartmentReview({ volumeId: props.volumeId })
-    message.success('已撤回院系审核，可继续补件后重新发起')
+    void message.success('已撤回院系审核，可继续补件后重新发起')
     emit('refreshed')
   } catch (error) {
     showUserError(error, '撤回院系审核失败')

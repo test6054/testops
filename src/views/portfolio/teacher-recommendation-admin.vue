@@ -6,7 +6,9 @@ import type {
   PortfolioTeacherRecommendRuleVO,
   PortfolioTeacherRecommendRunVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
+import { AiTaskStatusDescription } from '@/apis/quality/types'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -17,9 +19,7 @@ import {
   PortfolioTeacherRecommendSceneCode,
   PortfolioTeacherRecommendSceneDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioTeacherRecommendationApi } from '@/apis/portfolio/teacher-platform'
 import { aiTaskApi } from '@/apis/quality/ai-task'
-import { AiTaskStatusDescription } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -38,6 +38,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 function readRouteStringParam(value: unknown): string {
   return typeof value === 'string' ? value : ''
@@ -76,7 +77,9 @@ const candidateColumns: ColumnsType = [
   { title: '推荐理由', dataIndex: 'reasonText', key: 'reasonText' },
 ]
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -253,7 +256,7 @@ async function saveRule() {
         topLimit: ruleForm.topLimit,
       },
     })
-    message.success('规则已保存')
+    void message.success('规则已保存')
     ruleForm.ruleName = ''
     await loadRules()
   } catch (error) {
@@ -273,7 +276,7 @@ async function executeRuleRun() {
     lastRunId.value = await portfolioTeacherRecommendationApi.executeRun({
       ruleId: selectedRuleId.value,
     })
-    message.success('规则推荐已完成')
+    void message.success('规则推荐已完成')
     await loadCandidates()
   } catch (error) {
     showUserError(error, '执行规则推荐失败')
@@ -293,7 +296,7 @@ async function executeAiExplain() {
       ruleId: selectedRuleId.value,
     })
     await portfolioTeacherRecommendationApi.explainSubmit({ runId: lastRunId.value })
-    message.success('规则执行完成，智能解释任务已提交')
+    void message.success('规则执行完成，智能解释任务已提交')
     await loadCandidates()
   } catch (error) {
     showUserError(error, '提交智能解释任务失败')
@@ -381,10 +384,16 @@ watch(
     <UiCard title="规则配置">
       <div class="form-row">
         <UiInput
-          size="sm" v-model="ruleForm.ruleName" placeholder="规则名称" style="width: 160px"
+          size="sm"
+          v-model="ruleForm.ruleName"
+          placeholder="规则名称"
+          style="width: 160px"
         />
         <UiInputNumber
-          size="sm" v-model="ruleForm.minHonorCount" :min="0" placeholder="最低荣誉数"
+          size="sm"
+          v-model="ruleForm.minHonorCount"
+          :min="0"
+          placeholder="最低荣誉数"
         />
         <UiCheckbox v-model="ruleForm.requireDualTeacher"> 要求双师 </UiCheckbox>
         <UiInputNumber
@@ -394,7 +403,13 @@ watch(
           :max="50"
           placeholder="候选上限"
         />
-        <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving" @click="saveRule">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="saving"
+          :disabled="saving"
+          @click="saveRule"
+        >
           保存规则
         </UiButton>
       </div>
@@ -403,7 +418,12 @@ watch(
         placeholder="选择规则"
         style="width: 240px; margin-top: 8px"
         size="sm"
-        :options="rules.map((rule) => ({ value: rule.id, label: `${rule.ruleName}（${sceneLabel(rule.recommendScene)}）` }))"
+        :options="
+          rules.map((rule) => ({
+            value: rule.id,
+            label: `${rule.ruleName}（${sceneLabel(rule.recommendScene)}）`,
+          }))
+        "
       />
     </UiCard>
     <UiSectionTabs
@@ -442,17 +462,10 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'identityLayers'">
-              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-                <UiTag
-                  v-for="(layer, i) in record.ownerIdentityLayers"
-                  :key="`${record.teacherUserId}-${layer.identityType}-${i}`"
-                  size="sm"
-                  :tone="layer.externalIdentity ? 'orange' : 'blue'"
-                >
-                  {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-                </UiTag>
-              </div>
-              <span v-else>—</span>
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+              />
             </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
               <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">

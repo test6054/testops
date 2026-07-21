@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { PortfolioAnalysisAnnualReportVO } from '@/apis/portfolio/analysis'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioEvaluationTeacherNoticeVO } from '@/apis/portfolio/types'
 import type { PortfolioAnnualReportTaskStatusCode } from '@/types/enums/portfolio-annual-report-task-status-enum'
+import { PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import {
   PortfolioEvaluationTeacherNoticeStatusCode,
   PortfolioEvaluationTeacherNoticeStatusDescription,
@@ -26,18 +27,14 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const {
-  evaluationHeld,
-  evaluationHoldBlockMessage,
-  assertEvaluationParticipable,
-} = usePortfolioArchiveWriteGuard()
+const { evaluationHeld, evaluationHoldBlockMessage, assertEvaluationParticipable } =
+  usePortfolioArchiveWriteGuard()
 const reportYear = ref(String(new Date().getFullYear()))
 const loading = ref(false)
 const generating = ref(false)
@@ -47,8 +44,7 @@ const annualNotices = ref<PortfolioEvaluationTeacherNoticeVO[]>([])
 
 const hasPendingAnnualNotices = computed(() =>
   annualNotices.value.some(
-    (notice) =>
-      notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED,
+    (notice) => notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED,
   ),
 )
 const submittingNoticeId = ref('')
@@ -99,16 +95,16 @@ async function loadAnnualReport() {
       pageSize: 1,
     })
     if (
-      scopeRequestToken.value !== currentScopeToken
-      || reportRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken ||
+      reportRequestToken.value !== currentToken
     ) {
       return
     }
     annualReport.value = page.list[0] ?? null
   } catch (error) {
     if (
-      scopeRequestToken.value !== currentScopeToken
-      || reportRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken ||
+      reportRequestToken.value !== currentToken
     ) {
       return
     }
@@ -116,8 +112,8 @@ async function loadAnnualReport() {
     showUserError(error, '加载失败')
   } finally {
     if (
-      scopeRequestToken.value === currentScopeToken
-      && reportRequestToken.value === currentToken
+      scopeRequestToken.value === currentScopeToken &&
+      reportRequestToken.value === currentToken
     ) {
       loading.value = false
     }
@@ -144,16 +140,16 @@ async function loadAnnualReviewNotices() {
       pageSize: 100,
     })
     if (
-      scopeRequestToken.value !== currentScopeToken
-      || noticeRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken ||
+      noticeRequestToken.value !== currentToken
     ) {
       return
     }
     annualNotices.value = page.list
   } catch (error) {
     if (
-      scopeRequestToken.value !== currentScopeToken
-      || noticeRequestToken.value !== currentToken
+      scopeRequestToken.value !== currentScopeToken ||
+      noticeRequestToken.value !== currentToken
     ) {
       return
     }
@@ -208,7 +204,7 @@ async function generateAnnualReport() {
     return
   }
   if (!selectionConfirmed.value) {
-    message.warning('生成前请确认：本年度材料已甄选，完整度不等于发展叙事质量')
+    void message.warning('生成前请确认：本年度材料已甄选，完整度不等于发展叙事质量')
     return
   }
   const currentScopeToken = scopeRequestToken.value
@@ -309,8 +305,8 @@ usePortfolioScopedLoader(
                 :tone="
                   notice.noticeStatus === PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED
                     ? 'green'
-                    : notice.noticeStatus
-                      === PortfolioEvaluationTeacherNoticeStatusCode.RETURNED_SUPPLEMENT
+                    : notice.noticeStatus ===
+                        PortfolioEvaluationTeacherNoticeStatusCode.RETURNED_SUPPLEMENT
                       ? 'orange'
                       : 'blue'
                 "
@@ -322,7 +318,9 @@ usePortfolioScopedLoader(
                 v-if="notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED"
                 variant="primary"
                 :loading="submittingNoticeId === notice.id"
-                :disabled="Boolean(submittingNoticeId) || Boolean(notice.evaluationHeld) || evaluationHeld"
+                :disabled="
+                  Boolean(submittingNoticeId) || Boolean(notice.evaluationHeld) || evaluationHeld
+                "
                 @click="submitAnnualReviewNotice(notice)"
               >
                 提交考核材料

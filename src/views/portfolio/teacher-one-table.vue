@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherIdentityTypeCode } from '@/apis/portfolio/enums'
-import type { PortfolioTeacherOneTableSummaryVO } from '@/apis/portfolio/teacher'
-import message from 'ant-design-vue/es/message'
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   PortfolioCompletenessLevelDescription,
   PortfolioTeacherIdentityTypeDescription,
 } from '@/apis/portfolio/enums'
+import type { PortfolioTeacherOneTableSummaryVO } from '@/apis/portfolio/teacher'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import message from 'ant-design-vue/es/message'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { PORTFOLIO_COMPLETENESS_LEVEL_TONE } from '@/apis/portfolio/types'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -170,7 +170,7 @@ async function exportOneTable() {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
       return
     }
-    message.success(`已导出 ${result.rowCount} 行`)
+    void message.success(`已导出 ${result.rowCount} 行`)
   } catch (error) {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
       return

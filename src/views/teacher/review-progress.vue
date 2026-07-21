@@ -16,16 +16,16 @@
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="progress-page__empty" />
 
-    <UiEmpty
-      size="sm"
-      v-else-if="loadFailed"
-      title="加载失败"
-      class="progress-page__empty"
-    />
+    <UiEmpty size="sm" v-else-if="loadFailed" title="加载失败" class="progress-page__empty" />
 
     <UiSkeletonState v-else-if="loading && !progress" variant="card" compact />
 
-    <UiEmpty size="sm" v-else-if="!progress" description="暂无复核进度数据" class="progress-page__empty" />
+    <UiEmpty
+      size="sm"
+      v-else-if="!progress"
+      description="暂无复核进度数据"
+      class="progress-page__empty"
+    />
 
     <template v-else-if="progress">
       <ExamWorkspaceJourneySubNav />
@@ -153,7 +153,6 @@
                     ? successColor
                     : primaryColor
                 "
-              
                 :show-label="false"
               />
               <div class="progress-detail">
@@ -254,9 +253,18 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamProcessingTaskItemResponse } from '@/apis/mark/exam-processing-task'
+import {
+  pageExamProcessingTasks,
+  retryPaperGradeSuggestion,
+} from '@/apis/mark/exam-processing-task'
 import type {
   MarkingProgressResponse,
   ReviewQuestionProgressItemResponse,
+} from '@/apis/mark/exam-progress'
+import {
+  getMarkingProgress,
+  getReviewQuestionProgressSummary,
+  pageReviewQuestionProgress,
 } from '@/apis/mark/exam-progress'
 import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -267,15 +275,6 @@ import TableOutlined from '@ant-design/icons-vue/TableOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, inject, onActivated, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  pageExamProcessingTasks,
-  retryPaperGradeSuggestion,
-} from '@/apis/mark/exam-processing-task'
-import {
-  getMarkingProgress,
-  getReviewQuestionProgressSummary,
-  pageReviewQuestionProgress,
-} from '@/apis/mark/exam-progress'
 import {
   REVIEW_TASK_STATUS_TONE,
   ReviewTaskStatusCode,
@@ -344,9 +343,7 @@ defineOptions({ name: 'TeacherReviewProgress' })
 const route = useRoute()
 const { selectedExamId, selectedExam } = useMarkExamContext()
 /** MVR-289：默认拒绝假可写；与 BE requireExamReviewerPermission 对齐 */
-const canManageReviewerWrites = computed(
-  () => selectedExam.value?.canManageReviewerWrites === true,
-)
+const canManageReviewerWrites = computed(() => selectedExam.value?.canManageReviewerWrites === true)
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 
 const successColor = toneToColor('green')
@@ -409,15 +406,15 @@ function canRetryPaperGrade(record: ExamProcessingTaskItemResponse): boolean {
   if (!canManageReviewerWrites.value) return false
   if (!record.paperInstanceId) return false
   if (
-    record.taskType !== ProcessingTaskTypeCode.SUBJECTIVE_AI_REVIEW
-    && record.taskType !== ProcessingTaskTypeCode.OBJECTIVE_AI_REVIEW
+    record.taskType !== ProcessingTaskTypeCode.SUBJECTIVE_AI_REVIEW &&
+    record.taskType !== ProcessingTaskTypeCode.OBJECTIVE_AI_REVIEW
   ) {
     return false
   }
   return (
-    record.status === TaskStatusCode.FAILED
-    || record.status === TaskStatusCode.BLOCKED
-    || record.status === TaskStatusCode.PROCESSING
+    record.status === TaskStatusCode.FAILED ||
+    record.status === TaskStatusCode.BLOCKED ||
+    record.status === TaskStatusCode.PROCESSING
   )
 }
 
@@ -481,7 +478,7 @@ async function reloadProcessingTasksFromRoute(resetPage = true): Promise<void> {
   await loadProcessingTasks()
 }
 
-function handleProcessingTaskPageChange(pageEvent: { current: number, pageSize: number }): void {
+function handleProcessingTaskPageChange(pageEvent: { current: number; pageSize: number }): void {
   processingTaskPageNum.value = pageEvent.current
   processingTaskPageSize.value = pageEvent.pageSize
   void loadProcessingTasks()
@@ -491,7 +488,7 @@ async function retryPaperGradeForTask(record: ExamProcessingTaskItemResponse): P
   if (retryingPaperInstanceId.value || !selectedExamId.value || !record.paperInstanceId) return
   // MVR-420：与 canRetryPaperGrade / 行内显隐同源二次闸（写权∧AI 任务类型∧FAILED/BLOCKED/PROCESSING）
   if (!canRetryPaperGrade(record)) {
-    message.warning(
+    void message.warning(
       canManageReviewerWrites.value
         ? '当前处理任务不可重试整卷智能复评（类型或状态不允许）'
         : '仅本场阅卷组织成员、主考或管理员可重试整卷 AI 批阅',
@@ -504,7 +501,7 @@ async function retryPaperGradeForTask(record: ExamProcessingTaskItemResponse): P
       examId: selectedExamId.value,
       paperInstanceId: record.paperInstanceId,
     })
-    message.success('整卷智能复评重试已受理')
+    void message.success('整卷智能复评重试已受理')
     await loadProcessingTasks()
   } catch (error) {
     showUserError(error, '整卷智能复评重试失败')
@@ -525,9 +522,9 @@ const processingTaskColumns: ColumnType<ExamProcessingTaskItemResponse>[] = [
 
 const contextProgress = computed(
   () =>
-    workbenchContext?.markingProgress?.value
-    ?? workbenchContext?.snapshot.value?.markingProgress
-    ?? null,
+    workbenchContext?.markingProgress?.value ??
+    workbenchContext?.snapshot.value?.markingProgress ??
+    null,
 )
 
 watch(
@@ -538,8 +535,8 @@ watch(
       progress.value = null
       return
     }
-    const contextExamId
-      = workbenchContext?.examId?.value ?? workbenchContext?.snapshot.value?.examId
+    const contextExamId =
+      workbenchContext?.examId?.value ?? workbenchContext?.snapshot.value?.examId
     if (contextExamId && String(contextExamId) !== String(examId)) {
       return
     }

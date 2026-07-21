@@ -2,18 +2,13 @@
 import type { Rule } from 'ant-design-vue/es/form'
 import type { ClassInfoDto } from '@/apis/edu/class'
 import type { ArchiveTenantTemplateSetResponse } from '@/apis/mark/archive-platform-template'
+import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveExamFormCode,
   ArchiveVolumeDetailResponse,
   ArchiveVolumeMaterialResponse,
   ArchiveVolumeTaskSettingsUpdateRequest,
 } from '@/apis/mark/archive-volume'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { CourseListVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
-import type { UiOptionValue } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import {
   ARCHIVE_EXAM_FORM_OPTIONS,
   ARCHIVE_SECURITY_LEVEL_OPTIONS,
@@ -24,8 +19,13 @@ import {
   ArchiveVolumeSourceTypeDescription,
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import { pageExams } from '@/apis/mark/exam'
+import type { CourseListVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
+import type { UiOptionValue } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { TeacherSelector } from '@/components/quality/selectors'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
@@ -66,13 +66,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'open-materials': []
-  "updated": []
+  updated: []
 }>()
 
-const COURSE_ASSESSMENT_PLATFORM_CODES = new Set([
-  'PLATFORM_PAPER_FULL',
-  'PLATFORM_NONPAPER_FULL',
-])
+const COURSE_ASSESSMENT_PLATFORM_CODES = new Set(['PLATFORM_PAPER_FULL', 'PLATFORM_NONPAPER_FULL'])
 
 interface TaskSettingsForm {
   archiveTitle: string
@@ -100,8 +97,8 @@ const saving = ref(false)
 const templateLoading = ref(false)
 const departmentLoading = ref(false)
 const relatedExamLoading = ref(false)
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
-const relatedExamOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
+const relatedExamOptions = ref<Array<{ value: string; label: string }>>([])
 const templateSetOptions = ref<
   Array<{
     value: string
@@ -135,8 +132,8 @@ const form = reactive<TaskSettingsForm>({
 const volume = computed(() => props.detail.volume)
 const identityLocked = computed(
   () =>
-    volume.value.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING
-    || Boolean(volume.value.examId),
+    volume.value.sourceType === ArchiveVolumeSourceTypeCode.ONLINE_MARKING ||
+    Boolean(volume.value.examId),
 )
 const canEdit = computed(() => props.canManageCollaborators === true)
 const canEditTemplate = computed(
@@ -437,7 +434,7 @@ function buildRequest(): ArchiveVolumeTaskSettingsUpdateRequest | null {
 async function saveTaskSettings(): Promise<void> {
   if (saving.value) return
   if (!canEdit.value) {
-    message.warning('当前账号无任务设置维护权限')
+    void message.warning('当前账号无任务设置维护权限')
     return
   }
   const request = buildRequest()
@@ -445,7 +442,7 @@ async function saveTaskSettings(): Promise<void> {
   saving.value = true
   try {
     await updateArchiveVolumeTaskSettings(request)
-    message.success('任务设置已保存')
+    void message.success('任务设置已保存')
     emit('updated')
   } catch (error) {
     showUserError(error, '保存任务设置失败')
@@ -511,7 +508,11 @@ onMounted(() => {
         </div>
         <p class="section-desc">
           与创建页同构，维护建卷身份与归档标题。
-          {{ identityLocked ? '线上阅卷卷的课程/学年学期等由考试锚定，不可改。' : '草稿与收材阶段可完整编辑。' }}
+          {{
+            identityLocked
+              ? '线上阅卷卷的课程/学年学期等由考试锚定，不可改。'
+              : '草稿与收材阶段可完整编辑。'
+          }}
         </p>
 
         <UiFormItem label="课程" name="courseId" required>
@@ -537,7 +538,13 @@ onMounted(() => {
 
         <UiRow :gutter="24" class="create-form__split-row">
           <UiCol :span="12">
-            <UiFormItem label="院系" name="departmentId" required :label-col="labelCol" :wrapper-col="wrapperCol">
+            <UiFormItem
+              label="院系"
+              name="departmentId"
+              required
+              :label-col="labelCol"
+              :wrapper-col="wrapperCol"
+            >
               <UiSelect
                 size="sm"
                 v-model="departmentIdSelectValue"
@@ -597,7 +604,13 @@ onMounted(() => {
 
         <UiRow :gutter="24" class="create-form__split-row">
           <UiCol :span="12">
-            <UiFormItem label="学期" name="semester" required :label-col="labelCol" :wrapper-col="wrapperCol">
+            <UiFormItem
+              label="学期"
+              name="semester"
+              required
+              :label-col="labelCol"
+              :wrapper-col="wrapperCol"
+            >
               <UiSelect
                 size="sm"
                 v-model="form.semester"
@@ -731,7 +744,9 @@ onMounted(() => {
                   :disabled="!canEdit || form.permanentRetention"
                 />
                 <span class="retention-field__unit">年</span>
-                <UiCheckbox v-model="form.permanentRetention" :disabled="!canEdit">永久保管</UiCheckbox>
+                <UiCheckbox v-model="form.permanentRetention" :disabled="!canEdit"
+                  >永久保管</UiCheckbox
+                >
               </div>
             </UiFormItem>
           </UiCol>

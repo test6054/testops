@@ -7,18 +7,18 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * 配置某专业采用的认证标准、评价方法、评价周期、样本范围、责任链与归档策略。
  */
 import type { AccreditationStandardVO } from '@/apis/quality/accreditation-standard'
+import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
 import type {
   ProgramEvaluationProfileQueryRequest,
   ProgramEvaluationProfileSaveRequest,
   ProgramEvaluationProfileSignalSummaryVO,
   ProgramEvaluationProfileVO,
 } from '@/apis/quality/program-evaluation-profile'
+import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref } from 'vue'
-import { accreditationStandardApi } from '@/apis/quality/accreditation-standard'
-import { programEvaluationProfileApi } from '@/apis/quality/program-evaluation-profile'
 import {
   AccreditationTypeCode,
   AccreditationTypeDescription,
@@ -125,8 +125,8 @@ const filterFields: FilterField[] = [
   },
 ]
 
-const evaluationCycleOptions: Array<{ value: EvaluationCycleCode, label: string }>
-  = ALL_EVALUATION_CYCLE_CODES.map((value) => ({
+const evaluationCycleOptions: Array<{ value: EvaluationCycleCode; label: string }> =
+  ALL_EVALUATION_CYCLE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(EvaluationCycleDescription, value, '评价周期'),
   }))
@@ -263,7 +263,7 @@ function handleStandardDictSearch(keyword: string) {
   )
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadList()
@@ -354,7 +354,7 @@ function handleProgramChange(value: string | null) {
 
 async function submitEditor() {
   if (!editor.programId || !editor.accreditationType) {
-    message.error('请选择专业和认证类型')
+    void message.error('请选择专业和认证类型')
     return
   }
   submitting.value = true
@@ -387,7 +387,7 @@ async function submitEditor() {
     }
     if (editorMode.value === 'create') await programEvaluationProfileApi.create(request)
     else await programEvaluationProfileApi.update(request)
-    message.success('已保存')
+    void message.success('已保存')
     editorVisible.value = false
     await loadList()
   } finally {
@@ -424,7 +424,7 @@ async function handleDelete(record: ProgramEvaluationProfileVO) {
     type: 'error',
     onOk: async () => {
       await programEvaluationProfileApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadList()
     },
   })
@@ -547,22 +547,20 @@ onActivated(() => {
           <UiCol :span="8">
             <UiFormItem label="认证类型" required>
               <UiSelect
-                size="sm" v-model="editor.accreditationType" :options="accreditationOptions"
+                size="sm"
+                v-model="editor.accreditationType"
+                :options="accreditationOptions"
               />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="认证级别">
-              <UiInput
-                size="sm" v-model="editor.accreditationLevel" placeholder="如 二级 / 三级"
-              />
+              <UiInput size="sm" v-model="editor.accreditationLevel" placeholder="如 二级 / 三级" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="标准年份">
-              <UiInput
-                size="sm" v-model="editor.standardYear"
-              />
+              <UiInput size="sm" v-model="editor.standardYear" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -573,9 +571,13 @@ onActivated(() => {
             allow-search
             :filter-option="false"
             @search="handleStandardDictSearch"
-          
             size="sm"
-            :options="standards.map((s) => ({ value: s.id, label: `${s.standardCode} · ${s.standardName}` }))"
+            :options="
+              standards.map((s) => ({
+                value: s.id,
+                label: `${s.standardCode} · ${s.standardName}`,
+              }))
+            "
           />
         </UiFormItem>
         <UiRow :gutter="12">
@@ -591,7 +593,9 @@ onActivated(() => {
           <UiCol :span="12">
             <UiFormItem label="评价周期" required>
               <UiSelect
-                size="sm" v-model="editor.evaluationCycle" :options="evaluationCycleOptions"
+                size="sm"
+                v-model="editor.evaluationCycle"
+                :options="evaluationCycleOptions"
               />
             </UiFormItem>
           </UiCol>
@@ -618,7 +622,9 @@ onActivated(() => {
           <UiCol :span="8">
             <UiFormItem label="校级责任">
               <UiInput
-                size="sm" v-model="editor.collegeReviewOwner" placeholder="责任单位或负责人"
+                size="sm"
+                v-model="editor.collegeReviewOwner"
+                placeholder="责任单位或负责人"
               />
             </UiFormItem>
           </UiCol>
@@ -634,7 +640,9 @@ onActivated(() => {
           <UiCol :span="8">
             <UiFormItem label="专业责任">
               <UiInput
-                size="sm" v-model="editor.programReviewOwner" placeholder="责任单位或负责人"
+                size="sm"
+                v-model="editor.programReviewOwner"
+                placeholder="责任单位或负责人"
               />
             </UiFormItem>
           </UiCol>
@@ -661,16 +669,12 @@ onActivated(() => {
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="归档位置">
-              <UiInput
-                size="sm" v-model="editor.archiveLocation"
-              />
+              <UiInput size="sm" v-model="editor.archiveLocation" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="责任单位">
-              <UiInput
-                size="sm" v-model="editor.archiveResponsibleUnit"
-              />
+              <UiInput size="sm" v-model="editor.archiveResponsibleUnit" />
             </UiFormItem>
           </UiCol>
         </UiRow>

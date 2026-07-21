@@ -8,13 +8,6 @@ import type {
   AuditSupervisionSaveRequest,
   AuditSupervisionVO,
 } from '@/apis/quality/audit-supervision'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type {
-  QualitySelectorChangeValue,
-  WorkbenchSignalRefreshHandler,
-} from '@/composables/quality/improvement'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref } from 'vue'
 import {
   AUDIT_SUPERVISION_CONCLUSION_OPTIONS,
   AUDIT_SUPERVISION_CONCLUSION_TONE,
@@ -24,6 +17,14 @@ import {
   AuditSupervisionScopeCode,
   AuditSupervisionScopeDescription,
 } from '@/apis/quality/audit-supervision'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type {
+  QualitySelectorChangeValue,
+  WorkbenchSignalRefreshHandler,
+} from '@/composables/quality/improvement'
+import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref } from 'vue'
 import { AuditSupervisionTypeCode, AuditSupervisionTypeDescription } from '@/apis/quality/types'
 import ImprovementWorkbenchPanel from '@/components/quality/improvement/ImprovementWorkbenchPanel.vue'
 import {
@@ -50,7 +51,6 @@ import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiRow from '@/components/ui-guide/ui/UiRow.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
-import { refreshWorkbenchSignalsAfterMutation, selectedId } from '@/composables/quality/improvement'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   assertQualityScopeFresh,
@@ -87,7 +87,7 @@ const supColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 160 },
 ]
 
-const supervisionTypeOptions: Array<{ value: AuditSupervisionTypeCode, label: string }> = [
+const supervisionTypeOptions: Array<{ value: AuditSupervisionTypeCode; label: string }> = [
   { value: AuditSupervisionTypeCode.DAILY, label: AuditSupervisionTypeDescription.DAILY },
   { value: AuditSupervisionTypeCode.SPECIAL, label: AuditSupervisionTypeDescription.SPECIAL },
   {
@@ -155,7 +155,10 @@ const supFilterFields: FilterField[] = [
     placeholder: '结论',
     allowClear: true,
     width: 120,
-    options: AUDIT_SUPERVISION_CONCLUSION_OPTIONS.map((item) => ({ value: item.value, label: item.label })),
+    options: AUDIT_SUPERVISION_CONCLUSION_OPTIONS.map((item) => ({
+      value: item.value,
+      label: item.label,
+    })),
   },
   {
     key: 'keyword',
@@ -301,7 +304,7 @@ async function loadList(options?: { refreshSignals?: boolean }) {
   }
 }
 
-function handleSupPageChange(page: { current: number, pageSize: number }) {
+function handleSupPageChange(page: { current: number; pageSize: number }) {
   supQuery.pageNum = page.current
   supQuery.pageSize = page.pageSize
   loadList()
@@ -381,22 +384,22 @@ function openSupEdit(record: AuditSupervisionVO) {
 
 async function submitSupEditor() {
   if (
-    !supEditor.supervisionCode.trim()
-    || !supEditor.supervisionTitle.trim()
-    || !supEditor.supervisionType
+    !supEditor.supervisionCode.trim() ||
+    !supEditor.supervisionTitle.trim() ||
+    !supEditor.supervisionType
   ) {
-    message.error('请填写编码、标题、督导类型')
+    void message.error('请填写编码、标题、督导类型')
     return
   }
   for (const [index, item] of supEditor.findingItems.entries()) {
     if (!item.findingTitle?.trim()) {
-      message.error(`第 ${index + 1} 条发现缺少标题`)
+      void message.error(`第 ${index + 1} 条发现缺少标题`)
       return
     }
   }
   for (const [index, item] of supEditor.evidenceItems.entries()) {
     if (!item.evidenceTitle?.trim()) {
-      message.error(`第 ${index + 1} 条证据缺少标题`)
+      void message.error(`第 ${index + 1} 条证据缺少标题`)
       return
     }
   }
@@ -438,10 +441,10 @@ async function submitSupEditor() {
     }
     if (supEditorMode.value === 'create') {
       await auditSupervisionApi.create(request)
-      message.success('已创建')
+      void message.success('已创建')
     } else {
       await auditSupervisionApi.update(request)
-      message.success('已保存')
+      void message.success('已保存')
     }
     supEditorVisible.value = false
     await loadList({ refreshSignals: true })
@@ -456,7 +459,7 @@ async function handleSupDelete(record: AuditSupervisionVO) {
     type: 'error',
     onOk: async () => {
       await auditSupervisionApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadList({ refreshSignals: true })
     },
   })
@@ -638,15 +641,15 @@ defineExpose({
         <UiCol :span="6">
           <UiFormItem label="督导时间">
             <UiInput
-              size="sm" v-model="supEditor.supervisedTime" placeholder="yyyy-MM-dd HH:mm:ss"
+              size="sm"
+              v-model="supEditor.supervisedTime"
+              placeholder="yyyy-MM-dd HH:mm:ss"
             />
           </UiFormItem>
         </UiCol>
       </UiRow>
       <UiFormItem label="标题" required>
-        <UiInput
-          size="sm" v-model="supEditor.supervisionTitle"
-        />
+        <UiInput size="sm" v-model="supEditor.supervisionTitle" />
       </UiFormItem>
       <UiFormItem label="督导人">
         <TeacherSelector
@@ -664,35 +667,33 @@ defineExpose({
       <div v-for="(item, index) in supEditor.findingItems" :key="index" class="iwb-tab__detail-row">
         <div class="iwb-tab__detail-row-head">
           <span class="iwb-tab__detail-row-title">发现 {{ index + 1 }}</span>
-          <UiButton size="sm" status="danger" variant="ghost" @click="removeSupervisionFindingItem(index)">删除</UiButton>
+          <UiButton
+            size="sm"
+            status="danger"
+            variant="ghost"
+            @click="removeSupervisionFindingItem(index)"
+            >删除</UiButton
+          >
         </div>
         <UiRow :gutter="12">
           <UiCol :span="6">
             <UiFormItem label="类型">
-              <UiSelect
-                size="sm" v-model="item.findingType" :options="supFindingTypeOptions"
-              />
+              <UiSelect size="sm" v-model="item.findingType" :options="supFindingTypeOptions" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="10">
             <UiFormItem label="标题" required>
-              <UiInput
-                size="sm" v-model="item.findingTitle"
-              />
+              <UiInput size="sm" v-model="item.findingTitle" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="4">
             <UiFormItem label="严重程度">
-              <UiSelect
-                size="sm" v-model="item.severity" :options="supFindingSeverityOptions"
-              />
+              <UiSelect size="sm" v-model="item.severity" :options="supFindingSeverityOptions" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="4">
             <UiFormItem label="责任单位">
-              <UiInput
-                size="sm" v-model="item.responsibleUnit"
-              />
+              <UiInput size="sm" v-model="item.responsibleUnit" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -713,7 +714,8 @@ defineExpose({
         <UiCol :span="12">
           <UiFormItem label="结论">
             <UiSelect
-              v-model="supEditor.conclusion" allow-clear
+              v-model="supEditor.conclusion"
+              allow-clear
               size="sm"
               :options="AUDIT_SUPERVISION_CONCLUSION_OPTIONS"
             />
@@ -784,7 +786,9 @@ defineExpose({
       </UiRow>
       <UiDivider orientation="left">证据明细</UiDivider>
       <div class="iwb-tab__detail-toolbar">
-        <UiButton size="sm" variant="primary" @click="addSupervisionEvidenceItem">新增证据</UiButton>
+        <UiButton size="sm" variant="primary" @click="addSupervisionEvidenceItem"
+          >新增证据</UiButton
+        >
       </div>
       <div
         v-for="(item, index) in supEditor.evidenceItems"
@@ -793,28 +797,28 @@ defineExpose({
       >
         <div class="iwb-tab__detail-row-head">
           <span class="iwb-tab__detail-row-title">证据 {{ index + 1 }}</span>
-          <UiButton size="sm" status="danger" variant="ghost" @click="removeSupervisionEvidenceItem(index)">删除</UiButton>
+          <UiButton
+            size="sm"
+            status="danger"
+            variant="ghost"
+            @click="removeSupervisionEvidenceItem(index)"
+            >删除</UiButton
+          >
         </div>
         <UiRow :gutter="12">
           <UiCol :span="6">
             <UiFormItem label="类型">
-              <UiSelect
-                size="sm" v-model="item.evidenceType" :options="auditEvidenceTypeOptions"
-              />
+              <UiSelect size="sm" v-model="item.evidenceType" :options="auditEvidenceTypeOptions" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="10">
             <UiFormItem label="标题" required>
-              <UiInput
-                size="sm" v-model="item.evidenceTitle"
-              />
+              <UiInput size="sm" v-model="item.evidenceTitle" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="编号">
-              <UiInput
-                size="sm" v-model="item.evidenceCode"
-              />
+              <UiInput size="sm" v-model="item.evidenceCode" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -837,9 +841,7 @@ defineExpose({
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="文件节点 ID">
-              <UiInput
-                size="sm" v-model="item.fileNodeId"
-              />
+              <UiInput size="sm" v-model="item.fileNodeId" />
             </UiFormItem>
           </UiCol>
         </UiRow>

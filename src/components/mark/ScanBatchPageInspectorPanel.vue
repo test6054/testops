@@ -150,14 +150,10 @@
         </h3>
         <UiForm layout="vertical" class="scan-batch-page-inspector__bind-form">
           <UiFormItem v-if="inspector.page.ocrStudentName" label="识别姓名">
-            <UiInput
-              size="sm" :value="inspector.page.ocrStudentName" disabled
-            />
+            <UiInput size="sm" :value="inspector.page.ocrStudentName" disabled />
           </UiFormItem>
           <UiFormItem v-if="inspector.page.ocrClassName" label="识别班级">
-            <UiInput
-              size="sm" :value="inspector.page.ocrClassName" disabled
-            />
+            <UiInput size="sm" :value="inspector.page.ocrClassName" disabled />
           </UiFormItem>
           <UiFormItem :label="recognizedStudentNoLabel">
             <UiInput
@@ -182,12 +178,17 @@
           </UiFormItem>
           <UiFormItem label="答卷状态" required>
             <UiSelect
-              size="sm" v-model="attemptStatus" :options="BINDABLE_ATTEMPT_STATUS_OPTIONS"
+              size="sm"
+              v-model="attemptStatus"
+              :options="BINDABLE_ATTEMPT_STATUS_OPTIONS"
             />
           </UiFormItem>
           <UiFormItem label="答卷编号（可选）">
             <UiInput
-              size="sm" v-model="attemptNo" placeholder="同一考生多卷时区分" :maxlength="32"
+              size="sm"
+              v-model="attemptNo"
+              placeholder="同一考生多卷时区分"
+              :maxlength="32"
             />
           </UiFormItem>
           <UiButton
@@ -221,9 +222,7 @@
         </h3>
         <UiForm layout="vertical" class="scan-batch-page-inspector__bind-form">
           <UiFormItem label="当前归属">
-            <UiInput
-              size="sm" :value="currentPaperLabel" disabled
-            />
+            <UiInput size="sm" :value="currentPaperLabel" disabled />
           </UiFormItem>
           <UiFormItem label="目标试卷" required>
             <UiSelect
@@ -257,12 +256,6 @@ import type {
   ExamScannerBatchAttributionItemVO,
   ExamScannerBatchPageInspectorVO,
 } from '@/apis/mark/exam-scan'
-import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
-
-import PaperClipOutlined from '@ant-design/icons-vue/PaperClipOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { bindPaper } from '@/apis/mark/exam-binding'
 import {
   QUALITY_DECISION_TONE,
   QualityDecisionDescription,
@@ -271,6 +264,12 @@ import {
   ScanBatchWorkbenchRosterMatchStatusDescription,
   ScanBatchWorkbenchRosterMatchStatusTone,
 } from '@/apis/mark/exam-scan'
+import InfoCircleOutlined from '@ant-design/icons-vue/InfoCircleOutlined'
+
+import PaperClipOutlined from '@ant-design/icons-vue/PaperClipOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { bindPaper } from '@/apis/mark/exam-binding'
 import { TASK_STATUS_TONE, TaskStatusDescription } from '@/apis/mark/task-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -400,9 +399,9 @@ const bindingStatusLabel = computed(() => {
     return '已绑定'
   }
   if (
-    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED
-    && (page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND
-      || page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT)
+    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.REGISTERED &&
+    (page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.UNBOUND ||
+      page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.CONFLICT)
   ) {
     return '待绑定'
   }
@@ -452,9 +451,9 @@ const showBindForm = computed(() => {
   }
   const page = props.inspector?.page
   if (
-    !page
-    || page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING
-    || page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.BOUND
+    !page ||
+    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING ||
+    page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.BOUND
   ) {
     return false
   }
@@ -464,9 +463,9 @@ const showBindForm = computed(() => {
 const showBindBlocked = computed(() => {
   const page = props.inspector?.page
   if (
-    !page
-    || page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING
-    || page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.BOUND
+    !page ||
+    page.registerStatus === ScanBatchWorkbenchRegisterStatusCode.PENDING ||
+    page.bindingStatus === ScanBatchWorkbenchBindingStatusCode.BOUND
   ) {
     return false
   }
@@ -485,9 +484,9 @@ const reassignTargetOptions = computed(() => {
   return (props.attributionItems ?? [])
     .filter(
       (item) =>
-        !item.unassignedBucket
-        && item.paperInstanceId
-        && item.paperInstanceId !== currentPaperInstanceId,
+        !item.unassignedBucket &&
+        item.paperInstanceId &&
+        item.paperInstanceId !== currentPaperInstanceId,
     )
     .map((item) => {
       const identityParts = [
@@ -536,9 +535,9 @@ const showReassignSection = computed(() => {
     return false
   }
   return (
-    page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
-    && page.templatePageNo !== undefined
-    && reassignTargetOptions.value.length > 0
+    page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING &&
+    page.templatePageNo !== undefined &&
+    reassignTargetOptions.value.length > 0
   )
 })
 
@@ -593,7 +592,7 @@ async function submitBind(): Promise<void> {
   const rosterId = confirmedCandidateRosterId.value
   const blockReason = resolveCandidateBindingBlockReason(rosterId)
   if (blockReason) {
-    message.error(blockReason)
+    void message.error(blockReason)
     return
   }
   const validAttemptStatus = attemptStatus.value
@@ -609,7 +608,7 @@ async function submitBind(): Promise<void> {
       attemptStatus: validAttemptStatus,
       attemptNo: attemptNo.value.trim() || undefined,
     })
-    message.success('试卷身份绑定成功')
+    void message.success('试卷身份绑定成功')
     emit('bound')
   } catch (error) {
     showUserError(error, '试卷身份绑定失败')
@@ -639,7 +638,7 @@ async function submitReassign(): Promise<void> {
       pageId: page.pageId,
       targetPaperInstanceId: targetPaperInstanceId.value,
     })
-    message.success(response.diagnostic || '扫描页归卷已调整')
+    void message.success(response.diagnostic || '扫描页归卷已调整')
     emit('reassigned')
   } catch (error) {
     showUserError(error, '人工调卷失败')

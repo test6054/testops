@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationRereviewOrderVO } from '@/apis/portfolio/evaluation-publicity'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import type {
   PortfolioEvaluationTaskVO,
   PortfolioEvaluationWorkgroupOptionVO,
+} from '@/apis/portfolio/teacher-platform'
+import {
+  portfolioEvaluationTaskApi,
+  portfolioEvaluationWorkgroupApi,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
@@ -21,11 +26,6 @@ import {
   PortfolioEvaluationTaskStatusCode,
   PortfolioEvaluationTaskStatusDescription,
 } from '@/apis/portfolio/enums'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
-import {
-  portfolioEvaluationTaskApi,
-  portfolioEvaluationWorkgroupApi,
-} from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -58,9 +58,9 @@ const ADVANCE_ACTIONS: Partial<
 
 function canArchiveTask(task: PortfolioEvaluationTaskVO): boolean {
   return (
-    (task.taskStatus === PortfolioEvaluationTaskStatusCode.PUBLICITY
-      || task.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING)
-    && task.publicityExpiredAwaitingArchive === true
+    (task.taskStatus === PortfolioEvaluationTaskStatusCode.PUBLICITY ||
+      task.taskStatus === PortfolioEvaluationTaskStatusCode.OBJECTION_HANDLING) &&
+    task.publicityExpiredAwaitingArchive === true
   )
 }
 
@@ -128,13 +128,13 @@ const workgroupsLoading = ref(false)
 const workgroups = ref<PortfolioEvaluationWorkgroupOptionVO[]>([])
 const writing = computed(
   () =>
-    creating.value
-    || Boolean(advancingId.value)
-    || Boolean(archivingId.value)
-    || publishing.value
-    || completeRereviewSubmitting.value
-    || cancelRereviewSubmitting.value
-    || completeRereviewLoading.value,
+    creating.value ||
+    Boolean(advancingId.value) ||
+    Boolean(archivingId.value) ||
+    publishing.value ||
+    completeRereviewSubmitting.value ||
+    cancelRereviewSubmitting.value ||
+    completeRereviewLoading.value,
 )
 const publishForm = reactive({
   publicityTitle: '',
@@ -252,8 +252,8 @@ async function applyDeepLinkedTask(taskId: string) {
   }
   scrollToHighlightedTask()
   if (
-    !autoOpenedCompleteRereview.value
-    && matched.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW
+    !autoOpenedCompleteRereview.value &&
+    matched.taskStatus === PortfolioEvaluationTaskStatusCode.CORRECTION_REVIEW
   ) {
     autoOpenedCompleteRereview.value = true
     await openCompleteRereview(matched)
@@ -301,17 +301,17 @@ async function submitCreateTask() {
     return
   }
   if (
-    !createForm.taskName.trim()
-    || !createForm.workgroupId
-    || !createForm.startTime
-    || !createForm.endTime
+    !createForm.taskName.trim() ||
+    !createForm.workgroupId ||
+    !createForm.startTime ||
+    !createForm.endTime
   ) {
     showFormValidationMessage('请填写任务名称、工作组和评价时间窗')
     return
   }
   if (
-    createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON
-    && !createForm.targetIndicatorCode.trim()
+    createForm.evaluationMode === PortfolioEvaluationModeCode.BY_PERSON &&
+    !createForm.targetIndicatorCode.trim()
   ) {
     showFormValidationMessage('按人评价须填写画像回流目标指标编码')
     return
@@ -329,7 +329,7 @@ async function submitCreateTask() {
       startTime: createForm.startTime,
       endTime: createForm.endTime,
     })
-    message.success('评价任务已创建，请核对后发布')
+    void message.success('评价任务已创建，请核对后发布')
     createModalOpen.value = false
     createForm.taskName = ''
     createForm.evaluationMode = PortfolioEvaluationModeCode.BY_INDICATOR
@@ -381,14 +381,14 @@ async function advanceTask(
       action,
       forceDespiteScoreVariance: forceDespiteScoreVariance || undefined,
     })
-    message.success('任务状态已推进')
+    void message.success('任务状态已推进')
     await loadPage()
   } catch (error) {
     const errText = error instanceof Error ? error.message : String(error ?? '')
     if (
-      action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY
-      && !forceDespiteScoreVariance
-      && (errText.includes('评分 max-min') || errText.includes('forceDespiteScoreVariance'))
+      action === PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY &&
+      !forceDespiteScoreVariance &&
+      (errText.includes('评分 max-min') || errText.includes('forceDespiteScoreVariance'))
     ) {
       const confirmed = await confirmAsync({
         title: '评分离散过大，是否强制进入结果汇总？',
@@ -424,7 +424,7 @@ async function archiveTask(row: PortfolioEvaluationTaskVO) {
   archivingId.value = row.id
   try {
     await portfolioEvaluationPublicityApi.archiveTask(row.id)
-    message.success('任务已归档')
+    void message.success('任务已归档')
     await loadPage()
   } catch (error) {
     showUserError(error, '归档任务失败')
@@ -481,7 +481,7 @@ async function submitPublish() {
       startTime,
       endTime,
     })
-    message.success('公示已发布')
+    void message.success('公示已发布')
     publishModalOpen.value = false
     await loadPage()
   } catch (error) {
@@ -510,7 +510,7 @@ async function createRereview(row: PortfolioEvaluationTaskVO) {
       evaluationTaskId: row.id,
       reasonText: `管理员发起更正复核：${row.taskName}`,
     })
-    message.success('已创建复核工单并进入更正复核')
+    void message.success('已创建复核工单并进入更正复核')
     await loadPage()
   } catch (error) {
     showUserError(error, '发起更正复核失败')
@@ -580,7 +580,7 @@ async function submitCompleteRereview() {
         })
       }
     }
-    message.success('更正复核已完成并回写归档')
+    void message.success('更正复核已完成并回写归档')
     completeRereviewModalOpen.value = false
     completeRereviewTarget.value = null
     completeRereviewOrders.value = []
@@ -601,7 +601,7 @@ async function cancelRereviewOrder(order: PortfolioEvaluationRereviewOrderVO): P
   }
   const reason = completeRereviewForm.cancelReason.trim()
   if (!reason) {
-    message.warning('请填写撤销原因')
+    void message.warning('请填写撤销原因')
     return
   }
   cancelRereviewSubmitting.value = true
@@ -613,7 +613,7 @@ async function cancelRereviewOrder(order: PortfolioEvaluationRereviewOrderVO): P
       orderId: order.id,
       reasonText: reason,
     })
-    message.success('复核工单已撤销')
+    void message.success('复核工单已撤销')
     // 刷新开放工单列表；若已无开放工单则关闭弹窗并重载任务
     const task = completeRereviewTarget.value
     if (!task) {

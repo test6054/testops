@@ -3,13 +3,13 @@ import type {
   ArchivePhysicalLocationResponse,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
   ArchiveSecurityLevelDescription,
   listArchivePhysicalLocationHistory,
   updateArchiveVolumePhysicalLocation,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiCol from '@/components/ui-guide/ui/UiCol.vue'
@@ -102,7 +102,7 @@ async function handleSave() {
   if (submitting.value) return
   // MVR-303：与 canEdit 同源二次拦截
   if (props.canEdit !== true) {
-    message.warning('当前账号无柜位维护权限')
+    void message.warning('当前账号无柜位维护权限')
     return
   }
   const building = form.building.trim()
@@ -122,7 +122,7 @@ async function handleSave() {
       slot: form.slot.trim() || undefined,
       physicalLocationNote: form.physicalLocationNote.trim() || undefined,
     })
-    message.success('柜位已更新')
+    void message.success('柜位已更新')
     emit('refreshed')
     await loadLocationHistory()
   } catch (error) {

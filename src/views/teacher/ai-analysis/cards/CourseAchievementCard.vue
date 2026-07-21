@@ -6,7 +6,11 @@
         查看历史
       </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+        v-if="canManageReviewerWrites === true"
+        variant="primary"
+        size="sm"
+        :loading="generating"
+        @click="handleGenerate"
       >
         生成达成度分析
       </UiButton>
@@ -75,18 +79,19 @@ import type {
   CourseAchievementItemResponse,
   CourseObjectiveAchievementResponse,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import {
   CourseObjectiveDimensionDescription,
   generateAchievement,
   listAchievements,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -100,7 +105,6 @@ import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPi
 import { loadExamsForCourseAcademicYearSemester } from '@/composables/useCrossExamDefaultScope'
 import { useExamSummariesReviewerWriteCapability } from '@/composables/useExamIdsReviewerWriteCapability'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildOptionalAcademicYearSemesterQuery,
   buildRequiredAcademicYearSemesterQuery,
@@ -371,7 +375,7 @@ async function reload(options?: { silent?: boolean }): Promise<void> {
     })
     const count = applyLoadedList(list)
     if (!options?.silent && count === 0) {
-      message.info('暂无历史记录')
+      void message.info('暂无历史记录')
     }
   } catch (e) {
     showUserError(e, '课程达成度分析加载失败')
@@ -379,7 +383,6 @@ async function reload(options?: { silent?: boolean }): Promise<void> {
     loading.value = false
   }
 }
-
 
 /** MVR-286：默认拒绝假可写；所选考试均须 canManageReviewerWrites */
 const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
@@ -421,7 +424,7 @@ async function handleGenerate(): Promise<void> {
       ...termQuery,
     })
     adoptGenerated(generated)
-    message.success('已生成达成度分析')
+    void message.success('已生成达成度分析')
   } catch (e) {
     showUserError(e, '课程达成度分析生成失败')
   } finally {

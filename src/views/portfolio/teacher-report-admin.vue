@@ -18,10 +18,9 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
-import UiTag from '@/components/ui-guide/ui/UiTag.vue'
-import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
+import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -30,6 +29,7 @@ import {
   portfolioTeacherSelectOptionsFromSummaries,
   resolvePortfolioTeacherDisplayName,
 } from '@/utils/portfolio-teacher-display'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 function readRouteStringParam(value: unknown): string {
   return typeof value === 'string' ? value : ''
@@ -242,7 +242,7 @@ async function submitReport() {
     if (currentToken !== reportRequestToken.value) {
       return
     }
-    message.info('报告生成任务已提交，正在等待结果…')
+    void message.info('报告生成任务已提交，正在等待结果…')
     reportDetail.value = await pollAnalysis(submitResult.taskId)
     if (currentToken !== reportRequestToken.value) {
       return
@@ -250,7 +250,7 @@ async function submitReport() {
     if (!reportDetail.value) {
       return
     }
-    message.success('报告生成完成')
+    void message.success('报告生成完成')
   } catch (error) {
     showUserError(error, '提交报告生成失败')
   } finally {
@@ -359,7 +359,11 @@ watch(
           allow-search
           :filter-option="false"
           option-label-prop="label"
-          @focus="() => loadTeachers()"
+          @focus="
+            () => {
+              void loadTeachers()
+            }
+          "
           @search="handleTeacherSearch"
         />
         <UiSelect
@@ -471,6 +475,13 @@ watch(
 .report-meta__extra {
   font-size: 13px;
   color: var(--dp-text-secondary);
+}
+.report-meta__identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 8px;
 }
 .markdown {
   margin: 0;

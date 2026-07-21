@@ -7,8 +7,6 @@ import type {
   OnsiteVisitPlanSaveRequest,
   OnsiteVisitPlanVO,
 } from '@/apis/quality/accreditation'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   accreditationApi,
   AccreditationCycleStatusCode,
@@ -17,6 +15,8 @@ import {
   OnsiteChecklistItemStatusCode,
   OnsiteChecklistItemStatusDescription,
 } from '@/apis/quality/accreditation'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import { ArchiveSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -62,7 +62,7 @@ const checklistColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 100 },
 ]
 
-const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode, label: string }[] = [
+const CATEGORY_TABS: { key: '' | OnsiteChecklistCategoryCode; label: string }[] = [
   { key: '', label: '全部' },
   { key: OnsiteChecklistCategoryCode.FACILITY, label: '设施' },
   { key: OnsiteChecklistCategoryCode.PAPER_SAMPLE, label: '样本' },
@@ -91,8 +91,8 @@ const checklistCategoryFilter = ref<'' | OnsiteChecklistCategoryCode>('')
 
 const canMutateOnsitePlan = computed(
   () =>
-    props.activeCycle?.cycleStatus === AccreditationCycleStatusCode.ACTIVE
-    && props.activeCycle?.currentPhase === 'ONSITE_VISIT',
+    props.activeCycle?.cycleStatus === AccreditationCycleStatusCode.ACTIVE &&
+    props.activeCycle?.currentPhase === 'ONSITE_VISIT',
 )
 
 const canCreatePlan = computed(() => canMutateOnsitePlan.value && !!props.activeCycleId)
@@ -141,7 +141,7 @@ async function loadPlans() {
   }
 }
 
-function handlePlanPageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePlanPageChange(pageEvent: { current: number; pageSize: number }) {
   planPageNum.value = pageEvent.current
   planPageSize.value = pageEvent.pageSize
   void loadPlans()
@@ -183,7 +183,7 @@ async function loadChecklistItems() {
   }
 }
 
-function handleChecklistPageChange(pageEvent: { current: number, pageSize: number }) {
+function handleChecklistPageChange(pageEvent: { current: number; pageSize: number }) {
   checklistPageNum.value = pageEvent.current
   checklistPageSize.value = pageEvent.pageSize
   void loadChecklistItems()
@@ -206,11 +206,11 @@ function resetPlanForm(accreditationCycleId: string) {
 function openCreate() {
   const accreditationCycleId = props.activeCycleId
   if (!accreditationCycleId) {
-    message.error('请先创建认证周期')
+    void message.error('请先创建认证周期')
     return
   }
   if (!canMutateOnsitePlan.value) {
-    message.error('仅现场考查阶段可新建考查计划')
+    void message.error('仅现场考查阶段可新建考查计划')
     return
   }
   drawerTitle.value = '新建现场考查计划'
@@ -220,7 +220,7 @@ function openCreate() {
 
 function openEdit(record: OnsiteVisitPlanVO) {
   if (!canMutateOnsitePlan.value) {
-    message.error('仅现场考查阶段可编辑考查计划')
+    void message.error('仅现场考查阶段可编辑考查计划')
     return
   }
   drawerTitle.value = '编辑现场考查计划'
@@ -240,11 +240,11 @@ function openEdit(record: OnsiteVisitPlanVO) {
 
 async function submitPlan() {
   if (!canMutateOnsitePlan.value) {
-    message.error('仅现场考查阶段可维护考查计划')
+    void message.error('仅现场考查阶段可维护考查计划')
     return
   }
   if (!form.visitCode.trim() || !form.visitTitle.trim() || !form.visitStart || !form.visitEnd) {
-    message.error('请完整填写考查计划信息')
+    void message.error('请完整填写考查计划信息')
     return
   }
   const request: OnsiteVisitPlanSaveRequest = {
@@ -264,11 +264,11 @@ async function submitPlan() {
   try {
     if (form.id) {
       await accreditationApi.updateOnsitePlan(request)
-      message.success('考查计划已更新')
+      void message.success('考查计划已更新')
       if (selectedPlan.value?.id === form.id) await selectPlan(form.id)
     } else {
       const id = await accreditationApi.createOnsitePlan(request)
-      message.success('已创建考查计划并预置十项工程教育认证检查清单')
+      void message.success('已创建考查计划并预置十项工程教育认证检查清单')
       await selectPlan(id)
     }
     drawerOpen.value = false
@@ -281,7 +281,7 @@ async function submitPlan() {
 
 async function removePlan(id: string) {
   if (!canMutateOnsitePlan.value) {
-    message.error('仅现场考查阶段可删除考查计划')
+    void message.error('仅现场考查阶段可删除考查计划')
     return
   }
   const ok = await confirmAsync({ title: '确认删除该现场考查计划？' })
@@ -313,21 +313,21 @@ function openChecklistItem(item: OnsiteChecklistItemVO) {
 
 async function submitChecklistItem() {
   if (!canMutateOnsitePlan.value) {
-    message.error('仅现场考查阶段可更新检查项')
+    void message.error('仅现场考查阶段可更新检查项')
     return
   }
   if (
-    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED
-    && !checklistForm.evidenceArchiveId
+    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.COMPLETED &&
+    !checklistForm.evidenceArchiveId
   ) {
-    message.error('已完成检查项必须关联证据归档')
+    void message.error('已完成检查项必须关联证据归档')
     return
   }
   if (
-    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE
-    && !checklistForm.remark?.trim()
+    checklistForm.itemStatus === OnsiteChecklistItemStatusCode.NOT_APPLICABLE &&
+    !checklistForm.remark?.trim()
   ) {
-    message.error('不适用检查项必须填写说明')
+    void message.error('不适用检查项必须填写说明')
     return
   }
   try {
@@ -338,7 +338,7 @@ async function submitChecklistItem() {
       remark: checklistForm.remark?.trim() || undefined,
     }
     await accreditationApi.updateChecklistItem(request)
-    message.success('检查项已更新')
+    void message.success('检查项已更新')
     checklistDrawerOpen.value = false
     if (selectedPlan.value) await selectPlan(selectedPlan.value.id)
     await loadPlans()
@@ -392,12 +392,11 @@ defineExpose({ openCreate, loadPlans })
             :percent="
               record.totalChecklistCount
                 ? Math.round(
-                  ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
-                )
+                    ((record.completedChecklistCount ?? 0) / record.totalChecklistCount) * 100,
+                  )
                 : 0
             "
             size="sm"
-          
             :show-label="false"
           />
           <span class="checklist-count">
@@ -426,7 +425,9 @@ defineExpose({ openCreate, loadPlans })
         <span class="checklist-meta">报告截止 {{ selectedPlan.reportDueDate }}</span>
       </div>
       <UiProgressBar
-        :percent="checklistProgress" size="sm" class="checklist-progress" 
+        :percent="checklistProgress"
+        size="sm"
+        class="checklist-progress"
         :show-label="false"
       />
       <UiRadioGroup v-model="checklistCategoryFilter" size="sm" class="cat-filter">
@@ -485,25 +486,29 @@ defineExpose({ openCreate, loadPlans })
     >
       <UiForm layout="vertical">
         <UiFormItem label="计划编码" required>
-          <UiInput
-            size="sm" v-model="form.visitCode" :disabled="!!form.id"
-          />
+          <UiInput size="sm" v-model="form.visitCode" :disabled="!!form.id" />
         </UiFormItem>
         <UiFormItem label="计划标题" required>
-          <UiInput
-            size="sm" v-model="form.visitTitle"
-          />
+          <UiInput size="sm" v-model="form.visitTitle" />
         </UiFormItem>
         <UiFormItem label="考查开始" required>
-          <UiDatePicker size="sm" v-model="form.visitStart" value-format="YYYY-MM-DD" class="w-full" />
+          <UiDatePicker
+            size="sm"
+            v-model="form.visitStart"
+            value-format="YYYY-MM-DD"
+            class="w-full"
+          />
         </UiFormItem>
         <UiFormItem label="考查结束" required>
-          <UiDatePicker size="sm" v-model="form.visitEnd" value-format="YYYY-MM-DD" class="w-full" />
+          <UiDatePicker
+            size="sm"
+            v-model="form.visitEnd"
+            value-format="YYYY-MM-DD"
+            class="w-full"
+          />
         </UiFormItem>
         <UiFormItem label="组长姓名">
-          <UiInput
-            size="sm" v-model="form.leadExpertName"
-          />
+          <UiInput size="sm" v-model="form.leadExpertName" />
         </UiFormItem>
         <UiFormItem label="专家组说明">
           <UiTextarea size="sm" v-model="form.expertGroupRemark" :rows="3" />

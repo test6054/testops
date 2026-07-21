@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { ArchiveMaterialTypeCode } from '@/apis/mark/archive-volume'
 import type { ScanDispatchTicketStatusCode } from '@/apis/mark/scanner-dispatch'
+import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
-import { buildScanDispatchKioskUrl, createScanDispatch } from '@/apis/mark/scanner-dispatch'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -29,7 +29,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "created": [
+  created: [
     payload: {
       ticketId: string
       kioskUrl: string
@@ -90,7 +90,7 @@ async function handleSubmit() {
     })
     const ticket = response.ticket
     if (!ticket?.ticketId) {
-      message.error('派单创建失败')
+      void message.error('派单创建失败')
       return
     }
     const kioskUrl = buildScanDispatchKioskUrl(ticket, props.returnTo)
@@ -135,9 +135,7 @@ async function handleSubmit() {
         <UiCheckbox v-model="form.generateTraceLabel">生成追溯标签便携文档</UiCheckbox>
       </UiFormItem>
     </UiForm>
-    <p class="scan-dispatch-dialog__note">
-      工位通过分机链接或二维码进入，不使用同浏览器路由跳转。
-    </p>
+    <p class="scan-dispatch-dialog__note">工位通过分机链接或二维码进入，不使用同浏览器路由跳转。</p>
   </UiDrawer>
 </template>
 

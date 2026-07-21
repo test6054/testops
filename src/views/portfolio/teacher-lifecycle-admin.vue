@@ -1,19 +1,20 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {PortfolioTeacherLifecycleApprovalStatusCode, PortfolioTeacherLifecycleChangeTypeCode, PortfolioTeacherLifecycleEventVO, PortfolioTeacherLifecycleStatusCode} from '@/apis/portfolio/teacher-lifecycle';
+import type {
+  PortfolioTeacherLifecycleApprovalStatusCode,
+  PortfolioTeacherLifecycleChangeTypeCode,
+  PortfolioTeacherLifecycleEventVO,
+  PortfolioTeacherLifecycleStatusCode,
+} from '@/apis/portfolio/teacher-lifecycle'
+import {
+  PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
+  PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
+  portfolioTeacherLifecycleApi,
+} from '@/apis/portfolio/teacher-lifecycle'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import {
-  PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
-  PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
-  portfolioTeacherLifecycleApi
-  
-  
-  
-  
-} from '@/apis/portfolio/teacher-lifecycle'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -45,7 +46,10 @@ const query = reactive({
   approvalStatus: undefined as PortfolioTeacherLifecycleApprovalStatusCode | undefined,
 })
 
-const approvalStatusOptions: Array<{ label: string, value: PortfolioTeacherLifecycleApprovalStatusCode }> = [
+const approvalStatusOptions: Array<{
+  label: string
+  value: PortfolioTeacherLifecycleApprovalStatusCode
+}> = [
   { label: '待审批', value: 'PENDING' },
   { label: '已通过', value: 'APPROVED' },
   { label: '已驳回', value: 'REJECTED' },
@@ -77,7 +81,9 @@ const columns: ColumnsType = [
 
 function statusLabel(code?: string) {
   if (!code) return '—'
-  return PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL[code as PortfolioTeacherLifecycleStatusCode] || code
+  return (
+    PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL[code as PortfolioTeacherLifecycleStatusCode] || code
+  )
 }
 
 /** 目标态是否参评 hold：与 BE holdsEvaluationTasks 对齐（ACTIVE 除外）。 */
@@ -136,7 +142,9 @@ async function applyLifecycle() {
     if (next.archiveWriteForbidden) holdBits.push('档案写禁')
     else if (next.lifecycleStatus === 'TEMP_HOLD') holdBits.push('档案可填报')
     const holdSuffix = holdBits.length ? `（${holdBits.join(' · ')}）` : ''
-    message.success(`已更新为${next.lifecycleStatusLabel || next.lifecycleStatus}${holdSuffix}`)
+    void message.success(
+      `已更新为${next.lifecycleStatusLabel || next.lifecycleStatus}${holdSuffix}`,
+    )
     applyForm.reasonText = ''
     await loadEvents()
   } catch (error) {
@@ -158,7 +166,7 @@ async function exportTransfer(teacherUserId: string | number) {
         fileNodeId: String(result.fileNodeId),
       })
     }
-    message.success(`迁出数据包已生成（正式档 ${result.officialRecordCount ?? 0}）`)
+    void message.success(`迁出数据包已生成（正式档 ${result.officialRecordCount ?? 0}）`)
     await loadEvents()
   } catch (error) {
     showUserError(error, '导出迁出数据包失败')
@@ -188,7 +196,7 @@ async function importTransferPackageFromFile(event: Event) {
       targetTeacherUserId: applyForm.teacherUserId,
       fileNodeId: uploaded.id,
     })
-    message.success(
+    void message.success(
       result.idempotentHit
         ? `迁出数据包已导入过（正式档 ${result.officialRecordCount ?? 0}）`
         : `迁出数据包导入成功（正式档 ${result.officialRecordCount ?? 0}）`,
@@ -215,7 +223,7 @@ async function selfDeclareLifecycle() {
       changeType: applyForm.changeType,
       reasonText: applyForm.reasonText?.trim() || undefined,
     })
-    message.success(`已提交自助申报（待审批 eventId=${event.id}）`)
+    void message.success(`已提交自助申报（待审批 eventId=${event.id}）`)
     query.approvalStatus = 'PENDING'
     await loadEvents()
   } catch (error) {
@@ -235,7 +243,7 @@ async function approveDeclare(record: PortfolioTeacherLifecycleEventVO) {
       eventId: record.id,
       approvalComment: '院系确认通过',
     })
-    message.success(`已通过并生效：${next.lifecycleStatusLabel || next.lifecycleStatus}`)
+    void message.success(`已通过并生效：${next.lifecycleStatusLabel || next.lifecycleStatus}`)
     await loadEvents()
   } catch (error) {
     showUserError(error, '通过申报失败')
@@ -254,7 +262,7 @@ async function rejectDeclare(record: PortfolioTeacherLifecycleEventVO) {
       eventId: record.id,
       approvalComment: '院系驳回',
     })
-    message.success('已驳回自助申报')
+    void message.success('已驳回自助申报')
     await loadEvents()
   } catch (error) {
     showUserError(error, '驳回申报失败')
@@ -289,7 +297,11 @@ onMounted(() => {
       <UiCard class="teacher-lifecycle-admin__card" title="登记生命周期变更">
         <UiForm layout="inline" class="teacher-lifecycle-admin__form">
           <UiFormItem label="教师ID">
-            <UiInput v-model="applyForm.teacherUserId" placeholder="目标教师用户ID" style="width: 160px" />
+            <UiInput
+              v-model="applyForm.teacherUserId"
+              placeholder="目标教师用户ID"
+              style="width: 160px"
+            />
           </UiFormItem>
           <UiFormItem label="变更类型">
             <UiSelect
@@ -302,7 +314,9 @@ onMounted(() => {
           <UiFormItem label="原因">
             <UiInput v-model="applyForm.reasonText" placeholder="可选" style="width: 220px" />
           </UiFormItem>
-          <UiButton variant="primary" :loading="applying" @click="applyLifecycle">管理员登记</UiButton>
+          <UiButton variant="primary" :loading="applying" @click="applyLifecycle"
+            >管理员登记</UiButton
+          >
           <UiButton :loading="applying" @click="selfDeclareLifecycle">自助申报</UiButton>
           <UiButton
             :disabled="!applyForm.teacherUserId || !!operationKey"
@@ -313,7 +327,9 @@ onMounted(() => {
           </UiButton>
           <label class="teacher-lifecycle-admin__import">
             <span class="teacher-lifecycle-admin__import-btn">
-              <UiButton variant="primary" size="sm" :loading="operationKey.startsWith('import:')">导入迁出包</UiButton>
+              <UiButton variant="primary" size="sm" :loading="operationKey.startsWith('import:')"
+                >导入迁出包</UiButton
+              >
             </span>
             <input
               class="teacher-lifecycle-admin__import-input"
@@ -352,7 +368,16 @@ onMounted(() => {
               style="min-width: 140px"
             />
           </UiFormItem>
-          <UiButton variant="primary" :loading="loading" @click="() => { query.pageNum = 1; loadEvents() }">
+          <UiButton
+            variant="primary"
+            :loading="loading"
+            @click="
+              () => {
+                query.pageNum = 1
+                loadEvents()
+              }
+            "
+          >
             查询
           </UiButton>
         </UiForm>
@@ -379,30 +404,22 @@ onMounted(() => {
                 →
                 {{ record.toStatusLabel || statusLabel(record.toStatus) }}
               </span>
-              <UiTag
-                v-if="toStatusEvaluationHeld(record.toStatus)"
-                tone="orange"
-                class="ml-1"
-              >
+              <UiTag v-if="toStatusEvaluationHeld(record.toStatus)" tone="orange" class="ml-1">
                 参评 hold
               </UiTag>
-              <UiTag
-                v-if="toStatusArchiveWriteForbidden(record.toStatus)"
-                tone="red"
-                class="ml-1"
-              >
+              <UiTag v-if="toStatusArchiveWriteForbidden(record.toStatus)" tone="red" class="ml-1">
                 档案写禁
               </UiTag>
-              <UiTag
-                v-else-if="record.toStatus === 'TEMP_HOLD'"
-                tone="green"
-                class="ml-1"
-              >
+              <UiTag v-else-if="record.toStatus === 'TEMP_HOLD'" tone="green" class="ml-1">
                 档案可填报
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
-              <UiButton size="sm" variant="ghost" @click="openTeacherDirectory(record.teacherUserId)">
+              <UiButton
+                size="sm"
+                variant="ghost"
+                @click="openTeacherDirectory(record.teacherUserId)"
+              >
                 名册
               </UiButton>
             </template>

@@ -5,6 +5,7 @@ import type {
   PortfolioDevelopmentPlanItemSaveRequest,
   PortfolioDevelopmentPlanItemVO,
 } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import {
@@ -17,7 +18,6 @@ import {
   PortfolioDevelopmentPlanTypeCode,
 } from '@/apis/portfolio/enums'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { portfolioDevelopmentPlanApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -133,8 +133,8 @@ const selectedPlan = computed(
 const planItemEditable = computed(() => {
   const status = selectedPlan.value?.planStatus
   return (
-    status === PortfolioDevelopmentPlanStatusCode.DRAFT
-    || status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
+    status === PortfolioDevelopmentPlanStatusCode.DRAFT ||
+    status === PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED
   )
 })
 
@@ -185,7 +185,7 @@ async function createPlan() {
       planSummary: form.planSummary.trim() || undefined,
       portfolioOrgId: form.portfolioOrgId,
     })
-    message.success('已创建部门年度规划')
+    void message.success('已创建部门年度规划')
     form.planTitle = ''
     form.planSummary = ''
     await loadPage()
@@ -201,7 +201,7 @@ async function submitPlan(id: string) {
   submitting.value = true
   try {
     await portfolioDevelopmentPlanApi.submit({ id })
-    message.success('已提交')
+    void message.success('已提交')
     await loadPage()
   } catch (error) {
     showUserError(error, '提交规划失败')
@@ -221,7 +221,7 @@ async function exportPlans() {
       planType: PortfolioDevelopmentPlanTypeCode.DEPARTMENT,
     })
     await downloadPortfolioExcelExport(result)
-    message.success('规划已导出')
+    void message.success('规划已导出')
   } catch (error) {
     showUserError(error, '导出规划失败')
   } finally {
@@ -333,7 +333,7 @@ async function savePlanItems() {
   itemSaving.value = true
   try {
     await portfolioDevelopmentPlanApi.batchSaveItems({ planId: selectedPlanId.value, items })
-    message.success('规划明细已保存')
+    void message.success('规划明细已保存')
     await loadPlanItems()
   } catch (error) {
     showUserError(error, '保存规划明细失败')
@@ -359,7 +359,15 @@ onMounted(async () => {
         subtitle="科室编制 · 提交审核 · 年度唯一"
       >
         <template #actions>
-          <UiButton size="sm" variant="primary" :loading="exporting" :disabled="exporting" @click="exportPlans"> 导出表格文件 </UiButton>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="exporting"
+            :disabled="exporting"
+            @click="exportPlans"
+          >
+            导出表格文件
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -376,12 +384,7 @@ onMounted(async () => {
         />
         <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
       </div>
-      <UiSectionTabs
-        v-model="activeTab"
-        :items="planTabItems"
-        compact
-        divided
-      />
+      <UiSectionTabs v-model="activeTab" :items="planTabItems" compact divided />
       <template v-if="activeTab === 'plans'">
         <UiCard title="新建部门规划">
           <div class="form-row">
@@ -396,7 +399,11 @@ onMounted(async () => {
             <UiButton size="sm" variant="primary" @click="createPlan"> 创建 </UiButton>
           </div>
         </UiCard>
-        <UiEmpty size="sm" v-if="!loadError && !loading && rows.length === 0" description="当前年度暂无部门规划" />
+        <UiEmpty
+          size="sm"
+          v-if="!loadError && !loading && rows.length === 0"
+          description="当前年度暂无部门规划"
+        />
         <UiDataTable
           v-model:current="pageNum"
           v-model:page-size="pageSize"
@@ -430,9 +437,8 @@ onMounted(async () => {
                     key: 'submit',
                     label: '提交',
                     hidden:
-                      record.planStatus !== PortfolioDevelopmentPlanStatusCode.DRAFT
-                      && record.planStatus
-                        !== PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED,
+                      record.planStatus !== PortfolioDevelopmentPlanStatusCode.DRAFT &&
+                      record.planStatus !== PortfolioDevelopmentPlanStatusCode.DEPARTMENT_RETURNED,
                   },
                   { key: 'items', label: '明细' },
                 ]"
@@ -453,8 +459,12 @@ onMounted(async () => {
             :options="planOptions"
             @change="loadPlanItems"
           />
-          <UiButton size="sm" :disabled="!selectedPlanId" @click="loadPlanItems"> 刷新明细 </UiButton>
-          <UiButton variant="primary" size="sm" v-if="planItemEditable" @click="addPlanItemRow"> 新增行 </UiButton>
+          <UiButton size="sm" :disabled="!selectedPlanId" @click="loadPlanItems">
+            刷新明细
+          </UiButton>
+          <UiButton variant="primary" size="sm" v-if="planItemEditable" @click="addPlanItemRow">
+            新增行
+          </UiButton>
           <UiButton
             size="sm"
             v-if="planItemEditable"
@@ -465,16 +475,9 @@ onMounted(async () => {
             保存明细
           </UiButton>
         </div>
-        <UiAlertStrip
-          v-if="!selectedPlanId"
-          tone="info"
-          size="sm"
-          dense
-          inline
-          :show-icon="false"
-        >
+        <UiAlertStrip v-if="!selectedPlanId" tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
-            <span style="display:inline-flex;align-items:center;gap:8px">
+            <span style="display: inline-flex; align-items: center; gap: 8px">
               <UiTag tone="blue" size="sm">未选择规划</UiTag>
               <span>请选择发展规划后再编辑明细项</span>
             </span>
@@ -494,19 +497,11 @@ onMounted(async () => {
         >
           <template #bodyCell="{ column, record, index }">
             <template v-if="column.key === 'itemTitle'">
-              <input
-                v-if="planItemEditable"
-                v-model="record.itemTitle"
-                class="input input--cell"
-              />
+              <input v-if="planItemEditable" v-model="record.itemTitle" class="input input--cell" />
               <span v-else>{{ record.itemTitle }}</span>
             </template>
             <template v-else-if="column.key === 'itemGoal'">
-              <input
-                v-if="planItemEditable"
-                v-model="record.itemGoal"
-                class="input input--cell"
-              />
+              <input v-if="planItemEditable" v-model="record.itemGoal" class="input input--cell" />
               <span v-else>{{ record.itemGoal || '—' }}</span>
             </template>
             <template v-else-if="column.key === 'indicatorCode'">

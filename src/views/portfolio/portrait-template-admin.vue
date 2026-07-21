@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import type { PortfolioPortraitTemplateVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioPortraitTemplateApi } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
+import {
+  defaultPortraitLayout,
+  mergeLayoutWithChartConfig,
+  toPortraitChartConfigPayload,
+  toPortraitLayoutPayload,
+} from '@/utils/portrait-layout'
 import message from 'ant-design-vue/es/message'
 import { onMounted, reactive, ref } from 'vue'
-import { portfolioPortraitTemplateApi } from '@/apis/portfolio/teacher-platform'
 import PortfolioPortraitLayoutEditor from '@/components/portfolio/PortfolioPortraitLayoutEditor.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -12,12 +18,6 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import {
-  defaultPortraitLayout,
-  mergeLayoutWithChartConfig,
-  toPortraitChartConfigPayload,
-  toPortraitLayoutPayload,
-} from '@/utils/portrait-layout'
 
 const loading = ref(false)
 const templates = ref<PortfolioPortraitTemplateVO[]>([])
@@ -94,7 +94,7 @@ async function saveTemplate() {
       layout: toPortraitLayoutPayload(layoutWidgets.value),
       chartConfig: toPortraitChartConfigPayload(layoutWidgets.value),
     })
-    message.success('画像模板已保存')
+    void message.success('画像模板已保存')
     await loadList()
   } catch (error) {
     showUserError(error, '保存画像模板失败')
@@ -122,7 +122,11 @@ onMounted(loadList)
     <div class="layout">
       <UiCard title="模板列表" class="list">
         <UiSpin :spinning="loading">
-          <UiEmpty size="sm" v-if="!loading && templates.length === 0" description="当前筛选无画像模板" />
+          <UiEmpty
+            size="sm"
+            v-if="!loading && templates.length === 0"
+            description="当前筛选无画像模板"
+          />
           <ul v-else class="template-list">
             <li
               v-for="item in templates"
@@ -136,7 +140,9 @@ onMounted(loadList)
             </li>
           </ul>
         </UiSpin>
-        <UiButton size="sm" variant="primary" style="margin-top: 12px" @click="newTemplate"> 新建模板 </UiButton>
+        <UiButton size="sm" variant="primary" style="margin-top: 12px" @click="newTemplate">
+          新建模板
+        </UiButton>
       </UiCard>
       <UiCard title="布局编辑">
         <div class="form-row">
@@ -144,7 +150,16 @@ onMounted(loadList)
           <input v-model="form.academicYear" class="input" placeholder="学年" />
         </div>
         <PortfolioPortraitLayoutEditor v-model:widgets="layoutWidgets" />
-        <UiButton size="sm" variant="primary" style="margin-top: 12px" :loading="saving" :disabled="saving" @click="saveTemplate"> 保存 </UiButton>
+        <UiButton
+          size="sm"
+          variant="primary"
+          style="margin-top: 12px"
+          :loading="saving"
+          :disabled="saving"
+          @click="saveTemplate"
+        >
+          保存
+        </UiButton>
       </UiCard>
     </div>
   </StageWorkbenchShell>

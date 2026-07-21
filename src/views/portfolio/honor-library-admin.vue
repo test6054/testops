@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioHonorStatsVO } from '@/apis/portfolio/teacher-platform'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDevelopmentRecordTypeCode } from '@/apis/portfolio/enums'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -61,13 +61,10 @@ const form = reactive({
   descriptionText: '',
 })
 const formTeacherId = computed(() => form.teacherUserId || undefined)
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 const {
   loading,
   rows,
@@ -117,8 +114,9 @@ const {
   },
 )
 
-
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -150,7 +148,7 @@ async function saveRecord() {
       categoryCode: form.categoryCode.trim() || undefined,
       descriptionText: form.descriptionText.trim() || undefined,
     })
-    message.success('已保存')
+    void message.success('已保存')
     form.recordTitle = ''
     form.teacherUserId = ''
     form.levelCode = ''
@@ -179,7 +177,7 @@ async function removeRecord(id: string, title: string) {
     })
     if (!confirmed) return
     await portfolioDevelopmentRecordApi.delete({ id })
-    message.success('已删除')
+    void message.success('已删除')
     await loadPage()
   } catch (error) {
     showUserError(error, '删除荣誉记录失败')
@@ -200,7 +198,7 @@ async function exportHonor() {
       categoryCode: query.value.categoryCode || undefined,
     })
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条`)
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出荣誉库失败')
   } finally {
@@ -311,7 +309,7 @@ async function exportHonor() {
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
-            
+
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else class="text-neutral-400">—</span>
           </template>

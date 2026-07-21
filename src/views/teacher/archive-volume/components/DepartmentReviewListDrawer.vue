@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { ArchiveVolumeDetailResponse } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   approveArchiveVolumeDepartmentReview,
   getArchiveVolumeDetail,
   rejectArchiveVolumeDepartmentReview,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -25,7 +25,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "completed": []
+  completed: []
   'open-detail': [volumeId: string, tabKey?: string]
 }>()
 
@@ -42,8 +42,8 @@ const actionBusy = computed(() => approving.value || rejecting.value)
 
 const canApprove = computed(
   () =>
-    detail.value?.volume.volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING
-    && detail.value?.capabilities?.canApproveDepartmentReview === true,
+    detail.value?.volume.volumeStatus === ArchiveVolumeStatusCode.DEPARTMENT_REVIEW_PENDING &&
+    detail.value?.capabilities?.canApproveDepartmentReview === true,
 )
 
 const canShowSummary = computed(
@@ -99,13 +99,13 @@ async function handleApprove() {
   if (!props.volumeId || actionBusy.value) return
   // MVR-308：与 canApprove 同源二次拦截
   if (canApprove.value !== true) {
-    message.warning('当前账号无院系审核通过权限')
+    void message.warning('当前账号无院系审核通过权限')
     return
   }
   approving.value = true
   try {
     await approveArchiveVolumeDepartmentReview({ volumeId: props.volumeId })
-    message.success('院系审核已通过')
+    void message.success('院系审核已通过')
     emit('completed')
     closeDrawer()
   } catch (error) {
@@ -119,7 +119,7 @@ async function handleReject() {
   if (!props.volumeId || actionBusy.value) return
   // MVR-308：与 canApprove 同源二次拦截（驳回同审批职责）
   if (canApprove.value !== true) {
-    message.warning('当前账号无院系审核驳回权限')
+    void message.warning('当前账号无院系审核驳回权限')
     return
   }
   if (!rejectReason.value.trim()) {
@@ -132,7 +132,7 @@ async function handleReject() {
       volumeId: props.volumeId,
       rejectReason: rejectReason.value.trim(),
     })
-    message.success('已驳回院系审核')
+    void message.success('已驳回院系审核')
     emit('completed')
     closeDrawer()
   } catch (error) {
@@ -219,7 +219,12 @@ function openDetail(tabKey?: string) {
           <UiButton variant="outline" size="sm" :loading="rejecting" @click="handleReject">
             确认驳回
           </UiButton>
-          <UiButton variant="ghost" size="sm" :disabled="actionBusy" @click="showRejectForm = false">
+          <UiButton
+            variant="ghost"
+            size="sm"
+            :disabled="actionBusy"
+            @click="showRejectForm = false"
+          >
             取消
           </UiButton>
         </div>

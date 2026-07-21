@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDevelopmentRecordStatusDescription,
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDevelopmentRecordTypeDescription,
 } from '@/apis/portfolio/enums'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -27,12 +27,10 @@ import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 
 const RECORD_TAB_KEYS: PortfolioDevelopmentRecordTypeCode[] = [
   PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
@@ -50,8 +48,8 @@ const importModalOpen = ref(false)
 const saving = ref(false)
 const removingId = ref('')
 const exporting = ref(false)
-const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
-  = usePortfolioTeacherSearch()
+const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel } =
+  usePortfolioTeacherSearch()
 const {
   loading,
   rows,
@@ -106,7 +104,7 @@ const columns = computed<ColumnsType>(() => {
     { title: '分类', dataIndex: 'categoryCode', key: 'categoryCode', width: 120 },
     { title: '状态', dataIndex: 'recordStatus', key: 'recordStatus', width: 88 },
     { title: '生命周期', key: 'lifecycleStatus', width: 100 },
-  { title: '身份层', key: 'identityLayers', width: 160 },
+    { title: '身份层', key: 'identityLayers', width: 160 },
     { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
     { title: '操作', key: 'actions', width: 120 },
   )
@@ -119,8 +117,9 @@ const tabLabel = computed(
 
 const importContext = computed(() => ({ defaultRecordType: activeType.value }))
 
-
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -160,7 +159,7 @@ async function saveRecord() {
       descriptionText: form.descriptionText.trim() || undefined,
       teacherUserId: requiresTeacher.value ? form.teacherUserId : undefined,
     })
-    message.success('已保存')
+    void message.success('已保存')
     resetForm()
     await loadPage()
   } catch (error) {
@@ -180,7 +179,7 @@ async function removeRecord(id: string) {
   removingId.value = id
   try {
     await portfolioDevelopmentRecordApi.delete({ id })
-    message.success('已删除')
+    void message.success('已删除')
     await loadPage()
   } catch (error) {
     showUserError(error, '删除发展记录失败')
@@ -197,7 +196,7 @@ async function exportExcel() {
   try {
     const result = await portfolioDevelopmentRecordApi.exportExcel({ recordType: activeType.value })
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条`)
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出发展记录失败')
   } finally {
@@ -301,22 +300,15 @@ function switchTab(type: RecordType) {
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
-            
+
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else class="text-neutral-400">—</span>
           </template>
           <template v-else-if="column.key === 'identityLayers'">
-            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-              <UiTag
-                v-for="(layer, idx) in record.ownerIdentityLayers"
-                :key="`${record.id}-${layer.identityType}-${idx}`"
-                size="sm"
-                :tone="layer.externalIdentity ? 'orange' : 'blue'"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-            </div>
-            <span v-else>—</span>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+            />
           </template>
           <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
             <span>

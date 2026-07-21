@@ -13,18 +13,19 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_IMPACT_REPORT_STATUS_TONE,
   PF_SCORE_RULE_TYPE_OPTIONS,
   PfImpactReportStatusDescription,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import { defaultTemplateParams } from '@/utils/indicator-template-params'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -43,7 +44,6 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { defaultTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -211,7 +211,7 @@ async function runTrial() {
   try {
     const result = await portfolioIndicatorTenantApi.computeTrial(request)
     showComputeResult(result)
-    message.success(
+    void message.success(
       result.finalScore != null ? `试算得分 ${result.finalScore}` : '试算完成，待审核',
     )
   } catch (error) {
@@ -248,14 +248,14 @@ async function runSnapshotCompute() {
   try {
     const result = await portfolioIndicatorTenantApi.computeSnapshot(request)
     if (
-      snapshotForm.snapshotId.trim() !== request.snapshotId
-      || snapshotForm.teacherId.trim() !== request.teacherId
-      || snapshotForm.indicatorCode.trim() !== request.indicatorCode
+      snapshotForm.snapshotId.trim() !== request.snapshotId ||
+      snapshotForm.teacherId.trim() !== request.teacherId ||
+      snapshotForm.indicatorCode.trim() !== request.indicatorCode
     ) {
       return
     }
     showComputeResult(result)
-    message.success(
+    void message.success(
       result.finalScore != null ? `正式计分 ${result.finalScore}` : '计分完成，待审核',
     )
     await loadComputeLogs()
@@ -391,7 +391,7 @@ async function exportSnapshotDiff() {
       snapshotIdB,
     })
     await downloadPortfolioIndicatorExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条差异`)
+    void message.success(`已导出 ${result.rowCount} 条差异`)
   } catch (error) {
     showUserError(error, '导出快照差异失败')
   } finally {
@@ -405,7 +405,7 @@ async function exportImpact(id: string) {
   try {
     const result = await portfolioIndicatorTenantApi.exportImpactReport({ id })
     await downloadPortfolioIndicatorExcelExport(result)
-    message.success('影响报告已导出')
+    void message.success('影响报告已导出')
   } catch (error) {
     showUserError(error, '导出影响报告失败')
   } finally {
@@ -431,7 +431,7 @@ async function runAutoCollect() {
     collectSummary.value = summary
     collectPageNum.value = 1
     await loadCollectPage()
-    message.success(
+    void message.success(
       `采集 ${collectSummary.value.collectedCount} 条，跳过 ${collectSummary.value.skippedCount} 条`,
     )
   } catch (error) {
@@ -479,7 +479,7 @@ async function loadCollectPage() {
   }
 }
 
-function handleCollectPageChange(event: { current: number, pageSize: number }) {
+function handleCollectPageChange(event: { current: number; pageSize: number }) {
   collectPageNum.value = event.current
   collectPageSize.value = event.pageSize
   void loadCollectPage()
@@ -501,7 +501,7 @@ function onTabChange(key: string | number) {
   }
 }
 
-function handlePageChange(event: { current: number, pageSize: number }) {
+function handlePageChange(event: { current: number; pageSize: number }) {
   pageQuery.pageNum = event.current
   pageQuery.pageSize = event.pageSize
   if (activeTab.value === 'compute-log') {
@@ -766,8 +766,7 @@ watch(
                 :items="[{ key: 'explain', label: '解释' }]"
                 split
                 @action="
-                  () =>
-                    openExplain(record.id, 'ELIGIBILITY', record.teacherId, record.explainText)
+                  () => openExplain(record.id, 'ELIGIBILITY', record.teacherId, record.explainText)
                 "
               />
             </template>

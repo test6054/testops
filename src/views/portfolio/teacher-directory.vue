@@ -5,7 +5,17 @@ import type {
   PortfolioTeacherLifecycleEventVO,
   PortfolioTeacherLifecycleStateVO,
 } from '@/apis/portfolio/teacher-lifecycle'
+import {
+  PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
+  PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
+  portfolioTeacherLifecycleApi,
+} from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioIndustryMentorContributionVO } from '@/apis/portfolio/teacher-platform'
+import {
+  portfolioExternalTeacherApi,
+  portfolioTeacherLibraryApi,
+  portfolioTeacherSalaryApi,
+} from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioCompletenessLevelCode,
   PortfolioTeacherDetailVO,
@@ -16,6 +26,7 @@ import type {
 } from '@/apis/portfolio/types'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { UserStatusEnum } from '@/types/enums/user-status'
+import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -31,16 +42,6 @@ import {
   PortfolioTeacherIdentityTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import {
-  PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
-  PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL,
-  portfolioTeacherLifecycleApi,
-} from '@/apis/portfolio/teacher-lifecycle'
-import {
-  portfolioExternalTeacherApi,
-  portfolioTeacherLibraryApi,
-  portfolioTeacherSalaryApi,
-} from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -60,10 +61,10 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
-import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const completenessLevelOptions = ALL_PORTFOLIO_COMPLETENESS_LEVEL_CODES.map((code) => ({
   label: strictEnumLabel(PortfolioCompletenessLevelDescription, code, '档案完整度分级'),
@@ -362,7 +363,7 @@ function handleSearch() {
   loadPage()
 }
 
-function handlePageChange(page: { current: number, pageSize: number }) {
+function handlePageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   loadPage()
@@ -411,7 +412,6 @@ function handleTeacherDirectoryAction(key: string, record: PortfolioTeacherSumma
   }
 }
 
-
 async function loadAffiliationHistory(userId: string, requestToken = detailRequestToken.value) {
   affiliationLoadError.value = ''
   try {
@@ -438,16 +438,14 @@ const PORTFOLIO_EXTERNAL_IDENTITY_TYPES: ReadonlySet<PortfolioTeacherIdentityTyp
   PortfolioTeacherIdentityTypeCode.OTHER_EXTERNAL,
 ])
 
-function hasActiveExternalIdentity(
-  identities: PortfolioTeacherIdentityVO[] | undefined,
-): boolean {
+function hasActiveExternalIdentity(identities: PortfolioTeacherIdentityVO[] | undefined): boolean {
   if (!identities?.length) {
     return false
   }
   return identities.some(
     (item) =>
-      item.identityStatus === PortfolioTeacherIdentityStatusCode.ACTIVE
-      && PORTFOLIO_EXTERNAL_IDENTITY_TYPES.has(item.identityType),
+      item.identityStatus === PortfolioTeacherIdentityStatusCode.ACTIVE &&
+      PORTFOLIO_EXTERNAL_IDENTITY_TYPES.has(item.identityType),
   )
 }
 
@@ -505,8 +503,8 @@ async function loadIndustryMentorContribution(
       return
     }
     industryMentorContribution.value = null
-    industryMentorContributionError.value
-      = error instanceof Error ? error.message : '加载产业导师贡献度失败'
+    industryMentorContributionError.value =
+      error instanceof Error ? error.message : '加载产业导师贡献度失败'
   }
 }
 
@@ -562,7 +560,7 @@ async function reloadDetail() {
   }
 }
 
-function openIdentityCreate(context: { userId: string, nickName?: string, departmentId?: string }) {
+function openIdentityCreate(context: { userId: string; nickName?: string; departmentId?: string }) {
   if (interactionLocked.value) return
   if (!assertCurrentTeacherArchiveWritable('新增教师身份')) return
   identityMode.value = 'create'
@@ -611,9 +609,9 @@ async function submitIdentity() {
     return
   }
   if (
-    identityEditor.validFrom
-    && identityEditor.validTo
-    && identityEditor.validFrom > identityEditor.validTo
+    identityEditor.validFrom &&
+    identityEditor.validTo &&
+    identityEditor.validFrom > identityEditor.validTo
   ) {
     showFormValidationMessage('有效截止日期不能早于有效起始日期')
     return
@@ -681,12 +679,11 @@ function openOneTable(userId: string) {
   })
 }
 
-
 const lifecycleChangeOptions = computed(() => {
   const status = lifecycleState.value?.lifecycleStatus ?? 'ACTIVE'
-  return PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS.filter((item) => item.from.includes(status)).map(
-    (item) => ({ label: item.label, value: item.value }),
-  )
+  return PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS.filter((item) =>
+    item.from.includes(status),
+  ).map((item) => ({ label: item.label, value: item.value }))
 })
 
 const lifecycleStatusLabel = computed(() => {
@@ -695,9 +692,9 @@ const lifecycleStatusLabel = computed(() => {
     return '—'
   }
   return (
-    lifecycleState.value?.lifecycleStatusLabel
-    || PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL[status]
-    || status
+    lifecycleState.value?.lifecycleStatusLabel ||
+    PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL[status] ||
+    status
   )
 })
 
@@ -712,7 +709,6 @@ function assertCurrentTeacherArchiveWritable(actionLabel: string): boolean {
   )
   return false
 }
-
 
 async function loadTeacherLifecycle(userId: string, requestToken = detailRequestToken.value) {
   lifecycleState.value = null
@@ -749,7 +745,7 @@ async function loadTeacherLifecycle(userId: string, requestToken = detailRequest
 
 async function applyLifecycleChange() {
   if (!detail.value?.userId || !lifecycleChangeType.value) {
-    message.warning('请选择生命周期变更类型')
+    void message.warning('请选择生命周期变更类型')
     return
   }
   const operation = `lifecycle:apply:${detail.value.userId}`
@@ -768,7 +764,7 @@ async function applyLifecycleChange() {
     )
     lifecycleChangeType.value = options[0]?.value
     lifecycleReason.value = ''
-    message.success(`已更新为${next.lifecycleStatusLabel || next.lifecycleStatus}`)
+    void message.success(`已更新为${next.lifecycleStatusLabel || next.lifecycleStatus}`)
     const eventPage = await portfolioTeacherLifecycleApi.pageEvents({
       teacherUserId: detail.value.userId,
       pageNum: 1,
@@ -787,7 +783,7 @@ async function exportTransferPackage() {
     return
   }
   if (lifecycleState.value?.lifecycleStatus !== 'TRANSFER_FROZEN') {
-    message.warning('仅迁出冻结态可导出迁出数据包')
+    void message.warning('仅迁出冻结态可导出迁出数据包')
     return
   }
   const operation = `lifecycle:export:${detail.value.userId}`
@@ -812,7 +808,7 @@ async function exportTransferPackage() {
         fileNodeId: String(result.fileNodeId),
       })
     }
-    message.success(
+    void message.success(
       `迁出数据包已生成（正式档 ${result.officialRecordCount ?? 0} 条，附件 ${result.attachmentCount ?? 0}）`,
     )
   } catch (error) {
@@ -849,7 +845,7 @@ async function importTransferPackageFromFile(event: Event) {
       targetTeacherUserId: detail.value.userId,
       fileNodeId: uploaded.id,
     })
-    message.success(
+    void message.success(
       result.idempotentHit
         ? `迁出数据包已导入过（正式档 ${result.officialRecordCount ?? 0} 条）`
         : `迁出数据包导入成功（正式档 ${result.officialRecordCount ?? 0} 条，材料 ${result.materialCount ?? 0} 条）`,
@@ -869,7 +865,7 @@ async function exportRoster() {
   try {
     const result = await portfolioTeacherApi.exportRoster(request)
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条`)
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出教师名册失败')
   } finally {
@@ -930,7 +926,13 @@ watch(
     />
     <UiCard>
       <div class="list-toolbar">
-        <UiButton size="sm" variant="primary" :loading="exporting" :disabled="interactionLocked" @click="exportRoster">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="exporting"
+          :disabled="interactionLocked"
+          @click="exportRoster"
+        >
           导出名册
         </UiButton>
       </div>
@@ -984,17 +986,10 @@ watch(
             <span v-else-if="!record.lifecycleStatus">—</span>
           </template>
           <template v-else-if="column.key === 'identityLayers'">
-            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-              <UiTag
-                v-for="(layer, i) in record.ownerIdentityLayers"
-                :key="`${record.userId}-${layer.identityType}-${i}`"
-                size="sm"
-                :tone="layer.externalIdentity ? 'orange' : 'blue'"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-            </div>
-            <span v-else>—</span>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+            />
           </template>
           <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
             <span>{{
@@ -1157,7 +1152,9 @@ watch(
 
         <div class="teacher-directory__affiliation">
           <h4>工号与组织归属血缘</h4>
-          <p v-if="affiliationLoadError" class="teacher-directory__muted">{{ affiliationLoadError }}</p>
+          <p v-if="affiliationLoadError" class="teacher-directory__muted">
+            {{ affiliationLoadError }}
+          </p>
           <ul v-else-if="affiliationHistory.length" class="teacher-directory__affiliation-list">
             <li
               v-for="row in affiliationHistory"
@@ -1215,10 +1212,7 @@ watch(
             </p>
             <p class="teacher-directory__muted">{{ industryMentorContribution.formulaLabel }}</p>
             <ul v-if="industryMentorContribution.evidenceNotes?.length">
-              <li
-                v-for="(note, idx) in industryMentorContribution.evidenceNotes"
-                :key="idx"
-              >
+              <li v-for="(note, idx) in industryMentorContribution.evidenceNotes" :key="idx">
                 {{ note }}
               </li>
             </ul>
@@ -1250,7 +1244,13 @@ watch(
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
-                :items="[{ key: 'edit', label: '编辑', disabled: interactionLocked || Boolean(lifecycleState?.archiveWriteForbidden) }]"
+                :items="[
+                  {
+                    key: 'edit',
+                    label: '编辑',
+                    disabled: interactionLocked || Boolean(lifecycleState?.archiveWriteForbidden),
+                  },
+                ]"
                 split
                 @action="() => openIdentityEdit(record)"
               />
@@ -1288,25 +1288,21 @@ watch(
           />
         </UiFormItem>
         <UiFormItem label="聘任编号">
-          <UiInput
-            size="sm" v-model="identityEditor.appointmentNo" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="identityEditor.appointmentNo" :disabled="writing" />
         </UiFormItem>
         <UiFormItem label="当前工号">
           <UiInput
-            size="sm" v-model="identityEditor.staffNo" :disabled="writing"
+            size="sm"
+            v-model="identityEditor.staffNo"
+            :disabled="writing"
             placeholder="校内工号；变更将写入归属血缘"
           />
         </UiFormItem>
         <UiFormItem label="展示名称">
-          <UiInput
-            size="sm" v-model="identityEditor.displayName" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="identityEditor.displayName" :disabled="writing" />
         </UiFormItem>
         <UiFormItem label="企业/单位">
-          <UiInput
-            size="sm" v-model="identityEditor.enterpriseName" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="identityEditor.enterpriseName" :disabled="writing" />
         </UiFormItem>
         <UiFormItem label="归属院系">
           <UiSelect
@@ -1327,9 +1323,7 @@ watch(
           />
         </UiFormItem>
         <UiFormItem label="该身份下职称/职务">
-          <UiInput
-            size="sm" v-model="identityEditor.titleAtIdentity" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="identityEditor.titleAtIdentity" :disabled="writing" />
         </UiFormItem>
         <UiFormItem label="有效起始">
           <UiInput
@@ -1459,4 +1453,3 @@ watch(
   font-size: 12px;
 }
 </style>
-

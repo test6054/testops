@@ -97,7 +97,10 @@ function goTeacherOneTable(teacherUserId: string) {
 }
 
 function goCourseArchive(teacherUserId: string) {
-  void router.push({ path: '/portfolio/teacher/course-archive', query: { teacherId: teacherUserId } })
+  void router.push({
+    path: '/portfolio/teacher/course-archive',
+    query: { teacherId: teacherUserId },
+  })
 }
 
 function resetAskResultContext() {
@@ -227,12 +230,12 @@ async function submitAsk() {
     if (currentToken !== resultRequestToken.value) {
       return
     }
-    message.info('问数任务已提交，正在等待结果…')
+    void message.info('问数任务已提交，正在等待结果…')
     await pollAnalysis(submitResult.taskId, currentToken)
     if (currentToken !== resultRequestToken.value) {
       return
     }
-    message.success('问数完成')
+    void message.success('问数完成')
   } catch (error) {
     if (currentToken !== resultRequestToken.value) {
       return
@@ -325,7 +328,12 @@ async function openTaskResult(taskId: string) {
       :rows="3"
       placeholder="例如：近三年企业实践不足 30 天的教师有哪些？"
     />
-    <UiButton size="sm" variant="primary" :loading="loading || polling" @click="() => void submitAsk()">
+    <UiButton
+      size="sm"
+      variant="primary"
+      :loading="loading || polling"
+      @click="() => void submitAsk()"
+    >
       提交问数
     </UiButton>
   </UiCard>
@@ -384,12 +392,7 @@ async function openTaskResult(taskId: string) {
         </li>
       </ul>
     </section>
-    <UiEmpty
-      v-if="refusalReason"
-      size="sm"
-      title="问数未执行"
-      :description="refusalReason"
-    />
+    <UiEmpty v-if="refusalReason" size="sm" title="问数未执行" :description="refusalReason" />
     <UiDataTable
       v-else
       :row-key="teacherRowKey"
@@ -410,11 +413,13 @@ async function openTaskResult(taskId: string) {
               { key: 'one-table', label: '一张表' },
               { key: 'course-archive', label: '课程档案' },
             ]"
-            @action="(key) => {
-              if (key === 'home') goTeacherHome(record.teacherUserId)
-              else if (key === 'one-table') goTeacherOneTable(record.teacherUserId)
-              else goCourseArchive(record.teacherUserId)
-            }"
+            @action="
+              (key) => {
+                if (key === 'home') goTeacherHome(record.teacherUserId)
+                else if (key === 'one-table') goTeacherOneTable(record.teacherUserId)
+                else goCourseArchive(record.teacherUserId)
+              }
+            "
           />
           <span v-else>—</span>
         </template>

@@ -286,22 +286,6 @@ import type {
   OperationLogResponse,
   OperationTypeCode,
 } from '@/apis/mark/admin-audit'
-import type {
-  ExamIncidentRecord,
-  IncidentLevelCode,
-  IncidentTypeCode,
-} from '@/apis/mark/incident-record'
-import type {
-  BadgeTone,
-  FilterField,
-  UiSectionTabItem,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
 import {
   AuditTargetTypeDescription,
   DIAGNOSTIC_SAMPLE_TYPE_OPTIONS,
@@ -315,11 +299,27 @@ import {
   OperationTypeDescription,
   resolveIncident,
 } from '@/apis/mark/admin-audit'
+import type {
+  ExamIncidentRecord,
+  IncidentLevelCode,
+  IncidentTypeCode,
+} from '@/apis/mark/incident-record'
 import {
   INCIDENT_LEVEL_TONE,
   IncidentLevelDescription,
   IncidentTypeDescription,
 } from '@/apis/mark/incident-record'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import MarkExamSelect from '@/components/mark/MarkExamSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -352,8 +352,8 @@ defineOptions({ name: 'AdminAuditTrail' })
 const route = useRoute()
 const isExamWorkspaceRoute = computed(() => route.meta.layout === 'ExamWorkspace')
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('质控审计')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('质控审计')
 
 const {
   examOptions,
@@ -434,7 +434,7 @@ const logPagination = reactive<TablePaginationConfig>({
   showSizeChanger: true,
   showTotal: (total: number) => `共 ${total} 条`,
 })
-const operationTypeOptions = computed<Array<{ value: OperationTypeCode, label: string }>>(
+const operationTypeOptions = computed<Array<{ value: OperationTypeCode; label: string }>>(
   () => OPERATION_TYPE_OPTIONS,
 )
 
@@ -490,7 +490,7 @@ function searchLogs() {
   void loadLogs()
 }
 
-function handleLogPageChange(pageInfo: { current: number, pageSize: number }) {
+function handleLogPageChange(pageInfo: { current: number; pageSize: number }) {
   logPagination.current = pageInfo.current
   logPagination.pageSize = pageInfo.pageSize
   void loadLogs()
@@ -576,7 +576,7 @@ function searchIncidents() {
   void loadIncidents()
 }
 
-function handleIncidentPageChange(pageInfo: { current: number, pageSize: number }): void {
+function handleIncidentPageChange(pageInfo: { current: number; pageSize: number }): void {
   incidentPagination.current = pageInfo.current
   incidentPagination.pageSize = pageInfo.pageSize
   void loadIncidents()
@@ -611,7 +611,7 @@ function handleIncidentAction(key: string, record: ExamIncidentRecord): void {
 function openResolveModal(incident: ExamIncidentRecord) {
   // MVR-393：打开/提交仅认行级 canManageReviewerWrites===true 且未解决
   if (canResolveIncident(incident) !== true) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
     return
   }
   resolvingIncident.value = incident
@@ -622,12 +622,12 @@ function openResolveModal(incident: ExamIncidentRecord) {
 async function submitResolve() {
   if (resolving.value || !resolvingIncident.value) return
   if (canResolveIncident(resolvingIncident.value) !== true) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
     return
   }
   const note = resolveNote.value.trim()
   if (note.length < 5) {
-    message.warning('处置说明至少 5 个字')
+    void message.warning('处置说明至少 5 个字')
     return
   }
   resolving.value = true
@@ -636,7 +636,7 @@ async function submitResolve() {
       incidentId: resolvingIncident.value.id,
       resolveNote: note,
     })
-    message.success('事件已解决')
+    void message.success('事件已解决')
     resolveModalOpen.value = false
     await loadIncidents()
   } catch (error) {
@@ -658,7 +658,7 @@ const samplePagination = reactive<TablePaginationConfig>({
   showTotal: (total: number) => `共 ${total} 条`,
 })
 const diagnosticSampleTypeOptions = computed<
-  Array<{ value: DiagnosticSampleTypeCode, label: string }>
+  Array<{ value: DiagnosticSampleTypeCode; label: string }>
 >(() => DIAGNOSTIC_SAMPLE_TYPE_OPTIONS)
 
 const sampleFilterFields = computed<FilterField[]>(() => [
@@ -712,7 +712,7 @@ function searchDiagnosticSamples() {
   void loadDiagnosticSamples()
 }
 
-function handleSamplePageChange(pageInfo: { current: number, pageSize: number }) {
+function handleSamplePageChange(pageInfo: { current: number; pageSize: number }) {
   samplePagination.current = pageInfo.current
   samplePagination.pageSize = pageInfo.pageSize
   void loadDiagnosticSamples()

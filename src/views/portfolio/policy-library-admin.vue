@@ -6,9 +6,9 @@ import type {
   PortfolioPolicyDocumentVO,
   PortfolioPolicyIndicatorMappingVO,
 } from '@/apis/portfolio/policy'
+import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -238,11 +238,11 @@ async function saveDraft() {
   const documentTitle = form.documentTitle.trim()
   const topicCategory = form.topicCategory.trim()
   if (
-    !documentCode
-    || !documentTitle
-    || !topicCategory
-    || !form.publishDate
-    || !form.fullTextContent.trim()
+    !documentCode ||
+    !documentTitle ||
+    !topicCategory ||
+    !form.publishDate ||
+    !form.fullTextContent.trim()
   ) {
     showFormValidationMessage('请完整填写文号、标题、主题分类、发布日期和政策全文')
     return
@@ -261,7 +261,7 @@ async function saveDraft() {
   }
   try {
     await portfolioPolicyApi.save(request)
-    message.success('政策草稿已保存')
+    void message.success('政策草稿已保存')
     editorOpen.value = false
     await loadPage()
   } catch (error) {
@@ -287,7 +287,7 @@ async function publishRow(row: PortfolioPolicyDocumentVO) {
   }
   try {
     await portfolioPolicyApi.publish({ id: documentId })
-    message.success('政策已发布')
+    void message.success('政策已发布')
     await loadPage()
   } catch (error) {
     showUserError(error, '发布政策失败')
@@ -400,12 +400,12 @@ async function saveMappings() {
   const incomplete = mappingRows.value.some(
     (item) =>
       Boolean(
-        item.clauseCode.trim()
-        || item.clauseTitle.trim()
-        || item.indicatorCode.trim()
-        || item.materialRequirement.trim(),
-      )
-      && (!item.clauseCode.trim() || !item.clauseTitle.trim() || !item.indicatorCode.trim()),
+        item.clauseCode.trim() ||
+        item.clauseTitle.trim() ||
+        item.indicatorCode.trim() ||
+        item.materialRequirement.trim(),
+      ) &&
+      (!item.clauseCode.trim() || !item.clauseTitle.trim() || !item.indicatorCode.trim()),
   )
   if (incomplete) {
     showFormValidationMessage('每条指标映射必须完整填写条款编码、条款标题和指标编码')
@@ -427,7 +427,7 @@ async function saveMappings() {
       policyDocumentId,
       mappings,
     })
-    message.success('指标映射已保存')
+    void message.success('指标映射已保存')
     const refreshed = await portfolioPolicyApi.get({ id: policyDocumentId })
     if (detail.value?.document.id === policyDocumentId) {
       detail.value = refreshed
@@ -463,11 +463,11 @@ async function submitSupersede() {
   const documentTitle = supersedeForm.documentTitle.trim()
   const topicCategory = supersedeForm.topicCategory.trim()
   if (
-    !documentCode
-    || !documentTitle
-    || !topicCategory
-    || !supersedeForm.publishDate
-    || !supersedeForm.fullTextContent.trim()
+    !documentCode ||
+    !documentTitle ||
+    !topicCategory ||
+    !supersedeForm.publishDate ||
+    !supersedeForm.fullTextContent.trim()
   ) {
     showFormValidationMessage('请完整填写修订版文号、标题、主题分类、发布日期和全文')
     return
@@ -486,7 +486,7 @@ async function submitSupersede() {
   }
   try {
     await portfolioPolicyApi.supersede(request)
-    message.success('政策修订版已创建')
+    void message.success('政策修订版已创建')
     supersedeOpen.value = false
     await loadPage()
   } catch (error) {
@@ -501,7 +501,7 @@ function onSearch() {
   void loadPage()
 }
 
-function onPageChange(page: { current: number, pageSize: number }) {
+function onPageChange(page: { current: number; pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -520,7 +520,9 @@ onMounted(() => {
     <UiCard>
       <div class="policy-admin__toolbar">
         <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
-        <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate"> 新建政策 </UiButton>
+        <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate">
+          新建政策
+        </UiButton>
       </div>
       <UiDataTable
         v-model:current="query.pageNum"
@@ -548,9 +550,9 @@ onMounted(() => {
                 { key: 'preview', label: '预览', disabled: writing },
                 ...(record.documentStatus === PortfolioPolicyDocumentStatusCode.DRAFT
                   ? [
-                    { key: 'edit', label: '编辑', disabled: writing },
-                    { key: 'publish', label: '发布', disabled: writing },
-                  ]
+                      { key: 'edit', label: '编辑', disabled: writing },
+                      { key: 'publish', label: '发布', disabled: writing },
+                    ]
                   : []),
                 ...(record.documentStatus === PortfolioPolicyDocumentStatusCode.EFFECTIVE
                   ? [{ key: 'supersede', label: '修订', disabled: writing }]
@@ -633,10 +635,7 @@ onMounted(() => {
         :disabled="writing"
       />
     </UiDialog>
-    <UiDialog
-      v-model:open="previewOpen" title="政策预览"
-      hide-footer
-    >
+    <UiDialog v-model:open="previewOpen" title="政策预览" hide-footer>
       <pre class="policy-admin__preview">{{ previewText }}</pre>
     </UiDialog>
     <UiDialog
@@ -671,13 +670,22 @@ onMounted(() => {
           <h4 class="policy-admin__section-title">指标映射</h4>
           <div v-for="(row, index) in mappingRows" :key="index" class="policy-admin__mapping-row">
             <UiInput
-              size="sm" v-model="row.clauseCode" placeholder="条款编码" :disabled="writing"
+              size="sm"
+              v-model="row.clauseCode"
+              placeholder="条款编码"
+              :disabled="writing"
             />
             <UiInput
-              size="sm" v-model="row.clauseTitle" placeholder="条款标题" :disabled="writing"
+              size="sm"
+              v-model="row.clauseTitle"
+              placeholder="条款标题"
+              :disabled="writing"
             />
             <UiInput
-              size="sm" v-model="row.indicatorCode" placeholder="指标编码" :disabled="writing"
+              size="sm"
+              v-model="row.indicatorCode"
+              placeholder="指标编码"
+              :disabled="writing"
             />
             <UiInput
               size="sm"
@@ -696,8 +704,16 @@ onMounted(() => {
             </UiButton>
           </div>
           <div class="policy-admin__mapping-actions">
-            <UiButton variant="primary" size="sm" :disabled="writing" @click="addMappingRow">新增映射</UiButton>
-            <UiButton size="sm" variant="primary" :loading="mappingSaving" :disabled="writing" @click="saveMappings">
+            <UiButton variant="primary" size="sm" :disabled="writing" @click="addMappingRow"
+              >新增映射</UiButton
+            >
+            <UiButton
+              size="sm"
+              variant="primary"
+              :loading="mappingSaving"
+              :disabled="writing"
+              @click="saveMappings"
+            >
               保存映射
             </UiButton>
           </div>
@@ -739,10 +755,7 @@ onMounted(() => {
         </template>
       </UiSpin>
     </UiDialog>
-    <UiDialog
-      v-model:open="compareOpen" title="政策版本差异" :width="900"
-      hide-footer
-    >
+    <UiDialog v-model:open="compareOpen" title="政策版本差异" :width="900" hide-footer>
       <template v-if="compareResult">
         <p class="policy-admin__compare-summary">
           v{{ compareResult.leftDocument.versionNo }} → v{{

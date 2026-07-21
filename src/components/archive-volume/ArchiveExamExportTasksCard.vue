@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import type { ExportTaskResponse } from '@/apis/mark/exam-export'
+import { createExportTask, EXPORT_STATUS_TONE, listExportTasks } from '@/apis/mark/exam-export'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { createExportTask, EXPORT_STATUS_TONE, listExportTasks } from '@/apis/mark/exam-export'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -15,23 +15,30 @@ import {
   ExportTaskStatusCode,
   ExportTaskStatusDescription,
 } from '@/types/enums/export-task-status-enum'
-import { ALL_EXPORT_TYPE_CODES, ExportTypeCode, ExportTypeDescription } from '@/types/enums/export-type-enum'
+import {
+  ALL_EXPORT_TYPE_CODES,
+  ExportTypeCode,
+  ExportTypeDescription,
+} from '@/types/enums/export-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatFileSize } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveExamExportTasksCard' })
 
-const props = withDefaults(defineProps<{
-  examId: string
-  /** 双门禁已满足时才允许创建导出任务 */
-  canCreate?: boolean
-  /** MVR-271：影像归档包仅主考；与 BE requireExamOwnerPermission 对齐 */
-  canManageOwnerImageArchiveExport?: boolean
-}>(), {
-  canCreate: false,
-  canManageOwnerImageArchiveExport: false,
-})
+const props = withDefaults(
+  defineProps<{
+    examId: string
+    /** 双门禁已满足时才允许创建导出任务 */
+    canCreate?: boolean
+    /** MVR-271：影像归档包仅主考；与 BE requireExamOwnerPermission 对齐 */
+    canManageOwnerImageArchiveExport?: boolean
+  }>(),
+  {
+    canCreate: false,
+    canManageOwnerImageArchiveExport: false,
+  },
+)
 
 const router = useRouter()
 
@@ -62,8 +69,8 @@ const busyExportTypes = computed(() => {
 
   for (const task of tasks.value) {
     if (
-      task.taskStatus === ExportTaskStatusCode.PENDING
-      || task.taskStatus === ExportTaskStatusCode.GENERATING
+      task.taskStatus === ExportTaskStatusCode.PENDING ||
+      task.taskStatus === ExportTaskStatusCode.GENERATING
     ) {
       set.add(task.exportType)
     }
@@ -79,9 +86,9 @@ const selectableExportTypes = computed(() =>
     label: exportTypeLabel(exportType),
 
     disabled:
-      busyExportTypes.value.has(exportType)
-      || (exportType === ExportTypeCode.IMAGE_ARCHIVE
-        && props.canManageOwnerImageArchiveExport !== true),
+      busyExportTypes.value.has(exportType) ||
+      (exportType === ExportTypeCode.IMAGE_ARCHIVE &&
+        props.canManageOwnerImageArchiveExport !== true),
 
     checked: selectedTypes.value.includes(exportType),
   })),
@@ -168,7 +175,7 @@ async function loadTasks(): Promise<void> {
 async function createSelectedTasks(): Promise<void> {
   // MVR-424：与 v-if canCreate / 父页 gateOpen 同源二次闸；影像包再认主考 can*
   if (props.canCreate !== true) {
-    message.warning('双门禁未满足，暂不可创建导出任务')
+    void message.warning('双门禁未满足，暂不可创建导出任务')
     return
   }
   if (!props.examId || !hasSelectedTypes.value || creating.value) {
@@ -180,11 +187,11 @@ async function createSelectedTasks(): Promise<void> {
   try {
     const blockedImageArchive = selectedTypes.value.some(
       (exportType) =>
-        exportType === ExportTypeCode.IMAGE_ARCHIVE
-        && props.canManageOwnerImageArchiveExport !== true,
+        exportType === ExportTypeCode.IMAGE_ARCHIVE &&
+        props.canManageOwnerImageArchiveExport !== true,
     )
     if (blockedImageArchive) {
-      message.warning('仅考试主考可创建影像归档包导出任务')
+      void message.warning('仅考试主考可创建影像归档包导出任务')
       return
     }
 
@@ -196,7 +203,7 @@ async function createSelectedTasks(): Promise<void> {
       })
     }
 
-    message.success(`已创建 ${selectedTypes.value.length} 个导出任务`)
+    void message.success(`已创建 ${selectedTypes.value.length} 个导出任务`)
     selectedTypes.value = []
     await loadTasks()
   } catch (error) {
@@ -271,7 +278,11 @@ defineExpose({ refresh: loadTasks })
       @action="loadTasks"
     />
 
-    <UiEmpty size="sm" v-else-if="!loading && displayTasks.length === 0" description="暂无导出任务" />
+    <UiEmpty
+      size="sm"
+      v-else-if="!loading && displayTasks.length === 0"
+      description="暂无导出任务"
+    />
 
     <UiDataTable
       v-else

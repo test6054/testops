@@ -174,7 +174,16 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ReviewQuestionProgressItemResponse } from '@/apis/mark/exam-progress'
+import { getReviewQuestionProgressSummary } from '@/apis/mark/exam-progress'
 import type { ReviewTaskItemResponse } from '@/apis/mark/exam-review-task'
+import {
+  getReviewArbitrationSummary,
+  listReviewTasks,
+  REVIEW_TASK_STATUS_TONE,
+  ReviewTaskStatusCode,
+  ReviewTaskStatusDescription,
+  ReviewTaskTypeCode,
+} from '@/apis/mark/exam-review-task'
 import type {
   BadgeTone,
   FilterField,
@@ -185,15 +194,6 @@ import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { getReviewQuestionProgressSummary } from '@/apis/mark/exam-progress'
-import {
-  getReviewArbitrationSummary,
-  listReviewTasks,
-  REVIEW_TASK_STATUS_TONE,
-  ReviewTaskStatusCode,
-  ReviewTaskStatusDescription,
-  ReviewTaskTypeCode,
-} from '@/apis/mark/exam-review-task'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -241,7 +241,7 @@ const statusTab = ref<StatusTabKey>('pending')
 const filterQuestion = ref('')
 const filterTeacherUserId = ref('')
 const expandedRowKeys = ref<string[]>([])
-const questionOptions = ref<Array<{ label: string, value: string }>>([])
+const questionOptions = ref<Array<{ label: string; value: string }>>([])
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 
 const actionableCount = computed(() => pendingCount.value + inProgressMineCount.value)
@@ -403,7 +403,12 @@ function formatAssignedTeacher(record: ReviewTaskItemResponse): string {
 function buildArbitrationActions(record: ReviewTaskItemResponse): UiTableRowActionItem[] {
   return [
     { key: 'detail', label: '详情' },
-    { key: 'workspace', label: '进入仲裁', tone: 'primary', hidden: !isActionableTask(record) || record.canManageReviewerWrites !== true },
+    {
+      key: 'workspace',
+      label: '进入仲裁',
+      tone: 'primary',
+      hidden: !isActionableTask(record) || record.canManageReviewerWrites !== true,
+    },
   ]
 }
 
@@ -424,8 +429,8 @@ function isActionableTask(record: ReviewTaskItemResponse): boolean {
     return true
   }
   return (
-    record.status === ReviewTaskStatusCode.IN_PROGRESS
-    && record.assignedTeacherUserId === currentUserId.value
+    record.status === ReviewTaskStatusCode.IN_PROGRESS &&
+    record.assignedTeacherUserId === currentUserId.value
   )
 }
 
@@ -456,7 +461,7 @@ function resetFilters(): void {
   void loadTasks()
 }
 
-function handlePageChange(event: { current: number, pageSize: number }): void {
+function handlePageChange(event: { current: number; pageSize: number }): void {
   pageNum.value = event.current
   pageSize.value = event.pageSize
   void loadTasks()
@@ -603,11 +608,11 @@ function goReviewWorkspace(record: ReviewTaskItemResponse): void {
   }
   // MVR-394：进入仲裁写工作台与行级 canManageReviewerWrites / isActionableTask 二次拦截
   if (record.canManageReviewerWrites !== true) {
-    message.warning('当前账号无本场复核写权限，无法进入仲裁工作台')
+    void message.warning('当前账号无本场复核写权限，无法进入仲裁工作台')
     return
   }
   if (!isActionableTask(record)) {
-    message.warning('当前任务状态不可进入仲裁工作台')
+    void message.warning('当前任务状态不可进入仲裁工作台')
     return
   }
   void router.push({

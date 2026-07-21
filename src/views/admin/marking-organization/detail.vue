@@ -772,9 +772,13 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { UserListItemDto } from '@/apis/edu/admin-user'
+import { adminGetUserPage } from '@/apis/edu/admin-user'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { ExamStatusCode, getExamDetail } from '@/apis/mark/exam'
 import type { ExamTemplateResponse } from '@/apis/mark/exam-layout-question'
+import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
 import type { ExamWorkbenchMarkingProgressPanelResponse } from '@/apis/mark/exam-progress'
+import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import type {
   AllocationPolicyResponse,
   AllocationPolicySaveRequest,
@@ -786,19 +790,6 @@ import type {
   RecyclePolicyResponse,
   RecyclePolicySaveRequest,
 } from '@/apis/mark/marking-organization'
-import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
-import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { adminGetUserPage } from '@/apis/edu/admin-user'
-import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
-import { ExamStatusCode, getExamDetail } from '@/apis/mark/exam'
-import { getExamLayoutQuestionSummary } from '@/apis/mark/exam-layout-question'
-import { getMarkingProgressPanel } from '@/apis/mark/exam-progress'
 import {
   ALLOCATION_UNIT_OPTIONS,
   ANONYMOUS_TOKEN_POLICY_OPTIONS,
@@ -820,7 +811,16 @@ import {
   saveRecyclePolicy,
   updateOrganization,
 } from '@/apis/mark/marking-organization'
+import type { ReviewerQualityMetricResponse } from '@/apis/mark/marking-quality'
 import { listReviewerMetrics } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiSectionTabItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import SaveOutlined from '@ant-design/icons-vue/SaveOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ANONYMITY_MODE_OPTIONS } from '@/apis/mark/anonymity-mode'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInfoGrid from '@/components/ui-guide/ui/InfoGrid.vue'
 import UiInfoGridItem from '@/components/ui-guide/ui/InfoGridItem.vue'
@@ -884,8 +884,8 @@ defineOptions({ name: 'AdminMarkingOrganizationDetail' })
 const MARKING_TEACHER_OPTION_PAGE_SIZE = 20
 const TEACHER_SEARCH_DEBOUNCE_MS = 300
 
-const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone }
-  = useOptionalExamJourneyContextBar('阅卷安排')
+const { isJourneyChrome, contextBarTitle, contextBarSubtitle, examStatusLabel, examStatusTone } =
+  useOptionalExamJourneyContextBar('阅卷安排')
 
 const route = useRoute()
 const router = useRouter()
@@ -947,16 +947,16 @@ function matchesGroupSearch(group: QuestionMarkingGroupResponse, keyword: string
   if (
     group.reviewers.some(
       (reviewer) =>
-        reviewer.reviewerUserName?.toLowerCase().includes(keyword)
-        || reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
+        reviewer.reviewerUserName?.toLowerCase().includes(keyword) ||
+        reviewer.reviewerTeacherNo?.toLowerCase().includes(keyword),
     )
   ) {
     return true
   }
   return group.questions.some(
     (question) =>
-      String(question.questionNo).includes(keyword)
-      || question.questionTypeMessage?.toLowerCase().includes(keyword),
+      String(question.questionNo).includes(keyword) ||
+      question.questionTypeMessage?.toLowerCase().includes(keyword),
   )
 }
 
@@ -997,8 +997,8 @@ const orgSignalMetrics = computed((): SignalMetric[] => {
     return []
   }
   const summary = markingProgressPanel.value?.markingTaskSummary
-  const overallPercent
-    = summary && summary.totalTaskCount > 0
+  const overallPercent =
+    summary && summary.totalTaskCount > 0
       ? Math.round((summary.finalizedTaskCount * 100) / summary.totalTaskCount)
       : null
   const metrics: SignalMetric[] = [
@@ -1084,9 +1084,7 @@ const canUpdateOrganizationAnonymousMode = computed(
   () => organization.value?.canUpdateOrganizationAnonymousMode === true,
 )
 /** MVR-405：仅认 BE canDeleteOrganization===true；有试评/正评/任务时禁删 */
-const canDeleteOrganization = computed(
-  () => organization.value?.canDeleteOrganization === true,
-)
+const canDeleteOrganization = computed(() => organization.value?.canDeleteOrganization === true)
 
 function guardExamOwnerAction(): boolean {
   if (canManageExamOwner.value) return true
@@ -1158,8 +1156,8 @@ const canReassignRecycledTasks = computed(() => {
     return false
   }
   if (
-    organization.value.leaderUserId != null
-    && String(organization.value.leaderUserId) === String(userId)
+    organization.value.leaderUserId != null &&
+    String(organization.value.leaderUserId) === String(userId)
   ) {
     return true
   }
@@ -1283,11 +1281,11 @@ const groupColumns: ColumnType<QuestionMarkingGroupResponse>[] = [
 ]
 
 const teacherList = ref<UserListItemDto[]>([])
-const teacherOptions = ref<Array<{ value: string, label: string }>>([])
+const teacherOptions = ref<Array<{ value: string; label: string }>>([])
 const teacherLoading = ref(false)
 let teacherSearchTimer: ReturnType<typeof setTimeout> | undefined
 
-function buildTeacherOption(item: UserListItemDto): { value: string, label: string } {
+function buildTeacherOption(item: UserListItemDto): { value: string; label: string } {
   return {
     value: item.id,
     label: item.identifierNumber ? `${item.nickName} (${item.identifierNumber})` : item.nickName,
@@ -1560,7 +1558,7 @@ async function submitGroup(): Promise<void> {
       reviewerUserIds: groupForm.reviewerUserIds,
     }
     await saveQuestionGroup(request)
-    message.success(groupForm.groupId ? '题组已更新' : '题组已创建')
+    void message.success(groupForm.groupId ? '题组已更新' : '题组已创建')
     groupModalOpen.value = false
     await loadOrganization()
     await refreshSnapshot()
@@ -1585,9 +1583,9 @@ function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
 function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
   // MVR-407：关闭题组须主考∧ACTIVE；状态仅 ACTIVE/CONFIGURED
   return (
-    canManageExamOwner.value === true
-    && (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
-      || record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
+    canManageExamOwner.value === true &&
+    (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE ||
+      record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
   )
 }
 
@@ -1632,7 +1630,7 @@ async function submitGroupDelete(record: QuestionMarkingGroupResponse): Promise<
   groupActionLoadingId.value = record.id
   try {
     await deleteQuestionGroup({ groupId: record.id })
-    message.success('题组已删除')
+    void message.success('题组已删除')
     await loadOrganization()
     await refreshSnapshot()
   } catch (error) {
@@ -1655,7 +1653,7 @@ async function submitGroupClose(record: QuestionMarkingGroupResponse): Promise<v
   groupActionLoadingId.value = record.id
   try {
     await closeQuestionGroup({ groupId: record.id })
-    message.success('题组已关闭')
+    void message.success('题组已关闭')
     await loadOrganization()
     await refreshSnapshot()
   } catch (error) {
@@ -1681,8 +1679,8 @@ async function submitUpdate(): Promise<void> {
   if (!guardExamOwnerAction()) return
   if (!organization.value || !editFormRef.value) return
   // MVR-404：匿名模式变更须 canUpdateOrganizationAnonymousMode；仅改备注始终可走
-  const anonymityChanged
-    = Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
+  const anonymityChanged =
+    Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
   if (anonymityChanged && canUpdateOrganizationAnonymousMode.value !== true) {
     showFormValidationMessage('已进入试评/正评或任务后不可修改匿名模式')
     return
@@ -1696,13 +1694,14 @@ async function submitUpdate(): Promise<void> {
   try {
     const request: OrganizationUpdateRequest = {
       organizationId: requireMarkingOrganizationId(organization.value),
-      anonymousMode: canUpdateOrganizationAnonymousMode.value === true
-        ? editForm.anonymousMode
-        : Boolean(organization.value.anonymousMode),
+      anonymousMode:
+        canUpdateOrganizationAnonymousMode.value === true
+          ? editForm.anonymousMode
+          : Boolean(organization.value.anonymousMode),
       remark: editForm.remark?.trim() || undefined,
     }
     organization.value = await updateOrganization(request)
-    message.success('阅卷组织已更新')
+    void message.success('阅卷组织已更新')
     editDrawerOpen.value = false
     await refreshSnapshot()
   } catch (error) {
@@ -1762,7 +1761,7 @@ async function submitDelete(): Promise<void> {
   try {
     await deleteOrganization({ organizationId: requireMarkingOrganizationId(organization.value) })
     await refreshSnapshot()
-    message.success('阅卷组织已删除')
+    void message.success('阅卷组织已删除')
     await router.push(resolveMarkingOrganizationIndexRoute(activeExamId.value || undefined))
   } catch (error) {
     showUserError(error, '阅卷组织删除失败')
@@ -1922,7 +1921,7 @@ const groupAllocationUnitMap = computed(() => {
 })
 
 function policyOptionLabel(
-  options: Array<{ value: string, label: string }>,
+  options: Array<{ value: string; label: string }>,
   value?: string | null,
 ): string {
   if (!value) {
@@ -1964,7 +1963,7 @@ async function submitAllocation(): Promise<void> {
       anonymousTokenPolicy: policyForm.anonymousTokenPolicy,
     }
     await saveAllocationPolicy(request)
-    message.success('分配策略已保存')
+    void message.success('分配策略已保存')
     policyDrawerOpen.value = false
     await loadMarkingPolicies()
     await refreshSnapshot()
@@ -1997,7 +1996,7 @@ async function submitRecycle(): Promise<void> {
       reassignMode: policyForm.reassignMode,
     }
     await saveRecyclePolicy(request)
-    message.success('回收策略已保存')
+    void message.success('回收策略已保存')
     policyDrawerOpen.value = false
     await loadMarkingPolicies()
     await refreshSnapshot()

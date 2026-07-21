@@ -40,10 +40,7 @@
         </div>
       </div>
 
-      <div
-        v-if="!displayedIntegrityResult"
-        class="archive-quality-panel__empty"
-      >
+      <div v-if="!displayedIntegrityResult" class="archive-quality-panel__empty">
         <p class="archive-quality-panel__empty-title">尚未执行完整性自检</p>
         <p class="archive-quality-panel__empty-desc">
           对照必交材料清单检查缺件，通过后方可继续自检清单与四性检测。
@@ -93,9 +90,7 @@
         </template>
       </UiDataTable>
 
-      <p v-else class="archive-quality-panel__pass-hint">
-        完整性自检已通过，无缺项材料。
-      </p>
+      <p v-else class="archive-quality-panel__pass-hint">完整性自检已通过，无缺项材料。</p>
     </section>
 
     <UiDrawer
@@ -153,7 +148,13 @@
           {{ waiveMissingTarget ? materialTypeLabel(waiveMissingTarget.materialType) : '—' }}
         </UiFormItem>
         <UiFormItem label="豁免原因" required>
-          <UiTextarea size="sm" v-model="waiveMissingReason" :maxlength="500" :rows="3" :show-count="true" />
+          <UiTextarea
+            size="sm"
+            v-model="waiveMissingReason"
+            :maxlength="500"
+            :rows="3"
+            :show-count="true"
+          />
         </UiFormItem>
       </UiForm>
     </UiDrawer>
@@ -171,7 +172,13 @@
     >
       <UiForm layout="vertical">
         <UiFormItem label="豁免原因" required>
-          <UiTextarea size="sm" v-model="waiveIntegrityReason" :maxlength="500" :rows="3" :show-count="true" />
+          <UiTextarea
+            size="sm"
+            v-model="waiveIntegrityReason"
+            :maxlength="500"
+            :rows="3"
+            :show-count="true"
+          />
         </UiFormItem>
       </UiForm>
     </UiDrawer>
@@ -185,9 +192,6 @@ import type {
   ArchiveMaterialTypeCode,
   ArchiveVolumeDetailResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref } from 'vue'
 import {
   allowArchiveMaterialDelay,
   ARCHIVE_INTEGRITY_STATUS_TONE,
@@ -196,6 +200,9 @@ import {
   waiveArchiveMaterialMissing,
   waiveArchiveVolumeIntegrity,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref } from 'vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -224,7 +231,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'refreshed': []
+  refreshed: []
   'run-integrity-check': []
 }>()
 
@@ -259,10 +266,10 @@ const missingColumns: ColumnsType<ArchiveIntegrityMissingItemVO> = [
 
 function isArchiveIntegrityMissingItem(record: unknown): record is ArchiveIntegrityMissingItemVO {
   return (
-    typeof record === 'object'
-    && record !== null
-    && 'materialType' in record
-    && 'catalogCode' in record
+    typeof record === 'object' &&
+    record !== null &&
+    'materialType' in record &&
+    'catalogCode' in record
   )
 }
 
@@ -295,7 +302,7 @@ function integrityStatusTone(
 function openDelayAllowModal(item: ArchiveIntegrityMissingItemVO) {
   // MVR-348：与 canAllowMaterialDelay 同源二次拦截
   if (props.canAllowMaterialDelay !== true) {
-    message.warning('当前账号无延迟补交登记权限')
+    void message.warning('当前账号无延迟补交登记权限')
     return
   }
   delayAllowTarget.value = item
@@ -310,7 +317,7 @@ async function submitDelayAllow() {
     return
   }
   if (props.canAllowMaterialDelay !== true) {
-    message.warning('当前账号无延迟补交登记权限')
+    void message.warning('当前账号无延迟补交登记权限')
     return
   }
   if (!delayAllowTarget.value) return
@@ -336,7 +343,7 @@ async function submitDelayAllow() {
       delayResponsibleUserId: delayAllowForm.responsibleUserId,
       missingReason: delayAllowForm.missingReason.trim(),
     })
-    message.success('已登记延迟补交')
+    void message.success('已登记延迟补交')
     delayAllowOpen.value = false
     emit('refreshed')
   } catch (error) {
@@ -349,7 +356,7 @@ async function submitDelayAllow() {
 function openWaiveMissingModal(item: ArchiveIntegrityMissingItemVO) {
   // MVR-348：与 canWaiveMaterialMissing 同源二次拦截
   if (props.canWaiveMaterialMissing !== true) {
-    message.warning('当前账号无材料缺失豁免权限')
+    void message.warning('当前账号无材料缺失豁免权限')
     return
   }
   waiveMissingTarget.value = item
@@ -362,7 +369,7 @@ async function submitWaiveMissing() {
     return
   }
   if (props.canWaiveMaterialMissing !== true) {
-    message.warning('当前账号无材料缺失豁免权限')
+    void message.warning('当前账号无材料缺失豁免权限')
     return
   }
   if (!waiveMissingTarget.value) return
@@ -378,7 +385,7 @@ async function submitWaiveMissing() {
       catalogCode: waiveMissingTarget.value.catalogCode,
       reason: waiveMissingReason.value.trim(),
     })
-    message.success('已授权材料缺失豁免')
+    void message.success('已授权材料缺失豁免')
     waiveMissingOpen.value = false
     emit('refreshed')
   } catch (error) {
@@ -391,7 +398,7 @@ async function submitWaiveMissing() {
 function openWaiveIntegrityModal() {
   // MVR-348：与 canWaiveIntegrity 同源二次拦截
   if (props.canWaiveIntegrity !== true) {
-    message.warning('当前账号无完整性豁免权限')
+    void message.warning('当前账号无完整性豁免权限')
     return
   }
   waiveIntegrityReason.value = ''
@@ -403,7 +410,7 @@ async function submitWaiveIntegrity() {
     return
   }
   if (props.canWaiveIntegrity !== true) {
-    message.warning('当前账号无完整性豁免权限')
+    void message.warning('当前账号无完整性豁免权限')
     return
   }
   if (!waiveIntegrityReason.value.trim()) {
@@ -416,7 +423,7 @@ async function submitWaiveIntegrity() {
       volumeId: props.volumeId,
       reason: waiveIntegrityReason.value.trim(),
     })
-    message.success('已授权完整性豁免')
+    void message.success('已授权完整性豁免')
     waiveIntegrityOpen.value = false
     emit('refreshed')
   } catch (error) {

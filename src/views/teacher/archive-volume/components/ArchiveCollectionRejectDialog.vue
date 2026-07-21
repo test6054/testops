@@ -17,7 +17,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "rejected": []
+  rejected: []
 }>()
 
 const reason = ref('')
@@ -34,7 +34,7 @@ async function submit() {
   if (submitting.value) return
   // MVR-305：与 canRejectCollection 同源二次拦截
   if (props.canRejectCollection !== true) {
-    message.warning('当前账号无驳回收材权限')
+    void message.warning('当前账号无驳回收材权限')
     return
   }
   const trimmed = reason.value.trim()

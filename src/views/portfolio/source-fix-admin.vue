@@ -130,9 +130,7 @@ const itemColumns: ColumnsType = [
 
 function triggerLabel(code?: string) {
   if (!code) return '—'
-  return (
-    PORTFOLIO_SOURCE_FIX_TRIGGER_TYPE_LABEL[code as PortfolioSourceFixTriggerTypeCode] || code
-  )
+  return PORTFOLIO_SOURCE_FIX_TRIGGER_TYPE_LABEL[code as PortfolioSourceFixTriggerTypeCode] || code
 }
 
 function statusLabel(code?: string) {
@@ -161,7 +159,9 @@ function statusTone(code?: string) {
 }
 
 /** 明细行生命周期 Tag 色（US-MI：读模型仅标注，不默认过滤）。 */
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -196,7 +196,6 @@ function onSearch() {
   query.pageNum = 1
   void loadPage()
 }
-
 
 function readRouteStringParam(value: unknown): string {
   if (typeof value === 'string') {
@@ -242,7 +241,7 @@ async function executeEvent(row: PortfolioSourceFixEventVO) {
   acting.value = true
   try {
     await portfolioSourceFixApi.execute(row.id)
-    message.success('已触发重算')
+    void message.success('已触发重算')
     await loadPage()
     if (detailOpen.value && detail.value?.id === row.id) {
       detail.value = await portfolioSourceFixApi.get(row.id)
@@ -257,13 +256,13 @@ async function executeEvent(row: PortfolioSourceFixEventVO) {
 async function ackAlert(row: PortfolioSourceFixEventVO) {
   if (!row.id || acting.value) return
   if (row.alertStatus !== PortfolioSourceFixAlertStatusCode.OPEN) {
-    message.warning('仅 OPEN 告警可确认')
+    void message.warning('仅 OPEN 告警可确认')
     return
   }
   acting.value = true
   try {
     await portfolioSourceFixApi.ackAlert(row.id)
-    message.success('告警已确认')
+    void message.success('告警已确认')
     await loadPage()
   } catch (error) {
     showUserError(error, '确认告警失败')
@@ -276,7 +275,7 @@ async function submitBatch() {
   if (acting.value) return
   const reason = batchForm.triggerReason.trim()
   if (!reason) {
-    message.warning('请填写触发原因')
+    void message.warning('请填写触发原因')
     return
   }
   const teacherIds = batchForm.teacherIdsText
@@ -298,7 +297,7 @@ async function submitBatch() {
   acting.value = true
   try {
     const event = await portfolioSourceFixApi.batch(payload)
-    message.success(`批量重算已提交，事件 #${event.id ?? ''}`)
+    void message.success(`批量重算已提交，事件 #${event.id ?? ''}`)
     batchOpen.value = false
     await loadPage()
   } catch (error) {
@@ -367,10 +366,14 @@ watch(
             {{ triggerLabel(record.triggerType) }}
           </template>
           <template v-else-if="column.key === 'eventStatus'">
-            <UiTag :tone="statusTone(record.eventStatus)">{{ statusLabel(record.eventStatus) }}</UiTag>
+            <UiTag :tone="statusTone(record.eventStatus)">{{
+              statusLabel(record.eventStatus)
+            }}</UiTag>
           </template>
           <template v-else-if="column.key === 'alertStatus'">
-            <UiTag :tone="alertTone(record.alertStatus)">{{ alertLabel(record.alertStatus) }}</UiTag>
+            <UiTag :tone="alertTone(record.alertStatus)">{{
+              alertLabel(record.alertStatus)
+            }}</UiTag>
           </template>
           <template v-else-if="column.key === 'counts'">
             {{ record.affectedTeacherCount ?? 0 }}/{{ record.affectedIndicatorCount ?? 0 }}/{{
@@ -383,7 +386,9 @@ watch(
               <UiButton
                 size="sm"
                 tone="primary"
-                :disabled="acting || record.eventStatus === 'SUCCESS' || record.eventStatus === 'RUNNING'"
+                :disabled="
+                  acting || record.eventStatus === 'SUCCESS' || record.eventStatus === 'RUNNING'
+                "
                 @click="executeEvent(record)"
               >
                 执行
@@ -401,24 +406,27 @@ watch(
       </UiDataTable>
     </UiCard>
 
-    <a-drawer
-      v-model:open="detailOpen"
-      title="源修复重算事件详情"
-      width="720"
-      destroy-on-close
-    >
+    <a-drawer v-model:open="detailOpen" title="源修复重算事件详情" width="720" destroy-on-close>
       <template v-if="detail">
         <div class="mb-4 space-y-2 text-sm">
           <div>触发：{{ triggerLabel(detail.triggerType) }} · {{ detail.triggerSource }}</div>
           <div>原因：{{ detail.triggerReason }}</div>
-          <div>字段：{{ detail.fieldLabel || detail.fieldCode || '—' }}（{{ detail.fieldCode || '—' }}）</div>
+          <div>
+            字段：{{ detail.fieldLabel || detail.fieldCode || '—' }}（{{
+              detail.fieldCode || '—'
+            }}）
+          </div>
           <div>变更：{{ detail.beforeValue || '空' }} → {{ detail.afterValue || '空' }}</div>
           <div v-if="detail.dataSourceCode">数据源：{{ detail.dataSourceCode }}</div>
           <div>
             状态：
-            <UiTag :tone="statusTone(detail.eventStatus)">{{ statusLabel(detail.eventStatus) }}</UiTag>
+            <UiTag :tone="statusTone(detail.eventStatus)">{{
+              statusLabel(detail.eventStatus)
+            }}</UiTag>
             告警：
-            <UiTag :tone="alertTone(detail.alertStatus)">{{ alertLabel(detail.alertStatus) }}</UiTag>
+            <UiTag :tone="alertTone(detail.alertStatus)">{{
+              alertLabel(detail.alertStatus)
+            }}</UiTag>
           </div>
           <div>影响摘要：{{ detail.impactSummary || '—' }}</div>
           <div>重算结果：{{ detail.recomputeResult || '—' }}</div>

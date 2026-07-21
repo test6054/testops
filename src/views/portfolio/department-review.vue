@@ -6,6 +6,14 @@ import type {
   PortfolioMaterialRiskLevelCode,
   PortfolioReviewActionTypeCode,
 } from '@/apis/portfolio/enums'
+import {
+  PortfolioArchiveRecordSourceTypeDescription,
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioMaterialRiskLevelDescription,
+  PortfolioReviewActionTypeDescription,
+  PortfolioReviewTaskStatusCode,
+  PortfolioReviewTaskStatusDescription,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioAiAnalysisDetailVO,
   PortfolioArchiveCategoryTreeNodeVO,
@@ -15,20 +23,6 @@ import type {
   PortfolioReviewTaskPageRequest,
   PortfolioReviewTaskSummaryVO,
 } from '@/apis/portfolio/types'
-import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import {
-  PortfolioArchiveRecordSourceTypeDescription,
-  PortfolioArchiveRecordStatusDescription,
-  PortfolioMaterialRiskLevelDescription,
-  PortfolioReviewActionTypeDescription,
-  PortfolioReviewTaskStatusCode,
-  PortfolioReviewTaskStatusDescription,
-} from '@/apis/portfolio/enums'
-import { portfolioReviewApi } from '@/apis/portfolio/review'
 import {
   PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
   PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
@@ -36,6 +30,12 @@ import {
   PORTFOLIO_REVIEW_TASK_STATUS_TONE,
   PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE,
 } from '@/apis/portfolio/types'
+import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import { portfolioReviewApi } from '@/apis/portfolio/review'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
@@ -53,7 +53,11 @@ import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { isPortfolioCourseFrameworkCategoryCode } from '@/constants/portfolio-archive-category-codes'
 import { ResultCode } from '@/types/enums/result-code'
-import { readBusinessResultCode, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  readBusinessResultCode,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -159,13 +163,14 @@ const hasSensitiveRows = computed(() => rows.value.some((item) => item.riskLevel
 const showReviewActions = computed(() => Boolean(activeRow.value?.reviewActionAllowed))
 const activeAssociationBroken = computed(() => Boolean(activeRow.value?.associationBroken))
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
   return 'gray'
 }
-
 
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm,
@@ -174,7 +179,7 @@ const filterModel = computed<Record<string, unknown>>({
   },
 })
 
-const categoryOptions = ref<{ label: string, value: string }[]>([])
+const categoryOptions = ref<{ label: string; value: string }[]>([])
 
 const filterFields = computed<FilterField[]>(() => [
   {
@@ -253,14 +258,16 @@ async function bindActionTeacherAndAssert(
   teacherId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value = teacherId != null && String(teacherId).trim() !== ''
-    ? String(teacherId)
-    : undefined
+  actionTeacherId.value =
+    teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
 
-async function assertTaskIdsArchiveWritable(taskIds: string[], actionLabel: string): Promise<boolean> {
+async function assertTaskIdsArchiveWritable(
+  taskIds: string[],
+  actionLabel: string,
+): Promise<boolean> {
   const teacherIds = new Set<string>()
   for (const id of taskIds) {
     const row = rows.value.find((item) => item.id === id)
@@ -359,8 +366,7 @@ function reviewRecordFieldValue(fieldCode: string): string | undefined {
   }
   const fromDetail = recordDetail.value?.fields
     ?.find((item) => item.fieldCode === fieldCode)
-    ?.fieldValue
-?.trim()
+    ?.fieldValue?.trim()
   if (fromDetail) {
     return fromDetail
   }
@@ -398,14 +404,14 @@ function goTeacherPortfolioPage(path: string, teacherId: string) {
 
 const showCourseArchiveLink = computed(
   () =>
-    activeRow.value?.teacherId != null
-    && isPortfolioCourseFrameworkCategoryCode(activeRow.value.categoryCode),
+    activeRow.value?.teacherId != null &&
+    isPortfolioCourseFrameworkCategoryCode(activeRow.value.categoryCode),
 )
 
 function flattenCategoryTree(
   nodes: PortfolioArchiveCategoryTreeNodeVO[],
-): { label: string, value: string }[] {
-  const options: { label: string, value: string }[] = []
+): { label: string; value: string }[] {
+  const options: { label: string; value: string }[] = []
   for (const node of nodes) {
     options.push({ label: node.categoryName, value: node.id })
     if (node.children?.length) {
@@ -465,7 +471,7 @@ function handleSearch() {
   void loadPage()
 }
 
-function handlePageChange(event: { current: number, pageSize: number }) {
+function handlePageChange(event: { current: number; pageSize: number }) {
   if (actionSubmitting.value || batchSubmitting.value || batchRejectSubmitting.value) {
     showFormValidationMessage('审核操作处理中，请稍后翻页')
     return
@@ -530,22 +536,21 @@ async function loadLogPage() {
   }
 }
 
-function handleFieldPageChange(event: { current: number, pageSize: number }) {
+function handleFieldPageChange(event: { current: number; pageSize: number }) {
   fieldPageNum.value = event.current
   fieldPageSize.value = event.pageSize
   void loadFieldPage()
 }
 
-function handleLogPageChange(event: { current: number, pageSize: number }) {
+function handleLogPageChange(event: { current: number; pageSize: number }) {
   logPageNum.value = event.current
   logPageSize.value = event.pageSize
   void loadLogPage()
 }
 
 async function openDetail(row: PortfolioReviewTaskSummaryVO) {
-  actionTeacherId.value = row.teacherId != null && String(row.teacherId).trim() !== ''
-    ? String(row.teacherId)
-    : undefined
+  actionTeacherId.value =
+    row.teacherId != null && String(row.teacherId).trim() !== '' ? String(row.teacherId) : undefined
   void reloadLifecycleState()
 
   if (actionSubmitting.value || batchSubmitting.value || batchRejectSubmitting.value) {
@@ -588,9 +593,9 @@ async function openDetail(row: PortfolioReviewTaskSummaryVO) {
         const aiRequestToken = ++aiPreReviewRequestToken.value
         const aiDetail = await portfolioReviewApi.getAiPreReview(row.id)
         if (
-          aiRequestToken !== aiPreReviewRequestToken.value
-          || currentToken !== detailRequestToken.value
-          || activeRow.value?.id !== row.id
+          aiRequestToken !== aiPreReviewRequestToken.value ||
+          currentToken !== detailRequestToken.value ||
+          activeRow.value?.id !== row.id
         ) {
           return
         }
@@ -620,10 +625,10 @@ async function openDetail(row: PortfolioReviewTaskSummaryVO) {
 
 async function handleApprove() {
   if (
-    !activeRow.value
-    || actionSubmitting.value
-    || batchSubmitting.value
-    || batchRejectSubmitting.value
+    !activeRow.value ||
+    actionSubmitting.value ||
+    batchSubmitting.value ||
+    batchRejectSubmitting.value
   ) {
     return
   }
@@ -636,7 +641,7 @@ async function handleApprove() {
       reviewTaskId: activeRow.value.id,
       opinion: approveOpinion.value.trim() || undefined,
     })
-    message.success('审核已通过')
+    void message.success('审核已通过')
     resetReviewDetailContext()
     await loadPage()
   } catch (error) {
@@ -648,12 +653,12 @@ async function handleApprove() {
 
 async function handleReject() {
   if (
-    !activeRow.value
-    || actionSubmitting.value
-    || batchSubmitting.value
-    || batchRejectSubmitting.value
-    || !rejectReason.value.trim()
-    || !returnDeadline.value.trim()
+    !activeRow.value ||
+    actionSubmitting.value ||
+    batchSubmitting.value ||
+    batchRejectSubmitting.value ||
+    !rejectReason.value.trim() ||
+    !returnDeadline.value.trim()
   ) {
     showFormValidationMessage('请填写退回原因与重提期限')
     return
@@ -668,7 +673,7 @@ async function handleReject() {
       reason: rejectReason.value.trim(),
       returnDeadline: returnDeadline.value.trim(),
     })
-    message.success('已退回修改')
+    void message.success('已退回修改')
     resetReviewDetailContext()
     await loadPage()
   } catch (error) {
@@ -680,11 +685,11 @@ async function handleReject() {
 
 async function handleDismiss() {
   if (
-    !activeRow.value
-    || actionSubmitting.value
-    || batchSubmitting.value
-    || batchRejectSubmitting.value
-    || !dismissReason.value.trim()
+    !activeRow.value ||
+    actionSubmitting.value ||
+    batchSubmitting.value ||
+    batchRejectSubmitting.value ||
+    !dismissReason.value.trim()
   ) {
     showFormValidationMessage('请填写驳回依据')
     return
@@ -706,7 +711,7 @@ async function handleDismiss() {
       reviewTaskId: activeRow.value.id,
       reason: dismissReason.value.trim(),
     })
-    message.success('已驳回')
+    void message.success('已驳回')
     resetReviewDetailContext()
     await loadPage()
   } catch (error) {
@@ -730,7 +735,7 @@ async function handleBatchApprove() {
   batchSubmitting.value = true
   try {
     const count = await portfolioReviewApi.batchApprove({ reviewTaskIds: selectedRowKeys.value })
-    message.success(`已批量通过 ${count} 条`)
+    void message.success(`已批量通过 ${count} 条`)
     selectedRowKeys.value = []
     await loadPage()
   } catch (error) {
@@ -762,7 +767,7 @@ async function handleBatchReject() {
       reason: batchRejectReason.value.trim(),
       returnDeadline: batchReturnDeadline.value.trim(),
     })
-    message.success(`已批量退回 ${count} 条`)
+    void message.success(`已批量退回 ${count} 条`)
     selectedRowKeys.value = []
     batchRejectReason.value = ''
     batchReturnDeadline.value = ''
@@ -776,11 +781,11 @@ async function handleBatchReject() {
 
 async function handleEscalate() {
   if (
-    !activeRow.value
-    || actionSubmitting.value
-    || batchSubmitting.value
-    || batchRejectSubmitting.value
-    || !escalateReason.value.trim()
+    !activeRow.value ||
+    actionSubmitting.value ||
+    batchSubmitting.value ||
+    batchRejectSubmitting.value ||
+    !escalateReason.value.trim()
   ) {
     showFormValidationMessage('请填写转复审原因')
     return
@@ -802,7 +807,7 @@ async function handleEscalate() {
       reviewTaskId: activeRow.value.id,
       reason: escalateReason.value.trim(),
     })
-    message.success('已转复审')
+    void message.success('已转复审')
     resetReviewDetailContext()
     await loadPage()
   } catch (error) {
@@ -911,7 +916,8 @@ watch(
             selectedRowKeys = keys
           },
           getCheckboxProps: (record: PortfolioReviewTaskSummaryVO) => ({
-            disabled: reviewWriting || !record.batchApproveAllowed || Boolean(record.associationBroken),
+            disabled:
+              reviewWriting || !record.batchApproveAllowed || Boolean(record.associationBroken),
           }),
         }"
       >
@@ -944,7 +950,10 @@ watch(
             </UiTag>
           </template>
           <template v-else-if="column.key === 'associationBroken'">
-            <span v-if="record.associationBroken" :title="record.associationBrokenReason || '关联数据断裂'">
+            <span
+              v-if="record.associationBroken"
+              :title="record.associationBrokenReason || '关联数据断裂'"
+            >
               <UiTag tone="red">断裂</UiTag>
             </span>
             <UiTag v-else tone="green">正常</UiTag>
@@ -986,13 +995,15 @@ watch(
                 },
               ]"
               split
-              @action="(key) => {
-                if (key === 'masterpiece') {
-                  goTeacherPortfolioPage('/portfolio/teacher/masterpiece', record.teacherId)
-                  return
+              @action="
+                (key) => {
+                  if (key === 'masterpiece') {
+                    goTeacherPortfolioPage('/portfolio/teacher/masterpiece', record.teacherId)
+                    return
+                  }
+                  openDetail(record)
                 }
-                openDetail(record)
-              }"
+              "
             />
           </template>
         </template>
@@ -1081,12 +1092,17 @@ watch(
           <strong>关联数据断裂，禁止审核动作</strong>
           <p>{{ activeRow.associationBrokenReason || '档案/分类/教师关联缺失' }}</p>
         </div>
-        <div v-if="activeRow.lifecycleStatus && activeRow.lifecycleStatus !== 'ACTIVE'" class="review-lifecycle-hint">
+        <div
+          v-if="activeRow.lifecycleStatus && activeRow.lifecycleStatus !== 'ACTIVE'"
+          class="review-lifecycle-hint"
+        >
           教师生命周期：
           <UiTag :tone="lifecycleTagTone(activeRow)">
             {{ activeRow.lifecycleStatusLabel || activeRow.lifecycleStatus }}
           </UiTag>
-          <span v-if="activeRow.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>
+          <span v-if="activeRow.countsInCurrentFacultyStructure === false"
+            >（不计入当前在岗结构）</span
+          >
           <span v-if="activeRow.archiveWriteForbidden">（档案写禁）</span>
           <span v-if="activeRow.evaluationHeld">（参评 hold）</span>
         </div>
@@ -1134,7 +1150,14 @@ watch(
             placeholder="通过意见（可选）"
           />
           <div class="review-actions__row">
-            <UiButton size="sm" variant="primary" :loading="actionSubmitting" @click="handleApprove"> 通过 </UiButton>
+            <UiButton
+              size="sm"
+              variant="primary"
+              :loading="actionSubmitting"
+              @click="handleApprove"
+            >
+              通过
+            </UiButton>
           </div>
           <template v-if="activeRow.escalateAllowed">
             <UiInput
@@ -1143,9 +1166,16 @@ watch(
               :disabled="reviewWriting"
               placeholder="转复审原因"
             />
-            <UiButton size="sm" :loading="actionSubmitting" @click="handleEscalate"> 转复审 </UiButton>
+            <UiButton size="sm" :loading="actionSubmitting" @click="handleEscalate">
+              转复审
+            </UiButton>
           </template>
-          <UiInput v-model="rejectReason" size="sm" :disabled="reviewWriting" placeholder="退回原因" />
+          <UiInput
+            v-model="rejectReason"
+            size="sm"
+            :disabled="reviewWriting"
+            placeholder="退回原因"
+          />
           <UiDatePicker
             v-model="returnDeadline"
             show-time
@@ -1155,8 +1185,15 @@ watch(
             :disabled="reviewWriting"
             style="width: 100%"
           />
-          <UiButton size="sm" :loading="actionSubmitting" @click="handleReject"> 退回修改 </UiButton>
-          <UiInput v-model="dismissReason" size="sm" :disabled="reviewWriting" placeholder="驳回依据" />
+          <UiButton size="sm" :loading="actionSubmitting" @click="handleReject">
+            退回修改
+          </UiButton>
+          <UiInput
+            v-model="dismissReason"
+            size="sm"
+            :disabled="reviewWriting"
+            placeholder="驳回依据"
+          />
           <UiButton size="sm" status="danger" :loading="actionSubmitting" @click="handleDismiss">
             驳回
           </UiButton>

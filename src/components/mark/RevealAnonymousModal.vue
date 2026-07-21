@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { AnonymousRevealResponse } from '@/apis/mark/marking-organization'
+import { revealAnonymous } from '@/apis/mark/marking-organization'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
-import { revealAnonymous } from '@/apis/mark/marking-organization'
 import PasswordInput from '@/components/ui-guide/ui/PasswordInput.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -29,7 +29,7 @@ const emit = defineEmits<{
 
 const submitting = ref(false)
 const formRef = ref<FormInstance>()
-const form = reactive<{ currentPassword: string, reason: string }>({
+const form = reactive<{ currentPassword: string; reason: string }>({
   currentPassword: '',
   reason: '',
 })
@@ -79,7 +79,7 @@ async function submitReveal(): Promise<void> {
     emit('revealed', result)
     open.value = false
     resetForm()
-    message.success(`已解匿名 5 分钟：${result.studentName}（${result.studentNo}）`)
+    void message.success(`已解匿名 5 分钟：${result.studentName}（${result.studentNo}）`)
   } catch (error) {
     showUserError(error, '解匿名失败')
   } finally {

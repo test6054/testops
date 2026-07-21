@@ -168,15 +168,16 @@
 <script lang="ts" setup>
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ExamUpdateRequest } from '@/apis/mark/exam'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import message from 'ant-design-vue/es/message'
-import { reactive, ref, watch } from 'vue'
 import {
   ExamGradingStrategyCode,
   ExamGradingStrategyDescription,
   getExamDetail,
   updateExam,
 } from '@/apis/mark/exam'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
+import message from 'ant-design-vue/es/message'
+import { reactive, ref, watch } from 'vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import DepartmentSelector from '@/components/quality/selectors/DepartmentSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -191,7 +192,6 @@ import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -204,7 +204,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [open: boolean]
-  "saved": []
+  saved: []
 }>()
 
 type ExamScoreCompositionMode = 'EXAM_ONLY' | 'EXAM_WITH_DAILY'
@@ -333,7 +333,7 @@ async function loadDetail(examId: string): Promise<void> {
     const detail = await getExamDetail(examId)
     canManageOwnerExamLifecycleWrites.value = detail.canManageOwnerExamLifecycleWrites === true
     if (!canManageOwnerExamLifecycleWrites.value) {
-      message.warning('仅考试主考可修改考试主信息')
+      void message.warning('仅考试主考可修改考试主信息')
       emit('update:open', false)
       return
     }
@@ -343,8 +343,8 @@ async function loadDetail(examId: string): Promise<void> {
     examForm.examNo = detail.examNo
     examForm.academicYear = detail.academicYear ?? ''
     examForm.semester = detail.semester
-    examForm.examWindow
-      = detail.examStartTime && detail.examEndTime
+    examForm.examWindow =
+      detail.examStartTime && detail.examEndTime
         ? [detail.examStartTime, detail.examEndTime]
         : undefined
     examForm.scoreCompositionMode = detail.dailyScoreFull != null ? 'EXAM_WITH_DAILY' : 'EXAM_ONLY'
@@ -362,7 +362,13 @@ async function loadDetail(examId: string): Promise<void> {
 
 function buildUpdateRequest(): ExamUpdateRequest | null {
   const [startTime, endTime] = examForm.examWindow ?? []
-  if (!props.examId || !examForm.courseId || !examForm.referenceDepartmentId || !startTime || !endTime) {
+  if (
+    !props.examId ||
+    !examForm.courseId ||
+    !examForm.referenceDepartmentId ||
+    !startTime ||
+    !endTime
+  ) {
     return null
   }
   const academicYear = examForm.academicYear?.trim()
@@ -387,11 +393,11 @@ function buildUpdateRequest(): ExamUpdateRequest | null {
 async function handleSave(): Promise<void> {
   // MVR-428：仅认 BE 下发 canManageOwnerExamLifecycleWrites === true，禁止 truthy 回退
   if (canManageOwnerExamLifecycleWrites.value !== true) {
-    message.warning('仅考试主考可修改考试主信息')
+    void message.warning('仅考试主考可修改考试主信息')
     return
   }
   if (detailLoading.value) {
-    message.warning('考试详情加载中，请稍候再保存')
+    void message.warning('考试详情加载中，请稍候再保存')
     return
   }
   try {
@@ -401,13 +407,13 @@ async function handleSave(): Promise<void> {
   }
   const request = buildUpdateRequest()
   if (!request) {
-    message.warning('请完整填写必填项')
+    void message.warning('请完整填写必填项')
     return
   }
   saving.value = true
   try {
     await updateExam(request)
-    message.success('考试已更新')
+    void message.success('考试已更新')
     emit('update:open', false)
     emit('saved')
   } catch (error) {
@@ -426,10 +432,12 @@ watch(
   },
 )
 
-defineExpose({ openForExam: (examId: string) => {
-  emit('update:open', true)
-  void loadDetail(examId)
-} })
+defineExpose({
+  openForExam: (examId: string) => {
+    emit('update:open', true)
+    void loadDetail(examId)
+  },
+})
 </script>
 
 <style lang="scss" scoped>

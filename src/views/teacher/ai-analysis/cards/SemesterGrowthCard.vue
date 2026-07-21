@@ -5,7 +5,11 @@
       <UiRadioGroup v-model="form.examScopeMode" size="sm" :options="examScopeModeOptions" />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+        v-if="canManageReviewerWrites === true"
+        variant="primary"
+        size="sm"
+        :loading="generating"
+        @click="handleGenerate"
       >
         生成成长曲线
       </UiButton>
@@ -128,15 +132,6 @@ import type {
   SemesterAbilityGrowthResponse,
   SemesterGrowthTrendCode,
 } from '@/apis/mark/cross-exam-analysis'
-import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { BadgeTone, FilterField, UiSelectOption } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import {
-  AnalysisScopeTypeCode,
-  AnalysisScopeTypeDescription,
-} from '@/apis/mark/analysis-scope-type'
 import {
   generateClassGrowth,
   listCommonClassScopes,
@@ -144,7 +139,17 @@ import {
   SEMESTER_GROWTH_TREND_TONE,
   SemesterGrowthTrendDescription,
 } from '@/apis/mark/cross-exam-analysis'
+import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import { pageExams } from '@/apis/mark/exam'
+import type { BadgeTone, FilterField, UiSelectOption } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { formatSemester } from '@/types/enums/semester-enum'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import {
+  AnalysisScopeTypeCode,
+  AnalysisScopeTypeDescription,
+} from '@/apis/mark/analysis-scope-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -161,7 +166,6 @@ import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPicker'
 import { useExamSummariesReviewerWriteCapability } from '@/composables/useExamIdsReviewerWriteCapability'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { formatSemester } from '@/types/enums/semester-enum'
 import {
   buildRequiredAcademicYearSemesterQuery,
   ensureRequiredAcademicYearSemester,
@@ -248,7 +252,7 @@ const historyRows = computed(() =>
 )
 
 const selectedExams = ref<ExamSummaryResponse[]>([])
-const classOptions = ref<{ label: string, value: string }[]>([])
+const classOptions = ref<{ label: string; value: string }[]>([])
 const classLoading = ref(false)
 const loading = ref(false)
 const generating = ref(false)
@@ -563,14 +567,13 @@ async function reload(): Promise<void> {
       scopeId: effectiveClassId.value,
     })
     const count = applyLoadedList(list)
-    if (count === 0) message.info('暂无历史记录')
+    if (count === 0) void message.info('暂无历史记录')
   } catch (e) {
     showUserError(e, '学期成长曲线加载失败')
   } finally {
     loading.value = false
   }
 }
-
 
 /** AUTO 模式按开课学期候选考试摘要计算写能力；MANUAL 用已选考试 */
 const autoScopedExamSummaries = ref<ExamSummaryResponse[]>([])
@@ -682,7 +685,7 @@ async function handleGenerate(): Promise<void> {
         autoSelectExams: true,
       })
       adoptGenerated(generated)
-      message.success('已按开课学期自动选考并生成成长曲线')
+      void message.success('已按开课学期自动选考并生成成长曲线')
     } catch (e) {
       showUserError(e, '学期成长曲线生成失败')
     } finally {
@@ -717,7 +720,7 @@ async function handleGenerate(): Promise<void> {
       autoSelectExams: false,
     })
     adoptGenerated(generated)
-    message.success('已生成成长曲线')
+    void message.success('已生成成长曲线')
   } catch (e) {
     showUserError(e, '学期成长曲线生成失败')
   } finally {

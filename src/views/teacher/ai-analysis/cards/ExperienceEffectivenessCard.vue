@@ -12,7 +12,11 @@
         查看历史
       </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+        v-if="canManageReviewerWrites === true"
+        variant="primary"
+        size="sm"
+        :loading="generating"
+        @click="handleGenerate"
       >
         评估有效性
       </UiButton>
@@ -136,28 +140,28 @@
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
 import type { GradingExperienceCaseResponse } from '@/apis/mark/grading-experience'
+import {
+  ExperienceCaseStatusCode,
+  ExperienceCaseStatusDescription,
+  pageExperiences,
+} from '@/apis/mark/grading-experience'
 import type { QuestionTypeCode } from '@/apis/mark/question-type'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import type {
   ExperienceEffectivenessEvalEvidenceResponse,
   ExperienceEffectivenessEvalResponse,
   ExperienceRecommendationCode,
+} from '@/apis/mark/school-quality'
+import {
+  evaluateExperienceEffectiveness,
+  ExperienceRecommendationDescription,
+  listExperienceEvals,
 } from '@/apis/mark/school-quality'
 import type { FilterField, UiBarChartItem, UiTrendPoint } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
-import {
-  ExperienceCaseStatusCode,
-  ExperienceCaseStatusDescription,
-  pageExperiences,
-} from '@/apis/mark/grading-experience'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
-import {
-  evaluateExperienceEffectiveness,
-  ExperienceRecommendationDescription,
-  listExperienceEvals,
-} from '@/apis/mark/school-quality'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import MarkTrendSection from '@/components/chart/MarkTrendSection.vue'
 import AiAnalysisHistorySelect from '@/components/mark/analysis/AiAnalysisHistorySelect.vue'
@@ -174,7 +178,11 @@ import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPi
 import { useExamSummariesReviewerWriteCapability } from '@/composables/useExamIdsReviewerWriteCapability'
 import { EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserProcessFailureMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
   buildBarChartInsight,
@@ -295,9 +303,9 @@ const experienceOptions = computed(() =>
   experiences.value
     .filter(
       (item): item is GradingExperienceCaseResponse & { id: string } =>
-        Boolean(item.id)
-        && item.caseStatus === ExperienceCaseStatusCode.CONFIRMED
-        && item.analysisStatus === AiAnalysisStatusCode.SUCCESS,
+        Boolean(item.id) &&
+        item.caseStatus === ExperienceCaseStatusCode.CONFIRMED &&
+        item.analysisStatus === AiAnalysisStatusCode.SUCCESS,
     )
     .map((item) => ({
       label: [
@@ -396,8 +404,8 @@ const effectivenessTrendPoints = computed((): UiTrendPoint[] => {
   const successRecords = [...historyRecords.value]
     .filter(
       (item) =>
-        item.analysisStatus === AiAnalysisStatusCode.SUCCESS
-        && toConsistencyPercent(item.consistencyRate) != null,
+        item.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
+        toConsistencyPercent(item.consistencyRate) != null,
     )
     .reverse()
   return successRecords.map((item, index) => {
@@ -557,14 +565,13 @@ async function reload(): Promise<void> {
   try {
     const list = await listExperienceEvals(experienceCaseId)
     const count = applyLoadedList(list)
-    if (count === 0) message.info('暂无历史记录')
+    if (count === 0) void message.info('暂无历史记录')
   } catch (e) {
     showUserError(e, '经验案例效果评估加载失败')
   } finally {
     loading.value = false
   }
 }
-
 
 /** MVR-286：默认拒绝假可写；所选考试均须 canManageReviewerWrites */
 const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
@@ -599,7 +606,7 @@ async function handleGenerate(): Promise<void> {
     const list = await listExperienceEvals(experienceCaseId)
     applyLoadedList(list)
     historySelectedId.value = generated.id
-    message.success('已完成有效性评估')
+    void message.success('已完成有效性评估')
   } catch (e) {
     showUserError(e, '经验案例效果评估生成失败')
   } finally {

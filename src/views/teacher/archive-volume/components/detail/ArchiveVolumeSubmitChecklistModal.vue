@@ -4,13 +4,13 @@ import type {
   ArchiveVolumeSignOffRoleCode,
   ArchiveVolumeSubmitChecklistResponse,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
 import {
   ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES,
   confirmArchiveVolumeSelfCheck,
   previewArchiveVolumeSubmitChecklist,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -33,7 +33,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "confirmed": []
+  confirmed: []
 }>()
 
 const loading = ref(false)
@@ -44,7 +44,7 @@ const materialCompleteConfirmed = ref(false)
 const gradingNormConfirmed = ref(false)
 const reason = ref('')
 const signOffState = ref<
-  Record<ArchiveVolumeSignOffRoleCode, { confirmed: boolean, signatoryName: string }>
+  Record<ArchiveVolumeSignOffRoleCode, { confirmed: boolean; signatoryName: string }>
 >({
   PROPOSER: { confirmed: false, signatoryName: '' },
   REVIEWER: { confirmed: false, signatoryName: '' },
@@ -55,17 +55,21 @@ const signOffState = ref<
 let loadSequence = 0
 
 const baseBlockingItems = computed(
-  () => checklist.value?.blockingItems?.filter(
-    (item) => !item.passed
-      && item.dimension !== ArchiveVolumeSubmitChecklistDimensionCode.DEPARTMENT_REVIEW,
-  ) ?? [],
+  () =>
+    checklist.value?.blockingItems?.filter(
+      (item) =>
+        !item.passed &&
+        item.dimension !== ArchiveVolumeSubmitChecklistDimensionCode.DEPARTMENT_REVIEW,
+    ) ?? [],
 )
 
 const formSignOffReady = computed(() => {
   const items = checklist.value?.signOffItems ?? []
   if (items.length !== ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.length) return false
   return ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.every(
-    (role) => signOffState.value[role].confirmed && signOffState.value[role].signatoryName.trim().length > 0,
+    (role) =>
+      signOffState.value[role].confirmed &&
+      signOffState.value[role].signatoryName.trim().length > 0,
   )
 })
 
@@ -76,7 +80,11 @@ const canConfirm = computed(() => {
   if (!formSignOffReady.value) return false
   const scorer = signOffState.value.SCORER.signatoryName.trim()
   const rechecker = signOffState.value.RECHECKER.signatoryName.trim()
-  if (scorer && rechecker && scorer.localeCompare(rechecker, undefined, { sensitivity: 'accent' }) === 0) {
+  if (
+    scorer &&
+    rechecker &&
+    scorer.localeCompare(rechecker, undefined, { sensitivity: 'accent' }) === 0
+  ) {
     return false
   }
   return true
@@ -146,12 +154,12 @@ async function handleConfirm() {
   if (submitting.value) return
   // MVR-305：权限闸优先于表单就绪 canConfirm
   if (props.canConfirmSelfCheck !== true) {
-    message.warning('当前账号无提交前自查确认权限')
+    void message.warning('当前账号无提交前自查确认权限')
     return
   }
   if (!canConfirm.value) return
   if (!checklist.value?.checklistVersion) {
-    message.error('清单版本缺失，请重新打开')
+    void message.error('清单版本缺失，请重新打开')
     return
   }
   const request: ArchiveVolumeSelfCheckConfirmRequest = {
@@ -169,7 +177,7 @@ async function handleConfirm() {
   submitting.value = true
   try {
     await confirmArchiveVolumeSelfCheck(request)
-    message.success('自查确认已保存')
+    void message.success('自查确认已保存')
     emit('confirmed')
     close()
   } catch (error) {
@@ -252,7 +260,13 @@ async function handleConfirm() {
     </template>
     <template #footer>
       <UiButton size="sm" variant="outline" @click="close">取消</UiButton>
-      <UiButton size="sm" variant="primary" :loading="submitting" :disabled="loading || loadFailed || !canConfirm || canConfirmSelfCheck !== true" @click="handleConfirm">
+      <UiButton
+        size="sm"
+        variant="primary"
+        :loading="submitting"
+        :disabled="loading || loadFailed || !canConfirm || canConfirmSelfCheck !== true"
+        @click="handleConfirm"
+      >
         确认自查
       </UiButton>
     </template>

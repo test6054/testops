@@ -24,6 +24,7 @@ import {
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const saving = ref(false)
 const revokingId = ref('')
@@ -45,9 +46,8 @@ const {
 } = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } = useQueryTable(
-  portfolioDoubleDutyApi.page,
-)
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } =
+  useQueryTable(portfolioDoubleDutyApi.page)
 
 const columns: ColumnsType = [
   { title: '教师', key: 'teacher', width: 120 },
@@ -61,8 +61,9 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 80 },
 ]
 
-
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -93,7 +94,7 @@ async function saveRegistry() {
       appointYear: form.appointYear.trim() || undefined,
       dutyScope: form.dutyScope.trim() || undefined,
     })
-    message.success('已登记')
+    void message.success('已登记')
     form.teacherUserId = ''
     form.adminPostName = ''
     form.teachingPostName = ''
@@ -121,7 +122,7 @@ async function revokeRegistry(id: string, teacherUserId?: string) {
   revokingId.value = id
   try {
     await portfolioDoubleDutyApi.revoke({ id })
-    message.success('已作废')
+    void message.success('已作废')
     await loadPage()
   } catch (error) {
     showUserError(error, '作废双肩挑登记失败')
@@ -138,7 +139,7 @@ async function exportRoster() {
   try {
     const result = await portfolioDoubleDutyApi.exportRoster({})
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条`)
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出双肩挑台账失败')
   } finally {
@@ -178,7 +179,10 @@ async function exportRoster() {
           @search="searchTeachers"
         />
         <UiInput
-          size="sm" v-model="form.adminPostName" placeholder="行政岗位" style="width: 140px"
+          size="sm"
+          v-model="form.adminPostName"
+          placeholder="行政岗位"
+          style="width: 140px"
         />
         <UiInput
           size="sm"
@@ -186,16 +190,26 @@ async function exportRoster() {
           placeholder="教学岗位"
           style="width: 140px"
         />
-        <UiInput
-          size="sm" v-model="form.appointYear" placeholder="聘任年份" style="width: 100px"
-        />
-        <UiInput
-          size="sm" v-model="form.dutyScope" placeholder="职责范围" style="width: 180px"
-        />
-        <UiButton size="sm" variant="primary" :loading="saving" :disabled="saving || !!revokingId || archiveWriteForbidden" @click="saveRegistry"> 登记 </UiButton>
-        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster"> 导出台账 </UiButton>
+        <UiInput size="sm" v-model="form.appointYear" placeholder="聘任年份" style="width: 100px" />
+        <UiInput size="sm" v-model="form.dutyScope" placeholder="职责范围" style="width: 180px" />
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="saving"
+          :disabled="saving || !!revokingId || archiveWriteForbidden"
+          @click="saveRegistry"
+        >
+          登记
+        </UiButton>
+        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster">
+          导出台账
+        </UiButton>
       </div>
-      <UiEmpty size="sm" v-if="!loadError && !loading && rows.length === 0" description="暂无双肩挑台账记录" />
+      <UiEmpty
+        size="sm"
+        v-if="!loadError && !loading && rows.length === 0"
+        description="暂无双肩挑台账记录"
+      />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -221,22 +235,15 @@ async function exportRoster() {
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
-            
+
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else class="text-neutral-400">—</span>
           </template>
           <template v-else-if="column.key === 'identityLayers'">
-            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-              <UiTag
-                v-for="(layer, idx) in record.ownerIdentityLayers"
-                :key="`${record.id}-${layer.identityType}-${idx}`"
-                size="sm"
-                :tone="layer.externalIdentity ? 'orange' : 'blue'"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-            </div>
-            <span v-else>—</span>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+            />
           </template>
           <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
             <span>

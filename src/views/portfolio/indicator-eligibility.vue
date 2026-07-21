@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { PfEligibilityRuleTreeNodeDto } from '@/apis/portfolio/indicator-types'
-import message from 'ant-design-vue/es/message'
-import { onMounted, ref } from 'vue'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_ELIGIBILITY_PRESET_OPTIONS,
   PF_SCENE_CODE_OPTIONS,
   PfSceneCode,
 } from '@/apis/portfolio/indicator-types'
+import message from 'ant-design-vue/es/message'
+import { onMounted, ref } from 'vue'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioEligibilityTreeEditor from '@/components/portfolio/PortfolioEligibilityTreeEditor.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -97,7 +97,7 @@ async function saveRule() {
     if (eligibilityCode.value !== requestCode) {
       return
     }
-    message.success('资格规则已保存')
+    void message.success('资格规则已保存')
   } catch (error) {
     if (eligibilityCode.value === requestCode) {
       showUserError(error, '保存资格规则失败')
@@ -130,13 +130,22 @@ onMounted(loadRule)
           @change="onPresetPick"
         />
         <UiSelect
-          size="sm" v-model="sceneCode" :options="PF_SCENE_CODE_OPTIONS" style="width: 140px"
+          size="sm"
+          v-model="sceneCode"
+          :options="PF_SCENE_CODE_OPTIONS"
+          style="width: 140px"
         />
-        <UiInput
-          size="sm" v-model="eligibilityName" placeholder="规则名称" style="width: 200px"
-        />
+        <UiInput size="sm" v-model="eligibilityName" placeholder="规则名称" style="width: 200px" />
         <UiButton size="sm" @click="loadRule"> 加载 </UiButton>
-        <UiButton size="sm" variant="primary" :loading="saving" :disabled="loading || saving" @click="saveRule"> 保存 </UiButton>
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="saving"
+          :disabled="loading || saving"
+          @click="saveRule"
+        >
+          保存
+        </UiButton>
       </div>
       <p class="hint">
         节点类型：叶子条件、与、或、非、审核门禁；通过下方表单编辑，无需手写结构化规则文本。

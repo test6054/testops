@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ScanDispatchTicketVO } from '@/apis/mark/scanner-dispatch'
+import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref, watch } from 'vue'
-import { forceReleaseScanDispatch } from '@/apis/mark/scanner-dispatch'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -18,7 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "released": []
+  released: []
 }>()
 
 const submitting = ref(false)
@@ -60,7 +60,7 @@ async function handleSubmit() {
       ticketId,
       releaseReason: reason,
     })
-    message.success('派单已强制解锁')
+    void message.success('派单已强制解锁')
     emit('released')
     emit('update:open', false)
   } catch (error) {
@@ -91,7 +91,12 @@ async function handleSubmit() {
     </p>
     <UiForm layout="vertical">
       <UiFormItem label="解锁原因" required>
-        <UiTextarea size="sm" v-model="form.releaseReason" :rows="3" placeholder="说明强制解锁原因" />
+        <UiTextarea
+          size="sm"
+          v-model="form.releaseReason"
+          :rows="3"
+          placeholder="说明强制解锁原因"
+        />
       </UiFormItem>
     </UiForm>
   </UiDrawer>

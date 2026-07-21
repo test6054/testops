@@ -14,9 +14,7 @@
       <div class="portfolio-intake-panel__upload-grid">
         <div>
           <div class="portfolio-intake-panel__label">材料标题</div>
-          <UiInput
-            size="sm" v-model="materialTitle" :disabled="readOnly" placeholder="材料标题"
-          />
+          <UiInput size="sm" v-model="materialTitle" :disabled="readOnly" placeholder="材料标题" />
         </div>
         <div>
           <div class="portfolio-intake-panel__label">材料文件</div>
@@ -192,10 +190,22 @@
       <h3 class="portfolio-intake-panel__section-title">归档动作</h3>
       <p v-if="archiveActionHint" class="portfolio-intake-panel__meta">{{ archiveActionHint }}</p>
       <div v-if="!readOnly" class="portfolio-intake-panel__actions">
-        <UiButton size="sm" variant="outline" :loading="saving" :disabled="writePending || archiveWriteForbidden" @click="handleSaveDraft">
+        <UiButton
+          size="sm"
+          variant="outline"
+          :loading="saving"
+          :disabled="writePending || archiveWriteForbidden"
+          @click="handleSaveDraft"
+        >
           保存草稿
         </UiButton>
-        <UiButton variant="primary" size="sm" :loading="submitting" :disabled="writePending || archiveWriteForbidden" @click="handleSubmit">
+        <UiButton
+          variant="primary"
+          size="sm"
+          :loading="submitting"
+          :disabled="writePending || archiveWriteForbidden"
+          @click="handleSubmit"
+        >
           提交审核
         </UiButton>
       </div>
@@ -212,6 +222,7 @@
 import type { BadgeTone, UiAlertStripTone } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -248,7 +259,6 @@ import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 defineOptions({ name: 'PortfolioMaterialIntakePanel' })
 
@@ -259,11 +269,8 @@ const emit = defineEmits<{
 const route = useRoute()
 const { targetTeacherId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 
 const fileNodeId = ref<string>()
 const fileName = ref<string>()
@@ -317,8 +324,8 @@ const showRegisterStart = computed(() => {
     return true
   }
   return (
-    status.value.stage === PortfolioMaterialIntakeStageCode.CATEGORY_PENDING
-    || status.value.stage === PortfolioMaterialIntakeStageCode.UPLOADED
+    status.value.stage === PortfolioMaterialIntakeStageCode.CATEGORY_PENDING ||
+    status.value.stage === PortfolioMaterialIntakeStageCode.UPLOADED
   )
 })
 
@@ -336,8 +343,8 @@ const reassignBlocked = computed(() => {
     return false
   }
   return (
-    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
-    || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
+    status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
   )
 })
 
@@ -347,16 +354,16 @@ const reassignAllowed = computed(() => {
   }
   const recordStatus = status.value.recordStatus
   return (
-    recordStatus === PortfolioArchiveRecordStatusCode.DRAFT
-    || recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    recordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
+    recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 })
 
 const reassignReady = computed(
   () =>
-    reassignAllowed.value
-    && Boolean(categoryIdModel.value)
-    && categoryIdModel.value !== status.value?.categoryId,
+    reassignAllowed.value &&
+    Boolean(categoryIdModel.value) &&
+    categoryIdModel.value !== status.value?.categoryId,
 )
 
 const clearedFieldsHint = computed(() => {
@@ -438,14 +445,14 @@ const archiveActionHint = computed(() => {
     return '请先登记材料'
   }
   if (
-    status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM
-    || (status.value.pendingCandidateCount ?? 0) > 0
+    status.value.recordStatus === PortfolioArchiveRecordStatusCode.PENDING_CONFIRM ||
+    (status.value.pendingCandidateCount ?? 0) > 0
   ) {
     return '请先确认智能候选字段后再保存或提交'
   }
   if (
-    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING
-    || status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
+    status.value.stage === PortfolioMaterialIntakeStageCode.OCR_PENDING ||
+    status.value.stage === PortfolioMaterialIntakeStageCode.AI_PROCESSING
   ) {
     return '材料处理中，请等待完成后再保存或提交'
   }
@@ -465,8 +472,8 @@ const archiveActionHint = computed(() => {
     return '审核已退回，请修改字段后保存并重新提交'
   }
   if (
-    status.value.stage === PortfolioMaterialIntakeStageCode.SUBMITTED
-    || status.value.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
+    status.value.stage === PortfolioMaterialIntakeStageCode.SUBMITTED ||
+    status.value.stage === PortfolioMaterialIntakeStageCode.UNDER_REVIEW
   ) {
     return '材料已提交，可在审核进度页查看状态'
   }
@@ -496,7 +503,6 @@ function resetLocalIntakeSourceContext() {
   dispatchResult.value = null
 }
 
-
 async function handleSaveDraft() {
   if (!assertArchiveWritable('保存材料草稿')) {
     return
@@ -506,7 +512,7 @@ async function handleSaveDraft() {
 
 async function handleStart() {
   if (!fileNodeId.value) {
-    message.error('请先上传材料文件')
+    void message.error('请先上传材料文件')
     return
   }
   if (!assertArchiveWritable('开始材料采集')) {
@@ -530,7 +536,7 @@ async function handleStart() {
 
 async function handleRetryAi() {
   if (!categoryId.value) {
-    message.warning('请先选择档案分类')
+    void message.warning('请先选择档案分类')
     return
   }
   if (!assertArchiveWritable('重新智能抽取')) {
@@ -584,7 +590,7 @@ async function handleRestartRejected() {
 
 async function openScan() {
   if (!targetTeacherId.value) {
-    message.error('请先选择教师')
+    void message.error('请先选择教师')
     return
   }
   if (!assertArchiveWritable('一体机扫描登记')) {
@@ -671,7 +677,7 @@ function syncIntakeContextFromRoute() {
 
 async function handleReassign() {
   if (!categoryIdModel.value) {
-    message.warning('请选择目标分类')
+    void message.warning('请选择目标分类')
     return
   }
   if (!assertArchiveWritable('材料重分类')) {

@@ -6,7 +6,11 @@
     <template v-if="!embedded" #toolbar>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating" @click="handleGenerate"
+          v-if="canManageReviewerWrites === true"
+          variant="outline"
+          size="sm"
+          :loading="generating"
+          @click="handleGenerate"
         >
           重新生成
         </UiButton>
@@ -25,7 +29,11 @@
     <template v-if="embedded" #actions>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating" @click="handleGenerate"
+          v-if="canManageReviewerWrites === true"
+          variant="outline"
+          size="sm"
+          :loading="generating"
+          @click="handleGenerate"
         >
           重新生成
         </UiButton>
@@ -86,17 +94,17 @@ import type {
   TeachingImprovementItemResponse,
   TeachingImprovementSeverityCode,
 } from '@/apis/mark/teaching-analysis'
-import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, inject, ref, watch } from 'vue'
-import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
-import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import {
   generateTeachingImprovement,
   getLatestTeachingImprovement,
   TEACHING_IMPROVEMENT_SEVERITY_TONE,
   TeachingImprovementSeverityDescription,
 } from '@/apis/mark/teaching-analysis'
+import ReloadOutlined from '@ant-design/icons-vue/ReloadOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, inject, ref, watch } from 'vue'
+import { AiAnalysisStatusCode } from '@/apis/mark/ai-analysis-status'
+import { QuestionTypeDescription } from '@/apis/mark/question-type'
 import MarkBarSection from '@/components/chart/MarkBarSection.vue'
 import AiAnalysisCardBody from '@/components/mark/analysis/AiAnalysisCardBody.vue'
 import AiAnalysisCardShell from '@/components/mark/analysis/AiAnalysisCardShell.vue'
@@ -131,14 +139,8 @@ const loading = ref(false)
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 
 /** MVR-285：默认拒绝假可写；依赖 AI 分析中心 overview 或页面 provide 的能力位 */
-const injectedCanManageReviewerWrites = inject(
-  AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY,
-  null,
-)
-const canManageReviewerWrites = computed(
-  () => injectedCanManageReviewerWrites?.value === true,
-)
-
+const injectedCanManageReviewerWrites = inject(AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY, null)
+const canManageReviewerWrites = computed(() => injectedCanManageReviewerWrites?.value === true)
 
 const canShareRecord = computed(() => record.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS)
 
@@ -238,7 +240,7 @@ async function copyShareText(): Promise<void> {
     return
   }
   await navigator.clipboard.writeText(text)
-  message.success('已复制教学改进方案')
+  void message.success('已复制教学改进方案')
 }
 
 function exportRecordText(): void {

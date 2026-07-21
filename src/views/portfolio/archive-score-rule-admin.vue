@@ -4,14 +4,14 @@ import type {
   PortfolioArchiveScoreRuleSaveRequest,
   PortfolioArchiveScoreRuleVO,
 } from '@/apis/portfolio/teacher-platform'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_OPTIONS,
   portfolioArchiveScoreApi,
   PortfolioArchiveScoreRuleTypeCode,
   PortfolioArchiveScoreRuleTypeDescription,
 } from '@/apis/portfolio/teacher-platform'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -159,7 +159,7 @@ async function handleSave() {
   }
   try {
     await portfolioArchiveScoreApi.saveRule(request)
-    message.success('规则已保存')
+    void message.success('规则已保存')
     modalOpen.value = false
     await loadRules()
   } catch (error) {
@@ -184,7 +184,7 @@ async function handleDelete(id: string) {
   }
   try {
     await portfolioArchiveScoreApi.deleteRule(id)
-    message.success('已删除')
+    void message.success('已删除')
     await loadRules()
   } catch (error) {
     showUserError(error, '删除评分规则失败')
@@ -203,8 +203,12 @@ onMounted(loadRules)
     </template>
     <UiCard>
       <div class="toolbar">
-        <UiButton size="sm" :loading="loading" :disabled="writing" @click="loadRules"> 刷新 </UiButton>
-        <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate"> 新增规则 </UiButton>
+        <UiButton size="sm" :loading="loading" :disabled="writing" @click="loadRules">
+          刷新
+        </UiButton>
+        <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate">
+          新增规则
+        </UiButton>
       </div>
       <WorkbenchContextGateStrip
         v-if="!loading && !loadError && rows.length === 0"
@@ -261,9 +265,7 @@ onMounted(loadRules)
           />
         </UiFormItem>
         <UiFormItem label="规则名称" required>
-          <UiInput
-            size="sm" v-model="form.ruleName" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="form.ruleName" :disabled="writing" />
         </UiFormItem>
         <UiFormItem
           v-if="form.ruleType === PortfolioArchiveScoreRuleTypeCode.CATEGORY"
@@ -271,7 +273,10 @@ onMounted(loadRules)
           required
         >
           <UiInput
-            size="sm" v-model="form.categoryId" placeholder="档案分类编号" :disabled="writing"
+            size="sm"
+            v-model="form.categoryId"
+            placeholder="档案分类编号"
+            :disabled="writing"
           />
         </UiFormItem>
         <UiFormItem label="分值" required>
@@ -283,9 +288,7 @@ onMounted(loadRules)
           />
         </UiFormItem>
         <UiFormItem label="权重">
-          <UiInputNumber
-            size="sm" v-model="form.weight" style="width: 100%" :disabled="writing"
-          />
+          <UiInputNumber size="sm" v-model="form.weight" style="width: 100%" :disabled="writing" />
         </UiFormItem>
         <UiFormItem label="仅正式档案计分">
           <UiSelect

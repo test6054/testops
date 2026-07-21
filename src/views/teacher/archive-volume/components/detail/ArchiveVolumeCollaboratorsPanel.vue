@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ArchiveVolumeMemberDisplayVO } from '@/apis/mark/archive-volume'
+import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
-import { addArchiveVolumeMember, removeArchiveVolumeMember } from '@/apis/mark/archive-volume'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -311,7 +311,7 @@ function handleRosterReset(): void {
 async function handleAdd(): Promise<void> {
   if (submitting.value) return
   if (props.canManageCollaborators !== true) {
-    message.warning('当前账号无协作老师管理权限')
+    void message.warning('当前账号无协作老师管理权限')
     return
   }
   const userId = String(addFormModel.userId ?? '').trim()
@@ -329,7 +329,7 @@ async function handleAdd(): Promise<void> {
       memberRole: role,
       remark: remark || undefined,
     })
-    message.success('已添加或更新协作老师')
+    void message.success('已添加或更新协作老师')
     emit('changed')
     addFormModel.userId = ''
     addFormModel.remark = ''
@@ -351,7 +351,7 @@ async function handleRoleChange(row: CollaboratorMemberRow, nextRole: ArchiveVol
       userId: row.userId,
       memberRole: nextRole,
     })
-    message.success('角色已更新')
+    void message.success('角色已更新')
     emit('changed')
   } catch (e) {
     showUserError(e)
@@ -370,11 +370,11 @@ async function handleMemberAction(key: string, row: CollaboratorMemberRow): Prom
 async function handleRemove(row: CollaboratorMemberRow) {
   if (!row.memberId || submitting.value) return
   if (props.canManageCollaborators !== true) {
-    message.warning('当前账号无协作老师管理权限')
+    void message.warning('当前账号无协作老师管理权限')
     return
   }
   if (!row.removable) {
-    message.warning('归档责任人不可移除，请通过更换责任人流转')
+    void message.warning('归档责任人不可移除，请通过更换责任人流转')
     return
   }
   const confirmed = await confirmAsync({
@@ -388,7 +388,7 @@ async function handleRemove(row: CollaboratorMemberRow) {
   submitting.value = true
   try {
     await removeArchiveVolumeMember({ volumeId: props.volumeId, memberId: row.memberId })
-    message.success('已移除')
+    void message.success('已移除')
     emit('changed')
   } catch (e) {
     showUserError(e)
@@ -479,7 +479,9 @@ async function handleRemove(row: CollaboratorMemberRow) {
           <span v-else class="av-collab__muted">—</span>
         </template>
         <template v-else-if="column.key === 'meta'">
-          <span v-if="isRoleGroup(record)" class="av-collab__cap-text">{{ record.capabilityLabel }}</span>
+          <span v-if="isRoleGroup(record)" class="av-collab__cap-text">{{
+            record.capabilityLabel
+          }}</span>
           <span v-else-if="isMemberRow(record)">{{ record.remark }}</span>
         </template>
         <template v-else-if="column.key === 'actions'">

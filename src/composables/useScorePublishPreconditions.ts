@@ -1,11 +1,11 @@
 import type { Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { ExamWorkbenchScorePanelResponse } from '@/apis/mark/exam-progress'
 import type { FinalScoreRiskOverviewResponse } from '@/apis/mark/exam-score'
+import { FinalScoreRiskReasonCode } from '@/apis/mark/exam-score'
 import message from 'ant-design-vue/es/message'
-import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getAbsenceExamStats } from '@/apis/mark/absence'
-import { FinalScoreRiskReasonCode } from '@/apis/mark/exam-score'
 import { showUserError } from '@/utils/error-handler'
 
 /**
@@ -83,11 +83,11 @@ export function useScorePublishPreconditions(options: {
     }
     await refreshPendingAbsenceCount()
     if (pendingAbsenceCount.value === null) {
-      message.error('待确认缺考状态未知')
+      void message.error('待确认缺考状态未知')
       return false
     }
     if (pendingAbsenceCount.value > 0) {
-      message.warning(
+      void message.warning(
         `当前考试仍有 ${pendingAbsenceCount.value} 条待确认缺考记录，请先完成核对后再继续`,
       )
       goToAbsenceConfirm()
@@ -95,11 +95,11 @@ export function useScorePublishPreconditions(options: {
     }
     const overview = options.riskOverview.value
     if (!overview) {
-      message.error('成绩风险概览不可用，不能继续')
+      void message.error('成绩风险概览不可用，不能继续')
       return false
     }
     if (overview.unreconciledAbsenceCount > 0) {
-      message.warning(
+      void message.warning(
         `仍有 ${overview.unreconciledAbsenceCount} 名应考学生未完成缺考核对，请先完成缺考 reconcile 后再继续`,
       )
       goToAbsenceConfirm()
@@ -117,13 +117,13 @@ export function useScorePublishPreconditions(options: {
     actionLabel: string,
   ): boolean {
     if ((overview.blockingIncidentCount ?? 0) > 0) {
-      message.warning(
+      void message.warning(
         `考试仍有 ${overview.blockingIncidentCount} 项未解决阻塞事件，请先在审计/重大事件中处置后再${actionLabel}`,
       )
       return false
     }
     if ((overview.pendingDuplicateImageCount ?? 0) > 0) {
-      message.warning(
+      void message.warning(
         `考试仍有 ${overview.pendingDuplicateImageCount} 项未处置重复影像，请先完成扫描影像处置后再${actionLabel}`,
       )
       return false
@@ -152,7 +152,7 @@ export function useScorePublishPreconditions(options: {
     const labels = unreviewedSoftReasons
       .map((reason) => reason.reasonName || reason.reasonCode)
       .join('、')
-    message.warning(`存在未复核的异常成绩风险（${labels}），请先在成绩确认页完成集中复核后再发布`)
+    void message.warning(`存在未复核的异常成绩风险（${labels}），请先在成绩确认页完成集中复核后再发布`)
     goToScoreFinalizeRiskReview()
     return false
   }
@@ -167,7 +167,7 @@ export function useScorePublishPreconditions(options: {
     }
     const overview = options.riskOverview.value
     if (!overview) {
-      message.error('成绩风险概览不可用，不能发布成绩')
+      void message.error('成绩风险概览不可用，不能发布成绩')
       return false
     }
     if (!ensureFieldWideSourceFactGates(overview, '发布成绩')) {
@@ -182,7 +182,7 @@ export function useScorePublishPreconditions(options: {
     }
     const overview = options.riskOverview.value
     if (!overview) {
-      message.error('成绩风险概览不可用，不能发布成绩')
+      void message.error('成绩风险概览不可用，不能发布成绩')
       return false
     }
     if (!ensureFieldWideSourceFactGates(overview, '发布成绩')) {
@@ -192,7 +192,7 @@ export function useScorePublishPreconditions(options: {
       return false
     }
     if (!overview.readyToPublish) {
-      message.warning('当前考试尚未满足发布前置条件，请先完成成绩确认或风险复核后再发布')
+      void message.warning('当前考试尚未满足发布前置条件，请先完成成绩确认或风险复核后再发布')
       return false
     }
     return true
@@ -204,7 +204,7 @@ export function useScorePublishPreconditions(options: {
     }
     const overview = options.riskOverview.value
     if (!overview) {
-      message.error('成绩风险概览不可用，不能确认成绩')
+      void message.error('成绩风险概览不可用，不能确认成绩')
       return false
     }
     // 确认亦走 ensureFinalScoreSourceFactsReady：阻塞事件 / 重复影像场级硬拦

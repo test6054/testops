@@ -6,10 +6,6 @@ import type {
   ExamLayoutGenerateQuestionRequest,
   ExamLayoutQuestionDto,
 } from '@/apis/mark/exam-layout-design'
-import type { MarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
-import message from 'ant-design-vue/es/message'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   autoDetectExamLayout,
   bootstrapExamLayoutDesign,
@@ -21,6 +17,10 @@ import {
   resolveExamLayoutDetectPollDeadlineMs,
   saveExamLayoutDesign,
 } from '@/apis/mark/exam-layout-design'
+import type { MarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
+import message from 'ant-design-vue/es/message'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   ExamLayoutDetectTaskStatusCode,
@@ -103,8 +103,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     )
     const normalized = normalizeLayoutDesignPhaseQuery(phaseQuery)
     const raw = Array.isArray(normalized) ? normalized[0] : normalized
-    const needsReplace
-      = !raw?.trim() || layoutDesignPhaseQueryDrifted(document.value, phaseQuery, defaultPhase.value)
+    const needsReplace =
+      !raw?.trim() || layoutDesignPhaseQueryDrifted(document.value, phaseQuery, defaultPhase.value)
     if (!needsReplace || raw === resolved) {
       return
     }
@@ -131,10 +131,10 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
 
   const identitySetupPending = computed(
     () =>
-      options.examDetail()?.materialLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER
-      && !detecting.value
-      && Boolean(document.value)
-      && !hasIdentityBlock(document.value),
+      options.examDetail()?.materialLayoutMode === ExamMaterialLayoutModeCode.FULL_PAPER &&
+      !detecting.value &&
+      Boolean(document.value) &&
+      !hasIdentityBlock(document.value),
   )
 
   const saveBlockingReasons = computed(() => validateLayoutDocumentForSave(document.value))
@@ -279,7 +279,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
         focusedQuestionId.value = document.value.questions?.[0]?.id ?? null
         focusedBlockId.value = null
         currentPageNo.value = document.value.pages[0].pageNo
-        message.success('题目识别与划区已完成并自动保存草稿，请核对 ROI 后配置身份填涂区')
+        void message.success('题目识别与划区已完成并自动保存草稿，请核对 ROI 后配置身份填涂区')
         await navigatePhase(LayoutDesignPhaseCode.QUESTIONS)
         await options.workbenchContext?.refreshChrome?.()
         return
@@ -290,7 +290,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       }
       if (taskStatus === ExamLayoutDetectTaskStatusCode.CANCELLED) {
         if (session === detectSessionSeq) {
-          message.info('识别任务已结束，未保存本次识别结果，可重新上传源文件并识别')
+          void message.info('识别任务已结束，未保存本次识别结果，可重新上传源文件并识别')
           await reload()
         }
         return
@@ -312,8 +312,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     if (loadResponse.detectPollingPolicy) {
       detectPollingPolicy.value = loadResponse.detectPollingPolicy
     }
-    detectProgressText.value
-      = loadResponse.activeDetect?.status === ExamLayoutDetectTaskStatusCode.QUEUED
+    detectProgressText.value =
+      loadResponse.activeDetect?.status === ExamLayoutDetectTaskStatusCode.QUEUED
         ? '识别任务排队中'
         : '正在识别题目并生成划区'
     try {
@@ -347,10 +347,10 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       ? requireExamLayoutDetectTaskStatusCode(res.activeDetect.status)
       : null
     if (
-      !detectTaskId
-      || !inFlightStatus
-      || !isExamLayoutDetectInFlightStatus(inFlightStatus)
-      || !layoutWritable.value
+      !detectTaskId ||
+      !inFlightStatus ||
+      !isExamLayoutDetectInFlightStatus(inFlightStatus) ||
+      !layoutWritable.value
     ) {
       return false
     }
@@ -400,11 +400,11 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
         ? requireExamLayoutDetectTaskStatusCode(res.activeDetect.status)
         : null
       const shouldResumeDetect = Boolean(
-        inFlightTaskId
-        && inFlightStatus
-        && isExamLayoutDetectInFlightStatus(inFlightStatus)
-        && layoutWritable.value
-        && !detecting.value,
+        inFlightTaskId &&
+        inFlightStatus &&
+        isExamLayoutDetectInFlightStatus(inFlightStatus) &&
+        layoutWritable.value &&
+        !detecting.value,
       )
       loading.value = false
       ensurePhaseQuery()
@@ -444,7 +444,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
         document: { ...document.value, examId },
       })
       layoutPersisted.value = true
-      message.success('制卷设计已保存')
+      void message.success('制卷设计已保存')
       await options.workbenchContext?.refreshChrome?.()
       return true
     } catch (error) {
@@ -516,7 +516,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       if (document.value.pages?.length) {
         currentPageNo.value = document.value.pages[0].pageNo
       }
-      message.success('标准答题卡已生成')
+      void message.success('标准答题卡已生成')
       await navigatePhase(LayoutDesignPhaseCode.LAYOUT)
       await options.workbenchContext?.refreshChrome?.()
     } catch (error) {
@@ -558,7 +558,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
         return
       }
       if (isLayoutDetectInFlightConflict(error)) {
-        message.info('识别任务仍在进行，已切换为查看识别进度')
+        void message.info('识别任务仍在进行，已切换为查看识别进度')
         conflictResumed = await tryResumeDetectOnInFlightConflict(session)
         if (conflictResumed) {
           return
@@ -579,7 +579,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     // MVR-414：与 BE cancelDetect（owner+ACTIVE+assertLayoutWritable）二次闸；关考/只读漂移不发取消
     if (!examId || !layoutWritable.value || !activeDetectTaskId.value || cancellingDetect.value) {
       if (examId && !layoutWritable.value && activeDetectTaskId.value) {
-        message.warning(writeLockReason.value || '当前制卷只读，无法取消识别')
+        void message.warning(writeLockReason.value || '当前制卷只读，无法取消识别')
       }
       return
     }
@@ -603,7 +603,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       detecting.value = false
       detectProgressText.value = ''
       activeDetectTaskId.value = null
-      message.info('识别任务已取消')
+      void message.info('识别任务已取消')
     } catch (error) {
       showUserError(error, '取消识别失败')
       detecting.value = false

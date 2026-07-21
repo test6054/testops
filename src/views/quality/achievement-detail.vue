@@ -1,24 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementAuditVO } from '@/apis/quality/achievement-audit'
-import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
-import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
-import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { achievementApi } from '@/apis/quality/achievement'
 import { achievementAuditApi } from '@/apis/quality/achievement-audit'
+import type { AchievementDetailVO } from '@/apis/quality/achievement-detail'
 import { achievementDetailApi } from '@/apis/quality/achievement-detail'
+import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manual-review'
 import { achievementManualReviewApi } from '@/apis/quality/achievement-manual-review'
+import type { AchievementResultVO } from '@/apis/quality/achievement-result'
 import { achievementResultApi } from '@/apis/quality/achievement-result'
-import { courseGoalApi } from '@/apis/quality/course-goal'
-import { indirectFormApi } from '@/apis/quality/indirect-form'
-import { indirectItemApi } from '@/apis/quality/indirect-item'
-import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
+import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_COLOR,
@@ -31,6 +21,16 @@ import {
   ManualReviewDecisionCode,
   ManualReviewDecisionDescription,
 } from '@/apis/quality/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { achievementApi } from '@/apis/quality/achievement'
+import { courseGoalApi } from '@/apis/quality/course-goal'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
+import { indirectItemApi } from '@/apis/quality/indirect-item'
+import { requirementIndicatorApi } from '@/apis/quality/requirement-indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -84,7 +84,7 @@ useQualityScopedLoader(
 const resultId = computed(() => String(route.params.resultId || ''))
 
 const result = ref<AchievementResultVO | null>(null)
-const courseGoalWeights = ref<{ directWeight?: number, indirectWeight?: number } | null>(null)
+const courseGoalWeights = ref<{ directWeight?: number; indirectWeight?: number } | null>(null)
 
 interface RelatedIndirectFormLink {
   id: string
@@ -110,7 +110,7 @@ const auditTotal = ref(0)
 const reviewPageNum = ref(1)
 const reviewPageSize = ref(10)
 const reviewTotal = ref(0)
-const reviewForm = reactive<{ decision: ManualReviewDecisionCode, reviewRemark: string }>({
+const reviewForm = reactive<{ decision: ManualReviewDecisionCode; reviewRemark: string }>({
   decision: ManualReviewDecisionCode.CONFIRMED,
   reviewRemark: '',
 })
@@ -234,11 +234,11 @@ const achievementToolbarActions = computed((): AchievementToolbarAction[] => {
 const achievementPrimaryAction = computed((): AchievementToolbarAction | null => {
   const actions = achievementToolbarActions.value
   return (
-    actions.find((item) => item.kind === 'transit' && !item.danger)
-    || actions.find((item) => item.kind === 'transit')
-    || actions.find((item) => item.kind === 'recompute')
-    || actions.find((item) => item.kind === 'review')
-    || null
+    actions.find((item) => item.kind === 'transit' && !item.danger) ||
+    actions.find((item) => item.kind === 'transit') ||
+    actions.find((item) => item.kind === 'recompute') ||
+    actions.find((item) => item.kind === 'review') ||
+    null
   )
 })
 
@@ -293,18 +293,18 @@ const targetTypeToComputeKind: Partial<Record<AchievementTargetTypeCode, string>
 function canRecomputeResult(value: AchievementResultVO | null): boolean {
   if (!value) return false
   return (
-    value.auditStatus === AchievementAuditStatusCode.RETURNED
-    || isResultStale(value)
-    || value.auditStatus === AchievementAuditStatusCode.DRAFT
-    || value.auditStatus === AchievementAuditStatusCode.CALCULATED
+    value.auditStatus === AchievementAuditStatusCode.RETURNED ||
+    isResultStale(value) ||
+    value.auditStatus === AchievementAuditStatusCode.DRAFT ||
+    value.auditStatus === AchievementAuditStatusCode.CALCULATED
   )
 }
 
 function canSubmitManualReview(value: AchievementResultVO | null): boolean {
   if (!value?.auditStatus || isResultStale(value)) return false
   return (
-    value.auditStatus === AchievementAuditStatusCode.SUBMITTED
-    || value.auditStatus === AchievementAuditStatusCode.CONFIRMED
+    value.auditStatus === AchievementAuditStatusCode.SUBMITTED ||
+    value.auditStatus === AchievementAuditStatusCode.CONFIRMED
   )
 }
 
@@ -315,11 +315,11 @@ async function handleRecompute() {
   if (!record) return
   const computeKind = targetTypeToComputeKind[record.targetType]
   if (!computeKind) {
-    message.warning('当前目标类型不支持在此页重算')
+    void message.warning('当前目标类型不支持在此页重算')
     return
   }
   if (!record.trainingPlanId || !record.programId) {
-    message.warning('结果缺少培养方案或专业信息，无法重算')
+    void message.warning('结果缺少培养方案或专业信息，无法重算')
     return
   }
   recomputeLoading.value = true
@@ -332,7 +332,7 @@ async function handleRecompute() {
     }
     if (computeKind === 'COURSE_GOAL') {
       if (!record.qualityCourseId) {
-        message.warning('课程目标重算缺少关联课程')
+        void message.warning('课程目标重算缺少关联课程')
         return
       }
       await achievementApi.computeCourseGoal({
@@ -364,7 +364,7 @@ async function handleRecompute() {
     } else if (computeKind === 'COMPLEX_ENGINEERING') {
       await achievementApi.computeComplexEngineeringAggregate(base)
     }
-    message.success('重新计算完成')
+    void message.success('重新计算完成')
     await loadAll()
   } finally {
     recomputeLoading.value = false
@@ -459,8 +459,8 @@ async function loadResult() {
     courseGoalWeights.value = null
     relatedIndirectForms.value = []
     if (
-      result.value?.targetType === AchievementTargetTypeCode.COURSE_GOAL
-      && result.value.targetId
+      result.value?.targetType === AchievementTargetTypeCode.COURSE_GOAL &&
+      result.value.targetId
     ) {
       try {
         const goal = await courseGoalApi.detail(result.value.targetId)
@@ -563,7 +563,7 @@ async function loadAll() {
   await Promise.all([loadDetails(), loadAudits(), loadReviews()])
 }
 
-function handleDetailPageChange(page: { current: number, pageSize: number }) {
+function handleDetailPageChange(page: { current: number; pageSize: number }) {
   detailPageNum.value = page.current
   detailPageSize.value = page.pageSize
   void loadDetails()
@@ -584,7 +584,7 @@ function handleReviewPageChange(page: number, pageSize: number) {
 async function handleTransit(to: AchievementAuditStatusCode) {
   if (!result.value) return
   if (isResultStale(result.value)) {
-    message.warning('结果已过期，请先按最新成绩或配置重新计算')
+    void message.warning('结果已过期，请先按最新成绩或配置重新计算')
     return
   }
   const fromStatus = result.value.auditStatus
@@ -602,18 +602,18 @@ async function handleTransit(to: AchievementAuditStatusCode) {
     auditStatus: to,
     auditRemark: remark || undefined,
   })
-  message.success('流转成功')
+  void message.success('流转成功')
   await loadAll()
 }
 
 async function submitReview() {
   if (!result.value) return
   if (!canSubmitManualReview(result.value)) {
-    message.warning('当前审核状态不允许记录人工复核')
+    void message.warning('当前审核状态不允许记录人工复核')
     return
   }
   if (!reviewForm.decision.trim()) {
-    message.error('请选择复核决定')
+    void message.error('请选择复核决定')
     return
   }
   await achievementManualReviewApi.create({
@@ -621,7 +621,7 @@ async function submitReview() {
     decision: reviewForm.decision,
     reviewRemark: reviewForm.reviewRemark.trim() || undefined,
   })
-  message.success('已记录人工复核')
+  void message.success('已记录人工复核')
   reviewForm.reviewRemark = ''
   await loadAll()
 }
@@ -716,7 +716,7 @@ const reviewVisible = ref(false)
 function openReviewDrawer() {
   if (!result.value) return
   if (!canSubmitManualReview(result.value)) {
-    message.warning('当前审核状态不允许记录人工复核')
+    void message.warning('当前审核状态不允许记录人工复核')
     return
   }
   reviewVisible.value = true
@@ -1085,7 +1085,12 @@ onActivated(() => {
           />
         </UiFormItem>
         <UiFormItem label="复核备注">
-          <UiTextarea size="sm" v-model="reviewForm.reviewRemark" :rows="4" placeholder="复核备注" />
+          <UiTextarea
+            size="sm"
+            v-model="reviewForm.reviewRemark"
+            :rows="4"
+            placeholder="复核备注"
+          />
         </UiFormItem>
       </UiForm>
     </UiDrawer>

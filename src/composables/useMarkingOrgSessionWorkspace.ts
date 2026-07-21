@@ -1,4 +1,5 @@
 import type { ExamDetailResponse } from '@/apis/mark/exam'
+import { getExamDetail } from '@/apis/mark/exam'
 import type {
   AllocationPolicyResponse,
   AllocationUnitCode,
@@ -11,13 +12,6 @@ import type {
   TrialSessionResponse,
   TrialSessionWorkbenchSummaryResponse,
 } from '@/apis/mark/marking-organization'
-import type { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
-import type { TrialSessionStatusCode } from '@/types/enums/trial-session-status-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getExamDetail } from '@/apis/mark/exam'
 import {
   getFormalSessionWorkbenchSummary,
   getOrganizationById,
@@ -28,11 +22,17 @@ import {
   pageTrialSessions,
   requireMarkingOrganizationId,
 } from '@/apis/mark/marking-organization'
+import type { FormalSessionStatusCode } from '@/types/enums/formal-session-status-enum'
+import { ALL_FORMAL_SESSION_STATUS_CODES } from '@/types/enums/formal-session-status-enum'
+import type { TrialSessionStatusCode } from '@/types/enums/trial-session-status-enum'
+import { ALL_TRIAL_SESSION_STATUS_CODES } from '@/types/enums/trial-session-status-enum'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useMarkingOrgPermission } from '@/composables/useMarkingOrgPermission'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
-import { ALL_FORMAL_SESSION_STATUS_CODES } from '@/types/enums/formal-session-status-enum'
 import { MarkingSessionPhaseCode } from '@/types/enums/marking-session-phase-enum'
-import { ALL_TRIAL_SESSION_STATUS_CODES } from '@/types/enums/trial-session-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import {
   resolveMarkingOrganizationFormalSessionsRoute,
@@ -100,13 +100,13 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
     groupId: undefined,
   })
 
-  const resolveRoute
-    = phase === 'trial'
+  const resolveRoute =
+    phase === 'trial'
       ? resolveMarkingOrganizationTrialSessionsRoute
       : resolveMarkingOrganizationFormalSessionsRoute
 
-  const sessionMarkingPhase
-    = phase === 'trial' ? MarkingSessionPhaseCode.TRIAL : MarkingSessionPhaseCode.FORMAL
+  const sessionMarkingPhase =
+    phase === 'trial' ? MarkingSessionPhaseCode.TRIAL : MarkingSessionPhaseCode.FORMAL
 
   const groupOptions = computed(() =>
     (organization.value?.groups ?? []).map((group) => ({
@@ -208,7 +208,7 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
     if (canManageOrganization.value) {
       return true
     }
-    message.warning('仅考试主考老师可管理试评 / 正评会话')
+    void message.warning('仅考试主考老师可管理试评 / 正评会话')
     return false
   }
 
@@ -217,7 +217,7 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
     if (canCloseMarkingSessions.value === true) {
       return true
     }
-    message.warning('仅考试主考老师可关闭试评 / 正评会话')
+    void message.warning('仅考试主考老师可关闭试评 / 正评会话')
     return false
   }
 
@@ -527,7 +527,7 @@ export function useMarkingOrgSessionWorkspace(phase: MarkingOrgSessionPhase) {
     void reloadSessions()
   }
 
-  function handleSessionPageChange(page: { current: number, pageSize: number }): void {
+  function handleSessionPageChange(page: { current: number; pageSize: number }): void {
     sessionPagination.value.current = page.current
     sessionPagination.value.pageSize = page.pageSize
     sessionsLoading.value = true

@@ -87,12 +87,12 @@
 
 <script setup lang="ts">
 import type { UploadProps } from 'ant-design-vue/es/upload'
+import { UploadDragger } from 'ant-design-vue/es/upload'
 import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import type { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import FileOutlined from '@ant-design/icons-vue/FileOutlined'
 import InboxOutlined from '@ant-design/icons-vue/InboxOutlined'
 import message from 'ant-design-vue/es/message'
-import { UploadDragger } from 'ant-design-vue/es/upload'
 import { computed, ref } from 'vue'
 import { stagePlatformFile } from '@/apis/platform/file'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -152,7 +152,7 @@ async function stageFile(file: File): Promise<void> {
     fileName.value = staged.fileName
     fileSize.value = staged.fileSize
   } catch (error) {
-    message.error(getUserErrorMessage(error, '文件上传失败'))
+    void message.error(getUserErrorMessage(error, '文件上传失败'))
     throw error
   } finally {
     uploading.value = false
@@ -180,7 +180,7 @@ async function onFileChange(event: Event) {
 }
 
 const beforeUpload: UploadProps['beforeUpload'] = () => {
-  return !(props.disabled || uploading.value);
+  return !(props.disabled || uploading.value)
 }
 
 async function customRequest(options: UploadRequestOption): Promise<void> {

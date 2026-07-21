@@ -88,9 +88,7 @@
             </UiCol>
             <UiCol :span="10">
               <UiFormItem label="更正类型">
-                <UiInput
-                  size="sm" :value="selectedReviewRequestScope" disabled
-                />
+                <UiInput size="sm" :value="selectedReviewRequestScope" disabled />
               </UiFormItem>
             </UiCol>
           </UiRow>
@@ -133,12 +131,16 @@
             style="margin-bottom: 12px"
           />
           <UiFormItem label="申请学生">
-            <UiInput
-              size="sm" :value="selectedReviewStudentLabel" disabled
-            />
+            <UiInput size="sm" :value="selectedReviewStudentLabel" disabled />
           </UiFormItem>
           <UiFormItem label="更正原因" required>
-            <UiTextarea size="sm" v-model="form.reason" :rows="3" :max-length="200" :show-count="true" />
+            <UiTextarea
+              size="sm"
+              v-model="form.reason"
+              :rows="3"
+              :max-length="200"
+              :show-count="true"
+            />
           </UiFormItem>
         </UiForm>
       </UiDrawer>
@@ -152,10 +154,6 @@ import type {
   ExamGradeCorrectionRecordResponse,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import {
   computeSingleQuestionCorrectionCompositeTotal,
   createCorrection,
@@ -165,6 +163,10 @@ import {
   listCorrections,
   listReviewRequests,
 } from '@/apis/mark/grade-review'
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -207,7 +209,7 @@ const REVIEW_REQUEST_SEARCH_DEBOUNCE_MS = 300
 
 const rows = ref<ExamGradeCorrectionRecordResponse[]>([])
 const loading = ref(false)
-const reviewRequestOptions = ref<{ value: string, label: string }[]>([])
+const reviewRequestOptions = ref<{ value: string; label: string }[]>([])
 const reviewRequestCache = ref<Map<string, GradeReviewRequestItemResponse>>(new Map())
 const reviewRequestLoading = ref(false)
 let reviewRequestSearchTimer: ReturnType<typeof setTimeout> | undefined
@@ -291,19 +293,19 @@ function isFinalScoreCorrectable(request: GradeReviewRequestItemResponse): boole
     return false
   }
   return (
-    status === FinalScoreStatusCode.CONFIRMED
-    || status === FinalScoreStatusCode.PUBLISHED
-    || status === FinalScoreStatusCode.CORRECTED
-    || status === FinalScoreStatusCode.WITHDRAWN
+    status === FinalScoreStatusCode.CONFIRMED ||
+    status === FinalScoreStatusCode.PUBLISHED ||
+    status === FinalScoreStatusCode.CORRECTED ||
+    status === FinalScoreStatusCode.WITHDRAWN
   )
 }
 
 /** MVR-194/208：与 BE assertGradeReviewOperatorSeparatedFromStudent 同源 */
 function isGradeReviewApplicantSelf(request: GradeReviewRequestItemResponse): boolean {
   return Boolean(
-    currentUserId.value
-    && request.studentUserId
-    && String(request.studentUserId) === String(currentUserId.value),
+    currentUserId.value &&
+    request.studentUserId &&
+    String(request.studentUserId) === String(currentUserId.value),
   )
 }
 
@@ -377,7 +379,7 @@ const totalCorrectionScoreMax = computed(() =>
 
 async function openCreateModal(): Promise<void> {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无成绩更正写权限')
+    void message.warning('当前账号无成绩更正写权限')
     return
   }
   form.layoutQuestionId = ''
@@ -490,7 +492,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -503,7 +505,7 @@ function handleReviewRequestChange(): void {
 async function submit(): Promise<void> {
   // MVR-318：成绩更正写权限前置，避免仅靠表单校验后拦截
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无成绩更正写权限')
+    void message.warning('当前账号无成绩更正写权限')
     return
   }
   const request = selectedReviewRequest.value
@@ -512,43 +514,43 @@ async function submit(): Promise<void> {
     return
   }
   if (!isFinalScoreCorrectable(request)) {
-    message.warning('当前卷成绩状态不允许更正（仅已确认/已发布/已更正/已撤回待重发可更正）')
+    void message.warning('当前卷成绩状态不允许更正（仅已确认/已发布/已更正/已撤回待重发可更正）')
     return
   }
   // MVR-208：申请人不得对本人复核申请执行成绩更正
   if (isGradeReviewApplicantSelf(request)) {
-    message.warning('不能对本人的复核申请执行成绩更正，请由其他教师处理')
+    void message.warning('不能对本人的复核申请执行成绩更正，请由其他教师处理')
     return
   }
   if (!form.reason.trim()) {
-    message.warning('更正原因必填')
+    void message.warning('更正原因必填')
     return
   }
   if (request.questionRefs.length > 0 && !form.layoutQuestionId) {
-    message.warning('单题复核申请必须选择更正题目')
+    void message.warning('单题复核申请必须选择更正题目')
     return
   }
   if (
-    form.layoutQuestionId
-    && !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
+    form.layoutQuestionId &&
+    !request.questionRefs.some((question) => question.layoutQuestionId === form.layoutQuestionId)
   ) {
-    message.warning('更正题目必须来自选中的复核申请')
+    void message.warning('更正题目必须来自选中的复核申请')
     return
   }
   if (
-    request.questionRefs.length === 0
-    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
-    && form.afterScore > 60
+    request.questionRefs.length === 0 &&
+    props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
+    form.afterScore > 60
   ) {
-    message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
+    void message.warning('补考成绩策略为封顶60分，更正后总成绩不能超过60分')
     return
   }
   if (
-    form.layoutQuestionId
-    && props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60
-    && isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, form.afterScore)
+    form.layoutQuestionId &&
+    props.scorePolicy === ExamScorePolicyCode.MAKEUP_CAP60 &&
+    isMakeupCap60SingleQuestionCorrectionExceeded(request, form.layoutQuestionId, form.afterScore)
   ) {
-    message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
+    void message.warning('补考成绩策略为封顶60分，单题更正后合成总成绩不能超过60分')
     return
   }
   if (submitting.value) {
@@ -570,19 +572,20 @@ async function submit(): Promise<void> {
     if (form.layoutQuestionId && remaining > 0) {
       successMessage = `单题更正已执行，同申请尚有 ${remaining} 题待更正，申请仍保持已通过`
     } else if (
-      form.layoutQuestionId
-      && result.reviewRequestStatusAfterCorrection === GradeReviewRequestStatusCode.CORRECTED
+      form.layoutQuestionId &&
+      result.reviewRequestStatusAfterCorrection === GradeReviewRequestStatusCode.CORRECTED
     ) {
       successMessage = '单题更正已执行，申请范围内题目均已更正'
     }
-    message.success(successMessage)
+    void message.success(successMessage)
     createOpen.value = false
     await reload()
     emit('created')
     if (result.requiresRepublish) {
       void confirmAsync({
         title: '需重新发布成绩',
-        content: '成绩已更正（含撤回后改分），学生端暂不可见最新分数。请前往成绩确认与发布页重新发布。',
+        content:
+          '成绩已更正（含撤回后改分），学生端暂不可见最新分数。请前往成绩确认与发布页重新发布。',
         okText: '前往确认与发布',
         cancelText: '稍后处理',
         type: 'warning',

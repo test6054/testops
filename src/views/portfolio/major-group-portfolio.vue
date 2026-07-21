@@ -5,13 +5,14 @@ import type {
   PortfolioMajorGroupPortfolioSectionItemVO,
   PortfolioMajorGroupPortfolioVO,
 } from '@/apis/portfolio/governance'
+import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import type { PortfolioOrgTreeNodeVO } from '@/apis/portfolio/types'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
-import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -33,7 +34,6 @@ import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import {
   ALL_PORTFOLIO_MAJOR_GROUP_SECTION_CODES,
   PortfolioMajorGroupSectionCode,
@@ -41,13 +41,14 @@ import {
 } from '@/types/enums/portfolio-major-group-section-code-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 function readRouteStringParam(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
 function flattenMajorGroupOptions(roots: PortfolioOrgTreeNodeVO[]) {
-  const result: { value: string, label: string }[] = []
+  const result: { value: string; label: string }[] = []
   function walk(nodes: PortfolioOrgTreeNodeVO[], prefix = '') {
     for (const node of nodes) {
       const label = prefix ? `${prefix} / ${node.name}` : node.name
@@ -123,6 +124,7 @@ const openComplianceAlerts = computed(() =>
 
 const sectionColumns: ColumnsType = [
   { title: '教师编号', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
+  { title: '身份层', key: 'ownerIdentityLayers', width: 200 },
   { title: '分类', dataIndex: 'categoryLabel', key: 'categoryLabel', width: 140 },
   { title: '标题', dataIndex: 'recordTitle', key: 'recordTitle' },
   { title: '周期', dataIndex: 'periodLabel', key: 'periodLabel', width: 120 },
@@ -135,7 +137,12 @@ const overviewIdentityColumns: ColumnsType = [
   { title: '教师编号', dataIndex: 'teacherId', key: 'teacherId', width: 120 },
   { title: '身份', dataIndex: 'identityTypeLabel', key: 'identityTypeLabel', width: 120 },
   { title: '外部身份', key: 'externalIdentity', width: 100 },
-  { title: '身份切片分', dataIndex: 'identityCompositeScore', key: 'identityCompositeScore', width: 110 },
+  {
+    title: '身份切片分',
+    dataIndex: 'identityCompositeScore',
+    key: 'identityCompositeScore',
+    width: 110,
+  },
   { title: '教学学时', dataIndex: 'workloadHours', key: 'workloadHours', width: 100 },
   { title: '生命周期', key: 'lifecycleStatus', width: 160 },
   { title: '说明', dataIndex: 'contributionNote', key: 'contributionNote' },
@@ -262,7 +269,7 @@ async function submitExport() {
     if (exportRequestToken.value !== currentToken || portfolioOrgId.value !== orgId) {
       return
     }
-    message.success('导出审批申请已提交')
+    void message.success('导出审批申请已提交')
     exportModalOpen.value = false
   } catch (error) {
     if (exportRequestToken.value !== currentToken || portfolioOrgId.value !== orgId) {
@@ -306,7 +313,7 @@ async function comparePeriods() {
   }
 }
 
-function onSectionPageChange(page: { current: number, pageSize: number }) {
+function onSectionPageChange(page: { current: number; pageSize: number }) {
   sectionFilter.pageNum = page.current
   sectionFilter.pageSize = page.pageSize
 }
@@ -398,7 +405,13 @@ watch(
           :options="majorGroupOptions"
           :disabled="exportLoading"
         />
-        <UiButton size="sm" variant="primary" v-if="portfolioOrgId" :loading="exportLoading" @click="openExportModal">
+        <UiButton
+          size="sm"
+          variant="primary"
+          v-if="portfolioOrgId"
+          :loading="exportLoading"
+          @click="openExportModal"
+        >
           申请导出
         </UiButton>
       </div>
@@ -419,7 +432,11 @@ watch(
           </span>
         </template>
       </UiAlertStrip>
-      <UiEmpty size="sm" v-else-if="!loading && !portfolio" description="当前专业群暂无档案袋数据" />
+      <UiEmpty
+        size="sm"
+        v-else-if="!loading && !portfolio"
+        description="当前专业群暂无档案袋数据"
+      />
       <template v-else-if="portfolio">
         <UiStatPanel title="群像指标" :items="summaryStats" compact />
         <UiCard title="建设周期对比" class="major-group-portfolio__compare">
@@ -493,7 +510,8 @@ watch(
               </li>
             </ul>
             <p class="major-group-portfolio__overview-hint">
-              同人多身份并列：一人多身份不合并为单一角色，外部身份单独切片展示（§8.50 / US-MI-01）；生命周期/参评 hold/档案写禁仅标注，台账不默认过滤封存
+              同人多身份并列：一人多身份不合并为单一角色，外部身份单独切片展示（§8.50 /
+              US-MI-01）；生命周期/参评 hold/档案写禁仅标注，台账不默认过滤封存
             </p>
           </template>
           <UiDataTable
@@ -508,7 +526,14 @@ watch(
             @page-change="onSectionPageChange"
           >
             <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'externalIdentity'">
+              <template v-if="column.key === 'ownerIdentityLayers'">
+                <PortfolioOwnerIdentityLayersCell
+                  :layers="record.ownerIdentityLayers"
+                  :note="record.ownerMultiIdentityNote"
+                  :row-key="record.businessId"
+                />
+              </template>
+              <template v-else-if="column.key === 'externalIdentity'">
                 <UiTag :tone="record.externalIdentity ? 'orange' : 'blue'">
                   {{ record.externalIdentity ? '外部' : '校内' }}
                 </UiTag>

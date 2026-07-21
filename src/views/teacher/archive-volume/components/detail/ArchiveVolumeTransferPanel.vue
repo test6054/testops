@@ -2,8 +2,8 @@
   <WorkbenchSurfaceCard embedded class="archive-volume-transfer-panel">
     <UiAlertStrip
       v-if="
-        detail.volume.transferStatus === ArchiveTransferStatusCode.REJECTED
-          && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+        detail.volume.transferStatus === ArchiveTransferStatusCode.REJECTED &&
+        detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
       "
       tone="info"
       title="移交已退回"
@@ -13,8 +13,8 @@
     />
     <UiAlertStrip
       v-if="
-        detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
-          && detail.hasOpenRemediationTask === true
+        detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW &&
+        detail.hasOpenRemediationTask === true
       "
       tone="warning"
       title="存在未关闭整改"
@@ -35,8 +35,8 @@
     <template #toolbar>
       <div
         v-if="
-          (canApproveTransferAction || canRejectTransferAction)
-            && detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
+          (canApproveTransferAction || canRejectTransferAction) &&
+          detail.volume.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
         "
         class="archive-volume-transfer-panel__actions"
       >
@@ -113,7 +113,13 @@
     >
       <UiForm layout="vertical">
         <UiFormItem label="退回原因" required>
-          <UiTextarea size="sm" v-model="rejectTransferReason" :rows="3" :maxlength="500" :show-count="true" />
+          <UiTextarea
+            size="sm"
+            v-model="rejectTransferReason"
+            :rows="3"
+            :maxlength="500"
+            :show-count="true"
+          />
         </UiFormItem>
       </UiForm>
     </UiDrawer>
@@ -125,10 +131,6 @@ import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeTransferRecordResponse,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   approveArchiveVolumeTransfer,
   ARCHIVE_TRANSFER_STATUS_TONE,
@@ -138,6 +140,10 @@ import {
   listArchiveVolumeTransferRecords,
   rejectArchiveVolumeTransfer,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
+import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -171,9 +177,7 @@ const emit = defineEmits<{
 function isTransferSubmitterSelf(): boolean {
   const submitUserId = props.detail.latestTransferRecord?.submitUserId
   return Boolean(
-    submitUserId
-    && props.currentUserId
-    && String(submitUserId) === String(props.currentUserId),
+    submitUserId && props.currentUserId && String(submitUserId) === String(props.currentUserId),
   )
 }
 
@@ -224,9 +228,9 @@ function transferCardClass(status?: ArchiveTransferStatusCode): string {
 }
 
 function formatRecordTime(record: ArchiveVolumeTransferRecordResponse): string {
-  const time
-    = record.transferStatus === ArchiveTransferStatusCode.APPROVED
-      || record.transferStatus === ArchiveTransferStatusCode.REJECTED
+  const time =
+    record.transferStatus === ArchiveTransferStatusCode.APPROVED ||
+    record.transferStatus === ArchiveTransferStatusCode.REJECTED
       ? record.reviewedTime
       : record.submitTime
   return time ? formatDateTime(time) : '—'
@@ -234,8 +238,8 @@ function formatRecordTime(record: ArchiveVolumeTransferRecordResponse): string {
 
 function formatRecordActor(record: ArchiveVolumeTransferRecordResponse): string {
   if (
-    record.transferStatus === ArchiveTransferStatusCode.APPROVED
-    || record.transferStatus === ArchiveTransferStatusCode.REJECTED
+    record.transferStatus === ArchiveTransferStatusCode.APPROVED ||
+    record.transferStatus === ArchiveTransferStatusCode.REJECTED
   ) {
     return record.reviewerUserNickName || '验收人'
   }
@@ -269,7 +273,7 @@ async function handleApproveTransfer() {
   if (approvingTransfer.value || rejectingTransfer.value) return
   // MVR-348：与 canApproveTransferAction / BE requireTransferReviewer 二次拦截
   if (canApproveTransferAction.value !== true) {
-    message.warning('当前账号不可验收通过该移交（无权限、状态不符或本人提交）')
+    void message.warning('当前账号不可验收通过该移交（无权限、状态不符或本人提交）')
     return
   }
   if (props.detail.hasOpenRemediationTask === true) {
@@ -279,7 +283,7 @@ async function handleApproveTransfer() {
   approvingTransfer.value = true
   try {
     await approveArchiveVolumeTransfer({ volumeId: props.volumeId })
-    message.success('移交验收通过')
+    void message.success('移交验收通过')
     emit('refreshed')
     await loadTransferRecords()
   } catch (error) {
@@ -292,7 +296,7 @@ async function handleApproveTransfer() {
 function openRejectTransfer() {
   // MVR-348：与 canRejectTransferAction 同源二次拦截
   if (canRejectTransferAction.value !== true) {
-    message.warning('当前账号无移交退回权限')
+    void message.warning('当前账号无移交退回权限')
     return
   }
   rejectTransferReason.value = ''
@@ -303,7 +307,7 @@ async function submitRejectTransfer() {
   if (approvingTransfer.value || rejectingTransfer.value) return
   // MVR-300：与 canRejectTransferAction 同源二次拦截
   if (canRejectTransferAction.value !== true) {
-    message.warning('当前账号无移交退回权限')
+    void message.warning('当前账号无移交退回权限')
     return
   }
   if (!rejectTransferReason.value.trim()) {
@@ -316,7 +320,7 @@ async function submitRejectTransfer() {
       volumeId: props.volumeId,
       rejectReason: rejectTransferReason.value.trim(),
     })
-    message.success('已退回补正')
+    void message.success('已退回补正')
     rejectTransferOpen.value = false
     emit('refreshed')
     await loadTransferRecords()

@@ -12,20 +12,13 @@
       v-else-if="detailLoadError && !detail"
       class="archive-volume-detail__load-error"
     >
-      <UiEmpty
-        size="md"
-        show-icon
-        title="无法加载归档任务"
-        :description="detailLoadError"
-      >
+      <UiEmpty size="md" show-icon title="无法加载归档任务" :description="detailLoadError">
         <template #action>
           <div class="archive-volume-detail__load-error-actions">
             <UiButton variant="primary" size="sm" :loading="loading" @click="() => loadDetail()">
               重新加载
             </UiButton>
-            <UiButton variant="outline" size="sm" @click="goArchiveList">
-              返回列表
-            </UiButton>
+            <UiButton variant="outline" size="sm" @click="goArchiveList"> 返回列表 </UiButton>
           </div>
         </template>
       </UiEmpty>
@@ -67,9 +60,9 @@
       />
       <UiAlertStrip
         v-if="
-          isArchiveGateVisible('fourProperty')
-            && !detail.latestFourPropertyCheck
-            && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+          isArchiveGateVisible('fourProperty') &&
+          !detail.latestFourPropertyCheck &&
+          detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
         title="尚未执行四性检测"
@@ -104,10 +97,10 @@
       </UiAlertStrip>
       <UiAlertStrip
         v-else-if="
-          isArchiveGateVisible('fourProperty')
-            && detail.latestFourPropertyCheck
-            && !detail.latestFourPropertyCheck.overallPassed
-            && detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+          isArchiveGateVisible('fourProperty') &&
+          detail.latestFourPropertyCheck &&
+          !detail.latestFourPropertyCheck.overallPassed &&
+          detail.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
         "
         tone="warning"
         title="四性检测未通过"
@@ -154,8 +147,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
+              canAdvanceRemediation &&
+              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.OPEN
             "
             size="sm"
             variant="outline"
@@ -166,8 +159,8 @@
           </UiButton>
           <UiButton
             v-if="
-              canAdvanceRemediation
-                && focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+              canAdvanceRemediation &&
+              focusedRemediationTask?.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
             "
             size="sm"
             variant="outline"
@@ -201,10 +194,7 @@
         </template>
       </UiAlertStrip>
 
-      <div
-        v-if="showArchiveGateOpsStrip"
-        class="archive-volume-detail__ops"
-      >
+      <div v-if="showArchiveGateOpsStrip" class="archive-volume-detail__ops">
         <ArchiveVolumeGateOpsStrip
           :items="archiveGateOpsItems"
           @action="handleArchiveGateOpsAction"
@@ -224,7 +214,9 @@
                 开始收材
               </UiButton>
               <UiButton
-                v-if="detailScope.showSubmitActions && !detailScope.canSubmitVolume && !isQualityTab"
+                v-if="
+                  detailScope.showSubmitActions && !detailScope.canSubmitVolume && !isQualityTab
+                "
                 variant="outline"
                 size="sm"
                 disabled
@@ -475,9 +467,7 @@
             <UiButton variant="primary" size="sm" :loading="loading" @click="() => loadDetail()">
               重新加载
             </UiButton>
-            <UiButton variant="outline" size="sm" @click="goArchiveList">
-              返回列表
-            </UiButton>
+            <UiButton variant="outline" size="sm" @click="goArchiveList"> 返回列表 </UiButton>
           </div>
         </template>
       </UiEmpty>
@@ -526,12 +516,6 @@ import type {
   ArchiveVolumeMaterialStatsResponse,
   ArchiveVolumeSubmitChecklistItemVO,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { downloadFile } from '@/apis/edu/file-management'
 import {
   ARCHIVE_REMEDIATION_STATUS_TONE,
   ArchiveCatalogStatusDescription,
@@ -557,6 +541,12 @@ import {
   submitArchiveVolume,
   updateRemediationTask,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadFile } from '@/apis/edu/file-management'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -577,7 +567,11 @@ import {
 } from '@/composables/useArchiveVolumeSubmitGate'
 import { useArchiveVolumeWorkbenchContext } from '@/composables/useArchiveVolumeWorkbenchContext'
 import { useUserStore } from '@/stores/modules/user'
-import { buildFourPropertyDimensionViews, countFourPropertyPassed, resolveSecurityDiagnosticMessage } from '@/utils/archive-four-property-diagnostic'
+import {
+  buildFourPropertyDimensionViews,
+  countFourPropertyPassed,
+  resolveSecurityDiagnosticMessage,
+} from '@/utils/archive-four-property-diagnostic'
 import {
   isSecurityRemediationDiagnostic,
   remediationDiagnosticLabel,
@@ -594,7 +588,11 @@ import {
   isArchiveVolumeWorkflowChromeTab,
 } from '@/utils/archive-volume-chrome'
 import { isArchiveDueOverdue } from '@/utils/archive-volume-list-ui'
-import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserErrorMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveCollectionRejectDialog from '@/views/teacher/archive-volume/components/ArchiveCollectionRejectDialog.vue'
@@ -637,10 +635,7 @@ const activeTab = workbench.activeTab
 const setActiveTab = workbench.setActiveTab
 const manageActionTick = workbench.manageActionTick
 const userStore = useUserStore()
-const {
-  grantsLoadFailed,
-  loadGrants,
-} = useArchiveDutyAccess()
+const { grantsLoadFailed, loadGrants } = useArchiveDutyAccess()
 const currentUserId = computed(() => String(userStore.userInfo?.userId ?? ''))
 // MVR-331：仅认 BE getDetail can*===true；禁止 hasDutyForDepartment 本地回退
 const canApproveDestruction = computed(() => detail.value?.canApproveDestruction === true)
@@ -684,94 +679,109 @@ const showArchiveGateOpsStrip = computed(
   () => isArchiveVolumeWorkflowChromeTab(activeTab.value) && archiveGateOpsItems.value.length > 0,
 )
 
-const qualityGuide = computed((): {
-  title: string
-  description?: string
-  actionLabel?: string
-  actionKey?: 'integrity' | 'self-check-sign' | 'four-property' | 'security-mark' | 'materials'
-} | null => {
-  const d = detail.value
-  if (!d || !isQualityTab.value) {
-    return null
-  }
-  const tab = activeTab.value
-  if (tab === 'integrity') {
-    const status = displayedIntegrityResult.value?.integrityStatus ?? d.volume.integrityStatus
-    if (status === ArchiveIntegrityStatusCode.UNKNOWN || status === ArchiveIntegrityStatusCode.FAILED) {
+const qualityGuide = computed(
+  (): {
+    title: string
+    description?: string
+    actionLabel?: string
+    actionKey?: 'integrity' | 'self-check-sign' | 'four-property' | 'security-mark' | 'materials'
+  } | null => {
+    const d = detail.value
+    if (!d || !isQualityTab.value) {
+      return null
+    }
+    const tab = activeTab.value
+    if (tab === 'integrity') {
+      const status = displayedIntegrityResult.value?.integrityStatus ?? d.volume.integrityStatus
+      if (
+        status === ArchiveIntegrityStatusCode.UNKNOWN ||
+        status === ArchiveIntegrityStatusCode.FAILED
+      ) {
+        return {
+          title: '先执行完整性自检',
+          description: '对照必交材料检查缺件，通过后再做自检清单与四性',
+          actionLabel: canRunIntegrityCheck.value ? '执行完整性自检' : undefined,
+          actionKey: 'integrity',
+        }
+      }
+      if (displayedIntegrityResult.value?.missingItems?.length) {
+        return {
+          title: `仍有 ${displayedIntegrityResult.value.missingItems.length} 项缺件`,
+          description: '请补材、登记延迟补交或授权豁免',
+          actionLabel: '去材料收集',
+          actionKey: 'materials',
+        }
+      }
       return {
-        title: '先执行完整性自检',
-        description: '对照必交材料检查缺件，通过后再做自检清单与四性',
-        actionLabel: canRunIntegrityCheck.value ? '执行完整性自检' : undefined,
-        actionKey: 'integrity',
+        title: '完整性已就绪',
+        description: '可继续自检清单或四性与定密',
       }
     }
-    if (displayedIntegrityResult.value?.missingItems?.length) {
+    if (tab === 'self-check') {
+      if (
+        d.selfCheckStatus === ArchiveSelfCheckStatusCode.COMPLETED ||
+        d.volume.selfCheckConfirmed
+      ) {
+        return {
+          title: '自检清单已完成',
+          description: '可继续四性与定密或提交归档',
+        }
+      }
       return {
-        title: `仍有 ${displayedIntegrityResult.value.missingItems.length} 项缺件`,
-        description: '请补材、登记延迟补交或授权豁免',
-        actionLabel: '去材料收集',
-        actionKey: 'materials',
+        title: '勾选必查项并完成签字',
+        description: '必查项全部勾选后，在清单内进入签字确认',
       }
     }
-    return {
-      title: '完整性已就绪',
-      description: '可继续自检清单或四性与定密',
-    }
-  }
-  if (tab === 'self-check') {
-    if (d.selfCheckStatus === ArchiveSelfCheckStatusCode.COMPLETED || d.volume.selfCheckConfirmed) {
-      return {
-        title: '自检清单已完成',
-        description: '可继续四性与定密或提交归档',
+    if (tab === 'four-property') {
+      if (d.volume.securityMarkPending) {
+        return {
+          title: '确认密级定密',
+          description: `当前卷密级：${
+            d.volume.securityLevel
+              ? strictEnumLabel(
+                  ArchiveSecurityLevelDescription,
+                  d.volume.securityLevel,
+                  'securityLevel',
+                )
+              : '—'
+          }`,
+          actionLabel: d.canConfirmSecurityMark === true ? '确认密级定密' : undefined,
+          actionKey: 'security-mark',
+        }
       }
-    }
-    return {
-      title: '勾选必查项并完成签字',
-      description: '必查项全部勾选后，在清单内进入签字确认',
-    }
-  }
-  if (tab === 'four-property') {
-    if (d.volume.securityMarkPending) {
-      return {
-        title: '确认密级定密',
-        description: `当前卷密级：${
-          d.volume.securityLevel
-            ? strictEnumLabel(ArchiveSecurityLevelDescription, d.volume.securityLevel, 'securityLevel')
-            : '—'
-        }`,
-        actionLabel: d.canConfirmSecurityMark === true ? '确认密级定密' : undefined,
-        actionKey: 'security-mark',
+      if (d.fourPropertyStale || !displayedFourProperty.value) {
+        return {
+          title: d.fourPropertyStale ? '四性结论已失效，请重新检测' : '尚未执行四性检测',
+          description: '材料或密级变更后须重新执行四性检测',
+          actionLabel: canRunFourPropertyCheck.value ? '执行四性检测' : undefined,
+          actionKey: 'four-property',
+        }
       }
-    }
-    if (d.fourPropertyStale || !displayedFourProperty.value) {
       return {
-        title: d.fourPropertyStale ? '四性结论已失效，请重新检测' : '尚未执行四性检测',
-        description: '材料或密级变更后须重新执行四性检测',
-        actionLabel: canRunFourPropertyCheck.value ? '执行四性检测' : undefined,
+        title: '四性检测已完成',
+        description: displayedFourProperty.value.overallPassed
+          ? '四性结论有效'
+          : '存在未通过项，请修复后重检',
+        actionLabel:
+          canRunFourPropertyCheck.value && !displayedFourProperty.value.overallPassed
+            ? '重新执行四性检测'
+            : undefined,
         actionKey: 'four-property',
       }
     }
-    return {
-      title: '四性检测已完成',
-      description: displayedFourProperty.value.overallPassed ? '四性结论有效' : '存在未通过项，请修复后重检',
-      actionLabel: canRunFourPropertyCheck.value && !displayedFourProperty.value.overallPassed
-        ? '重新执行四性检测'
-        : undefined,
-      actionKey: 'four-property',
-    }
-  }
-  return null
-})
+    return null
+  },
+)
 
 const showWorkbenchActions = computed(() => {
   if (!isArchiveVolumeWorkflowChromeTab(activeTab.value) || isQualityTab.value) {
     return false
   }
   return (
-    detailScope.canStartCollecting
-    || detailScope.showSubmitActions
-    || detailScope.canSubmitVolume
-    || detailScope.showSelfCheckButton
+    detailScope.canStartCollecting ||
+    detailScope.showSubmitActions ||
+    detailScope.canSubmitVolume ||
+    detailScope.showSelfCheckButton
   )
 })
 
@@ -805,8 +815,7 @@ const showNextStepsPanel = computed(
 )
 
 const showSubmitProgressBand = computed(
-  () =>
-    isArchiveVolumeWorkflowChromeTab(activeTab.value) && Boolean(detail.value?.submitProgress),
+  () => isArchiveVolumeWorkflowChromeTab(activeTab.value) && Boolean(detail.value?.submitProgress),
 )
 
 const displayedIntegrityResult = computed(
@@ -831,7 +840,10 @@ const securityFourPropertyDescription = computed(() =>
 const canRunIntegrityCheck = computed(() => {
   const d = detail.value
   if (!d || d.canManageMaterials !== true) return false
-  return d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING || d.hasOpenRemediationTask === true
+  return (
+    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING ||
+    d.hasOpenRemediationTask === true
+  )
 })
 
 const canRunFourPropertyCheck = computed(() => {
@@ -881,14 +893,14 @@ const showAppraisalGuidanceStrip = computed(() => {
 })
 
 /** 归档条件闸门：只置顶一条「下一必做」，其余折叠，避免迎检告警墙。 */
-type ArchiveGateKey
-  = | 'checklistFail'
-    | 'grantsFail'
-    | 'remediation'
-    | 'appraisal'
-    | 'integrity'
-    | 'fourProperty'
-    | 'scoreSubmit'
+type ArchiveGateKey =
+  | 'checklistFail'
+  | 'grantsFail'
+  | 'remediation'
+  | 'appraisal'
+  | 'integrity'
+  | 'fourProperty'
+  | 'scoreSubmit'
 
 const ARCHIVE_GATE_LABEL: Record<ArchiveGateKey, string> = {
   checklistFail: '待办清单加载失败',
@@ -916,9 +928,9 @@ const showFourPropertyGate = computed(() => {
   if (d.fourPropertyStale) return true
   if (showSecurityFourPropertyAlert.value) return true
   return (
-    !!d.latestFourPropertyCheck
-    && !d.latestFourPropertyCheck.overallPassed
-    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
+    !!d.latestFourPropertyCheck &&
+    !d.latestFourPropertyCheck.overallPassed &&
+    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
   )
 })
 
@@ -1012,17 +1024,13 @@ const scoresSignalMetrics = computed((): SignalMetric[] => {
   )
   // MVR-337：scoreSource 可空，禁止把 undefined 传入 strictEnumLabel
   const source = d.volume.scoreSource
-    ? strictEnumLabel(
-        ArchiveScoreSourceDescription,
-        d.volume.scoreSource,
-        'scoreSource',
-      )
+    ? strictEnumLabel(ArchiveScoreSourceDescription, d.volume.scoreSource, 'scoreSource')
     : '—'
   const completionCode = d.volume.scoreCompletionStatus
-  const completionOk
-    = completionCode === ArchiveScoreCompletionStatusCode.COMPLETED
-      || completionCode === ArchiveScoreCompletionStatusCode.VERIFIED
-      || completionCode === ArchiveScoreCompletionStatusCode.NOT_REQUIRED
+  const completionOk =
+    completionCode === ArchiveScoreCompletionStatusCode.COMPLETED ||
+    completionCode === ArchiveScoreCompletionStatusCode.VERIFIED ||
+    completionCode === ArchiveScoreCompletionStatusCode.NOT_REQUIRED
   return [
     {
       key: 'completion',
@@ -1067,12 +1075,14 @@ const integritySignalMetrics = computed((): SignalMetric[] => {
       key: 'integrity',
       label: '完整性',
       value: statusLabel,
-      tone: status === ArchiveIntegrityStatusCode.PASSED || status === ArchiveIntegrityStatusCode.WAIVED
-        ? 'green'
-        : 'orange',
-      iconTone: status === ArchiveIntegrityStatusCode.PASSED || status === ArchiveIntegrityStatusCode.WAIVED
-        ? 'green'
-        : 'orange',
+      tone:
+        status === ArchiveIntegrityStatusCode.PASSED || status === ArchiveIntegrityStatusCode.WAIVED
+          ? 'green'
+          : 'orange',
+      iconTone:
+        status === ArchiveIntegrityStatusCode.PASSED || status === ArchiveIntegrityStatusCode.WAIVED
+          ? 'green'
+          : 'orange',
       helper: missingCount > 0 ? `${missingCount} 项缺件` : '无缺件目录',
       clickable: false,
     },
@@ -1103,9 +1113,7 @@ const fourPropertySignalMetrics = computed((): SignalMetric[] => {
   const d = detail.value
   if (!d) return []
   const four = displayedFourProperty.value
-  const fourSummary = four
-    ? countFourPropertyPassed(buildFourPropertyDimensionViews(four))
-    : null
+  const fourSummary = four ? countFourPropertyPassed(buildFourPropertyDimensionViews(four)) : null
   const securityPending = d.volume.securityMarkPending === true
   return [
     {
@@ -1231,7 +1239,11 @@ function handleActiveTabSignalClick(key: string): void {
     handleMaterialsSignalClick(key)
     return
   }
-  if (activeTab.value === 'transfer' && key === 'remediation' && showRemediationWorkflowStrip.value) {
+  if (
+    activeTab.value === 'transfer' &&
+    key === 'remediation' &&
+    showRemediationWorkflowStrip.value
+  ) {
     setActiveTab(focusedRemediationTargetTab.value)
   }
 }
@@ -1263,41 +1275,41 @@ const archiveGateOpsItems = computed(() => {
     .filter((key) => key !== 'remediation')
     .filter((key) => !isArchiveGateNavHiddenOnTab(activeTab.value, key))
     .map((key) => {
-    let actionLabel = '去处理'
-    let tone: 'blue' | 'orange' | 'red' | 'gray' = 'orange'
-    let description = ARCHIVE_GATE_LABEL[key]
-    if (key === 'integrity') {
-      actionLabel = '去完整性'
-      tone = 'orange'
-      description = '完整性未通过前无法提交'
-    } else if (key === 'fourProperty') {
-      actionLabel = '去四性'
-      tone = 'orange'
-      description = '提交前须完成四性检测'
-    } else if (key === 'scoreSubmit') {
-      actionLabel = '去成绩证明'
-      tone = 'orange'
-      description = scoreSubmitBlockReason.value ?? description
-    } else if (key === 'appraisal') {
-      actionLabel = '进入鉴定'
-      tone = 'orange'
-      description = appraisalGuidanceDescription.value
-    } else if (key === 'checklistFail') {
-      actionLabel = '重新加载'
-      tone = 'red'
-    } else if (key === 'grantsFail') {
-      actionLabel = '重新加载'
-      tone = 'gray'
-      description = '鉴定、销毁与查阅审批操作不可用，请重新加载岗位职责'
-    }
-    return {
-      key,
-      title: ARCHIVE_GATE_LABEL[key],
-      description,
-      actionLabel,
-      tone,
-    }
-  })
+      let actionLabel = '去处理'
+      let tone: 'blue' | 'orange' | 'red' | 'gray' = 'orange'
+      let description = ARCHIVE_GATE_LABEL[key]
+      if (key === 'integrity') {
+        actionLabel = '去完整性'
+        tone = 'orange'
+        description = '完整性未通过前无法提交'
+      } else if (key === 'fourProperty') {
+        actionLabel = '去四性'
+        tone = 'orange'
+        description = '提交前须完成四性检测'
+      } else if (key === 'scoreSubmit') {
+        actionLabel = '去成绩证明'
+        tone = 'orange'
+        description = scoreSubmitBlockReason.value ?? description
+      } else if (key === 'appraisal') {
+        actionLabel = '进入鉴定'
+        tone = 'orange'
+        description = appraisalGuidanceDescription.value
+      } else if (key === 'checklistFail') {
+        actionLabel = '重新加载'
+        tone = 'red'
+      } else if (key === 'grantsFail') {
+        actionLabel = '重新加载'
+        tone = 'gray'
+        description = '鉴定、销毁与查阅审批操作不可用，请重新加载岗位职责'
+      }
+      return {
+        key,
+        title: ARCHIVE_GATE_LABEL[key],
+        description,
+        actionLabel,
+        tone,
+      }
+    })
 })
 
 function handleArchiveGateOpsAction(key: string): void {
@@ -1367,8 +1379,8 @@ const remediationOpenDescription = computed(() => {
   const d = detail.value
   if (task) {
     if (
-      task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
-      && task.assigneeUserId === currentUserId.value
+      task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED &&
+      task.assigneeUserId === currentUserId.value
     ) {
       return '材料已重提，等待院系协调人复检关闭'
     }
@@ -1390,18 +1402,18 @@ const remediationOpenDescription = computed(() => {
       )
     }
     if (
-      d?.hasBlockingRemediationForSubmit
-      && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-      && detailScope.canSubmitVolume
+      d?.hasBlockingRemediationForSubmit &&
+      d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING &&
+      detailScope.canSubmitVolume
     ) {
       parts.push('须关闭整改任务后再提交归档')
     }
     return parts.join(' · ')
   }
   if (
-    d?.hasBlockingRemediationForSubmit
-    && d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING
-    && detailScope.canSubmitVolume
+    d?.hasBlockingRemediationForSubmit &&
+    d.volume.volumeStatus === ArchiveVolumeStatusCode.COLLECTING &&
+    detailScope.canSubmitVolume
   ) {
     return '存在未关闭整改任务，须关闭后再提交归档'
   }
@@ -1477,9 +1489,9 @@ const canReviewScanBatches = computed(() => detailScope.capabilities.canReviewSc
 const canAdvanceRemediation = computed(() => {
   const task = focusedRemediationTask.value
   if (
-    !task
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
-    || task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
+    !task ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED ||
+    task.taskStatus === ArchiveRemediationStatusCode.RESUBMITTED
   ) {
     return false
   }
@@ -1491,9 +1503,9 @@ const canManageCoordinatorRemediation = computed(() => {
   const d = detail.value
   const task = focusedRemediationTask.value
   if (
-    !d?.hasOpenRemediationTask
-    || !task
-    || task.taskStatus === ArchiveRemediationStatusCode.CLOSED
+    !d?.hasOpenRemediationTask ||
+    !task ||
+    task.taskStatus === ArchiveRemediationStatusCode.CLOSED
   ) {
     return false
   }
@@ -1536,31 +1548,27 @@ function goArchiveList(): void {
 async function handleMaterialOcrCompleted() {
   await loadDetail({ silent: true })
   if (detail.value?.fourPropertyStale) {
-    message.info('文字识别已完成，请重新执行完整性/四性检测')
+    void message.info('文字识别已完成，请重新执行完整性/四性检测')
   }
 }
 
-
-watch(
-  manageActionTick,
-  (tick) => {
-    if (!tick) {
+watch(manageActionTick, (tick) => {
+  if (!tick) {
+    return
+  }
+  if (tick.key === 'export') {
+    void handleExport()
+    return
+  }
+  if (tick.key === 'reject') {
+    // MVR-382：与 canRejectCollection / BE 驳回收材门禁二次拦截
+    if (detailScope.canRejectCollection !== true) {
+      void message.warning('当前账号不可驳回收材')
       return
     }
-    if (tick.key === 'export') {
-      void handleExport()
-      return
-    }
-    if (tick.key === 'reject') {
-      // MVR-382：与 canRejectCollection / BE 驳回收材门禁二次拦截
-      if (detailScope.canRejectCollection !== true) {
-        message.warning('当前账号不可驳回收材')
-        return
-      }
-      collectionRejectOpen.value = true
-    }
-  },
-)
+    collectionRejectOpen.value = true
+  }
+})
 
 const qualityGuideActionLoading = computed(() => {
   const key = qualityGuide.value?.actionKey
@@ -1586,7 +1594,7 @@ function handleQualityGuideAction(): void {
   if (key === 'self-check-sign') {
     // MVR-382：与 canSelfCheck 同源，禁止无写权打开签字确认
     if (detailScope.capabilities.canSelfCheck !== true) {
-      message.warning('当前账号不可进行自查签字确认')
+      void message.warning('当前账号不可进行自查签字确认')
       return
     }
     selfCheckModalOpen.value = true
@@ -1604,7 +1612,7 @@ function handleQualityGuideAction(): void {
 async function runFourPropertyCheckFromGuide() {
   // MVR-347：与 canRunFourPropertyCheck 同源；无权限时只切页不发写请求
   if (canRunFourPropertyCheck.value !== true) {
-    message.warning('当前账号或卷状态不可执行四性检测')
+    void message.warning('当前账号或卷状态不可执行四性检测')
     setActiveTab('four-property')
     return
   }
@@ -1615,7 +1623,7 @@ async function runFourPropertyCheckFromGuide() {
   try {
     const result = await checkArchiveVolumeFourProperty(volumeId.value)
     fourPropertyResult.value = result
-    message.success('四性检测完成')
+    void message.success('四性检测完成')
     await loadDetail()
   } catch (error) {
     showUserError(error, '四性检测失败')
@@ -1627,7 +1635,7 @@ async function runFourPropertyCheckFromGuide() {
 async function runIntegrityCheck() {
   // MVR-347：与 canRunIntegrityCheck / BE 完整性自检写门禁二次拦截
   if (canRunIntegrityCheck.value !== true) {
-    message.warning('当前账号或卷状态不可执行完整性自检')
+    void message.warning('当前账号或卷状态不可执行完整性自检')
     return
   }
   if (checkingIntegrity.value) {
@@ -1636,7 +1644,7 @@ async function runIntegrityCheck() {
   checkingIntegrity.value = true
   try {
     integrityResult.value = await checkArchiveVolumeIntegrity(volumeId.value)
-    message.success('完整性检查完成')
+    void message.success('完整性检查完成')
     await loadDetail()
   } catch (error) {
     showUserError(error, '完整性检查失败')
@@ -1657,7 +1665,7 @@ async function executeSubmit(overdueReason?: string) {
   }
   // MVR-305：与 canSubmitVolume 同源二次拦截
   if (detailScope.canSubmitVolume !== true) {
-    message.warning('当前账号无提交归档权限')
+    void message.warning('当前账号无提交归档权限')
     return
   }
   submitting.value = true
@@ -1666,7 +1674,7 @@ async function executeSubmit(overdueReason?: string) {
       volumeId: volumeId.value,
       overdueSubmitReason: overdueReason,
     })
-    message.success('已提交归档')
+    void message.success('已提交归档')
     overdueSubmitModalOpen.value = false
     overdueSubmitReason.value = ''
     await loadDetail()
@@ -1687,7 +1695,7 @@ async function handleSubmit() {
   if (!d) return
   // MVR-305：与 canSubmitVolume 同源二次拦截
   if (detailScope.canSubmitVolume !== true) {
-    message.warning('当前账号无提交归档权限')
+    void message.warning('当前账号无提交归档权限')
     return
   }
   if (d.volume.requireSelfCheckConfirm && !d.volume.selfCheckConfirmed) {
@@ -1703,7 +1711,7 @@ async function handleSubmit() {
 
 async function confirmOverdueSubmit() {
   if (detailScope.canSubmitVolume !== true) {
-    message.warning('当前账号无提交归档权限')
+    void message.warning('当前账号无提交归档权限')
     return
   }
   const reason = overdueSubmitReason.value.trim()
@@ -1717,7 +1725,7 @@ async function confirmOverdueSubmit() {
 async function handleExport() {
   // MVR-341：与侧栏 canExportManifest 状态闸一致；BE requireVolumeReadable 仍为权威
   if (canExportManifest.value !== true) {
-    message.warning('当前卷状态不可导出 manifest')
+    void message.warning('当前卷状态不可导出 manifest')
     return
   }
   if (exporting.value) {
@@ -1731,7 +1739,7 @@ async function handleExport() {
       return
     }
     await downloadFile({ nodeId: result.exportFileId })
-    message.success(`导出完成，材料 ${result.materialCount ?? 0} 项`)
+    void message.success(`导出完成，材料 ${result.materialCount ?? 0} 项`)
   } catch (error) {
     showUserError(error, '导出归档卷失败')
   } finally {
@@ -1764,7 +1772,7 @@ async function loadFocusedRemediationTask() {
 async function advanceRemediation(taskStatus: ArchiveRemediationStatusCode) {
   // MVR-317/382：与 canAdvanceRemediation / BE canUpdateTask 二次拦截
   if (canAdvanceRemediation.value !== true) {
-    message.warning('当前账号不可推进该整改任务')
+    void message.warning('当前账号不可推进该整改任务')
     return
   }
   const task = focusedRemediationTask.value
@@ -1778,7 +1786,7 @@ async function advanceRemediation(taskStatus: ArchiveRemediationStatusCode) {
       taskId: task.taskId,
       taskStatus,
     })
-    message.success('整改任务已更新')
+    void message.success('整改任务已更新')
     await loadDetail({ silent: true })
   } catch (error) {
     showUserError(error, '更新整改任务失败')

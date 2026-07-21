@@ -12,7 +12,9 @@
   >
     <div v-if="phase === 'upload'" class="platform-excel-import-modal__upload">
       <div v-if="!props.hideTemplateDownload" class="platform-excel-import-modal__template">
-        <span class="platform-excel-import-modal__template-text">请先下载模板，按格式填写后上传</span>
+        <span class="platform-excel-import-modal__template-text"
+          >请先下载模板，按格式填写后上传</span
+        >
         <UiButton
           variant="outline"
           size="sm"
@@ -39,7 +41,9 @@
       >
         <UploadOutlined class="platform-excel-import-modal__dropzone-icon" />
         <p class="platform-excel-import-modal__dropzone-hint">
-          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link">点击选择文件</span>
+          拖拽文件到此处，或<span class="platform-excel-import-modal__dropzone-link"
+            >点击选择文件</span
+          >
         </p>
         <p class="platform-excel-import-modal__dropzone-desc">
           支持表格文件格式，单文件不超过三十兆字节
@@ -142,7 +146,9 @@
         <div class="platform-excel-import-modal__summary-stats">
           <span>总计 {{ result?.totalRows ?? 0 }}</span>
           <span class="is-success">成功 {{ result?.successRows ?? 0 }}</span>
-          <span v-if="result?.createdCount != null" class="is-success">新建 {{ result.createdCount }}</span>
+          <span v-if="result?.createdCount != null" class="is-success"
+            >新建 {{ result.createdCount }}</span
+          >
           <span v-if="result?.updatedCount != null">更新 {{ result.updatedCount }}</span>
           <span class="is-fail">失败 {{ result?.errorRows ?? 0 }}</span>
         </div>
@@ -173,20 +179,20 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
+import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
 import type {
   ExcelImportResult,
   ExcelImportRosterPreviewRow,
   ExcelImportRowDiagnostic,
   PlatformJsonObject,
 } from '@/apis/platform/types'
+import { ExcelImportExecutionMode } from '@/apis/platform/types'
 import { FileOutlined, UploadOutlined } from '@ant-design/icons-vue'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { downloadFile } from '@/apis/edu/file-management'
 import { downloadExcelImportTemplate, submitExcelImport } from '@/apis/platform/excel-import'
 import { stagePlatformFile } from '@/apis/platform/file'
-import { resolveFileStageSceneForExcel } from '@/apis/platform/scene-keys'
-import { ExcelImportExecutionMode } from '@/apis/platform/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -284,8 +290,8 @@ const okDisabled = computed(() => {
       return false
     }
     return !(
-      props.allowManualConflictCommit
-      && previewDiagnostics.value.some((item) => item.errorCode === 'MANUAL_CONFIRM')
+      props.allowManualConflictCommit &&
+      previewDiagnostics.value.some((item) => item.errorCode === 'MANUAL_CONFIRM')
     )
   }
   return !stagedFileNodeId.value
@@ -414,7 +420,7 @@ async function stageSelectedFile(file: File) {
   } catch (error) {
     stagedFile.value = null
     stagedFileNodeId.value = null
-    message.error(getUserErrorMessage(error, '文件暂存失败'))
+    void message.error(getUserErrorMessage(error, '文件暂存失败'))
   } finally {
     submitting.value = false
   }
@@ -440,7 +446,7 @@ async function handleDownloadTemplate() {
     const blobResponse = await downloadFile({ nodeId: String(template.fileNodeId) })
     triggerBrowserDownload(blobResponse.data, template.fileName)
   } catch (error) {
-    message.error(getUserErrorMessage(error, '模板下载失败'))
+    void message.error(getUserErrorMessage(error, '模板下载失败'))
   } finally {
     templateLoading.value = false
   }
@@ -480,9 +486,9 @@ async function handleOk() {
       phase.value = 'result'
       emit('success', importResult)
       if ((importResult.errorRows ?? 0) === 0) {
-        message.success(`${props.entityLabel}已导入`)
+        void message.success(`${props.entityLabel}已导入`)
       } else {
-        message.warning(
+        void message.warning(
           `${props.entityLabel}导入完成：成功 ${importResult.successRows ?? 0} 条，失败 ${importResult.errorRows ?? 0} 条`,
         )
       }
@@ -496,7 +502,7 @@ async function handleOk() {
       rosterPreviewPage.value = 1
       phase.value = 'preview'
       if ((importResult.errorRows ?? 0) > 0) {
-        message.warning(
+        void message.warning(
           `预览完成：${importResult.successRows ?? 0} 条可直接导入，${importResult.errorRows ?? 0} 条需处理或确认`,
         )
       }
@@ -505,22 +511,22 @@ async function handleOk() {
     result.value = importResult
     phase.value = 'result'
     if (
-      (importResult.successRows ?? 0) > 0
-      || importResult.executionMode === ExcelImportExecutionMode.ASYNC
+      (importResult.successRows ?? 0) > 0 ||
+      importResult.executionMode === ExcelImportExecutionMode.ASYNC
     ) {
       emit('success', importResult)
     }
     if (importResult.executionMode === ExcelImportExecutionMode.ASYNC) {
-      message.success('已提交解析任务')
+      void message.success('已提交解析任务')
     } else if ((importResult.errorRows ?? 0) === 0) {
-      message.success(`导入成功 ${importResult.successRows ?? 0} 条`)
+      void message.success(`导入成功 ${importResult.successRows ?? 0} 条`)
     } else {
-      message.warning(
+      void message.warning(
         `导入完成：成功 ${importResult.successRows ?? 0} 条，失败 ${importResult.errorRows ?? 0} 条`,
       )
     }
   } catch (error) {
-    message.error(getUserErrorMessage(error, `导入${props.entityLabel}失败`))
+    void message.error(getUserErrorMessage(error, `导入${props.entityLabel}失败`))
   } finally {
     submitting.value = false
   }

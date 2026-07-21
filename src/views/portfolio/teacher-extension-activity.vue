@@ -4,11 +4,11 @@ import type {
   PortfolioTeachingExtensionActivityVO,
   PortfolioTeachingExtensionCategoryVO,
 } from '@/apis/portfolio/teaching-extension'
+import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioTeachingExtensionApi } from '@/apis/portfolio/teaching-extension'
 import { PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE } from '@/apis/portfolio/types'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -46,11 +46,12 @@ import {
 } from '@/types/enums/portfolio-teaching-extension-kind-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
-  = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
+  usePortfolioArchiveWriteGuard()
 const route = useRoute()
 const router = useRouter()
 
@@ -98,9 +99,9 @@ const isTraining = computed(() => form.activityKind === PortfolioTeachingExtensi
 
 function canEditActivity(row: PortfolioTeachingExtensionActivityVO) {
   return (
-    !row.archiveRecordId
-    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT
-    || row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    !row.archiveRecordId ||
+    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
+    row.archiveRecordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 }
 
@@ -222,10 +223,10 @@ async function loadData() {
       }
     }
     if (
-      typeof route.query.recommendationId === 'string'
-      && !recommendationIntentConsumed.value
-      && !readonlyMode.value
-      && !modalOpen.value
+      typeof route.query.recommendationId === 'string' &&
+      !recommendationIntentConsumed.value &&
+      !readonlyMode.value &&
+      !modalOpen.value
     ) {
       openModal()
     }
@@ -247,7 +248,7 @@ async function loadData() {
 
 function openModal(row?: PortfolioTeachingExtensionActivityVO) {
   if (row?.archiveRecordId && !canEditActivity(row)) {
-    message.info('该培训活动的档案正在审核或已正式归档，不可修改')
+    void message.info('该培训活动的档案正在审核或已正式归档，不可修改')
     return
   }
   if (readonlyMode.value && !row) {
@@ -267,10 +268,10 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
   form.fileId = row?.fileId || ''
   form.attachmentName = row?.fileId ? `附件 ${row.fileId}` : ''
   if (!row && !recommendationIntentConsumed.value) {
-    form.trainingRecommendationId
-      = typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
-    form.activityName
-      = typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
+    form.trainingRecommendationId =
+      typeof route.query.recommendationId === 'string' ? route.query.recommendationId : ''
+    form.activityName =
+      typeof route.query.activityName === 'string' ? route.query.activityName : form.activityName
     recommendationIntentConsumed.value = true
   }
   modalOpen.value = true
@@ -278,10 +279,10 @@ function openModal(row?: PortfolioTeachingExtensionActivityVO) {
 
 async function saveActivity() {
   if (
-    saving.value
-    || Boolean(deletingActivityId.value)
-    || Boolean(deletingCategoryId.value)
-    || Boolean(submittingTrainingId.value)
+    saving.value ||
+    Boolean(deletingActivityId.value) ||
+    Boolean(deletingCategoryId.value) ||
+    Boolean(submittingTrainingId.value)
   ) {
     return
   }
@@ -309,7 +310,7 @@ async function saveActivity() {
       descriptionText: !isTraining.value ? form.descriptionText.trim() || undefined : undefined,
       fileId: form.fileId || undefined,
     })
-    message.success('拓展活动已保存')
+    void message.success('拓展活动已保存')
     modalOpen.value = false
     resetForm()
     await loadData()
@@ -344,7 +345,7 @@ async function removeActivity(row: PortfolioTeachingExtensionActivityVO) {
   try {
     await portfolioTeachingExtensionApi.delete({ id: row.id, teacherId })
     if (requestToken.value !== operationToken) return
-    message.success('已删除')
+    void message.success('已删除')
     await loadData()
   } catch (error) {
     if (requestToken.value !== operationToken) return
@@ -359,7 +360,7 @@ async function prepareTrainingArchiveDraft(row: PortfolioTeachingExtensionActivi
   try {
     const prepared = await portfolioTeachingExtensionApi.prepareTrainingArchiveDraft(row.id)
     if (prepared.missingRequiredFieldCodes.length) {
-      message.info('已生成档案草稿，请补齐模板必填字段后提交审核')
+      void message.info('已生成档案草稿，请补齐模板必填字段后提交审核')
     }
     await router.push({
       name: 'PortfolioArchiveCategoryEdit',
@@ -400,7 +401,7 @@ async function createCategory() {
       categoryName: categoryForm.categoryName.trim(),
       teacherId: scopeTeacherId(),
     })
-    message.success('自建分类已创建')
+    void message.success('自建分类已创建')
     categoryModalOpen.value = false
     await loadData()
   } catch (error) {
@@ -438,7 +439,7 @@ async function confirmDeleteCategory(row: PortfolioTeachingExtensionCategoryVO) 
   try {
     await portfolioTeachingExtensionApi.deleteCategory({ id: categoryId, teacherId })
     if (requestToken.value !== operationToken) return
-    message.success('自建分类已删除')
+    void message.success('自建分类已删除')
     await loadData()
   } catch (error) {
     if (requestToken.value !== operationToken) return
@@ -468,7 +469,7 @@ async function onAttachmentPick(event: Event) {
     const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
     form.fileId = uploaded.id
     form.attachmentName = uploaded.nodeName
-    message.success('证明材料已上传')
+    void message.success('证明材料已上传')
   } catch (error) {
     showUserError(error, '证明材料上传失败')
   } finally {
@@ -553,17 +554,10 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               <UiTag tone="blue">{{ kindLabel(record.activityKind) }}</UiTag>
             </template>
             <template v-else-if="column.key === 'identityLayers'">
-              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-                <UiTag
-                  v-for="(layer, idx) in record.ownerIdentityLayers"
-                  :key="`${record.id}-${layer.identityType}-${idx}`"
-                  size="sm"
-                  :tone="layer.externalIdentity ? 'orange' : 'blue'"
-                >
-                  {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-                </UiTag>
-              </div>
-              <span v-else>—</span>
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+              />
             </template>
             <template v-else-if="column.key === 'dateRange'">
               {{ dateRangeText(record) }}
@@ -590,9 +584,9 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
               <UiButton
                 size="sm"
                 v-if="
-                  !readonlyMode
-                    && record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING
-                    && !record.archiveRecordId
+                  !readonlyMode &&
+                  record.activityKind === PortfolioTeachingExtensionKindCode.TRAINING &&
+                  !record.archiveRecordId
                 "
                 variant="ghost"
                 :loading="submittingTrainingId === record.id"

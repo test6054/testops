@@ -17,6 +17,11 @@ import type {
   PortfolioIntegrationSyncTaskVO,
   PortfolioNationalReportIssueVO,
 } from '@/apis/portfolio/integration'
+import {
+  PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS,
+  PORTFOLIO_INTEGRATION_PASSWORD_MASK,
+  portfolioIntegrationApi,
+} from '@/apis/portfolio/integration'
 import type {
   PortfolioArchiveCategoryTreeNodeVO,
   PortfolioTargetFieldDefinition,
@@ -25,11 +30,6 @@ import type {
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import {
-  PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS,
-  PORTFOLIO_INTEGRATION_PASSWORD_MASK,
-  portfolioIntegrationApi,
-} from '@/apis/portfolio/integration'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
@@ -78,18 +78,17 @@ const writing = computed(() => Boolean(operationKey.value))
 
 /** 冲突/身份处置目标教师：封存写禁预检 */
 const actionTeacherId = ref<string | undefined>()
-const {
-  assertArchiveWritable,
-  reloadLifecycleState,
-} = usePortfolioArchiveWriteGuard({ teacherId: actionTeacherId, autoLoad: false })
+const { assertArchiveWritable, reloadLifecycleState } = usePortfolioArchiveWriteGuard({
+  teacherId: actionTeacherId,
+  autoLoad: false,
+})
 
 async function bindActionTeacherAndAssert(
   teacherId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value = teacherId != null && String(teacherId).trim() !== ''
-    ? String(teacherId)
-    : undefined
+  actionTeacherId.value =
+    teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
@@ -241,7 +240,7 @@ const channelPathwayMatrix = ref<PortfolioIntegrationChannelPathwayMatrixVO | nu
 const datasourceChannelOptions = computed(() => {
   const rows = channelPathwayMatrix.value?.channels ?? []
   if (rows.length === 0) {
-    return [] as Array<{ value: string, label: string }>
+    return [] as Array<{ value: string; label: string }>
   }
   return rows.map((row) => ({ value: row.channelCode, label: row.channelLabel }))
 })
@@ -315,11 +314,10 @@ function clearPathwayConfigFields() {
 function changeDatasourceChannel(value: SelectValue) {
   const channelCode = typeof value === 'string' ? value : String(value ?? '')
   dsForm.channelCode = channelCode
-  const pathways
-    = (channelPathwayMatrix.value?.channels ?? [])
+  const pathways =
+    (channelPathwayMatrix.value?.channels ?? [])
       .find((item) => item.channelCode === channelCode)
-      ?.pathways
-?.filter((item) => item.configurable !== false) ?? []
+      ?.pathways?.filter((item) => item.configurable !== false) ?? []
   dsForm.pathwayCode = pathways[0]?.pathwayCode ?? ''
   clearPathwayConfigFields()
 }
@@ -345,7 +343,9 @@ function applyNationalTeacherPreset(direction: 'OUTBOUND' | 'INBOUND') {
         { teacherNumber: '', teacherName: '', title: '', employmentStatus: '' },
       ]
     }
-    message.info('全国教师系统同一渠道仅允许一条 OPENAPI 配置，已切换为编辑现有数据源并设置方向')
+    void message.info(
+      '全国教师系统同一渠道仅允许一条 OPENAPI 配置，已切换为编辑现有数据源并设置方向',
+    )
     return
   }
   resetDatasourceForm()
@@ -353,8 +353,8 @@ function applyNationalTeacherPreset(direction: 'OUTBOUND' | 'INBOUND') {
   dsForm.pathwayCode = 'OPENAPI'
   dsForm.datasourceName = direction === 'OUTBOUND' ? '全国教师系统上报' : '全国教师系统回流'
   dsForm.syncDirection = direction
-  dsForm.inboundRecords
-    = direction === 'INBOUND'
+  dsForm.inboundRecords =
+    direction === 'INBOUND'
       ? [{ teacherNumber: '', teacherName: '', title: '', employmentStatus: '' }]
       : []
 }
@@ -423,13 +423,13 @@ function buildConnectionConfig(): PortfolioIntegrationConnectionConfigDto | unde
       expectedConfigUpdateToken: dsForm.importContextExpectedConfigUpdateToken.trim() || undefined,
     }
     const hasImportContext = Boolean(
-      importContext.fileName
-      || importContext.defaultRecordType
-      || importContext.defaultCategoryCode
-      || importContext.defaultLevelCode
-      || importContext.confirmManualConflicts
-      || importContext.expectedConfigUpdateToken
-      || importContext.commit === false,
+      importContext.fileName ||
+      importContext.defaultRecordType ||
+      importContext.defaultCategoryCode ||
+      importContext.defaultLevelCode ||
+      importContext.confirmManualConflicts ||
+      importContext.expectedConfigUpdateToken ||
+      importContext.commit === false,
     )
     return {
       excelImportSceneKey: dsForm.excelImportSceneKey,
@@ -475,9 +475,9 @@ function fillDatasourceForm(row: PortfolioIntegrationDatasourceVO) {
     return
   }
   if (row.pathwayCode === 'EXCEL_IMPORT') {
-    dsForm.excelImportSceneKey
-      = config.excelImportSceneKey
-        ?? (row.channelCode === 'SCIENTIFIC_RESEARCH'
+    dsForm.excelImportSceneKey =
+      config.excelImportSceneKey ??
+      (row.channelCode === 'SCIENTIFIC_RESEARCH'
         ? 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT'
         : 'PORTFOLIO_DEVELOPMENT_RECORD')
     dsForm.sourceFileNodeId = config.sourceFileNodeId ?? ''
@@ -761,8 +761,8 @@ async function changeMappingCategory(value: SelectValue) {
       categoryId: category.categoryId,
     })
     if (
-      requestToken.archiveFields !== currentToken
-      || mappingForm.targetCategoryCode !== categoryCode
+      requestToken.archiveFields !== currentToken ||
+      mappingForm.targetCategoryCode !== categoryCode
     ) {
       return
     }
@@ -811,8 +811,8 @@ async function loadDatasources() {
     datasources.value = res.list ?? []
     datasourceTotal.value = res.total ?? 0
     if (
-      selectedDatasourceId.value
-      && !datasources.value.some((item) => item.id === selectedDatasourceId.value)
+      selectedDatasourceId.value &&
+      !datasources.value.some((item) => item.id === selectedDatasourceId.value)
     ) {
       selectedDatasourceId.value = ''
       mappings.value = []
@@ -976,7 +976,7 @@ async function fixNationalReportIssue(row: PortfolioNationalReportIssueVO) {
       issueId: row.id,
       fixRemark: '管理端确认已修正',
     })
-    message.success('上报待修正已关闭')
+    void message.success('上报待修正已关闭')
     await loadNationalIssues()
   } catch (error) {
     showUserError(error, '关闭上报待修正失败')
@@ -986,7 +986,7 @@ async function fixNationalReportIssue(row: PortfolioNationalReportIssueVO) {
   }
 }
 
-function onNationalIssuePageChange(page: { current: number, pageSize: number }) {
+function onNationalIssuePageChange(page: { current: number; pageSize: number }) {
   nationalIssueQuery.pageNum = page.current
   nationalIssueQuery.pageSize = page.pageSize
   void loadNationalIssues()
@@ -1009,7 +1009,7 @@ async function exportNationalReportForIssue(row: PortfolioNationalReportIssueVO)
       syncTaskId: String(row.syncTaskId),
       maskMode: true,
     })
-    message.success(`上报包已导出：${res.fileName || res.fileNodeId}`)
+    void message.success(`上报包已导出：${res.fileName || res.fileNodeId}`)
   } catch (error) {
     showUserError(error, '导出全国上报包失败（须批次存在校验通过记录）')
   } finally {
@@ -1041,7 +1041,9 @@ async function retransmitNationalReportIssues() {
     const batch = await portfolioIntegrationApi.retransmitNationalReportIssues({
       datasourceConfigId: nationalDatasource.id,
     })
-    message.success(`重传完成：成功 ${batch.successCount ?? 0}，失败 ${batch.failedCount ?? 0}`)
+    void message.success(
+      `重传完成：成功 ${batch.successCount ?? 0}，失败 ${batch.failedCount ?? 0}`,
+    )
     await Promise.all([loadNationalIssues(), loadSyncTasks()])
   } catch (error) {
     showUserError(error, '重传全国上报失败记录失败')
@@ -1097,8 +1099,8 @@ async function loadFailedMessages() {
   try {
     const result = await portfolioIntegrationApi.pageFailedMessages(request)
     if (
-      requestToken.failedMessages !== currentToken
-      || failedMessageDatasourceId.value !== datasourceConfigId
+      requestToken.failedMessages !== currentToken ||
+      failedMessageDatasourceId.value !== datasourceConfigId
     ) {
       return
     }
@@ -1153,7 +1155,7 @@ async function enqueueInboundMessage() {
       messageKey,
       payloadFields,
     })
-    message.success(`消息已入站，收件箱 ID：${inboxId}`)
+    void message.success(`消息已入站，收件箱 ID：${inboxId}`)
     if (!failedMessageDatasourceId.value) {
       failedMessageDatasourceId.value = datasourceConfigId
     }
@@ -1307,7 +1309,7 @@ async function saveDatasource() {
   }
   try {
     await portfolioIntegrationApi.saveDatasource(request)
-    message.success(editingDatasource.value ? '数据源已更新' : '数据源已保存')
+    void message.success(editingDatasource.value ? '数据源已更新' : '数据源已保存')
     resetDatasourceForm()
     datasourceQuery.pageNum = 1
     await loadDatasources()
@@ -1340,7 +1342,7 @@ async function saveMapping() {
   }
   try {
     await portfolioIntegrationApi.saveFieldMapping(request)
-    message.success('字段映射已保存')
+    void message.success('字段映射已保存')
     mappingForm.sourceFieldCode = ''
     mappingForm.targetFieldCode = ''
     mappingForm.targetCategoryCode = ''
@@ -1361,7 +1363,7 @@ async function triggerSync(row: PortfolioIntegrationDatasourceVO) {
   if (!beginOperation(operation)) return
   try {
     await portfolioIntegrationApi.triggerSync({ datasourceConfigId })
-    message.success('同步已触发')
+    void message.success('同步已触发')
     await Promise.all([
       loadSyncTasks(),
       loadDatasources(),
@@ -1381,8 +1383,8 @@ async function resolveConflict(row: PortfolioConflictTicketVO, action: string) {
   const conflictTicketId = row.id
   const operation = `conflict:${conflictTicketId}:${action}`
   if (!beginOperation(operation)) return
-  const actionLabel
-    = action === 'RESOLVED_USE_EXTERNAL'
+  const actionLabel =
+    action === 'RESOLVED_USE_EXTERNAL'
       ? '冲突采用外部'
       : action === 'RESOLVED_USE_LOCAL'
         ? '冲突保留本地'
@@ -1392,8 +1394,8 @@ async function resolveConflict(row: PortfolioConflictTicketVO, action: string) {
     return
   }
   if (
-    action === 'IGNORED'
-    && !(await confirmAsync({
+    action === 'IGNORED' &&
+    !(await confirmAsync({
       title: '确认忽略冲突单？',
       content: '忽略后该冲突单将结束处理，外部值和本地值都不会自动覆盖另一方。',
       type: 'warning',
@@ -1408,7 +1410,7 @@ async function resolveConflict(row: PortfolioConflictTicketVO, action: string) {
       action,
       resolveRemark: action === 'IGNORED' ? '管理端忽略冲突' : '管理端确认处置',
     })
-    message.success('冲突已处理')
+    void message.success('冲突已处理')
     conflictQuery.pageNum = 1
     await loadConflicts()
   } catch (error) {
@@ -1428,9 +1430,9 @@ async function resolveIdentityUnmatched(
     return
   }
   if (
-    action === 'RESOLVED'
-    && needsTeacherNumber(row)
-    && !identityResolveTeacherNumber.value.trim()
+    action === 'RESOLVED' &&
+    needsTeacherNumber(row) &&
+    !identityResolveTeacherNumber.value.trim()
   ) {
     showFormValidationMessage('缺少工号待匹配须补录工号')
     return
@@ -1444,8 +1446,8 @@ async function resolveIdentityUnmatched(
     }
   }
   if (
-    action === 'IGNORED'
-    && !(await confirmAsync({
+    action === 'IGNORED' &&
+    !(await confirmAsync({
       title: '确认忽略身份待匹配？',
       content: '忽略后该外部教师记录不会绑定到本地教师，本次同步数据也不会进入教师档案。',
       type: 'warning',
@@ -1465,7 +1467,7 @@ async function resolveIdentityUnmatched(
         action === 'RESOLVED' && needsTeacherNumber(row) ? resolvedTeacherNumber : undefined,
       resolveRemark: action === 'RESOLVED' ? '管理端绑定本地教师' : '管理端忽略待匹配',
     })
-    message.success('身份待匹配已处置')
+    void message.success('身份待匹配已处置')
     identityResolveTeacherId.value = ''
     identityResolveTeacherNumber.value = ''
     identityResolveRowId.value = ''
@@ -1499,7 +1501,7 @@ function openFailedMessageFix(row: PortfolioIntegrationMessageInboxVO) {
 async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, corrected = false) {
   const messageInboxId = row.id
   const datasourceConfigId = row.datasourceConfigId
-  let fieldCorrections: Array<{ fieldCode: string, fieldValue: string }> | undefined
+  let fieldCorrections: Array<{ fieldCode: string; fieldValue: string }> | undefined
   if (corrected) {
     fieldCorrections = payloadFieldEdits.value
       .map((item) => ({
@@ -1515,8 +1517,8 @@ async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, cor
   const operation = `failed-message:${messageInboxId}`
   if (!beginOperation(operation)) return
   if (
-    !corrected
-    && !(await confirmAsync({
+    !corrected &&
+    !(await confirmAsync({
       title: '确认使用原载荷重试？',
       content: '原载荷将放回普通收件箱并触发同步；若错误原因尚未消除，消息会再次进入异常状态。',
       type: 'warning',
@@ -1533,7 +1535,7 @@ async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, cor
       fieldCorrections,
       triggerSync: true,
     })
-    message.success('异常消息已重放并触发同步')
+    void message.success('异常消息已重放并触发同步')
     failedMessageDrawerOpen.value = false
     selectedFailedMessage.value = null
     payloadFieldEdits.value = []
@@ -1581,10 +1583,10 @@ function editCourseCodeMap(row: PortfolioCourseCodeMapVO) {
 
 async function saveCourseCodeMap() {
   if (
-    !courseCodeMapForm.sourceSystemCode.trim()
-    || !courseCodeMapForm.sourceCourseCode.trim()
-    || !courseCodeMapForm.canonicalCourseCode.trim()
-    || !courseCodeMapForm.canonicalCourseName.trim()
+    !courseCodeMapForm.sourceSystemCode.trim() ||
+    !courseCodeMapForm.sourceCourseCode.trim() ||
+    !courseCodeMapForm.canonicalCourseCode.trim() ||
+    !courseCodeMapForm.canonicalCourseName.trim()
   ) {
     showFormValidationMessage('请填写来源系统、源课程编码和规范课程编码/名称')
     return
@@ -1604,7 +1606,7 @@ async function saveCourseCodeMap() {
   }
   try {
     await portfolioIntegrationApi.saveCourseCodeMap(request)
-    message.success('课程编码对照已保存')
+    void message.success('课程编码对照已保存')
     resetCourseCodeMapForm()
     await loadCourseCodeMaps()
   } catch (error) {
@@ -1629,7 +1631,7 @@ async function deleteCourseCodeMap(row: PortfolioCourseCodeMapVO) {
   }
   try {
     await portfolioIntegrationApi.deleteCourseCodeMap(targetId)
-    message.success('课程编码对照已删除')
+    void message.success('课程编码对照已删除')
     await loadCourseCodeMaps()
   } catch (error) {
     showUserError(error, '删除课程编码对照失败')
@@ -1662,9 +1664,9 @@ function editDictEntry(row: PortfolioIntegrationDictEntryVO) {
 
 async function saveDictEntry() {
   if (
-    !dictEntryForm.dictionaryCode.trim()
-    || !dictEntryForm.sourceValue.trim()
-    || !dictEntryForm.targetValue.trim()
+    !dictEntryForm.dictionaryCode.trim() ||
+    !dictEntryForm.sourceValue.trim() ||
+    !dictEntryForm.targetValue.trim()
   ) {
     showFormValidationMessage('请填写字典编码、源值和规范值')
     return
@@ -1682,7 +1684,7 @@ async function saveDictEntry() {
   }
   try {
     await portfolioIntegrationApi.saveDictEntry(request)
-    message.success('字段字典项已保存')
+    void message.success('字段字典项已保存')
     resetDictEntryForm()
     await loadDictEntries()
   } catch (error) {
@@ -1707,7 +1709,7 @@ async function deleteDictEntry(row: PortfolioIntegrationDictEntryVO) {
   }
   try {
     await portfolioIntegrationApi.deleteDictEntry(targetId)
-    message.success('字段字典项已删除')
+    void message.success('字段字典项已删除')
     await loadDictEntries()
   } catch (error) {
     showUserError(error, '删除字段字典项失败')
@@ -1736,49 +1738,49 @@ function searchDictEntries() {
   void loadDictEntries()
 }
 
-function onDatasourcePageChange(page: { current: number, pageSize: number }) {
+function onDatasourcePageChange(page: { current: number; pageSize: number }) {
   datasourceQuery.pageNum = page.current
   datasourceQuery.pageSize = page.pageSize
   void loadDatasources()
 }
 
-function onSyncTaskPageChange(page: { current: number, pageSize: number }) {
+function onSyncTaskPageChange(page: { current: number; pageSize: number }) {
   syncTaskQuery.pageNum = page.current
   syncTaskQuery.pageSize = page.pageSize
   void loadSyncTasks()
 }
 
-function onUnmatchedPageChange(page: { current: number, pageSize: number }) {
+function onUnmatchedPageChange(page: { current: number; pageSize: number }) {
   unmatchedQuery.pageNum = page.current
   unmatchedQuery.pageSize = page.pageSize
   void loadUnmatched()
 }
 
-function onConflictPageChange(page: { current: number, pageSize: number }) {
+function onConflictPageChange(page: { current: number; pageSize: number }) {
   conflictQuery.pageNum = page.current
   conflictQuery.pageSize = page.pageSize
   void loadConflicts()
 }
 
-function onFailedMessagePageChange(page: { current: number, pageSize: number }) {
+function onFailedMessagePageChange(page: { current: number; pageSize: number }) {
   failedMessageQuery.pageNum = page.current
   failedMessageQuery.pageSize = page.pageSize
   void loadFailedMessages()
 }
 
-function onCleanLogPageChange(page: { current: number, pageSize: number }) {
+function onCleanLogPageChange(page: { current: number; pageSize: number }) {
   cleanLogQuery.pageNum = page.current
   cleanLogQuery.pageSize = page.pageSize
   void loadCleanLogs()
 }
 
-function onCourseCodeMapPageChange(page: { current: number, pageSize: number }) {
+function onCourseCodeMapPageChange(page: { current: number; pageSize: number }) {
   courseCodeMapQuery.pageNum = page.current
   courseCodeMapQuery.pageSize = page.pageSize
   void loadCourseCodeMaps()
 }
 
-function onDictEntryPageChange(page: { current: number, pageSize: number }) {
+function onDictEntryPageChange(page: { current: number; pageSize: number }) {
   dictEntryQuery.pageNum = page.current
   dictEntryQuery.pageSize = page.pageSize
   void loadDictEntries()
@@ -1819,7 +1821,9 @@ onMounted(async () => {
         <span class="integration-dashboard__panel-title">数据源配置</span>
       </template>
       <div class="integration-dashboard__preset-bar">
-        <span class="integration-dashboard__preset-label">全国教师系统（同渠道仅一条 OPENAPI，切换方向即编辑现有配置）</span>
+        <span class="integration-dashboard__preset-label"
+          >全国教师系统（同渠道仅一条 OPENAPI，切换方向即编辑现有配置）</span
+        >
         <UiButton
           size="sm"
           :disabled="writing || editingDatasource"
@@ -2022,11 +2026,11 @@ onMounted(async () => {
           :options="
             isScientificResearchChannel
               ? PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS.filter(
-                (item) => item.value === 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
-              )
+                  (item) => item.value === 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
+                )
               : PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS.filter(
-                (item) => item.value !== 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
-              )
+                  (item) => item.value !== 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
+                )
           "
           :disabled="writing || isScientificResearchChannel"
         />

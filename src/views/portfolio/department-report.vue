@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { PortfolioDoubleHighMonitorVO } from '@/apis/portfolio/double-high'
+import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import type { PortfolioCompletenessLevelCode } from '@/apis/portfolio/enums'
+import { PortfolioCompletenessLevelDescription } from '@/apis/portfolio/enums'
 import type { PortfolioDeptOneTableSummaryVO } from '@/apis/portfolio/teacher'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
-import { PortfolioCompletenessLevelDescription } from '@/apis/portfolio/enums'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
@@ -218,7 +218,7 @@ async function applyExport() {
     if (reportContextToken.value !== contextToken) {
       return
     }
-    message.success('已提交导出审批')
+    void message.success('已提交导出审批')
     void router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
     if (reportContextToken.value !== contextToken) {
@@ -245,12 +245,7 @@ onMounted(() => {
 <template>
   <StageWorkbenchShell title="院系报告">
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="院系师资发展报告"
-        subtitle="须经导出审批"
-      />
+      <ContextBar layout="workbench" show-title title="院系师资发展报告" subtitle="须经导出审批" />
     </template>
     <UiCard title="导出范围">
       <div class="report-filter">
@@ -330,7 +325,15 @@ onMounted(() => {
           >
             预览摘要
           </UiButton>
-          <UiButton size="sm" variant="primary" :loading="applying" :disabled="busy" @click="applyExport"> 提交审批 </UiButton>
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="applying"
+            :disabled="busy"
+            @click="applyExport"
+          >
+            提交审批
+          </UiButton>
         </div>
       </div>
     </UiCard>

@@ -124,15 +124,15 @@
         <UiRow :gutter="16">
           <UiCol :span="12">
             <UiFormItem name="deviceName" label="设备名称">
-              <UiInput
-                size="sm" v-model="formData.deviceName" placeholder="教师可读的设备名"
-              />
+              <UiInput size="sm" v-model="formData.deviceName" placeholder="教师可读的设备名" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem name="status" label="设备状态">
               <UiSelect
-                size="sm" v-model="formData.status" :options="SCANNER_DEVICE_STATUS_OPTIONS"
+                size="sm"
+                v-model="formData.status"
+                :options="SCANNER_DEVICE_STATUS_OPTIONS"
               />
             </UiFormItem>
           </UiCol>
@@ -182,9 +182,7 @@
           </UiCol>
           <UiCol :span="12">
             <UiFormItem name="model" label="型号">
-              <UiInput
-                size="sm" v-model="formData.model" placeholder="设备型号"
-              />
+              <UiInput size="sm" v-model="formData.model" placeholder="设备型号" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -192,15 +190,15 @@
           <UiCol :span="12">
             <UiFormItem name="location" label="物理位置">
               <UiInput
-                size="sm" v-model="formData.location" placeholder="如 教学楼A栋 301 教研室"
+                size="sm"
+                v-model="formData.location"
+                placeholder="如 教学楼A栋 301 教研室"
               />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem name="remark" label="备注">
-              <UiInput
-                size="sm" v-model="formData.remark" placeholder="维护备注"
-              />
+              <UiInput size="sm" v-model="formData.remark" placeholder="维护备注" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -305,8 +303,12 @@
           <span>有效期至：{{ activationCodeInfo.expireTime }}</span>
         </div>
         <div class="activation-code-modal__actions">
-          <UiButton size="sm" @click="copyText(activationCodeInfo.activationCode)"> 复制激活码 </UiButton>
-          <UiButton size="sm" variant="outline" @click="showActivationCodeModal = false">关闭</UiButton>
+          <UiButton size="sm" @click="copyText(activationCodeInfo.activationCode)">
+            复制激活码
+          </UiButton>
+          <UiButton size="sm" variant="outline" @click="showActivationCodeModal = false"
+            >关闭</UiButton
+          >
         </div>
       </div>
     </UiDialog>
@@ -328,12 +330,6 @@ import type {
   ScannerAgentDiagnosticStatusCode,
   ScannerEndpointOnlineStatusCode,
 } from '@/apis/mark/exam-mark-scanner'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
-import message from 'ant-design-vue/es/message'
-import AQrcode from 'ant-design-vue/es/qrcode'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import {
   createScannerActivationCode,
   createScannerDevice,
@@ -353,6 +349,12 @@ import {
   unbindScannerDeviceAgent,
   updateScannerDevice,
 } from '@/apis/mark/exam-mark-scanner'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import PlusOutlined from '@ant-design/icons-vue/PlusOutlined'
+import message from 'ant-design-vue/es/message'
+import AQrcode from 'ant-design-vue/es/qrcode'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -389,9 +391,7 @@ defineOptions({ name: 'PrinterManagement' })
 const authStore = useAuthStore()
 /** MVR-316：对齐 BE requireTeacherMarkOpsPermission（教师/超管运维写） */
 const canManageScannerDeviceWrites = computed(
-  () =>
-    authStore.userRole === RoleEnum.SCH_TECH
-    || authStore.userRole === RoleEnum.SUPER_ADMIN,
+  () => authStore.userRole === RoleEnum.SCH_TECH || authStore.userRole === RoleEnum.SUPER_ADMIN,
 )
 
 const { refreshSnapshot } = useWorkspaceExamId()
@@ -447,7 +447,7 @@ const deviceSignalMetrics = computed((): SignalMetric[] => [
   },
 ])
 
-const locationOptions = ref<Array<{ label: string, value: string }>>([])
+const locationOptions = ref<Array<{ label: string; value: string }>>([])
 
 function syncSearchForm(next: Record<string, unknown>): void {
   Object.assign(searchForm, next)
@@ -479,7 +479,10 @@ const deviceFilterFields = computed<FilterField[]>(() => [
     placeholder: '设备状态',
     allowClear: true,
     width: 160,
-    options: SCANNER_DEVICE_STATUS_OPTIONS.map((item) => ({ label: item.label, value: item.value })),
+    options: SCANNER_DEVICE_STATUS_OPTIONS.map((item) => ({
+      label: item.label,
+      value: item.value,
+    })),
   },
 ])
 
@@ -505,9 +508,7 @@ const columns: ColumnsType<ExamScannerDeviceResponse> = [
 
 function buildDeviceActions(record: ExamScannerDeviceResponse): UiTableRowActionItem[] {
   // MVR-316：无运维写权仅保留详情，避免行内假可写
-  const actions: UiTableRowActionItem[] = [
-    { key: 'detail', label: '详情' },
-  ]
+  const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
   if (canManageScannerDeviceWrites.value !== true) {
     return actions
   }
@@ -634,7 +635,7 @@ function handleResetSearch(): void {
   void loadDevices()
 }
 
-function handleUiPageChange(page: { current: number, pageSize: number }): void {
+function handleUiPageChange(page: { current: number; pageSize: number }): void {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   void loadDevices()
@@ -690,7 +691,7 @@ function resetForm(): void {
 function handleCreate(): void {
   // MVR-316：与 BE requireTeacherMarkOpsPermission 二次拦截
   if (canManageScannerDeviceWrites.value !== true) {
-    message.warning('当前账号无扫描设备运维权限')
+    void message.warning('当前账号无扫描设备运维权限')
     return
   }
   formMode.value = 'create'
@@ -701,7 +702,7 @@ function handleCreate(): void {
 function handleEdit(record: ExamScannerDeviceResponse): void {
   // MVR-316：编辑设备与教师运维写闸同源
   if (canManageScannerDeviceWrites.value !== true) {
-    message.warning('当前账号无扫描设备运维权限')
+    void message.warning('当前账号无扫描设备运维权限')
     return
   }
   formMode.value = 'edit'
@@ -726,7 +727,7 @@ function handleEdit(record: ExamScannerDeviceResponse): void {
 async function handleFormSubmit(): Promise<void> {
   // MVR-316：保存设备与 BE requireTeacherMarkOpsPermission 二次拦截
   if (canManageScannerDeviceWrites.value !== true) {
-    message.warning('当前账号无扫描设备运维权限')
+    void message.warning('当前账号无扫描设备运维权限')
     return
   }
   if (formSubmitting.value) {
@@ -752,12 +753,12 @@ async function handleFormSubmit(): Promise<void> {
         remark: emptyToUndefined(formData.remark),
       }
       const handoff = await createScannerDevice(request)
-      message.success('扫描设备创建成功')
+      void message.success('扫描设备创建成功')
       showFormModal.value = false
       if (handoff.activationCode) {
         openActivationHandoff(handoff)
       } else {
-        message.warning('设备未启用，未生成激活码；启用后可点击「激活码」重新生成')
+        void message.warning('设备未启用，未生成激活码；启用后可点击「激活码」重新生成')
       }
       await syncAfterDeviceMutation()
     } else {
@@ -774,7 +775,7 @@ async function handleFormSubmit(): Promise<void> {
         remark: emptyToUndefined(formData.remark),
       }
       const handoff = await updateScannerDevice(request)
-      message.success('扫描设备已更新')
+      void message.success('扫描设备已更新')
       showFormModal.value = false
       if (handoff.activationCode) {
         openActivationHandoff(handoff)
@@ -822,7 +823,7 @@ function scannerDeviceDiagnosticText(
 async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<void> {
   // MVR-316：重新绑定与教师运维写闸同源
   if (canManageScannerDeviceWrites.value !== true) {
-    message.warning('当前账号无扫描设备运维权限')
+    void message.warning('当前账号无扫描设备运维权限')
     return
   }
   void confirmAsync({
@@ -836,7 +837,7 @@ async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<voi
       deviceActionLoading.value = true
       try {
         const handoff = await resetScannerDevicePushToken(record.id)
-        message.success('已生成新的绑定激活码')
+        void message.success('已生成新的绑定激活码')
         openActivationHandoff(handoff)
         await syncAfterDeviceMutation()
       } catch (error) {
@@ -851,7 +852,7 @@ async function handleRebindAgent(record: ExamScannerDeviceResponse): Promise<voi
 async function handleCreateActivationCode(record: ExamScannerDeviceResponse): Promise<void> {
   // MVR-316：激活码与 BE requireTeacherMarkOpsPermission 二次拦截
   if (canManageScannerDeviceWrites.value !== true) {
-    message.warning('当前账号无扫描设备运维权限')
+    void message.warning('当前账号无扫描设备运维权限')
     return
   }
   if (deviceActionLoading.value) {
@@ -873,7 +874,7 @@ async function handleCreateActivationCode(record: ExamScannerDeviceResponse): Pr
 function handleUnbindAgent(record: ExamScannerDeviceResponse): void {
   // MVR-316：解绑与教师运维写闸同源
   if (canManageScannerDeviceWrites.value !== true) {
-    message.warning('当前账号无扫描设备运维权限')
+    void message.warning('当前账号无扫描设备运维权限')
     return
   }
   void confirmAsync({
@@ -887,7 +888,7 @@ function handleUnbindAgent(record: ExamScannerDeviceResponse): void {
       deviceActionLoading.value = true
       try {
         await unbindScannerDeviceAgent(record.id)
-        message.success('扫描组件已解绑')
+        void message.success('扫描组件已解绑')
         await syncAfterDeviceMutation()
       } catch (error) {
         showUserError(error, '扫描组件解绑失败')
@@ -902,12 +903,12 @@ function copyText(value?: string | null): void {
   if (!value) return
   if (navigator?.clipboard?.writeText) {
     navigator.clipboard.writeText(value).then(
-      () => message.success('已复制到剪贴板'),
-      () => message.error('复制失败，请手动选择文本'),
+      () => void message.success('已复制到剪贴板'),
+      () => void message.error('复制失败，请手动选择文本'),
     )
     return
   }
-  message.warning('当前浏览器不支持剪贴板接口，请手动复制')
+  void message.warning('当前浏览器不支持剪贴板接口，请手动复制')
 }
 
 // ─── 详情弹窗 ────────────────────────────────────────
@@ -936,7 +937,7 @@ async function handleViewDetail(record: ExamScannerDeviceResponse): Promise<void
 function handleDelete(record: ExamScannerDeviceResponse): void {
   // MVR-316：删除与教师运维写闸同源
   if (canManageScannerDeviceWrites.value !== true) {
-    message.warning('当前账号无扫描设备运维权限')
+    void message.warning('当前账号无扫描设备运维权限')
     return
   }
   void confirmAsync({
@@ -950,7 +951,7 @@ function handleDelete(record: ExamScannerDeviceResponse): void {
       deviceActionLoading.value = true
       try {
         await deleteScannerDevice(record.id)
-        message.success('扫描设备已删除')
+        void message.success('扫描设备已删除')
         await syncAfterDeviceMutation()
       } catch (error) {
         showUserError(error, '扫描设备删除失败')

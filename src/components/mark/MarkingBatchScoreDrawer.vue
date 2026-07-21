@@ -50,7 +50,12 @@
 
     <template #footer>
       <div class="dp-space" style="--dp-space-gap: 8px">
-        <UiButton size="sm" variant="outline" :disabled="submitting" @click="emit('update:open', false)">
+        <UiButton
+          size="sm"
+          variant="outline"
+          :disabled="submitting"
+          @click="emit('update:open', false)"
+        >
           取消
         </UiButton>
         <UiButton
@@ -179,12 +184,12 @@ async function handleSubmit(): Promise<void> {
   }
   // MVR-372：写 handler 二次拦截；任务池仅隐藏入口不能替代
   if (props.canManageReviewerWrites !== true) {
-    message.warning('当前账号无阅卷写权限，不能批量给分')
+    void message.warning('当前账号无阅卷写权限，不能批量给分')
     return
   }
   if (!props.examId || !props.groupId || selectedTaskIds.value.length === 0) return
   if (score.value === undefined) {
-    message.warning('请填写给分')
+    void message.warning('请填写给分')
     return
   }
   const confirmed = await confirmExtremeScore()
@@ -213,7 +218,7 @@ async function handleSubmit(): Promise<void> {
       taskIds: selectedTaskIds.value,
     })
     if (!precheck.passed) {
-      message.error(precheck.blockingReason ?? '批量预检未通过')
+      void message.error(precheck.blockingReason ?? '批量预检未通过')
       return
     }
 
@@ -230,7 +235,7 @@ async function handleSubmit(): Promise<void> {
     const failed = results.find((item) => item.outcome === MarkingTaskBatchOutcomeCode.FAILED)
     if (failed) {
       progressFailed.value = true
-      message.error(
+      void message.error(
         submittedTaskIds.length > 0
           ? `${failed.failureMessage ?? '批量提交失败'}（已成功提交 ${submittedTaskIds.length} 份，请处理剩余任务）`
           : (failed.failureMessage ?? '批量提交失败'),
@@ -244,9 +249,9 @@ async function handleSubmit(): Promise<void> {
     const warn = results.find((item) => item.outcome === MarkingTaskBatchOutcomeCode.WARN)
     if (warn?.annotationWarning) {
       annotationWarning.value = warn.annotationWarning
-      message.warning(warn.annotationWarning)
+      void message.warning(warn.annotationWarning)
     } else {
-      message.success(`已成功提交 ${submittedTaskIds.length} 份任务`)
+      void message.success(`已成功提交 ${submittedTaskIds.length} 份任务`)
     }
     emit('submitted')
     emit('update:open', false)

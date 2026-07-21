@@ -4,22 +4,22 @@ import type {
   ArchiveMaterialCatalogTemplateResponse,
   ArchiveTenantTemplateSetResponse,
 } from '@/apis/mark/archive-platform-template'
+import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import type {
   ArchiveVolumeDetailResponse,
   ArchiveVolumeStartCollectingCheckItem,
   ArchiveVolumeStartCollectingPrecheckResponse,
   ArchiveVolumeTaskSettingsUpdateRequest,
 } from '@/apis/mark/archive-volume'
-import type { UiSelectOption } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref, watch } from 'vue'
-import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import {
   precheckArchiveStartCollecting,
   startArchiveCollecting,
   updateArchiveVolumeTaskSettings,
 } from '@/apis/mark/archive-volume'
+import type { UiSelectOption } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -55,10 +55,7 @@ const emit = defineEmits<{
   navigate: [tabKey: string]
 }>()
 
-const COURSE_ASSESSMENT_PLATFORM_CODES = new Set([
-  'PLATFORM_PAPER_FULL',
-  'PLATFORM_NONPAPER_FULL',
-])
+const COURSE_ASSESSMENT_PLATFORM_CODES = new Set(['PLATFORM_PAPER_FULL', 'PLATFORM_NONPAPER_FULL'])
 
 const starting = ref(false)
 const loadingPrecheck = ref(false)
@@ -77,9 +74,7 @@ const dueReason = ref('')
 const volume = computed(() => props.detail.volume)
 const collaborators = computed(() => props.detail.collaborators ?? [])
 const isDraft = computed(() => volume.value.volumeStatus === ArchiveVolumeStatusCode.DRAFT)
-const canEditSettings = computed(
-  () => isDraft.value && props.canManageCollaborators === true,
-)
+const canEditSettings = computed(() => isDraft.value && props.canManageCollaborators === true)
 
 const readinessRows = computed((): ArchiveVolumeStartCollectingCheckItem[] => {
   return precheck.value?.items ?? []
@@ -91,16 +86,14 @@ const blockingCount = computed(
 const warnCount = computed(
   () => readinessRows.value.filter((row) => !row.required && !row.ready).length,
 )
-const readyCount = computed(
-  () => readinessRows.value.filter((row) => row.ready).length,
-)
+const readyCount = computed(() => readinessRows.value.filter((row) => row.ready).length)
 const canCommit = computed(
   () =>
-    isDraft.value
-    && props.canStartCollecting === true
-    && precheck.value?.canStart === true
-    && blockingCount.value === 0
-    && !precheckError.value,
+    isDraft.value &&
+    props.canStartCollecting === true &&
+    precheck.value?.canStart === true &&
+    blockingCount.value === 0 &&
+    !precheckError.value,
 )
 
 const templateSetOptions = computed((): UiSelectOption[] =>
@@ -206,9 +199,7 @@ const signalMetrics = computed((): SignalMetric[] => {
       key: 'ready',
       label: '已就绪',
       value: readyCount.value,
-      helper: readinessRows.value.length
-        ? `共 ${readinessRows.value.length} 项`
-        : undefined,
+      helper: readinessRows.value.length ? `共 ${readinessRows.value.length} 项` : undefined,
       tone: 'gray',
       iconTone: 'gray',
     },
@@ -338,7 +329,7 @@ function onCheckItemActivate(row: ArchiveVolumeStartCollectingCheckItem): void {
 async function saveTaskSettings(): Promise<void> {
   if (savingSettings.value || !canEditSettings.value) return
   if (props.canManageCollaborators !== true) {
-    message.warning('当前账号无任务设置维护权限')
+    void message.warning('当前账号无任务设置维护权限')
     return
   }
 
@@ -350,7 +341,7 @@ async function saveTaskSettings(): Promise<void> {
   const dueChanged = nextDue !== (volume.value.archiveDueTime || undefined)
 
   if (!titleChanged && !templateChanged && !dueChanged) {
-    message.info('设置未变更')
+    void message.info('设置未变更')
     return
   }
   if (!nextTitle) {
@@ -409,7 +400,7 @@ async function saveTaskSettings(): Promise<void> {
   savingSettings.value = true
   try {
     await updateArchiveVolumeTaskSettings(request)
-    message.success('任务设置已保存')
+    void message.success('任务设置已保存')
     emit('updated')
   } catch (error) {
     showUserError(error, '保存任务设置失败')
@@ -421,12 +412,12 @@ async function saveTaskSettings(): Promise<void> {
 async function handleStart(): Promise<void> {
   if (starting.value) return
   if (props.canStartCollecting !== true) {
-    message.warning('当前账号无开始收材权限')
+    void message.warning('当前账号无开始收材权限')
     return
   }
   await loadPrecheck()
   if (precheck.value?.canStart !== true || blockingCount.value > 0) {
-    message.warning('请先补齐开收前必填项')
+    void message.warning('请先补齐开收前必填项')
     return
   }
   const confirmed = await confirmAsync({
@@ -441,7 +432,7 @@ async function handleStart(): Promise<void> {
   starting.value = true
   try {
     await startArchiveCollecting(volume.value.volumeId)
-    message.success('已开始收材')
+    void message.success('已开始收材')
     emit('started')
   } catch (error) {
     showUserError(error, '开始收材失败')
@@ -556,12 +547,7 @@ async function handleStart(): Promise<void> {
       <section class="av-start__section">
         <div class="av-start__heading-row">
           <h4 class="av-start__heading">材料目录</h4>
-          <UiButton
-            size="sm"
-            variant="ghost"
-            :loading="loadingPrecheck"
-            @click="loadPrecheck"
-          >
+          <UiButton size="sm" variant="ghost" :loading="loadingPrecheck" @click="loadPrecheck">
             刷新预检
           </UiButton>
         </div>
@@ -603,7 +589,9 @@ async function handleStart(): Promise<void> {
             :key="row.itemKey"
             class="av-start__check-row"
             :class="{
-              'av-start__check-row--action': Boolean(row.actionTab && row.actionTab !== 'start-collecting'),
+              'av-start__check-row--action': Boolean(
+                row.actionTab && row.actionTab !== 'start-collecting',
+              ),
               'av-start__check-row--blocked': row.required && !row.ready,
             }"
             :role="row.actionTab && row.actionTab !== 'start-collecting' ? 'button' : undefined"
@@ -698,10 +686,7 @@ async function handleStart(): Promise<void> {
 
       <section v-if="collaborators.length" class="av-start__section">
         <h4 class="av-start__heading">协作组</h4>
-        <ArchiveVolumeCollaboratorStrip
-          :collaborators="collaborators"
-          :can-manage="false"
-        />
+        <ArchiveVolumeCollaboratorStrip :collaborators="collaborators" :can-manage="false" />
       </section>
 
       <section class="av-start__commit">

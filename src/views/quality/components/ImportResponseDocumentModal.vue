@@ -27,7 +27,9 @@
       </div>
 
       <div v-if="sourceFileId" class="ird__selected-file">
-        <span class="ird__file-label">已选择：{{ sourceFileName }}（{{ formatBytes(sourceFileSize ?? 0) }}）</span>
+        <span class="ird__file-label"
+          >已选择：{{ sourceFileName }}（{{ formatBytes(sourceFileSize ?? 0) }}）</span
+        >
         <div class="ird__action-row ird__action-row--upload">
           <UiButton
             variant="outline"
@@ -83,7 +85,11 @@
         </p>
       </div>
       <pre v-if="extractDisplayText" class="ird__extract-text">{{ extractDisplayText }}</pre>
-      <UiEmpty size="sm" v-else description="未能从文档中抽取可读文本，请检查扫描清晰度或改用 Excel 导入。" />
+      <UiEmpty
+        size="sm"
+        v-else
+        description="未能从文档中抽取可读文本，请检查扫描清晰度或改用 Excel 导入。"
+      />
       <div class="ird__action-row">
         <UiButton variant="ghost" size="sm" @click="resetToUpload"> 重新选择文件 </UiButton>
         <UiButton variant="primary" size="sm" @click="handleClose"> 关闭并对照录入 </UiButton>
@@ -125,11 +131,11 @@
 
 <script setup lang="ts">
 import type { IndirectResponseDocumentExtractionVO } from '@/apis/quality/indirect-response'
+import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { aiTaskApi } from '@/apis/quality/ai-task'
-import { indirectResponseApi } from '@/apis/quality/indirect-response'
 import {
   AI_TASK_STATUS_COLOR,
   AiTaskStatusCode,
@@ -264,7 +270,7 @@ async function handleSubmitAiParse() {
     phase.value = 'processing'
     pollCount.value = 0
     pollFailureCount.value = 0
-    message.info('智能解析任务已提交，正在后台处理…')
+    void message.info('智能解析任务已提交，正在后台处理…')
     taskPolling.resume()
     taskPolling.syncPolling()
   } catch (error) {
@@ -322,7 +328,7 @@ async function pollTaskStatus() {
     if (task.status === 'SUCCEEDED') {
       stopPolling()
       phase.value = 'succeeded'
-      message.success('智能文档解析完成，答卷草稿已写入')
+      void message.success('智能文档解析完成，答卷草稿已写入')
     } else if (task.status === AiTaskStatusCode.FAILED) {
       stopPolling()
       failureReason.value = aiDocumentParseFailureText(task.failureReason)

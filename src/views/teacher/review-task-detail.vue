@@ -87,7 +87,11 @@
 
           <GradingImmersionSection title="识别答案">
             <template #icon><FileTextOutlined /></template>
-            <UiEmpty size="sm" v-if="!detail.recognizedAnswer" description="本题暂无 OCR 识别答案" />
+            <UiEmpty
+              size="sm"
+              v-if="!detail.recognizedAnswer"
+              description="本题暂无 OCR 识别答案"
+            />
             <div v-else class="review-task-detail-page__text-block">
               {{ detail.recognizedAnswer }}
             </div>
@@ -233,25 +237,14 @@
 
 <script lang="ts" setup>
 import type { CSSProperties } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import type { AnnotationResponse } from '@/apis/mark/exam-annotation'
+import { listAnnotations } from '@/apis/mark/exam-annotation'
 import type {
   AiAbilityCode,
   AiExecutionStatusCode,
   ExamQuestionAiExecutionItemResponse,
 } from '@/apis/mark/exam-grade'
-import type { ReviewTaskDetailResponse } from '@/apis/mark/exam-review-task'
-import type { QuestionTypeCode } from '@/apis/mark/question-type'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
-import EditOutlined from '@ant-design/icons-vue/EditOutlined'
-import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
-import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
-import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
-import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listAnnotations } from '@/apis/mark/exam-annotation'
 import {
   AI_ABILITY_TONE,
   AI_EXECUTION_STATUS_TONE,
@@ -260,13 +253,24 @@ import {
   listAiExecutionsForQuestion,
   rescoreQuestionByAi,
 } from '@/apis/mark/exam-grade'
+import type { ReviewTaskDetailResponse } from '@/apis/mark/exam-review-task'
 import {
   getReviewTaskDetail,
   REVIEW_TASK_STATUS_TONE,
   ReviewTaskStatusCode,
   ReviewTaskStatusDescription,
 } from '@/apis/mark/exam-review-task'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import CommentOutlined from '@ant-design/icons-vue/CommentOutlined'
+import EditOutlined from '@ant-design/icons-vue/EditOutlined'
+import FileTextOutlined from '@ant-design/icons-vue/FileTextOutlined'
+import PictureOutlined from '@ant-design/icons-vue/PictureOutlined'
+import ProfileOutlined from '@ant-design/icons-vue/ProfileOutlined'
+import RobotOutlined from '@ant-design/icons-vue/RobotOutlined'
+import message from 'ant-design-vue/es/message'
+import { useRoute, useRouter } from 'vue-router'
 import ExperienceAssistBadge from '@/components/mark/ExperienceAssistBadge.vue'
 import GradingImmersionChrome from '@/components/mark/GradingImmersionChrome.vue'
 import GradingImmersionSection from '@/components/mark/GradingImmersionSection.vue'
@@ -374,8 +378,8 @@ const canRescoreByAi = computed(() => {
   if (!canManageReviewerWrites.value) return false
   if (rescoring.value || loading.value || !detail.value?.gradeResultId) return false
   return (
-    detail.value.status === ReviewTaskStatusCode.PENDING
-    || detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
+    detail.value.status === ReviewTaskStatusCode.PENDING ||
+    detail.value.status === ReviewTaskStatusCode.IN_PROGRESS
   )
 })
 
@@ -431,7 +435,7 @@ function openRescoreConfirm(): void {
 
 async function doRescoreByAi(): Promise<void> {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无阅卷写权限')
+    void message.warning('当前账号无阅卷写权限')
     return
   }
   if (!canRescoreByAi.value || !examId.value || !detail.value) return
@@ -442,9 +446,9 @@ async function doRescoreByAi(): Promise<void> {
       gradeResultId: detail.value.gradeResultId,
     })
     if (Boolean(result.scored) && result.aiScore != null) {
-      message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
+      void message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
     } else {
-      message.warning(executionDiagnosticText(result.diagnostic))
+      void message.warning(executionDiagnosticText(result.diagnostic))
     }
     await loadTask()
     if (executionsDrawerOpen.value) {

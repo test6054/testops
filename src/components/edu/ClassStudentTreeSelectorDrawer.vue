@@ -163,7 +163,12 @@
     <template #footer>
       <div class="dp-space" style="--dp-space-gap: 8px">
         <UiButton size="sm" variant="ghost" @click="handleCancel">取消</UiButton>
-        <UiButton size="sm" variant="primary" :loading="props.confirmLoading" @click="handleConfirm">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="props.confirmLoading"
+          @click="handleConfirm"
+        >
           确定
         </UiButton>
       </div>
@@ -175,12 +180,12 @@
 import type { DataNode } from 'ant-design-vue/es/vc-tree/interface'
 import type { CheckInfo } from 'ant-design-vue/es/vc-tree/props'
 import type { ClassStudentTreeConfirmPayload, ClassStudentTreeNode } from '@/apis/edu/class'
+import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import AppstoreOutlined from '@ant-design/icons-vue/AppstoreOutlined'
 import TeamOutlined from '@ant-design/icons-vue/TeamOutlined'
 import UserOutlined from '@ant-design/icons-vue/UserOutlined'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
-import { getAvailableStudentTree, getClassStudentTree } from '@/apis/edu/class'
 import { listExamStudentTree } from '@/apis/mark/exam-scope'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -390,9 +395,9 @@ const calculateDisabledKeys = () => {
       }
       return isExcluded
     } else if (
-      node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS
-      && node.children
-      && node.children.length > 0
+      node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS &&
+      node.children &&
+      node.children.length > 0
     ) {
       // 班级节点：检查所有学生是否都被禁用
       const allStudentsDisabled = node.children.every((child) => checkNode(child))
@@ -401,9 +406,9 @@ const calculateDisabledKeys = () => {
       }
       return allStudentsDisabled
     } else if (
-      node.nodeType === ExamClassStudentTreeNodeTypeCode.DEPARTMENT
-      && node.children
-      && node.children.length > 0
+      node.nodeType === ExamClassStudentTreeNodeTypeCode.DEPARTMENT &&
+      node.children &&
+      node.children.length > 0
     ) {
       // 院系节点：检查所有班级是否都被禁用
       const allClassesDisabled = node.children.every((child) => checkNode(child))
@@ -439,8 +444,8 @@ function filterTreeByClassScope(nodes: ClassStudentTreeNode[]): ClassStudentTree
         continue
       }
       if (
-        node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS
-        && allowedSet.has(String(node.originalId))
+        node.nodeType === ExamClassStudentTreeNodeTypeCode.CLASS &&
+        allowedSet.has(String(node.originalId))
       ) {
         result.push({ ...node, children: node.children ?? [] })
       }
@@ -537,7 +542,7 @@ watch(
  * @param _info 选中事件附加信息
  */
 const handleCheck = (
-  checked: (string | number)[] | { checked: (string | number)[], halfChecked: (string | number)[] },
+  checked: (string | number)[] | { checked: (string | number)[]; halfChecked: (string | number)[] },
   _info: CheckInfo,
 ) => {
   // 提取 keys 数组（兼容 check-strictly 模式下的对象格式）
@@ -598,7 +603,7 @@ const handleCancel = () => {
 // 处理确认
 const handleConfirm = () => {
   if (selectedStudents.value.length === 0) {
-    message.warning('请至少选择一名学生')
+    void message.warning('请至少选择一名学生')
     return
   }
 

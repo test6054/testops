@@ -41,10 +41,7 @@
       <SignalBand variant="panel" :metrics="reviewSignals" />
     </template>
 
-    <ExamSelectGateStrip
-      v-if="!examId"
-      body="请从考试列表进入工作台后再查看归档复盘"
-    />
+    <ExamSelectGateStrip v-if="!examId" body="请从考试列表进入工作台后再查看归档复盘" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -80,7 +77,9 @@
           <div v-if="isPackaging" class="archive-exam-review__packaging">
             <div class="archive-exam-review__packaging-head">
               <span>{{ packagingProgressLabel }}</span>
-              <span class="archive-exam-review__packaging-percent">{{ packagingProgressPercent }}%</span>
+              <span class="archive-exam-review__packaging-percent"
+                >{{ packagingProgressPercent }}%</span
+              >
             </div>
             <div class="archive-exam-review__packaging-track">
               <div
@@ -194,10 +193,6 @@ import type {
   ArchiveVolumeExamVolumeProgressItemVO,
   ArchiveVolumeResponse,
 } from '@/apis/mark/archive-volume'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ArchiveIntegrityStatusDescription,
   ArchiveVolumeStatusDescription,
@@ -205,6 +200,10 @@ import {
   pageArchiveVolumes,
   retryArchiveVolumeAutoCreate,
 } from '@/apis/mark/archive-volume'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { createExamArchivePackage, retryExamArchivePackaging } from '@/apis/mark/exam-archive'
 import ArchiveDimPill from '@/components/archive-volume/ArchiveDimPill.vue'
 import ArchiveExamAutoCreateStatus from '@/components/archive-volume/ArchiveExamAutoCreateStatus.vue'
@@ -273,7 +272,7 @@ const primaryOpenVolumeId = computed(() => {
 })
 
 const archiveGateMoreItems = computed(() => {
-  const items: { key: string, label: string }[] = []
+  const items: { key: string; label: string }[] = []
   if (canManageOwnerArchivePackageWrites.value && canCreatePackage.value) {
     items.push({ key: 'createExportPackage', label: '创建导出归档包' })
   }
@@ -353,8 +352,8 @@ const lifecycleSteps = computed(() =>
 )
 
 /** MVR-268：优先 BE 能力位；缺省 false 失败关闭 */
-const canManageOwnerArchivePackageWrites = computed(() =>
-  review.value?.canManageOwnerArchivePackageWrites === true,
+const canManageOwnerArchivePackageWrites = computed(
+  () => review.value?.canManageOwnerArchivePackageWrites === true,
 )
 
 const canCreatePackage = computed(() => {
@@ -376,9 +375,9 @@ const canCreatePackage = computed(() => {
 
 const showRetryPackagingAction = computed(
   () =>
-    canManageOwnerArchivePackageWrites.value
-    && gateOpen.value
-    && archivePackage.value?.archiveStatus === ArchivePackageStatusCode.PACKAGING_FAILED,
+    canManageOwnerArchivePackageWrites.value &&
+    gateOpen.value &&
+    archivePackage.value?.archiveStatus === ArchivePackageStatusCode.PACKAGING_FAILED,
 )
 
 const reviewStatusLabel = computed(() => {
@@ -404,20 +403,20 @@ const reviewStatusLabel = computed(() => {
 const reviewStatusTone = computed(() => {
   const pkgStatus = archivePackage.value?.archiveStatus
   if (
-    pkgStatus === ArchivePackageStatusCode.ACTIVE
-    || pkgStatus === ArchivePackageStatusCode.STORED
+    pkgStatus === ArchivePackageStatusCode.ACTIVE ||
+    pkgStatus === ArchivePackageStatusCode.STORED
   ) {
     return 'green' as const
   }
   if (
-    pkgStatus === ArchivePackageStatusCode.PACKAGING
-    || pkgStatus === ArchivePackageStatusCode.DRAFT
+    pkgStatus === ArchivePackageStatusCode.PACKAGING ||
+    pkgStatus === ArchivePackageStatusCode.DRAFT
   ) {
     return 'blue' as const
   }
   if (
-    pkgStatus === ArchivePackageStatusCode.PACKAGING_FAILED
-    || pkgStatus === ArchivePackageStatusCode.DESTRUCTION_FAILED
+    pkgStatus === ArchivePackageStatusCode.PACKAGING_FAILED ||
+    pkgStatus === ArchivePackageStatusCode.DESTRUCTION_FAILED
   ) {
     return 'red' as const
   }
@@ -441,8 +440,8 @@ const reviewSignals = computed<SignalMetric[]>(() => {
       key: 'archive-status',
       label: '归档状态',
       value:
-        pkg?.archiveStatusLabel
-        ?? (pkg?.archiveStatus
+        pkg?.archiveStatusLabel ??
+        (pkg?.archiveStatus
           ? strictEnumLabel(ArchivePackageStatusDescription, pkg.archiveStatus, 'archiveStatus')
           : '未创建'),
       tone: reviewStatusTone.value,
@@ -473,10 +472,10 @@ const reviewSignals = computed<SignalMetric[]>(() => {
 
 const showVolumeCollapse = computed(
   () =>
-    gateOpen.value
-    && (volumePagination.total > 0
-      || hasAutoCreateFailure.value
-      || examGate.value?.autoCreatePendingStatus != null),
+    gateOpen.value &&
+    (volumePagination.total > 0 ||
+      hasAutoCreateFailure.value ||
+      examGate.value?.autoCreatePendingStatus != null),
 )
 
 const volumeCollapseHeader = computed(() => {
@@ -494,10 +493,10 @@ const volumeCollapseHeader = computed(() => {
 
 const showVolumeAutoCreateStatus = computed(
   () =>
-    gateOpen.value
-    && (hasAutoCreateFailure.value
-      || examGate.value?.autoCreatePendingStatus != null
-      || showRetryAutoCreate.value),
+    gateOpen.value &&
+    (hasAutoCreateFailure.value ||
+      examGate.value?.autoCreatePendingStatus != null ||
+      showRetryAutoCreate.value),
 )
 
 const volumeTableColumns = computed(() => {
@@ -516,24 +515,24 @@ const volumeTableColumns = computed(() => {
 
 const hasAutoCreateFailure = computed(
   () =>
-    examGate.value?.autoCreateFailureStubPresent === true
-    || examGate.value?.autoCreatePendingStatus
-    === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED,
+    examGate.value?.autoCreateFailureStubPresent === true ||
+    examGate.value?.autoCreatePendingStatus ===
+      ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED,
 )
 
 const autoCreateFailedNeedsClassScope = computed(() => {
   const category = examGate.value?.autoCreateFailureCategory
   return (
-    category != null
-    && isArchiveAutoCreateFailureCategory(category)
-    && CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
+    category != null &&
+    isArchiveAutoCreateFailureCategory(category) &&
+    CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
   )
 })
 
 const showRetryAutoCreate = computed(
   () =>
-    examGate.value?.archiveAutoCreateRetryAllowed === true
-    && !autoCreateFailedNeedsClassScope.value,
+    examGate.value?.archiveAutoCreateRetryAllowed === true &&
+    !autoCreateFailedNeedsClassScope.value,
 )
 
 const showNonOwnerHint = computed(() => {
@@ -545,9 +544,9 @@ const showNonOwnerHint = computed(() => {
     return false
   }
   return (
-    hasAutoCreateFailure.value
-    || gate.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
-    || (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
+    hasAutoCreateFailure.value ||
+    gate.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED ||
+    (gate.gateOpen === true && !gate.autoCreateFailureStubPresent)
   )
 })
 
@@ -734,7 +733,9 @@ async function createPackage() {
       includeMarkedSlices: true,
       includeAnswerBooklet: true,
     })
-    message.success(result.reusedExistingDraft ? '已重新入队归档打包' : '已创建归档包并开始打包')
+    void message.success(
+      result.reusedExistingDraft ? '已重新入队归档打包' : '已创建归档包并开始打包',
+    )
     await loadReview()
   } catch (error) {
     showUserError(error, '创建归档包失败')
@@ -746,7 +747,7 @@ async function createPackage() {
 async function retryPackaging() {
   // MVR-424：与 showRetryPackagingAction / 按钮显隐同源二次闸（主考写∧双门禁开∧PACKAGING_FAILED）
   if (!showRetryPackagingAction.value) {
-    message.warning(
+    void message.warning(
       canManageOwnerArchivePackageWrites.value
         ? '当前不可重新打包（门禁未开或归档包非失败态）'
         : '当前账号无归档打包写权限',
@@ -759,7 +760,7 @@ async function retryPackaging() {
   packagingActionLoading.value = true
   try {
     await retryExamArchivePackaging(examId.value)
-    message.success('已重新入队归档打包')
+    void message.success('已重新入队归档打包')
     await loadReview()
   } catch (error) {
     showUserError(error, '重新打包失败')
@@ -816,13 +817,13 @@ async function retryAutoCreate() {
   }
   // MVR-313：与 showRetryAutoCreate / BE requireExamOwnerPermission 同源
   if (!showRetryAutoCreate.value) {
-    message.warning('当前不可重新触发自动建卷')
+    void message.warning('当前不可重新触发自动建卷')
     return
   }
   retrying.value = true
   try {
     await retryArchiveVolumeAutoCreate(examId.value)
-    message.success('已重新触发自动创建归档任务')
+    void message.success('已重新触发自动创建归档任务')
     await startAutoCreatePoll()
   } catch (error) {
     showUserError(error, '重新触发自动创建失败')

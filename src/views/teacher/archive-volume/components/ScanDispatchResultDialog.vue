@@ -46,7 +46,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "cancelled": []
+  cancelled: []
 }>()
 
 const cancelling = ref(false)
@@ -58,9 +58,10 @@ const previewUrl = computed(() =>
   props.payload?.kioskUrl ? appendUrlQueryParam(props.payload.kioskUrl, 'mode', 'preview') : '',
 )
 // MVR-309：状态 + BE canCancelTicket（创建响应/列表同源）
-const canCancel = computed(() =>
-  props.payload?.status === ScanDispatchTicketStatusCode.PENDING
-  && props.payload?.canCancelTicket === true,
+const canCancel = computed(
+  () =>
+    props.payload?.status === ScanDispatchTicketStatusCode.PENDING &&
+    props.payload?.canCancelTicket === true,
 )
 const isPortfolioDispatch = computed(
   () => (props.payload?.taskKind ?? props.taskKind) === ScanTaskKindCode.PORTFOLIO_COLLECT,
@@ -125,9 +126,9 @@ async function loadPendingTickets() {
         taskKind: item.taskKind,
         canCancelTicket: item.canCancelTicket,
         contextLabel:
-          item.portfolioSnapshot?.gapTaskTitle
-          ?? item.portfolioSnapshot?.categoryName
-          ?? item.archiveSnapshot?.archiveTitle,
+          item.portfolioSnapshot?.gapTaskTitle ??
+          item.portfolioSnapshot?.categoryName ??
+          item.archiveSnapshot?.archiveTitle,
         gapTaskId: item.portfolioSnapshot?.gapTaskId,
       }))
   } catch (error) {
@@ -142,9 +143,9 @@ async function loadPendingTickets() {
 async function copyText(text: string) {
   try {
     await navigator.clipboard.writeText(text)
-    message.success('已复制')
+    void message.success('已复制')
   } catch {
-    message.error('复制失败，请手动选择复制')
+    void message.error('复制失败，请手动选择复制')
   }
 }
 
@@ -180,7 +181,7 @@ async function handleCancel() {
   cancelling.value = true
   try {
     await cancelScanDispatch({ ticketId: props.payload.ticketId })
-    message.success('派单已取消')
+    void message.success('派单已取消')
     emit('cancelled')
     emit('update:open', false)
   } catch (error) {

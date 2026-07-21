@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { PortfolioPolicyDocumentSearchVO } from '@/apis/portfolio/policy'
+import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import type { PortfolioPolicyDocumentStatusCode } from '@/types/enums/portfolio-policy-document-status-enum'
+import { PortfolioPolicyDocumentStatusDescription } from '@/types/enums/portfolio-policy-document-status-enum'
 import type { PortfolioPolicyLevelCode } from '@/types/enums/portfolio-policy-level-enum'
+import { PortfolioPolicyLevelDescription } from '@/types/enums/portfolio-policy-level-enum'
 import message from 'ant-design-vue/es/message'
 import { reactive, ref } from 'vue'
-import { portfolioPolicyApi } from '@/apis/portfolio/policy'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -17,8 +19,6 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { PortfolioPolicyDocumentStatusDescription } from '@/types/enums/portfolio-policy-document-status-enum'
-import { PortfolioPolicyLevelDescription } from '@/types/enums/portfolio-policy-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -153,7 +153,7 @@ async function downloadPreviewAttachment() {
   try {
     const result = await portfolioPolicyApi.download({ id: documentId })
     if (!result.attachmentFileId || result.attachmentFileId !== expectedFileId) {
-      message.error('政策附件已变更，请重新预览后下载')
+      void message.error('政策附件已变更，请重新预览后下载')
       return
     }
     await handleDownloadFile({ fileId: result.attachmentFileId, fileName: title })

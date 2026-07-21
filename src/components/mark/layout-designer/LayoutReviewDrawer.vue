@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ExamLayoutBlockDto, ExamLayoutDocument } from '@/apis/mark/exam-layout-design'
+import { adjustExamLayoutQuestionRegion } from '@/apis/mark/exam-layout-design'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
-import { adjustExamLayoutQuestionRegion } from '@/apis/mark/exam-layout-design'
 import LayoutCanvasLite from '@/components/mark/layout-designer/LayoutCanvasLite.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
@@ -29,8 +29,8 @@ const saving = ref(false)
 const subjectiveBlocks = computed(() =>
   (props.document?.blocks ?? []).filter(
     (block) =>
-      block.pageNo === props.pageNo
-      && (block.blockType === 'SUBJECTIVE_ANSWER' || block.blockType === 'OBJECTIVE_MATRIX'),
+      block.pageNo === props.pageNo &&
+      (block.blockType === 'SUBJECTIVE_ANSWER' || block.blockType === 'OBJECTIVE_MATRIX'),
   ),
 )
 
@@ -44,11 +44,11 @@ async function persistAdjust(): Promise<void> {
   }
   // MVR-376：默认拒绝；仅 readonly===false（父层 layoutWritable）时可写
   if (props.readonly !== false) {
-    message.warning('考试已开印或已开始扫描，制卷设计不可修改')
+    void message.warning('考试已开印或已开始扫描，制卷设计不可修改')
     return
   }
   if (!props.document || !focusedBlockId.value) {
-    message.warning('请先选择需要微调的识别块')
+    void message.warning('请先选择需要微调的识别块')
     return
   }
   const block = props.document.blocks.find((item) => item.id === focusedBlockId.value)
@@ -56,7 +56,7 @@ async function persistAdjust(): Promise<void> {
     return
   }
   if (!/^\d+$/.test(block.id)) {
-    message.warning('请先保存制卷设计后再微调识别区')
+    void message.warning('请先保存制卷设计后再微调识别区')
     return
   }
   saving.value = true
@@ -66,7 +66,7 @@ async function persistAdjust(): Promise<void> {
       blockId: block.id,
       rectNorm: block.rectNorm,
     })
-    message.success('识别区微调已保存')
+    void message.success('识别区微调已保存')
     emit('saved')
   } catch (error) {
     showUserError(error, '识别区微调保存失败')
@@ -96,7 +96,13 @@ async function persistAdjust(): Promise<void> {
         "
         @change="focusedBlockId = ($event as string | undefined) ?? null"
       />
-      <UiButton size="sm" variant="primary" :loading="saving" :disabled="readonly !== false" @click="persistAdjust">
+      <UiButton
+        size="sm"
+        variant="primary"
+        :loading="saving"
+        :disabled="readonly !== false"
+        @click="persistAdjust"
+      >
         保存微调
       </UiButton>
     </div>

@@ -6,15 +6,15 @@ import type {
   IndirectEvaluationResponseSaveRequest,
   IndirectEvaluationResponseVO,
 } from '@/apis/quality/indirect-response'
+import {
+  indirectResponseApi,
+  IndirectResponseConversionFilterCode,
+} from '@/apis/quality/indirect-response'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, ref, watch } from 'vue'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
-import {
-  indirectResponseApi,
-  IndirectResponseConversionFilterCode,
-} from '@/apis/quality/indirect-response'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import { ClassSelector, StudentSelector, TeacherSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -81,7 +81,7 @@ const emit = defineEmits<{
   'import-done': []
 }>()
 
-const VALID_FLAG_EDITOR_OPTIONS: Array<{ value: ResponseValidFlagEditorValue, label: string }> = [
+const VALID_FLAG_EDITOR_OPTIONS: Array<{ value: ResponseValidFlagEditorValue; label: string }> = [
   { value: 'pending', label: '待确认' },
   { value: 'valid', label: '有效' },
   { value: 'invalid', label: '无效' },
@@ -123,8 +123,8 @@ const pendingConfirmAlertTitle = computed(
   () => `当前题项有 ${pendingConfirmResponseCount.value} 份 AI/文档导入草稿待确认有效`,
 )
 
-const pendingConfirmAlertDescription
-  = '待确认样本尚未纳入有效样本与换算统计；请在列表中打开编辑，确认「有效 / 无效 / 待确认」后再录入换算分。'
+const pendingConfirmAlertDescription =
+  '待确认样本尚未纳入有效样本与换算统计；请在列表中打开编辑，确认「有效 / 无效 / 待确认」后再录入换算分。'
 
 function focusPendingConfirmTab() {
   if (responseListFilter.value !== 'pendingConfirm') {
@@ -140,8 +140,8 @@ const pendingConversionAlertTitle = computed(
   () => `当前题项有 ${pendingResponseCount.value} 份有效答卷待录入换算分`,
 )
 
-const pendingConversionAlertDescription
-  = '选择/开放题须教师录入 0~1 换算分后，才会纳入间接评价达成度加权均值；待换算答卷可在下方 Tab 筛选处理。'
+const pendingConversionAlertDescription =
+  '选择/开放题须教师录入 0~1 换算分后，才会纳入间接评价达成度加权均值；待换算答卷可在下方 Tab 筛选处理。'
 
 function focusPendingConversionTab() {
   if (responseListFilter.value !== 'pending') {
@@ -150,25 +150,25 @@ function focusPendingConversionTab() {
 }
 
 const responseListFilterOptions = computed(() => {
-  const options: Array<{ label: string, value: ResponseListFilter }> = [
+  const options: Array<{ label: string; value: ResponseListFilter }> = [
     { label: '全部', value: 'all' },
   ]
   if (!showConversionWorkflow.value) {
-    const pendingConfirmLabel
-      = pendingConfirmResponseCount.value > 0
+    const pendingConfirmLabel =
+      pendingConfirmResponseCount.value > 0
         ? `待确认 (${pendingConfirmResponseCount.value})`
         : '待确认'
     options.push({ label: pendingConfirmLabel, value: 'pendingConfirm' })
     return options
   }
-  const pendingLabel
-    = pendingResponseCount.value > 0 ? `待换算 (${pendingResponseCount.value})` : '待换算'
-  const noSubstantiveLabel
-    = noSubstantiveResponseCount.value > 0
+  const pendingLabel =
+    pendingResponseCount.value > 0 ? `待换算 (${pendingResponseCount.value})` : '待换算'
+  const noSubstantiveLabel =
+    noSubstantiveResponseCount.value > 0
       ? `无实质作答 (${noSubstantiveResponseCount.value})`
       : '无实质作答'
-  const pendingConfirmLabel
-    = pendingConfirmResponseCount.value > 0
+  const pendingConfirmLabel =
+    pendingConfirmResponseCount.value > 0
       ? `待确认 (${pendingConfirmResponseCount.value})`
       : '待确认'
   options.push(
@@ -219,9 +219,9 @@ const responseEditorValidFlagChoice = computed<ResponseValidFlagEditorValue>({
 
 function isScorePendingConversion(record: IndirectEvaluationResponseVO): boolean {
   return (
-    record.validFlag === true
-    && isManualConversionStatus(record.manualConversionStatus)
-    && record.manualConversionStatus === ManualConversionStatusCode.PENDING
+    record.validFlag === true &&
+    isManualConversionStatus(record.manualConversionStatus) &&
+    record.manualConversionStatus === ManualConversionStatusCode.PENDING
   )
 }
 
@@ -311,7 +311,7 @@ async function loadResponses() {
   }
 }
 
-function handleResponsePageChange(page: { current: number, pageSize: number }) {
+function handleResponsePageChange(page: { current: number; pageSize: number }) {
   responsePageNum.value = page.current
   responsePageSize.value = page.pageSize
   void loadResponses()
@@ -337,7 +337,7 @@ watch(responseListFilter, () => {
 function openResponseCreate() {
   if (!props.selectedItem || !props.selectedForm) return
   if (!isTeacherResponseWritable(props.selectedForm)) {
-    message.error('问卷已关闭或已归档，不允许录入答卷')
+    void message.error('问卷已关闭或已归档，不允许录入答卷')
     return
   }
   responseEditorMode.value = 'create'
@@ -367,20 +367,20 @@ function openResponseCreate() {
 
 function openResponseEdit(record: IndirectEvaluationResponseVO) {
   if (!props.selectedForm || !isTeacherResponseWritable(props.selectedForm)) {
-    message.error('问卷已关闭或已归档，不允许修改答卷')
+    void message.error('问卷已关闭或已归档，不允许修改答卷')
     return
   }
   conversionAuditLogs.value = []
   responseEditorMode.value = 'edit'
-  responseMultiChoiceValues.value
-    = record.multipleChoiceValues?.map((option) => option.optionValue) ?? []
+  responseMultiChoiceValues.value =
+    record.multipleChoiceValues?.map((option) => option.optionValue) ?? []
   responseEditorClassId.value = ''
-  responseIdentityName.value
-    = record.identityValues?.find((item) => item.fieldKey === 'NAME')?.fieldValue ?? ''
-  responseIdentityOrganization.value
-    = record.identityValues?.find((item) => item.fieldKey === 'ORGANIZATION')?.fieldValue ?? ''
-  responseIdentityContact.value
-    = record.identityValues?.find((item) => item.fieldKey === 'CONTACT')?.fieldValue ?? ''
+  responseIdentityName.value =
+    record.identityValues?.find((item) => item.fieldKey === 'NAME')?.fieldValue ?? ''
+  responseIdentityOrganization.value =
+    record.identityValues?.find((item) => item.fieldKey === 'ORGANIZATION')?.fieldValue ?? ''
+  responseIdentityContact.value =
+    record.identityValues?.find((item) => item.fieldKey === 'CONTACT')?.fieldValue ?? ''
   responseEditor.value = {
     id: record.id,
     formId: record.formId,
@@ -468,25 +468,25 @@ function selectedItemTypeKnown(): boolean {
 async function submitResponse() {
   const v = responseEditor.value
   if (!v.respondentType) {
-    message.error('请选择应答人类型')
+    void message.error('请选择应答人类型')
     return
   }
   if (
-    (v.respondentType === RespondentTypeCode.STUDENT
-      || v.respondentType === RespondentTypeCode.TEACHER
-      || v.respondentType === RespondentTypeCode.EXPERT
-      || v.respondentType === RespondentTypeCode.SUPERVISOR)
-    && !v.respondentId?.trim()
+    (v.respondentType === RespondentTypeCode.STUDENT ||
+      v.respondentType === RespondentTypeCode.TEACHER ||
+      v.respondentType === RespondentTypeCode.EXPERT ||
+      v.respondentType === RespondentTypeCode.SUPERVISOR) &&
+    !v.respondentId?.trim()
   ) {
-    message.error('请选择应答人')
+    void message.error('请选择应答人')
     return
   }
   if (
-    v.respondentType === RespondentTypeCode.GRADUATE
-    || v.respondentType === RespondentTypeCode.EMPLOYER
+    v.respondentType === RespondentTypeCode.GRADUATE ||
+    v.respondentType === RespondentTypeCode.EMPLOYER
   ) {
     if (!responseIdentityName.value.trim()) {
-      message.error('请填写应答人姓名')
+      void message.error('请填写应答人姓名')
       return
     }
     v.respondentId = undefined
@@ -503,35 +503,35 @@ async function submitResponse() {
     return
   }
   if (!selectedItemTypeKnown()) {
-    message.error('当前题项题型无效，无法保存答卷')
+    void message.error('当前题项题型无效，无法保存答卷')
     return
   }
   if (isScaleItemType(props.selectedItem.itemType) && v.scaleValue == null) {
-    message.error('请填写量表分值')
+    void message.error('请填写量表分值')
     return
   }
   if (isSingleChoiceItemType(props.selectedItem.itemType) && !v.singleChoiceValue?.trim()) {
-    message.error('请选择单选答案')
+    void message.error('请选择单选答案')
     return
   }
-  const multiChoiceClearedOnEdit
-    = isMultiChoiceItemType(props.selectedItem.itemType)
-      && responseEditorMode.value === 'edit'
-      && responseMultiChoiceValues.value.length === 0
+  const multiChoiceClearedOnEdit =
+    isMultiChoiceItemType(props.selectedItem.itemType) &&
+    responseEditorMode.value === 'edit' &&
+    responseMultiChoiceValues.value.length === 0
   if (
-    isMultiChoiceItemType(props.selectedItem.itemType)
-    && responseMultiChoiceValues.value.length === 0
-    && responseEditorMode.value === 'create'
+    isMultiChoiceItemType(props.selectedItem.itemType) &&
+    responseMultiChoiceValues.value.length === 0 &&
+    responseEditorMode.value === 'create'
   ) {
-    message.error('请至少选择一个多选答案')
+    void message.error('请至少选择一个多选答案')
     return
   }
   if (
-    isOpenTextItemType(props.selectedItem.itemType)
-    && props.selectedItem.required
-    && !v.openText?.trim()
+    isOpenTextItemType(props.selectedItem.itemType) &&
+    props.selectedItem.required &&
+    !v.openText?.trim()
   ) {
-    message.error('请填写开放回答')
+    void message.error('请填写开放回答')
     return
   }
   if (isScaleItemType(props.selectedItem.itemType)) {
@@ -569,7 +569,7 @@ async function submitResponse() {
     v.answerSummary = ''
     v.openText = v.openText?.trim() ?? ''
   } else {
-    message.error('当前题项题型无效，无法保存答卷')
+    void message.error('当前题项题型无效，无法保存答卷')
     return
   }
   if (multiChoiceClearedOnEdit) {
@@ -582,7 +582,7 @@ async function submitResponse() {
   }
   if (responseEditorMode.value === 'create') await indirectResponseApi.create(v)
   else await indirectResponseApi.update(v)
-  message.success('已保存')
+  void message.success('已保存')
   responseEditorVisible.value = false
   await loadResponses()
 }
@@ -614,7 +614,7 @@ function responseOpenText(record: IndirectEvaluationResponseVO): string {
 
 async function deleteResponse(record: IndirectEvaluationResponseVO) {
   if (!props.selectedForm || !isTeacherResponseWritable(props.selectedForm)) {
-    message.error('问卷已关闭或已归档，不允许删除答卷')
+    void message.error('问卷已关闭或已归档，不允许删除答卷')
     return
   }
   void confirmAsync({
@@ -622,7 +622,7 @@ async function deleteResponse(record: IndirectEvaluationResponseVO) {
     type: 'error',
     onOk: async () => {
       await indirectResponseApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadResponses()
     },
   })
@@ -651,7 +651,7 @@ function handleIndirectResponseAction(key: string, record: IndirectEvaluationRes
 function openImportExcel() {
   if (!props.selectedForm) return
   if (!isTeacherResponseWritable(props.selectedForm)) {
-    message.error('问卷已关闭或已归档，不允许导入答卷')
+    void message.error('问卷已关闭或已归档，不允许导入答卷')
     return
   }
   importExcelVisible.value = true
@@ -670,7 +670,7 @@ async function handleAiDocParseDone() {
 function openImportDocument() {
   if (!props.selectedForm) return
   if (!isTeacherResponseWritable(props.selectedForm)) {
-    message.error('问卷已关闭或已归档，不允许导入答卷')
+    void message.error('问卷已关闭或已归档，不允许导入答卷')
     return
   }
   importDocumentVisible.value = true
@@ -688,7 +688,7 @@ async function handleRebuildItemStats() {
   if (!confirmed) return
   try {
     await indirectResponseApi.rebuildItemStats(props.selectedItem.id)
-    message.success('题项答卷统计已重建')
+    void message.success('题项答卷统计已重建')
     await loadResponses()
     emit('import-done')
   } catch (error) {
@@ -716,7 +716,7 @@ defineExpose({
     class="ie__empty"
   >
     <template #default>
-      <span style="display:inline-flex;align-items:center;gap:8px">
+      <span style="display: inline-flex; align-items: center; gap: 8px">
         <UiTag tone="blue" size="sm">未选择条目</UiTag>
         <span>请在左侧选择问卷/评价条目后查看作答</span>
       </span>
@@ -847,9 +847,9 @@ defineExpose({
         <template v-else-if="column.key === 'conversionStatus'">
           <UiTag
             v-if="
-              showConversionWorkflow
-                && record.validFlag
-                && isManualConversionStatus(record.manualConversionStatus)
+              showConversionWorkflow &&
+              record.validFlag &&
+              isManualConversionStatus(record.manualConversionStatus)
             "
             :tone="manualConversionStatusTone(record.manualConversionStatus)"
           >
@@ -896,8 +896,8 @@ defineExpose({
           <UiFormItem label="应答人类型" required>
             <span
               v-if="
-                isSystemCollectedRespondentType(responseEditor.respondentType)
-                  || responseEditor.respondentType === RespondentTypeCode.AI_DRAFT
+                isSystemCollectedRespondentType(responseEditor.respondentType) ||
+                responseEditor.respondentType === RespondentTypeCode.AI_DRAFT
               "
               class="ie__sub-desc"
             >
@@ -923,9 +923,9 @@ defineExpose({
         </UiCol>
         <UiCol
           v-else-if="
-            responseEditor.respondentType === RespondentTypeCode.TEACHER
-              || responseEditor.respondentType === RespondentTypeCode.EXPERT
-              || responseEditor.respondentType === RespondentTypeCode.SUPERVISOR
+            responseEditor.respondentType === RespondentTypeCode.TEACHER ||
+            responseEditor.respondentType === RespondentTypeCode.EXPERT ||
+            responseEditor.respondentType === RespondentTypeCode.SUPERVISOR
           "
           :span="12"
         >
@@ -952,30 +952,24 @@ defineExpose({
       </UiFormItem>
       <UiRow
         v-if="
-          responseEditor.respondentType === RespondentTypeCode.GRADUATE
-            || responseEditor.respondentType === RespondentTypeCode.EMPLOYER
+          responseEditor.respondentType === RespondentTypeCode.GRADUATE ||
+          responseEditor.respondentType === RespondentTypeCode.EMPLOYER
         "
         :gutter="12"
       >
         <UiCol :span="8">
           <UiFormItem label="姓名" required>
-            <UiInput
-              size="sm" v-model="responseIdentityName" placeholder="填写姓名"
-            />
+            <UiInput size="sm" v-model="responseIdentityName" placeholder="填写姓名" />
           </UiFormItem>
         </UiCol>
         <UiCol :span="8">
           <UiFormItem label="单位">
-            <UiInput
-              size="sm" v-model="responseIdentityOrganization" placeholder="填写单位名称"
-            />
+            <UiInput size="sm" v-model="responseIdentityOrganization" placeholder="填写单位名称" />
           </UiFormItem>
         </UiCol>
         <UiCol :span="8">
           <UiFormItem label="联系方式">
-            <UiInput
-              size="sm" v-model="responseIdentityContact" placeholder="填写联系方式"
-            />
+            <UiInput size="sm" v-model="responseIdentityContact" placeholder="填写联系方式" />
           </UiFormItem>
         </UiCol>
       </UiRow>
@@ -1058,9 +1052,9 @@ defineExpose({
             />
             <p
               v-if="
-                showConversionWorkflow
-                  && responseEditorMode === 'edit'
-                  && responseEditor.convertedScore != null
+                showConversionWorkflow &&
+                responseEditorMode === 'edit' &&
+                responseEditor.convertedScore != null
               "
               class="ie__sub-desc ie__score-hint"
             >

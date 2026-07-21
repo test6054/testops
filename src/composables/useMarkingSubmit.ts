@@ -1,5 +1,6 @@
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { Ref } from 'vue'
+import { computed, ref } from 'vue'
 import type {
   MarkingPageAnnotationSubmitItem,
   MarkingQuestionScoreSubmitItem,
@@ -7,16 +8,15 @@ import type {
   MarkingTaskResponse,
   QuestionMarkingGroupQuestionResponse,
 } from '@/apis/mark/marking-organization'
+import { MarkingTaskStatusCode, submitMarkingTask } from '@/apis/mark/marking-organization'
 import type { WholeQuestionForm } from '@/composables/useWholePaperGallery'
 import message from 'ant-design-vue/es/message'
-import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   batchSubmitMarkingTasksInChunks,
   MarkingTaskBatchOutcomeCode,
   precheckMarkingTaskBatch,
 } from '@/apis/mark/marking-batch'
-import { MarkingTaskStatusCode, submitMarkingTask } from '@/apis/mark/marking-organization'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import {
   buildGradingDraftKey,
@@ -27,7 +27,11 @@ import {
 import { useMarkingRecentSubmit } from '@/composables/useMarkingRecentSubmit'
 import { useWorkspaceExamId } from '@/composables/useMarkWorkbenchContext'
 import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWithdrawPolicy'
-import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserErrorMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import {
   isMultiResponseSliceConflict,
   MarkingConflictHint,
@@ -48,7 +52,7 @@ export interface UseMarkingSubmitOptions {
   loadTask: () => Promise<void>
   ensureBatchLoaded: (examId: string) => Promise<void>
   tenantId: Ref<string>
-  form: { score?: number, annotationNote?: string }
+  form: { score?: number; annotationNote?: string }
   wholeQuestions: Ref<QuestionMarkingGroupQuestionResponse[]>
   getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
   wholePageAnnotationForms: Record<string, string>
@@ -56,7 +60,7 @@ export interface UseMarkingSubmitOptions {
     questionScores: MarkingQuestionScoreSubmitItem[]
     pageAnnotations: MarkingPageAnnotationSubmitItem[]
   } | null
-  onSubmitSuccess?: (payload: { taskId: string, score: number }) => void
+  onSubmitSuccess?: (payload: { taskId: string; score: number }) => void
 }
 
 export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
@@ -166,8 +170,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     return options.batchTasks.value.filter((item) => {
       if (item.id === currentTask.id) return false
       if (
-        item.taskStatus !== MarkingTaskStatusCode.ALLOCATED
-        && item.taskStatus !== MarkingTaskStatusCode.IN_PROGRESS
+        item.taskStatus !== MarkingTaskStatusCode.ALLOCATED &&
+        item.taskStatus !== MarkingTaskStatusCode.IN_PROGRESS
       ) {
         return false
       }
@@ -178,7 +182,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   function buildDraftPayload() {
-    const wholeQuestionForms: Record<string, { score?: number, annotationText: string }> = {}
+    const wholeQuestionForms: Record<string, { score?: number; annotationText: string }> = {}
     for (const question of options.wholeQuestions.value) {
       const qForm = options.getWholeQuestionForm(question.layoutQuestionId)
       if (qForm.score !== undefined || qForm.annotationText.trim()) {
@@ -237,15 +241,17 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     // MVR-413：与 canSubmit / isScoreReadOnly / BE requireActiveExam 二次闸，禁止关考后批量应用假可写
     if (options.isReadOnly.value || !options.canSubmit.value) {
       showFormValidationMessage(
-        options.isReadOnly.value ? '当前不可给分（已定稿/已回收或考试已关闭）' : '当前任务状态不可提交给分',
+        options.isReadOnly.value
+          ? '当前不可给分（已定稿/已回收或考试已关闭）'
+          : '当前任务状态不可提交给分',
       )
       closeApplyModal()
       return
     }
     const currentTask = options.task.value
     const score = submittedScoreSnapshot.value
-    const layoutQuestionId
-      = pendingBatchLayoutQuestionId.value || options.questionView.value?.layoutQuestionId
+    const layoutQuestionId =
+      pendingBatchLayoutQuestionId.value || options.questionView.value?.layoutQuestionId
     if (!currentTask?.examId || !currentTask.groupId || score === undefined || !layoutQuestionId) {
       closeApplyModal()
       return
@@ -285,7 +291,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     try {
       const precheck = await precheckMarkingTaskBatch({ ...baseRequest, taskIds })
       if (!precheck.passed) {
-        message.error(precheck.blockingReason ?? '批量预检未通过')
+        void message.error(precheck.blockingReason ?? '批量预检未通过')
         return
       }
       const results = await batchSubmitMarkingTasksInChunks(baseRequest, taskIds, (done, total) => {
@@ -315,7 +321,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
           promptMultiResponseSliceConflict(currentTask.examId, failureMessage)
           return
         }
-        message.error(
+        void message.error(
           submittedTaskIds.length > 0
             ? `${failureMessage}（已成功提交 ${submittedTaskIds.length} 份，请处理剩余任务）`
             : failureMessage,
@@ -324,9 +330,9 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       }
       const warn = results.find((item) => item.outcome === MarkingTaskBatchOutcomeCode.WARN)
       if (warn?.annotationWarning) {
-        message.warning(warn.annotationWarning)
+        void message.warning(warn.annotationWarning)
       } else {
-        message.success(`已将 ${submittedTaskIds.length} 份同类卷应用 ${score} 分`)
+        void message.success(`已将 ${submittedTaskIds.length} 份同类卷应用 ${score} 分`)
       }
     } catch (error) {
       handleSubmitFailure(error, currentTask.examId, '批量应用给分失败')
@@ -380,14 +386,14 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   function continueAfterSubmit(): void {
     if (options.nextTaskId.value) {
       if (!applyModalOpen.value) {
-        message.success(
+        void message.success(
           `阅卷任务已提交，已切换到${options.isWholePaperTask.value ? '下一未阅份' : '下一未阅'}`,
         )
         options.goToTask(options.nextTaskId.value)
       }
       return
     }
-    message.success(
+    void message.success(
       `阅卷任务已提交，当前批次无更多未阅，已停在最后${options.isWholePaperTask.value ? '一份' : '一题'}`,
     )
     void options.loadTask()
@@ -401,7 +407,9 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     // 覆盖 AI 采纳、整卷末题 Enter、键盘 Enter 等非按钮入口，禁止仅靠 disabled 拦截。
     if (options.isReadOnly.value || !options.canSubmit.value) {
       showFormValidationMessage(
-        options.isReadOnly.value ? '当前不可给分（已定稿/已回收或考试已关闭）' : '当前任务状态不可提交给分',
+        options.isReadOnly.value
+          ? '当前不可给分（已定稿/已回收或考试已关闭）'
+          : '当前任务状态不可提交给分',
       )
       return
     }
@@ -416,8 +424,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     onGradingDraftSubmitStart()
     submitting.value = true
     const currentTask = options.task.value
-    const draftKey
-      = options.tenantId.value && currentTask
+    const draftKey =
+      options.tenantId.value && currentTask
         ? buildGradingDraftKey(options.tenantId.value, currentTask.examId, currentTask.id)
         : null
     try {
@@ -477,7 +485,9 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
     // MVR-413：与 submit 二次闸同源，避免采纳入口绕过按钮 disabled
     if (options.isReadOnly.value || !options.canSubmit.value) {
       showFormValidationMessage(
-        options.isReadOnly.value ? '当前不可给分（已定稿/已回收或考试已关闭）' : '当前任务状态不可提交给分',
+        options.isReadOnly.value
+          ? '当前不可给分（已定稿/已回收或考试已关闭）'
+          : '当前任务状态不可提交给分',
       )
       return
     }
@@ -493,8 +503,8 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       const hasQuestionDraft = options.wholeQuestions.value.some((question) => {
         const questionForm = options.getWholeQuestionForm(question.layoutQuestionId)
         return (
-          (questionForm.score !== undefined && questionForm.score !== null)
-          || (questionForm.annotationText?.trim() ?? '') !== ''
+          (questionForm.score !== undefined && questionForm.score !== null) ||
+          (questionForm.annotationText?.trim() ?? '') !== ''
         )
       })
       if (hasQuestionDraft) return true

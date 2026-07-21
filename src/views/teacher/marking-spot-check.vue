@@ -14,10 +14,7 @@
       <SignalBand compact variant="panel" :metrics="spotCheckSignalMetrics" />
     </template>
 
-    <ExamSelectGateStrip
-      v-if="!selectedExamId"
-      body="请从考试列表进入工作台后再进行阅卷抽检"
-    />
+    <ExamSelectGateStrip v-if="!selectedExamId" body="请从考试列表进入工作台后再进行阅卷抽检" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -93,7 +90,13 @@
     >
       <template #footer>
         <UiButton size="sm" variant="outline" @click="modalOpen = false">取消</UiButton>
-        <UiButton size="sm" variant="primary" :loading="submitting" :disabled="!valid" @click="submitConclusion">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="submitting"
+          :disabled="!valid"
+          @click="submitConclusion"
+        >
           提交结论
         </UiButton>
       </template>
@@ -172,13 +175,7 @@
 
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
-import type {
-  MyPendingSpotCheckItemResponse,
-} from '@/apis/mark/marking-quality'
-import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
+import type { MyPendingSpotCheckItemResponse } from '@/apis/mark/marking-quality'
 import {
   countMyPendingSpotChecks,
   handleSpotCheck,
@@ -188,6 +185,10 @@ import {
   SpotCheckStatusCode,
   SpotCheckStatusDescription,
 } from '@/apis/mark/marking-quality'
+import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
@@ -283,7 +284,7 @@ async function loadList(): Promise<void> {
   }
 }
 
-function handlePageChange(page: { current: number, pageSize: number }): void {
+function handlePageChange(page: { current: number; pageSize: number }): void {
   pagination.pageNum = page.current
   pagination.pageSize = page.pageSize
   void loadList()
@@ -334,8 +335,8 @@ const valid = computed(() => Boolean(targetItem.value?.id && form.conclusion))
  */
 function canHandleSpotCheckItem(item: MyPendingSpotCheckItemResponse): boolean {
   if (
-    item.spotCheckStatus !== SpotCheckStatusCode.PENDING
-    && item.spotCheckStatus !== SpotCheckStatusCode.IN_PROGRESS
+    item.spotCheckStatus !== SpotCheckStatusCode.PENDING &&
+    item.spotCheckStatus !== SpotCheckStatusCode.IN_PROGRESS
   ) {
     return false
   }
@@ -362,7 +363,7 @@ function handleSpotCheckAction(key: string, item: MyPendingSpotCheckItemResponse
 function openHandleModal(item: MyPendingSpotCheckItemResponse): void {
   // MVR-393：打开结案弹窗二次拦截
   if (canHandleSpotCheckItem(item) !== true) {
-    message.warning('当前抽检任务不可处理，请刷新后重试')
+    void message.warning('当前抽检任务不可处理，请刷新后重试')
     return
   }
   targetItem.value = item
@@ -377,7 +378,7 @@ async function submitConclusion(): Promise<void> {
   if (submitting.value) return
   // MVR-393：提交与 BE 自检/状态门禁二次拦截
   if (canHandleSpotCheckItem(targetItem.value) !== true) {
-    message.warning('当前抽检任务不可处理，请刷新后重试')
+    void message.warning('当前抽检任务不可处理，请刷新后重试')
     modalOpen.value = false
     targetItem.value = null
     return
@@ -390,7 +391,7 @@ async function submitConclusion(): Promise<void> {
       reviewScore: form.reviewScore,
       handleNote: form.handleNote.trim() || undefined,
     })
-    message.success('已提交抽检处理结论')
+    void message.success('已提交抽检处理结论')
     modalOpen.value = false
     targetItem.value = null
     await loadList()

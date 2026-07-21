@@ -7,11 +7,11 @@ import type {
   IndirectEvaluationStatisticsVO,
   TargetWeightedScoreVO,
 } from '@/apis/quality/indirect-form'
+import { indirectFormApi } from '@/apis/quality/indirect-form'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { indirectFormApi } from '@/apis/quality/indirect-form'
 import { IndirectFormAccessModeCode } from '@/apis/quality/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -129,10 +129,7 @@ function openPublishDrawer(record: IndirectEvaluationFormVO) {
   publishResultUrl.value = ''
   const start = dayjs()
   const end = dayjs().add(14, 'day')
-  publishTimeRange.value = [
-    start.format('YYYY-MM-DD HH:mm:ss'),
-    end.format('YYYY-MM-DD HH:mm:ss'),
-  ]
+  publishTimeRange.value = [start.format('YYYY-MM-DD HH:mm:ss'), end.format('YYYY-MM-DD HH:mm:ss')]
   Object.assign(publishEditor, {
     id: record.id,
     startTime: start.format('YYYY-MM-DD HH:mm:ss'),
@@ -151,13 +148,13 @@ function openPublishDrawer(record: IndirectEvaluationFormVO) {
 async function submitPublish() {
   if (!publishTargetForm.value) return
   if (!publishTimeRange.value) {
-    message.error('请设置问卷填写时间窗口')
+    void message.error('请设置问卷填写时间窗口')
     return
   }
   publishEditor.startTime = publishTimeRange.value[0]
   publishEditor.endTime = publishTimeRange.value[1]
   if (!publishEditor.allowAnonymous && !publishEditor.requireIdentityFields?.length) {
-    message.error('非匿名问卷必须配置身份字段')
+    void message.error('非匿名问卷必须配置身份字段')
     return
   }
   publishSubmitting.value = true
@@ -171,7 +168,7 @@ async function submitPublish() {
     publishResultUrl.value = result.publicUrl.startsWith('http')
       ? result.publicUrl
       : buildPublicSurveyUrl(result.accessToken)
-    message.success('问卷已发布')
+    void message.success('问卷已发布')
     emit('forms-reloaded', publishTargetForm.value.id)
     void loadWorkflowProgress(publishTargetForm.value.id)
   } catch (error) {
@@ -189,7 +186,7 @@ async function handleCloseForm(record: IndirectEvaluationFormVO) {
     type: 'warning',
     onOk: async () => {
       await indirectFormApi.close(record.id)
-      message.success('问卷已关闭')
+      void message.success('问卷已关闭')
       emit('forms-reloaded', record.id)
       void loadWorkflowProgress(record.id)
     },
@@ -277,7 +274,7 @@ async function loadStatisticsItems() {
   }
 }
 
-function handleStatisticsItemPageChange(page: { current: number, pageSize: number }) {
+function handleStatisticsItemPageChange(page: { current: number; pageSize: number }) {
   statisticsItemPageNum.value = page.current
   statisticsItemPageSize.value = page.pageSize
   void loadStatisticsItems()
@@ -313,9 +310,9 @@ async function exportContribution() {
     const result = await indirectFormApi.exportContribution(statisticsFormId.value)
     await handleDownloadFile({ fileId: result.fileNodeId, fileName: result.fileName })
     if (result.staleFlag && result.staleMessage) {
-      message.warning(result.staleMessage)
+      void message.warning(result.staleMessage)
     }
-    message.success(`已导出 ${result.rowCount} 行认证明细`)
+    void message.success(`已导出 ${result.rowCount} 行认证明细`)
   } catch (error) {
     showUserError(error, '认证明细导出失败')
   } finally {
@@ -326,15 +323,15 @@ async function exportContribution() {
 /** 复制公开填答链接到剪贴板 */
 async function copySurveyLink(record: IndirectEvaluationFormVO) {
   if (!record.accessToken) {
-    message.error('问卷尚未发布，无法复制填答链接')
+    void message.error('问卷尚未发布，无法复制填答链接')
     return
   }
   const url = buildPublicSurveyUrl(record.accessToken)
   try {
     await navigator.clipboard.writeText(url)
-    message.success('填答链接已复制')
+    void message.success('填答链接已复制')
   } catch {
-    message.error('复制失败，请手动复制链接')
+    void message.error('复制失败，请手动复制链接')
   }
 }
 
@@ -424,9 +421,7 @@ defineExpose({
         />
       </UiFormItem>
       <UiFormItem label="访问模式" required>
-        <UiSelect
-          size="sm" v-model="publishEditor.accessMode" :options="accessModeOptions"
-        />
+        <UiSelect size="sm" v-model="publishEditor.accessMode" :options="accessModeOptions" />
       </UiFormItem>
       <UiFormItem label="允许匿名">
         <UiSwitch size="sm" v-model="publishEditor.allowAnonymous" />
@@ -458,7 +453,9 @@ defineExpose({
         <p>状态：{{ formStatusLabel(progressData.status) }}</p>
         <p>
           填答份数：{{ progressData.submissionCount }} / 有效批次 {{ progressData.validCount }}
-          <span v-if="progressData.expectedSample">（预期 {{ progressData.expectedSample }} 份）</span>
+          <span v-if="progressData.expectedSample"
+            >（预期 {{ progressData.expectedSample }} 份）</span
+          >
         </p>
         <p v-if="progressData.completionRate != null">
           填答完成率：{{ progressData.completionRate }}%
@@ -474,21 +471,21 @@ defineExpose({
         </p>
         <p v-if="(progressData.pendingConfirmCount ?? 0) > 0" class="ie__progress-pending-confirm">
           待确认有效
-          {{
-            progressData.pendingConfirmCount
-          }}
+          {{ progressData.pendingConfirmCount }}
           份（AI/文档导入草稿，须逐份确认有效后再纳入换算统计）
         </p>
         <p
           v-if="
-            (progressData.scoredResponseCount ?? 0) > 0
-              || (progressData.pendingConversionCount ?? 0) > 0
-              || (progressData.noSubstantiveCount ?? 0) > 0
+            (progressData.scoredResponseCount ?? 0) > 0 ||
+            (progressData.pendingConversionCount ?? 0) > 0 ||
+            (progressData.noSubstantiveCount ?? 0) > 0
           "
         >
           已换算 {{ progressData.scoredResponseCount ?? 0 }} · 待换算
           {{ progressData.pendingConversionCount ?? 0 }}
-          <span v-if="(progressData.pendingConversionCount ?? 0) > 0">（选择/开放题须教师录入换算分）</span>
+          <span v-if="(progressData.pendingConversionCount ?? 0) > 0"
+            >（选择/开放题须教师录入换算分）</span
+          >
           <span v-if="(progressData.noSubstantiveCount ?? 0) > 0">
             · 无实质作答 {{ progressData.noSubstantiveCount }}
           </span>
@@ -542,8 +539,8 @@ defineExpose({
           </span>
           <span
             v-else-if="
-              showTargetScoreCards(statisticsData.targetScores)
-                && statisticsData.targetScores!.length > 1
+              showTargetScoreCards(statisticsData.targetScores) &&
+              statisticsData.targetScores!.length > 1
             "
             class="ie__stats-multi-target-hint"
           >
@@ -579,22 +576,25 @@ defineExpose({
               </p>
               <p
                 v-if="
-                  target.directValue != null
-                    || target.indirectAchievementValue != null
-                    || target.compositeValue != null
+                  target.directValue != null ||
+                  target.indirectAchievementValue != null ||
+                  target.compositeValue != null
                 "
                 class="ie__target-score-synthesis"
               >
                 <span v-if="target.directValue != null">D {{ target.directValue }}</span>
                 <span v-if="target.indirectAchievementValue != null">
-                  · I {{ target.indirectAchievementValue }}</span>
+                  · I {{ target.indirectAchievementValue }}</span
+                >
                 <span
                   v-if="formatDirectIndirectWeights(target.directWeight, target.indirectWeight)"
                 >
                   · w {{ formatDirectIndirectWeights(target.directWeight, target.indirectWeight) }}
                 </span>
                 <span v-if="target.compositeValue != null"> · C {{ target.compositeValue }}</span>
-                <span v-if="target.achievementStaleFlag" class="ie__target-score-stale">（已过期）</span>
+                <span v-if="target.achievementStaleFlag" class="ie__target-score-stale"
+                  >（已过期）</span
+                >
               </p>
               <UiButton
                 v-if="target.achievementResultId"

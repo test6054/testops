@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ScannerAgentReleaseResponse } from '@/apis/mark/scanner-agent-release'
-import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   deleteScannerAgentRelease,
   pageScannerAgentReleases,
   publishScannerAgentRelease,
   registerScannerAgentRelease,
 } from '@/apis/mark/scanner-agent-release'
+import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -127,7 +127,7 @@ function resetRegisterForm() {
 function openRegisterModal() {
   // MVR-316：注册入口与 canManage 同源
   if (canManage.value !== true) {
-    message.warning('仅平台超级管理员可维护扫描端发布包')
+    void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
   resetRegisterForm()
@@ -165,7 +165,7 @@ async function loadReleases() {
 async function submitRegister() {
   // MVR-316：与 BE 超管发布包门禁二次拦截
   if (canManage.value !== true) {
-    message.warning('仅平台超级管理员可维护扫描端发布包')
+    void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
   if (saving.value) return
@@ -185,7 +185,7 @@ async function submitRegister() {
       fileId: registerForm.fileNodeId,
       releaseNotes: registerForm.releaseNotes.trim() || undefined,
     })
-    message.success('发布包已注册')
+    void message.success('发布包已注册')
     registerOpen.value = false
     pagination.current = 1
     await loadReleases()
@@ -216,7 +216,7 @@ function handleReleaseRowAction(key: string, record: ScannerAgentReleaseResponse
 function openPublishModal(record: ScannerAgentReleaseResponse) {
   // MVR-316：发布入口与 canManage 同源
   if (canManage.value !== true) {
-    message.warning('仅平台超级管理员可维护扫描端发布包')
+    void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
   publishTarget.value = record
@@ -227,7 +227,7 @@ function openPublishModal(record: ScannerAgentReleaseResponse) {
 async function submitPublish() {
   // MVR-316：与 BE 超管发布包门禁二次拦截
   if (canManage.value !== true) {
-    message.warning('仅平台超级管理员可维护扫描端发布包')
+    void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
   if (!publishTarget.value) {
@@ -240,7 +240,7 @@ async function submitPublish() {
       releaseId: publishTarget.value.id,
       pushEnabled: publishPushEnabled.value,
     })
-    message.success('版本已发布')
+    void message.success('版本已发布')
     publishOpen.value = false
     publishTarget.value = null
     await loadReleases()
@@ -254,7 +254,7 @@ async function submitPublish() {
 async function confirmDelete(record: ScannerAgentReleaseResponse) {
   // MVR-316：删除与 canManage 二次拦截
   if (canManage.value !== true) {
-    message.warning('仅平台超级管理员可维护扫描端发布包')
+    void message.warning('仅平台超级管理员可维护扫描端发布包')
     return
   }
   if (record.published) {
@@ -274,7 +274,7 @@ async function confirmDelete(record: ScannerAgentReleaseResponse) {
   deleting.value = true
   try {
     await deleteScannerAgentRelease({ releaseId: record.id })
-    message.success('发布包已删除')
+    void message.success('发布包已删除')
     await loadReleases()
   } catch (error) {
     showUserError(error, '删除失败')
@@ -294,7 +294,7 @@ function handleResetSearch() {
   void loadReleases()
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pagination.current = pageEvent.current
   pagination.pageSize = pageEvent.pageSize
   void loadReleases()
@@ -411,7 +411,10 @@ onMounted(() => {
       <UiForm layout="vertical">
         <UiFormItem label="版本号" required>
           <UiInput
-            size="sm" v-model="registerForm.version" placeholder="例如 1.2.0" :maxlength="32"
+            size="sm"
+            v-model="registerForm.version"
+            placeholder="例如 1.2.0"
+            :maxlength="32"
           />
         </UiFormItem>
         <UiFormItem label="安装包" required>
@@ -446,7 +449,8 @@ onMounted(() => {
       @ok="submitPublish"
     >
       <p v-if="publishTarget">
-        将 <strong>{{ publishTarget.version }}</strong>（{{ publishTarget.fileName }}）设为当前发布版本，其他已发布包会自动下线。
+        将 <strong>{{ publishTarget.version }}</strong
+        >（{{ publishTarget.fileName }}）设为当前发布版本，其他已发布包会自动下线。
       </p>
       <UiFormItem v-if="publishTarget && isMsiPackage(publishTarget)" label="主动推送更新">
         <UiCheckbox v-model="publishPushEnabled">

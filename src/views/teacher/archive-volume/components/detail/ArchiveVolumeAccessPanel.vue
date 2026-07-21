@@ -3,7 +3,9 @@
     <template #head>
       <div class="archive-volume-access-panel__head">
         <h3 class="archive-volume-access-panel__title">查阅/借阅审批</h3>
-        <UiButton v-if="canRequestAccess" variant="primary" size="sm" @click="openAccessRequest">发起借阅</UiButton>
+        <UiButton v-if="canRequestAccess" variant="primary" size="sm" @click="openAccessRequest"
+          >发起借阅</UiButton
+        >
       </div>
     </template>
 
@@ -76,8 +78,8 @@
 
         <div
           v-if="
-            record.accessStatus === ArchiveAccessStatusCode.PENDING
-              && canApproveAccessRecord(record)
+            record.accessStatus === ArchiveAccessStatusCode.PENDING &&
+            canApproveAccessRecord(record)
           "
           class="approval-card__actions"
         >
@@ -133,7 +135,9 @@
             </div>
           </template>
           <template v-else>
-            <UiButton size="sm" variant="primary" @click="startApprove(record.accessRecordId)">批准</UiButton>
+            <UiButton size="sm" variant="primary" @click="startApprove(record.accessRecordId)"
+              >批准</UiButton
+            >
             <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)">
               拒绝
             </UiButton>
@@ -142,8 +146,8 @@
 
         <div
           v-if="
-            record.accessStatus === ArchiveAccessStatusCode.ACTIVE
-              && record.applicantUserId === currentUserId
+            record.accessStatus === ArchiveAccessStatusCode.ACTIVE &&
+            record.applicantUserId === currentUserId
           "
           class="approval-card__actions"
         >
@@ -159,7 +163,9 @@
             size="sm"
             variant="outline"
             :loading="accessDownloadBusyId === record.accessRecordId"
-            :disabled="!resolveAccessMaterialId(record) || !!accessDownloadBusyId || !!accessPreviewBusyId"
+            :disabled="
+              !resolveAccessMaterialId(record) || !!accessDownloadBusyId || !!accessPreviewBusyId
+            "
             @click="handleAccessDownload(record)"
           >
             下载材料
@@ -168,7 +174,9 @@
             size="sm"
             variant="outline"
             :loading="accessPreviewBusyId === record.accessRecordId"
-            :disabled="!resolveAccessMaterialId(record) || !!accessDownloadBusyId || !!accessPreviewBusyId"
+            :disabled="
+              !resolveAccessMaterialId(record) || !!accessDownloadBusyId || !!accessPreviewBusyId
+            "
             @click="handleAccessPreview(record)"
           >
             在线预览
@@ -190,9 +198,7 @@
     >
       <UiForm layout="vertical">
         <UiFormItem label="查阅范围" required>
-          <UiSelect
-            size="sm" v-model="accessRequestMaterialId" :options="accessScopeOptions"
-          />
+          <UiSelect size="sm" v-model="accessRequestMaterialId" :options="accessScopeOptions" />
         </UiFormItem>
         <UiFormItem label="查阅原因" required>
           <UiTextarea
@@ -241,8 +247,6 @@ import type {
   ArchiveVolumeAccessRecordResponse,
   ArchiveVolumeMaterialResponse,
 } from '@/apis/mark/archive-volume'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import {
   approveArchiveVolumeAccess,
   ArchiveAccessStatusCode,
@@ -253,6 +257,8 @@ import {
   rejectArchiveVolumeAccess,
   requestArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref } from 'vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -341,11 +347,11 @@ async function handleAccessDownload(record: ArchiveVolumeAccessRecordResponse) {
   const materialId = resolveAccessMaterialId(record)
   const downloadToken = record.downloadToken
   if (!materialId) {
-    message.error('查阅记录未绑定材料，无法下载')
+    void message.error('查阅记录未绑定材料，无法下载')
     return
   }
   if (!downloadToken) {
-    message.error('查阅记录缺少下载令牌，请重新申请或联系审批人')
+    void message.error('查阅记录缺少下载令牌，请重新申请或联系审批人')
     return
   }
   accessDownloadBusyId.value = record.accessRecordId
@@ -371,11 +377,11 @@ async function handleAccessPreview(record: ArchiveVolumeAccessRecordResponse) {
   const materialId = resolveAccessMaterialId(record)
   const downloadToken = record.downloadToken
   if (!materialId) {
-    message.error('查阅记录未绑定材料，无法预览')
+    void message.error('查阅记录未绑定材料，无法预览')
     return
   }
   if (!downloadToken) {
-    message.error('查阅记录缺少下载令牌，请重新申请或联系审批人')
+    void message.error('查阅记录缺少下载令牌，请重新申请或联系审批人')
     return
   }
   accessPreviewBusyId.value = record.accessRecordId
@@ -386,11 +392,11 @@ async function handleAccessPreview(record: ArchiveVolumeAccessRecordResponse) {
       downloadToken,
     })
     if (response.status !== 200 || !response.data || response.data.size === 0) {
-      message.error('材料暂不能预览')
+      void message.error('材料暂不能预览')
       return
     }
     if (response.data.type === 'text/plain' || response.data.type === 'application/json') {
-      message.error('材料暂不能预览')
+      void message.error('材料暂不能预览')
       return
     }
     const url = window.URL.createObjectURL(response.data)
@@ -436,7 +442,7 @@ async function submitReadPage() {
       accessRecordId: readPageForm.accessRecordId,
       lastReadPage: readPageForm.lastReadPage,
     })
-    message.success('阅读页码已保存')
+    void message.success('阅读页码已保存')
     readPageModalOpen.value = false
     resetReadPageForm()
     await loadAccessRecords()
@@ -450,7 +456,7 @@ async function submitReadPage() {
 function openAccessRequest() {
   // MVR-299：与 canRequestAccess 同源二次拦截
   if (props.canRequestAccess !== true) {
-    message.warning('当前账号无发起借阅权限')
+    void message.warning('当前账号无发起借阅权限')
     return
   }
   accessReason.value = ''
@@ -465,7 +471,7 @@ function resolveAccessMaterialId(record: ArchiveVolumeAccessRecordResponse): str
 async function submitAccessRequest() {
   if (accessSubmitting.value) return
   if (props.canRequestAccess !== true) {
-    message.warning('当前账号无发起借阅权限')
+    void message.warning('当前账号无发起借阅权限')
     return
   }
   if (!accessReason.value.trim()) {
@@ -479,7 +485,7 @@ async function submitAccessRequest() {
       materialId: accessRequestMaterialId.value || undefined,
       accessReason: accessReason.value.trim(),
     })
-    message.success('查阅申请已提交')
+    void message.success('查阅申请已提交')
     accessModalOpen.value = false
     await loadAccessRecords()
   } catch (error) {
@@ -506,7 +512,7 @@ async function submitApproveAccess(accessRecordId: string) {
   // MVR-299：审批写二次拦截（与行级 canApproveAccessRecord 对齐）
   const target = accessRecords.value.find((item) => item.accessRecordId === accessRecordId)
   if (!target || !props.canApproveAccessRecord(target)) {
-    message.warning('当前账号无批准查阅权限')
+    void message.warning('当前账号无批准查阅权限')
     return
   }
   approveAccessSubmitting.value = true
@@ -516,7 +522,7 @@ async function submitApproveAccess(accessRecordId: string) {
       accessRecordId,
       decisionComment: decisionComment || undefined,
     })
-    message.success('已批准查阅')
+    void message.success('已批准查阅')
     cancelApprove()
     await loadAccessRecords()
   } catch (error) {
@@ -542,7 +548,7 @@ async function submitRejectAccess(accessRecordId: string) {
   if (rejectAccessSubmitting.value) return
   const target = accessRecords.value.find((item) => item.accessRecordId === accessRecordId)
   if (!target || !props.canApproveAccessRecord(target)) {
-    message.warning('当前账号无驳回查阅权限')
+    void message.warning('当前账号无驳回查阅权限')
     return
   }
   if (!rejectAccessComment.value.trim()) {
@@ -555,7 +561,7 @@ async function submitRejectAccess(accessRecordId: string) {
       accessRecordId,
       decisionComment: rejectAccessComment.value.trim(),
     })
-    message.success('已驳回查阅')
+    void message.success('已驳回查阅')
     cancelReject()
     await loadAccessRecords()
   } catch (error) {

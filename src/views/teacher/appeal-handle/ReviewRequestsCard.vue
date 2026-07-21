@@ -16,7 +16,9 @@
           @search="handleSearch"
           @reset="handleFilterReset"
         />
-        <span v-if="pagination.total > 0" class="appeal-section__count">{{ pagination.total }} 条</span>
+        <span v-if="pagination.total > 0" class="appeal-section__count"
+          >{{ pagination.total }} 条</span
+        >
       </div>
 
       <UiDataTable
@@ -83,7 +85,9 @@
           />
           <UiFormItem label="申请学生">
             <UiInput
-              size="sm" :value="targetRequest ? formatStudent(targetRequest) : ''" disabled
+              size="sm"
+              :value="targetRequest ? formatStudent(targetRequest) : ''"
+              disabled
             />
           </UiFormItem>
           <UiFormItem label="复核题目">
@@ -141,9 +145,6 @@ import type {
   GradeReviewReasonTypeCode,
   GradeReviewRequestItemResponse,
 } from '@/apis/mark/grade-review'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
 import {
   claimReviewRequest,
   getReviewSummary,
@@ -156,6 +157,9 @@ import {
   REVIEW_REQUEST_STATUS_OPTIONS,
   REVIEW_REQUEST_STATUS_TONE,
 } from '@/apis/mark/grade-review'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -176,7 +180,7 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ReviewRequestsCard' })
 
-const props = defineProps<{ examId: string, reloadToken: number }>()
+const props = defineProps<{ examId: string; reloadToken: number }>()
 const emit = defineEmits<{
   (e: 'handled'): void
   (e: 'pending-change', count: number): void
@@ -196,7 +200,7 @@ const pagination = reactive({
   total: 0,
 })
 
-const filterForm = reactive<{ status?: GradeReviewRequestStatusCode, keyword: string }>({
+const filterForm = reactive<{ status?: GradeReviewRequestStatusCode; keyword: string }>({
   keyword: '',
 })
 
@@ -254,9 +258,9 @@ const handleTitle = computed(() =>
 /** MVR-194：与 BE assertGradeReviewOperatorSeparatedFromStudent 同源 */
 function isGradeReviewApplicantSelf(record: GradeReviewRequestItemResponse): boolean {
   return Boolean(
-    currentUserId.value
-    && record.studentUserId
-    && String(record.studentUserId) === String(currentUserId.value),
+    currentUserId.value &&
+    record.studentUserId &&
+    String(record.studentUserId) === String(currentUserId.value),
   )
 }
 
@@ -277,9 +281,9 @@ function canHandleReviewRequest(record: GradeReviewRequestItemResponse): boolean
     return false
   }
   return (
-    record.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW
-    && Boolean(currentUserId.value)
-    && record.reviewerUserId === currentUserId.value
+    record.requestStatus === GradeReviewRequestStatusCode.IN_REVIEW &&
+    Boolean(currentUserId.value) &&
+    record.reviewerUserId === currentUserId.value
   )
 }
 
@@ -308,11 +312,11 @@ async function handleReviewRequestAction(
   if (key === 'claim') {
     // MVR-395：与 canClaimReviewRequest / BE PENDING+双人制 二次拦截，禁止仅行动作显隐
     if (!canManageReviewerWrites.value) {
-      message.warning('当前账号无复核申请处理权限')
+      void message.warning('当前账号无复核申请处理权限')
       return
     }
     if (!canClaimReviewRequest(record)) {
-      message.warning('当前申请不可领取（状态已变或申请人本人不可领）')
+      void message.warning('当前申请不可领取（状态已变或申请人本人不可领）')
       return
     }
     if (!record.id || claimingId.value) {
@@ -321,7 +325,7 @@ async function handleReviewRequestAction(
     claimingId.value = record.id
     try {
       await claimReviewRequest({ reviewRequestId: record.id })
-      message.success('已领取复核申请')
+      void message.success('已领取复核申请')
       await reload()
     } catch (error) {
       showUserError(error, '领取复核申请失败')
@@ -342,7 +346,7 @@ function openHandleModal(
   conclusion: GradeReviewRequestStatusCode,
 ): void {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无复核申请处理权限')
+    void message.warning('当前账号无复核申请处理权限')
     return
   }
   if (!canHandleReviewRequest(record)) {
@@ -368,7 +372,8 @@ async function loadPendingCount(): Promise<void> {
   try {
     const summary = await getReviewSummary(props.examId)
     canManageReviewerWrites.value = summary.canManageReviewerWrites === true
-    pendingCount.value = summary.pendingRequestCount + summary.inReviewRequestCount + summary.approvedRequestCount
+    pendingCount.value =
+      summary.pendingRequestCount + summary.inReviewRequestCount + summary.approvedRequestCount
     emit('pending-change', pendingCount.value)
   } catch (error) {
     pendingCount.value = 0
@@ -416,7 +421,7 @@ function handleFilterReset(): void {
   void reload()
 }
 
-function handlePageChange(pageInfo: { current: number, pageSize: number }): void {
+function handlePageChange(pageInfo: { current: number; pageSize: number }): void {
   pagination.current = pageInfo.current
   pagination.pageSize = pageInfo.pageSize
   void reload()
@@ -424,18 +429,18 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 
 async function submitHandle(): Promise<void> {
   if (!targetRequest.value?.id) {
-    message.warning('未选中申请')
+    void message.warning('未选中申请')
     return
   }
   if (handling.value) {
     return
   }
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无复核申请处理权限')
+    void message.warning('当前账号无复核申请处理权限')
     return
   }
   if (!canHandleReviewRequest(targetRequest.value)) {
-    message.warning('当前申请状态不可处理')
+    void message.warning('当前申请状态不可处理')
     return
   }
   handling.value = true
@@ -445,7 +450,7 @@ async function submitHandle(): Promise<void> {
       conclusion: conclusionDraft.value,
       reviewNote: reviewNote.value.trim() || undefined,
     })
-    message.success('处理已提交')
+    void message.success('处理已提交')
     handleOpen.value = false
     await reload()
     emit('handled')

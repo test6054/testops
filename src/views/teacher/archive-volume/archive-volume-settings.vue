@@ -70,7 +70,11 @@
       </section>
 
       <section v-else-if="settingsTab === 'duty'" class="archive-volume-settings__panel">
-        <UiEmpty size="sm" v-if="dutyLoadFailed || departmentLoadFailed" description="职责授权配置加载失败">
+        <UiEmpty
+          size="sm"
+          v-if="dutyLoadFailed || departmentLoadFailed"
+          description="职责授权配置加载失败"
+        >
           <template #action>
             <UiButton
               size="sm"
@@ -97,7 +101,13 @@
                   配置归档职责类型、院系范围与全校授权（含部门档案员）
                 </span>
                 <div class="archive-volume-settings__section-actions">
-                  <UiButton v-if="canManageArchiveConfig === true" size="sm" variant="outline" @click="addDutyRow">新增授权</UiButton>
+                  <UiButton
+                    v-if="canManageArchiveConfig === true"
+                    size="sm"
+                    variant="outline"
+                    @click="addDutyRow"
+                    >新增授权</UiButton
+                  >
                   <UiButton size="sm" variant="primary" :loading="saving" @click="saveDutyGrants">
                     保存职责授权
                   </UiButton>
@@ -174,7 +184,13 @@
                   按职责类型限制可访问的最高密级
                 </span>
                 <div class="archive-volume-settings__section-actions">
-                  <UiButton v-if="canManageArchiveConfig === true" size="sm" variant="outline" @click="addPolicyRow">新增策略</UiButton>
+                  <UiButton
+                    v-if="canManageArchiveConfig === true"
+                    size="sm"
+                    variant="outline"
+                    @click="addPolicyRow"
+                    >新增策略</UiButton
+                  >
                   <UiButton
                     size="sm"
                     variant="primary"
@@ -236,7 +252,10 @@
             </UiButton>
           </template>
         </UiEmpty>
-        <UiForm v-else :disabled="collaborationLoading || saving || canManageArchiveConfig !== true">
+        <UiForm
+          v-else
+          :disabled="collaborationLoading || saving || canManageArchiveConfig !== true"
+        >
           <WorkbenchSurfaceCard flush>
             <template #head>
               <span>协作与提交策略</span>
@@ -427,10 +446,6 @@ import type {
   ArchiveSecurityPolicyItemRequest,
   ArchiveTenantCollaborationPolicySaveRequest,
 } from '@/apis/mark/archive-config'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
 import {
   ARCHIVE_DUTY_TYPE_OPTIONS,
   ArchiveDutyTypeCode,
@@ -443,6 +458,10 @@ import {
   saveArchiveDutyGrants,
   saveArchiveSecurityPolicy,
 } from '@/apis/mark/archive-config'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { listArchiveTenantTemplateSets } from '@/apis/mark/archive-platform-template'
 import { ARCHIVE_SECURITY_LEVEL_OPTIONS } from '@/apis/mark/archive-volume'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
@@ -559,7 +578,7 @@ const kioskHubListModeOptions = ALL_ARCHIVE_KIOSK_HUB_LIST_MODE_CODES.map((value
   value,
   label: strictEnumLabel(ArchiveKioskHubListModeDescription, value, '一体机派单中枢列表模式'),
 }))
-const departmentOptions = ref<Array<{ value: string, label: string }>>([])
+const departmentOptions = ref<Array<{ value: string; label: string }>>([])
 const tenantTemplateSetCount = ref(0)
 
 function goArchiveList() {
@@ -603,9 +622,9 @@ function validateDutyRows(): boolean {
       return false
     }
     if (
-      !row.tenantWide
-      && !row.scopeDepartmentId
-      && row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
+      !row.tenantWide &&
+      !row.scopeDepartmentId &&
+      row.dutyType !== ArchiveDutyTypeCode.VOLUME_OWNER
     ) {
       showFormValidationMessage('非全校授权须选择院系')
       return false
@@ -685,7 +704,7 @@ function newRowKey() {
 function addDutyRow() {
   // MVR-391：与 canManageArchiveConfig / BE requireTenantAdminForConfig 二次拦截
   if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
   dutyRows.value.push({
@@ -699,7 +718,7 @@ function addDutyRow() {
 
 function removeDutyRow(index: number) {
   if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
   dutyRows.value.splice(index, 1)
@@ -741,7 +760,7 @@ async function loadDepartments() {
 function addPolicyRow() {
   // MVR-391：与 canManageArchiveConfig 二次拦截
   if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
   policyRows.value.push({
@@ -753,7 +772,7 @@ function addPolicyRow() {
 
 function removePolicyRow(index: number) {
   if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
   policyRows.value.splice(index, 1)
@@ -774,7 +793,7 @@ function buildDefaultDeadlineRow(isTenantDefault: boolean): DeadlineRow {
 function addDeadlineRow() {
   // MVR-391：与 canManageArchiveConfig 二次拦截
   if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
   deadlineRows.value.push(buildDefaultDeadlineRow(false))
@@ -782,7 +801,7 @@ function addDeadlineRow() {
 
 function removeDeadlineRow(index: number) {
   if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
   if (deadlineRows.value[index]?.isTenantDefault) return
@@ -834,13 +853,13 @@ async function saveCollaborationPolicyForm() {
   if (collaborationLoadFailed.value || saving.value) return
   // MVR-314：配置写二次拦截
   if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
   saving.value = true
   try {
     await saveArchiveCollaborationPolicy({ ...collaborationForm.value })
-    message.success('协作策略已保存')
+    void message.success('协作策略已保存')
     await loadCollaborationPolicy()
   } catch (error) {
     showUserError(error, '保存协作策略失败')
@@ -883,7 +902,7 @@ async function saveDeadlinePolicyRows() {
   if (!validateDeadlineRows()) return
   // MVR-314：配置写二次拦截
   if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
   saving.value = true
@@ -897,7 +916,7 @@ async function saveDeadlinePolicyRows() {
         departmentReviewEnabled: item.departmentReviewEnabled,
       })),
     )
-    message.success('时限策略已保存')
+    void message.success('时限策略已保存')
     await loadDeadlinePolicy()
   } catch (error) {
     showUserError(error, '保存时限策略失败')
@@ -949,7 +968,7 @@ async function saveDutyGrants() {
   if (!validateDutyRows()) return
   // MVR-314：配置写二次拦截
   if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
   saving.value = true
@@ -962,7 +981,7 @@ async function saveDutyGrants() {
         tenantWide: item.tenantWide,
       })),
     )
-    message.success('职责授权已保存')
+    void message.success('职责授权已保存')
     await loadDutyGrants()
   } catch (error) {
     showUserError(error, '保存职责授权失败')
@@ -975,7 +994,7 @@ async function saveSecurityPolicyRows() {
   if (policyLoadFailed.value || saving.value) return
   // MVR-314：配置写二次拦截
   if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档配置')
+    void message.warning('仅超级管理员或租户管理员可维护归档配置')
     return
   }
   if (policyRows.value.length === 0) {
@@ -1001,7 +1020,7 @@ async function saveSecurityPolicyRows() {
         maxSecurityLevel: item.maxSecurityLevel,
       })),
     )
-    message.success('密级策略已保存')
+    void message.success('密级策略已保存')
     await loadPolicy()
   } catch (error) {
     showUserError(error, '保存密级策略失败')

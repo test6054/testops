@@ -17,18 +17,18 @@ import type {
   AiModelProfileSignalSummaryVO,
   AiModelProfileVO,
 } from '@/apis/quality/ai-model-profile'
-import type { AiHealthStatusCode } from '@/apis/quality/types'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import { aiModelProfileApi } from '@/apis/quality/ai-model-profile'
+import type { AiHealthStatusCode } from '@/apis/quality/types'
 import {
   AI_HEALTH_STATUS_COLOR,
   AiHealthStatusDescription,
   AiProviderTypeCode,
   AiProviderTypeDescription,
 } from '@/apis/quality/types'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -53,7 +53,11 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserErrorMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const pageNum = ref(1)
@@ -197,7 +201,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(event: { current: number, pageSize: number }): void {
+function handlePageChange(event: { current: number; pageSize: number }): void {
   pageNum.value = event.current
   pageSize.value = event.pageSize
   void loadList()
@@ -299,7 +303,7 @@ async function submitEditor() {
       enabled: editorMode.value === 'create' ? false : editor.enabled,
     }
     await aiModelProfileApi.save(payload)
-    message.success('已保存')
+    void message.success('已保存')
     editorVisible.value = false
     await loadList()
   } finally {
@@ -378,7 +382,7 @@ async function handleActivate(record: AiModelProfileVO) {
           readTimeoutSecs: record.readTimeoutSecs,
           enabled: true,
         })
-        message.success('已设为当前启用模型')
+        void message.success('已设为当前启用模型')
         await loadList()
       } finally {
         activatingId.value = ''
@@ -409,7 +413,7 @@ async function handleDisable(record: AiModelProfileVO) {
         readTimeoutSecs: record.readTimeoutSecs,
         enabled: false,
       })
-      message.success('已停用')
+      void message.success('已停用')
       await loadList()
     },
   })
@@ -420,13 +424,13 @@ async function handleHealthCheck(record: AiModelProfileVO) {
   try {
     const result = await aiModelProfileApi.healthCheck({ profileId: record.id })
     if (result.healthStatus === 'HEALTHY') {
-      message.success('智能模型连通检测通过')
+      void message.success('智能模型连通检测通过')
     } else {
       const healthMessage = getUserErrorMessage(
         { message: result.healthMessage },
         '智能模型连通校验失败，请检查模型地址、密钥和网络配置',
       )
-      message.error(healthMessage)
+      void message.error(healthMessage)
     }
     await loadList()
   } finally {
@@ -629,32 +633,30 @@ onActivated(() => {
     >
       <UiForm layout="vertical" :model="editor">
         <UiFormItem label="配置名称" required>
-          <UiInput
-            size="sm" v-model="editor.profileName" placeholder="例如：DeepSeek-V3 主跳"
-          />
+          <UiInput size="sm" v-model="editor.profileName" placeholder="例如：DeepSeek-V3 主跳" />
         </UiFormItem>
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="模型服务商">
               <UiSelect
-                v-model="editor.providerType" :disabled="editorMode === 'edit'"
+                v-model="editor.providerType"
+                :disabled="editorMode === 'edit'"
                 size="sm"
-                :options="[{ value: 'DEEPSEEK', label: 'DeepSeek' }, { value: 'QWEN', label: '通义千问' }]"
+                :options="[
+                  { value: 'DEEPSEEK', label: 'DeepSeek' },
+                  { value: 'QWEN', label: '通义千问' },
+                ]"
               />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="模型名" required>
-              <UiInput
-                size="sm" v-model="editor.modelName"
-              />
+              <UiInput size="sm" v-model="editor.modelName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
         <UiFormItem label="模型服务地址" required>
-          <UiInput
-            size="sm" v-model="editor.apiHost" placeholder="https://api.deepseek.com"
-          />
+          <UiInput size="sm" v-model="editor.apiHost" placeholder="https://api.deepseek.com" />
         </UiFormItem>
         <UiFormItem
           :label="

@@ -7,14 +7,14 @@ import type {
   PortfolioTitlePromotionTaskVO,
   PortfolioTitleTaskCriteriaChangeLogVO,
   PortfolioTitleTaskCriteriaItem,
-  PortfolioTitleTaskCriteriaVO
+  PortfolioTitleTaskCriteriaVO,
 } from '@/apis/portfolio/title-promotion'
+import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import type { PortfolioArchiveCategoryTreeNodeVO } from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
-import { portfolioTitlePromotionApi } from '@/apis/portfolio/title-promotion'
 import TitlePromotionFlowPanel from '@/components/portfolio/TitlePromotionFlowPanel.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -39,9 +39,7 @@ import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
 import { PortfolioArchiveCategoryStatusCode } from '@/types/enums/portfolio-archive-category-status-enum'
 import { isPortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
-import {
-  PortfolioTitleCriteriaChangeActionDescription,
-} from '@/types/enums/portfolio-title-criteria-change-action-enum'
+import { PortfolioTitleCriteriaChangeActionDescription } from '@/types/enums/portfolio-title-criteria-change-action-enum'
 import {
   ALL_PORTFOLIO_TITLE_CRITERIA_CHECK_TYPE_CODES,
   isEvidenceCategoryRequiredCheckType,
@@ -76,13 +74,14 @@ import {
 } from '@/types/enums/portfolio-title-promotion-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
 const canManageSchoolWorkflow = computed(() => userStore.isTenantAdmin)
 const tabItems = computed(() => {
-  const items: Array<{ key: 'task' | 'application', label: string }> = []
+  const items: Array<{ key: 'task' | 'application'; label: string }> = []
   if (canManageSchoolWorkflow.value) {
     items.push({ key: 'task', label: '申报任务' })
   }
@@ -161,7 +160,7 @@ const criteriaOpen = ref(false)
 const criteriaTask = ref<PortfolioTitlePromotionTaskVO | null>(null)
 const criteriaList = ref<PortfolioTitleTaskCriteriaVO[]>([])
 const criteriaTemplates = ref<PortfolioTitleCriteriaTemplateVO[]>([])
-const criteriaCategoryOptions = ref<Array<{ value: string, label: string }>>([])
+const criteriaCategoryOptions = ref<Array<{ value: string; label: string }>>([])
 const selectedTemplateIds = ref<string[]>([])
 const changeLogs = ref<PortfolioTitleTaskCriteriaChangeLogVO[]>([])
 const emergencyReason = ref('')
@@ -187,9 +186,8 @@ async function bindActionTeacherAndAssert(
   teacherUserId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value = teacherUserId != null && String(teacherUserId).trim() !== ''
-    ? String(teacherUserId)
-    : undefined
+  actionTeacherId.value =
+    teacherUserId != null && String(teacherUserId).trim() !== '' ? String(teacherUserId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
@@ -248,7 +246,9 @@ const appColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 280 },
 ]
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -273,19 +273,11 @@ const statusOptions = ALL_PORTFOLIO_TITLE_PROMOTION_APPLICATION_STATUS_CODES.map
 }))
 
 function taskStatusLabel(code: PortfolioTitlePromotionTaskStatusCode) {
-  return strictEnumLabel(
-    PortfolioTitlePromotionTaskStatusDescription,
-    code,
-    '任务状态',
-  )
+  return strictEnumLabel(PortfolioTitlePromotionTaskStatusDescription, code, '任务状态')
 }
 
 function appStatusLabel(code: PortfolioTitlePromotionApplicationStatusCode) {
-  return strictEnumLabel(
-    PortfolioTitlePromotionApplicationStatusDescription,
-    code,
-    '申请状态',
-  )
+  return strictEnumLabel(PortfolioTitlePromotionApplicationStatusDescription, code, '申请状态')
 }
 
 /** 职称治理状态写必须串行，避免同一申请被多个抽屉并发推进。 */
@@ -378,8 +370,7 @@ async function loadApps() {
         scrollToHighlightedRow()
         // 深链可行动：院审待办进入后自动打开审核面板一次
         if (
-          matched.applicationStatus
-          === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
+          matched.applicationStatus === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
         ) {
           void openReviewAsync(matched)
         }
@@ -427,7 +418,7 @@ function openEdit(row: PortfolioTitlePromotionTaskVO) {
 async function saveTask() {
   if (writing.value) return
   if (!form.taskName.trim() || !form.targetTitleLevel.trim() || !form.reviewYear.trim()) {
-    message.error('任务名称、目标层级与年度不能为空')
+    void message.error('任务名称、目标层级与年度不能为空')
     return
   }
   saving.value = true
@@ -438,7 +429,7 @@ async function saveTask() {
       targetTitleLevel: form.targetTitleLevel.trim(),
       reviewYear: form.reviewYear.trim(),
     })
-    message.success('任务已保存')
+    void message.success('任务已保存')
     editorOpen.value = false
     await loadTasks()
   } catch (error) {
@@ -460,7 +451,7 @@ async function publishTask(row: PortfolioTitlePromotionTaskVO) {
     })
     if (!confirmed) return
     await portfolioTitlePromotionApi.publishTask({ id: row.id })
-    message.success('任务已发布')
+    void message.success('任务已发布')
     await loadTasks()
   } catch (error) {
     showUserError(error, '发布失败')
@@ -481,7 +472,7 @@ async function closeTask(row: PortfolioTitlePromotionTaskVO) {
     })
     if (!confirmed) return
     await portfolioTitlePromotionApi.closeTask({ id: row.id })
-    message.success('任务已关闭')
+    void message.success('任务已关闭')
     await loadTasks()
   } catch (error) {
     showUserError(error, '关闭失败')
@@ -502,19 +493,21 @@ async function openCriteria(row: PortfolioTitlePromotionTaskVO) {
     criteriaBaseline.value = criteriaFingerprint()
     try {
       const tree = await portfolioArchiveTemplateApi.listCategoryTree()
-      const options: Array<{ value: string, label: string }> = []
+      const options: Array<{ value: string; label: string }> = []
       const visit = (nodes: PortfolioArchiveCategoryTreeNodeVO[]) => {
         for (const node of nodes) {
           if (node.status === PortfolioArchiveCategoryStatusCode.ACTIVE) {
-            options.push({ value: node.categoryCode, label: node.categoryName + '（' + node.categoryCode + '）' })
+            options.push({
+              value: node.categoryCode,
+              label: node.categoryName + '（' + node.categoryCode + '）',
+            })
           }
           visit(node.children || [])
         }
       }
       visit(tree || [])
       criteriaCategoryOptions.value = options
-    }
-    catch (error) {
+    } catch (error) {
       criteriaCategoryOptions.value = []
       showUserError(error, '加载档案分类失败')
     }
@@ -554,44 +547,44 @@ async function openCriteria(row: PortfolioTitlePromotionTaskVO) {
       changeLogs.value = []
       showUserError(error, '加载条件变更记录失败')
     }
-  }
-  catch (error) {
+  } catch (error) {
     criteriaList.value = []
     criteriaBaseline.value = ''
     criteriaTemplates.value = []
     changeLogs.value = []
     showUserError(error, '加载任务条件失败')
-  }
-  finally {
+  } finally {
     criteriaLoading.value = false
   }
 }
 
-const gateKindOptions = Object.values(PortfolioTitleCriteriaGateKindCode).map(value => ({
+const gateKindOptions = Object.values(PortfolioTitleCriteriaGateKindCode).map((value) => ({
   value,
   label: PortfolioTitleCriteriaGateKindDescription[value],
 }))
-const checkTypeOptions = ALL_PORTFOLIO_TITLE_CRITERIA_CHECK_TYPE_CODES.map(value => ({
+const checkTypeOptions = ALL_PORTFOLIO_TITLE_CRITERIA_CHECK_TYPE_CODES.map((value) => ({
   value,
   label: PortfolioTitleCriteriaCheckTypeDescription[value],
 }))
-const pathCodeOptions = Object.values(PortfolioTitleCriteriaPathCode).map(value => ({
+const pathCodeOptions = Object.values(PortfolioTitleCriteriaPathCode).map((value) => ({
   value,
   label: PortfolioTitleCriteriaPathDescription[value],
 }))
-const satisfyModeOptions = Object.values(PortfolioTitleCriteriaSatisfyModeCode).map(value => ({
+const satisfyModeOptions = Object.values(PortfolioTitleCriteriaSatisfyModeCode).map((value) => ({
   value,
   label: PortfolioTitleCriteriaSatisfyModeDescription[value],
 }))
-const jobCategoryOptions = ALL_PORTFOLIO_TITLE_JOB_CATEGORY_CODES.map(value => ({
+const jobCategoryOptions = ALL_PORTFOLIO_TITLE_JOB_CATEGORY_CODES.map((value) => ({
   value,
   label: PortfolioTitleJobCategoryDescription[value],
 }))
 
 function canEditCriteriaList() {
   if (!criteriaTask.value) return false
-  return criteriaTask.value.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT
-    || criteriaTask.value.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED
+  return (
+    criteriaTask.value.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT ||
+    criteriaTask.value.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED
+  )
 }
 
 function toCriteriaItems(): PortfolioTitleTaskCriteriaItem[] {
@@ -604,19 +597,18 @@ function toCriteriaItems(): PortfolioTitleTaskCriteriaItem[] {
     gateKind: item.gateKind,
     checkType: item.checkType,
     satisfyMode: item.satisfyMode,
-    groupCode: item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ALL
-      ? undefined
-      : item.groupCode,
-    groupMinimumCount: item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
-      ? item.groupMinimumCount
-      : undefined,
+    groupCode:
+      item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ALL ? undefined : item.groupCode,
+    groupMinimumCount:
+      item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
+        ? item.groupMinimumCount
+        : undefined,
     pathCode: item.pathCode,
     jobCategory: item.jobCategory,
     expectedValue: item.expectedValue,
     evidenceCategoryCode: item.evidenceCategoryCode,
-    blockOnFail: item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD
-      ? true
-      : Boolean(item.blockOnFail),
+    blockOnFail:
+      item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? true : Boolean(item.blockOnFail),
     sourceTemplateId: item.sourceTemplateId,
     sortNo: item.sortNo ?? (index + 1) * 10,
   }))
@@ -626,15 +618,17 @@ function criteriaFingerprint(): string {
   return JSON.stringify(toCriteriaItems())
 }
 
-const hasUnsavedCriteriaChanges = computed(() =>
-  criteriaBaseline.value !== '' && criteriaFingerprint() !== criteriaBaseline.value,
+const hasUnsavedCriteriaChanges = computed(
+  () => criteriaBaseline.value !== '' && criteriaFingerprint() !== criteriaBaseline.value,
 )
 
 const availableCriteriaTemplates = computed(() => {
-  const imported = new Set(criteriaList.value
-    .map(item => item.sourceTemplateId)
-    .filter((id): id is string => Boolean(id)))
-  return criteriaTemplates.value.filter(item => !imported.has(item.id))
+  const imported = new Set(
+    criteriaList.value
+      .map((item) => item.sourceTemplateId)
+      .filter((id): id is string => Boolean(id)),
+  )
+  return criteriaTemplates.value.filter((item) => !imported.has(item.id))
 })
 
 function validateCriteriaDraftList() {
@@ -646,7 +640,14 @@ function validateCriteriaDraftList() {
   for (const item of criteriaList.value) {
     const code = (item.criteriaCode || '').trim()
     const title = (item.criteriaTitle || '').trim()
-    if (!code || !title || !item.gateKind || !item.checkType || !item.satisfyMode || !item.pathCode) {
+    if (
+      !code ||
+      !title ||
+      !item.gateKind ||
+      !item.checkType ||
+      !item.satisfyMode ||
+      !item.pathCode
+    ) {
       showFormValidationMessage('请完整填写条件编码、标题、门槛、核验类型、满足模式与路径')
       return false
     }
@@ -656,15 +657,17 @@ function validateCriteriaDraftList() {
     }
     codes.add(code)
     if (
-      (item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ANY_OF_GROUP
-        || item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP)
-      && !(item.groupCode || '').trim()
+      (item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ANY_OF_GROUP ||
+        item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP) &&
+      !(item.groupCode || '').trim()
     ) {
       showFormValidationMessage(`组满足模式必须填写组编码：${code}`)
       return false
     }
-    if (item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
-      && (!item.groupMinimumCount || item.groupMinimumCount < 1)) {
+    if (
+      item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP &&
+      (!item.groupMinimumCount || item.groupMinimumCount < 1)
+    ) {
       showFormValidationMessage('组内最低满足条数必须为正整数：' + code)
       return false
     }
@@ -672,18 +675,24 @@ function validateCriteriaDraftList() {
       showFormValidationMessage('硬门槛条件必须开启「不满足时阻断提交」：' + code)
       return false
     }
-    if (requiresPositiveExpectedValueCheckType(item.checkType)
-      && !/^[1-9]\d*$/.test((item.expectedValue || '').trim())) {
+    if (
+      requiresPositiveExpectedValueCheckType(item.checkType) &&
+      !/^[1-9]\d*$/.test((item.expectedValue || '').trim())
+    ) {
       showFormValidationMessage('当前核验类型必须填写正整数阈值：' + code)
       return false
     }
-    if (item.checkType === PortfolioTitleCriteriaCheckTypeCode.DEGREE_REQUIREMENT
-      && !(item.expectedValue || '').trim()) {
+    if (
+      item.checkType === PortfolioTitleCriteriaCheckTypeCode.DEGREE_REQUIREMENT &&
+      !(item.expectedValue || '').trim()
+    ) {
       showFormValidationMessage('学历学位要求必须填写期望值：' + code)
       return false
     }
-    if (item.checkType === PortfolioTitleCriteriaCheckTypeCode.HONOR_LEVEL
-      && !isPortfolioHonorLevelCode((item.expectedValue || '').trim())) {
+    if (
+      item.checkType === PortfolioTitleCriteriaCheckTypeCode.HONOR_LEVEL &&
+      !isPortfolioHonorLevelCode((item.expectedValue || '').trim())
+    ) {
       showFormValidationMessage('获奖级别必须填写有效级别编码：' + code)
       return false
     }
@@ -692,24 +701,28 @@ function validateCriteriaDraftList() {
       return false
     }
   }
-  const researchCriteria = criteriaList.value.filter(item =>
-    item.checkType === PortfolioTitleCriteriaCheckTypeCode.PUBLICATION_COUNT
-    || item.checkType === PortfolioTitleCriteriaCheckTypeCode.PROJECT_COUNT,
+  const researchCriteria = criteriaList.value.filter(
+    (item) =>
+      item.checkType === PortfolioTitleCriteriaCheckTypeCode.PUBLICATION_COUNT ||
+      item.checkType === PortfolioTitleCriteriaCheckTypeCode.PROJECT_COUNT,
   )
   for (let leftIndex = 0; leftIndex < researchCriteria.length; leftIndex++) {
     const left = researchCriteria[leftIndex]
     for (let rightIndex = leftIndex + 1; rightIndex < researchCriteria.length; rightIndex++) {
       const right = researchCriteria[rightIndex]
-      if (left.checkType === right.checkType
-        || !left.evidenceCategoryCode
-        || left.evidenceCategoryCode !== right.evidenceCategoryCode) {
+      if (
+        left.checkType === right.checkType ||
+        !left.evidenceCategoryCode ||
+        left.evidenceCategoryCode !== right.evidenceCategoryCode
+      ) {
         continue
       }
-      const pathOverlap = left.pathCode === PortfolioTitleCriteriaPathCode.COMMON
-        || right.pathCode === PortfolioTitleCriteriaPathCode.COMMON
-        || left.pathCode === right.pathCode
-      const jobOverlap = !left.jobCategory || !right.jobCategory
-        || left.jobCategory === right.jobCategory
+      const pathOverlap =
+        left.pathCode === PortfolioTitleCriteriaPathCode.COMMON ||
+        right.pathCode === PortfolioTitleCriteriaPathCode.COMMON ||
+        left.pathCode === right.pathCode
+      const jobOverlap =
+        !left.jobCategory || !right.jobCategory || left.jobCategory === right.jobCategory
       if (pathOverlap && jobOverlap) {
         showFormValidationMessage(
           `同一申报路径/岗位的论文与项目条件不得复用证据档案分类：${left.evidenceCategoryCode}`,
@@ -771,13 +784,11 @@ async function importTemplates() {
     })
     criteriaBaseline.value = criteriaFingerprint()
     selectedTemplateIds.value = []
-    message.success('模板已导入')
+    void message.success('模板已导入')
     await loadTasks()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '导入模板失败')
-  }
-  finally {
+  } finally {
     criteriaSaving.value = false
   }
 }
@@ -796,13 +807,11 @@ async function saveDraftCriteriaReplace() {
       criteriaItems: toCriteriaItems(),
     })
     criteriaBaseline.value = criteriaFingerprint()
-    message.success('草稿条件已保存')
+    void message.success('草稿条件已保存')
     await loadTasks()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '保存条件失败')
-  }
-  finally {
+  } finally {
     criteriaSaving.value = false
   }
 }
@@ -833,7 +842,7 @@ async function emergencyReplaceCriteria() {
       criteriaItems: toCriteriaItems(),
     })
     criteriaBaseline.value = criteriaFingerprint()
-    message.success('紧急修正已生效（草稿、退回补正及之后新申报）')
+    void message.success('紧急修正已生效（草稿、退回补正及之后新申报）')
     emergencyReason.value = ''
     const logs = await portfolioTitlePromotionApi.pageTaskCriteriaChangeLog({
       taskId: criteriaTask.value.id,
@@ -842,11 +851,9 @@ async function emergencyReplaceCriteria() {
     })
     changeLogs.value = logs.list || []
     await loadTasks()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '紧急修正失败')
-  }
-  finally {
+  } finally {
     criteriaSaving.value = false
   }
 }
@@ -871,11 +878,9 @@ async function openExpertReviewAsync(row: PortfolioTitlePromotionApplicationVO) 
     })
     expertForm.opinion = ''
     expertOpen.value = true
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载申报详情失败')
-  }
-  finally {
+  } finally {
     expertFlowLoading.value = false
   }
 }
@@ -918,7 +923,7 @@ async function runExpertReview(approve: boolean) {
       opinion: expertForm.opinion.trim() || undefined,
       approve,
     })
-    message.success(approve ? '专家评审已通过' : '专家评审已驳回')
+    void message.success(approve ? '专家评审已通过' : '专家评审已驳回')
     expertOpen.value = false
     await loadApps()
   } catch (error) {
@@ -953,7 +958,7 @@ async function runStartPublicity() {
       days: publicityForm.days,
       remark: publicityForm.remark.trim() || undefined,
     })
-    message.success('公示已发布')
+    void message.success('公示已发布')
     publicityOpen.value = false
     await loadApps()
   } catch (error) {
@@ -977,7 +982,7 @@ async function runArchivePublicity(row: PortfolioTitlePromotionApplicationVO) {
     })
     if (!confirmed) return
     await portfolioTitlePromotionApi.archivePublicity({ id: row.id })
-    message.success('公示已归档')
+    void message.success('公示已归档')
     await loadApps()
   } catch (error) {
     showUserError(error, '归档失败')
@@ -1012,11 +1017,9 @@ async function openReviewAsync(row: PortfolioTitlePromotionApplicationVO) {
     })
     reviewForm.opinion = ''
     reviewOpen.value = true
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '加载申报详情失败')
-  }
-  finally {
+  } finally {
     reviewFlowLoading.value = false
   }
 }
@@ -1032,8 +1035,8 @@ async function runReview(
   const operation = `${action}:${targetId}`
   if (!beginWorkflowOperation(operation)) return
   try {
-    const negativeAction
-      = action === 'collegeReturn' || action === 'hrReturn' || action === 'hrReject'
+    const negativeAction =
+      action === 'collegeReturn' || action === 'hrReturn' || action === 'hrReject'
     if (negativeAction && !reviewForm.opinion.trim()) {
       showFormValidationMessage('退回或驳回必须填写审核意见')
       return
@@ -1069,7 +1072,7 @@ async function runReview(
         await portfolioTitlePromotionApi.hrReject(payload)
         break
     }
-    message.success('审核操作已完成')
+    void message.success('审核操作已完成')
     reviewOpen.value = false
     await loadApps()
   } catch (error) {
@@ -1079,13 +1082,13 @@ async function runReview(
   }
 }
 
-function onTaskPageChange(page: { current: number, pageSize: number }) {
+function onTaskPageChange(page: { current: number; pageSize: number }) {
   taskQuery.pageNum = page.current
   taskQuery.pageSize = page.pageSize
   void loadTasks()
 }
 
-function onAppPageChange(page: { current: number, pageSize: number }) {
+function onAppPageChange(page: { current: number; pageSize: number }) {
   appQuery.pageNum = page.current
   appQuery.pageSize = page.pageSize
   void loadApps()
@@ -1246,17 +1249,10 @@ onMounted(() => {
                 <span v-else-if="!record.lifecycleStatus">—</span>
               </template>
               <template v-else-if="column.key === 'identityLayers'">
-                <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-                  <UiTag
-                    v-for="(layer, idx) in record.ownerIdentityLayers"
-                    :key="`${record.id}-${layer.identityType}-${idx}`"
-                    size="sm"
-                    :tone="layer.externalIdentity ? 'orange' : 'blue'"
-                  >
-                    {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-                  </UiTag>
-                </div>
-                <span v-else>—</span>
+                <PortfolioOwnerIdentityLayersCell
+                  :layers="record.ownerIdentityLayers"
+                  :note="record.ownerMultiIdentityNote"
+                />
               </template>
               <template v-else-if="column.key === 'redlineBlocked'">
                 <UiTag :tone="record.redlineBlocked ? 'red' : 'green'">
@@ -1271,17 +1267,19 @@ onMounted(() => {
                   size="sm"
                   variant="soft"
                   :disabled="!record.teacherUserId"
-                  @click="goTeacherPortfolioPage('/portfolio/teacher/masterpiece', record.teacherUserId)"
+                  @click="
+                    goTeacherPortfolioPage('/portfolio/teacher/masterpiece', record.teacherUserId)
+                  "
                 >
                   读整袋
                 </UiButton>
                 <UiButton
                   v-if="
-                    record.applicationStatus
-                      === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
-                      || (canManageSchoolWorkflow
-                        && record.applicationStatus
-                          === PortfolioTitlePromotionApplicationStatusCode.HR_PENDING)
+                    record.applicationStatus ===
+                      PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING ||
+                    (canManageSchoolWorkflow &&
+                      record.applicationStatus ===
+                        PortfolioTitlePromotionApplicationStatusCode.HR_PENDING)
                   "
                   size="sm"
                   variant="primary"
@@ -1292,9 +1290,9 @@ onMounted(() => {
                 </UiButton>
                 <UiButton
                   v-if="
-                    canManageSchoolWorkflow
-                      && record.applicationStatus
-                        === PortfolioTitlePromotionApplicationStatusCode.EXPERT_PENDING
+                    canManageSchoolWorkflow &&
+                    record.applicationStatus ===
+                      PortfolioTitlePromotionApplicationStatusCode.EXPERT_PENDING
                   "
                   size="sm"
                   variant="primary"
@@ -1305,10 +1303,10 @@ onMounted(() => {
                 </UiButton>
                 <UiButton
                   v-if="
-                    canManageSchoolWorkflow
-                      && record.applicationStatus
-                        === PortfolioTitlePromotionApplicationStatusCode.PUBLICITY
-                      && !record.publicityStartTime
+                    canManageSchoolWorkflow &&
+                    record.applicationStatus ===
+                      PortfolioTitlePromotionApplicationStatusCode.PUBLICITY &&
+                    !record.publicityStartTime
                   "
                   variant="primary"
                   size="sm"
@@ -1363,21 +1361,33 @@ onMounted(() => {
             variant="outline"
             size="sm"
             :disabled="!reviewTarget.teacherUserId"
-            @click="goTeacherPortfolioPage('/portfolio/teacher/masterpiece', reviewTarget.teacherUserId)"
+            @click="
+              goTeacherPortfolioPage('/portfolio/teacher/masterpiece', reviewTarget.teacherUserId)
+            "
           >
             读整袋
           </UiButton>
         </div>
         <p>{{ reviewTarget.taskName }} · {{ reviewTarget.applicationNo }}</p>
         <p>
-          路径 {{
+          路径
+          {{
             reviewTarget.pathCode
-              ? strictEnumLabel(PortfolioTitleCriteriaPathDescription, reviewTarget.pathCode, '申报路径')
+              ? strictEnumLabel(
+                  PortfolioTitleCriteriaPathDescription,
+                  reviewTarget.pathCode,
+                  '申报路径',
+                )
               : '-'
           }}
-          · 岗位 {{
+          · 岗位
+          {{
             reviewTarget.jobCategory
-              ? strictEnumLabel(PortfolioTitleJobCategoryDescription, reviewTarget.jobCategory, '岗位类型')
+              ? strictEnumLabel(
+                  PortfolioTitleJobCategoryDescription,
+                  reviewTarget.jobCategory,
+                  '岗位类型',
+                )
               : '全部'
           }}
         </p>
@@ -1405,27 +1415,56 @@ onMounted(() => {
         <div class="title-promo__actions">
           <template
             v-if="
-              reviewTarget.applicationStatus
-                === PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
+              reviewTarget.applicationStatus ===
+              PortfolioTitlePromotionApplicationStatusCode.COLLEGE_PENDING
             "
           >
-            <UiButton size="sm" variant="primary" :disabled="writing || archiveWriteForbidden" @click="runReview('collegeApprove')"> 院审通过 </UiButton>
-            <UiButton size="sm" variant="soft" :disabled="writing || archiveWriteForbidden" @click="runReview('collegeReturn')">
+            <UiButton
+              size="sm"
+              variant="primary"
+              :disabled="writing || archiveWriteForbidden"
+              @click="runReview('collegeApprove')"
+            >
+              院审通过
+            </UiButton>
+            <UiButton
+              size="sm"
+              variant="soft"
+              :disabled="writing || archiveWriteForbidden"
+              @click="runReview('collegeReturn')"
+            >
               院审退回
             </UiButton>
           </template>
           <template
             v-else-if="
-              canManageSchoolWorkflow
-                && reviewTarget.applicationStatus
-                  === PortfolioTitlePromotionApplicationStatusCode.HR_PENDING
+              canManageSchoolWorkflow &&
+              reviewTarget.applicationStatus ===
+                PortfolioTitlePromotionApplicationStatusCode.HR_PENDING
             "
           >
-            <UiButton size="sm" variant="primary" :disabled="writing || archiveWriteForbidden" @click="runReview('hrApprove')"> 人事复审通过 </UiButton>
-            <UiButton size="sm" variant="soft" :disabled="writing || archiveWriteForbidden" @click="runReview('hrReturn')">
+            <UiButton
+              size="sm"
+              variant="primary"
+              :disabled="writing || archiveWriteForbidden"
+              @click="runReview('hrApprove')"
+            >
+              人事复审通过
+            </UiButton>
+            <UiButton
+              size="sm"
+              variant="soft"
+              :disabled="writing || archiveWriteForbidden"
+              @click="runReview('hrReturn')"
+            >
               人事退回
             </UiButton>
-            <UiButton size="sm" variant="soft" :disabled="writing || archiveWriteForbidden" @click="runReview('hrReject')">
+            <UiButton
+              size="sm"
+              variant="soft"
+              :disabled="writing || archiveWriteForbidden"
+              @click="runReview('hrReject')"
+            >
               驳回
             </UiButton>
           </template>
@@ -1441,21 +1480,33 @@ onMounted(() => {
             variant="outline"
             size="sm"
             :disabled="!expertTarget.teacherUserId"
-            @click="goTeacherPortfolioPage('/portfolio/teacher/masterpiece', expertTarget.teacherUserId)"
+            @click="
+              goTeacherPortfolioPage('/portfolio/teacher/masterpiece', expertTarget.teacherUserId)
+            "
           >
             读整袋
           </UiButton>
         </div>
         <p>{{ expertTarget.taskName }} · {{ expertTarget.applicationNo }}</p>
         <p>
-          路径 {{
+          路径
+          {{
             expertTarget.pathCode
-              ? strictEnumLabel(PortfolioTitleCriteriaPathDescription, expertTarget.pathCode, '申报路径')
+              ? strictEnumLabel(
+                  PortfolioTitleCriteriaPathDescription,
+                  expertTarget.pathCode,
+                  '申报路径',
+                )
               : '-'
           }}
-          · 岗位 {{
+          · 岗位
+          {{
             expertTarget.jobCategory
-              ? strictEnumLabel(PortfolioTitleJobCategoryDescription, expertTarget.jobCategory, '岗位类型')
+              ? strictEnumLabel(
+                  PortfolioTitleJobCategoryDescription,
+                  expertTarget.jobCategory,
+                  '岗位类型',
+                )
               : '全部'
           }}
         </p>
@@ -1481,8 +1532,20 @@ onMounted(() => {
         <label>专家意见</label>
         <UiTextarea size="sm" v-model="expertForm.opinion" :rows="3" />
         <div class="title-promo__actions">
-          <UiButton size="sm" variant="primary" :disabled="writing || archiveWriteForbidden" @click="runExpertReview(true)"> 通过并进入公示 </UiButton>
-          <UiButton size="sm" variant="soft" :disabled="writing || archiveWriteForbidden" @click="runExpertReview(false)">
+          <UiButton
+            size="sm"
+            variant="primary"
+            :disabled="writing || archiveWriteForbidden"
+            @click="runExpertReview(true)"
+          >
+            通过并进入公示
+          </UiButton>
+          <UiButton
+            size="sm"
+            variant="soft"
+            :disabled="writing || archiveWriteForbidden"
+            @click="runExpertReview(false)"
+          >
             驳回
           </UiButton>
         </div>
@@ -1512,7 +1575,10 @@ onMounted(() => {
 
     <UiDrawer v-model:open="criteriaOpen" title="任务资格条件" width="860">
       <div v-if="criteriaTask" class="title-promo__form">
-        <p>{{ criteriaTask.taskName }} · {{ criteriaTask.taskStatus }} · 共 {{ criteriaList.length }} 条</p>
+        <p>
+          {{ criteriaTask.taskName }} · {{ criteriaTask.taskStatus }} · 共
+          {{ criteriaList.length }} 条
+        </p>
         <UiSpin :spinning="criteriaLoading || criteriaSaving">
           <div
             v-if="criteriaTask.taskStatus === PortfolioTitlePromotionTaskStatusCode.DRAFT"
@@ -1525,16 +1591,29 @@ onMounted(() => {
               mode="multiple"
               allow-clear
               placeholder="选择启用中的条件模板"
-              :options="availableCriteriaTemplates.map(item => ({ value: item.id, label: `${item.templateCode} ${item.templateTitle}` }))"
+              :options="
+                availableCriteriaTemplates.map((item) => ({
+                  value: item.id,
+                  label: `${item.templateCode} ${item.templateTitle}`,
+                }))
+              "
             />
             <div class="title-promo__actions">
-              <UiButton variant="primary" size="sm" :loading="criteriaSaving" @click="importTemplates">
+              <UiButton
+                variant="primary"
+                size="sm"
+                :loading="criteriaSaving"
+                @click="importTemplates"
+              >
                 导入模板
               </UiButton>
-              <UiButton variant="primary" size="sm" @click="addCriteriaRow">
-                新增条件行
-              </UiButton>
-              <UiButton variant="primary" size="sm" :loading="criteriaSaving" @click="saveDraftCriteriaReplace">
+              <UiButton variant="primary" size="sm" @click="addCriteriaRow"> 新增条件行 </UiButton>
+              <UiButton
+                variant="primary"
+                size="sm"
+                :loading="criteriaSaving"
+                @click="saveDraftCriteriaReplace"
+              >
                 保存整表条件
               </UiButton>
             </div>
@@ -1543,9 +1622,7 @@ onMounted(() => {
             v-else-if="criteriaTask.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED"
             class="title-promo__criteria-import title-promo__criteria-import--row"
           >
-            <UiButton variant="primary" size="sm" @click="addCriteriaRow">
-              新增条件行
-            </UiButton>
+            <UiButton variant="primary" size="sm" @click="addCriteriaRow"> 新增条件行 </UiButton>
           </div>
           <div class="title-promo__criteria-list">
             <div
@@ -1569,18 +1646,24 @@ onMounted(() => {
                 <label>编码</label>
                 <UiInput size="sm" v-model="item.criteriaCode" :disabled="!canEditCriteriaList()" />
                 <label>标题</label>
-                <UiInput size="sm" v-model="item.criteriaTitle" :disabled="!canEditCriteriaList()" />
+                <UiInput
+                  size="sm"
+                  v-model="item.criteriaTitle"
+                  :disabled="!canEditCriteriaList()"
+                />
                 <label>门槛</label>
                 <UiSelect
                   size="sm"
                   v-model="item.gateKind"
                   :options="gateKindOptions"
                   :disabled="!canEditCriteriaList()"
-                  @change="() => {
-                    if (item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD) {
-                      item.blockOnFail = true
+                  @change="
+                    () => {
+                      if (item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD) {
+                        item.blockOnFail = true
+                      }
                     }
-                  }"
+                  "
                 />
                 <label>核验类型</label>
                 <UiSelect
@@ -1597,14 +1680,19 @@ onMounted(() => {
                   v-model="item.satisfyMode"
                   :options="satisfyModeOptions"
                   :disabled="!canEditCriteriaList()"
-                  @change="() => {
-                    if (item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ALL) {
-                      item.groupCode = undefined
+                  @change="
+                    () => {
+                      if (item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ALL) {
+                        item.groupCode = undefined
+                      }
+                      if (
+                        item.satisfyMode !==
+                        PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
+                      ) {
+                        item.groupMinimumCount = undefined
+                      }
                     }
-                    if (item.satisfyMode !== PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP) {
-                      item.groupMinimumCount = undefined
-                    }
-                  }"
+                  "
                 />
                 <label>路径</label>
                 <UiSelect
@@ -1614,15 +1702,23 @@ onMounted(() => {
                   :disabled="!canEditCriteriaList()"
                 />
                 <label>组编码</label>
-                <UiInput size="sm" v-model="item.groupCode" :disabled="!canEditCriteriaList()" placeholder="组满足模式时必填" />
-                <template v-if="item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP">
+                <UiInput
+                  size="sm"
+                  v-model="item.groupCode"
+                  :disabled="!canEditCriteriaList()"
+                  placeholder="组满足模式时必填"
+                />
+                <template
+                  v-if="
+                    item.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
+                  "
+                >
                   <label>组内最低满足条数</label>
                   <UiInputNumber
                     size="sm"
                     v-model="item.groupMinimumCount"
                     :min="1"
                     :precision="0"
-                   
                     :disabled="!canEditCriteriaList()"
                   />
                 </template>
@@ -1636,7 +1732,12 @@ onMounted(() => {
                   placeholder="空=全部岗位"
                 />
                 <label>单条核验阈值</label>
-                <UiInput size="sm" v-model="item.expectedValue" :disabled="!canEditCriteriaList()" placeholder="数量/学时/年限/级别" />
+                <UiInput
+                  size="sm"
+                  v-model="item.expectedValue"
+                  :disabled="!canEditCriteriaList()"
+                  placeholder="数量/学时/年限/级别"
+                />
                 <label>证据档案分类</label>
                 <UiSelect
                   size="sm"
@@ -1649,7 +1750,12 @@ onMounted(() => {
                   placeholder="按材料类型核验时选择"
                 />
                 <label>排序</label>
-                <UiInputNumber size="sm" v-model="item.sortNo" :min="0" :disabled="!canEditCriteriaList()" />
+                <UiInputNumber
+                  size="sm"
+                  v-model="item.sortNo"
+                  :min="0"
+                  :disabled="!canEditCriteriaList()"
+                />
               </div>
               <label class="title-promo__criteria-note-label">说明文案</label>
               <UiTextarea
@@ -1663,41 +1769,63 @@ onMounted(() => {
                 <input
                   v-model="item.blockOnFail"
                   type="checkbox"
-                  :disabled="!canEditCriteriaList() || item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD"
-                  @change="() => {
-                    if (item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD) {
-                      item.blockOnFail = true
+                  :disabled="
+                    !canEditCriteriaList() ||
+                    item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD
+                  "
+                  @change="
+                    () => {
+                      if (item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD) {
+                        item.blockOnFail = true
+                      }
                     }
-                  }"
-                >
-                不满足时阻断提交{{ item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? '（硬门槛强制）' : '' }}
+                  "
+                />
+                不满足时阻断提交{{
+                  item.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? '（硬门槛强制）' : ''
+                }}
               </label>
             </div>
-            <UiEmpty size="sm" v-if="!criteriaList.length" description="暂无条件，请导入模板或新增" />
+            <UiEmpty
+              size="sm"
+              v-if="!criteriaList.length"
+              description="暂无条件，请导入模板或新增"
+            />
           </div>
           <div
             v-if="criteriaTask.taskStatus === PortfolioTitlePromotionTaskStatusCode.PUBLISHED"
             class="title-promo__emergency"
           >
             <label>紧急修正原因（必填）</label>
-            <UiTextarea size="sm" v-model="emergencyReason" :rows="3" placeholder="说明为何修正条件（阳光评审审计）" />
-            <UiButton size="sm" variant="primary" :loading="criteriaSaving" @click="emergencyReplaceCriteria">
+            <UiTextarea
+              size="sm"
+              v-model="emergencyReason"
+              :rows="3"
+              placeholder="说明为何修正条件（阳光评审审计）"
+            />
+            <UiButton
+              size="sm"
+              variant="primary"
+              :loading="criteriaSaving"
+              @click="emergencyReplaceCriteria"
+            >
               提交紧急修正
             </UiButton>
             <label>修正历史</label>
-            <div
-              v-for="log in changeLogs"
-              :key="log.id"
-              class="title-promo__change-log"
-            >
-              <div>{{ log.createTime }} · 前 {{ log.beforeCriteriaCount }} → 后 {{ log.afterCriteriaCount }}</div>
+            <div v-for="log in changeLogs" :key="log.id" class="title-promo__change-log">
+              <div>
+                {{ log.createTime }} · 前 {{ log.beforeCriteriaCount }} → 后
+                {{ log.afterCriteriaCount }}
+              </div>
               <div>{{ log.changeReason }}</div>
-              <div
-                v-for="entry in log.items || []"
-                :key="entry.id"
-                class="dp-meta"
-              >
-                {{ strictEnumLabel(PortfolioTitleCriteriaChangeActionDescription, entry.changeAction, '变更动作') }}
+              <div v-for="entry in log.items || []" :key="entry.id" class="dp-meta">
+                {{
+                  strictEnumLabel(
+                    PortfolioTitleCriteriaChangeActionDescription,
+                    entry.changeAction,
+                    '变更动作',
+                  )
+                }}
                 {{ entry.criteriaCode }} {{ entry.criteriaTitle }}
                 <span v-if="entry.changeNote"> · {{ entry.changeNote }}</span>
               </div>

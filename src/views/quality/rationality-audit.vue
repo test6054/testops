@@ -104,9 +104,7 @@
     >
       <UiForm layout="vertical">
         <UiFormItem label="课程">
-          <UiInput
-            size="sm" :value="editForm.courseName || ''" disabled
-          />
+          <UiInput size="sm" :value="editForm.courseName || ''" disabled />
         </UiFormItem>
         <UiFormItem label="考核内容是否与课程目标一致">
           <UiSwitch size="sm" v-model="editForm.contentAligned" />
@@ -118,7 +116,12 @@
           <UiSwitch size="sm" v-model="editForm.methodReasonable" />
         </UiFormItem>
         <UiFormItem label="审核意见">
-          <UiTextarea size="sm" v-model="editForm.auditOpinion" :rows="3" placeholder="审核意见..." />
+          <UiTextarea
+            size="sm"
+            v-model="editForm.auditOpinion"
+            :rows="3"
+            placeholder="审核意见..."
+          />
         </UiFormItem>
       </UiForm>
       <template #footer>
@@ -155,18 +158,20 @@ import type {
   RationalityAuditCourseLedgerOverviewVO,
   RationalityAuditSaveRequest,
 } from '@/apis/quality/rationality-audit'
-import type { FilterField } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, onMounted, reactive, ref } from 'vue'
 import {
   createRationalityAudit,
   getRationalityAuditCourseLedgerOverview,
   pageRationalityAuditCourseLedger,
   updateRationalityAudit,
 } from '@/apis/quality/rationality-audit'
-import { AssessmentRationalityAuditStatusCode,
+import type { FilterField } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
+import SafetyCertificateOutlined from '@ant-design/icons-vue/SafetyCertificateOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, onMounted, reactive, ref } from 'vue'
+import {
+  AssessmentRationalityAuditStatusCode,
   AssessmentRationalityAuditStatusDescription,
   ConfirmationStatusCode,
 } from '@/apis/quality/types'
@@ -190,7 +195,6 @@ import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
-import { ALL_SEMESTER_CODES, SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -329,7 +333,7 @@ async function loadList() {
   }
 }
 
-function handlePageChange(pageEvent: { current: number, pageSize: number }) {
+function handlePageChange(pageEvent: { current: number; pageSize: number }) {
   pageNum.value = pageEvent.current
   pageSize.value = pageEvent.pageSize
   void loadList()
@@ -356,7 +360,6 @@ function handleReset() {
     coverageRate: 0,
   }
 }
-
 
 const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   if (!qualityStore.currentTrainingPlanId) {
@@ -399,7 +402,7 @@ onActivated(() => {
 
 function openEdit(record: RationalityAuditCourseLedgerItemVO) {
   if (!isCourseAuditMutable(record)) {
-    message.warning('该课程合理性审核已通过，禁止修改')
+    void message.warning('该课程合理性审核已通过，禁止修改')
     return
   }
   editForm.value = {
@@ -418,20 +421,20 @@ async function submitAudit(
   status: Extract<AssessmentRationalityAuditStatusCode, 'APPROVED' | 'REJECTED'>,
 ) {
   if (!editForm.value.qualityCourseId) {
-    message.error('缺少课程信息，无法提交审核')
+    void message.error('缺少课程信息，无法提交审核')
     return
   }
   if (!filterForm.schoolYear || !filterForm.semester) {
-    message.error('请先选择学年和学期')
+    void message.error('请先选择学年和学期')
     return
   }
   if (
-    status === AssessmentRationalityAuditStatusCode.APPROVED
-    && (!editForm.value.contentAligned
-      || !editForm.value.rubricMeasurable
-      || !editForm.value.methodReasonable)
+    status === AssessmentRationalityAuditStatusCode.APPROVED &&
+    (!editForm.value.contentAligned ||
+      !editForm.value.rubricMeasurable ||
+      !editForm.value.methodReasonable)
   ) {
-    message.error('审核通过必须同时满足三项合理性检查')
+    void message.error('审核通过必须同时满足三项合理性检查')
     return
   }
   editing.value = true
@@ -452,7 +455,7 @@ async function submitAudit(
     } else {
       await createRationalityAudit(request)
     }
-    message.success(
+    void message.success(
       status === AssessmentRationalityAuditStatusCode.APPROVED ? '审核已通过' : '已驳回',
     )
     editOpen.value = false

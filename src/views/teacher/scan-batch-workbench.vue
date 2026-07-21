@@ -188,19 +188,14 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamScannerDeviceResponse } from '@/apis/mark/exam-mark-scanner'
+import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
 import type { MarkingProgressResponse } from '@/apis/mark/exam-progress'
+import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import type {
   ExamScannerBatchQueryRequest,
   ExamScannerBatchResponse,
   ExamScannerBatchWorkbenchSummaryResponse,
 } from '@/apis/mark/exam-scan'
-import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { listActiveScannerDevices } from '@/apis/mark/exam-mark-scanner'
-import { getMarkingProgress } from '@/apis/mark/exam-progress'
 import {
   getScannerBatchWorkbenchSummary,
   pageScannerBatches,
@@ -209,6 +204,11 @@ import {
   ScanBatchStatusCode,
   ScanBatchStatusDescription,
 } from '@/apis/mark/exam-scan'
+import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import ScanOrphanRecoveryAlert from '@/components/mark/ScanOrphanRecoveryAlert.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -275,7 +275,7 @@ const scanAttentionAlertDescription = computed(() => {
 const batches = ref<ExamScannerBatchResponse[]>([])
 const batchTotal = ref(0)
 const batchLoading = ref(false)
-const batchQuery = reactive<{ pageNum: number, pageSize: number }>({
+const batchQuery = reactive<{ pageNum: number; pageSize: number }>({
   pageNum: 1,
   pageSize: 10,
 })
@@ -441,9 +441,9 @@ function batchStatusLabel(batch: ExamScannerBatchResponse): string {
 function batchPageRegisterTagVisible(batch: ExamScannerBatchResponse): boolean {
   const state = batch.pageRegisterState
   return (
-    state != null
-    && state !== PageRegisterStateCode.NOT_APPLICABLE
-    && state !== PageRegisterStateCode.COMPLETED
+    state != null &&
+    state !== PageRegisterStateCode.NOT_APPLICABLE &&
+    state !== PageRegisterStateCode.COMPLETED
   )
 }
 
@@ -461,8 +461,8 @@ function batchPageRegisterTone(batch: ExamScannerBatchResponse): BadgeTone {
     return 'red'
   }
   if (
-    state === PageRegisterStateCode.BLOCKED_RECOVERABLE
-    || state === PageRegisterStateCode.PENDING
+    state === PageRegisterStateCode.BLOCKED_RECOVERABLE ||
+    state === PageRegisterStateCode.PENDING
   ) {
     return 'orange'
   }
@@ -475,8 +475,8 @@ function canRetryBatchPageRegister(batch: ExamScannerBatchResponse): boolean {
   }
   const state = batch.pageRegisterState
   if (
-    state === PageRegisterStateCode.BLOCKED_RECOVERABLE
-    || state === PageRegisterStateCode.PENDING
+    state === PageRegisterStateCode.BLOCKED_RECOVERABLE ||
+    state === PageRegisterStateCode.PENDING
   ) {
     return true
   }
@@ -506,7 +506,7 @@ async function retryBatchPageRegister(batch: ExamScannerBatchResponse): Promise<
   }
   // MVR-421：与 canRetryBatchPageRegister / 行内显隐同源二次闸（主考写∧可恢复/待重试登记态）
   if (!canRetryBatchPageRegister(batch)) {
-    message.warning(
+    void message.warning(
       canManageOwnerBatchActions.value
         ? '当前批次不可重试扫描页登记（状态不允许）'
         : '仅考试主考可重试扫描页登记',
@@ -523,14 +523,14 @@ async function retryBatchPageRegister(batch: ExamScannerBatchResponse): Promise<
       scanBatchId: batch.scanBatchId,
     })
     if (response.pageRegisterBlocked) {
-      message.warning(response.pageRegisterDiagnostic || '页登记仍被阻断')
+      void message.warning(response.pageRegisterDiagnostic || '页登记仍被阻断')
       return
     }
     if (response.pageRegisterPending) {
-      message.warning(response.pageRegisterDiagnostic || '页登记待重试')
+      void message.warning(response.pageRegisterDiagnostic || '页登记待重试')
       return
     }
-    message.success('页登记重试成功')
+    void message.success('页登记重试成功')
     await Promise.all([loadSummary(), loadBatches()])
   } catch (error) {
     showUserError(error, '页登记重试失败')
@@ -562,17 +562,17 @@ function formatDeviceLabel(deviceId?: string): string {
 
 function syncFilterForm(next: Record<string, unknown>): void {
   filterForm.keyword = String(next.keyword ?? '')
-  filterForm.scannerDeviceId
-    = typeof next.scannerDeviceId === 'string' ? next.scannerDeviceId : undefined
+  filterForm.scannerDeviceId =
+    typeof next.scannerDeviceId === 'string' ? next.scannerDeviceId : undefined
   filterForm.scanWindow = isScanWindow(next.scanWindow) ? next.scanWindow : undefined
 }
 
 function isScanWindow(value: unknown): value is [string, string] {
   return (
-    Array.isArray(value)
-    && value.length === 2
-    && typeof value[0] === 'string'
-    && typeof value[1] === 'string'
+    Array.isArray(value) &&
+    value.length === 2 &&
+    typeof value[0] === 'string' &&
+    typeof value[1] === 'string'
   )
 }
 
@@ -679,7 +679,7 @@ function handleStatusTabChange(): void {
   void loadBatches()
 }
 
-function onBatchPageChange(page: { current: number, pageSize: number }): void {
+function onBatchPageChange(page: { current: number; pageSize: number }): void {
   batchQuery.pageNum = page.current
   batchQuery.pageSize = page.pageSize
   void loadBatches()
@@ -756,7 +756,7 @@ function tryFocusOrphanFromRoute(): void {
   void nextTick(() => {
     const orphanCount = summary.value?.orphanPendingEventCount ?? 0
     if (orphanCount <= 0) {
-      message.info('当前无待回收的游离扫描页')
+      void message.info('当前无待回收的游离扫描页')
       clearOrphanFocusQuery()
       return
     }

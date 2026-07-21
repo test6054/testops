@@ -359,9 +359,7 @@
       <UiDescriptionsItem label="来源考试">
         {{ detailExperience.sourceExamName }} · {{ detailExperience.sourceExamNo }}
       </UiDescriptionsItem>
-      <UiDescriptionsItem label="题目">
-        题号 {{ detailExperience.questionNo }}
-      </UiDescriptionsItem>
+      <UiDescriptionsItem label="题目"> 题号 {{ detailExperience.questionNo }} </UiDescriptionsItem>
       <UiDescriptionsItem label="状态">
         <UiTag :tone="caseStatusTone(detailExperience.caseStatus)" size="sm">
           {{ caseStatusLabel(detailExperience.caseStatus) }}
@@ -429,7 +427,11 @@
       </template>
     </UiList>
     <template #footer>
-      <div class="dp-space" v-if="canConfirmExperience || canDeprecateExperience" style="--dp-space-gap: 8px">
+      <div
+        class="dp-space"
+        v-if="canConfirmExperience || canDeprecateExperience"
+        style="--dp-space-gap: 8px"
+      >
         <UiButton
           variant="primary"
           size="sm"
@@ -462,23 +464,6 @@ import type {
   GradingExperienceStatsResponse,
   QuestionSignatureResponse,
 } from '@/apis/mark/grading-experience'
-import type { QuestionTypeCode } from '@/apis/mark/question-type'
-import type {
-  BadgeTone,
-  FilterField,
-  UiSectionTabItem,
-  UiTableRowActionItem,
-} from '@/components/ui-guide/ui/types'
-import type { SignalMetric } from '@/types/workbench'
-import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
-import message from 'ant-design-vue/es/message'
-import { computed, onActivated, reactive, ref, watch } from 'vue'
-import {
-  AI_ANALYSIS_FLOW_HINT,
-  AI_ANALYSIS_STATUS_TONE,
-  AiAnalysisStatusCode,
-  AiAnalysisStatusDescription,
-} from '@/apis/mark/ai-analysis-status'
 import {
   confirmExperienceCase,
   deprecateExperienceCase,
@@ -496,7 +481,24 @@ import {
   pageSignatures,
   searchSimilar,
 } from '@/apis/mark/grading-experience'
+import type { QuestionTypeCode } from '@/apis/mark/question-type'
 import { QuestionTypeDescription } from '@/apis/mark/question-type'
+import type {
+  BadgeTone,
+  FilterField,
+  UiSectionTabItem,
+  UiTableRowActionItem,
+} from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
+import ThunderboltOutlined from '@ant-design/icons-vue/ThunderboltOutlined'
+import message from 'ant-design-vue/es/message'
+import { computed, onActivated, reactive, ref, watch } from 'vue'
+import {
+  AI_ANALYSIS_FLOW_HINT,
+  AI_ANALYSIS_STATUS_TONE,
+  AiAnalysisStatusCode,
+  AiAnalysisStatusDescription,
+} from '@/apis/mark/ai-analysis-status'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -707,7 +709,7 @@ async function loadSignatures(): Promise<void> {
 
 async function handleGenerateSignatures(): Promise<void> {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无阅卷写权限')
+    void message.warning('当前账号无阅卷写权限')
     return
   }
   if (!selectedExamId.value || generatingSignatures.value) return
@@ -715,9 +717,9 @@ async function handleGenerateSignatures(): Promise<void> {
   try {
     const result = await generateSignatures(selectedExamId.value)
     if (result.length <= 0) {
-      message.warning('本场无可签名的主观题，未写入题目签名')
+      void message.warning('本场无可签名的主观题，未写入题目签名')
     } else {
-      message.success(`已生成 ${result.length} 条题目签名`)
+      void message.success(`已生成 ${result.length} 条题目签名`)
     }
     await Promise.all([searchSignatures(), loadQuestionOptions(), loadExperienceStats()])
     await refreshSnapshot()
@@ -850,7 +852,7 @@ function handleExperienceFilterSearch(): void {
 
 async function handleExtract(): Promise<void> {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无阅卷写权限')
+    void message.warning('当前账号无阅卷写权限')
     return
   }
   if (!selectedExamId.value || !experienceFilterForm.layoutQuestionId || extracting.value) return
@@ -860,7 +862,7 @@ async function handleExtract(): Promise<void> {
       examId: selectedExamId.value,
       layoutQuestionId: experienceFilterForm.layoutQuestionId,
     })
-    message.success('智能经验已提取')
+    void message.success('智能经验已提取')
     await Promise.all([loadExperiences(), loadExperienceStats()])
     await refreshSnapshot()
   } catch (error) {
@@ -879,24 +881,24 @@ const deprecatingExperience = ref(false)
 
 const canConfirmExperience = computed(
   () =>
-    canManageExperienceCaseLifecycle.value
-    && detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT
-    && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
-    && Boolean(detailExperience.value?.id),
+    canManageExperienceCaseLifecycle.value &&
+    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.DRAFT &&
+    detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
+    Boolean(detailExperience.value?.id),
 )
 
 const canDeprecateExperience = computed(
   () =>
-    canManageExperienceCaseLifecycle.value
-    && detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED
-    && detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS
-    && Boolean(detailExperience.value?.id),
+    canManageExperienceCaseLifecycle.value &&
+    detailExperience.value?.caseStatus === ExperienceCaseStatusCode.CONFIRMED &&
+    detailExperience.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS &&
+    Boolean(detailExperience.value?.id),
 )
 
 async function handleConfirmExperience(): Promise<void> {
   // MVR-422：与 canConfirmExperience 同源二次闸（治理权∧DRAFT∧分析成功）
   if (!canConfirmExperience.value) {
-    message.warning(
+    void message.warning(
       canManageExperienceCaseLifecycle.value
         ? '当前经验案例不可确认（须草稿且分析成功）'
         : '当前账号无经验案例治理权限',
@@ -908,7 +910,7 @@ async function handleConfirmExperience(): Promise<void> {
   confirmingExperience.value = true
   try {
     detailExperience.value = await confirmExperienceCase(caseId)
-    message.success('经验案例已确认，可用于有效性评估')
+    void message.success('经验案例已确认，可用于有效性评估')
     await Promise.all([loadExperiences(), loadExperienceStats()])
   } catch (error) {
     showUserError(error, '经验案例确认失败')
@@ -920,7 +922,7 @@ async function handleConfirmExperience(): Promise<void> {
 function handleDeprecateExperience(): void {
   // MVR-422：与 canDeprecateExperience 同源二次闸（治理权∧CONFIRMED∧分析成功）
   if (!canDeprecateExperience.value) {
-    message.warning(
+    void message.warning(
       canManageExperienceCaseLifecycle.value
         ? '当前经验案例不可废弃（须已确认且分析成功）'
         : '当前账号无经验案例治理权限',
@@ -940,7 +942,7 @@ function handleDeprecateExperience(): void {
       deprecatingExperience.value = true
       try {
         detailExperience.value = await deprecateExperienceCase(caseId)
-        message.success('经验案例已废弃')
+        void message.success('经验案例已废弃')
         await Promise.all([loadExperiences(), loadExperienceStats()])
       } catch (error) {
         showUserError(error, '经验案例废弃失败')
@@ -986,7 +988,7 @@ async function loadLatestCluster(): Promise<void> {
 
 async function handleGenerateCluster(): Promise<void> {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无阅卷写权限')
+    void message.warning('当前账号无阅卷写权限')
     return
   }
   if (!selectedExamId.value || !clusterFilterForm.layoutQuestionId || clustering.value) return
@@ -996,7 +998,7 @@ async function handleGenerateCluster(): Promise<void> {
       examId: selectedExamId.value,
       layoutQuestionId: clusterFilterForm.layoutQuestionId,
     })
-    message.success('智能答案聚类已完成')
+    void message.success('智能答案聚类已完成')
     await refreshSnapshot()
   } catch (error) {
     showUserError(error, '答案聚类分析生成失败')

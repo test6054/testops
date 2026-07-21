@@ -21,7 +21,7 @@ export function useAiAnalysisGenerationFeedback() {
     try {
       const result = await task()
       options.onSuccess(result)
-      message.success(options.successMessage)
+      void message.success(options.successMessage)
     } catch {
       options.onFailure?.()
     } finally {
