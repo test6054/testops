@@ -29,6 +29,11 @@ import {
   ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES,
 } from '@/types/enums/accreditation-evidence-category-enum'
 import {
+  AccreditationEvidenceStatusCode,
+  AccreditationEvidenceStatusDescription,
+  ALL_ACCREDITATION_EVIDENCE_STATUS_CODES,
+} from '@/types/enums/accreditation-evidence-status-enum'
+import {
   ALL_ANNUAL_REPORT_MATERIAL_CATEGORY_CODES,
   AnnualReportMaterialCategoryCode,
   AnnualReportMaterialCategoryDescription,
@@ -71,11 +76,14 @@ export {
   AccreditationEvidenceAnchorTypeDescription,
   AccreditationEvidenceCategoryCode,
   AccreditationEvidenceCategoryDescription,
+  AccreditationEvidenceStatusCode,
+  AccreditationEvidenceStatusDescription,
   ALL_ACCREDITATION_CONCLUSION_TYPE_CODES,
   ALL_ACCREDITATION_CYCLE_PHASE_CODES,
   ALL_ACCREDITATION_CYCLE_STATUS_CODES,
   ALL_ACCREDITATION_EVIDENCE_ANCHOR_TYPE_CODES,
   ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES,
+  ALL_ACCREDITATION_EVIDENCE_STATUS_CODES,
   ALL_ANNUAL_REPORT_MATERIAL_CATEGORY_CODES,
   ALL_ANNUAL_REPORT_MATERIAL_REVIEW_STATUS_CODES,
   ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES,
@@ -433,7 +441,7 @@ export interface AccreditationEvidenceVO {
   semester?: SemesterCode
   markScannedPageId?: string
   markPaperInstanceId?: string
-  evidenceStatus?: string
+  evidenceStatus?: AccreditationEvidenceStatusCode
   createTime?: string
 }
 
@@ -479,8 +487,8 @@ export interface AccreditationLinkedExamOptionVO {
   label: string
 }
 
-export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone>
-  = {
+export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone> =
+  {
     [AnnualReportMaterialStatusCode.DRAFT]: 'gray',
     [AnnualReportMaterialStatusCode.SUBMITTED]: 'blue',
     [AnnualReportMaterialStatusCode.APPROVED]: 'green',
@@ -561,7 +569,7 @@ export const accreditationApi = {
     http.post<void>(`${BASE}/support-profiles/confirm`, { id }),
   evidencePage: (data: AccreditationEvidenceQueryRequest) =>
     http.post<PageResult<AccreditationEvidenceVO>>(`${BASE}/evidences/page`, data),
-  linkedExamOptions: (data: { trainingPlanId: string, programId?: string }) =>
+  linkedExamOptions: (data: { trainingPlanId: string; programId?: string }) =>
     http.post<AccreditationLinkedExamOptionVO[]>(`${BASE}/evidences/linked-exam-options`, data),
   evidenceCreate: (data: AccreditationEvidenceSaveRequest) =>
     http.post<string>(`${BASE}/evidences/create`, data),
