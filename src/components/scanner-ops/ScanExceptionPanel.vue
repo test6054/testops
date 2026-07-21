@@ -685,7 +685,7 @@ async function retryPageRegister(row: ExceptionDashboardRow) {
       examId: row.examId,
       scanBatchId: row.scanBatchId,
     })
-    if (response.pageRegisterBlocked) {
+    if (response.pageRegisterBlocked === true) {
       void message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
     } else {
       void message.success('页登记重试成功')

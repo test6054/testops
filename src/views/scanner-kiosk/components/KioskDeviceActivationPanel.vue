@@ -34,7 +34,7 @@ const agentOfflineHint = computed(() =>
 )
 
 function handleActivate() {
-  // MVR-321：与 canActivate 二次拦截，禁止缺省放行
+  // MVR-321：与 canActivate 二次拦截；缺省 false，禁止放行
   if (!props.canActivate || submitDisabled.value) return
   emit('submit')
 }

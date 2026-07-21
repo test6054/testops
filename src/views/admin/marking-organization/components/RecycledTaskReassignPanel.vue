@@ -32,7 +32,7 @@
         </template>
         <template v-else-if="column.key === 'targetReviewer'">
           <UiSelect
-            v-if="canReassign === true"
+            v-if="canReassign"
             size="sm"
             v-model="targetReviewerByTaskId[record.id]"
             placeholder="选择目标教师"
@@ -43,7 +43,7 @@
         </template>
         <template v-else-if="column.key === 'action'">
           <UiTableActions
-            v-if="canReassign === true"
+            v-if="canReassign"
             :items="buildReassignActions(record)"
             split
             @action="() => submitReassign(record)"
@@ -117,7 +117,7 @@ const columns = [
   { title: '操作', key: 'action', width: 100 },
 ]
 
-/** MVR-392：再分配行操作仅 canReassign===true 时渲染，避免关考/无权限假可点 */
+/** MVR-392：再分配行操作仅 canReassign 为 true 时渲染，避免关考/无权限假可点 */
 function buildReassignActions(record: MarkingTaskResponse): UiTableRowActionItem[] {
   return [
     {
@@ -164,7 +164,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 
 async function submitReassign(task: MarkingTaskResponse): Promise<void> {
   // MVR-317：回收再分配二次拦截
-  if (props.canReassign !== true) {
+  if (!props.canReassign) {
     void message.warning('当前账号无权再分配回收任务')
     return
   }

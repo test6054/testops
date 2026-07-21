@@ -18,7 +18,7 @@ import type {
 import type { BadgeTone, FilterField, FilterOption } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
 import {
   PortfolioArchiveRecordSourceTypeDescription,
@@ -305,6 +305,9 @@ const returnDeadline = ref('')
 const batchRejectReason = ref('')
 const batchReturnDeadline = ref('')
 const escalateReason = ref('')
+/** PF-P0-390：站内信 reviewTaskId 深链提示 */
+const deepLinkHint = ref('')
+const route = useRoute()
 const router = useRouter()
 
 const batchSelectableKeys = computed(() =>
@@ -818,10 +821,48 @@ async function handleEscalate() {
   }
 }
 
+
+/**
+ * PF-P0-390：应用站内信 reviewTaskId 深链筛选（默认转复审 + 学校复审流）。
+ */
+function applyReviewTaskDeepLinkFilters(): string {
+  const reviewTaskId = typeof route.query.reviewTaskId === 'string' ? route.query.reviewTaskId.trim() : ''
+  if (!reviewTaskId) {
+    deepLinkHint.value = ''
+    return ''
+  }
+  if (typeof route.query.reviewStatus === 'string' && route.query.reviewStatus.trim()) {
+    filterForm.reviewStatus = route.query.reviewStatus.trim() as PortfolioReviewTaskPageRequest['reviewStatus']
+  } else {
+    filterForm.reviewStatus = PortfolioReviewTaskStatusCode.SECOND_REVIEW
+  }
+  filterForm.auditFlowCode = PORTFOLIO_SCHOOL_REVIEW_FLOW_CODE
+  pageNum.value = 1
+  return reviewTaskId
+}
+
+/**
+ * PF-P0-390：列表加载后提示并定位深链审核任务。
+ */
+function highlightReviewTaskDeepLink(reviewTaskId: string) {
+  if (!reviewTaskId) {
+    return
+  }
+  const inPage = rows.value.find((item) => String(item.id) === reviewTaskId)
+  if (inPage) {
+    deepLinkHint.value = `深链审核任务 #${reviewTaskId}：教师 ${inPage.teacherName || inPage.teacherId}（${reviewTaskStatusLabel(inPage.reviewStatus)}）`
+    activeRow.value = inPage
+    return
+  }
+  deepLinkHint.value = `深链审核任务 #${reviewTaskId}：已按转复审筛选，请翻页定位后办理`
+}
+
 onMounted(async () => {
   await loadTree()
   await loadCategories()
+  const deepLinkTaskId = applyReviewTaskDeepLinkFilters()
   await loadPage()
+  highlightReviewTaskDeepLink(deepLinkTaskId)
 })
 
 watch(
@@ -842,6 +883,12 @@ watch(
       <ContextBar layout="workbench" show-title title="院系审核台" />
     </template>
 
+    <UiAlertStrip
+      v-if="deepLinkHint"
+      tone="info"
+      :closable="false"
+      :title="deepLinkHint"
+    />
     <UiAlertStrip
       v-if="archiveWriteForbidden"
       tone="warning"

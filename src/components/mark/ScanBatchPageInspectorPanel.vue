@@ -445,10 +445,10 @@ const boundIdentityLine = computed(() => {
 })
 
 const showBindForm = computed(() => {
-  // MVR-376：仅认 BE canManageOwnerBatchActions===true
+  // MVR-376：须主考写权限（父侧已从 BE canManageOwnerBatchActions 收敛为 boolean）
   const page = props.inspector?.page
   return Boolean(
-    props.canManageOwnerWrites === true && page
+    props.canManageOwnerWrites && page
     && page.registerStatus !== ScanBatchWorkbenchRegisterStatusCode.PENDING
     && page.bindingStatus !== ScanBatchWorkbenchBindingStatusCode.BOUND
     && page.paperInstanceId
@@ -522,9 +522,9 @@ const currentPaperLabel = computed(() => {
 
 const showReassignSection = computed(() => {
   const page = props.inspector?.page
-  // MVR-376：仅认 BE canManageOwnerBatchActions===true
+  // MVR-376：须主考写权限（父侧已从 BE canManageOwnerBatchActions 收敛为 boolean）
   return Boolean(
-    props.canManageOwnerWrites === true && page
+    props.canManageOwnerWrites && page
     && props.examId
     && props.scanBatchId
     && page.pageId
@@ -571,7 +571,7 @@ function syncBindFormFromPage(): void {
 
 async function submitBind(): Promise<void> {
   // MVR-376：与 canManageOwnerWrites / BE requireExamOwnerPermission 二次拦截
-  if (props.canManageOwnerWrites !== true) {
+  if (!props.canManageOwnerWrites) {
     showFormValidationMessage('当前账号无主考扫描写权限，无法绑定身份')
     return
   }
@@ -612,7 +612,7 @@ async function submitBind(): Promise<void> {
 
 async function submitReassign(): Promise<void> {
   // MVR-376：与 canManageOwnerWrites / BE requireExamOwnerPermission 二次拦截
-  if (props.canManageOwnerWrites !== true) {
+  if (!props.canManageOwnerWrites) {
     showFormValidationMessage('当前账号无主考扫描写权限，无法人工调卷')
     return
   }

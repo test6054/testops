@@ -170,7 +170,7 @@ const props = defineProps<{
   > | null
   /**
    * MVR-372：与 BE canManageReviewerWrites / requireActiveExam 同源。
-   * 仅认 ===true；禁止缺声明默认放行。
+   * 仅认 true；禁止缺声明默认放行。
    */
   canManageReviewerWrites?: boolean
 }>()

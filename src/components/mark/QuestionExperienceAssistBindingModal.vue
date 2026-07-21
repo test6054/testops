@@ -68,7 +68,7 @@ const props = defineProps<{
   questionNo?: string
   /**
    * MVR-372：绑定与 canManageReviewerWrites（评阅写∧ACTIVE）同源。
-   * 仅认 ===true；禁止缺声明默认放行。
+   * 仅认 true；禁止缺声明默认放行。
    */
   canManageReviewerWrites?: boolean
 }>()
@@ -114,7 +114,7 @@ async function loadCandidates(): Promise<void> {
 async function handleSave(): Promise<void> {
   if (!props.examId || !props.layoutQuestionId || saving.value) return
   // MVR-372：写 handler 二次拦截；策略页仅隐藏入口不能替代
-  if (props.canManageReviewerWrites !== true) {
+  if (!props.canManageReviewerWrites) {
     void message.warning('仅本场阅卷组织成员或主考可绑定定标经验')
     return
   }

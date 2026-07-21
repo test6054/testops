@@ -7,8 +7,8 @@ import type {
   PortfolioTeacherLifecycleStatusCode,
 } from '@/apis/portfolio/teacher-lifecycle'
 import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS,
@@ -30,12 +30,15 @@ import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 
+const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
 const applying = ref(false)
 const rows = ref<PortfolioTeacherLifecycleEventVO[]>([])
 const total = ref(0)
 const operationKey = ref('')
+/** 站内信深链聚焦的事件 ID（eventId 查询参数）。 */
+const focusedEventId = ref('')
 
 const query = reactive({
   pageNum: 1,
@@ -76,7 +79,7 @@ const columns: ColumnsType = [
   { title: '来源', key: 'sourceType', width: 100 },
   { title: '审批', key: 'approvalStatus', width: 100 },
   { title: '原因', dataIndex: 'reasonText', key: 'reasonText', ellipsis: true },
-  { title: '操作', key: 'actions', width: 200 },
+  { title: '操作', key: 'actions', width: 280 },
 ]
 
 function statusLabel(code?: string) {
@@ -96,6 +99,28 @@ function toStatusArchiveWriteForbidden(code?: string): boolean {
   return Boolean(code && code !== 'ACTIVE' && code !== 'TEMP_HOLD')
 }
 
+/** PF-P0-397：解析 route query 字符串参数（eventId / teacherUserId）。 */
+function readRouteStringParam(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+  if (Array.isArray(value) && typeof value[0] === 'string') {
+    return value[0].trim()
+  }
+  return ''
+}
+
+function isPendingSelfDeclare(record: PortfolioTeacherLifecycleEventVO): boolean {
+  return record.approvalStatus === 'PENDING'
+}
+
+function eventRowClassName(record: PortfolioTeacherLifecycleEventVO): string {
+  if (focusedEventId.value && String(record.id) === focusedEventId.value) {
+    return 'teacher-lifecycle-admin__row--focus'
+  }
+  return ''
+}
+
 async function loadEvents() {
   loading.value = true
   try {
@@ -109,6 +134,12 @@ async function loadEvents() {
     })
     rows.value = result?.list ?? []
     total.value = Number(result?.total ?? 0)
+    if (focusedEventId.value) {
+      const hit = rows.value.some((row) => String(row.id) === focusedEventId.value)
+      if (!hit) {
+        void message.warning(`深链事件 eventId=${focusedEventId.value} 不在当前筛选结果中，请调整筛选条件`)
+      }
+    }
   } catch (error) {
     rows.value = []
     total.value = 0
@@ -116,6 +147,29 @@ async function loadEvents() {
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * PF-P0-397 / PF-396：站内信 jumpUrl `/portfolio/teacher-lifecycle?eventId=&teacherUserId=`
+ * 打开时自动带入筛选，便于院系立刻审批待审申报。
+ */
+async function applyLifecycleDeepLink() {
+  const eventId = readRouteStringParam(route.query.eventId)
+  const teacherUserId = readRouteStringParam(route.query.teacherUserId)
+  focusedEventId.value = eventId
+  if (teacherUserId) {
+    query.teacherUserId = teacherUserId
+  }
+  if (eventId) {
+    // 深链默认看待审；若用户已手动选状态则保留
+    if (!query.approvalStatus) {
+      query.approvalStatus = 'PENDING'
+    }
+    query.pageNum = 1
+  } else if (teacherUserId) {
+    query.pageNum = 1
+  }
+  await loadEvents()
 }
 
 function onPageChange(pageNum: number, pageSize: number) {
@@ -279,8 +333,18 @@ function openTeacherDirectory(teacherUserId?: string | number) {
 }
 
 onMounted(() => {
-  void loadEvents()
+  void applyLifecycleDeepLink()
 })
+
+watch(
+  () => [route.query.eventId, route.query.teacherUserId],
+  (next, prev) => {
+    if (JSON.stringify(next) === JSON.stringify(prev)) {
+      return
+    }
+    void applyLifecycleDeepLink()
+  },
+)
 </script>
 
 <template>
@@ -391,6 +455,7 @@ onMounted(() => {
             onChange: onPageChange,
           }"
           row-key="id"
+          :row-class-name="eventRowClassName"
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'changeType'">
@@ -412,14 +477,60 @@ onMounted(() => {
                 档案可填报
               </UiTag>
             </template>
-            <template v-else-if="column.key === 'actions'">
-              <UiButton
-                size="sm"
-                variant="ghost"
-                @click="openTeacherDirectory(record.teacherUserId)"
+            <template v-else-if="column.key === 'sourceType'">
+              {{ record.sourceTypeLabel || record.sourceType || '—' }}
+            </template>
+            <template v-else-if="column.key === 'approvalStatus'">
+              <UiTag
+                v-if="record.approvalStatus === 'PENDING'"
+                tone="orange"
               >
-                名册
-              </UiButton>
+                {{ record.approvalStatusLabel || '待审批' }}
+              </UiTag>
+              <UiTag
+                v-else-if="record.approvalStatus === 'APPROVED' || record.approvalStatus === 'APPLIED'"
+                tone="green"
+              >
+                {{ record.approvalStatusLabel || record.approvalStatus }}
+              </UiTag>
+              <UiTag
+                v-else-if="record.approvalStatus === 'REJECTED'"
+                tone="red"
+              >
+                {{ record.approvalStatusLabel || '已驳回' }}
+              </UiTag>
+              <span v-else>{{ record.approvalStatusLabel || record.approvalStatus || '—' }}</span>
+            </template>
+            <template v-else-if="column.key === 'actions'">
+              <div class="teacher-lifecycle-admin__actions">
+                <UiButton
+                  v-if="isPendingSelfDeclare(record)"
+                  size="sm"
+                  variant="primary"
+                  :loading="operationKey === `approve:${record.id}`"
+                  :disabled="!!operationKey && operationKey !== `approve:${record.id}`"
+                  @click="approveDeclare(record)"
+                >
+                  通过
+                </UiButton>
+                <UiButton
+                  v-if="isPendingSelfDeclare(record)"
+                  size="sm"
+                  variant="outline"
+                  :loading="operationKey === `reject:${record.id}`"
+                  :disabled="!!operationKey && operationKey !== `reject:${record.id}`"
+                  @click="rejectDeclare(record)"
+                >
+                  驳回
+                </UiButton>
+                <UiButton
+                  size="sm"
+                  variant="ghost"
+                  @click="openTeacherDirectory(record.teacherUserId)"
+                >
+                  名册
+                </UiButton>
+              </div>
             </template>
           </template>
           <template #emptyText>
@@ -472,5 +583,14 @@ onMounted(() => {
   inset: 0;
   opacity: 0;
   cursor: pointer;
+}
+.teacher-lifecycle-admin__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+:deep(.teacher-lifecycle-admin__row--focus > td) {
+  background: color-mix(in srgb, var(--dp-brand, #1677ff) 10%, transparent);
 }
 </style>

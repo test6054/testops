@@ -60,7 +60,7 @@ const props = withDefaults(
     effectiveMaxExperienceItems?: number
     /**
      * MVR-372：启用/改阈与 canManageReviewerWrites（评阅写∧ACTIVE）同源。
-     * 仅认 ===true；禁止缺声明默认放行。
+     * 仅认 true；禁止缺声明默认放行。
      */
     canManageReviewerWrites?: boolean
   }>(),
@@ -123,7 +123,7 @@ watch(open, (visible) => {
 async function handleConfirm(): Promise<void> {
   if (!props.examId || saving.value) return
   // MVR-372：写 handler 二次拦截；策略页仅隐藏入口不能替代
-  if (props.canManageReviewerWrites !== true) {
+  if (!props.canManageReviewerWrites) {
     void message.warning('仅本场阅卷组织成员或主考可配置经验辅助评阅')
     return
   }

@@ -522,11 +522,11 @@ async function retryBatchPageRegister(batch: ExamScannerBatchResponse): Promise<
       examId: selectedExamId.value,
       scanBatchId: batch.scanBatchId,
     })
-    if (response.pageRegisterBlocked) {
+    if (response.pageRegisterBlocked === true) {
       void message.warning(response.pageRegisterDiagnostic || '页登记仍被阻断')
       return
     }
-    if (response.pageRegisterPending) {
+    if (response.pageRegisterPending === true) {
       void message.warning(response.pageRegisterDiagnostic || '页登记待重试')
       return
     }

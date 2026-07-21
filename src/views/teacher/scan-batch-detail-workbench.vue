@@ -1387,9 +1387,9 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
         examId: selectedExamId.value,
         scanBatchId: batch.scanBatchId,
       })
-      if (response.pageRegisterBlocked) {
+      if (response.pageRegisterBlocked === true) {
         void message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
-      } else if (response.pageRegisterPending) {
+      } else if (response.pageRegisterPending === true) {
         void message.warning(response.pageRegisterDiagnostic ?? '页登记待重试')
       } else {
         void message.success(formatPageRegisterRetryMessage(response))
@@ -1440,9 +1440,9 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
             examId: selectedExamId.value,
             scanBatchId: batch.scanBatchId,
           })
-          if (response.pageRegisterBlocked) {
+          if (response.pageRegisterBlocked === true) {
             void message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
-          } else if (response.pageRegisterPending) {
+          } else if (response.pageRegisterPending === true) {
             void message.warning(response.pageRegisterDiagnostic ?? '页登记待重试')
           } else {
             void message.success(formatPageRegisterRetryMessage(response))

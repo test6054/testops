@@ -38,7 +38,7 @@ const emit = defineEmits<{
   save: []
 }>()
 
-/** 生命周期锁或非主考时表单只读 */
+/** 生命周期锁或非主考时表单只读；canManageOwnerWrites 缺省 false */
 const formReadonly = computed(() => props.layoutModeLocked || !props.canManageOwnerWrites)
 
 const printSourceHint = computed(() => {

@@ -63,7 +63,7 @@ watch(
 async function handleSave() {
   if (saving.value) return
   // MVR-311：写 handler 二次拦截
-  if (props.canMaintainMaterial !== true) {
+  if (!props.canMaintainMaterial) {
     void message.warning('当前账号无维护材料标签权限')
     return
   }

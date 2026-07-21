@@ -118,7 +118,7 @@ async function confirm(): Promise<void> {
     showUserError(null, '会话状态调整失败')
     return
   }
-  if (props.canManage !== true) {
+  if (!props.canManage) {
     showFormValidationMessage('仅考试主考老师可管理试评 / 正评会话')
     return
   }

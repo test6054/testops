@@ -56,7 +56,7 @@ const currentLabel = computed(() => {
     'checklistPhaseKey',
   )
 })
-const submitReady = computed(() => props.canSubmitVolume === true)
+const submitReady = computed(() => props.canSubmitVolume)
 </script>
 
 <template>

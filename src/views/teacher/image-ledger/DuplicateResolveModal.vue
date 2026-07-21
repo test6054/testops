@@ -64,7 +64,7 @@ const props = defineProps<{
   resolution: ExamPaperDuplicateResolutionVO | null
   /**
    * MVR-372：与 BE canManageOwnerLedgerWrites（主考∧ACTIVE）同源。
-   * 仅认 ===true；禁止缺声明默认放行。
+   * 仅认 true；禁止缺声明默认放行。
    */
   canManageOwnerLedgerWrites?: boolean
 }>()
@@ -94,7 +94,7 @@ async function handleOk(): Promise<void> {
     return
   }
   // MVR-372：写 handler 二次拦截；父页仅隐藏入口不能替代
-  if (props.canManageOwnerLedgerWrites !== true) {
+  if (!props.canManageOwnerLedgerWrites) {
     void message.warning('仅考试主考可处置重复影像')
     return
   }

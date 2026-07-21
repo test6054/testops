@@ -453,7 +453,7 @@ async function submitReadPage() {
 }
 
 function openAccessRequest() {
-  // MVR-299：与 canRequestAccess 同源二次拦截
+  // MVR-299：与 canRequestAccess 同源二次拦截（必填 boolean，直接取反）
   if (!props.canRequestAccess) {
     void message.warning('当前账号无发起借阅权限')
     return

@@ -37,7 +37,7 @@ watch(
 
 async function handleSubmit() {
   // MVR-317：与 BE/父层 canForceReleaseTicket 二次拦截
-  if (props.canForceRelease !== true) {
+  if (!props.canForceRelease) {
     showFormValidationMessage('当前账号无权强制解锁该派单')
     return
   }

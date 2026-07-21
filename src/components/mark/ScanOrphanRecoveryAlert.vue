@@ -8,7 +8,7 @@
       title="存在未绑定批次的扫描事件"
       :description="description"
     >
-      <template v-if="canManageOwnerBatchActions === true" #actions>
+      <template v-if="canManageOwnerBatchActions" #actions>
         <UiButton
           size="sm"
           variant="primary"
@@ -57,7 +57,7 @@ const props = withDefaults(
     examId: string
     orphanPendingEventCount: number
     orphanPendingPageCount: number
-    /** MVR-326：仅认 BE canManageOwnerBatchActions===true */
+    /** MVR-326：仅认 BE canManageOwnerBatchActions */
     canManageOwnerBatchActions?: boolean
   }>(),
   {
@@ -83,7 +83,7 @@ const canRecover = computed(
 
 const description = computed(() => {
   const scope = `${props.orphanPendingEventCount} 条事件、${props.orphanPendingPageCount} 页尚未归入扫描批次`
-  if (props.canManageOwnerBatchActions === true) {
+  if (props.canManageOwnerBatchActions) {
     return `${scope}，可按扫描设备自动聚合补救。`
   }
   return `${scope}，请联系考试主考老师执行补救。`

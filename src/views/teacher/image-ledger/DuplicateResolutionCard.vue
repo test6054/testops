@@ -30,7 +30,7 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
-            v-if="canManageOwnerLedgerWrites === true"
+            v-if="canManageOwnerLedgerWrites"
             :items="[{ key: 'resolve', label: '处置' }]"
             split
             @action="() => $emit('resolve', rows[index])"

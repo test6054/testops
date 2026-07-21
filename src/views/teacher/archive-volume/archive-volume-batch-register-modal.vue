@@ -190,7 +190,7 @@ function removeRow(uid: string) {
 
 async function handleSubmit() {
   // MVR-317：批量登记与 canRegisterMaterial 二次拦截
-  if (props.canRegisterMaterial !== true) {
+  if (!props.canRegisterMaterial) {
     showFormValidationMessage('当前账号无材料登记权限')
     return
   }
