@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioAiJobSummaryVO } from '@/apis/portfolio/types'
-import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -15,6 +14,7 @@ import {
 } from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
+import { PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE } from '@/apis/portfolio/types'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
@@ -46,19 +46,19 @@ function readRouteStringParam(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
-type AnalysisPollOutcome =
-  | AiTaskStatusCode.SUCCEEDED
-  | AiTaskStatusCode.FAILED
-  | AiTaskStatusCode.CANCELLED
-  | 'TIMEOUT'
-  | 'ABORTED'
-  | 'CONTRACT_ERROR'
+type AnalysisPollOutcome
+  = | AiTaskStatusCode.SUCCEEDED
+    | AiTaskStatusCode.FAILED
+    | AiTaskStatusCode.CANCELLED
+    | 'TIMEOUT'
+    | 'ABORTED'
+    | 'CONTRACT_ERROR'
 
 const route = useRoute()
 const { targetTeacherId, scopeReady } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 const { canPickTeachers, canManageTeacherAi } = usePortfolioTeacherAccess()
 
 const activeTab = ref<'ask' | 'policy'>(
@@ -194,8 +194,8 @@ function isAnalysisType(type: PortfolioAiAnalysisTypeCode) {
 const supportedOrchestrationAnalysis = computed(() => {
   const type = analysisDetail.value?.analysisType
   return (
-    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA ||
-    type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
+    type === PortfolioAiAnalysisTypeCode.MATERIAL_QA
+    || type === PortfolioAiAnalysisTypeCode.POLICY_MATCH
   )
 })
 
@@ -262,9 +262,9 @@ async function loadRegisteredMaterial(materialId: string) {
 
 async function ensureMaterialRegistered(taskToken: number): Promise<string | null> {
   if (
-    registeredMaterialId.value &&
-    registeredMaterialFileNodeId.value === materialFileNodeId.value &&
-    registeredMaterialType.value === materialType.value
+    registeredMaterialId.value
+    && registeredMaterialFileNodeId.value === materialFileNodeId.value
+    && registeredMaterialType.value === materialType.value
   ) {
     return registeredMaterialId.value
   }
@@ -725,8 +725,8 @@ usePortfolioScopedLoader(
 
         <template
           v-if="
-            supportedOrchestrationAnalysis &&
-            isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)
+            supportedOrchestrationAnalysis
+              && isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)
           "
         >
           <p v-if="analysisDetail.reportScene" class="ai-orchestration__meta">
@@ -755,8 +755,8 @@ usePortfolioScopedLoader(
 
         <template
           v-else-if="
-            supportedOrchestrationAnalysis &&
-            isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)
+            supportedOrchestrationAnalysis
+              && isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)
           "
         >
           <p v-if="analysisDetail.conclusionCode" class="ai-orchestration__meta">

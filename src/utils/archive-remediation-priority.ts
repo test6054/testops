@@ -3,8 +3,8 @@ import { ArchiveRemediationPriorityCode } from '@/types/enums/archive-remediatio
 
 export { ArchiveRemediationPriorityDescription } from '@/types/enums/archive-remediation-priority-enum'
 
-export const ARCHIVE_REMEDIATION_PRIORITY_TONE: Record<ArchiveRemediationPriorityCode, BadgeTone> =
-  {
+export const ARCHIVE_REMEDIATION_PRIORITY_TONE: Record<ArchiveRemediationPriorityCode, BadgeTone>
+  = {
     [ArchiveRemediationPriorityCode.HIGH]: 'red',
     [ArchiveRemediationPriorityCode.MEDIUM]: 'orange',
     [ArchiveRemediationPriorityCode.LOW]: 'gray',

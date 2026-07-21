@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioTeacherPkSessionVO } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type {
   PortfolioTeacherPkCompareTeacherVO,
   PortfolioTeacherPkCompareVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
@@ -18,6 +17,7 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
@@ -376,9 +376,9 @@ onUnmounted(() => {
             >
               <div
                 v-if="
-                  teacher.lifecycleStatus ||
-                  teacher.evaluationHeld ||
-                  teacher.ownerIdentityLayers?.length
+                  teacher.lifecycleStatus
+                    || teacher.evaluationHeld
+                    || teacher.ownerIdentityLayers?.length
                 "
                 class="teacher-pk__identity-bar"
               >

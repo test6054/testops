@@ -22,12 +22,8 @@
         <span class="qtype-chart__score">{{ item.totalFullScore }} 分</span>
       </div>
       <footer class="qtype-chart__foot">
-        <span
-          >共 <strong>{{ data.totalQuestionCount }}</strong> 题</span
-        >
-        <span
-          >满分 <strong>{{ data.totalFullScore }}</strong> 分</span
-        >
+        <span>共 <strong>{{ data.totalQuestionCount }}</strong> 题</span>
+        <span>满分 <strong>{{ data.totalFullScore }}</strong> 分</span>
       </footer>
     </div>
   </WorkbenchSurfaceCard>

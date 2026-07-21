@@ -237,7 +237,7 @@ async function openEdit(row: PortfolioNationalAchievementCatalogVO) {
       requirements: detail.requirements.map((item, index) => ({
         requirementCode: item.requirementCode,
         requirementTitle: item.requirementTitle,
-        evidenceType: item.evidenceType as PortfolioAchievementEvidenceTypeCode,
+        evidenceType: item.evidenceType,
         evidenceMatchValue: item.evidenceMatchValue,
         weight: item.weight,
         sortOrder: item.sortOrder ?? index,

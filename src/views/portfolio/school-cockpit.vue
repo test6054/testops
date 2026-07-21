@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import type { PortfolioSchoolPortraitCockpitVO } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { PortfolioComplianceScopeTypeCode } from '@/types/enums/portfolio-compliance-scope-type-enum'
-import { PortfolioComplianceScopeTypeDescription } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -23,6 +21,8 @@ import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioComplianceScopeTypeDescription } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioCockpitAskPanel from '@/views/portfolio/components/PortfolioCockpitAskPanel.vue'
@@ -42,7 +42,7 @@ const cockpit = ref<PortfolioSchoolPortraitCockpitVO | null>(null)
 const deepLinkTaskId = computed(() => readRouteStringParam(route.query.taskId))
 
 const campusOptions = computed(() => {
-  const options: { value: string; label: string }[] = [{ value: '', label: '全校（合并计算）' }]
+  const options: { value: string, label: string }[] = [{ value: '', label: '全校（合并计算）' }]
   const walk = (nodes: typeof treeRoots.value, prefix = '') => {
     for (const node of nodes) {
       const label = prefix ? `${prefix} / ${node.name}` : node.name
@@ -99,8 +99,8 @@ const signals = computed<SignalMetric[]>(() => {
       value: summary.courseArchiveFrameworkSlotDone ?? 0,
       unit: `/${summary.courseArchiveFrameworkSlotTotal ?? 0}`,
       tone:
-        (summary.courseArchiveFrameworkSlotDone ?? 0) >=
-        (summary.courseArchiveFrameworkSlotTotal ?? 0)
+        (summary.courseArchiveFrameworkSlotDone ?? 0)
+        >= (summary.courseArchiveFrameworkSlotTotal ?? 0)
           ? 'green'
           : 'orange',
       clickable: true,

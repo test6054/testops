@@ -5,10 +5,10 @@ import type {
   PortfolioEthicsReviewLogVO,
   PortfolioEthicsSanctionVO,
 } from '@/apis/portfolio/ethics-sanction'
-import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { portfolioEthicsSanctionApi } from '@/apis/portfolio/ethics-sanction'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -316,10 +316,10 @@ async function saveSanction() {
     return
   }
   if (
-    !form.handlingBasis.trim() ||
-    !form.releaseCondition.trim() ||
-    !form.reviewDepartment.trim() ||
-    !form.publicSummary.trim()
+    !form.handlingBasis.trim()
+    || !form.releaseCondition.trim()
+    || !form.reviewDepartment.trim()
+    || !form.publicSummary.trim()
   ) {
     void message.error('请填写处理依据、解除条件、复核部门和公开摘要')
     return
@@ -359,9 +359,9 @@ async function submitReview() {
   }
   if (!reviewTarget.value || writing.value) return
   if (
-    (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND ||
-      reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN) &&
-    !reviewForm.newSanctionEndDate
+    (reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
+      || reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN)
+    && !reviewForm.newSanctionEndDate
   ) {
     void message.error(
       reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
@@ -388,7 +388,7 @@ async function submitReview() {
   }
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -615,8 +615,8 @@ onMounted(async () => {
         <UiSelect v-model="reviewForm.reviewConclusion" size="sm" :options="conclusionOptions" />
         <label
           v-if="
-            reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND ||
-            reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN
+            reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
+              || reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN
           "
         >
           {{
@@ -627,8 +627,8 @@ onMounted(async () => {
         </label>
         <UiDatePicker
           v-if="
-            reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND ||
-            reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN
+            reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.EXTEND
+              || reviewForm.reviewConclusion === PortfolioEthicsReviewConclusionCode.MAINTAIN
           "
           v-model="reviewForm.newSanctionEndDate"
           size="sm"

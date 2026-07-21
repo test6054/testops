@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDevelopmentRecordStatusDescription,
   PortfolioDevelopmentRecordTypeCode,
 } from '@/apis/portfolio/enums'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -44,8 +44,8 @@ const removingId = ref('')
 const exporting = ref(false)
 const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' })
 const formTeacherId = computed(() => form.teacherUserId || undefined)
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 const { teacherOptions, searchTeachers } = usePortfolioTeacherSearch()
 const {
   loading,
@@ -269,11 +269,11 @@ watch(
               :layers="record.ownerIdentityLayers"
               :note="record.ownerMultiIdentityNote"
               :row-key="
-                record.id ||
-                record.teacherId ||
-                record.teacherUserId ||
-                record.subjectTeacherUserId ||
-                record.userId
+                record.id
+                  || record.teacherId
+                  || record.teacherUserId
+                  || record.subjectTeacherUserId
+                  || record.userId
               "
             />
           </template>

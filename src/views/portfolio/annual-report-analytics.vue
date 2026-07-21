@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import type { PortfolioAnalysisAnnualReportVO } from '@/apis/portfolio/analysis'
-import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
@@ -13,6 +12,7 @@ import {
 } from '@/components/quality/selectors/page-contract'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -363,8 +363,8 @@ watch(
                     ? 'green'
                     : latestTask.lifecycleStatus === 'TEMP_HOLD'
                       ? 'orange'
-                      : latestTask.lifecycleStatus === 'SEALED' ||
-                          latestTask.lifecycleStatus === 'TRANSFERRED'
+                      : latestTask.lifecycleStatus === 'SEALED'
+                        || latestTask.lifecycleStatus === 'TRANSFERRED'
                         ? 'red'
                         : 'gray'
                 "
@@ -396,8 +396,8 @@ watch(
         </div>
         <div
           v-if="
-            latestTask.aiTaskId ||
-            latestTask.taskStatus === PortfolioAnnualReportTaskStatusCode.SUCCESS
+            latestTask.aiTaskId
+              || latestTask.taskStatus === PortfolioAnnualReportTaskStatusCode.SUCCESS
           "
         >
           <dt>报告结果</dt>
@@ -448,8 +448,8 @@ watch(
             <UiButton
               size="sm"
               :disabled="
-                record.taskStatus !== PortfolioAnnualReportTaskStatusCode.SUCCESS ||
-                !record.aiTaskId
+                record.taskStatus !== PortfolioAnnualReportTaskStatusCode.SUCCESS
+                  || !record.aiTaskId
               "
               @click="openReportDetail(record)"
             >

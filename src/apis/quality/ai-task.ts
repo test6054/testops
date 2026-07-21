@@ -135,7 +135,7 @@ export interface AiTaskCancelRequest {
 /** AI 任务按状态统计 - 对齐后端 QualityStatusCountsResponse */
 export interface QualityStatusCountsResponse {
   totalCount: number
-  statusCounts: Array<{ status: AiTaskStatusCode; recordCount: number }>
+  statusCounts: Array<{ status: AiTaskStatusCode, recordCount: number }>
 }
 
 export const aiTaskApi = {

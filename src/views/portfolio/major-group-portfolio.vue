@@ -5,14 +5,13 @@ import type {
   PortfolioMajorGroupPortfolioSectionItemVO,
   PortfolioMajorGroupPortfolioVO,
 } from '@/apis/portfolio/governance'
-import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import type { PortfolioOrgTreeNodeVO } from '@/apis/portfolio/types'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
+import { portfolioMajorGroupApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -30,11 +29,12 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { PortfolioDoubleHighTaskStatusDescription } from '@/types/enums/portfolio-double-high-task-status-enum'
 import {
   PortfolioAlertStatusCode,
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
+import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import { PortfolioDoubleHighTaskStatusDescription } from '@/types/enums/portfolio-double-high-task-status-enum'
 import {
   ALL_PORTFOLIO_MAJOR_GROUP_SECTION_CODES,
   PortfolioMajorGroupSectionCode,
@@ -49,7 +49,7 @@ function readRouteStringParam(value: unknown): string {
 }
 
 function flattenMajorGroupOptions(roots: PortfolioOrgTreeNodeVO[]) {
-  const result: { value: string; label: string }[] = []
+  const result: { value: string, label: string }[] = []
   function walk(nodes: PortfolioOrgTreeNodeVO[], prefix = '') {
     for (const node of nodes) {
       const label = prefix ? `${prefix} / ${node.name}` : node.name
@@ -326,7 +326,7 @@ async function comparePeriods() {
   }
 }
 
-function onSectionPageChange(page: { current: number; pageSize: number }) {
+function onSectionPageChange(page: { current: number, pageSize: number }) {
   sectionFilter.pageNum = page.current
   sectionFilter.pageSize = page.pageSize
 }
@@ -517,7 +517,7 @@ watch(
             <ul class="major-group-portfolio__section-summary">
               <li v-for="item in portfolio.sections" :key="item.sectionCode">
                 <strong>{{
-                  sectionLabel(item.sectionCode as PortfolioMajorGroupSectionCode)
+                  sectionLabel(item.sectionCode)
                 }}</strong>
                 <span>{{ item.itemCount }} 条</span>
               </li>

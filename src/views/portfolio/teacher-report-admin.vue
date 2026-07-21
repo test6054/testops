@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { PortfolioAiAnalysisDetailVO, PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
+import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
+import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   PORTFOLIO_REPORT_SCENE_OPTIONS,
   PortfolioAiTaskTypeCode,
   PortfolioReportSceneCode,
   PortfolioReportSceneDescription,
 } from '@/apis/portfolio/types'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioAiJobApi } from '@/apis/portfolio/ai-job'
-import { PortfolioMaterialTypeCode } from '@/apis/portfolio/enums'
-import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
@@ -395,16 +395,14 @@ watch(
           >
             {{ resolvedReportScene
             }}<template v-if="reportDetail.reportPeriodLabel">
-              · {{ reportDetail.reportPeriodLabel }}</template
-            >
+              · {{ reportDetail.reportPeriodLabel }}</template>
           </span>
           <span v-if="reportDetail.teacherId" class="report-meta__extra">
             {{
               formatPortfolioTeacherDisplay(reportDetail.teacherName, reportDetail.teacherNumber)
             }}
             <template v-if="reportDetail.departmentName">
-              · {{ reportDetail.departmentName }}</template
-            >
+              · {{ reportDetail.departmentName }}</template>
           </span>
           <div
             v-if="reportDetail.lifecycleStatus || reportDetail.ownerIdentityLayers?.length"
@@ -418,8 +416,8 @@ watch(
                   ? 'green'
                   : reportDetail.lifecycleStatus === 'TEMP_HOLD'
                     ? 'orange'
-                    : reportDetail.lifecycleStatus === 'SEALED' ||
-                        reportDetail.lifecycleStatus === 'TRANSFERRED'
+                    : reportDetail.lifecycleStatus === 'SEALED'
+                      || reportDetail.lifecycleStatus === 'TRANSFERRED'
                       ? 'red'
                       : 'gray'
               "

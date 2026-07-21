@@ -4,8 +4,8 @@ export enum PortfolioAffiliationHistorySourceTypeCode {
   LIFECYCLE = 'LIFECYCLE',
 }
 
-export const ALL_PORTFOLIO_AFFILIATION_HISTORY_SOURCE_TYPE_CODES: readonly PortfolioAffiliationHistorySourceTypeCode[] =
-  [
+export const ALL_PORTFOLIO_AFFILIATION_HISTORY_SOURCE_TYPE_CODES: readonly PortfolioAffiliationHistorySourceTypeCode[]
+  = [
     PortfolioAffiliationHistorySourceTypeCode.PORTFOLIO_MANUAL,
     PortfolioAffiliationHistorySourceTypeCode.LIFECYCLE,
   ]

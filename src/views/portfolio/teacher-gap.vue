@@ -4,7 +4,6 @@ import type {
   PortfolioGapTaskDetailVO,
 } from '@/apis/portfolio/types'
 import type { ScanDispatchResultPayload } from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
-import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -39,6 +38,7 @@ import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWrit
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
+import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
 
 function gapTaskStatusLabel(status: PortfolioGapTaskStatusCode): string {
   return strictEnumLabel(PortfolioGapTaskStatusDescription, status, '补采任务状态')
@@ -52,8 +52,8 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' {
   if (status === 'ACTIVE') return 'green'
@@ -103,8 +103,8 @@ const gapSubmissionAvailable = computed(() => {
     return false
   }
   if (
-    detail.value.taskStatus !== PortfolioGapTaskStatusCode.PENDING &&
-    detail.value.taskStatus !== PortfolioGapTaskStatusCode.RETURNED
+    detail.value.taskStatus !== PortfolioGapTaskStatusCode.PENDING
+    && detail.value.taskStatus !== PortfolioGapTaskStatusCode.RETURNED
   ) {
     return false
   }
@@ -361,8 +361,8 @@ watch(
     if (value !== '1') {
       return
     }
-    const fileNodeId =
-      typeof route.query.scanFileNodeId === 'string' ? route.query.scanFileNodeId : ''
+    const fileNodeId
+      = typeof route.query.scanFileNodeId === 'string' ? route.query.scanFileNodeId : ''
     const nextQuery = { ...route.query }
     delete nextQuery.scanCommitted
     delete nextQuery.scanFileNodeId

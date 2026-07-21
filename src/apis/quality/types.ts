@@ -63,11 +63,6 @@ import {
   ALL_AI_TASK_BUSINESS_TYPE_CODES,
 } from '@/types/enums/ai-task-business-type-enum'
 import {
-  AiTaskStatusCode,
-  AiTaskStatusDescription,
-  ALL_AI_TASK_STATUS_CODES,
-} from '@/types/enums/ai-task-status-enum'
-import {
   AiTaskFailurePhaseCode,
   AiTaskFailurePhaseDescription,
   ALL_AI_TASK_FAILURE_PHASE_CODES,
@@ -77,6 +72,11 @@ import {
   AiTaskShardFailurePhaseDescription,
   ALL_AI_TASK_SHARD_FAILURE_PHASE_CODES,
 } from '@/types/enums/ai-task-shard-failure-phase-enum'
+import {
+  AiTaskStatusCode,
+  AiTaskStatusDescription,
+  ALL_AI_TASK_STATUS_CODES,
+} from '@/types/enums/ai-task-status-enum'
 import {
   AiTaskTypeCode,
   AiTaskTypeDescription,

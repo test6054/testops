@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
-import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
-import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
+import { readUiDataTablePagination } from '@/components/ui-guide/ui/data-table'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -33,6 +32,7 @@ import {
   PortfolioExportTypeCode,
   PortfolioExportTypeDescription,
 } from '@/types/enums/portfolio-export-type-enum'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -117,16 +117,16 @@ function approvalStatusTone(code: string): 'blue' | 'green' | 'red' | 'gray' {
 
 function canDownload(row: PortfolioExportApprovalVO): boolean {
   return (
-    (row.approvalStatus === PortfolioExportApprovalStatusCode.APPROVED ||
-      row.approvalStatus === PortfolioExportApprovalStatusCode.DOWNLOADED) &&
-    Boolean(row.fileNodeId)
+    (row.approvalStatus === PortfolioExportApprovalStatusCode.APPROVED
+      || row.approvalStatus === PortfolioExportApprovalStatusCode.DOWNLOADED)
+    && Boolean(row.fileNodeId)
   )
 }
 
 function canRevoke(row: PortfolioExportApprovalVO): boolean {
   return (
-    row.approvalStatus === PortfolioExportApprovalStatusCode.APPROVED ||
-    row.approvalStatus === PortfolioExportApprovalStatusCode.DOWNLOADED
+    row.approvalStatus === PortfolioExportApprovalStatusCode.APPROVED
+    || row.approvalStatus === PortfolioExportApprovalStatusCode.DOWNLOADED
   )
 }
 

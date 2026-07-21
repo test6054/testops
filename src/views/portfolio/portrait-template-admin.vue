@@ -3,20 +3,13 @@ import type {
   PortfolioPortraitTemplateStatusCode,
   PortfolioPortraitTemplateVO,
 } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
+import { computed, onMounted, reactive, ref } from 'vue'
 import {
   portfolioPortraitTemplateApi,
-  PortfolioPortraitTemplateStatusCode as PortraitTemplateStatus,
   PortfolioPortraitTemplateStatusDescription,
+  PortfolioPortraitTemplateStatusCode as PortraitTemplateStatus,
 } from '@/apis/portfolio/teacher-platform'
-import type { PortfolioPortraitLayoutWidget } from '@/utils/portrait-layout'
-import {
-  defaultPortraitLayout,
-  mergeLayoutWithChartConfig,
-  toPortraitChartConfigPayload,
-  toPortraitLayoutPayload,
-} from '@/utils/portrait-layout'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref } from 'vue'
 import PortfolioPortraitLayoutEditor from '@/components/portfolio/PortfolioPortraitLayoutEditor.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -27,6 +20,13 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { message } from '@/utils/feedback'
+import {
+  defaultPortraitLayout,
+  mergeLayoutWithChartConfig,
+  toPortraitChartConfigPayload,
+  toPortraitLayoutPayload,
+} from '@/utils/portrait-layout'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
@@ -46,8 +46,8 @@ const form = reactive({
 })
 const editorReady = computed(
   () =>
-    !selectedId.value ||
-    (detailState.value === 'ready' && loadedTemplateId.value === selectedId.value),
+    !selectedId.value
+    || (detailState.value === 'ready' && loadedTemplateId.value === selectedId.value),
 )
 
 async function loadList() {
@@ -91,7 +91,11 @@ async function loadDetail(id: string) {
     form.templateName = detail.templateName
     form.academicYear = detail.academicYear ?? form.academicYear
     if (!detail.templateStatus) {
-      throw new Error(`画像模板 ${id} 缺少模板状态`)
+      loadedTemplateId.value = undefined
+      currentTemplateStatus.value = undefined
+      detailState.value = 'error'
+      showUserError(null, '画像模板状态缺失，请重新加载')
+      return
     }
     currentTemplateStatus.value = detail.templateStatus
     layoutWidgets.value = detail.layout?.length
@@ -126,12 +130,13 @@ async function saveTemplate() {
     showFormValidationMessage('请至少添加一个布局组件')
     return
   }
+  const templateId = selectedId.value
+  if (templateId && !currentTemplateStatus.value) {
+    showUserError(null, '当前模板状态未就绪，已禁止保存，请重新加载后再试')
+    return
+  }
   saving.value = true
   try {
-    const templateId = selectedId.value
-    if (templateId && !currentTemplateStatus.value) {
-      throw new Error(`画像模板 ${templateId} 缺少当前状态，已禁止保存`)
-    }
     const savedId = await portfolioPortraitTemplateApi.save({
       id: templateId,
       templateName: form.templateName.trim(),
@@ -174,11 +179,11 @@ function selectTemplate(id: string) {
 /** 通过独立状态动作启用或停用模板，普通布局保存不得改变发布状态。 */
 async function changeTemplateStatus(targetStatus: PortfolioPortraitTemplateStatusCode) {
   if (
-    !selectedId.value ||
-    !editorReady.value ||
-    !currentTemplateStatus.value ||
-    saving.value ||
-    statusUpdating.value
+    !selectedId.value
+    || !editorReady.value
+    || !currentTemplateStatus.value
+    || saving.value
+    || statusUpdating.value
   ) {
     return
   }

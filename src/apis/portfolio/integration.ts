@@ -1,3 +1,4 @@
+import type { PortfolioSyncTaskStatusEnum } from '@/apis/portfolio/enums'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import type { PortfolioConflictTicketStatusEnum } from '@/types/enums/portfolio-conflict-ticket-status-enum'
@@ -7,7 +8,6 @@ import type { PortfolioIntegrationHealthStatusEnum } from '@/types/enums/portfol
 import type { PortfolioIntegrationMessageInboxStatusEnum } from '@/types/enums/portfolio-integration-message-inbox-status-enum'
 import type { PortfolioIntegrationPathwayCodeEnum } from '@/types/enums/portfolio-integration-pathway-code-enum'
 import type { PortfolioNationalTeacherSyncDirectionEnum } from '@/types/enums/portfolio-national-teacher-sync-direction-enum'
-import type { PortfolioSyncTaskStatusEnum } from '@/apis/portfolio/enums'
 import http from '@/config/axios'
 
 export interface PortfolioNationalTeacherInboundRecord {
@@ -368,7 +368,7 @@ export const portfolioIntegrationApi = {
   }) {
     return http.post<string>(`${BASE}/message/enqueue`, data)
   },
-  pageFailedMessages(data: { pageNum: number; pageSize: number; datasourceConfigId: string }) {
+  pageFailedMessages(data: { pageNum: number, pageSize: number, datasourceConfigId: string }) {
     return http.post<PageResult<PortfolioIntegrationMessageInboxVO>>(
       `${BASE}/message/failed/page`,
       data,
@@ -386,7 +386,7 @@ export const portfolioIntegrationApi = {
   }) {
     return http.post<void>(`${BASE}/message/requeue`, data)
   },
-  pageCleanLog(data: { pageNum: number; pageSize: number; datasourceConfigId?: string }) {
+  pageCleanLog(data: { pageNum: number, pageSize: number, datasourceConfigId?: string }) {
     return http.post<PageResult<PortfolioIntegrationCleanLogVO>>(`${BASE}/clean-log/page`, data)
   },
   pageCourseCodeMap(data: {
@@ -412,7 +412,7 @@ export const portfolioIntegrationApi = {
   deleteCourseCodeMap(id: string) {
     return http.post<void>(`${BASE}/course-code-map/delete`, { id })
   },
-  pageDictEntry(data: { pageNum: number; pageSize: number; dictionaryCode?: string }) {
+  pageDictEntry(data: { pageNum: number, pageSize: number, dictionaryCode?: string }) {
     return http.post<PageResult<PortfolioIntegrationDictEntryVO>>(`${BASE}/dict-entry/page`, data)
   },
   saveDictEntry(data: {
@@ -440,19 +440,19 @@ export const portfolioIntegrationApi = {
       data,
     )
   },
-  fixNationalReportIssue(data: { issueId: string; fixRemark?: string }) {
+  fixNationalReportIssue(data: { issueId: string, fixRemark?: string }) {
     return http.post<void>(`${BASE}/national-report/issue/fix`, data)
   },
   getNationalReportBatch(id: string) {
     return http.post<PortfolioNationalReportBatchVO>(`${BASE}/national-report/batch/get`, { id })
   },
-  exportNationalReportPackage(data: { syncTaskId: string; maskMode?: boolean }) {
+  exportNationalReportPackage(data: { syncTaskId: string, maskMode?: boolean }) {
     return http.post<PortfolioArchiveBagExportResultVO>(
       `${BASE}/national-report/package/export`,
       data,
     )
   },
-  retransmitNationalReportIssues(data: { datasourceConfigId: string; sourceSyncTaskId?: string }) {
+  retransmitNationalReportIssues(data: { datasourceConfigId: string, sourceSyncTaskId?: string }) {
     return http.post<PortfolioNationalReportBatchVO>(
       `${BASE}/national-report/issue/retransmit`,
       data,

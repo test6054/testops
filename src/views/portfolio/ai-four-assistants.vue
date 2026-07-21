@@ -30,11 +30,11 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { AiTaskStatusCode } from '@/types/enums/ai-task-status-enum'
+import { PortfolioAiAdoptionTargetTypeCode } from '@/types/enums/portfolio-ai-adoption-target-type-enum'
 import {
   PortfolioAiAnalysisReviewStatusCode,
   PortfolioAiAnalysisReviewStatusDescription,
 } from '@/types/enums/portfolio-ai-analysis-review-status-enum'
-import { PortfolioAiAdoptionTargetTypeCode } from '@/types/enums/portfolio-ai-adoption-target-type-enum'
 import { PortfolioAiAnalysisTypeCode } from '@/types/enums/portfolio-ai-analysis-type-enum'
 import { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -92,8 +92,8 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 const { canManageTeacherAi } = usePortfolioTeacherAccess()
 const activeKey = ref<AssistantKey>('generate')
 const submitting = ref(false)
@@ -203,8 +203,8 @@ function validateSubmit(): boolean {
     return false
   }
   if (
-    (activeKey.value === 'optimize' || activeKey.value === 'effect') &&
-    !submitForm.sourceText.trim()
+    (activeKey.value === 'optimize' || activeKey.value === 'effect')
+    && !submitForm.sourceText.trim()
   ) {
     showFormValidationMessage('请填写待分析的教学材料正文')
     return false
@@ -276,16 +276,16 @@ async function openDetail(row: PortfolioAiAnalysisSummaryVO): Promise<void> {
   try {
     const detail = await portfolioAiJobApi.getAnalysis(analysisResultId)
     if (
-      detailToken.value !== token ||
-      targetTeacherId.value !== teacherId ||
-      currentAssistant.value.key !== assistant.key
+      detailToken.value !== token
+      || targetTeacherId.value !== teacherId
+      || currentAssistant.value.key !== assistant.key
     ) {
       return
     }
     if (
-      detail.id !== analysisResultId ||
-      detail.teacherId !== teacherId ||
-      detail.analysisType !== assistant.analysisType
+      detail.id !== analysisResultId
+      || detail.teacherId !== teacherId
+      || detail.analysisType !== assistant.analysisType
     ) {
       showUserError(null, '智能分析详情合同与当前选择不一致')
       return
@@ -407,14 +407,14 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
     return
   }
   if (
-    reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED &&
-    archiveWriteForbidden.value
+    reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED
+    && archiveWriteForbidden.value
   ) {
     return
   }
   if (
-    reviewStatus === PortfolioAiAnalysisReviewStatusCode.REJECTED &&
-    !reviewForm.reviewOpinion.trim()
+    reviewStatus === PortfolioAiAnalysisReviewStatusCode.REJECTED
+    && !reviewForm.reviewOpinion.trim()
   ) {
     showFormValidationMessage('请填写驳回原因')
     return
@@ -445,9 +445,9 @@ async function reviewResult(reviewStatus: PortfolioAiAnalysisReviewStatusCode): 
       reviewOpinion: reviewForm.reviewOpinion.trim() || undefined,
     })
     if (
-      reviewToken.value !== token ||
-      targetTeacherId.value !== targetTeacherScopeId ||
-      activeKey.value !== targetAssistantKey
+      reviewToken.value !== token
+      || targetTeacherId.value !== targetTeacherScopeId
+      || activeKey.value !== targetAssistantKey
     ) {
       return
     }
@@ -481,8 +481,8 @@ function requireAdoptedBusinessLabel(detail: PortfolioAiAnalysisDetailVO): strin
 /** 确认入档后跳转到已写入的档案草稿或发展规划。 */
 async function openAdoptedTarget(detail: PortfolioAiAnalysisDetailVO): Promise<void> {
   if (
-    detail.adoptedTargetType === PortfolioAiAdoptionTargetTypeCode.ARCHIVE_RECORD &&
-    detail.adoptedRecordId
+    detail.adoptedTargetType === PortfolioAiAdoptionTargetTypeCode.ARCHIVE_RECORD
+    && detail.adoptedRecordId
   ) {
     const query: Record<string, string> = { recordId: detail.adoptedRecordId }
     if (detail.teacherId) {
@@ -492,8 +492,8 @@ async function openAdoptedTarget(detail: PortfolioAiAnalysisDetailVO): Promise<v
     return
   }
   if (
-    detail.adoptedTargetType === PortfolioAiAdoptionTargetTypeCode.DEVELOPMENT_PLAN &&
-    detail.adoptedPlanId
+    detail.adoptedTargetType === PortfolioAiAdoptionTargetTypeCode.DEVELOPMENT_PLAN
+    && detail.adoptedPlanId
   ) {
     await router.push({
       path: '/portfolio/admin/development-plan',
@@ -693,8 +693,8 @@ usePortfolioScopedLoader(loadHistory, () => targetTeacherId.value)
           </p>
           <div
             v-else-if="
-              activeDetail.reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED &&
-              (activeDetail.adoptedRecordId || activeDetail.adoptedPlanId)
+              activeDetail.reviewStatus === PortfolioAiAnalysisReviewStatusCode.APPROVED
+                && (activeDetail.adoptedRecordId || activeDetail.adoptedPlanId)
             "
             class="ai-assistants__draft-actions"
           >

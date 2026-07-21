@@ -1,8 +1,8 @@
-import type { SemesterCode } from '@/types/enums/semester-enum'
 import type {
   PortfolioMultiIdentityLayerVO,
   PortfolioTeachingWorkloadByIdentityVO,
 } from '@/apis/portfolio/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 export interface PortfolioCourseArchiveFrameworkVO {

@@ -4,10 +4,12 @@ import type {
   PortfolioDoubleHighEvidenceArchiveVO,
   PortfolioDoubleHighTaskVO,
 } from '@/apis/portfolio/double-high'
-import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
+import type {
+  PortfolioDoubleHighStageReviewStatusCode} from '@/types/enums/portfolio-double-high-stage-review-status-enum';
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { portfolioDoubleHighApi } from '@/apis/portfolio/double-high'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
@@ -37,14 +39,13 @@ import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
 import {
+  PortfolioDoubleHighStageReviewStatusDescription,
+} from '@/types/enums/portfolio-double-high-stage-review-status-enum'
+import {
   ALL_PORTFOLIO_DOUBLE_HIGH_TASK_STATUS_CODES,
   PortfolioDoubleHighTaskStatusCode,
   PortfolioDoubleHighTaskStatusDescription,
 } from '@/types/enums/portfolio-double-high-task-status-enum'
-import {
-  PortfolioDoubleHighStageReviewStatusCode,
-  PortfolioDoubleHighStageReviewStatusDescription,
-} from '@/types/enums/portfolio-double-high-stage-review-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -270,7 +271,7 @@ function isTaskResponsible(row: PortfolioDoubleHighTaskVO): boolean {
 
 /** 按责任人/治理角色裁剪操作：责任人不可见审核入口，非责任人不可见实施动作。 */
 function rowActions(row: PortfolioDoubleHighTaskVO) {
-  const items: Array<{ key: string; label: string; tone?: 'danger' }> = [
+  const items: Array<{ key: string, label: string, tone?: 'danger' }> = [
     { key: 'detail', label: '阶段明细' },
   ]
   const responsible = isTaskResponsible(row)
@@ -299,9 +300,9 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
     })
   }
   if (
-    (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED ||
-      row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING) &&
-    !responsible
+    (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED
+      || row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_REVIEWING)
+    && !responsible
   ) {
     if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.STAGE_SUBMITTED) {
       items.push({ key: 'enterReview', label: '进入审核' })
@@ -315,17 +316,17 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
     items.push({ key: 'downloadAcceptance', label: '下载验收包' })
   }
   if (
-    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.ARCHIVED &&
-    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.VOID
+    row.taskStatus !== PortfolioDoubleHighTaskStatusCode.ARCHIVED
+    && row.taskStatus !== PortfolioDoubleHighTaskStatusCode.VOID
   ) {
     items.push({ key: 'void', label: '作废', tone: 'danger' })
   }
   return items.map((item) => {
     const writeAction = item.key === 'claim' || item.key === 'start' || item.key === 'submit'
-    const writeBlocked =
-      writeAction &&
-      (operatorArchiveWriteForbidden.value ||
-        (item.key !== 'claim' && Boolean(row.archiveWriteForbidden)))
+    const writeBlocked
+      = writeAction
+        && (operatorArchiveWriteForbidden.value
+          || (item.key !== 'claim' && Boolean(row.archiveWriteForbidden)))
     return { ...item, disabled: busy.value || writeBlocked }
   })
 }
@@ -373,7 +374,7 @@ function onSearch() {
   void loadPage()
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   query.pageNum = page.current
   query.pageSize = page.pageSize
   void loadPage()
@@ -408,8 +409,8 @@ function resetCreateForm() {
   createForm.taskCode = ''
   createForm.taskTitle = ''
   createForm.taskSource = '校级双高'
-  createForm.departmentId =
-    typeof route.query.departmentId === 'string' ? route.query.departmentId : undefined
+  createForm.departmentId
+    = typeof route.query.departmentId === 'string' ? route.query.departmentId : undefined
   createForm.portfolioOrgId = undefined
   createForm.constructionPeriodLabel = ''
   createForm.baselinePeriodLabel = ''
@@ -484,8 +485,8 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
       const evidenceToken = evidenceRequestToken.value + 1
       evidenceRequestToken.value = evidenceToken
       try {
-        const nextArchives =
-          (await portfolioDoubleHighApi.listEvidenceArchives({ id: row.id })) ?? []
+        const nextArchives
+          = (await portfolioDoubleHighApi.listEvidenceArchives({ id: row.id })) ?? []
         if (evidenceRequestToken.value !== evidenceToken || activeTask.value?.id !== row.id) {
           return
         }
@@ -892,12 +893,8 @@ watch(
             <UiTag :tone="lifecycleTagTone(detailTask)">
               {{ detailTask.lifecycleStatusLabel || detailTask.lifecycleStatus }}
             </UiTag>
-            <span v-if="detailTask.countsInCurrentFacultyStructure === false"
-              >（不计入当前在岗结构）</span
-            >
-            <span v-if="detailTask.archiveWriteForbidden"
-              >（档案写禁，禁止认领/实施/阶段提交）</span
-            >
+            <span v-if="detailTask.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>
+            <span v-if="detailTask.archiveWriteForbidden">（档案写禁，禁止认领/实施/阶段提交）</span>
           </div>
           <div
             v-if="detailTask.responsibleIdentityLayers?.length"

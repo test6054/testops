@@ -12,13 +12,6 @@ import type {
   PortfolioArchiveTemplateDiffSummary,
   PortfolioArchiveTemplateVersionVO,
 } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS,
-  PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS,
-  PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS,
-  PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS,
-  PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
-} from '@/apis/portfolio/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -33,6 +26,13 @@ import {
   PortfolioArchiveTemplateVersionStatusCode,
   PortfolioArchiveTemplateVersionStatusDescription,
 } from '@/apis/portfolio/enums'
+import {
+  PORTFOLIO_ARCHIVE_CATEGORY_SCOPE_OPTIONS,
+  PORTFOLIO_ARCHIVE_CATEGORY_STATUS_OPTIONS,
+  PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_OPTIONS,
+  PORTFOLIO_ARCHIVE_FIELD_TYPE_OPTIONS,
+  PORTFOLIO_DEFAULT_AUDIT_FLOW_CODE,
+} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -69,24 +69,24 @@ interface TreeNode {
 
 function isTreeNode(value: unknown): value is TreeNode {
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    'key' in value &&
-    'title' in value &&
-    'raw' in value
+    typeof value === 'object'
+    && value !== null
+    && 'key' in value
+    && 'title' in value
+    && 'raw' in value
   )
 }
 
 function isArchiveFieldRecord(record: unknown): record is PortfolioArchiveFieldDefVO {
   return (
-    typeof record === 'object' &&
-    record !== null &&
-    'id' in record &&
-    'templateVersionId' in record &&
-    'fieldCode' in record &&
-    'fieldLabel' in record &&
-    'fieldType' in record &&
-    'sourceType' in record
+    typeof record === 'object'
+    && record !== null
+    && 'id' in record
+    && 'templateVersionId' in record
+    && 'fieldCode' in record
+    && 'fieldLabel' in record
+    && 'fieldType' in record
+    && 'sourceType' in record
   )
 }
 
@@ -101,13 +101,13 @@ function isArchiveTemplateVersionRecord(
   record: unknown,
 ): record is PortfolioArchiveTemplateVersionVO {
   return (
-    typeof record === 'object' &&
-    record !== null &&
-    'id' in record &&
-    'categoryId' in record &&
-    'templateCode' in record &&
-    'versionNo' in record &&
-    'status' in record
+    typeof record === 'object'
+    && record !== null
+    && 'id' in record
+    && 'categoryId' in record
+    && 'templateCode' in record
+    && 'versionNo' in record
+    && 'status' in record
   )
 }
 
@@ -236,7 +236,7 @@ const activeVersion = computed(
 
 const versionOptions = computed(() =>
   versionHistory.value.map(
-    (item): { value: PortfolioArchiveTemplateVersionVO['id']; label: string } => ({
+    (item): { value: PortfolioArchiveTemplateVersionVO['id'], label: string } => ({
       value: item.id,
       label: `${item.versionNo} (${strictEnumLabel(PortfolioArchiveTemplateVersionStatusDescription, item.status, '模板版本状态')})`,
     }),
@@ -245,8 +245,8 @@ const versionOptions = computed(() =>
 
 const canEditFields = computed(
   () =>
-    activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.DRAFT ||
-    activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.TRIAL,
+    activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.DRAFT
+    || activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.TRIAL,
 )
 
 const canDeprecate = computed(() => activeVersion.value?.status === 'PUBLISHED')
@@ -277,7 +277,7 @@ const parsedChangeLogs = computed(() =>
 )
 
 function flattenCategoryOptions(nodes: TreeNode[], excludeId?: string) {
-  const options: { value: string; label: string }[] = []
+  const options: { value: string, label: string }[] = []
   for (const node of nodes) {
     if (excludeId && node.key === excludeId) continue
     options.push({ value: node.key, label: node.title })
@@ -405,8 +405,8 @@ async function loadAuditFlowBinding(expectedToken = categoryRequestToken.value) 
       categoryId,
     })
     if (
-      expectedToken !== categoryRequestToken.value ||
-      auditFlowRequestToken.value !== currentToken
+      expectedToken !== categoryRequestToken.value
+      || auditFlowRequestToken.value !== currentToken
     ) {
       return
     }
@@ -415,8 +415,8 @@ async function loadAuditFlowBinding(expectedToken = categoryRequestToken.value) 
     auditFlowState.value = 'ready'
   } catch (error) {
     if (
-      expectedToken !== categoryRequestToken.value ||
-      auditFlowRequestToken.value !== currentToken
+      expectedToken !== categoryRequestToken.value
+      || auditFlowRequestToken.value !== currentToken
     ) {
       return
     }
@@ -429,9 +429,9 @@ async function loadAuditFlowBinding(expectedToken = categoryRequestToken.value) 
 
 async function bindAuditFlow() {
   if (
-    !selectedCategory.value ||
-    auditFlowState.value !== 'ready' ||
-    auditFlowLoadedCategoryId.value !== selectedCategory.value.id
+    !selectedCategory.value
+    || auditFlowState.value !== 'ready'
+    || auditFlowLoadedCategoryId.value !== selectedCategory.value.id
   ) {
     void message.error('当前分类审核流尚未就绪，请先重新加载')
     return
@@ -521,8 +521,8 @@ async function loadHistory(expectedToken = categoryRequestToken.value) {
   try {
     const nextVersionHistory = await portfolioArchiveTemplateApi.listVersionHistory({ categoryId })
     if (
-      expectedToken !== categoryRequestToken.value ||
-      historyRequestToken.value !== currentToken
+      expectedToken !== categoryRequestToken.value
+      || historyRequestToken.value !== currentToken
     ) {
       return
     }
@@ -530,16 +530,16 @@ async function loadHistory(expectedToken = categoryRequestToken.value) {
     try {
       const nextChangeLogs = await portfolioArchiveTemplateApi.listChangeHistory({ categoryId })
       if (
-        expectedToken !== categoryRequestToken.value ||
-        historyRequestToken.value !== currentToken
+        expectedToken !== categoryRequestToken.value
+        || historyRequestToken.value !== currentToken
       ) {
         return
       }
       changeLogs.value = nextChangeLogs ?? []
     } catch (error) {
       if (
-        expectedToken !== categoryRequestToken.value ||
-        historyRequestToken.value !== currentToken
+        expectedToken !== categoryRequestToken.value
+        || historyRequestToken.value !== currentToken
       ) {
         return
       }
@@ -548,8 +548,8 @@ async function loadHistory(expectedToken = categoryRequestToken.value) {
     }
   } catch (error) {
     if (
-      expectedToken !== categoryRequestToken.value ||
-      historyRequestToken.value !== currentToken
+      expectedToken !== categoryRequestToken.value
+      || historyRequestToken.value !== currentToken
     ) {
       return
     }
@@ -559,8 +559,8 @@ async function loadHistory(expectedToken = categoryRequestToken.value) {
     showUserError(error, '加载版本历史失败')
   } finally {
     if (
-      expectedToken === categoryRequestToken.value &&
-      historyRequestToken.value === currentToken
+      expectedToken === categoryRequestToken.value
+      && historyRequestToken.value === currentToken
     ) {
       historyLoading.value = false
     }
@@ -616,8 +616,8 @@ function openEditCategory() {
 
 async function deactivateCategory() {
   if (
-    !selectedCategory.value ||
-    selectedCategory.value.status === PortfolioArchiveCategoryStatusCode.INACTIVE
+    !selectedCategory.value
+    || selectedCategory.value.status === PortfolioArchiveCategoryStatusCode.INACTIVE
   ) {
     return
   }

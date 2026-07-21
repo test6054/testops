@@ -17,11 +17,6 @@ import type {
   PortfolioIntegrationSyncTaskVO,
   PortfolioNationalReportIssueVO,
 } from '@/apis/portfolio/integration'
-import {
-  PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS,
-  PORTFOLIO_INTEGRATION_PASSWORD_MASK,
-  portfolioIntegrationApi,
-} from '@/apis/portfolio/integration'
 import type {
   PortfolioArchiveCategoryTreeNodeVO,
   PortfolioTargetFieldDefinition,
@@ -30,13 +25,12 @@ import type {
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
+import {
+  PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS,
+  PORTFOLIO_INTEGRATION_PASSWORD_MASK,
+  portfolioIntegrationApi,
+} from '@/apis/portfolio/integration'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
-import { PortfolioConflictTicketStatusEnum } from '@/types/enums/portfolio-conflict-ticket-status-enum'
-import { PortfolioIdentityUnmatchedStatusEnum } from '@/types/enums/portfolio-identity-unmatched-status-enum'
-import { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
-import { PortfolioIntegrationHealthStatusEnum } from '@/types/enums/portfolio-integration-health-status-enum'
-import { PortfolioIntegrationPathwayCodeEnum } from '@/types/enums/portfolio-integration-pathway-code-enum'
-import { PortfolioNationalTeacherSyncDirectionEnum } from '@/types/enums/portfolio-national-teacher-sync-direction-enum'
 import {
   QUALITY_SELECTOR_PAGE_SIZE,
   QUALITY_SELECTOR_SEARCH_DEBOUNCE_MS,
@@ -57,6 +51,12 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { PortfolioConflictTicketStatusEnum } from '@/types/enums/portfolio-conflict-ticket-status-enum'
+import { PortfolioIdentityUnmatchedStatusEnum } from '@/types/enums/portfolio-identity-unmatched-status-enum'
+import { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
+import { PortfolioIntegrationHealthStatusEnum } from '@/types/enums/portfolio-integration-health-status-enum'
+import { PortfolioIntegrationPathwayCodeEnum } from '@/types/enums/portfolio-integration-pathway-code-enum'
+import { PortfolioNationalTeacherSyncDirectionEnum } from '@/types/enums/portfolio-national-teacher-sync-direction-enum'
 import {
   ALL_PORTFOLIO_SCIENTIFIC_RESEARCH_FACT_KIND_CODES,
   PortfolioScientificResearchFactKindDescription,
@@ -93,8 +93,8 @@ async function bindActionTeacherAndAssert(
   teacherId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value =
-    teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
+  actionTeacherId.value
+    = teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
@@ -226,13 +226,13 @@ const dsForm = reactive({
 
 const isHrOpenApi = computed(
   () =>
-    dsForm.channelCode === PortfolioIntegrationChannelCodeEnum.HR_PERSONNEL &&
-    dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
+    dsForm.channelCode === PortfolioIntegrationChannelCodeEnum.HR_PERSONNEL
+    && dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
 )
 const isNationalTeacherOpenApi = computed(
   () =>
-    dsForm.channelCode === PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM &&
-    dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
+    dsForm.channelCode === PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM
+    && dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
 )
 const isJdbcPathway = computed(
   () => dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.JDBC,
@@ -260,7 +260,7 @@ const channelPathwayMatrix = ref<PortfolioIntegrationChannelPathwayMatrixVO | nu
 const datasourceChannelOptions = computed(() => {
   const rows = channelPathwayMatrix.value?.channels ?? []
   if (rows.length === 0) {
-    return [] as Array<{ value: string; label: string }>
+    return [] as Array<{ value: string, label: string }>
   }
   return rows.map((row) => ({ value: row.channelCode, label: row.channelLabel }))
 })
@@ -334,10 +334,11 @@ function clearPathwayConfigFields() {
 function changeDatasourceChannel(value: SelectValue) {
   const channelCode = value as PortfolioIntegrationChannelCodeEnum
   dsForm.channelCode = channelCode
-  const pathways =
-    (channelPathwayMatrix.value?.channels ?? [])
+  const pathways
+    = (channelPathwayMatrix.value?.channels ?? [])
       .find((item) => item.channelCode === channelCode)
-      ?.pathways?.filter((item) => item.configurable !== false) ?? []
+      ?.pathways
+?.filter((item) => item.configurable !== false) ?? []
   dsForm.pathwayCode = pathways[0]?.pathwayCode ?? PortfolioIntegrationPathwayCodeEnum.OPENAPI
   clearPathwayConfigFields()
 }
@@ -346,8 +347,8 @@ function changeDatasourcePathway(value: SelectValue) {
   dsForm.pathwayCode = value as PortfolioIntegrationPathwayCodeEnum
   clearPathwayConfigFields()
   if (
-    dsForm.channelCode === PortfolioIntegrationChannelCodeEnum.SCIENTIFIC_RESEARCH &&
-    dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.EXCEL_IMPORT
+    dsForm.channelCode === PortfolioIntegrationChannelCodeEnum.SCIENTIFIC_RESEARCH
+    && dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.EXCEL_IMPORT
   ) {
     dsForm.excelImportSceneKey = 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT'
   }
@@ -356,19 +357,19 @@ function changeDatasourcePathway(value: SelectValue) {
 function applyNationalTeacherPreset(direction: PortfolioNationalTeacherSyncDirectionEnum) {
   const existed = datasources.value.find(
     (item) =>
-      item.channelCode === PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM &&
-      item.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
+      item.channelCode === PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM
+      && item.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
   )
   if (existed) {
     fillDatasourceForm(existed)
     dsForm.syncDirection = direction
-    dsForm.datasourceName =
-      direction === PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND
+    dsForm.datasourceName
+      = direction === PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND
         ? '全国教师系统上报'
         : '全国教师系统回流'
     if (
-      direction === PortfolioNationalTeacherSyncDirectionEnum.INBOUND &&
-      dsForm.inboundRecords.length === 0
+      direction === PortfolioNationalTeacherSyncDirectionEnum.INBOUND
+      && dsForm.inboundRecords.length === 0
     ) {
       dsForm.inboundRecords = [
         { teacherNumber: '', teacherName: '', title: '', employmentStatus: '' },
@@ -382,13 +383,13 @@ function applyNationalTeacherPreset(direction: PortfolioNationalTeacherSyncDirec
   resetDatasourceForm()
   dsForm.channelCode = PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM
   dsForm.pathwayCode = PortfolioIntegrationPathwayCodeEnum.OPENAPI
-  dsForm.datasourceName =
-    direction === PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND
+  dsForm.datasourceName
+    = direction === PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND
       ? '全国教师系统上报'
       : '全国教师系统回流'
   dsForm.syncDirection = direction
-  dsForm.inboundRecords =
-    direction === PortfolioNationalTeacherSyncDirectionEnum.INBOUND
+  dsForm.inboundRecords
+    = direction === PortfolioNationalTeacherSyncDirectionEnum.INBOUND
       ? [{ teacherNumber: '', teacherName: '', title: '', employmentStatus: '' }]
       : []
 }
@@ -457,13 +458,13 @@ function buildConnectionConfig(): PortfolioIntegrationConnectionConfigDto | unde
       expectedConfigUpdateToken: dsForm.importContextExpectedConfigUpdateToken.trim() || undefined,
     }
     const hasImportContext = Boolean(
-      importContext.fileName ||
-      importContext.defaultRecordType ||
-      importContext.defaultCategoryCode ||
-      importContext.defaultLevelCode ||
-      importContext.confirmManualConflicts ||
-      importContext.expectedConfigUpdateToken ||
-      importContext.commit === false,
+      importContext.fileName
+      || importContext.defaultRecordType
+      || importContext.defaultCategoryCode
+      || importContext.defaultLevelCode
+      || importContext.confirmManualConflicts
+      || importContext.expectedConfigUpdateToken
+      || importContext.commit === false,
     )
     return {
       excelImportSceneKey: dsForm.excelImportSceneKey,
@@ -509,9 +510,9 @@ function fillDatasourceForm(row: PortfolioIntegrationDatasourceVO) {
     return
   }
   if (row.pathwayCode === PortfolioIntegrationPathwayCodeEnum.EXCEL_IMPORT) {
-    dsForm.excelImportSceneKey =
-      config.excelImportSceneKey ??
-      (row.channelCode === PortfolioIntegrationChannelCodeEnum.SCIENTIFIC_RESEARCH
+    dsForm.excelImportSceneKey
+      = config.excelImportSceneKey
+        ?? (row.channelCode === PortfolioIntegrationChannelCodeEnum.SCIENTIFIC_RESEARCH
         ? 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT'
         : 'PORTFOLIO_DEVELOPMENT_RECORD')
     dsForm.sourceFileNodeId = config.sourceFileNodeId ?? ''
@@ -530,8 +531,8 @@ function fillDatasourceForm(row: PortfolioIntegrationDatasourceVO) {
     return
   }
   if (row.channelCode === PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM) {
-    dsForm.syncDirection =
-      config.syncDirection === PortfolioNationalTeacherSyncDirectionEnum.INBOUND
+    dsForm.syncDirection
+      = config.syncDirection === PortfolioNationalTeacherSyncDirectionEnum.INBOUND
         ? PortfolioNationalTeacherSyncDirectionEnum.INBOUND
         : PortfolioNationalTeacherSyncDirectionEnum.OUTBOUND
     dsForm.inboundRecords = (config.inboundRecords ?? []).map((item) => ({
@@ -819,8 +820,8 @@ async function changeMappingCategory(value: SelectValue) {
       categoryId: category.categoryId,
     })
     if (
-      requestToken.archiveFields !== currentToken ||
-      mappingForm.targetCategoryCode !== categoryCode
+      requestToken.archiveFields !== currentToken
+      || mappingForm.targetCategoryCode !== categoryCode
     ) {
       return
     }
@@ -869,8 +870,8 @@ async function loadDatasources() {
     datasources.value = res.list ?? []
     datasourceTotal.value = res.total ?? 0
     if (
-      selectedDatasourceId.value &&
-      !datasources.value.some((item) => item.id === selectedDatasourceId.value)
+      selectedDatasourceId.value
+      && !datasources.value.some((item) => item.id === selectedDatasourceId.value)
     ) {
       selectedDatasourceId.value = ''
       mappings.value = []
@@ -1044,7 +1045,7 @@ async function fixNationalReportIssue(row: PortfolioNationalReportIssueVO) {
   }
 }
 
-function onNationalIssuePageChange(page: { current: number; pageSize: number }) {
+function onNationalIssuePageChange(page: { current: number, pageSize: number }) {
   nationalIssueQuery.pageNum = page.current
   nationalIssueQuery.pageSize = page.pageSize
   void loadNationalIssues()
@@ -1078,8 +1079,8 @@ async function exportNationalReportForIssue(row: PortfolioNationalReportIssueVO)
 async function retransmitNationalReportIssues() {
   const nationalDatasource = datasources.value.find(
     (item) =>
-      item.channelCode === PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM &&
-      item.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
+      item.channelCode === PortfolioIntegrationChannelCodeEnum.NATIONAL_TEACHER_SYSTEM
+      && item.pathwayCode === PortfolioIntegrationPathwayCodeEnum.OPENAPI,
   )
   if (!nationalDatasource) {
     showFormValidationMessage('请先配置并启用全国教师系统 OPENAPI 数据源')
@@ -1159,8 +1160,8 @@ async function loadFailedMessages() {
   try {
     const result = await portfolioIntegrationApi.pageFailedMessages(request)
     if (
-      requestToken.failedMessages !== currentToken ||
-      failedMessageDatasourceId.value !== datasourceConfigId
+      requestToken.failedMessages !== currentToken
+      || failedMessageDatasourceId.value !== datasourceConfigId
     ) {
       return
     }
@@ -1336,8 +1337,8 @@ async function saveDatasource() {
     return
   }
   if (
-    isNationalTeacherOpenApi.value &&
-    dsForm.syncDirection === PortfolioNationalTeacherSyncDirectionEnum.INBOUND
+    isNationalTeacherOpenApi.value
+    && dsForm.syncDirection === PortfolioNationalTeacherSyncDirectionEnum.INBOUND
   ) {
     const validRows = dsForm.inboundRecords.filter((item) => item.teacherNumber.trim())
     if (validRows.length === 0) {
@@ -1459,8 +1460,8 @@ async function resolveConflict(
   const conflictTicketId = row.id
   const operation = `conflict:${conflictTicketId}:${action}`
   if (!beginOperation(operation)) return
-  const actionLabel =
-    action === PortfolioConflictTicketStatusEnum.RESOLVED_USE_EXTERNAL
+  const actionLabel
+    = action === PortfolioConflictTicketStatusEnum.RESOLVED_USE_EXTERNAL
       ? '冲突采用外部'
       : action === PortfolioConflictTicketStatusEnum.RESOLVED_USE_LOCAL
         ? '冲突保留本地'
@@ -1470,8 +1471,8 @@ async function resolveConflict(
     return
   }
   if (
-    action === PortfolioConflictTicketStatusEnum.IGNORED &&
-    !(await confirmAsync({
+    action === PortfolioConflictTicketStatusEnum.IGNORED
+    && !(await confirmAsync({
       title: '确认忽略冲突单？',
       content: '忽略后该冲突单将结束处理，外部值和本地值都不会自动覆盖另一方。',
       type: 'warning',
@@ -1507,9 +1508,9 @@ async function resolveIdentityUnmatched(
     return
   }
   if (
-    action === PortfolioIdentityUnmatchedStatusEnum.RESOLVED &&
-    needsTeacherNumber(row) &&
-    !identityResolveTeacherNumber.value.trim()
+    action === PortfolioIdentityUnmatchedStatusEnum.RESOLVED
+    && needsTeacherNumber(row)
+    && !identityResolveTeacherNumber.value.trim()
   ) {
     showFormValidationMessage('缺少工号待匹配须补录工号')
     return
@@ -1523,8 +1524,8 @@ async function resolveIdentityUnmatched(
     }
   }
   if (
-    action === PortfolioIdentityUnmatchedStatusEnum.IGNORED &&
-    !(await confirmAsync({
+    action === PortfolioIdentityUnmatchedStatusEnum.IGNORED
+    && !(await confirmAsync({
       title: '确认忽略身份待匹配？',
       content: '忽略后该外部教师记录不会绑定到本地教师，本次同步数据也不会进入教师档案。',
       type: 'warning',
@@ -1569,16 +1570,16 @@ function openFailedMessageFix(row: PortfolioIntegrationMessageInboxVO) {
   requeueEnvelope.teacherCode = row.teacherCode ?? ''
   requeueEnvelope.teacherName = row.teacherName ?? ''
   requeueEnvelope.externalRecordKey = row.externalRecordKey ?? ''
-  const sourceFields =
-    row.payloadContractValid === false
+  const sourceFields
+    = row.payloadContractValid === false
       ? [{ fieldCode: 'achievement_title', fieldValue: '' }]
       : (row.fields ?? [])
   payloadFieldEdits.value = sourceFields.map((item) => ({
     fieldCode: item.fieldCode,
     fieldValue: item.fieldValue ?? '',
   }))
-  requeueMessage.value =
-    row.payloadContractValid === false ? '管理员整包替换非法载荷后重入队' : '管理员修正字段后重入队'
+  requeueMessage.value
+    = row.payloadContractValid === false ? '管理员整包替换非法载荷后重入队' : '管理员修正字段后重入队'
   failedMessageDrawerOpen.value = true
 }
 
@@ -1601,7 +1602,7 @@ async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, cor
     showFormValidationMessage('非法载荷不可原样重试，请打开修正重放并整包替换信封与字段袋')
     return
   }
-  let fieldCorrections: Array<{ fieldCode: string; fieldValue: string }> | undefined
+  let fieldCorrections: Array<{ fieldCode: string, fieldValue: string }> | undefined
   let teacherNumber: string | undefined
   let teacherCode: string | undefined
   let teacherName: string | undefined
@@ -1627,11 +1628,11 @@ async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, cor
         return
       }
     } else if (
-      !teacherNumber &&
-      !teacherCode &&
-      !teacherName &&
-      !externalRecordKey &&
-      !fieldCorrections.length
+      !teacherNumber
+      && !teacherCode
+      && !teacherName
+      && !externalRecordKey
+      && !fieldCorrections.length
     ) {
       showFormValidationMessage('请至少修正信封身份键或一个业务字段')
       return
@@ -1646,8 +1647,8 @@ async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, cor
   const operation = `failed-message:${messageInboxId}`
   if (!beginOperation(operation)) return
   if (
-    !corrected &&
-    !(await confirmAsync({
+    !corrected
+    && !(await confirmAsync({
       title: '确认使用原载荷重试？',
       content: '原载荷将放回普通收件箱并触发同步；若错误原因尚未消除，消息会再次进入异常状态。',
       type: 'warning',
@@ -1673,13 +1674,14 @@ async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, cor
     selectedFailedMessage.value = null
     payloadFieldEdits.value = []
     const reloads = [
-      loadSyncTasks(),
-      loadHealth(),
-      loadUnmatched(),
-      loadConflicts(),
-      loadNationalIssues(),
+      await loadSyncTasks(),
+      await loadHealth(),
+      await loadUnmatched(),
+      await loadConflicts(),
+      await loadNationalIssues(),
     ]
-    if (failedMessageDatasourceId.value === datasourceConfigId) reloads.push(loadFailedMessages())
+    if (failedMessageDatasourceId.value === datasourceConfigId)
+      reloads.push(await loadFailedMessages())
     await Promise.all(reloads)
   } catch (error) {
     showUserError(error, '异常消息重放失败')
@@ -1716,10 +1718,10 @@ function editCourseCodeMap(row: PortfolioCourseCodeMapVO) {
 
 async function saveCourseCodeMap() {
   if (
-    !courseCodeMapForm.sourceSystemCode.trim() ||
-    !courseCodeMapForm.sourceCourseCode.trim() ||
-    !courseCodeMapForm.canonicalCourseCode.trim() ||
-    !courseCodeMapForm.canonicalCourseName.trim()
+    !courseCodeMapForm.sourceSystemCode.trim()
+    || !courseCodeMapForm.sourceCourseCode.trim()
+    || !courseCodeMapForm.canonicalCourseCode.trim()
+    || !courseCodeMapForm.canonicalCourseName.trim()
   ) {
     showFormValidationMessage('请填写来源系统、源课程编码和规范课程编码/名称')
     return
@@ -1797,9 +1799,9 @@ function editDictEntry(row: PortfolioIntegrationDictEntryVO) {
 
 async function saveDictEntry() {
   if (
-    !dictEntryForm.dictionaryCode.trim() ||
-    !dictEntryForm.sourceValue.trim() ||
-    !dictEntryForm.targetValue.trim()
+    !dictEntryForm.dictionaryCode.trim()
+    || !dictEntryForm.sourceValue.trim()
+    || !dictEntryForm.targetValue.trim()
   ) {
     showFormValidationMessage('请填写字典编码、源值和规范值')
     return
@@ -1871,49 +1873,49 @@ function searchDictEntries() {
   void loadDictEntries()
 }
 
-function onDatasourcePageChange(page: { current: number; pageSize: number }) {
+function onDatasourcePageChange(page: { current: number, pageSize: number }) {
   datasourceQuery.pageNum = page.current
   datasourceQuery.pageSize = page.pageSize
   void loadDatasources()
 }
 
-function onSyncTaskPageChange(page: { current: number; pageSize: number }) {
+function onSyncTaskPageChange(page: { current: number, pageSize: number }) {
   syncTaskQuery.pageNum = page.current
   syncTaskQuery.pageSize = page.pageSize
   void loadSyncTasks()
 }
 
-function onUnmatchedPageChange(page: { current: number; pageSize: number }) {
+function onUnmatchedPageChange(page: { current: number, pageSize: number }) {
   unmatchedQuery.pageNum = page.current
   unmatchedQuery.pageSize = page.pageSize
   void loadUnmatched()
 }
 
-function onConflictPageChange(page: { current: number; pageSize: number }) {
+function onConflictPageChange(page: { current: number, pageSize: number }) {
   conflictQuery.pageNum = page.current
   conflictQuery.pageSize = page.pageSize
   void loadConflicts()
 }
 
-function onFailedMessagePageChange(page: { current: number; pageSize: number }) {
+function onFailedMessagePageChange(page: { current: number, pageSize: number }) {
   failedMessageQuery.pageNum = page.current
   failedMessageQuery.pageSize = page.pageSize
   void loadFailedMessages()
 }
 
-function onCleanLogPageChange(page: { current: number; pageSize: number }) {
+function onCleanLogPageChange(page: { current: number, pageSize: number }) {
   cleanLogQuery.pageNum = page.current
   cleanLogQuery.pageSize = page.pageSize
   void loadCleanLogs()
 }
 
-function onCourseCodeMapPageChange(page: { current: number; pageSize: number }) {
+function onCourseCodeMapPageChange(page: { current: number, pageSize: number }) {
   courseCodeMapQuery.pageNum = page.current
   courseCodeMapQuery.pageSize = page.pageSize
   void loadCourseCodeMaps()
 }
 
-function onDictEntryPageChange(page: { current: number; pageSize: number }) {
+function onDictEntryPageChange(page: { current: number, pageSize: number }) {
   dictEntryQuery.pageNum = page.current
   dictEntryQuery.pageSize = page.pageSize
   void loadDictEntries()
@@ -1954,9 +1956,7 @@ onMounted(async () => {
         <span class="integration-dashboard__panel-title">数据源配置</span>
       </template>
       <div class="integration-dashboard__preset-bar">
-        <span class="integration-dashboard__preset-label"
-          >全国教师系统（同渠道仅一条 OPENAPI，切换方向即编辑现有配置）</span
-        >
+        <span class="integration-dashboard__preset-label">全国教师系统（同渠道仅一条 OPENAPI，切换方向即编辑现有配置）</span>
         <UiButton
           size="sm"
           :disabled="writing || editingDatasource"
@@ -2159,11 +2159,11 @@ onMounted(async () => {
           :options="
             isScientificResearchChannel
               ? PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS.filter(
-                  (item) => item.value === 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
-                )
+                (item) => item.value === 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
+              )
               : PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS.filter(
-                  (item) => item.value !== 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
-                )
+                (item) => item.value !== 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
+              )
           "
           :disabled="writing || isScientificResearchChannel"
         />
@@ -2707,8 +2707,8 @@ onMounted(async () => {
         <template #bodyCell="{ column, record }">
           <template
             v-if="
-              column.key === 'actions' &&
-              record.status === PortfolioIdentityUnmatchedStatusEnum.PENDING
+              column.key === 'actions'
+                && record.status === PortfolioIdentityUnmatchedStatusEnum.PENDING
             "
           >
             <template v-if="identityResolveRowId === record.id">
@@ -2861,15 +2861,15 @@ onMounted(async () => {
         <template #bodyCell="{ column, record }">
           <template
             v-if="
-              column.key === 'actions' &&
-              record.ticketStatus === PortfolioConflictTicketStatusEnum.OPEN
+              column.key === 'actions'
+                && record.ticketStatus === PortfolioConflictTicketStatusEnum.OPEN
             "
           >
             <UiButton
               size="sm"
               :loading="
-                operationKey ===
-                `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.RESOLVED_USE_LOCAL}`
+                operationKey
+                  === `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.RESOLVED_USE_LOCAL}`
               "
               :disabled="writing"
               @click="resolveConflict(record, PortfolioConflictTicketStatusEnum.RESOLVED_USE_LOCAL)"
@@ -2879,8 +2879,8 @@ onMounted(async () => {
             <UiButton
               size="sm"
               :loading="
-                operationKey ===
-                `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.RESOLVED_USE_EXTERNAL}`
+                operationKey
+                  === `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.RESOLVED_USE_EXTERNAL}`
               "
               :disabled="writing"
               @click="
@@ -2893,8 +2893,8 @@ onMounted(async () => {
               size="sm"
               variant="ghost"
               :loading="
-                operationKey ===
-                `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.IGNORED}`
+                operationKey
+                  === `conflict:${record.id}:${PortfolioConflictTicketStatusEnum.IGNORED}`
               "
               :disabled="writing"
               @click="resolveConflict(record, PortfolioConflictTicketStatusEnum.IGNORED)"

@@ -40,7 +40,7 @@
             <span class="archive-volume-remediation-panel__campaign-rate-label">批次就绪率</span>
             <ArchiveReadinessRateBar :percent="selectedCampaign.readinessRatePercent" />
           </div>
-          <UiButton size="sm" :disabled="!selectedCampaignId" @click="loadTasks">刷新</UiButton>
+          <UiButton size="sm" :disabled="!selectedCampaignId" @click="() => loadTasks()">刷新</UiButton>
           <UiButton
             v-if="isTenantWideCollegeCoordinator"
             size="sm"
@@ -51,8 +51,8 @@
           </UiButton>
           <UiButton
             v-if="
-              isTenantWideCollegeCoordinator &&
-              selectedCampaign?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
+              isTenantWideCollegeCoordinator
+                && selectedCampaign?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE
             "
             size="sm"
             variant="outline"
@@ -140,8 +140,8 @@
             <div class="remediation-card__actions">
               <UiButton
                 v-if="
-                  task.taskStatus === ArchiveRemediationStatusCode.OPEN ||
-                  task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
+                  task.taskStatus === ArchiveRemediationStatusCode.OPEN
+                    || task.taskStatus === ArchiveRemediationStatusCode.IN_PROGRESS
                 "
                 size="sm"
                 variant="outline"
@@ -371,15 +371,20 @@ import type { SelectValue } from 'ant-design-vue/es/select'
 import type {
   ArchiveEvaluationCampaignResponse,
   ArchiveRemediationByCampaignStatsVO,
-  ArchiveRemediationPriorityCode,
   ArchiveRemediationTaskResponse,
 } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   ARCHIVE_EVALUATION_CAMPAIGN_STATUS_OPTIONS,
   ARCHIVE_EVALUATION_EXPORT_SCOPE_HINT,
   ARCHIVE_REMEDIATION_DIAGNOSTIC_CODE_OPTIONS,
   ARCHIVE_REMEDIATION_STATUS_TONE,
   ArchiveEvaluationCampaignStatusCode,
+  ArchiveRemediationPriorityCode,
   ArchiveRemediationStatusCode,
   ArchiveRemediationStatusDescription,
   createRemediationTask,
@@ -392,13 +397,6 @@ import {
   pageRemediationTasksByCampaign,
   saveEvaluationCampaign,
 } from '@/apis/mark/archive-volume'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import ArchiveReadinessRateBar from '@/components/archive-volume/ArchiveReadinessRateBar.vue'
 import ArchiveDutyUserSelect from '@/components/mark/ArchiveDutyUserSelect.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -421,6 +419,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import { useArchiveDutyAccess } from '@/composables/useArchiveDutyAccess'
 import { runArchiveEvaluationExportFlow } from '@/composables/useArchiveEvaluationExportFlow'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -440,6 +439,7 @@ import {
   remediationPriorityCardClass,
 } from '@/utils/archive-remediation-priority'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { message } from '@/utils/feedback'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import ArchiveEvaluationExportTaskModal from '@/views/teacher/archive-volume/components/ArchiveEvaluationExportTaskModal.vue'
@@ -537,8 +537,8 @@ const activeCampaignOptions = computed(() =>
 )
 
 function syncSelectedCampaign(campaignId?: string): void {
-  selectedCampaign.value =
-    campaignSelectOptions.value.find((item) => item.campaignId === campaignId) ?? null
+  selectedCampaign.value
+    = campaignSelectOptions.value.find((item) => item.campaignId === campaignId) ?? null
 }
 
 function handleCampaignChange(value: SelectValue): void {
@@ -552,8 +552,8 @@ function handleCampaignChange(value: SelectValue): void {
 
 const canShowCreateRemediationTask = computed(
   () =>
-    canCreateRemediationTask.value &&
-    selectedCampaign.value?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
+    canCreateRemediationTask.value
+    && selectedCampaign.value?.campaignStatus === ArchiveEvaluationCampaignStatusCode.ACTIVE,
 )
 
 function remediationStatusLabel(code: ArchiveRemediationStatusCode) {
@@ -593,8 +593,8 @@ const remediationSignalMetrics = computed<SignalMetric[]>(() => {
   const stats = remediationStats.value
   if (!stats) return []
   const verifiedDenominator = stats.closedTaskCount + stats.resubmittedTaskCount
-  const passRateHint =
-    verifiedDenominator > 0
+  const passRateHint
+    = verifiedDenominator > 0
       ? `核验通过率 ${Math.round((stats.closedTaskCount / verifiedDenominator) * 100)}%`
       : undefined
   const priorityMetric = (
@@ -654,8 +654,8 @@ const remediationSignalMetrics = computed<SignalMetric[]>(() => {
 function handleSignalMetricClick(key: string): void {
   if (!selectedCampaignId.value) return
   if (key === 'priority-high' || key === 'priority-medium' || key === 'priority-low') {
-    const code =
-      key === 'priority-high'
+    const code
+      = key === 'priority-high'
         ? ArchiveRemediationPriorityCode.HIGH
         : key === 'priority-medium'
           ? ArchiveRemediationPriorityCode.MEDIUM
@@ -663,14 +663,14 @@ function handleSignalMetricClick(key: string): void {
     taskPriorityFilter.value = taskPriorityFilter.value === code ? undefined : code
     taskStatusFilter.value = undefined
   } else if (key === 'awaiting-verification') {
-    taskStatusFilter.value =
-      taskStatusFilter.value === ArchiveRemediationStatusCode.RESUBMITTED
+    taskStatusFilter.value
+      = taskStatusFilter.value === ArchiveRemediationStatusCode.RESUBMITTED
         ? undefined
         : ArchiveRemediationStatusCode.RESUBMITTED
     taskPriorityFilter.value = undefined
   } else if (key === 'closed') {
-    taskStatusFilter.value =
-      taskStatusFilter.value === ArchiveRemediationStatusCode.CLOSED
+    taskStatusFilter.value
+      = taskStatusFilter.value === ArchiveRemediationStatusCode.CLOSED
         ? undefined
         : ArchiveRemediationStatusCode.CLOSED
     taskPriorityFilter.value = undefined
@@ -774,8 +774,8 @@ function openCampaignModal(campaign?: ArchiveEvaluationCampaignResponse) {
   campaignForm.academicYearStartYear = triple.academicYearStartYear
   campaignForm.academicYearEndYear = triple.academicYearEndYear
   campaignForm.semester = triple.semester
-  campaignForm.campaignStatus =
-    campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
+  campaignForm.campaignStatus
+    = campaign?.campaignStatus ?? ArchiveEvaluationCampaignStatusCode.ACTIVE
   campaignForm.startTime = campaign?.startTime
   campaignForm.endTime = campaign?.endTime
   campaignForm.description = campaign?.description ?? ''

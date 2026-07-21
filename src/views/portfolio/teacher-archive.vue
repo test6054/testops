@@ -5,15 +5,7 @@ import type {
   PortfolioArchiveBagPreviewVO,
   PortfolioArchiveScoreResultVO,
 } from '@/apis/portfolio/bag-types'
-import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
 import type { PortfolioArchiveRecordSourceTypeCode } from '@/apis/portfolio/enums'
-import {
-  PortfolioArchiveRecordSourceTypeDescription,
-  PortfolioArchiveRecordStatusCode,
-  PortfolioArchiveRecordStatusDescription,
-  PortfolioArchiveSupportMaterialSourceTypeDescription,
-  PortfolioCompletenessLevelDescription,
-} from '@/apis/portfolio/enums'
 import type {
   PortfolioArchiveRecordDetailVO,
   PortfolioArchiveRecordSummaryVO,
@@ -23,20 +15,27 @@ import type {
   PortfolioMaterialVO,
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
-  PORTFOLIO_COMPLETENESS_LEVEL_TONE,
-} from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-import { SemesterOptions } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import { portfolioArchiveApi } from '@/apis/portfolio/archive'
+import { PortfolioArchiveBagSourceTypeDescription } from '@/apis/portfolio/bag-types'
+import {
+  PortfolioArchiveRecordSourceTypeDescription,
+  PortfolioArchiveRecordStatusCode,
+  PortfolioArchiveRecordStatusDescription,
+  PortfolioArchiveSupportMaterialSourceTypeDescription,
+  PortfolioCompletenessLevelDescription,
+} from '@/apis/portfolio/enums'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
+import {
+  PORTFOLIO_ARCHIVE_RECORD_STATUS_TONE,
+  PORTFOLIO_COMPLETENESS_LEVEL_TONE,
+} from '@/apis/portfolio/types'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -63,6 +62,7 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { formatPortfolioArchiveEvidenceRef } from '@/utils/portfolio-archive-evidence'
@@ -118,8 +118,8 @@ function completenessLevelTone(level?: PortfolioCompletenessLevelCode): BadgeTon
 function bagCompletenessHeadline(
   preview: PortfolioArchiveBagPreviewVO | PortfolioArchiveBagAssembleVO,
 ): string {
-  const level =
-    'completenessLevel' in preview && preview.completenessLevel
+  const level
+    = 'completenessLevel' in preview && preview.completenessLevel
       ? completenessLevelLabel(preview.completenessLevel)
       : ''
   const percent = preview.completenessPercent ?? '—'
@@ -186,8 +186,8 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 const { currentUserId } = usePortfolioTeacherAccess()
 
 const oneTableLoading = ref(false)
@@ -324,8 +324,8 @@ async function loadOneTable() {
     }
     categories.value = vo.categories
     if (
-      selectedCategoryId.value &&
-      !categories.value.some((item) => item.categoryId === selectedCategoryId.value)
+      selectedCategoryId.value
+      && !categories.value.some((item) => item.categoryId === selectedCategoryId.value)
     ) {
       selectedCategoryId.value = undefined
     }
@@ -433,8 +433,8 @@ async function openRecordById(recordId: string) {
     }
     recordDetail.value = nextRecordDetail
     if (
-      recordDetail.value?.categoryId &&
-      selectedCategoryId.value !== recordDetail.value.categoryId
+      recordDetail.value?.categoryId
+      && selectedCategoryId.value !== recordDetail.value.categoryId
     ) {
       selectedCategoryId.value = recordDetail.value.categoryId
       pageNum.value = 1
@@ -464,8 +464,8 @@ const canCreateRevision = computed(() => {
     return false
   }
   return (
-    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL ||
-    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.SUPERSEDED
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.OFFICIAL
+    || recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.SUPERSEDED
   )
 })
 
@@ -474,8 +474,8 @@ const canManageSupportMaterials = computed(() => {
     return false
   }
   return (
-    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.DRAFT ||
-    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
+    recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.DRAFT
+    || recordDetail.value.recordStatus === PortfolioArchiveRecordStatusCode.RETURNED
   )
 })
 
@@ -485,9 +485,9 @@ async function refreshSupportMaterials(archiveRecordId: string) {
   const currentToken = ++supportMaterialRequestToken.value
   const rows = await portfolioArchiveApi.listSupportMaterials(archiveRecordId)
   if (
-    requestToken.value !== currentScopeToken ||
-    supportMaterialRequestToken.value !== currentToken ||
-    recordDetail.value?.id !== archiveRecordId
+    requestToken.value !== currentScopeToken
+    || supportMaterialRequestToken.value !== currentToken
+    || recordDetail.value?.id !== archiveRecordId
   ) {
     return
   }
@@ -562,9 +562,9 @@ async function loadMaterialLibrary() {
       pageSize: materialLibraryPageSize.value,
     })
     if (
-      requestToken.value !== currentScopeToken ||
-      materialLibraryRequestToken.value !== currentToken ||
-      recordDetail.value?.id !== archiveRecordId
+      requestToken.value !== currentScopeToken
+      || materialLibraryRequestToken.value !== currentToken
+      || recordDetail.value?.id !== archiveRecordId
     ) {
       return
     }
@@ -572,8 +572,8 @@ async function loadMaterialLibrary() {
     materialLibraryTotal.value = page.total
   } catch (error) {
     if (
-      requestToken.value === currentScopeToken &&
-      materialLibraryRequestToken.value === currentToken
+      requestToken.value === currentScopeToken
+      && materialLibraryRequestToken.value === currentToken
     ) {
       materialLibraryRows.value = []
       materialLibraryTotal.value = 0
@@ -581,8 +581,8 @@ async function loadMaterialLibrary() {
     }
   } finally {
     if (
-      requestToken.value === currentScopeToken &&
-      materialLibraryRequestToken.value === currentToken
+      requestToken.value === currentScopeToken
+      && materialLibraryRequestToken.value === currentToken
     ) {
       materialLibraryLoading.value = false
     }
@@ -595,7 +595,7 @@ function openMaterialLibraryModal() {
   void loadMaterialLibrary()
 }
 
-function handleMaterialLibraryPageChange(page: { current: number; pageSize: number }) {
+function handleMaterialLibraryPageChange(page: { current: number, pageSize: number }) {
   materialLibraryPageNum.value = page.current
   materialLibraryPageSize.value = page.pageSize
   void loadMaterialLibrary()
@@ -745,7 +745,7 @@ function selectCategory(categoryId: string) {
   void loadRecords()
 }
 
-function handlePageChange(page: { current: number; pageSize: number }) {
+function handlePageChange(page: { current: number, pageSize: number }) {
   pageNum.value = page.current
   pageSize.value = page.pageSize
   void loadRecords()
@@ -985,10 +985,10 @@ const archiveMoreActionItems = computed(() => [
     key: 'reload',
     label: '刷新',
     disabled:
-      !canLoadTeacherArchive.value ||
-      oneTableLoading.value ||
-      recordLoading.value ||
-      timelineLoading.value,
+      !canLoadTeacherArchive.value
+      || oneTableLoading.value
+      || recordLoading.value
+      || timelineLoading.value,
   },
 ])
 
@@ -1257,11 +1257,11 @@ watch(
                 :layers="record.ownerIdentityLayers"
                 :note="record.ownerMultiIdentityNote"
                 :row-key="
-                  record.id ||
-                  record.teacherId ||
-                  record.teacherUserId ||
-                  record.subjectTeacherUserId ||
-                  record.userId
+                  record.id
+                    || record.teacherId
+                    || record.teacherUserId
+                    || record.subjectTeacherUserId
+                    || record.userId
                 "
               />
             </template>
@@ -1533,9 +1533,9 @@ watch(
               size="table"
               tone="primary"
               :disabled="
-                supportMaterialWriting ||
-                !record.fileNodeId ||
-                recordDetail?.supportMaterials.some((item) => item.linkedMaterialId === record.id)
+                supportMaterialWriting
+                  || !record.fileNodeId
+                  || recordDetail?.supportMaterials.some((item) => item.linkedMaterialId === record.id)
               "
               @click="linkSupportMaterial(record)"
             >

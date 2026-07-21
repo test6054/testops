@@ -12,6 +12,12 @@ import type {
   PortfolioPublishImpactReportVO,
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_IMPACT_REPORT_STATUS_TONE,
   PF_SCORE_RULE_TYPE_OPTIONS,
@@ -21,13 +27,6 @@ import {
   PfImpactReportStatusDescription,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
-import { defaultTemplateParams } from '@/utils/indicator-template-params'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import PortfolioIndicatorExplainDrawer from '@/components/portfolio/PortfolioIndicatorExplainDrawer.vue'
 import PortfolioIndicatorTemplateParamsForm from '@/components/portfolio/PortfolioIndicatorTemplateParamsForm.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -48,6 +47,7 @@ import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { defaultTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -200,9 +200,9 @@ function impactApprovalStatusLabel(value?: PfImpactApprovalStatusCode): string {
 
 function canReviewImpact(record: PortfolioPublishImpactReportVO): boolean {
   return (
-    record.reportStatus === PfImpactReportStatusCode.COMPLETED &&
-    record.approvalStatus === PfImpactApprovalStatusCode.PENDING_APPROVAL &&
-    record.createUser !== userStore.userInfo.userId
+    record.reportStatus === PfImpactReportStatusCode.COMPLETED
+    && record.approvalStatus === PfImpactApprovalStatusCode.PENDING_APPROVAL
+    && record.createUser !== userStore.userInfo.userId
   )
 }
 
@@ -298,9 +298,9 @@ async function runSnapshotCompute() {
   try {
     const result = await portfolioIndicatorTenantApi.computeSnapshot(request)
     if (
-      snapshotForm.snapshotId.trim() !== request.snapshotId ||
-      snapshotForm.teacherId.trim() !== request.teacherId ||
-      snapshotForm.indicatorCode.trim() !== request.indicatorCode
+      snapshotForm.snapshotId.trim() !== request.snapshotId
+      || snapshotForm.teacherId.trim() !== request.teacherId
+      || snapshotForm.indicatorCode.trim() !== request.indicatorCode
     ) {
       return
     }
@@ -529,7 +529,7 @@ async function loadCollectPage() {
   }
 }
 
-function handleCollectPageChange(event: { current: number; pageSize: number }) {
+function handleCollectPageChange(event: { current: number, pageSize: number }) {
   collectPageNum.value = event.current
   collectPageSize.value = event.pageSize
   void loadCollectPage()
@@ -551,7 +551,7 @@ function onTabChange(key: string | number) {
   }
 }
 
-function handlePageChange(event: { current: number; pageSize: number }) {
+function handlePageChange(event: { current: number, pageSize: number }) {
   pageQuery.pageNum = event.current
   pageQuery.pageSize = event.pageSize
   if (activeTab.value === 'compute-log') {
@@ -902,14 +902,14 @@ watch(
                 :items="[
                   ...(canReviewImpact(record)
                     ? [
-                        { key: 'approve', label: '审批通过', disabled: operating },
-                        {
-                          key: 'reject',
-                          label: '驳回',
-                          tone: 'danger' as const,
-                          disabled: operating,
-                        },
-                      ]
+                      { key: 'approve', label: '审批通过', disabled: operating },
+                      {
+                        key: 'reject',
+                        label: '驳回',
+                        tone: 'danger' as const,
+                        disabled: operating,
+                      },
+                    ]
                     : []),
                   { key: 'export', label: '导出', disabled: operating },
                 ]"

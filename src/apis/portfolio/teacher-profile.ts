@@ -1,6 +1,6 @@
-import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
 import http from '@/config/axios'
 

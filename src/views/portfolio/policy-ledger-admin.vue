@@ -5,13 +5,13 @@ import type {
   PortfolioPolicyLedgerReviewRequest,
   PortfolioVirtualTeachingRoomActivityVO,
 } from '@/apis/portfolio/policy-ledger'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { onMounted, reactive, ref } from 'vue'
 import {
   portfolioIndustryEducationProjectApi,
   portfolioVirtualTeachingRoomActivityApi,
 } from '@/apis/portfolio/policy-ledger'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { onMounted, reactive, ref } from 'vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -37,8 +37,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
-const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable } =
-  usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 const tab = ref<'virtual' | 'industry'>('virtual')
 const loading = ref(false)
 const virtualRows = ref<PortfolioVirtualTeachingRoomActivityVO[]>([])
@@ -137,9 +137,9 @@ async function loadPage() {
         reviewStatus: requestedFilter || undefined,
       })
       if (
-        currentToken !== pageRequestToken.value ||
-        tab.value !== ledgerType ||
-        targetTeacherId.value !== teacherId
+        currentToken !== pageRequestToken.value
+        || tab.value !== ledgerType
+        || targetTeacherId.value !== teacherId
       ) {
         return
       }
@@ -153,9 +153,9 @@ async function loadPage() {
         reviewStatus: requestedFilter || undefined,
       })
       if (
-        currentToken !== pageRequestToken.value ||
-        tab.value !== ledgerType ||
-        targetTeacherId.value !== teacherId
+        currentToken !== pageRequestToken.value
+        || tab.value !== ledgerType
+        || targetTeacherId.value !== teacherId
       ) {
         return
       }
@@ -244,8 +244,8 @@ async function saveIndustry() {
   }
 }
 
-type PolicyLedgerRecord =
-  PortfolioVirtualTeachingRoomActivityVO | PortfolioIndustryEducationProjectVO
+type PolicyLedgerRecord
+  = PortfolioVirtualTeachingRoomActivityVO | PortfolioIndustryEducationProjectVO
 
 /** 提交当前状态版本对应的政策专项证据，服务端生成并冻结证据指纹。 */
 async function submitLedgerReview(kind: 'virtual' | 'industry', record: PolicyLedgerRecord) {
@@ -253,8 +253,8 @@ async function submitLedgerReview(kind: 'virtual' | 'industry', record: PolicyLe
   if (operationKey.value) return
   operationKey.value = key
   try {
-    const api =
-      kind === 'virtual'
+    const api
+      = kind === 'virtual'
         ? portfolioVirtualTeachingRoomActivityApi
         : portfolioIndustryEducationProjectApi
     await api.submitReview({ id: record.id, statusVersion: record.statusVersion })
@@ -298,8 +298,8 @@ async function reviewLedger(
   }
   operationKey.value = key
   try {
-    const api =
-      kind === 'virtual'
+    const api
+      = kind === 'virtual'
         ? portfolioVirtualTeachingRoomActivityApi
         : portfolioIndustryEducationProjectApi
     await api.review(request)
@@ -316,14 +316,14 @@ async function reviewLedger(
 function ledgerActions(record: PolicyLedgerRecord): UiTableRowActionItem[] {
   const disabled = Boolean(operationKey.value)
   if (
-    record.reviewStatus === PortfolioPolicyLedgerReviewStatusCode.DRAFT ||
-    record.reviewStatus === PortfolioPolicyLedgerReviewStatusCode.REJECTED
+    record.reviewStatus === PortfolioPolicyLedgerReviewStatusCode.DRAFT
+    || record.reviewStatus === PortfolioPolicyLedgerReviewStatusCode.REJECTED
   ) {
     return [{ key: 'submit', label: '提交审核', disabled }]
   }
   if (
-    record.reviewStatus === PortfolioPolicyLedgerReviewStatusCode.PENDING_REVIEW &&
-    canPickTeachers.value
+    record.reviewStatus === PortfolioPolicyLedgerReviewStatusCode.PENDING_REVIEW
+    && canPickTeachers.value
   ) {
     return [
       { key: 'approve', label: '通过', disabled },
@@ -493,8 +493,7 @@ onMounted(() => {
               v-if="
                 !record.lifecycleStatus && !record.evaluationHeld && !record.archiveWriteForbidden
               "
-              >—</span
-            >
+            >—</span>
           </template>
           <template v-else-if="column.key === 'reviewStatus'">
             <UiTag :tone="statusTone(record.reviewStatus)">
@@ -600,8 +599,7 @@ onMounted(() => {
               v-if="
                 !record.lifecycleStatus && !record.evaluationHeld && !record.archiveWriteForbidden
               "
-              >—</span
-            >
+            >—</span>
           </template>
           <template v-else-if="column.key === 'reviewStatus'">
             <UiTag :tone="statusTone(record.reviewStatus)">

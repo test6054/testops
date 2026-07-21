@@ -1,6 +1,18 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioEvaluationObjectionHandleActionCode } from '@/apis/portfolio/enums'
+import type {
+  PortfolioEvaluationMaterialCategoryItemVO,
+  PortfolioEvaluationMaterialPreviewVO,
+  PortfolioEvaluationPublicityListItemVO,
+  PortfolioEvaluationTeacherNoticeVO,
+  PortfolioEvaluationTeacherResultSummaryVO,
+} from '@/apis/portfolio/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import message from 'ant-design-vue/es/message'
+import { computed, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_TYPE_OPTIONS,
   PortfolioEvaluationObjectionHandleActionDescription,
@@ -11,26 +23,14 @@ import {
   PortfolioEvaluationTeacherNoticeStatusDescription,
   PortfolioEvaluationTeacherNoticeStatusEnum,
 } from '@/apis/portfolio/enums'
-import type {
-  PortfolioEvaluationMaterialCategoryItemVO,
-  PortfolioEvaluationMaterialPreviewVO,
-  PortfolioEvaluationPublicityListItemVO,
-  PortfolioEvaluationTeacherNoticeVO,
-  PortfolioEvaluationTeacherResultSummaryVO,
-} from '@/apis/portfolio/types'
+import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
+import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import {
   PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
   PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
   PORTFOLIO_EVALUATION_PUBLICITY_STATUS_TONE,
   PORTFOLIO_EVALUATION_TEACHER_NOTICE_STATUS_TONE,
 } from '@/apis/portfolio/types'
-import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { portfolioEvaluationNoticeApi } from '@/apis/portfolio/evaluation-notice'
-import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -115,8 +115,8 @@ const route = useRoute()
 const router = useRouter()
 const { targetTeacherId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const { evaluationHeld, evaluationHoldBlockMessage, assertEvaluationParticipable } =
-  usePortfolioArchiveWriteGuard()
+const { evaluationHeld, evaluationHoldBlockMessage, assertEvaluationParticipable }
+  = usePortfolioArchiveWriteGuard()
 const { currentUserId, canPickTeachers } = usePortfolioTeacherAccess()
 
 const loading = ref(false)
@@ -163,8 +163,8 @@ const objectionIndicatorOptions = computed(() => {
 })
 const scoreOrResultDispute = computed(
   () =>
-    objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE ||
-    objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE,
+    objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
+    || objectionForm.objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE,
 )
 const showObjectionIndicatorSelect = computed(
   () => scoreOrResultDispute.value && objectionIndicatorOptions.value.length > 0,
@@ -347,9 +347,9 @@ function canViewerSubmitObjection(record: PortfolioEvaluationPublicityListItemVO
     return false
   }
   return !(
-    canPickTeachers.value &&
-    targetTeacherId.value &&
-    targetTeacherId.value !== currentUserId.value
+    canPickTeachers.value
+    && targetTeacherId.value
+    && targetTeacherId.value !== currentUserId.value
   )
 }
 
@@ -439,21 +439,21 @@ async function loadPublicity() {
     }
     const rows = await portfolioEvaluationPublicityApi.listPublicity(listRequest)
     if (
-      evaluationRequestToken.value !== scopeToken ||
-      publicityRequestToken.value !== requestToken
+      evaluationRequestToken.value !== scopeToken
+      || publicityRequestToken.value !== requestToken
     ) {
       return
     }
     publicityRows.value = rows
     // PF-P0-292：publicityId > objectionId > evaluationTaskId 定位目标公示行
-    const matchedRow =
-      (deepLinkedPublicityId.value
+    const matchedRow
+      = (deepLinkedPublicityId.value
         ? publicityRows.value.find((item) => item.publicityId === deepLinkedPublicityId.value)
-        : undefined) ||
-      (deepLinkedObjectionId.value
+        : undefined)
+      || (deepLinkedObjectionId.value
         ? publicityRows.value.find((item) => item.objectionId === deepLinkedObjectionId.value)
-        : undefined) ||
-      (deepLinkedEvaluationTaskId.value
+        : undefined)
+      || (deepLinkedEvaluationTaskId.value
         ? publicityRows.value.find(
             (item) => item.evaluationTaskId === deepLinkedEvaluationTaskId.value,
           )
@@ -464,8 +464,8 @@ async function loadPublicity() {
     }
   } catch (error) {
     if (
-      evaluationRequestToken.value !== scopeToken ||
-      publicityRequestToken.value !== requestToken
+      evaluationRequestToken.value !== scopeToken
+      || publicityRequestToken.value !== requestToken
     ) {
       return
     }
@@ -473,8 +473,8 @@ async function loadPublicity() {
     showUserError(error, '加载评价公示失败')
   } finally {
     if (
-      evaluationRequestToken.value === scopeToken &&
-      publicityRequestToken.value === requestToken
+      evaluationRequestToken.value === scopeToken
+      && publicityRequestToken.value === requestToken
     ) {
       publicityLoading.value = false
     }
@@ -709,10 +709,10 @@ function buildNoticeRowActions(record: PortfolioEvaluationTeacherNoticeVO): UiTa
       label: '确认材料',
       tone: 'primary',
       disabled:
-        confirming.value ||
-        previewLoading.value ||
-        Boolean(record.evaluationHeld) ||
-        evaluationHeld.value,
+        confirming.value
+        || previewLoading.value
+        || Boolean(record.evaluationHeld)
+        || evaluationHeld.value,
     })
   }
   return actions
@@ -746,11 +746,11 @@ function buildPublicityRowActions(
       key: 'submitObjection',
       label: '提交异议',
       disabled:
-        evaluationHeld.value ||
-        record.lifecycleStatus === 'SEALED' ||
-        record.lifecycleStatus === 'TEMP_HOLD' ||
-        record.lifecycleStatus === 'TRANSFER_FROZEN' ||
-        record.lifecycleStatus === 'TRANSFERRED',
+        evaluationHeld.value
+        || record.lifecycleStatus === 'SEALED'
+        || record.lifecycleStatus === 'TEMP_HOLD'
+        || record.lifecycleStatus === 'TRANSFER_FROZEN'
+        || record.lifecycleStatus === 'TRANSFERRED',
     })
   }
   return actions
@@ -1163,9 +1163,9 @@ watch(
             <!-- US-MI / PF-P0-270：结果汇总读模型仅标注结构态，不默认过滤 -->
             <div
               v-if="
-                resultSummary.lifecycleStatus ||
-                resultSummary.evaluationHeld != null ||
-                resultSummary.countsInCurrentFacultyStructure != null
+                resultSummary.lifecycleStatus
+                  || resultSummary.evaluationHeld != null
+                  || resultSummary.countsInCurrentFacultyStructure != null
               "
               class="teacher-evaluation__meta teacher-evaluation__result-lifecycle"
             >

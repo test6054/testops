@@ -38,7 +38,7 @@ let scopeChangeSerial = 0
 
 interface TabLoadExpose {
   loadList: () => Promise<void>
-  openByDeepLink?: (payload: { improvementTaskId: string; aiTaskId?: string }) => Promise<void>
+  openByDeepLink?: (payload: { improvementTaskId: string, aiTaskId?: string }) => Promise<void>
 }
 
 const improvementTaskTabRef = ref<TabLoadExpose | null>(null)
@@ -71,7 +71,7 @@ async function refreshWorkbenchSignals(): Promise<boolean> {
 /** 只加载当前已挂载页签，避免要求四个互斥 v-if 页签同时存在。 */
 async function loadActiveTabList(): Promise<void> {
   await nextTick()
-  let activeTabExpose: TabLoadExpose | null = null
+  let activeTabExpose: TabLoadExpose | null
   if (activeTab.value === 'improvement') activeTabExpose = improvementTaskTabRef.value
   else if (activeTab.value === 'issue') activeTabExpose = auditIssueTabRef.value
   else if (activeTab.value === 'rectification') activeTabExpose = auditRectificationTabRef.value
@@ -83,15 +83,15 @@ async function loadActiveTabList(): Promise<void> {
 }
 
 async function consumeImprovementDeepLink(): Promise<void> {
-  const improvementTaskId =
-    typeof route.query.improvementTaskId === 'string' ? route.query.improvementTaskId.trim() : ''
+  const improvementTaskId
+    = typeof route.query.improvementTaskId === 'string' ? route.query.improvementTaskId.trim() : ''
   if (!improvementTaskId) {
     return
   }
   activeTab.value = 'improvement'
   await nextTick()
-  const aiTaskId =
-    typeof route.query.aiTaskId === 'string' ? route.query.aiTaskId.trim() : undefined
+  const aiTaskId
+    = typeof route.query.aiTaskId === 'string' ? route.query.aiTaskId.trim() : undefined
   await improvementTaskTabRef.value?.openByDeepLink?.({ improvementTaskId, aiTaskId })
 }
 
@@ -193,11 +193,11 @@ onActivated(async () => {
 
       <UiEmpty
         v-if="
-          !loading &&
-          !signalsLoadFailed &&
-          activeTab === 'improvement' &&
-          signalSummary &&
-          !signalSummary.improvementTotal
+          !loading
+            && !signalsLoadFailed
+            && activeTab === 'improvement'
+            && signalSummary
+            && !signalSummary.improvementTotal
         "
         size="sm"
         description="当前范围无改进任务"

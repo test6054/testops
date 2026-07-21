@@ -3,20 +3,21 @@ import type {
   ScanWorkOrderLifecycleVO,
   ScanWorkOrderPortfolioContextVO,
 } from '@/apis/mark/scanner-work-order'
-import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
+import type {PortfolioAiTaskTypeCode} from '@/types/enums/portfolio-ai-task-type-enum';
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
 import { getAgentSetupContext } from '@/apis/mark/scanner-agent-local'
+import { getScanWorkOrderContext, startScanWorkOrder } from '@/apis/mark/scanner-work-order'
 import { buildPortfolioIntakeScanReturnTo } from '@/composables/usePortfolioIntake'
+import {
+  ALL_PORTFOLIO_AI_TASK_TYPE_CODES
+  
+} from '@/types/enums/portfolio-ai-task-type-enum'
 import {
   ALL_PORTFOLIO_COLLECT_MODE_CODES,
   PortfolioCollectModeDescription,
 } from '@/types/enums/portfolio-collect-mode-enum'
-import {
-  ALL_PORTFOLIO_AI_TASK_TYPE_CODES,
-  type PortfolioAiTaskTypeCode,
-} from '@/types/enums/portfolio-ai-task-type-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'

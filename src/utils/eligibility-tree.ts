@@ -1,6 +1,15 @@
 import type { PfEligibilityRuleTreeNodeDto } from '@/apis/portfolio/indicator-types'
+import {
+  PfEligibilityNodeTypeCode,
+  PfEligibilityNodeTypeDescription,
+} from '@/apis/portfolio/indicator-types'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
-const LOGIC_NODE_TYPES = new Set(['AND', 'OR', 'NOT'])
+const LOGIC_NODE_TYPES = new Set<PfEligibilityNodeTypeCode>([
+  PfEligibilityNodeTypeCode.AND,
+  PfEligibilityNodeTypeCode.OR,
+  PfEligibilityNodeTypeCode.NOT,
+])
 
 /** 校验合取树是否具备最小可保存结构 */
 export function validateEligibilityTree(root: PfEligibilityRuleTreeNodeDto): string | null {
@@ -19,27 +28,20 @@ export function validateEligibilityTree(root: PfEligibilityRuleTreeNodeDto): str
     }
     return null
   }
-  if (root.nodeType === 'LEAF') {
+  if (root.nodeType === PfEligibilityNodeTypeCode.LEAF) {
     if (!root.fieldKey?.trim()) {
       return '叶子节点缺少字段键'
     }
     return null
   }
-  if (root.nodeType === 'AUDIT_GATE') {
+  if (root.nodeType === PfEligibilityNodeTypeCode.AUDIT_GATE) {
     if (!root.fieldKey?.trim()) {
       return '审核门禁缺少字段键'
     }
-    if (!root.auditStatus?.trim()) {
+    if (!root.auditStatus) {
       return '审核门禁缺少审核状态'
     }
     return null
   }
-  const nodeTypeLabel: Record<string, string> = {
-    AND: '合取',
-    OR: '析取',
-    NOT: '否定',
-    LEAF: '叶子',
-    AUDIT_GATE: '审核门禁',
-  }
-  return `不支持的节点类型：${nodeTypeLabel[root.nodeType] ?? '未知'}`
+  return `不支持的节点类型：${strictEnumLabel(PfEligibilityNodeTypeDescription, root.nodeType, '资格节点类型')}`
 }

@@ -1,6 +1,6 @@
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
+import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
+import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
 export interface PortfolioProcessSessionVO {

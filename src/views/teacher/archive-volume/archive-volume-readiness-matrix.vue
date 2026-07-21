@@ -56,30 +56,18 @@
       </template>
 
       <div v-if="matrixMeta" class="archive-readiness-matrix__legend" aria-label="就绪度色调图例">
-        <span class="archive-readiness-matrix__legend-item"
-          ><span
-            class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--good"
-          ></span
-          >全部就绪：入库与完整性 / 四性检查均通过</span
-        >
-        <span class="archive-readiness-matrix__legend-item"
-          ><span
-            class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--warn"
-          ></span
-          >部分就绪：存在缺件或检查未通过</span
-        >
-        <span class="archive-readiness-matrix__legend-item"
-          ><span
-            class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--fail"
-          ></span
-          >未启动：入库率 0%</span
-        >
-        <span class="archive-readiness-matrix__legend-item"
-          ><span
-            class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--empty"
-          ></span
-          >该学期无数据</span
-        >
+        <span class="archive-readiness-matrix__legend-item"><span
+          class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--good"
+        ></span>全部就绪：入库与完整性 / 四性检查均通过</span>
+        <span class="archive-readiness-matrix__legend-item"><span
+          class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--warn"
+        ></span>部分就绪：存在缺件或检查未通过</span>
+        <span class="archive-readiness-matrix__legend-item"><span
+          class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--fail"
+        ></span>未启动：入库率 0%</span>
+        <span class="archive-readiness-matrix__legend-item"><span
+          class="archive-readiness-matrix__legend-dot archive-readiness-matrix__legend-dot--empty"
+        ></span>该学期无数据</span>
       </div>
 
       <UiSkeletonState v-if="loading && !matrixMeta" variant="card" compact />
@@ -148,16 +136,15 @@ import type {
   ArchiveReadinessMatrixRowVO,
   ArchiveReadinessTermColumnVO,
 } from '@/apis/mark/archive-volume'
+import type { SemesterCode } from '@/types/enums/semester-enum'
+import type { SignalMetric } from '@/types/workbench'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   getSupervisionReadinessMatrixMeta,
   pageSupervisionCampaigns,
   pageSupervisionReadinessMatrix,
 } from '@/apis/mark/archive-volume'
-import type { SemesterCode } from '@/types/enums/semester-enum'
-import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import type { SignalMetric } from '@/types/workbench'
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -170,6 +157,7 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE, EXPORT_PAGE_SIZE } from '@/constants/pagination'
+import { formatAcademicYearSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { generateAcademicYearStartOptions } from '@/utils/academic-year'
 import {
   applyAcademicYearStartYearChange,
@@ -286,10 +274,10 @@ function termKey(columnKey: string) {
 
 function isArchiveReadinessCell(value: unknown): value is ArchiveReadinessCellVO {
   return (
-    typeof value === 'object' &&
-    value !== null &&
-    'storedCount' in value &&
-    'totalVolumeCount' in value
+    typeof value === 'object'
+    && value !== null
+    && 'storedCount' in value
+    && 'totalVolumeCount' in value
   )
 }
 

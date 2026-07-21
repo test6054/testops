@@ -4,12 +4,12 @@ import type {
   PortfolioAchievementStatsVO,
   PortfolioDevelopmentRecordVO,
 } from '@/apis/portfolio/teacher-platform'
-import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import { onMounted, reactive, ref } from 'vue'
 import {
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDevelopmentRecordTypeDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -152,8 +152,8 @@ onMounted(loadPage)
                     ? 'green'
                     : record.lifecycleStatus === 'TEMP_HOLD'
                       ? 'orange'
-                      : record.lifecycleStatus === 'SEALED' ||
-                          record.lifecycleStatus === 'TRANSFERRED'
+                      : record.lifecycleStatus === 'SEALED'
+                        || record.lifecycleStatus === 'TRANSFERRED'
                         ? 'red'
                         : 'gray'
                 "

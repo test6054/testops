@@ -6,10 +6,6 @@ import type {
   PortfolioEvaluationObjectionScoreBasisItemVO,
   PortfolioEvaluationObjectionSummaryVO,
 } from '@/apis/portfolio/types'
-import {
-  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
-  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
-} from '@/apis/portfolio/types'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
@@ -24,6 +20,10 @@ import {
   PortfolioEvaluationSceneDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioEvaluationPublicityApi } from '@/apis/portfolio/evaluation-publicity'
+import {
+  PORTFOLIO_EVALUATION_OBJECTION_HANDLE_ACTION_TONE,
+  PORTFOLIO_EVALUATION_OBJECTION_STATUS_TONE,
+} from '@/apis/portfolio/types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
@@ -77,8 +77,8 @@ function actionTone(action: PortfolioEvaluationObjectionHandleActionCode) {
 
 function requiresDangerConfirm(action: PortfolioEvaluationObjectionHandleActionCode): boolean {
   return (
-    action === PortfolioEvaluationObjectionHandleActionCode.REVOKE ||
-    action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
+    action === PortfolioEvaluationObjectionHandleActionCode.REVOKE
+    || action === PortfolioEvaluationObjectionHandleActionCode.RE_REVIEW
   )
 }
 
@@ -95,8 +95,8 @@ const STATUS_FILTER_OPTIONS: Array<{
 
 function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionTypeCode): boolean {
   return (
-    objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE ||
-    objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
+    objectionType === PortfolioEvaluationObjectionTypeCode.RESULT_DISPUTE
+    || objectionType === PortfolioEvaluationObjectionTypeCode.SCORE_DISPUTE
   )
 }
 
@@ -143,8 +143,8 @@ const showCorrectedScore = computed(() => {
     return false
   }
   return (
-    reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT &&
-    requiresCorrectedScore(reviewTarget.value.objectionType)
+    reviewForm.action === PortfolioEvaluationObjectionHandleActionCode.CORRECT
+    && requiresCorrectedScore(reviewTarget.value.objectionType)
   )
 })
 
@@ -222,8 +222,8 @@ const deepLinkObjectionApplied = ref(false)
  * @returns 若需清筛选后重载则返回 true
  */
 function applyDeepLinkedObjection(): boolean {
-  const deepLinkedObjectionId =
-    typeof route.query.objectionId === 'string' ? route.query.objectionId.trim() : ''
+  const deepLinkedObjectionId
+    = typeof route.query.objectionId === 'string' ? route.query.objectionId.trim() : ''
   if (!deepLinkedObjectionId || deepLinkObjectionApplied.value) {
     return false
   }
@@ -261,8 +261,8 @@ async function loadPage() {
     rows.value = page.list
     pageTotal.value = page.total
     if (
-      reviewTarget.value &&
-      !rows.value.some((item) => item.objectionId === reviewTarget.value?.objectionId)
+      reviewTarget.value
+      && !rows.value.some((item) => item.objectionId === reviewTarget.value?.objectionId)
     ) {
       resetReviewContext()
     }
@@ -371,24 +371,24 @@ async function openReviewDrawer(row: PortfolioEvaluationObjectionSummaryVO): Pro
       objectionId,
     })
     if (
-      reviewContextToken.value !== contextToken ||
-      reviewTarget.value?.objectionId !== objectionId
+      reviewContextToken.value !== contextToken
+      || reviewTarget.value?.objectionId !== objectionId
     ) {
       return
     }
     reviewPackage.value = pack
   } catch (error) {
     if (
-      reviewContextToken.value !== contextToken ||
-      reviewTarget.value?.objectionId !== objectionId
+      reviewContextToken.value !== contextToken
+      || reviewTarget.value?.objectionId !== objectionId
     ) {
       return
     }
     showUserError(error, '加载异议复核材料包失败')
   } finally {
     if (
-      reviewContextToken.value === contextToken &&
-      reviewTarget.value?.objectionId === objectionId
+      reviewContextToken.value === contextToken
+      && reviewTarget.value?.objectionId === objectionId
     ) {
       reviewPackageLoading.value = false
     }

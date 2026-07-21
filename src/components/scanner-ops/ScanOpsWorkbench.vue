@@ -548,16 +548,32 @@ const dutyContextSubtitle = computed(() => {
   return `${domainSubtitlePrefix.value} · 当前无积压`
 })
 
+function resetOverviewMetrics() {
+  failedTicketCount.value = null
+  failedWorkOrderCount.value = null
+  pageRegisterBlockedCount.value = null
+  committingWorkOrderCount.value = null
+  partialTailPendingCount.value = null
+  pendingDispatchCount.value = null
+  processingDispatchCount.value = null
+  suspendedDispatchCount.value = null
+  archiveMixedPendingTotal.value = null
+}
+
 async function loadOverview() {
   overviewLoading.value = true
   overviewLoadFailed.value = false
   try {
     let overview
     if (props.domain === 'exam') {
-      if (!props.examId?.trim()) {
-        throw new Error('考试 ID 缺失，无法加载扫描运营概览')
+      const examId = props.examId?.trim()
+      if (!examId) {
+        resetOverviewMetrics()
+        overviewLoadFailed.value = true
+        showUserError(null, '考试信息缺失，无法加载扫描运营概览')
+        return
       }
-      overview = await loadExamScanOpsOverview(props.examId)
+      overview = await loadExamScanOpsOverview(examId)
     } else if (props.domain === 'archive') {
       overview = await loadArchiveScanOpsOverview()
     } else {
@@ -572,15 +588,7 @@ async function loadOverview() {
     processingDispatchCount.value = overview.processingDispatchCount ?? null
     suspendedDispatchCount.value = overview.suspendedDispatchCount ?? null
   } catch (error) {
-    failedTicketCount.value = null
-    failedWorkOrderCount.value = null
-    pageRegisterBlockedCount.value = null
-    committingWorkOrderCount.value = null
-    partialTailPendingCount.value = null
-    pendingDispatchCount.value = null
-    processingDispatchCount.value = null
-    suspendedDispatchCount.value = null
-    archiveMixedPendingTotal.value = null
+    resetOverviewMetrics()
     overviewLoadFailed.value = true
     showUserError(error, '扫描运营概览加载失败')
     return

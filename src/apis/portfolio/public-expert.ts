@@ -57,6 +57,6 @@ export interface PortfolioPublicExpertReviewBundleVO {
 }
 
 export const portfolioPublicExpertApi = {
-  reviewBundle: (data: { tenantId: string; accessToken: string }) =>
+  reviewBundle: (data: { tenantId: string, accessToken: string }) =>
     http.post<PortfolioPublicExpertReviewBundleVO>(`${PUBLIC_EXPERT}/review-bundle`, data),
 }

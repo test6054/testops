@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { PfEligibilityRuleTreeNodeDto } from '@/apis/portfolio/indicator-types'
-import message from 'ant-design-vue/es/message'
 import { onMounted, ref } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_ELIGIBILITY_PRESET_OPTIONS,
   PF_SCENE_CODE_OPTIONS,
+  PfEligibilityNodeTypeCode,
+  PfEligibilityRuleStatusCode,
   PfSceneCode,
 } from '@/apis/portfolio/indicator-types'
 import PortfolioEligibilityTreeEditor from '@/components/portfolio/PortfolioEligibilityTreeEditor.vue'
@@ -18,11 +19,15 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { validateEligibilityTree } from '@/utils/eligibility-tree'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { message } from '@/utils/feedback'
 
 const sceneCode = ref<PfSceneCode>(PfSceneCode.DUAL_TEACHER)
 const eligibilityCode = ref('DUAL_TEACHER_APPLY')
 const eligibilityName = ref('双师认定申请')
-const treeRoot = ref<PfEligibilityRuleTreeNodeDto>({ nodeType: 'AND', children: [] })
+const treeRoot = ref<PfEligibilityRuleTreeNodeDto>({
+  nodeType: PfEligibilityNodeTypeCode.AND,
+  children: [],
+})
 const loading = ref(false)
 const saving = ref(false)
 /** 规则加载 token，切换预置编码时丢弃旧规则回写 */
@@ -54,12 +59,18 @@ async function loadRule() {
     }
     eligibilityName.value = rule.eligibilityName
     sceneCode.value = rule.sceneCode
-    treeRoot.value = rule.ruleTree ?? { nodeType: 'AND', children: [] }
+    treeRoot.value = rule.ruleTree ?? {
+      nodeType: PfEligibilityNodeTypeCode.AND,
+      children: [],
+    }
   } catch (error) {
     if (currentToken !== ruleRequestToken.value || eligibilityCode.value !== requestCode) {
       return
     }
-    treeRoot.value = { nodeType: 'AND', children: [] }
+    treeRoot.value = {
+      nodeType: PfEligibilityNodeTypeCode.AND,
+      children: [],
+    }
     showUserError(error, '加载资格规则失败')
   } finally {
     if (currentToken === ruleRequestToken.value) {
@@ -92,7 +103,7 @@ async function saveRule() {
       eligibilityName: requestName,
       sceneCode: requestScene,
       ruleTree: requestTree,
-      status: 'ACTIVE',
+      status: PfEligibilityRuleStatusCode.ACTIVE,
     })
     if (eligibilityCode.value !== requestCode) {
       return

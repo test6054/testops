@@ -5,6 +5,10 @@ import type {
   PortfolioIndicatorEngineReadinessVO,
   PortfolioPublishImpactReportVO,
 } from '@/apis/portfolio/indicator-types'
+import message from 'ant-design-vue/es/message'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
   PF_CURRENT_TASK_RULE_STRATEGY_OPTIONS,
   PF_SCENE_CODE_OPTIONS,
@@ -17,10 +21,6 @@ import {
   pfRuleChangeLevelRequiresApproval,
   PfSceneCode,
 } from '@/apis/portfolio/indicator-types'
-import message from 'ant-design-vue/es/message'
-import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
@@ -194,8 +194,8 @@ const requiresApproval = computed(() =>
 )
 const canPublish = computed(
   () =>
-    Boolean(impactReportId.value) &&
-    pfImpactApprovalAllowsPublish(impactReport.value?.approvalStatus),
+    Boolean(impactReportId.value)
+    && pfImpactApprovalAllowsPublish(impactReport.value?.approvalStatus),
 )
 const showTaskStrategy = computed(() => {
   const level = impactReport.value?.changeLevel
@@ -217,10 +217,10 @@ async function publish() {
   const targetAcademicYear = academicYear.value.trim()
   const targetImpactReportId = impactReportId.value
   if (
-    !trialPassed.value ||
-    workflowSceneCode.value !== targetSceneCode ||
-    !targetImpactReportId ||
-    !impactReport.value
+    !trialPassed.value
+    || workflowSceneCode.value !== targetSceneCode
+    || !targetImpactReportId
+    || !impactReport.value
   ) {
     showFormValidationMessage('当前场景尚未完成试算和影响分析')
     resetWorkflow()
@@ -228,16 +228,16 @@ async function publish() {
   }
   if (!pfImpactApprovalAllowsPublish(impactReport.value.approvalStatus)) {
     showFormValidationMessage(
-      impactReport.value.changeLevel === PfRuleChangeLevelCode.A ||
-        impactReport.value.changeLevel === PfRuleChangeLevelCode.B
+      impactReport.value.changeLevel === PfRuleChangeLevelCode.A
+      || impactReport.value.changeLevel === PfRuleChangeLevelCode.B
         ? 'A/B 级变更须先完成影响分析审批，方可发布'
         : '当前影响分析审批状态不允许发布',
     )
     return
   }
   if (
-    impactReport.value.changeLevel === PfRuleChangeLevelCode.B &&
-    !currentTaskRuleStrategy.value
+    impactReport.value.changeLevel === PfRuleChangeLevelCode.B
+    && !currentTaskRuleStrategy.value
   ) {
     showFormValidationMessage('B 级变更须选择进行中任务规则策略')
     return
@@ -308,10 +308,8 @@ onMounted(loadReadiness)
     <UiCard title="指标工程贯通">
       <p v-if="readinessError" class="readiness-error">{{ readinessError }}</p>
       <div v-if="readiness" class="readiness">
-        <span
-          >已启用 {{ readiness.enabledIndicatorCount }} /
-          {{ readiness.platformIndicatorCount }}</span
-        >
+        <span>已启用 {{ readiness.enabledIndicatorCount }} /
+          {{ readiness.platformIndicatorCount }}</span>
         <span
           v-for="scene in readiness.sceneStatuses"
           :key="scene.referenceScene"
@@ -412,25 +410,15 @@ onMounted(loadReadiness)
               </UiTag>
             </span>
             <span v-if="impactReport.approvedTime">审批时间 {{ impactReport.approvedTime }}</span>
-            <span v-if="impactReport.approvalOpinion"
-              >审批意见 {{ impactReport.approvalOpinion }}</span
-            >
+            <span v-if="impactReport.approvalOpinion">审批意见 {{ impactReport.approvalOpinion }}</span>
           </div>
           <div v-if="impactReport.evaluationTaskSummary" class="impact-summary impact-task-summary">
-            <span
-              >进行中任务 {{ impactReport.evaluationTaskSummary.inProgressTaskCount ?? 0 }}</span
-            >
-            <span
-              >已冻结规则任务
-              {{ impactReport.evaluationTaskSummary.frozenInProgressTaskCount ?? 0 }}</span
-            >
-            <span
-              >已公示/归档
-              {{ impactReport.evaluationTaskSummary.publicizedOrArchivedTaskCount ?? 0 }}</span
-            >
-            <span
-              >受影响教师 {{ impactReport.evaluationTaskSummary.affectedTeacherCount ?? 0 }}</span
-            >
+            <span>进行中任务 {{ impactReport.evaluationTaskSummary.inProgressTaskCount ?? 0 }}</span>
+            <span>已冻结规则任务
+              {{ impactReport.evaluationTaskSummary.frozenInProgressTaskCount ?? 0 }}</span>
+            <span>已公示/归档
+              {{ impactReport.evaluationTaskSummary.publicizedOrArchivedTaskCount ?? 0 }}</span>
+            <span>受影响教师 {{ impactReport.evaluationTaskSummary.affectedTeacherCount ?? 0 }}</span>
           </div>
           <p v-if="requiresApproval && impactReport.approvalStatus === 'PENDING_APPROVAL'">
             该影响报告已进入独立审批队列，创建人不能审批本人报告。

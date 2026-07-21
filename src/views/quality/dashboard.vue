@@ -1,18 +1,26 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
-import { achievementResultApi } from '@/apis/quality/achievement-result'
 import type { AiTaskVO } from '@/apis/quality/ai-task'
-import { aiTaskApi } from '@/apis/quality/ai-task'
 import type { ImprovementTaskVO } from '@/apis/quality/improvement-task'
-import { improvementTaskApi } from '@/apis/quality/improvement-task'
 import type {
   AchievementAuditStatusCode,
   AchievementStatusCode,
   AchievementTargetTypeCode,
+  AiTaskFailurePhaseCode,
   AiTaskTypeCode,
-  ImprovementTaskStatusCode,
-} from '@/apis/quality/types'
+
+  ImprovementTaskStatusCode} from '@/apis/quality/types'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
+import { storeToRefs } from 'pinia'
+import { computed, nextTick, onActivated, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { achievementResultApi } from '@/apis/quality/achievement-result'
+import { aiTaskApi } from '@/apis/quality/ai-task'
+import { improvementTaskApi } from '@/apis/quality/improvement-task'
+
 import {
   ACHIEVEMENT_AUDIT_STATUS_COLOR,
   ACHIEVEMENT_STATUS_COLOR,
@@ -20,7 +28,6 @@ import {
   AchievementStatusDescription,
   AchievementTargetTypeDescription,
   AI_TASK_STATUS_COLOR,
-  AiTaskFailurePhaseCode,
   AiTaskFailurePhaseDescription,
   AiTaskStatusCode,
   AiTaskStatusDescription,
@@ -30,14 +37,6 @@ import {
   IMPROVEMENT_TASK_STATUS_COLOR,
   ImprovementTaskStatusDescription,
 } from '@/apis/quality/types'
-import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
-import type { QualityChartGroup } from '@/utils/quality-workbench-charts'
-import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
-import { storeToRefs } from 'pinia'
-
-import { computed, nextTick, onActivated, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { workbenchApi } from '@/apis/quality/workbench'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
@@ -57,6 +56,7 @@ import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useQualityTaskStore } from '@/stores/modules/qualityTask'
 import { showUserError } from '@/utils/error-handler'
+import { buildStatusChartGroup } from '@/utils/quality-workbench-charts'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const recentAchievementColumns: ColumnsType = [
@@ -167,11 +167,11 @@ const planConfirmationLabel = computed(() => {
 const stages = computed<WorkbenchStage[]>(() => {
   const planSelected = !!trainingPlanId.value
   const planConfirmed = planConfirmationStatus.value === ConfirmationStatusCode.CONFIRMED
-  const dataReached =
-    achievementCounts.calculated > 0 ||
-    achievementCounts.submitted > 0 ||
-    achievementCounts.confirmed > 0 ||
-    achievementCounts.archived > 0
+  const dataReached
+    = achievementCounts.calculated > 0
+      || achievementCounts.submitted > 0
+      || achievementCounts.confirmed > 0
+      || achievementCounts.archived > 0
   const calcDone = dataReached
   const auditDone = achievementCounts.confirmed > 0 || achievementCounts.archived > 0
   const improvementActive = improvementCounts.total > 0
@@ -530,8 +530,8 @@ const dashboardTodos = computed<DashboardTodoItem[]>(() => {
     })
   }
   if (
-    planConfirmationStatus.value === ConfirmationStatusCode.CONFIRMED &&
-    achievementCounts.calculated === 0
+    planConfirmationStatus.value === ConfirmationStatusCode.CONFIRMED
+    && achievementCounts.calculated === 0
   ) {
     items.push({
       key: 'ingest',
@@ -734,9 +734,9 @@ function handleTodoAction(key: string) {
                   <span
                     class="quality-dashboard__value"
                     :class="[
-                      record.finalValue !== null &&
-                      record.thresholdValue !== null &&
-                      record.finalValue >= record.thresholdValue
+                      record.finalValue !== null
+                        && record.thresholdValue !== null
+                        && record.finalValue >= record.thresholdValue
                         ? 'quality-dashboard__value--ok'
                         : 'quality-dashboard__value--bad',
                     ]"

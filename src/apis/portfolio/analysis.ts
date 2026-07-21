@@ -371,7 +371,7 @@ export const portfolioAnalysisApi = {
     ),
   dismissTrainingRecommendation: (data: { recommendationId: string }) =>
     http.post<void>('/api/portfolio/analysis/recommend/training/dismiss', data),
-  getCreditCurve: (data: { teacherId: string; creditCategory?: string }) =>
+  getCreditCurve: (data: { teacherId: string, creditCategory?: string }) =>
     http.post<PortfolioPortraitCreditCurveVO>('/api/portfolio/portrait/teacher/credit-curve', data),
   getDepartmentPortrait: (data: { departmentId: string }) =>
     http.post<PortfolioDepartmentPortraitVO>('/api/portfolio/portrait/department/get', data),
@@ -399,9 +399,9 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/pk/session/page',
       data,
     ),
-  exportPkSession: (data: { sessionId: string; maskMode?: boolean }) =>
+  exportPkSession: (data: { sessionId: string, maskMode?: boolean }) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/analysis/pk/export', data),
-  generateAnnualReport: (data: { teacherId: string; reportYear: string }) =>
+  generateAnnualReport: (data: { teacherId: string, reportYear: string }) =>
     http.post<PortfolioAnalysisAnnualReportVO>(
       '/api/portfolio/analysis/report/annual/generate',
       data,

@@ -1,12 +1,15 @@
 import type { PortfolioAnalysisComplianceAlertVO } from '@/apis/portfolio/analysis'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
+import type { PortfolioAuditActionTypeCode } from '@/types/enums/portfolio-audit-action-type-enum'
+import type { PortfolioAuditResourceTypeCode } from '@/types/enums/portfolio-audit-resource-type-enum'
+import type { PortfolioDoubleHighTaskStatusCode } from '@/types/enums/portfolio-double-high-task-status-enum'
+import type { PortfolioMajorGroupSectionCode } from '@/types/enums/portfolio-major-group-section-code-enum'
 import type { PortfolioExportApprovalStatusCode } from '@/types/enums/portfolio-export-approval-status-enum'
 import type { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import type { PortfolioMaskExportScopeCode } from '@/types/enums/portfolio-mask-export-scope-enum'
 import type { PortfolioMaskFieldTypeCode } from '@/types/enums/portfolio-mask-field-type-enum'
 import type { PortfolioMaskStrategyCode } from '@/types/enums/portfolio-mask-strategy-enum'
-import type { PortfolioDoubleHighTaskStatusCode } from '@/types/enums/portfolio-double-high-task-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
@@ -60,7 +63,7 @@ export interface PortfolioExportApprovalVO {
 }
 
 export interface PortfolioMajorGroupPortfolioSectionSummaryVO {
-  sectionCode: string
+  sectionCode: PortfolioMajorGroupSectionCode
   sectionTitle: string
   itemCount: number
 }
@@ -126,8 +129,8 @@ export interface PortfolioMaskRuleVO {
 export interface PortfolioAuditLogVO {
   id: string
   operatorUserId: string
-  actionType: string
-  resourceType: string
+  actionType: PortfolioAuditActionTypeCode
+  resourceType: PortfolioAuditResourceTypeCode
   resourceId?: string
   actionSummary: string
   detailJson?: string
@@ -169,8 +172,8 @@ export const portfolioSecurityApi = {
   pageAudit: (data: {
     pageNum: number
     pageSize: number
-    actionType?: string
-    resourceType?: string
+    actionType?: PortfolioAuditActionTypeCode
+    resourceType?: PortfolioAuditResourceTypeCode
     operatorUserId?: string
   }) => http.post<PageResult<PortfolioAuditLogVO>>('/api/portfolio/security/audit/page', data),
 }
@@ -192,7 +195,7 @@ export const portfolioMajorGroupApi = {
     http.post<PortfolioMajorGroupPortfolioVO>('/api/portfolio/major-group/portfolio/get', data),
   pageSection: (data: {
     portfolioOrgId: string
-    sectionCode: string
+    sectionCode: PortfolioMajorGroupSectionCode
     pageNum: number
     pageSize: number
   }) =>
