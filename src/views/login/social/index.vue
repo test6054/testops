@@ -36,7 +36,7 @@ const handleSocialLogin = () => {
           ...othersQuery,
         },
       })
-      message.success('欢迎使用')
+      void message.success('欢迎使用')
     })
     .catch(() => {
       router.push({
@@ -67,7 +67,7 @@ const handleBindSocial = () => {
       router.push({
         path: '/user/profile',
       })
-      message.success('绑定成功')
+      void message.success('绑定成功')
     })
     .catch(() => {
       router.push({

@@ -44,7 +44,7 @@ const exporting = ref(false)
 async function handleExport() {
   // MVR-341：详情壳已可读才挂载；空事件列表不导出（与按钮 disabled 一致）
   if (props.events.length === 0) {
-    message.warning('暂无审计事件可导出')
+    void message.warning('暂无审计事件可导出')
     return
   }
   if (exporting.value) return
@@ -56,7 +56,7 @@ async function handleExport() {
       return
     }
     await downloadFile({ nodeId: result.exportFileId })
-    message.success(`审计日志已导出，共 ${result.eventCount ?? 0} 条`)
+    void message.success(`审计日志已导出，共 ${result.eventCount ?? 0} 条`)
   } catch (error) {
     showUserError(error, '导出审计日志失败')
   } finally {

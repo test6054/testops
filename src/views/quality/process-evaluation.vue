@@ -260,7 +260,7 @@ function openNodeCreate() {
 
 function openNodeEdit(record: ProcessEvaluationNodeVO) {
   if (!isNodeMutable(record)) {
-    message.warning('节点已确认，禁止编辑')
+    void message.warning('节点已确认，禁止编辑')
     return
   }
   nodeEditorMode.value = 'edit'
@@ -286,13 +286,13 @@ function openNodeEdit(record: ProcessEvaluationNodeVO) {
 async function submitNode() {
   const v = nodeEditor.value
   if (!v.nodeCode.trim() || !v.nodeName.trim()) {
-    message.error('请填写节点编码和名称')
+    void message.error('请填写节点编码和名称')
     return
   }
   if (nodeEditorMode.value === 'edit' && nodeEditor.value.id) {
     const existed = nodes.value.find((item) => item.id === nodeEditor.value.id)
     if (existed && !isNodeMutable(existed)) {
-      message.warning('节点已确认，禁止编辑')
+      void message.warning('节点已确认，禁止编辑')
       return
     }
   }
@@ -316,7 +316,7 @@ async function submitNode() {
       await processNodeApi.create(request)
     } else {
       if (!v.id) {
-        message.error('过程性评价节点编号缺失，无法更新')
+        void message.error('过程性评价节点编号缺失，无法更新')
         return
       }
       const request: ProcessEvaluationNodeUpdateRequest = {
@@ -337,7 +337,7 @@ async function submitNode() {
       }
       await processNodeApi.update(request)
     }
-    message.success('已保存')
+    void message.success('已保存')
     nodeEditorVisible.value = false
     await loadNodes()
   } catch (error) {
@@ -347,7 +347,7 @@ async function submitNode() {
 
 async function handleNodeDelete(record: ProcessEvaluationNodeVO) {
   if (!isNodeMutable(record)) {
-    message.warning('节点已确认，禁止删除')
+    void message.warning('节点已确认，禁止删除')
     return
   }
   void confirmAsync({
@@ -355,7 +355,7 @@ async function handleNodeDelete(record: ProcessEvaluationNodeVO) {
     type: 'error',
     onOk: async () => {
       await processNodeApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       if (selectedNode.value?.id === record.id) selectedNode.value = null
       await loadNodes()
     },
@@ -364,14 +364,14 @@ async function handleNodeDelete(record: ProcessEvaluationNodeVO) {
 
 async function changeNodeStatus(record: ProcessEvaluationNodeVO, target: ConfirmationStatusCode) {
   if (!allowedConfirmationTransitions(record.confirmationStatus).includes(target)) {
-    message.warning(
+    void message.warning(
       `禁止由 ${confirmationStatusLabel(record.confirmationStatus)} 流转到 ${confirmationStatusLabel(target)}`,
     )
     return
   }
   try {
     await processNodeApi.updateConfirmationStatus({ id: record.id, confirmationStatus: target })
-    message.success(`已切换到 ${confirmationStatusLabel(target)}`)
+    void message.success(`已切换到 ${confirmationStatusLabel(target)}`)
     await loadNodes()
   } catch (error) {
     showUserError(error, '过程性评价节点状态更新失败')
@@ -467,7 +467,7 @@ function handleRecordStudentChange(value: string | null): void {
 function openRecordCreate() {
   if (!selectedNode.value) return
   if (selectedNode.value.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
-    message.warning('节点未确认，无法录入记录')
+    void message.warning('节点未确认，无法录入记录')
     return
   }
   recordEditorMode.value = 'create'
@@ -489,7 +489,7 @@ function openRecordCreate() {
 
 function openRecordEdit(record: ProcessEvaluationRecordVO) {
   if (!isRecordMutable(record)) {
-    message.warning('已提交或已确认的记录不可修改')
+    void message.warning('已提交或已确认的记录不可修改')
     return
   }
   recordEditorMode.value = 'edit'
@@ -514,13 +514,13 @@ function openRecordEdit(record: ProcessEvaluationRecordVO) {
 async function submitRecord() {
   const v = recordEditor.value
   if (!v.nodeId || v.score == null) {
-    message.error('请填写完整记录')
+    void message.error('请填写完整记录')
     return
   }
   if (recordEditorMode.value === 'edit' && recordEditor.value.id) {
     const existed = records.value.find((item) => item.id === recordEditor.value.id)
     if (existed && !isRecordMutable(existed)) {
-      message.warning('记录已提交或已确认，禁止编辑')
+      void message.warning('记录已提交或已确认，禁止编辑')
       return
     }
   }
@@ -542,7 +542,7 @@ async function submitRecord() {
       await processRecordApi.create(request)
     } else {
       if (!v.id) {
-        message.error('过程性评价记录编号缺失，无法更新')
+        void message.error('过程性评价记录编号缺失，无法更新')
         return
       }
       const request: ProcessEvaluationRecordUpdateRequest = {
@@ -561,7 +561,7 @@ async function submitRecord() {
       }
       await processRecordApi.update(request)
     }
-    message.success('已保存')
+    void message.success('已保存')
     recordEditorVisible.value = false
     await loadRecords()
   } catch (error) {
@@ -574,14 +574,14 @@ async function changeRecordStatus(
   target: ConfirmationStatusCode,
 ) {
   if (!allowedConfirmationTransitions(record.confirmationStatus).includes(target)) {
-    message.warning(
+    void message.warning(
       `禁止由 ${confirmationStatusLabel(record.confirmationStatus)} 流转到 ${confirmationStatusLabel(target)}`,
     )
     return
   }
   try {
     await processRecordApi.updateConfirmationStatus({ id: record.id, confirmationStatus: target })
-    message.success(`已切换到 ${confirmationStatusLabel(target)}`)
+    void message.success(`已切换到 ${confirmationStatusLabel(target)}`)
     await loadRecords()
   } catch (error) {
     showUserError(error, '过程性评价记录状态更新失败')
@@ -590,7 +590,7 @@ async function changeRecordStatus(
 
 async function deleteRecord(record: ProcessEvaluationRecordVO) {
   if (!isRecordMutable(record)) {
-    message.warning('已提交或已确认的记录不可删除')
+    void message.warning('已提交或已确认的记录不可删除')
     return
   }
   void confirmAsync({
@@ -598,7 +598,7 @@ async function deleteRecord(record: ProcessEvaluationRecordVO) {
     type: 'error',
     onOk: async () => {
       await processRecordApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadRecords()
     },
   })
@@ -701,7 +701,7 @@ const importRecordContext = computed(() => ({
 function openImportExcel() {
   if (!selectedNode.value) return
   if (selectedNode.value.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
-    message.warning('节点未确认，无法导入数据')
+    void message.warning('节点未确认，无法导入数据')
     return
   }
   if (importConfirmationStatus.value === ConfirmationStatusCode.CONFIRMED) {
@@ -880,7 +880,6 @@ onActivated(async () => {
   await handleScopeChange()
 })
 
-
 const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   if (!qualityStore.currentTrainingPlanId) {
     return 'need-plan'
@@ -912,11 +911,7 @@ function handleCourseChange(courseId: string | null) {
       </QualityPageContextBar>
     </template>
 
-    <QualityPlanGateStrip
-      v-if="planGateMode"
-      :mode="planGateMode"
-      class="pe__empty"
-    />
+    <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="pe__empty" />
 
     <SignalBand
       v-else-if="qualityStore.currentQualityCourseId"
@@ -1117,15 +1112,15 @@ function handleCourseChange(courseId: string | null) {
         <UiRow :gutter="12">
           <UiCol :span="8">
             <UiFormItem label="节点编码" required>
-              <UiInput
-                size="sm" v-model="nodeEditor.nodeCode"
-              />
+              <UiInput size="sm" v-model="nodeEditor.nodeCode" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="节点类型" required>
               <UiSelect
-                size="sm" v-model="nodeEditor.nodeType" :options="PROCESS_NODE_TYPE_OPTIONS"
+                size="sm"
+                v-model="nodeEditor.nodeType"
+                :options="PROCESS_NODE_TYPE_OPTIONS"
               />
             </UiFormItem>
           </UiCol>
@@ -1142,9 +1137,7 @@ function handleCourseChange(courseId: string | null) {
           </UiCol>
         </UiRow>
         <UiFormItem label="名称" required>
-          <UiInput
-            size="sm" v-model="nodeEditor.nodeName"
-          />
+          <UiInput size="sm" v-model="nodeEditor.nodeName" />
         </UiFormItem>
         <UiRow :gutter="12">
           <UiCol :span="8">
@@ -1193,7 +1186,10 @@ function handleCourseChange(courseId: string | null) {
           <UiCol :span="8">
             <UiFormItem label="满分">
               <UiInputNumber
-                size="sm" v-model="nodeEditor.fullScore" :min="0" style="width: 100%"
+                size="sm"
+                v-model="nodeEditor.fullScore"
+                :min="0"
+                style="width: 100%"
               />
             </UiFormItem>
           </UiCol>
@@ -1234,9 +1230,7 @@ function handleCourseChange(courseId: string | null) {
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="学号">
-              <UiInput
-                size="sm" v-model="recordEditor.studentNumber"
-              />
+              <UiInput size="sm" v-model="recordEditor.studentNumber" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
@@ -1252,9 +1246,7 @@ function handleCourseChange(courseId: string | null) {
         <UiRow :gutter="12">
           <UiCol :span="8">
             <UiFormItem label="得分" required>
-              <UiInputNumber
-                size="sm" v-model="recordEditor.score" :min="0" style="width: 100%"
-              />
+              <UiInputNumber size="sm" v-model="recordEditor.score" :min="0" style="width: 100%" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
@@ -1274,7 +1266,12 @@ function handleCourseChange(courseId: string | null) {
               <UiSelect
                 v-model="recordEditor.sourceMode"
                 size="sm"
-                :options="Object.entries(DataSourceModeDescription).map(([k, v]) => ({ value: k, label: v }))"
+                :options="
+                  Object.entries(DataSourceModeDescription).map(([k, v]) => ({
+                    value: k,
+                    label: v,
+                  }))
+                "
               />
             </UiFormItem>
           </UiCol>

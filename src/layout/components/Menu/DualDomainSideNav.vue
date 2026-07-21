@@ -688,7 +688,7 @@ function onMenuClick({ key }: { key: Key }) {
     const reason = qualityStore.currentTrainingPlanId
       ? QUALITY_PLAN_GATE_REASON_UNCONFIRMED
       : QUALITY_PLAN_GATE_REASON_NO_PLAN
-    message.warning(
+    void message.warning(
       reason === QUALITY_PLAN_GATE_REASON_NO_PLAN
         ? '请先选择并确认培养方案，再进入达成度结果与质量报告'
         : '培养方案尚未确认。请先在培养方案体系工作台完成确认，再进入达成度与报告',

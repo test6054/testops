@@ -8,7 +8,6 @@ import type {
 } from '@/apis/quality/achievement-result'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
-
 import type {
   AuditTimelineEvent,
   SignalMetric,
@@ -18,6 +17,7 @@ import type {
 } from '@/types/workbench'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
 import message from 'ant-design-vue/es/message'
+
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ExportBusinessType } from '@/apis/edu/export'
@@ -492,11 +492,11 @@ const triggerButtons: Array<{
     label: '课程目标',
     handler: () => {
       if (!triggerForm.qualityCourseId?.trim()) {
-        message.warning('课程目标计算必须先选择质量评价课程')
+        void message.warning('课程目标计算必须先选择质量评价课程')
         return Promise.reject(new Error('missing courseGoalId'))
       }
       if (!triggerForm.courseGoalId?.trim()) {
-        message.warning('课程目标计算必须先选择课程目标')
+        void message.warning('课程目标计算必须先选择课程目标')
         return Promise.reject(new Error('missing courseGoalId'))
       }
       return achievementApi.computeCourseGoal({
@@ -523,7 +523,7 @@ const triggerButtons: Array<{
     label: '培养目标',
     handler: () => {
       if (!triggerForm.trainingObjectiveId?.trim()) {
-        message.warning('培养目标计算必须先选择培养目标')
+        void message.warning('培养目标计算必须先选择培养目标')
         return Promise.reject(new Error('missing trainingObjectiveId'))
       }
       return achievementApi.computeTrainingObjective({
@@ -581,7 +581,7 @@ async function handleTrigger(key: string, handler: () => Promise<AchievementComp
   }
   const readiness = readinessByKind.value.get(key)
   if (readiness && !readiness.ready) {
-    message.warning(readiness.blockingReasons[0] || '当前步骤尚未就绪')
+    void message.warning(readiness.blockingReasons[0] || '当前步骤尚未就绪')
     return
   }
   triggerLoading.value = key
@@ -592,7 +592,7 @@ async function handleTrigger(key: string, handler: () => Promise<AchievementComp
       : result && typeof result === 'object' && 'achievementResultId' in result
         ? 1
         : 0
-    message.success(count > 0 ? `计算完成，生成 / 更新 ${count} 条结果` : '计算完成')
+    void message.success(count > 0 ? `计算完成，生成 / 更新 ${count} 条结果` : '计算完成')
     await Promise.all([loadList(), loadSignalSummary()])
     if (triggerVisible.value) {
       await loadComputeReadiness()
@@ -652,7 +652,7 @@ async function handleTransit(record: AchievementResultVO, to: AchievementAuditSt
     auditStatus: to,
     auditRemark: remark || undefined,
   })
-  message.success('流转成功')
+  void message.success('流转成功')
   await Promise.all([loadList(), loadSignalSummary()])
 }
 
@@ -882,7 +882,7 @@ const targetTypeToComputeKind: Partial<Record<AchievementTargetTypeCode, string>
 async function handleRecomputeRecord(record: AchievementResultVO) {
   const computeKind = targetTypeToComputeKind[record.targetType]
   if (!computeKind) {
-    message.warning('当前目标类型不支持在此页重算')
+    void message.warning('当前目标类型不支持在此页重算')
     return
   }
   if (record.programId) {
@@ -1109,11 +1109,7 @@ onActivated(async () => {
       </QualityPageContextBar>
     </template>
 
-    <QualityPlanGateStrip
-      v-if="planGateMode"
-      :mode="planGateMode"
-      class="achievement__empty"
-    />
+    <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="achievement__empty" />
 
     <template v-else>
       <StageRail :stages="stages" compact class="achievement__stages" />
@@ -1141,7 +1137,12 @@ onActivated(async () => {
               <template #icon><DownloadOutlined /></template>
               导出 Excel
             </UiButton>
-            <UiButton size="sm" variant="primary" :disabled="trainingPlanRequired" @click="openTriggerDrawer">
+            <UiButton
+              size="sm"
+              variant="primary"
+              :disabled="trainingPlanRequired"
+              @click="openTriggerDrawer"
+            >
               触发达成度计算
             </UiButton>
           </div>
@@ -1290,9 +1291,7 @@ onActivated(async () => {
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="学年">
-              <UiInput
-                size="sm" v-model="triggerForm.schoolYear" placeholder="例：2024-2025"
-              />
+              <UiInput size="sm" v-model="triggerForm.schoolYear" placeholder="例：2024-2025" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">

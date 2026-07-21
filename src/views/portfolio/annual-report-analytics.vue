@@ -27,6 +27,7 @@ import {
 import { showUserError } from '@/utils/error-handler'
 import { portfolioTeacherSelectOptionsFromSummaries } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const POLL_INTERVAL_MS = 3000
 
@@ -142,8 +143,11 @@ function onHistoryTableChange(changeEvent: UiDataTableChangeEvent) {
 }
 
 const historyColumns = [
+  // 身份层列在 bodyCell 渲染
+
   { title: '任务编号', dataIndex: 'id', key: 'id', width: 120 },
   { title: '教师', key: 'teacher', width: 180 },
+  { title: '身份层', key: 'ownerIdentityLayers', width: 200 },
   { title: '报告年度', dataIndex: 'reportYear', key: 'reportYear', width: 100 },
   { title: '状态', key: 'taskStatus', width: 100 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
@@ -327,7 +331,9 @@ watch(
           class="annual-report__field annual-report__field--year"
           :maxlength="4"
         />
-        <UiButton size="sm" variant="primary" :loading="loading" @click="generateReport"> 提交生成 </UiButton>
+        <UiButton size="sm" variant="primary" :loading="loading" @click="generateReport">
+          提交生成
+        </UiButton>
       </div>
     </UiCard>
     <UiCard v-if="latestTask" title="最近任务" class="annual-report__result">
@@ -343,6 +349,35 @@ watch(
             <template v-if="latestTask.teacherNumber">
               （{{ latestTask.teacherNumber }}）
             </template>
+            <div
+              v-if="latestTask.lifecycleStatus || latestTask.ownerIdentityLayers?.length"
+              class="annual-report__identity"
+            >
+              <UiTag
+                v-if="latestTask.lifecycleStatus"
+                size="sm"
+                :tone="
+                  latestTask.lifecycleStatus === 'ACTIVE'
+                    ? 'green'
+                    : latestTask.lifecycleStatus === 'TEMP_HOLD'
+                      ? 'orange'
+                      : latestTask.lifecycleStatus === 'SEALED'
+                        || latestTask.lifecycleStatus === 'TRANSFERRED'
+                        ? 'red'
+                        : 'gray'
+                "
+              >
+                {{ latestTask.lifecycleStatusLabel || latestTask.lifecycleStatus }}
+              </UiTag>
+              <UiTag v-if="latestTask.evaluationHeld" size="sm" tone="orange">参评 hold</UiTag>
+              <PortfolioOwnerIdentityLayersCell
+                v-if="latestTask.ownerIdentityLayers?.length"
+                :layers="latestTask.ownerIdentityLayers"
+                :note="latestTask.ownerMultiIdentityNote"
+                :row-key="latestTask.id"
+                show-note
+              />
+            </div>
           </dd>
         </div>
         <div>
@@ -387,7 +422,14 @@ watch(
         @change="onHistoryTableChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'taskStatus'">
+          <template v-if="column.key === 'ownerIdentityLayers'">
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+              :row-key="record.id"
+            />
+          </template>
+          <template v-else-if="column.key === 'taskStatus'">
             <UiTag :tone="taskStatusTone(record.taskStatus)">
               {{ taskStatusLabel(record.taskStatus) }}
             </UiTag>

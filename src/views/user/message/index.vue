@@ -522,7 +522,7 @@ async function markAllInbox() {
   markingAllInbox.value = true
   try {
     await markAllAsRead()
-    message.success('已将所有站内信标记为已读')
+    void message.success('已将所有站内信标记为已读')
     await notificationStore.loadUnreadCount()
     await loadMessages()
   } catch (error) {
@@ -561,7 +561,7 @@ async function confirmAnnouncementRead(item: PublishedSystemAnnouncementResponse
     item.isRead = true
     const found = announcements.value.find((a) => a.id === item.id)
     if (found) found.isRead = true
-    message.success('已确认阅读')
+    void message.success('已确认阅读')
     await notificationStore.loadUnreadCount()
   } catch (error) {
     showUserError(error, '公告阅读确认失败')
@@ -575,7 +575,7 @@ async function markAllAnnouncements() {
   markingAllAnnouncement.value = true
   try {
     await markAllAnnouncementsAsRead()
-    message.success('已将所有公告标记为已读')
+    void message.success('已将所有公告标记为已读')
     await notificationStore.loadUnreadCount()
     await loadAnnouncements()
   } catch (error) {
@@ -596,7 +596,7 @@ async function markAllReadAcrossTabs() {
     if (unreadAnnouncementCount.value > 0) {
       await markAllAnnouncementsAsRead()
     }
-    message.success('已将所有未读消息和公告标记为已读')
+    void message.success('已将所有未读消息和公告标记为已读')
     await notificationStore.loadUnreadCount()
     await Promise.all([loadMessages(), loadAnnouncements()])
   } catch (error) {
@@ -701,6 +701,12 @@ function formatMessageType(type: NotificationTypeEnum): string {
     [NotificationTypeEnum.PORTFOLIO_EXPERT_ASSIGNMENT_PENDING]: '专家授权待办',
     [NotificationTypeEnum.PORTFOLIO_EXPERT_ASSIGNMENT_REVOKED]: '专家授权已吊销',
     [NotificationTypeEnum.PORTFOLIO_EXPERT_ASSIGNMENT_EXPIRED]: '专家授权已过期',
+    [NotificationTypeEnum.PORTFOLIO_EXPORT_APPROVAL_PENDING]: '导出审批待处理',
+    [NotificationTypeEnum.PORTFOLIO_EXPORT_APPROVAL_APPROVED]: '导出审批已通过',
+    [NotificationTypeEnum.PORTFOLIO_EXPORT_APPROVAL_REJECTED]: '导出审批已驳回',
+    [NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_DEPARTMENT_PENDING]: '年度规划待部门审核',
+    [NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_APPROVED]: '年度规划已通过',
+    [NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_RETURNED]: '年度规划已退回',
     [NotificationTypeEnum.QUALITY_MARK_ASSESSMENT_WEIGHT_MISSING]: '质量评价考核权重缺失',
     [NotificationTypeEnum.MARK_QUALITY_SCORE_SYNC_FAILED]: 'mark 成绩同步失败',
     [NotificationTypeEnum.MARK_ARCHIVE_AUTO_CREATE_FAILED]: '归档卷自动建卷失败',

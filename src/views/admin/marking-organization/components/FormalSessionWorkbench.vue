@@ -292,16 +292,14 @@ function isGroupStartable(groupId: string | undefined): boolean {
 
 function canStart(record: FormalSessionResponse): boolean {
   return (
-    props.canManage === true
-    && record.sessionStatus === FormalSessionStatusCode.SESSION_CREATED
+    props.canManage === true && record.sessionStatus === FormalSessionStatusCode.SESSION_CREATED
     && isGroupStartable(record.groupId)
   )
 }
 
 function canComplete(record: FormalSessionResponse): boolean {
   return (
-    props.canManage === true
-    && record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE
+    props.canManage === true && record.sessionStatus === FormalSessionStatusCode.SESSION_ACTIVE
     // MVR-407：仅认 BE sessionTaskCompletionReady===true，缺省拒绝
     && record.sessionTaskCompletionReady === true
   )
@@ -459,7 +457,7 @@ async function submitStart(record: FormalSessionResponse): Promise<void> {
   startingId.value = record.id
   try {
     await startFormalSession(record.id)
-    message.success('正评会话已启动')
+    void message.success('正评会话已启动')
     emit('refresh')
   } catch (error) {
     handleFormalStartError(error)
@@ -483,7 +481,7 @@ async function submitComplete(record: FormalSessionResponse): Promise<void> {
   completingId.value = record.id
   try {
     await completeFormalSession(record.id)
-    message.success('本场正评任务已标记完成')
+    void message.success('本场正评任务已标记完成')
     emit('refresh')
   } catch (error) {
     showUserError(error, '完成正评会话失败')
@@ -507,7 +505,7 @@ async function submitResume(record: FormalSessionResponse): Promise<void> {
   resumingId.value = record.id
   try {
     await resumeFormalSession(record.id)
-    message.success('正评会话已恢复')
+    void message.success('正评会话已恢复')
     emit('refresh')
   } catch (error) {
     showUserError(error, '恢复正评会话失败')
@@ -531,7 +529,7 @@ async function submitDelete(record: FormalSessionResponse): Promise<void> {
   deletingId.value = record.id
   try {
     await deleteFormalSession(record.id)
-    message.success('正评草稿会话已删除')
+    void message.success('正评草稿会话已删除')
     emit('refresh')
   } catch (error) {
     showUserError(error, '删除正评会话失败')

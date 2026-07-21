@@ -72,7 +72,11 @@
           <strong>{{ item.categoryName }}</strong>
           <span>{{ item.fieldLabels.join('、') }}</span>
         </div>
-        <UiEmpty size="sm" v-if="!reviewContent?.fieldSpecSummaries?.length" description="暂无字段规格" />
+        <UiEmpty
+          size="sm"
+          v-if="!reviewContent?.fieldSpecSummaries?.length"
+          description="暂无字段规格"
+        />
       </UiCard>
     </template>
 
@@ -125,8 +129,12 @@
 
       <div class="portfolio-onboarding-wizard__actions">
         <UiButton size="sm" variant="ghost" @click="handleDismiss"> 稍后继续 </UiButton>
-        <UiButton size="sm" v-if="currentStep > 1" variant="outline" @click="prevStep"> 上一步 </UiButton>
-        <UiButton variant="primary" size="sm" v-if="currentStep < totalSteps" @click="nextStep"> 下一步 </UiButton>
+        <UiButton size="sm" v-if="currentStep > 1" variant="outline" @click="prevStep">
+          上一步
+        </UiButton>
+        <UiButton variant="primary" size="sm" v-if="currentStep < totalSteps" @click="nextStep">
+          下一步
+        </UiButton>
         <UiButton variant="primary" size="sm" v-else :loading="completing" @click="handleComplete">
           启用我的教学档案袋
         </UiButton>
@@ -377,7 +385,7 @@ async function handleDismiss() {
 
   try {
     await portfolioOnboardingApi.dismiss(teacherRequest.value)
-    message.success('已设置 7 天后再提醒')
+    void message.success('已设置 7 天后再提醒')
     void router.push({
       path: '/portfolio/teacher/home',
       query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
@@ -395,7 +403,7 @@ async function handleComplete() {
   completing.value = true
   try {
     await portfolioOnboardingApi.complete(teacherRequest.value)
-    message.success('引导已完成')
+    void message.success('引导已完成')
     emit('completed')
     void router.push({
       path: '/portfolio/teacher/home',

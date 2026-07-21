@@ -207,11 +207,11 @@ async function openDetail(row: AccreditationCycleVO) {
 
 async function submitCycle() {
   if (!form.cycleCode.trim() || !form.cycleName.trim()) {
-    message.error('请填写周期编码与名称')
+    void message.error('请填写周期编码与名称')
     return
   }
   if (!form.id && !form.accreditationStandardId) {
-    message.error('请选择绑定的认证标准')
+    void message.error('请选择绑定的认证标准')
     return
   }
   const request: AccreditationCycleSaveRequest = {
@@ -232,7 +232,7 @@ async function submitCycle() {
     } else {
       await accreditationApi.cycleCreate(request)
     }
-    message.success('已保存')
+    void message.success('已保存')
     drawerOpen.value = false
     await loadCycles()
     emit('refresh')
@@ -248,7 +248,7 @@ async function runAction(fn: () => Promise<void>, confirmTitle?: string) {
   }
   try {
     await fn()
-    message.success('操作成功')
+    void message.success('操作成功')
     await loadCycles()
     emit('refresh')
   } catch (e) {
@@ -276,7 +276,7 @@ async function submitReview() {
     reviewForm.reviewDecision === SelfAssessmentReviewDecisionCode.SUPPLEMENT_REQUIRED
     && !reviewForm.supplementDeadline
   ) {
-    message.error('需补正时必须填写补正截止日期')
+    void message.error('需补正时必须填写补正截止日期')
     return
   }
   await runAction(() =>
@@ -292,11 +292,11 @@ async function submitReview() {
 
 function openConclusion(row: AccreditationCycleVO) {
   if (!canRegisterConclusion(row, props.cockpit)) {
-    message.error('认证结论登记前置条件未全部就绪，请先处理阻断项')
+    void message.error('认证结论登记前置条件未全部就绪，请先处理阻断项')
     return
   }
   if (blockedConclusionItems.value.length) {
-    message.error('认证结论登记前置条件未全部就绪，请先处理阻断项')
+    void message.error('认证结论登记前置条件未全部就绪，请先处理阻断项')
     return
   }
   activeRow.value = row
@@ -312,11 +312,11 @@ async function submitConclusion() {
   if (!activeRow.value) return
   const requiresValidity = conclusionForm.conclusionType !== 'NOT_PASS'
   if (requiresValidity && !conclusionForm.validFrom) {
-    message.error('请填写有效期起')
+    void message.error('请填写有效期起')
     return
   }
   if (conclusionForm.conclusionType === 'CONDITIONAL_6Y' && !conclusionForm.conditionalDueDate) {
-    message.error('有条件通过须填写第 3 年改进材料截止日')
+    void message.error('有条件通过须填写第 3 年改进材料截止日')
     return
   }
   await runAction(
@@ -401,7 +401,7 @@ async function handleCycleMenuClick(row: AccreditationCycleVO, event: MenuInfo) 
   }
   if (matchedItem.key === 'self') {
     if (!canSubmitSelfAssessment(row)) {
-      message.error('请先登记申请书提交，并确保自评八节内容就绪后再提交')
+      void message.error('请先登记申请书提交，并确保自评八节内容就绪后再提交')
       return
     }
     await runAction(
@@ -412,7 +412,7 @@ async function handleCycleMenuClick(row: AccreditationCycleVO, event: MenuInfo) 
   }
   if (matchedItem.key === 'review') {
     if (!canReview(row)) {
-      message.error('当前周期不可登记自评审阅决议')
+      void message.error('当前周期不可登记自评审阅决议')
       return
     }
     openReview(row)
@@ -420,7 +420,7 @@ async function handleCycleMenuClick(row: AccreditationCycleVO, event: MenuInfo) 
   }
   if (matchedItem.key === 'conclusion') {
     if (!canRegisterConclusion(row, props.cockpit)) {
-      message.error('认证结论登记前置条件未全部就绪，请先处理阻断项')
+      void message.error('认证结论登记前置条件未全部就绪，请先处理阻断项')
       return
     }
     openConclusion(row)
@@ -569,14 +569,10 @@ defineExpose({ openCreate, loadCycles })
           />
         </UiFormItem>
         <UiFormItem label="周期编码" required>
-          <UiInput
-            size="sm" v-model="form.cycleCode" :disabled="!!form.id"
-          />
+          <UiInput size="sm" v-model="form.cycleCode" :disabled="!!form.id" />
         </UiFormItem>
         <UiFormItem label="周期名称" required>
-          <UiInput
-            size="sm" v-model="form.cycleName"
-          />
+          <UiInput size="sm" v-model="form.cycleName" />
         </UiFormItem>
         <UiFormItem label="现场考查开始">
           <UiDatePicker
@@ -652,7 +648,11 @@ defineExpose({ openCreate, loadCycles })
           <UiSelect
             v-model="reviewForm.reviewDecision"
             size="sm"
-            :options="[{ value: 'ACCEPTED', label: '受理（进入现场考查）' }, { value: 'SUPPLEMENT_REQUIRED', label: '需补正' }, { value: 'REJECTED', label: '不通过（关闭周期）' }]"
+            :options="[
+              { value: 'ACCEPTED', label: '受理（进入现场考查）' },
+              { value: 'SUPPLEMENT_REQUIRED', label: '需补正' },
+              { value: 'REJECTED', label: '不通过（关闭周期）' },
+            ]"
           />
         </UiFormItem>
         <UiFormItem
@@ -685,7 +685,11 @@ defineExpose({ openCreate, loadCycles })
           <UiSelect
             v-model="conclusionForm.conclusionType"
             size="sm"
-            :options="[{ value: 'FULL_6Y', label: '通过（6 年）' }, { value: 'CONDITIONAL_6Y', label: '有条件通过（第 3 年改进到期）' }, { value: 'NOT_PASS', label: '不通过' }]"
+            :options="[
+              { value: 'FULL_6Y', label: '通过（6 年）' },
+              { value: 'CONDITIONAL_6Y', label: '有条件通过（第 3 年改进到期）' },
+              { value: 'NOT_PASS', label: '不通过' },
+            ]"
           />
         </UiFormItem>
         <UiFormItem v-if="conclusionForm.conclusionType !== 'NOT_PASS'" label="有效期起" required>

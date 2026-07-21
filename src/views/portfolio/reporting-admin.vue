@@ -293,7 +293,7 @@ async function submitCreate() {
   }
   try {
     await portfolioReportingApi.create(request)
-    message.success('已创建报送任务')
+    void message.success('已创建报送任务')
     createOpen.value = false
     await loadPage()
   } catch (error) {
@@ -327,7 +327,7 @@ async function runRequestApproval(row: PortfolioReportingTaskVO) {
   if (!beginOperation(operation)) return
   try {
     await portfolioReportingApi.requestApproval({ id: taskId })
-    message.success('已提交审批')
+    void message.success('已提交审批')
     await loadPage()
   } catch (error) {
     showUserError(error, '提交审批失败')
@@ -351,7 +351,7 @@ async function runApprove(row: PortfolioReportingTaskVO) {
   }
   try {
     await portfolioReportingApi.approve({ id: taskId })
-    message.success('已审批并生成报送清单')
+    void message.success('已审批并生成报送清单')
     await loadPage()
   } catch (error) {
     showUserError(error, '审批失败')
@@ -384,7 +384,7 @@ async function submitReject() {
       id: taskId,
       rejectReason: reason,
     })
-    message.success('已驳回')
+    void message.success('已驳回')
     rejectOpen.value = false
     pendingRejectRow.value = null
     await loadPage()
@@ -402,7 +402,7 @@ async function runDownload(row: PortfolioReportingTaskVO) {
   try {
     const result = await portfolioReportingApi.download({ id: taskId })
     await downloadPortfolioExcelExport(result)
-    message.success('已开始下载')
+    void message.success('已开始下载')
   } catch (error) {
     showUserError(error, '下载失败')
   } finally {
@@ -508,12 +508,15 @@ onMounted(() => {
     >
       <UiForm layout="vertical">
         <UiFormItem label="任务标题" required>
-          <UiInput
-            size="sm" v-model="createForm.taskTitle" :disabled="operating"
-          />
+          <UiInput size="sm" v-model="createForm.taskTitle" :disabled="operating" />
         </UiFormItem>
         <UiFormItem label="报送用途" required>
-          <UiTextarea size="sm" v-model="createForm.reportPurpose" :rows="3" :disabled="operating" />
+          <UiTextarea
+            size="sm"
+            v-model="createForm.reportPurpose"
+            :rows="3"
+            :disabled="operating"
+          />
         </UiFormItem>
         <UiFormItem label="共享字段" required>
           <UiSelect
@@ -522,14 +525,16 @@ onMounted(() => {
             size="sm"
             placeholder="选择获批共享字段"
             :disabled="operating"
-            :options="ALL_PORTFOLIO_REPORTING_SHARE_FIELD_CODES.map((code) => ({
-              value: code,
-              label: PortfolioReportingShareFieldDescription[code],
-              disabled:
-                createForm.maskMode
-                && (code === PortfolioReportingShareFieldCode.TEACHER_USER_ID
-                  || code === PortfolioReportingShareFieldCode.TEACHER_NUMBER),
-            }))"
+            :options="
+              ALL_PORTFOLIO_REPORTING_SHARE_FIELD_CODES.map((code) => ({
+                value: code,
+                label: PortfolioReportingShareFieldDescription[code],
+                disabled:
+                  createForm.maskMode
+                  && (code === PortfolioReportingShareFieldCode.TEACHER_USER_ID
+                    || code === PortfolioReportingShareFieldCode.TEACHER_NUMBER),
+              }))
+            "
           />
         </UiFormItem>
         <UiFormItem label="范围" required>
@@ -538,10 +543,12 @@ onMounted(() => {
             style="width: 100%"
             size="sm"
             :disabled="operating"
-            :options="ALL_PORTFOLIO_REPORTING_SCOPE_TYPE_CODES.map((code) => ({
-              value: code,
-              label: PortfolioReportingScopeTypeDescription[code],
-            }))"
+            :options="
+              ALL_PORTFOLIO_REPORTING_SCOPE_TYPE_CODES.map((code) => ({
+                value: code,
+                label: PortfolioReportingScopeTypeDescription[code],
+              }))
+            "
           />
         </UiFormItem>
         <UiFormItem
@@ -549,19 +556,14 @@ onMounted(() => {
           label="院系编号"
           required
         >
-          <UiInput
-            size="sm" v-model="createForm.departmentId" :disabled="operating"
-          />
+          <UiInput size="sm" v-model="createForm.departmentId" :disabled="operating" />
         </UiFormItem>
         <UiFormItem label="脱敏">
           <UiSwitch size="sm" v-model="createForm.maskMode" :disabled="operating" />
         </UiFormItem>
       </UiForm>
     </UiDialog>
-    <UiDialog
-      v-model:open="previewOpen" title="报送预览"
-      hide-footer
-    >
+    <UiDialog v-model:open="previewOpen" title="报送预览" hide-footer>
       <template v-if="preview">
         <p>任务编号：{{ previewTaskId }}</p>
         <p>教师人数：{{ preview.teacherCount }}</p>

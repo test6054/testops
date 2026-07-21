@@ -405,7 +405,10 @@ const requestFilterFields = computed<FilterField[]>(() => [
     placeholder: '全部状态',
     allowClear: true,
     width: 160,
-    options: REVIEW_REQUEST_STATUS_OPTIONS.map((item) => ({ label: item.label, value: item.value })),
+    options: REVIEW_REQUEST_STATUS_OPTIONS.map((item) => ({
+      label: item.label,
+      value: item.value,
+    })),
   },
   {
     key: 'examId',
@@ -589,7 +592,7 @@ async function loadExams() {
     }
     await loadExamFilterOptions()
     if (appealablePage.total > MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE) {
-      message.warning(
+      void message.warning(
         `可申请考试共 ${appealablePage.total} 场，当前仅展示前 ${MARK_EXAM_SELECTOR_DEFAULT_PAGE_SIZE} 场，请优先处理临近截止场次`,
       )
     }
@@ -813,7 +816,7 @@ async function submit() {
   try {
     const paperInstanceId = selectedAppealableExam.value.paperInstanceId
     if (!paperInstanceId) {
-      message.error('当前考试信息不完整，暂不能提交复核申请')
+      void message.error('当前考试信息不完整，暂不能提交复核申请')
       return
     }
     await submitReviewRequest({
@@ -827,7 +830,7 @@ async function submit() {
           ? evidenceItems.value.map((item) => item.fileNodeId)
           : undefined,
     })
-    message.success('复核申请已提交')
+    void message.success('复核申请已提交')
     submitModalOpen.value = false
     resetEvidenceFiles()
     // 来源题号已落库，清理状态与 URL 防止刷新再次自动弹出
@@ -855,7 +858,7 @@ watch(
     }
     if (exams.value.some((e) => e.examId === val)) {
       selectedExamId.value = undefined
-      message.warning('该考试当前不在复核窗口内，无法提交新申请')
+      void message.warning('该考试当前不在复核窗口内，无法提交新申请')
     }
   },
 )

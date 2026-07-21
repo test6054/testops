@@ -23,7 +23,10 @@
               <UiTag :tone="policyTone" size="sm">{{ policyStatusLabel }}</UiTag>
             </div>
             <div
-              v-if="policy?.tenantExperienceAssistEnabled && (canManageReviewerWrites || canDisableExperienceAssist)"
+              v-if="
+                policy?.tenantExperienceAssistEnabled
+                  && (canManageReviewerWrites || canDisableExperienceAssist)
+              "
               class="experience-assist-policy__head-actions"
             >
               <UiButton
@@ -517,7 +520,7 @@ function formatRate(rate?: number): string {
 
 function openPolicyConfigModal(mode: ExamExperienceAssistPolicyConfigMode): void {
   if (!canManageReviewerWrites.value) {
-    message.warning('仅本场阅卷组织成员或主考可配置经验辅助评阅')
+    void message.warning('仅本场阅卷组织成员或主考可配置经验辅助评阅')
     return
   }
   policyConfigModalMode.value = mode
@@ -587,7 +590,7 @@ async function handleDisable(): Promise<void> {
   if (!examId.value || saving.value) return
   // MVR-362：禁用与 canDisableExperienceAssist 同源（关考后仍可关）
   if (!canDisableExperienceAssist.value) {
-    message.warning('仅本场阅卷组织成员或主考可禁用经验辅助评阅')
+    void message.warning('仅本场阅卷组织成员或主考可禁用经验辅助评阅')
     return
   }
   saving.value = true
@@ -595,7 +598,7 @@ async function handleDisable(): Promise<void> {
     policy.value = await disableExamGradingExperienceAssistPolicy(examId.value)
     await loadBindings()
     await syncWorkbenchPendingTodos()
-    message.success('已禁用本场经验辅助评阅')
+    void message.success('已禁用本场经验辅助评阅')
   } catch (error) {
     showUserError(error, '禁用失败')
   } finally {
@@ -641,7 +644,7 @@ function handleBindingRowAction(
 
 function openBindingModal(row: ExamQuestionExperienceAssistBindingResponse): void {
   if (!canManageReviewerWrites.value) {
-    message.warning('仅本场阅卷组织成员或主考可绑定题目经验')
+    void message.warning('仅本场阅卷组织成员或主考可绑定题目经验')
     return
   }
   bindingTarget.value = row
@@ -656,7 +659,7 @@ function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
     return
   }
   if (!canManageReviewerWrites.value) {
-    message.warning('仅本场阅卷组织成员或主考可解除题目经验绑定')
+    void message.warning('仅本场阅卷组织成员或主考可解除题目经验绑定')
     return
   }
   void confirmAsync({
@@ -672,7 +675,7 @@ function confirmUnbind(row: ExamQuestionExperienceAssistBindingResponse): void {
 async function handleUnbind(row: ExamQuestionExperienceAssistBindingResponse): Promise<void> {
   if (!examId.value || unbindingQuestionId.value != null) return
   if (!canManageReviewerWrites.value) {
-    message.warning('仅本场阅卷组织成员或主考可解除题目经验绑定')
+    void message.warning('仅本场阅卷组织成员或主考可解除题目经验绑定')
     return
   }
   unbindingQuestionId.value = row.layoutQuestionId
@@ -681,7 +684,7 @@ async function handleUnbind(row: ExamQuestionExperienceAssistBindingResponse): P
       examId: examId.value,
       layoutQuestionId: row.layoutQuestionId,
     })
-    message.success('题目定标已解除')
+    void message.success('题目定标已解除')
     await loadBindings()
   } catch (error) {
     showUserError(error, '解除绑定失败')

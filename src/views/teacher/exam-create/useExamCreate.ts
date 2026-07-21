@@ -653,7 +653,7 @@ export function useExamCreate() {
       const response = await createExamBundle(request)
       createdExamId.value = response.examId
       if (response.ocrScanAdvisory) {
-        message.warning(response.ocrScanAdvisory)
+        void message.warning(response.ocrScanAdvisory)
       }
       showSuccessModal.value = true
     } catch (error) {

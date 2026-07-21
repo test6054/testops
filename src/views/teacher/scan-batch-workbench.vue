@@ -160,13 +160,13 @@
               <span v-else class="muted">0</span>
             </template>
             <template v-else-if="column.key === 'orderAudit'">
-              <UiTag v-if="record.orderAuditAttentionPending === true" tone="orange" size="sm">
+              <UiTag v-if="record.orderAuditAttentionPending" tone="orange" size="sm">
                 余页待确认
               </UiTag>
               <UiTag v-else-if="record.orderAuditPassed === false" tone="red" size="sm">
                 {{ record.orderAuditIssueCount ?? 0 }} 项异常
               </UiTag>
-              <UiTag v-else-if="record.orderAuditPassed === true" tone="green" size="sm">
+              <UiTag v-else-if="record.orderAuditPassed" tone="green" size="sm">
                 {{ record.orderAuditIssueCount ? `通过·${record.orderAuditIssueCount}项` : '通过' }}
               </UiTag>
               <span v-else class="muted">待审计</span>
@@ -506,7 +506,7 @@ async function retryBatchPageRegister(batch: ExamScannerBatchResponse): Promise<
   }
   // MVR-421：与 canRetryBatchPageRegister / 行内显隐同源二次闸（主考写∧可恢复/待重试登记态）
   if (!canRetryBatchPageRegister(batch)) {
-    message.warning(
+    void message.warning(
       canManageOwnerBatchActions.value
         ? '当前批次不可重试扫描页登记（状态不允许）'
         : '仅考试主考可重试扫描页登记',
@@ -523,14 +523,14 @@ async function retryBatchPageRegister(batch: ExamScannerBatchResponse): Promise<
       scanBatchId: batch.scanBatchId,
     })
     if (response.pageRegisterBlocked) {
-      message.warning(response.pageRegisterDiagnostic || '页登记仍被阻断')
+      void message.warning(response.pageRegisterDiagnostic || '页登记仍被阻断')
       return
     }
     if (response.pageRegisterPending) {
-      message.warning(response.pageRegisterDiagnostic || '页登记待重试')
+      void message.warning(response.pageRegisterDiagnostic || '页登记待重试')
       return
     }
-    message.success('页登记重试成功')
+    void message.success('页登记重试成功')
     await Promise.all([loadSummary(), loadBatches()])
   } catch (error) {
     showUserError(error, '页登记重试失败')
@@ -756,7 +756,7 @@ function tryFocusOrphanFromRoute(): void {
   void nextTick(() => {
     const orphanCount = summary.value?.orphanPendingEventCount ?? 0
     if (orphanCount <= 0) {
-      message.info('当前无待回收的游离扫描页')
+      void message.info('当前无待回收的游离扫描页')
       clearOrphanFocusQuery()
       return
     }

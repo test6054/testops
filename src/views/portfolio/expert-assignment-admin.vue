@@ -206,7 +206,7 @@ function parseCategoryCodes(text: string): string[] {
 async function copyCreatedPublicLink() {
   try {
     await navigator.clipboard.writeText(createdPublicLink.value)
-    message.success('免登审阅链接已复制')
+    void message.success('免登审阅链接已复制')
   } catch (error) {
     showUserError(error, '复制免登链接失败')
   }
@@ -312,7 +312,11 @@ function openCreateModal() {
 
 async function submitCreate() {
   const subjectTeacherIds = [...new Set(parseSubjectTeacherIds(createForm.subjectTeacherIdsText))]
-  if (!createForm.evaluationTaskId || !createForm.expertUserId.trim() || subjectTeacherIds.length === 0) {
+  if (
+    !createForm.evaluationTaskId
+    || !createForm.expertUserId.trim()
+    || subjectTeacherIds.length === 0
+  ) {
     showFormValidationMessage('请填写评价任务、专家用户和至少一名被评教师')
     return
   }
@@ -345,14 +349,12 @@ async function submitCreate() {
     }
     createdPublicLink.value = publicLink
     createdLinkOpen.value = true
-    message.success('已创建外部专家授权，请立即保存免登链接')
+    void message.success('已创建外部专家授权，请立即保存免登链接')
     createOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '创建外部专家授权失败')
-  }
-  finally {
+  } finally {
     endOperation(operation)
   }
 }
@@ -372,7 +374,7 @@ async function revokeRow(row: PortfolioExpertAssignmentVO) {
   }
   try {
     await portfolioExpertAssignmentApi.revoke({ id: assignmentId })
-    message.success('已吊销授权')
+    void message.success('已吊销授权')
     await loadPage()
   } catch (error) {
     showUserError(error, '吊销失败')
@@ -531,11 +533,11 @@ onMounted(async () => {
         description="该链接仅在本次创建后显示，关闭后无法再次获取；如遗失请重新创建授权。"
         style="margin-bottom: 16px"
       />
-      <UiInput
-        size="sm" :value="createdPublicLink" readonly
-      />
+      <UiInput size="sm" :value="createdPublicLink" readonly />
       <div class="expert-assignment__link-actions">
-        <UiButton size="sm" variant="primary" @click="copyCreatedPublicLink"> 复制免登链接 </UiButton>
+        <UiButton size="sm" variant="primary" @click="copyCreatedPublicLink">
+          复制免登链接
+        </UiButton>
       </div>
     </UiDialog>
   </StageWorkbenchShell>

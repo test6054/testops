@@ -78,7 +78,7 @@
       />
 
       <UiAlertStrip
-        v-if="workbench?.batch?.orderAuditAttentionPending === true"
+        v-if="workbench?.batch?.orderAuditAttentionPending"
         tone="warning"
         :closable="false"
         dense
@@ -1307,13 +1307,13 @@ function handleSelectPage(pageKey: string): void {
 
 function setPreferredReassignTarget(paperInstanceId: string): void {
   preferredTargetPaperInstanceId.value = paperInstanceId
-  message.success('已设置调卷目标，请在右侧页检视面板选择待移动页后执行人工调卷')
+  void message.success('已设置调卷目标，请在右侧页检视面板选择待移动页后执行人工调卷')
 }
 
 async function openOrderAudit(): Promise<void> {
   // MVR-393：「人工合并」属主考写路径入口，打开前叠 canManageOwnerBatchActions===true
   if (!canManageOwnerBatchActions.value) {
-    message.warning('仅本场主考可打开人工合并')
+    void message.warning('仅本场主考可打开人工合并')
     return
   }
   const batch = workbench.value?.batch
@@ -1342,7 +1342,7 @@ async function onDismissCollateAttention(): Promise<void> {
   }
   // MVR-313：与 canManageOwnerBatchActions / BE requireExamOwnerPermission 同源
   if (!canManageOwnerBatchActions.value) {
-    message.warning('仅主考可忽略余页异常')
+    void message.warning('仅主考可忽略余页异常')
     return
   }
   await confirmAsync({
@@ -1356,7 +1356,7 @@ async function onDismissCollateAttention(): Promise<void> {
           examId: selectedExamId.value,
           scanBatchId: batch.scanBatchId,
         })
-        message.success('已忽略余页异常，可继续封存')
+        void message.success('已忽略余页异常，可继续封存')
         await loadWorkbench()
       } catch (error) {
         showUserError(error, '忽略余页异常失败')
@@ -1377,7 +1377,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   }
   // MVR-298：顶栏写动作二次拦截；BE resolveTopActions 已对非主考返回空列表，防拆栏/缓存陈旧
   if (!canManageOwnerBatchActions.value) {
-    message.warning('仅本场主考可执行批次写操作')
+    void message.warning('仅本场主考可执行批次写操作')
     return
   }
   if (action === ScanBatchWorkbenchTopActionCode.RETRY_PAGE_REGISTER) {
@@ -1388,11 +1388,11 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
         scanBatchId: batch.scanBatchId,
       })
       if (response.pageRegisterBlocked) {
-        message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
+        void message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
       } else if (response.pageRegisterPending) {
-        message.warning(response.pageRegisterDiagnostic ?? '页登记待重试')
+        void message.warning(response.pageRegisterDiagnostic ?? '页登记待重试')
       } else {
-        message.success(formatPageRegisterRetryMessage(response))
+        void message.success(formatPageRegisterRetryMessage(response))
       }
       await loadWorkbench()
     } catch (error) {
@@ -1409,7 +1409,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
         examId: selectedExamId.value,
         scanBatchId: batch.scanBatchId,
       })
-      message.success(`已补跑 ${count} 页脱敏处理影像`)
+      void message.success(`已补跑 ${count} 页脱敏处理影像`)
       await loadWorkbench()
       if (selectedPageKey.value) {
         void loadInspector(selectedPageKey.value)
@@ -1441,11 +1441,11 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
             scanBatchId: batch.scanBatchId,
           })
           if (response.pageRegisterBlocked) {
-            message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
+            void message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
           } else if (response.pageRegisterPending) {
-            message.warning(response.pageRegisterDiagnostic ?? '页登记待重试')
+            void message.warning(response.pageRegisterDiagnostic ?? '页登记待重试')
           } else {
-            message.success(formatPageRegisterRetryMessage(response))
+            void message.success(formatPageRegisterRetryMessage(response))
           }
           await loadWorkbench()
         } catch (error) {
@@ -1467,11 +1467,11 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   }
   if (action === ScanBatchWorkbenchTopActionCode.SEAL) {
     if (attributionSealBlockReason.value) {
-      message.warning(attributionSealBlockReason.value)
+      void message.warning(attributionSealBlockReason.value)
       return
     }
     if (!canSealBatch(batch)) {
-      message.warning(batchSealBlockedReason(batch) || '当前批次不满足封存条件')
+      void message.warning(batchSealBlockedReason(batch) || '当前批次不满足封存条件')
       return
     }
     void confirmAsync({
@@ -1488,7 +1488,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
         actionLoading.value = action
         try {
           await sealScanBatchByTeacher({ scanBatchId: batch.scanBatchId })
-          message.success(`扫描批次已封存：${batch.batchNo}`)
+          void message.success(`扫描批次已封存：${batch.batchNo}`)
           await loadWorkbench()
         } catch (error) {
           showUserError(error, '扫描批次封存失败')
@@ -1503,7 +1503,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   if (action === ScanBatchWorkbenchTopActionCode.DISCARD) {
     // MVR-322：打开废弃弹窗前叠主考写能力位
     if (!canManageOwnerBatchActions.value) {
-      message.warning('当前账号不可废弃扫描批次')
+      void message.warning('当前账号不可废弃扫描批次')
       return
     }
     discardModalOpen.value = true
@@ -1512,7 +1512,7 @@ async function handleTopAction(action: ScanBatchWorkbenchTopActionCode): Promise
   if (action === ScanBatchWorkbenchTopActionCode.SUPPLEMENT) {
     // MVR-322：补扫弹窗同主考写能力位
     if (!canManageOwnerBatchActions.value) {
-      message.warning('当前账号不可提交补扫')
+      void message.warning('当前账号不可提交补扫')
       return
     }
     supplementModalOpen.value = true
@@ -1527,7 +1527,7 @@ async function handleSupplementSuccess(): Promise<void> {
 async function confirmDiscardBatch(reason: string): Promise<void> {
   // MVR-322/376：与 canManageOwnerBatchActions / BE 主考写门禁二次拦截
   if (!canManageOwnerBatchActions.value) {
-    message.warning('当前账号不可废弃扫描批次')
+    void message.warning('当前账号不可废弃扫描批次')
     discardModalOpen.value = false
     return
   }
@@ -1542,7 +1542,7 @@ async function confirmDiscardBatch(reason: string): Promise<void> {
   actionLoading.value = ScanBatchWorkbenchTopActionCode.DISCARD
   try {
     await discardScanBatchByTeacher({ scanBatchId: batch.scanBatchId, discardReason: reason })
-    message.success(`扫描批次已废弃：${batch.batchNo}`)
+    void message.success(`扫描批次已废弃：${batch.batchNo}`)
     discardModalOpen.value = false
     await loadWorkbench()
   } catch (error) {
@@ -1753,7 +1753,8 @@ onUnmounted(() => {
   }
 
   &--exception {
-    border-left: 3px solid var(--dp-danger);
+    border-color: var(--dp-danger);
+    background: color-mix(in srgb, var(--dp-danger) 6%, var(--dp-bg-container));
   }
 }
 

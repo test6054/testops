@@ -166,16 +166,16 @@ export function useSurveyFill() {
 
     const unansweredIdx = findFirstUnansweredRequired()
     if (unansweredIdx >= 0) {
-      message.warning(`请完成第 ${unansweredIdx + 1} 题（必填）`)
+      void message.warning(`请完成第 ${unansweredIdx + 1} 题（必填）`)
       return false
     }
     if (!hasRequiredIdentityFilled()) {
-      message.warning('请填写必填身份信息')
+      void message.warning('请填写必填身份信息')
       return false
     }
     const hasRequiredItem = survey.value.items.some((item) => item.required)
     if (!hasRequiredItem && buildAnswerList().length === 0) {
-      message.warning('请至少填写一题后再提交')
+      void message.warning('请至少填写一题后再提交')
       return false
     }
 

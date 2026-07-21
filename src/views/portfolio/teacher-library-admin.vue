@@ -23,6 +23,7 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const stats = ref<PortfolioTeacherLibraryBorrowStatsVO | null>(null)
 const form = reactive({
@@ -83,7 +84,9 @@ async function loadStats() {
   }
 }
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -163,7 +166,7 @@ async function saveBorrow() {
   }
   try {
     await portfolioTeacherLibraryApi.save(request)
-    message.success('已保存')
+    void message.success('已保存')
     resetForm()
     await Promise.all([loadPage(), loadStats()])
   } catch (error) {
@@ -217,7 +220,7 @@ async function returnBorrow(row: (typeof rows.value)[number]) {
       dataSource: row.dataSource || 'MANUAL',
       remark: row.remark,
     })
-    message.success('已登记归还')
+    void message.success('已登记归还')
     await Promise.all([loadPage(), loadStats()])
   } catch (error) {
     showUserError(error, '登记归还失败')
@@ -232,7 +235,7 @@ async function exportCsv() {
   try {
     const result = await portfolioTeacherLibraryApi.export()
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条`)
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出借阅记录失败')
   } finally {
@@ -313,7 +316,9 @@ void loadStats()
         >
           {{ form.id ? '保存修改' : '登记借阅' }}
         </UiButton>
-        <UiButton size="sm" v-if="form.id" :disabled="operating" @click="resetForm"> 取消编辑 </UiButton>
+        <UiButton size="sm" v-if="form.id" :disabled="operating" @click="resetForm">
+          取消编辑
+        </UiButton>
         <UiButton
           size="sm"
           :loading="operationKey === 'borrow:export'"
@@ -323,7 +328,11 @@ void loadStats()
           导出
         </UiButton>
       </div>
-      <UiEmpty size="sm" v-if="!loading && !loadError && rows.length === 0" description="暂无图书借阅记录" />
+      <UiEmpty
+        size="sm"
+        v-if="!loading && !loadError && rows.length === 0"
+        description="暂无图书借阅记录"
+      />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -348,17 +357,10 @@ void loadStats()
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'identityLayers'">
-            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-              <UiTag
-                v-for="(layer, idx) in record.ownerIdentityLayers"
-                :key="`${record.id}-${layer.identityType}-${idx}`"
-                size="sm"
-                :tone="layer.externalIdentity ? 'orange' : 'blue'"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-            </div>
-            <span v-else>—</span>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+            />
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

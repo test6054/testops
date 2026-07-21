@@ -86,5 +86,5 @@ app.config.errorHandler = (err, _instance, info) => {
   if (import.meta.env.DEV) {
     console.error('[Vue errorHandler]', err, info)
   }
-  message.error('页面暂时无法完成操作，请刷新当前页面后重试')
+  void message.error('页面暂时无法完成操作，请刷新当前页面后重试')
 }

@@ -180,7 +180,7 @@ async function submit(): Promise<void> {
       groupId: groupId.value,
       allocationUnit: allocationUnit.value,
     })
-    message.success('正评会话已创建')
+    void message.success('正评会话已创建')
     emit('update:open', false)
     emit('success', sessionId)
   } catch (error) {

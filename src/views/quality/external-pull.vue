@@ -95,7 +95,11 @@ import {
   EXTERNAL_PULL_SORT_DIRECTION_OPTIONS,
   ExternalPullSortDirectionCode,
 } from '@/types/enums/external-pull-sort-direction-enum'
-import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserProcessFailureMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 interface SourceFieldScopeEditorRow {
@@ -569,7 +573,7 @@ function resetTaskRuleAfterObjectChange() {
 
 function handleTaskBusinessAnchorChange(value: SelectValue) {
   if (Array.isArray(value)) {
-    message.error('业务归属选择无效，请重新选择')
+    void message.error('业务归属选择无效，请重新选择')
     return
   }
   taskForm.businessAnchor = ALL_BUSINESS_ANCHOR_CODES.find((code) => code === value)
@@ -781,15 +785,15 @@ async function submitSource() {
     || !sourceForm.sourceName.trim()
     || !sourceForm.jdbcUrl.trim()
   ) {
-    message.error('请填写编码 / 名称 / 连接地址')
+    void message.error('请填写编码 / 名称 / 连接地址')
     return
   }
   if (!sourceForm.username.trim() || !sourceForm.password) {
-    message.error('账户与密码不能为空（保存时加密）')
+    void message.error('账户与密码不能为空（保存时加密）')
     return
   }
   if (!sourceForm.driverClass.trim()) {
-    message.error('请填写驱动类')
+    void message.error('请填写驱动类')
     return
   }
 
@@ -800,12 +804,12 @@ async function submitSource() {
     const sourceObjectName = row.sourceObjectName.trim()
     const fieldName = row.fieldName.trim()
     if (!sourceObjectName || !fieldName) {
-      message.error(`字段范围 ${index + 1} 需要填写来源对象和字段名`)
+      void message.error(`字段范围 ${index + 1} 需要填写来源对象和字段名`)
       return
     }
     const duplicateKey = `${sourceObjectName}#${fieldName}`
     if (seen.has(duplicateKey)) {
-      message.error(`字段范围重复：${sourceObjectName}.${fieldName}`)
+      void message.error(`字段范围重复：${sourceObjectName}.${fieldName}`)
       return
     }
     seen.add(duplicateKey)
@@ -818,7 +822,7 @@ async function submitSource() {
     })
   }
   if (!fieldScopes.length) {
-    message.error('请至少登记一个可拔取字段')
+    void message.error('请至少登记一个可拔取字段')
     return
   }
 
@@ -840,10 +844,10 @@ async function submitSource() {
     }
     if (sourceEditorMode.value === 'create') {
       await externalDataSourceApi.create(request)
-      message.success('数据源已创建')
+      void message.success('数据源已创建')
     } else {
       await externalDataSourceApi.update(request)
-      message.success('数据源已更新')
+      void message.success('数据源已更新')
     }
     sourceEditorVisible.value = false
     await loadSources()
@@ -854,7 +858,7 @@ async function submitSource() {
 
 async function toggleSourceEnabled(record: ExternalDataSourceVO) {
   await externalDataSourceApi.toggleEnabled({ id: record.id, enabled: !record.enabled })
-  message.success('已切换状态')
+  void message.success('已切换状态')
   await loadSources()
 }
 
@@ -864,7 +868,7 @@ async function deleteSource(record: ExternalDataSourceVO) {
     type: 'error',
     onOk: async () => {
       await externalDataSourceApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadSources()
     },
   })
@@ -900,11 +904,11 @@ async function submitTask() {
     || !taskForm.businessId
     || !taskForm.sourceObjectName
   ) {
-    message.error('请填写任务编码、名称，选择数据源，并补全业务归属和来源对象')
+    void message.error('请填写任务编码、名称，选择数据源，并补全业务归属和来源对象')
     return
   }
   if (!taskSelectedFields.value.length) {
-    message.error('请至少选择一个返回字段')
+    void message.error('请至少选择一个返回字段')
     return
   }
 
@@ -921,13 +925,13 @@ async function submitTask() {
         : Boolean(row.singleValue.trim())
     if (!row.fieldName && !hasValue) continue
     if (!row.fieldName || !hasValue) {
-      message.error(`筛选条件 ${index + 1} 需要同时选择字段并填写取值`)
+      void message.error(`筛选条件 ${index + 1} 需要同时选择字段并填写取值`)
       return
     }
     if (row.operator === ExternalPullFilterOperatorCode.IN) {
       const values = row.multipleValues.map((value) => value.trim()).filter(Boolean)
       if (!values.length) {
-        message.error(`筛选条件 ${index + 1} 至少填写一个取值`)
+        void message.error(`筛选条件 ${index + 1} 至少填写一个取值`)
         return
       }
       for (let valueIndex = 0; valueIndex < values.length; valueIndex += 1) {
@@ -972,7 +976,7 @@ async function submitTask() {
       maxRowCount: taskForm.maxRowCount,
       queryTimeoutSeconds: taskForm.queryTimeoutSeconds,
     })
-    message.success('任务已提交，等待调度器执行')
+    void message.success('任务已提交，等待调度器执行')
     taskCreateVisible.value = false
     await loadTasks()
   } finally {
@@ -990,7 +994,7 @@ async function cancelTask(record: ExternalPullTaskVO) {
   })
   if (!reason) return
   await externalPullTaskApi.cancel({ id: record.id, reason })
-  message.success('已取消')
+  void message.success('已取消')
   await loadTasks()
 }
 
@@ -1001,7 +1005,7 @@ async function confirmResult(result: ExternalPullResultVO) {
     return
   }
   if (confirmedRows <= 0) {
-    message.warning('预览行数为 0，无法确认导入')
+    void message.warning('预览行数为 0，无法确认导入')
     return
   }
   void confirmAsync({
@@ -1013,7 +1017,7 @@ async function confirmResult(result: ExternalPullResultVO) {
         id: result.id,
         confirmedRows,
       })
-      message.success('已确认')
+      void message.success('已确认')
       if (detailRecord.value) await reloadDetail(detailRecord.value.id)
     },
   })
@@ -1029,7 +1033,7 @@ async function rejectResult(result: ExternalPullResultVO) {
   })
   if (!reason) return
   await externalPullResultApi.reject({ id: result.id, notes: reason })
-  message.success('已驳回')
+  void message.success('已驳回')
   if (detailRecord.value) await reloadDetail(detailRecord.value.id)
 }
 
@@ -1269,7 +1273,12 @@ onMounted(async () => {
     <UiCard class="detail-table-card external-pull__task-card">
       <template #title>拔取任务</template>
       <template #extra>
-        <UiButton variant="primary" size="sm" :disabled="!sources.some((s) => s.enabled)" @click="openTaskCreate">
+        <UiButton
+          variant="primary"
+          size="sm"
+          :disabled="!sources.some((s) => s.enabled)"
+          @click="openTaskCreate"
+        >
           新建拔取任务
         </UiButton>
       </template>
@@ -1365,16 +1374,12 @@ onMounted(async () => {
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="数据源编码" required>
-              <UiInput
-                size="sm" v-model="sourceForm.sourceCode"
-              />
+              <UiInput size="sm" v-model="sourceForm.sourceCode" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="名称" required>
-              <UiInput
-                size="sm" v-model="sourceForm.sourceName"
-              />
+              <UiInput size="sm" v-model="sourceForm.sourceName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -1382,14 +1387,18 @@ onMounted(async () => {
           <UiCol :span="12">
             <UiFormItem label="数据库类型" required>
               <UiSelect
-                size="sm" v-model="sourceForm.sourceType" :options="EXTERNAL_SOURCE_TYPE_OPTIONS"
+                size="sm"
+                v-model="sourceForm.sourceType"
+                :options="EXTERNAL_SOURCE_TYPE_OPTIONS"
               />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="驱动类全名" required>
               <UiInput
-                size="sm" v-model="sourceForm.driverClass" placeholder="org.postgresql.Driver"
+                size="sm"
+                v-model="sourceForm.driverClass"
+                placeholder="org.postgresql.Driver"
               />
             </UiFormItem>
           </UiCol>
@@ -1404,9 +1413,7 @@ onMounted(async () => {
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="账户" required>
-              <UiInput
-                size="sm" v-model="sourceForm.username"
-              />
+              <UiInput size="sm" v-model="sourceForm.username" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
@@ -1458,24 +1465,16 @@ onMounted(async () => {
               </div>
               <UiRow :gutter="12">
                 <UiCol :span="6">
-                  <UiInput
-                    size="sm" v-model="entry.sourceObjectName" placeholder="来源对象"
-                  />
+                  <UiInput size="sm" v-model="entry.sourceObjectName" placeholder="来源对象" />
                 </UiCol>
                 <UiCol :span="6">
-                  <UiInput
-                    size="sm" v-model="entry.fieldName" placeholder="字段名"
-                  />
+                  <UiInput size="sm" v-model="entry.fieldName" placeholder="字段名" />
                 </UiCol>
                 <UiCol :span="6">
-                  <UiInput
-                    size="sm" v-model="entry.fieldLabel" placeholder="展示名称"
-                  />
+                  <UiInput size="sm" v-model="entry.fieldLabel" placeholder="展示名称" />
                 </UiCol>
                 <UiCol :span="6">
-                  <UiInput
-                    size="sm" v-model="entry.fieldType" placeholder="字段类型"
-                  />
+                  <UiInput size="sm" v-model="entry.fieldType" placeholder="字段类型" />
                 </UiCol>
               </UiRow>
             </div>
@@ -1508,16 +1507,12 @@ onMounted(async () => {
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="任务编码" required>
-              <UiInput
-                size="sm" v-model="taskForm.taskCode"
-              />
+              <UiInput size="sm" v-model="taskForm.taskCode" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="任务名称" required>
-              <UiInput
-                size="sm" v-model="taskForm.taskName"
-              />
+              <UiInput size="sm" v-model="taskForm.taskName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -1661,12 +1656,7 @@ onMounted(async () => {
                     placeholder="逐项录入筛选值"
                     :options="[]"
                   />
-                  <UiInput
-                    v-else
-                    v-model="entry.singleValue"
-                    size="sm"
-                    placeholder="填写筛选值"
-                  />
+                  <UiInput v-else v-model="entry.singleValue" size="sm" placeholder="填写筛选值" />
                 </UiCol>
               </UiRow>
             </div>
@@ -1687,7 +1677,7 @@ onMounted(async () => {
               :key="entry.key"
               class="external-pull__entry-card external-pull__entry-card--compact"
             >
-              <UiRow :gutter="12" align="middle">
+              <UiRow :gutter="12" class="external-pull__sort-row">
                 <UiCol :span="10">
                   <UiSelect
                     size="sm"
@@ -1699,7 +1689,9 @@ onMounted(async () => {
                 </UiCol>
                 <UiCol :span="8">
                   <UiSelect
-                    size="sm" v-model="entry.sortDirection" :options="EXTERNAL_PULL_SORT_DIRECTION_OPTIONS"
+                    size="sm"
+                    v-model="entry.sortDirection"
+                    :options="EXTERNAL_PULL_SORT_DIRECTION_OPTIONS"
                   />
                 </UiCol>
                 <UiCol :span="6">
@@ -2044,6 +2036,10 @@ onMounted(async () => {
     &--compact {
       padding: 10px 12px;
     }
+  }
+
+  &__sort-row {
+    align-items: center;
   }
 
   &__entry-header {

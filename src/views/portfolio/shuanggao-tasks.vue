@@ -205,7 +205,9 @@ const reviewOptions = [
 
 const query = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -272,17 +274,19 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
   if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.CLAIMED && responsible) {
     items.push({
       key: 'start',
-      label: (row.archiveWriteForbidden || operatorArchiveWriteForbidden.value)
-        ? '开始建设（写禁）'
-        : '开始建设',
+      label:
+        row.archiveWriteForbidden || operatorArchiveWriteForbidden.value
+          ? '开始建设（写禁）'
+          : '开始建设',
     })
   }
   if (row.taskStatus === PortfolioDoubleHighTaskStatusCode.IN_PROGRESS && responsible) {
     items.push({
       key: 'submit',
-      label: (row.archiveWriteForbidden || operatorArchiveWriteForbidden.value)
-        ? '提交阶段（写禁）'
-        : '提交阶段',
+      label:
+        row.archiveWriteForbidden || operatorArchiveWriteForbidden.value
+          ? '提交阶段（写禁）'
+          : '提交阶段',
     })
   }
   if (
@@ -309,10 +313,10 @@ function rowActions(row: PortfolioDoubleHighTaskVO) {
   }
   return items.map((item) => {
     const writeAction = item.key === 'claim' || item.key === 'start' || item.key === 'submit'
-    const writeBlocked = writeAction && (
-      operatorArchiveWriteForbidden.value
-      || (item.key !== 'claim' && Boolean(row.archiveWriteForbidden))
-    )
+    const writeBlocked
+      = writeAction
+        && (operatorArchiveWriteForbidden.value
+          || (item.key !== 'claim' && Boolean(row.archiveWriteForbidden)))
     return { ...item, disabled: busy.value || writeBlocked }
   })
 }
@@ -440,7 +444,11 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
   }
   if (key === 'claim' || key === 'start' || key === 'submit') {
     await reloadLifecycleState()
-    if (!(await assertArchiveWritable(key === 'claim' ? '认领双高任务' : key === 'start' ? '开始双高建设' : '提交双高阶段'))) {
+    if (
+      !(await assertArchiveWritable(
+        key === 'claim' ? '认领双高任务' : key === 'start' ? '开始双高建设' : '提交双高阶段',
+      ))
+    ) {
       return
     }
   }
@@ -451,13 +459,13 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
       return
     } else if (key === 'claim') {
       await portfolioDoubleHighApi.claimTask({ id: row.id })
-      message.success('已认领任务')
+      void message.success('已认领任务')
     } else if (key === 'start') {
       await portfolioDoubleHighApi.startTask({ id: row.id })
-      message.success('已进入实施')
+      void message.success('已进入实施')
     } else if (key === 'enterReview') {
       await portfolioDoubleHighApi.enterStageReview({ id: row.id })
-      message.success('已进入阶段审核')
+      void message.success('已进入阶段审核')
     } else if (key === 'submit') {
       activeTask.value = row
       actionMode.value = 'submit'
@@ -511,7 +519,7 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
         return
       }
       await portfolioDoubleHighApi.archiveTask({ id: row.id })
-      message.success('任务已归档')
+      void message.success('任务已归档')
     } else if (key === 'void') {
       activeTask.value = row
       actionMode.value = 'void'
@@ -551,7 +559,7 @@ async function submitActionModal() {
         stageIndex: activeTask.value.currentStageIndex,
         materialRef: { archiveRecordIds: selectedArchiveIds.value },
       })
-      message.success('阶段材料已提交')
+      void message.success('阶段材料已提交')
     } else if (actionMode.value === 'void') {
       const reason = voidReason.value.trim()
       if (!reason) {
@@ -562,7 +570,7 @@ async function submitActionModal() {
         id: activeTask.value.id,
         voidReason: reason,
       })
-      message.success('任务已作废')
+      void message.success('任务已作废')
     } else {
       if (reviewApproved.value === 'false' && !reviewComment.value.trim()) {
         showFormValidationMessage('阶段退回须填写原因')
@@ -574,7 +582,7 @@ async function submitActionModal() {
         approved: reviewApproved.value === 'true',
         reviewComment: reviewComment.value.trim() || undefined,
       })
-      message.success(reviewApproved.value === 'true' ? '阶段已通过' : '阶段已退回')
+      void message.success(reviewApproved.value === 'true' ? '阶段已通过' : '阶段已退回')
     }
     actionOpen.value = false
     await loadPage()
@@ -639,7 +647,7 @@ async function submitCreate() {
       acceptanceCriteria: createForm.acceptanceCriteria.trim() || undefined,
       stages,
     })
-    message.success('双高任务已发布')
+    void message.success('双高任务已发布')
     createOpen.value = false
     await loadPage()
   } catch (error) {
@@ -690,7 +698,9 @@ watch(
     </template>
     <UiCard>
       <div class="shuanggao-tasks__toolbar">
-        <UiButton size="sm" variant="primary" :disabled="busy" @click="openCreateModal">发布任务</UiButton>
+        <UiButton size="sm" variant="primary" :disabled="busy" @click="openCreateModal">
+          发布任务
+        </UiButton>
       </div>
       <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
       <UiDataTable
@@ -737,7 +747,7 @@ watch(
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
-            
+
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else class="text-neutral-400">—</span>
           </template>
@@ -845,7 +855,9 @@ watch(
             <span class="create-form__stage-index">第{{ stage.stageIndex }}阶</span>
             <UiInput v-model="stage.stageName" placeholder="阶段名称" />
             <UiDatePicker v-model="stage.stageDeadline" placeholder="阶段截止日" />
-            <UiButton size="sm" variant="secondary" @click="removeCreateStage(index)">移除</UiButton>
+            <UiButton size="sm" variant="secondary" @click="removeCreateStage(index)">
+              移除
+            </UiButton>
           </div>
         </div>
       </div>

@@ -128,7 +128,7 @@ export async function handleBlobDownload(
     // 校验响应
     const validationError = await validateBlobResponse(response)
     if (validationError) {
-      if (showErrorMessage) message.error(validationError)
+      if (showErrorMessage) void message.error(validationError)
       return
     }
 
@@ -138,7 +138,7 @@ export async function handleBlobDownload(
     // 触发下载
     triggerBlobDownload(new Blob([response.data]), fileName)
 
-    if (showSuccessMessage) message.success(successMessage)
+    if (showSuccessMessage) void message.success(successMessage)
   } catch (error) {
     if (showErrorMessage) showUserError(error, errorMessage)
   }
@@ -160,7 +160,7 @@ export async function handleDownloadFile(file: FileItem, options: DownloadOption
 
   if (file.fileId === undefined || file.fileId === null || file.fileId === '') {
     if (showErrorMessage) {
-      message.error('未找到可下载的文件')
+      void message.error('未找到可下载的文件')
     }
     return
   }
@@ -191,7 +191,7 @@ export async function handleDownloadFile(file: FileItem, options: DownloadOption
     // 统一校验响应
     const validationError = await validateBlobResponse(response)
     if (validationError) {
-      if (showErrorMessage) message.error(validationError)
+      if (showErrorMessage) void message.error(validationError)
       return
     }
 
@@ -202,7 +202,7 @@ export async function handleDownloadFile(file: FileItem, options: DownloadOption
 
     onAfterDownload?.(normalizedFile)
     if (showSuccessMessage) {
-      message.success(successMessage)
+      void message.success(successMessage)
     }
   } catch (error) {
     onError?.(error)
@@ -219,11 +219,11 @@ export async function handleDownloadFile(file: FileItem, options: DownloadOption
  */
 export async function batchDownloadFiles(files: FileItem[], options?: DownloadOptions) {
   if (!files || files.length === 0) {
-    message.warning('没有文件可下载')
+    void message.warning('没有文件可下载')
     return
   }
 
-  message.info(`开始下载 ${files.length} 个文件...`)
+  void message.info(`开始下载 ${files.length} 个文件...`)
 
   let successCount = 0
   let failCount = 0
@@ -240,8 +240,8 @@ export async function batchDownloadFiles(files: FileItem[], options?: DownloadOp
   }
 
   if (failCount === 0) {
-    message.success(`所有文件下载完成 (${successCount}/${files.length})`)
+    void message.success(`所有文件下载完成 (${successCount}/${files.length})`)
   } else {
-    message.warning(`部分文件下载失败 (成功: ${successCount}, 失败: ${failCount})`)
+    void message.warning(`部分文件下载失败 (成功: ${successCount}, 失败: ${failCount})`)
   }
 }

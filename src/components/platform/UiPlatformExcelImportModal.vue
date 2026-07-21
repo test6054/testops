@@ -414,7 +414,7 @@ async function stageSelectedFile(file: File) {
   } catch (error) {
     stagedFile.value = null
     stagedFileNodeId.value = null
-    message.error(getUserErrorMessage(error, '文件暂存失败'))
+    void message.error(getUserErrorMessage(error, '文件暂存失败'))
   } finally {
     submitting.value = false
   }
@@ -440,7 +440,7 @@ async function handleDownloadTemplate() {
     const blobResponse = await downloadFile({ nodeId: String(template.fileNodeId) })
     triggerBrowserDownload(blobResponse.data, template.fileName)
   } catch (error) {
-    message.error(getUserErrorMessage(error, '模板下载失败'))
+    void message.error(getUserErrorMessage(error, '模板下载失败'))
   } finally {
     templateLoading.value = false
   }
@@ -480,9 +480,9 @@ async function handleOk() {
       phase.value = 'result'
       emit('success', importResult)
       if ((importResult.errorRows ?? 0) === 0) {
-        message.success(`${props.entityLabel}已导入`)
+        void message.success(`${props.entityLabel}已导入`)
       } else {
-        message.warning(
+        void message.warning(
           `${props.entityLabel}导入完成：成功 ${importResult.successRows ?? 0} 条，失败 ${importResult.errorRows ?? 0} 条`,
         )
       }
@@ -496,7 +496,7 @@ async function handleOk() {
       rosterPreviewPage.value = 1
       phase.value = 'preview'
       if ((importResult.errorRows ?? 0) > 0) {
-        message.warning(
+        void message.warning(
           `预览完成：${importResult.successRows ?? 0} 条可直接导入，${importResult.errorRows ?? 0} 条需处理或确认`,
         )
       }
@@ -511,16 +511,16 @@ async function handleOk() {
       emit('success', importResult)
     }
     if (importResult.executionMode === ExcelImportExecutionMode.ASYNC) {
-      message.success('已提交解析任务')
+      void message.success('已提交解析任务')
     } else if ((importResult.errorRows ?? 0) === 0) {
-      message.success(`导入成功 ${importResult.successRows ?? 0} 条`)
+      void message.success(`导入成功 ${importResult.successRows ?? 0} 条`)
     } else {
-      message.warning(
+      void message.warning(
         `导入完成：成功 ${importResult.successRows ?? 0} 条，失败 ${importResult.errorRows ?? 0} 条`,
       )
     }
   } catch (error) {
-    message.error(getUserErrorMessage(error, `导入${props.entityLabel}失败`))
+    void message.error(getUserErrorMessage(error, `导入${props.entityLabel}失败`))
   } finally {
     submitting.value = false
   }

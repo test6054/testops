@@ -40,7 +40,8 @@ import {
 } from '@/apis/quality/ai-result'
 import { aiTaskApi } from '@/apis/quality/ai-task'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
-import { AI_OUTPUT_VALIDATION_COLOR,
+import {
+  AI_OUTPUT_VALIDATION_COLOR,
   AI_TASK_STATUS_COLOR,
   AiManualHandlingStatusCode,
   AiManualHandlingStatusDescription,
@@ -200,9 +201,7 @@ const detailVisible = ref(false)
 const detailLoading = ref(false)
 const detailRecord = ref<AiTaskVO | null>(null)
 const detailTabActive = ref('result')
-const detailTabItems = [
-  { key: 'result', label: '智能结果' },
-]
+const detailTabItems = [{ key: 'result', label: '智能结果' }]
 const detailResult = ref<AiResultVO | null>(null)
 const validationUpdating = ref(false)
 const manualHandleVisible = ref(false)
@@ -609,7 +608,6 @@ async function loadListQuietly(): Promise<void> {
   }
 }
 
-
 const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   if (!qualityStore.currentTrainingPlanId) {
     return 'need-plan'
@@ -872,7 +870,7 @@ async function submitTask() {
       fileNodeId: submitForm.fileNodeId?.trim() || undefined,
       question: submitForm.question?.trim() || undefined,
     })
-    message.success('已提交智能任务，系统将按队列执行')
+    void message.success('已提交智能任务，系统将按队列执行')
     submitVisible.value = false
     // 提交后启动轮询：任务达到终态后自动停止，其他页面能同步看到状态跳转
     if (result.taskId) aiTaskStore.startPolling(result.taskId)
@@ -889,7 +887,7 @@ async function runNow(record: AiTaskVO) {
     type: 'info',
     onOk: async () => {
       await aiTaskTriggerApi.runNow(record.id)
-      message.success('已触发同步执行')
+      void message.success('已触发同步执行')
       aiTaskStore.startPolling(record.id)
       await loadList()
     },
@@ -898,7 +896,7 @@ async function runNow(record: AiTaskVO) {
 
 function openResetProcessing(record: AiTaskVO) {
   if (record.status !== AiTaskStatusCode.PROCESSING) {
-    message.error('仅处理中任务允许运维重置')
+    void message.error('仅处理中任务允许运维重置')
     return
   }
   resetProcessingForm.id = record.id
@@ -908,7 +906,7 @@ function openResetProcessing(record: AiTaskVO) {
 
 async function submitResetProcessing() {
   if (!resetProcessingForm.handlingRemark.trim()) {
-    message.error('运维重置必须填写处置备注')
+    void message.error('运维重置必须填写处置备注')
     return
   }
   resetProcessingSubmitting.value = true
@@ -917,7 +915,7 @@ async function submitResetProcessing() {
       id: resetProcessingForm.id,
       handlingRemark: resetProcessingForm.handlingRemark.trim(),
     })
-    message.success('已将卡住任务重置为待处理')
+    void message.success('已将卡住任务重置为待处理')
     resetProcessingVisible.value = false
     await loadList()
   } catch (error) {
@@ -937,13 +935,13 @@ async function cancelTask(record: AiTaskVO) {
   })
   if (!reason) return
   await aiTaskStore.cancelTask(record.id, reason)
-  message.success('已取消任务')
+  void message.success('已取消任务')
   await loadList()
 }
 
 function openManualHandle(record: AiTaskVO) {
   if (record.manualHandlingStatus == null) {
-    message.warning('该任务暂不支持人工处置，请刷新列表后重试')
+    void message.warning('该任务暂不支持人工处置，请刷新列表后重试')
     return
   }
   Object.assign(manualHandleForm, {
@@ -963,7 +961,7 @@ async function submitManualHandle() {
       manualHandlingStatus: manualHandleForm.manualHandlingStatus,
       manualHandlingRemark: manualHandleForm.manualHandlingRemark?.trim() || undefined,
     })
-    message.success('人工处置状态已更新')
+    void message.success('人工处置状态已更新')
     manualHandleVisible.value = false
     await loadList()
     if (detailRecord.value?.id === manualHandleForm.id) {
@@ -1111,7 +1109,7 @@ async function updateValidation(validation: AiOutputValidationCode) {
       sensitiveCheckDetail: detailResult.value.sensitiveCheckDetail,
     })
     detailResult.value.outputValidation = validation
-    message.success(`已更新校验状态为 ${validationLabel(validation)}`)
+    void message.success(`已更新校验状态为 ${validationLabel(validation)}`)
   } finally {
     validationUpdating.value = false
   }
@@ -1278,11 +1276,7 @@ onMounted(async () => {
       </QualityPageContextBar>
     </template>
 
-    <QualityPlanGateStrip
-      v-if="planGateMode"
-      :mode="planGateMode"
-      class="ai-task__empty"
-    />
+    <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="ai-task__empty" />
 
     <template v-else>
       <StageRail :stages="stages" compact class="ai-task__stages" />
@@ -1372,7 +1366,9 @@ onMounted(async () => {
               :value="query.businessId || ''"
               placeholder="评价运行或院系编号"
               clearable
-              @update:value="(value) => handleQueryBusinessObjectChange(value == null ? null : String(value))"
+              @update:value="
+                (value) => handleQueryBusinessObjectChange(value == null ? null : String(value))
+              "
             />
           </template>
           <template #field-operatorUserId>
@@ -1508,7 +1504,10 @@ onMounted(async () => {
           </UiFormItem>
           <UiFormItem label="业务类型">
             <UiSelect
-              size="sm" :model-value="submitForm.businessType" disabled :options="businessTypeOptions"
+              size="sm"
+              :model-value="submitForm.businessType"
+              disabled
+              :options="businessTypeOptions"
             />
           </UiFormItem>
           <UiFormItem label="关联业务对象">
@@ -1557,16 +1556,9 @@ onMounted(async () => {
               placeholder="选择间接评价问卷"
               @change="handleSubmitBusinessObjectChange"
             />
-            <UiAlertStrip
-              v-else
-              tone="info"
-              size="sm"
-              dense
-              inline
-              :show-icon="false"
-            >
+            <UiAlertStrip v-else tone="info" size="sm" dense inline :show-icon="false">
               <template #default>
-                <span style="display:inline-flex;align-items:center;gap:8px">
+                <span style="display: inline-flex; align-items: center; gap: 8px">
                   <UiTag tone="blue" size="sm">未选择</UiTag>
                   <span>请选择分析对象后查看结果</span>
                 </span>

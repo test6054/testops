@@ -78,18 +78,17 @@ const writing = computed(() => Boolean(operationKey.value))
 
 /** 冲突/身份处置目标教师：封存写禁预检 */
 const actionTeacherId = ref<string | undefined>()
-const {
-  assertArchiveWritable,
-  reloadLifecycleState,
-} = usePortfolioArchiveWriteGuard({ teacherId: actionTeacherId, autoLoad: false })
+const { assertArchiveWritable, reloadLifecycleState } = usePortfolioArchiveWriteGuard({
+  teacherId: actionTeacherId,
+  autoLoad: false,
+})
 
 async function bindActionTeacherAndAssert(
   teacherId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value = teacherId != null && String(teacherId).trim() !== ''
-    ? String(teacherId)
-    : undefined
+  actionTeacherId.value
+    = teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
@@ -345,7 +344,9 @@ function applyNationalTeacherPreset(direction: 'OUTBOUND' | 'INBOUND') {
         { teacherNumber: '', teacherName: '', title: '', employmentStatus: '' },
       ]
     }
-    message.info('全国教师系统同一渠道仅允许一条 OPENAPI 配置，已切换为编辑现有数据源并设置方向')
+    void message.info(
+      '全国教师系统同一渠道仅允许一条 OPENAPI 配置，已切换为编辑现有数据源并设置方向',
+    )
     return
   }
   resetDatasourceForm()
@@ -976,7 +977,7 @@ async function fixNationalReportIssue(row: PortfolioNationalReportIssueVO) {
       issueId: row.id,
       fixRemark: '管理端确认已修正',
     })
-    message.success('上报待修正已关闭')
+    void message.success('上报待修正已关闭')
     await loadNationalIssues()
   } catch (error) {
     showUserError(error, '关闭上报待修正失败')
@@ -1009,7 +1010,7 @@ async function exportNationalReportForIssue(row: PortfolioNationalReportIssueVO)
       syncTaskId: String(row.syncTaskId),
       maskMode: true,
     })
-    message.success(`上报包已导出：${res.fileName || res.fileNodeId}`)
+    void message.success(`上报包已导出：${res.fileName || res.fileNodeId}`)
   } catch (error) {
     showUserError(error, '导出全国上报包失败（须批次存在校验通过记录）')
   } finally {
@@ -1041,7 +1042,9 @@ async function retransmitNationalReportIssues() {
     const batch = await portfolioIntegrationApi.retransmitNationalReportIssues({
       datasourceConfigId: nationalDatasource.id,
     })
-    message.success(`重传完成：成功 ${batch.successCount ?? 0}，失败 ${batch.failedCount ?? 0}`)
+    void message.success(
+      `重传完成：成功 ${batch.successCount ?? 0}，失败 ${batch.failedCount ?? 0}`,
+    )
     await Promise.all([loadNationalIssues(), loadSyncTasks()])
   } catch (error) {
     showUserError(error, '重传全国上报失败记录失败')
@@ -1153,7 +1156,7 @@ async function enqueueInboundMessage() {
       messageKey,
       payloadFields,
     })
-    message.success(`消息已入站，收件箱 ID：${inboxId}`)
+    void message.success(`消息已入站，收件箱 ID：${inboxId}`)
     if (!failedMessageDatasourceId.value) {
       failedMessageDatasourceId.value = datasourceConfigId
     }
@@ -1307,7 +1310,7 @@ async function saveDatasource() {
   }
   try {
     await portfolioIntegrationApi.saveDatasource(request)
-    message.success(editingDatasource.value ? '数据源已更新' : '数据源已保存')
+    void message.success(editingDatasource.value ? '数据源已更新' : '数据源已保存')
     resetDatasourceForm()
     datasourceQuery.pageNum = 1
     await loadDatasources()
@@ -1340,7 +1343,7 @@ async function saveMapping() {
   }
   try {
     await portfolioIntegrationApi.saveFieldMapping(request)
-    message.success('字段映射已保存')
+    void message.success('字段映射已保存')
     mappingForm.sourceFieldCode = ''
     mappingForm.targetFieldCode = ''
     mappingForm.targetCategoryCode = ''
@@ -1361,7 +1364,7 @@ async function triggerSync(row: PortfolioIntegrationDatasourceVO) {
   if (!beginOperation(operation)) return
   try {
     await portfolioIntegrationApi.triggerSync({ datasourceConfigId })
-    message.success('同步已触发')
+    void message.success('同步已触发')
     await Promise.all([
       loadSyncTasks(),
       loadDatasources(),
@@ -1408,7 +1411,7 @@ async function resolveConflict(row: PortfolioConflictTicketVO, action: string) {
       action,
       resolveRemark: action === 'IGNORED' ? '管理端忽略冲突' : '管理端确认处置',
     })
-    message.success('冲突已处理')
+    void message.success('冲突已处理')
     conflictQuery.pageNum = 1
     await loadConflicts()
   } catch (error) {
@@ -1465,7 +1468,7 @@ async function resolveIdentityUnmatched(
         action === 'RESOLVED' && needsTeacherNumber(row) ? resolvedTeacherNumber : undefined,
       resolveRemark: action === 'RESOLVED' ? '管理端绑定本地教师' : '管理端忽略待匹配',
     })
-    message.success('身份待匹配已处置')
+    void message.success('身份待匹配已处置')
     identityResolveTeacherId.value = ''
     identityResolveTeacherNumber.value = ''
     identityResolveRowId.value = ''
@@ -1533,7 +1536,7 @@ async function requeueFailedMessage(row: PortfolioIntegrationMessageInboxVO, cor
       fieldCorrections,
       triggerSync: true,
     })
-    message.success('异常消息已重放并触发同步')
+    void message.success('异常消息已重放并触发同步')
     failedMessageDrawerOpen.value = false
     selectedFailedMessage.value = null
     payloadFieldEdits.value = []
@@ -1604,7 +1607,7 @@ async function saveCourseCodeMap() {
   }
   try {
     await portfolioIntegrationApi.saveCourseCodeMap(request)
-    message.success('课程编码对照已保存')
+    void message.success('课程编码对照已保存')
     resetCourseCodeMapForm()
     await loadCourseCodeMaps()
   } catch (error) {
@@ -1629,7 +1632,7 @@ async function deleteCourseCodeMap(row: PortfolioCourseCodeMapVO) {
   }
   try {
     await portfolioIntegrationApi.deleteCourseCodeMap(targetId)
-    message.success('课程编码对照已删除')
+    void message.success('课程编码对照已删除')
     await loadCourseCodeMaps()
   } catch (error) {
     showUserError(error, '删除课程编码对照失败')
@@ -1682,7 +1685,7 @@ async function saveDictEntry() {
   }
   try {
     await portfolioIntegrationApi.saveDictEntry(request)
-    message.success('字段字典项已保存')
+    void message.success('字段字典项已保存')
     resetDictEntryForm()
     await loadDictEntries()
   } catch (error) {
@@ -1707,7 +1710,7 @@ async function deleteDictEntry(row: PortfolioIntegrationDictEntryVO) {
   }
   try {
     await portfolioIntegrationApi.deleteDictEntry(targetId)
-    message.success('字段字典项已删除')
+    void message.success('字段字典项已删除')
     await loadDictEntries()
   } catch (error) {
     showUserError(error, '删除字段字典项失败')

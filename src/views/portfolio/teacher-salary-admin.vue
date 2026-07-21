@@ -19,6 +19,7 @@ import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSear
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const form = reactive<{
   teacherUserId: string
@@ -35,11 +36,8 @@ const form = reactive<{
 })
 
 const formTeacherId = computed(() => form.teacherUserId || undefined)
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard({ teacherId: formTeacherId })
 const { teacherOptions, searchTeachers, hydrateTeacherLabels, teacherLabel }
   = usePortfolioTeacherSearch()
 const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
@@ -61,7 +59,9 @@ function endOperation(key: string) {
   if (operationKey.value === key) operationKey.value = ''
 }
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -125,7 +125,7 @@ async function saveSalary() {
   }
   try {
     await portfolioTeacherSalaryApi.save(request)
-    message.success('已保存')
+    void message.success('已保存')
     form.teacherUserId = ''
     form.salaryMonth = ''
     form.baseAmount = undefined
@@ -155,7 +155,7 @@ async function exportCsv() {
   try {
     const result = await portfolioTeacherSalaryApi.export()
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条`)
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出教师薪酬失败')
   } finally {
@@ -236,7 +236,11 @@ async function exportCsv() {
           导出
         </UiButton>
       </div>
-      <UiEmpty size="sm" v-if="!loading && !loadError && rows.length === 0" description="暂无薪酬档案" />
+      <UiEmpty
+        size="sm"
+        v-if="!loading && !loadError && rows.length === 0"
+        description="暂无薪酬档案"
+      />
       <UiDataTable
         v-model:current="pageNum"
         v-model:page-size="pageSize"
@@ -261,17 +265,10 @@ async function exportCsv() {
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'identityLayers'">
-            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-              <UiTag
-                v-for="(layer, idx) in record.ownerIdentityLayers"
-                :key="`${record.id}-${layer.identityType}-${idx}`"
-                size="sm"
-                :tone="layer.externalIdentity ? 'orange' : 'blue'"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-            </div>
-            <span v-else>—</span>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+            />
           </template>
         </template>
       </UiDataTable>

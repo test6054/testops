@@ -1,12 +1,7 @@
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar
-        layout="workbench"
-        show-title
-        title="课程考核归档"
-        :subtitle="contextBarSubtitle"
-      >
+      <ContextBar layout="workbench" show-title title="课程考核归档" :subtitle="contextBarSubtitle">
         <template #status>
           <UiTag tone="blue" size="sm">{{ currentListTabLabel }}</UiTag>
         </template>
@@ -108,7 +103,12 @@
             :selected-count="selectedVolumeIds.length"
             class="archive-volume-list__batch"
           >
-            <UiButton v-if="canRejectAnyOnPage" size="sm" variant="outline" @click="openBatchReject">
+            <UiButton
+              v-if="canRejectAnyOnPage"
+              size="sm"
+              variant="outline"
+              @click="openBatchReject"
+            >
               批量退回
             </UiButton>
           </UiBatchActionBar>
@@ -900,9 +900,7 @@ const rowSelection = computed<TableProps['rowSelection']>(() => {
     },
     getCheckboxProps: (record: ArchiveVolumeResponse) => ({
       // MVR-196/333/343：状态+能力+双人制均收口到 rowCanRejectTransfer / isTransferSubmitterSelf
-      disabled:
-        !rowCanRejectTransfer(record)
-        || isTransferSubmitterSelf(record),
+      disabled: !rowCanRejectTransfer(record) || isTransferSubmitterSelf(record),
     }),
   }
 })
@@ -1096,7 +1094,7 @@ function handleVolumeAction(key: string, record: ArchiveVolumeResponse): void {
     case 'dept-audit':
       // MVR-379：与行级 canApproveDepartmentReview / 抽屉 canApprove 二次拦截
       if (record.canApproveDepartmentReview !== true) {
-        message.warning('当前账号不可进行院系审核')
+        void message.warning('当前账号不可进行院系审核')
         return
       }
       openDeptReviewDrawer(record.volumeId)
@@ -1417,7 +1415,6 @@ function handleSearch() {
   void loadVolumes()
 }
 
-
 function clearArchiveQuickFilter() {
   archiveListQuickFilter.value = null
   pagination.pageNum = 1
@@ -1452,7 +1449,7 @@ function handleReset() {
 function openBatchReject() {
   // MVR-333：与行级 canRejectTransfer 同源二次拦截
   if (!canRejectAnyOnPage.value) {
-    message.warning('当前账号无移交退回权限')
+    void message.warning('当前账号无移交退回权限')
     return
   }
   // MVR-196/333：批量退回前剔除本人提交或无行级退回权的卷
@@ -1461,11 +1458,11 @@ function openBatchReject() {
     return row != null && rowCanRejectTransfer(row) && !isTransferSubmitterSelf(row)
   })
   if (selectableIds.length === 0) {
-    message.warning('所选卷均不可退回（无权限或本人提交），请改选')
+    void message.warning('所选卷均不可退回（无权限或本人提交），请改选')
     return
   }
   if (selectableIds.length !== selectedVolumeIds.value.length) {
-    message.warning(
+    void message.warning(
       `已排除 ${selectedVolumeIds.value.length - selectableIds.length} 条不可退回的卷`,
     )
     selectedVolumeIds.value = selectableIds
@@ -1478,7 +1475,7 @@ async function submitBatchReject() {
   if (batchRejecting.value) return
   // MVR-333：与行级 canRejectTransfer 同源二次拦截
   if (!canRejectAnyOnPage.value) {
-    message.warning('当前账号无移交退回权限')
+    void message.warning('当前账号无移交退回权限')
     return
   }
   // 提交前再过滤无行级权或本人提交的卷
@@ -1487,7 +1484,7 @@ async function submitBatchReject() {
     return row != null && rowCanRejectTransfer(row) && !isTransferSubmitterSelf(row)
   })
   if (selectableIds.length === 0) {
-    message.warning('所选卷不可退回，请重新选择')
+    void message.warning('所选卷不可退回，请重新选择')
     return
   }
   selectedVolumeIds.value = selectableIds
@@ -1505,7 +1502,7 @@ async function submitBatchReject() {
       volumeIds: selectedVolumeIds.value,
       rejectReason: batchRejectReason.value.trim(),
     })
-    message.success('批量退回完成')
+    void message.success('批量退回完成')
     batchRejectOpen.value = false
     selectedVolumeIds.value = []
     await loadVolumes()
@@ -1542,7 +1539,7 @@ function openDeptReviewDrawer(volumeId: string) {
   // MVR-391：打开院系审核抽屉与行级 canApproveDepartmentReview 二次拦截
   const row = volumes.value.find((item) => item.volumeId === volumeId)
   if (row?.canApproveDepartmentReview !== true) {
-    message.warning('当前账号不可进行院系审核')
+    void message.warning('当前账号不可进行院系审核')
     return
   }
   deptReviewVolumeId.value = volumeId
@@ -1565,11 +1562,11 @@ function goDetailWithSubmitIntent(volumeId: string) {
 function goAppraisal(record: ArchiveVolumeResponse): void {
   // MVR-329：与 buildVolumeActions / BE canManageAppraisal 二次拦截
   if (record.canManageAppraisal !== true) {
-    message.warning('仅本卷所属院系档案管理员可进入鉴定')
+    void message.warning('仅本卷所属院系档案管理员可进入鉴定')
     return
   }
   if (record.appraisalStatus !== ArchiveAppraisalStatusCode.REMINDER_SENT) {
-    message.warning('当前鉴定状态不可从列表进入鉴定')
+    void message.warning('当前鉴定状态不可从列表进入鉴定')
     return
   }
   void router.push({
@@ -1621,7 +1618,7 @@ async function requestDepartmentReviewFromList(record: ArchiveVolumeResponse) {
   }
   // MVR-307：与行级 canRequestDepartmentReview 同源二次拦截
   if (record.canRequestDepartmentReview !== true) {
-    message.warning('当前账号无发起院系审核权限')
+    void message.warning('当前账号无发起院系审核权限')
     return
   }
   const confirmed = await confirmAsync({
@@ -1634,7 +1631,7 @@ async function requestDepartmentReviewFromList(record: ArchiveVolumeResponse) {
   requestingDepartmentReviewVolumeId.value = record.volumeId
   try {
     await requestArchiveVolumeDepartmentReview({ volumeId: record.volumeId })
-    message.success('已发起院系审核')
+    void message.success('已发起院系审核')
     await loadVolumes()
   } catch (error) {
     showUserError(error, '发起院系审核失败')
@@ -1663,7 +1660,7 @@ async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
   if (withdrawingVolumeId.value) return
   // MVR-307：与行级 canWithdrawDepartmentReview 同源二次拦截
   if (record.canWithdrawDepartmentReview !== true) {
-    message.warning('当前账号无撤回院系审核权限')
+    void message.warning('当前账号无撤回院系审核权限')
     return
   }
   const confirmed = await confirmAsync({
@@ -1676,7 +1673,7 @@ async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
   withdrawingVolumeId.value = record.volumeId
   try {
     await withdrawArchiveVolumeDepartmentReview({ volumeId: record.volumeId })
-    message.success('已撤回院系审核，可继续补件')
+    void message.success('已撤回院系审核，可继续补件')
     await loadVolumes()
   } catch (error) {
     showUserError(error, '撤回院系审核失败')
@@ -1688,7 +1685,7 @@ async function withdrawDepartmentReviewFromList(record: ArchiveVolumeResponse) {
 function remindVolume(record: ArchiveVolumeResponse) {
   // MVR-319：与 shouldRemindVolume / BE requireDepartmentReviewApprovalPermission 二次拦截
   if (!shouldRemindVolume(record)) {
-    message.warning('当前账号不可催办该归档卷')
+    void message.warning('当前账号不可催办该归档卷')
     return
   }
   if (remindingVolumeId.value) {
@@ -1698,7 +1695,7 @@ function remindVolume(record: ArchiveVolumeResponse) {
     remindingVolumeId.value = record.volumeId
     try {
       await remindArchiveDue(record.volumeId)
-      message.success('催办通知已发送')
+      void message.success('催办通知已发送')
     } catch (error) {
       showUserError(error, '催办失败')
     } finally {
@@ -2055,7 +2052,6 @@ onMounted(async () => {
   color: var(--dp-color-warning);
   font-weight: 600;
 }
-
 
 :deep(.archive-volume-list__table) {
   .ant-table-tbody > tr.archive-volume-list__row--error > td {

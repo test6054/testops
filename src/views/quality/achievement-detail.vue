@@ -315,11 +315,11 @@ async function handleRecompute() {
   if (!record) return
   const computeKind = targetTypeToComputeKind[record.targetType]
   if (!computeKind) {
-    message.warning('当前目标类型不支持在此页重算')
+    void message.warning('当前目标类型不支持在此页重算')
     return
   }
   if (!record.trainingPlanId || !record.programId) {
-    message.warning('结果缺少培养方案或专业信息，无法重算')
+    void message.warning('结果缺少培养方案或专业信息，无法重算')
     return
   }
   recomputeLoading.value = true
@@ -332,7 +332,7 @@ async function handleRecompute() {
     }
     if (computeKind === 'COURSE_GOAL') {
       if (!record.qualityCourseId) {
-        message.warning('课程目标重算缺少关联课程')
+        void message.warning('课程目标重算缺少关联课程')
         return
       }
       await achievementApi.computeCourseGoal({
@@ -364,7 +364,7 @@ async function handleRecompute() {
     } else if (computeKind === 'COMPLEX_ENGINEERING') {
       await achievementApi.computeComplexEngineeringAggregate(base)
     }
-    message.success('重新计算完成')
+    void message.success('重新计算完成')
     await loadAll()
   } finally {
     recomputeLoading.value = false
@@ -584,7 +584,7 @@ function handleReviewPageChange(page: number, pageSize: number) {
 async function handleTransit(to: AchievementAuditStatusCode) {
   if (!result.value) return
   if (isResultStale(result.value)) {
-    message.warning('结果已过期，请先按最新成绩或配置重新计算')
+    void message.warning('结果已过期，请先按最新成绩或配置重新计算')
     return
   }
   const fromStatus = result.value.auditStatus
@@ -602,18 +602,18 @@ async function handleTransit(to: AchievementAuditStatusCode) {
     auditStatus: to,
     auditRemark: remark || undefined,
   })
-  message.success('流转成功')
+  void message.success('流转成功')
   await loadAll()
 }
 
 async function submitReview() {
   if (!result.value) return
   if (!canSubmitManualReview(result.value)) {
-    message.warning('当前审核状态不允许记录人工复核')
+    void message.warning('当前审核状态不允许记录人工复核')
     return
   }
   if (!reviewForm.decision.trim()) {
-    message.error('请选择复核决定')
+    void message.error('请选择复核决定')
     return
   }
   await achievementManualReviewApi.create({
@@ -621,7 +621,7 @@ async function submitReview() {
     decision: reviewForm.decision,
     reviewRemark: reviewForm.reviewRemark.trim() || undefined,
   })
-  message.success('已记录人工复核')
+  void message.success('已记录人工复核')
   reviewForm.reviewRemark = ''
   await loadAll()
 }
@@ -716,7 +716,7 @@ const reviewVisible = ref(false)
 function openReviewDrawer() {
   if (!result.value) return
   if (!canSubmitManualReview(result.value)) {
-    message.warning('当前审核状态不允许记录人工复核')
+    void message.warning('当前审核状态不允许记录人工复核')
     return
   }
   reviewVisible.value = true
@@ -1085,7 +1085,12 @@ onActivated(() => {
           />
         </UiFormItem>
         <UiFormItem label="复核备注">
-          <UiTextarea size="sm" v-model="reviewForm.reviewRemark" :rows="4" placeholder="复核备注" />
+          <UiTextarea
+            size="sm"
+            v-model="reviewForm.reviewRemark"
+            :rows="4"
+            placeholder="复核备注"
+          />
         </UiFormItem>
       </UiForm>
     </UiDrawer>

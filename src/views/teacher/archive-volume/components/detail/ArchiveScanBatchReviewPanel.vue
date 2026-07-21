@@ -23,7 +23,11 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserErrorMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -66,8 +70,7 @@ const columns: ColumnsType<ArchiveScanBatchSnapshotItemVO> = [
 ]
 
 const rowSelection = computed(() =>
-  props.canReview === true
-    ? {
+  props.canReview === true ? {
         selectedRowKeys: selectedRowKeys.value,
         onChange: (keys: Key[]) => {
           selectedRowKeys.value = keys.map(String)
@@ -106,7 +109,7 @@ async function loadRows() {
 function openBatchAction(action: 'confirm-normal' | 'discard') {
   // MVR-305：与 canReview 同源二次拦截
   if (props.canReview !== true) {
-    message.warning('当前账号无扫描批次复核权限')
+    void message.warning('当前账号无扫描批次复核权限')
     return
   }
   if (selectedRowKeys.value.length === 0) {
@@ -124,7 +127,7 @@ async function submitBatchAction() {
   }
   // MVR-305：与 canReview 同源二次拦截
   if (props.canReview !== true) {
-    message.warning('当前账号无扫描批次复核权限')
+    void message.warning('当前账号无扫描批次复核权限')
     return
   }
   const reason = actionReason.value.trim()
@@ -158,7 +161,7 @@ async function submitBatchAction() {
     } else {
       await batchDiscardArchiveScanBatches(payload)
     }
-    message.success(`${actionLabel.value}完成`)
+    void message.success(`${actionLabel.value}完成`)
     actionModalOpen.value = false
     actionReason.value = ''
     emit('refreshed')
@@ -182,7 +185,7 @@ onMounted(() => {
         仅展示质检标记为疑似混扫的已提交批次，可确认正常或作废对应卷内材料。
       </p>
     </template>
-    <template v-if="canReview === true" #toolbar>
+    <template v-if="canReview" #toolbar>
       <UiButton
         size="sm"
         variant="outline"

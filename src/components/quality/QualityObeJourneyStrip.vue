@@ -38,7 +38,7 @@ function goStep(step: ObeJourneyStepVO): void {
     PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName)
     && qualityStore.currentPlan?.confirmationStatus !== ConfirmationStatusCode.CONFIRMED
   ) {
-    message.warning('培养方案尚未确认。请先完成确认，再进入达成度结果与质量报告')
+    void message.warning('培养方案尚未确认。请先完成确认，再进入达成度结果与质量报告')
     void router.push(buildQualityPlanWorkbenchLocation(QUALITY_PLAN_GATE_REASON_UNCONFIRMED))
     return
   }

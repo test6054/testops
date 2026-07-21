@@ -41,10 +41,7 @@
       <SignalBand variant="panel" :metrics="reviewSignals" />
     </template>
 
-    <ExamSelectGateStrip
-      v-if="!examId"
-      body="请从考试列表进入工作台后再查看归档复盘"
-    />
+    <ExamSelectGateStrip v-if="!examId" body="请从考试列表进入工作台后再查看归档复盘" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -353,8 +350,8 @@ const lifecycleSteps = computed(() =>
 )
 
 /** MVR-268：优先 BE 能力位；缺省 false 失败关闭 */
-const canManageOwnerArchivePackageWrites = computed(() =>
-  review.value?.canManageOwnerArchivePackageWrites === true,
+const canManageOwnerArchivePackageWrites = computed(
+  () => review.value?.canManageOwnerArchivePackageWrites === true,
 )
 
 const canCreatePackage = computed(() => {
@@ -734,7 +731,9 @@ async function createPackage() {
       includeMarkedSlices: true,
       includeAnswerBooklet: true,
     })
-    message.success(result.reusedExistingDraft ? '已重新入队归档打包' : '已创建归档包并开始打包')
+    void message.success(
+      result.reusedExistingDraft ? '已重新入队归档打包' : '已创建归档包并开始打包',
+    )
     await loadReview()
   } catch (error) {
     showUserError(error, '创建归档包失败')
@@ -746,7 +745,7 @@ async function createPackage() {
 async function retryPackaging() {
   // MVR-424：与 showRetryPackagingAction / 按钮显隐同源二次闸（主考写∧双门禁开∧PACKAGING_FAILED）
   if (!showRetryPackagingAction.value) {
-    message.warning(
+    void message.warning(
       canManageOwnerArchivePackageWrites.value
         ? '当前不可重新打包（门禁未开或归档包非失败态）'
         : '当前账号无归档打包写权限',
@@ -759,7 +758,7 @@ async function retryPackaging() {
   packagingActionLoading.value = true
   try {
     await retryExamArchivePackaging(examId.value)
-    message.success('已重新入队归档打包')
+    void message.success('已重新入队归档打包')
     await loadReview()
   } catch (error) {
     showUserError(error, '重新打包失败')
@@ -816,13 +815,13 @@ async function retryAutoCreate() {
   }
   // MVR-313：与 showRetryAutoCreate / BE requireExamOwnerPermission 同源
   if (!showRetryAutoCreate.value) {
-    message.warning('当前不可重新触发自动建卷')
+    void message.warning('当前不可重新触发自动建卷')
     return
   }
   retrying.value = true
   try {
     await retryArchiveVolumeAutoCreate(examId.value)
-    message.success('已重新触发自动创建归档任务')
+    void message.success('已重新触发自动创建归档任务')
     await startAutoCreatePoll()
   } catch (error) {
     showUserError(error, '重新触发自动创建失败')

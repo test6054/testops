@@ -53,7 +53,11 @@ import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { isPortfolioCourseFrameworkCategoryCode } from '@/constants/portfolio-archive-category-codes'
 import { ResultCode } from '@/types/enums/result-code'
-import { readBusinessResultCode, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  readBusinessResultCode,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -159,13 +163,14 @@ const hasSensitiveRows = computed(() => rows.value.some((item) => item.riskLevel
 const showReviewActions = computed(() => Boolean(activeRow.value?.reviewActionAllowed))
 const activeAssociationBroken = computed(() => Boolean(activeRow.value?.associationBroken))
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
   return 'gray'
 }
-
 
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm,
@@ -253,14 +258,16 @@ async function bindActionTeacherAndAssert(
   teacherId: string | number | undefined | null,
   actionLabel: string,
 ): Promise<boolean> {
-  actionTeacherId.value = teacherId != null && String(teacherId).trim() !== ''
-    ? String(teacherId)
-    : undefined
+  actionTeacherId.value
+    = teacherId != null && String(teacherId).trim() !== '' ? String(teacherId) : undefined
   await reloadLifecycleState()
   return assertArchiveWritable(actionLabel)
 }
 
-async function assertTaskIdsArchiveWritable(taskIds: string[], actionLabel: string): Promise<boolean> {
+async function assertTaskIdsArchiveWritable(
+  taskIds: string[],
+  actionLabel: string,
+): Promise<boolean> {
   const teacherIds = new Set<string>()
   for (const id of taskIds) {
     const row = rows.value.find((item) => item.id === id)
@@ -543,9 +550,8 @@ function handleLogPageChange(event: { current: number, pageSize: number }) {
 }
 
 async function openDetail(row: PortfolioReviewTaskSummaryVO) {
-  actionTeacherId.value = row.teacherId != null && String(row.teacherId).trim() !== ''
-    ? String(row.teacherId)
-    : undefined
+  actionTeacherId.value
+    = row.teacherId != null && String(row.teacherId).trim() !== '' ? String(row.teacherId) : undefined
   void reloadLifecycleState()
 
   if (actionSubmitting.value || batchSubmitting.value || batchRejectSubmitting.value) {
@@ -636,7 +642,7 @@ async function handleApprove() {
       reviewTaskId: activeRow.value.id,
       opinion: approveOpinion.value.trim() || undefined,
     })
-    message.success('审核已通过')
+    void message.success('审核已通过')
     resetReviewDetailContext()
     await loadPage()
   } catch (error) {
@@ -668,7 +674,7 @@ async function handleReject() {
       reason: rejectReason.value.trim(),
       returnDeadline: returnDeadline.value.trim(),
     })
-    message.success('已退回修改')
+    void message.success('已退回修改')
     resetReviewDetailContext()
     await loadPage()
   } catch (error) {
@@ -706,7 +712,7 @@ async function handleDismiss() {
       reviewTaskId: activeRow.value.id,
       reason: dismissReason.value.trim(),
     })
-    message.success('已驳回')
+    void message.success('已驳回')
     resetReviewDetailContext()
     await loadPage()
   } catch (error) {
@@ -730,7 +736,7 @@ async function handleBatchApprove() {
   batchSubmitting.value = true
   try {
     const count = await portfolioReviewApi.batchApprove({ reviewTaskIds: selectedRowKeys.value })
-    message.success(`已批量通过 ${count} 条`)
+    void message.success(`已批量通过 ${count} 条`)
     selectedRowKeys.value = []
     await loadPage()
   } catch (error) {
@@ -762,7 +768,7 @@ async function handleBatchReject() {
       reason: batchRejectReason.value.trim(),
       returnDeadline: batchReturnDeadline.value.trim(),
     })
-    message.success(`已批量退回 ${count} 条`)
+    void message.success(`已批量退回 ${count} 条`)
     selectedRowKeys.value = []
     batchRejectReason.value = ''
     batchReturnDeadline.value = ''
@@ -802,7 +808,7 @@ async function handleEscalate() {
       reviewTaskId: activeRow.value.id,
       reason: escalateReason.value.trim(),
     })
-    message.success('已转复审')
+    void message.success('已转复审')
     resetReviewDetailContext()
     await loadPage()
   } catch (error) {
@@ -911,7 +917,8 @@ watch(
             selectedRowKeys = keys
           },
           getCheckboxProps: (record: PortfolioReviewTaskSummaryVO) => ({
-            disabled: reviewWriting || !record.batchApproveAllowed || Boolean(record.associationBroken),
+            disabled:
+              reviewWriting || !record.batchApproveAllowed || Boolean(record.associationBroken),
           }),
         }"
       >
@@ -944,7 +951,10 @@ watch(
             </UiTag>
           </template>
           <template v-else-if="column.key === 'associationBroken'">
-            <span v-if="record.associationBroken" :title="record.associationBrokenReason || '关联数据断裂'">
+            <span
+              v-if="record.associationBroken"
+              :title="record.associationBrokenReason || '关联数据断裂'"
+            >
               <UiTag tone="red">断裂</UiTag>
             </span>
             <UiTag v-else tone="green">正常</UiTag>
@@ -986,13 +996,15 @@ watch(
                 },
               ]"
               split
-              @action="(key) => {
-                if (key === 'masterpiece') {
-                  goTeacherPortfolioPage('/portfolio/teacher/masterpiece', record.teacherId)
-                  return
+              @action="
+                (key) => {
+                  if (key === 'masterpiece') {
+                    goTeacherPortfolioPage('/portfolio/teacher/masterpiece', record.teacherId)
+                    return
+                  }
+                  openDetail(record)
                 }
-                openDetail(record)
-              }"
+              "
             />
           </template>
         </template>
@@ -1081,7 +1093,10 @@ watch(
           <strong>关联数据断裂，禁止审核动作</strong>
           <p>{{ activeRow.associationBrokenReason || '档案/分类/教师关联缺失' }}</p>
         </div>
-        <div v-if="activeRow.lifecycleStatus && activeRow.lifecycleStatus !== 'ACTIVE'" class="review-lifecycle-hint">
+        <div
+          v-if="activeRow.lifecycleStatus && activeRow.lifecycleStatus !== 'ACTIVE'"
+          class="review-lifecycle-hint"
+        >
           教师生命周期：
           <UiTag :tone="lifecycleTagTone(activeRow)">
             {{ activeRow.lifecycleStatusLabel || activeRow.lifecycleStatus }}
@@ -1134,7 +1149,14 @@ watch(
             placeholder="通过意见（可选）"
           />
           <div class="review-actions__row">
-            <UiButton size="sm" variant="primary" :loading="actionSubmitting" @click="handleApprove"> 通过 </UiButton>
+            <UiButton
+              size="sm"
+              variant="primary"
+              :loading="actionSubmitting"
+              @click="handleApprove"
+            >
+              通过
+            </UiButton>
           </div>
           <template v-if="activeRow.escalateAllowed">
             <UiInput
@@ -1143,9 +1165,16 @@ watch(
               :disabled="reviewWriting"
               placeholder="转复审原因"
             />
-            <UiButton size="sm" :loading="actionSubmitting" @click="handleEscalate"> 转复审 </UiButton>
+            <UiButton size="sm" :loading="actionSubmitting" @click="handleEscalate">
+              转复审
+            </UiButton>
           </template>
-          <UiInput v-model="rejectReason" size="sm" :disabled="reviewWriting" placeholder="退回原因" />
+          <UiInput
+            v-model="rejectReason"
+            size="sm"
+            :disabled="reviewWriting"
+            placeholder="退回原因"
+          />
           <UiDatePicker
             v-model="returnDeadline"
             show-time
@@ -1155,8 +1184,15 @@ watch(
             :disabled="reviewWriting"
             style="width: 100%"
           />
-          <UiButton size="sm" :loading="actionSubmitting" @click="handleReject"> 退回修改 </UiButton>
-          <UiInput v-model="dismissReason" size="sm" :disabled="reviewWriting" placeholder="驳回依据" />
+          <UiButton size="sm" :loading="actionSubmitting" @click="handleReject">
+            退回修改
+          </UiButton>
+          <UiInput
+            v-model="dismissReason"
+            size="sm"
+            :disabled="reviewWriting"
+            placeholder="驳回依据"
+          />
           <UiButton size="sm" status="danger" :loading="actionSubmitting" @click="handleDismiss">
             驳回
           </UiButton>

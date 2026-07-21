@@ -266,7 +266,7 @@ async function saveCohortProfile() {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
       return
     }
-    message.success('画像对标主数据已保存')
+    void message.success('画像对标主数据已保存')
   } catch (error) {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
       return
@@ -462,7 +462,7 @@ async function saveCvRecord() {
     }
     cvModalOpen.value = false
     resetCvEditor()
-    message.success('履历记录已保存')
+    void message.success('履历记录已保存')
     await loadCvRecords()
   } catch (error) {
     if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
@@ -518,7 +518,7 @@ async function handleCvAction(key: string, kind: CvKind, row: CvRecord) {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
       return
     }
-    message.success('履历记录已删除')
+    void message.success('履历记录已删除')
     await loadCvRecords()
   } catch (error) {
     if (requestToken.value === scopeToken && targetTeacherId.value === teacherId) {
@@ -556,7 +556,7 @@ async function saveProfile() {
       researchDirection: profileForm.researchDirection.trim() || undefined,
       teachingGroupName: profileForm.teachingGroupName.trim() || undefined,
     })
-    message.success('个人资料已保存')
+    void message.success('个人资料已保存')
     await loadProfile()
   } catch (error) {
     showUserError(error, '保存个人资料失败')
@@ -605,7 +605,7 @@ async function saveCourse() {
       totalHours: courseForm.totalHours,
       studentCount: courseForm.studentCount,
     })
-    message.success('讲授课程已保存')
+    void message.success('讲授课程已保存')
     courseModalOpen.value = false
     await loadCourses()
   } catch (error) {
@@ -640,7 +640,7 @@ async function removeCourse(row: PortfolioTeacherTaughtCourseVO) {
   try {
     await portfolioTeacherProfileApi.deleteTaughtCourse({ id: row.id })
     if (courseRequestToken.value !== operationToken) return
-    message.success('已删除')
+    void message.success('已删除')
     await loadCourses()
   } catch (error) {
     if (courseRequestToken.value !== operationToken) return
@@ -726,17 +726,11 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
           class="profile-status-band"
           role="status"
         >
-          <UiTag
-            v-if="profile?.lifecycleStatus"
-            :tone="lifecycleTagTone(profile.lifecycleStatus)"
-          >
+          <UiTag v-if="profile?.lifecycleStatus" :tone="lifecycleTagTone(profile.lifecycleStatus)">
             {{ profile.lifecycleStatusLabel || profile.lifecycleStatus }}
           </UiTag>
           <UiTag v-if="profile?.evaluationHeld" tone="orange">参评 hold</UiTag>
-          <UiTag
-            v-if="profile?.countsInCurrentFacultyStructure === false"
-            tone="gray"
-          >
+          <UiTag v-if="profile?.countsInCurrentFacultyStructure === false" tone="gray">
             非当前在岗
           </UiTag>
           <PortfolioOwnerIdentityLayersCell

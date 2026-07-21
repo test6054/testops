@@ -91,7 +91,9 @@
               </div>
             </template>
             <template v-else>
-              <UiButton size="sm" variant="primary" @click="startApprove(record.accessRecordId)">批准</UiButton>
+              <UiButton size="sm" variant="primary" @click="startApprove(record.accessRecordId)">
+                批准
+              </UiButton>
               <UiButton size="sm" variant="outline" @click="startReject(record.accessRecordId)">
                 拒绝
               </UiButton>
@@ -153,8 +155,7 @@ function canApprove(record: ArchiveVolumeAccessRecordResponse): boolean {
 async function loadRecords(): Promise<void> {
   loading.value = true
   try {
-    const result = await listPendingArchiveAccessRecords()
-    records.value = result
+    records.value = await listPendingArchiveAccessRecords()
     loadFailed.value = false
   } catch (error) {
     loadFailed.value = true
@@ -211,7 +212,7 @@ async function submitApprove(accessRecordId: string): Promise<void> {
   // MVR-310：写 handler 二次拦截，与行级 canApprove / BE requireAccessApprover 对齐
   const target = records.value.find((item) => item.accessRecordId === accessRecordId)
   if (!target || !canApprove(target)) {
-    message.warning('当前账号无批准查阅权限')
+    void message.warning('当前账号无批准查阅权限')
     return
   }
   submitting.value = true
@@ -220,7 +221,7 @@ async function submitApprove(accessRecordId: string): Promise<void> {
       accessRecordId,
       decisionComment: approveComment.value.trim() || undefined,
     })
-    message.success('已批准查阅')
+    void message.success('已批准查阅')
     cancelApprove()
     await loadRecords()
   } catch (error) {
@@ -239,7 +240,7 @@ async function submitReject(accessRecordId: string): Promise<void> {
   // MVR-310：写 handler 二次拦截，与行级 canApprove / BE requireAccessApprover 对齐
   const target = records.value.find((item) => item.accessRecordId === accessRecordId)
   if (!target || !canApprove(target)) {
-    message.warning('当前账号无驳回查阅权限')
+    void message.warning('当前账号无驳回查阅权限')
     return
   }
   submitting.value = true
@@ -248,7 +249,7 @@ async function submitReject(accessRecordId: string): Promise<void> {
       accessRecordId,
       decisionComment: rejectComment.value.trim(),
     })
-    message.success('已驳回查阅')
+    void message.success('已驳回查阅')
     cancelReject()
     await loadRecords()
   } catch (error) {

@@ -39,15 +39,13 @@ import { PortfolioTodoTypeCode } from '@/types/enums/portfolio-todo-type-enum'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const router = useRouter()
 const { targetTeacherId, canPickTeachers, currentUserId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 const loading = ref(false)
 const portrait = ref<PortfolioTeacherPortraitVO | null>(null)
@@ -145,9 +143,7 @@ async function loadSkipPromptState(requestToken: number) {
 }
 
 function goOnboarding() {
-  const query = targetTeacherId.value
-    ? { teacherId: targetTeacherId.value }
-    : undefined
+  const query = targetTeacherId.value ? { teacherId: targetTeacherId.value } : undefined
   void router.push({ path: '/portfolio/teacher/onboarding', query })
 }
 
@@ -396,7 +392,7 @@ async function acknowledgeRejectedCorrection(item: PortfolioTodoSummaryVO) {
   acknowledgingTodoKey.value = operationKey
   try {
     await portfolioTodoApi.completeTodo({ todoType: item.todoType, refId: item.refId })
-    message.success('已确认知悉')
+    void message.success('已确认知悉')
     await Promise.all([loadTodos(), loadWorkbenchSummary()])
   } catch (error) {
     showUserError(error, '确认待办失败')
@@ -480,7 +476,7 @@ function handleCockpitMetricClick(key: string, context?: { academicYear?: string
           openTodo(gapTodo)
           return
         }
-        message.info('暂无补采待办')
+        void message.info('暂无补采待办')
       } catch (error) {
         showUserError(error, '加载补采待办失败')
       }
@@ -590,7 +586,6 @@ function goDualTeacherApply() {
     query: targetTeacherId.value ? { teacherId: targetTeacherId.value } : {},
   })
 }
-
 
 function goOneTable() {
   void router.push({
@@ -762,25 +757,11 @@ onUnmounted(() => {
                     {{ workbenchSummary.honorTotalCount ?? 0 }} · 拓展
                     {{ workbenchSummary.extensionActivityTotalCount ?? 0 }}
                   </p>
-                  <div
-                    v-if="workbenchSummary.ownerIdentityLayers?.length"
-                    class="teacher-home__meta flex flex-wrap gap-1"
-                  >
-                    <UiTag
-                      v-for="(layer, idx) in workbenchSummary.ownerIdentityLayers"
-                      :key="`wb-id-${layer.identityType}-${idx}`"
-                      size="sm"
-                      :tone="layer.externalIdentity ? 'orange' : 'blue'"
-                    >
-                      {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-                    </UiTag>
-                  </div>
-                  <p
-                    v-if="workbenchSummary.ownerMultiIdentityNote"
-                    class="teacher-home__meta"
-                  >
-                    {{ workbenchSummary.ownerMultiIdentityNote }}
-                  </p>
+                  <PortfolioOwnerIdentityLayersCell
+                    :layers="workbenchSummary.ownerIdentityLayers"
+                    :note="workbenchSummary.ownerMultiIdentityNote"
+                    show-note
+                  />
                   <p
                     v-if="(workbenchSummary.courseArchiveTaughtCourseCount ?? 0) > 0"
                     class="teacher-home__meta teacher-home__meta--link"
@@ -801,7 +782,11 @@ onUnmounted(() => {
                     数据不足，请先完成建档
                   </p>
                 </template>
-                <UiEmpty size="sm" v-else-if="!workbenchSummaryLoading" description="尚未生成档案完整度" />
+                <UiEmpty
+                  size="sm"
+                  v-else-if="!workbenchSummaryLoading"
+                  description="尚未生成档案完整度"
+                />
               </section>
               <section class="teacher-home__status-block">
                 <template v-if="portrait">
@@ -819,7 +804,11 @@ onUnmounted(() => {
                     画像数据不足，请先完成建档
                   </p>
                 </template>
-                <UiEmpty v-else-if="portraitAbsent && !loading" size="sm" description="尚未生成画像快照" />
+                <UiEmpty
+                  v-else-if="portraitAbsent && !loading"
+                  size="sm"
+                  description="尚未生成画像快照"
+                />
                 <UiButton
                   v-if="portrait || portraitAbsent"
                   class="teacher-home__portrait-link"
@@ -861,14 +850,18 @@ onUnmounted(() => {
               <span class="teacher-home__more-label">发展与认定</span>
               <div class="teacher-home__more-actions">
                 <UiButton size="sm" variant="ghost" @click="goPromotionScene">职称材料包</UiButton>
-                <UiButton size="sm" variant="ghost" @click="goDualTeacherApply">资格与认定</UiButton>
+                <UiButton size="sm" variant="ghost" @click="goDualTeacherApply">
+                  资格与认定
+                </UiButton>
                 <UiButton size="sm" variant="ghost" @click="goOneTable">教师一张表</UiButton>
               </div>
             </li>
             <li>
               <span class="teacher-home__more-label">维护</span>
               <div class="teacher-home__more-actions">
-                <UiButton size="sm" variant="ghost" :loading="loading" @click="reloadHomeData">刷新数据</UiButton>
+                <UiButton size="sm" variant="ghost" :loading="loading" @click="reloadHomeData">
+                  刷新数据
+                </UiButton>
               </div>
             </li>
             <li>
@@ -921,7 +914,8 @@ onUnmounted(() => {
                 <p v-if="item.dueTime" class="teacher-home__meta">截止 {{ item.dueTime }}</p>
                 <UiButton
                   v-if="
-                    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED && canManageOwnPrivacy
+                    item.todoType === PortfolioTodoTypeCode.CORRECTION_REJECTED
+                      && canManageOwnPrivacy
                   "
                   size="sm"
                   variant="soft"

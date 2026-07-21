@@ -152,7 +152,7 @@ async function stageFile(file: File): Promise<void> {
     fileName.value = staged.fileName
     fileSize.value = staged.fileSize
   } catch (error) {
-    message.error(getUserErrorMessage(error, '文件上传失败'))
+    void message.error(getUserErrorMessage(error, '文件上传失败'))
     throw error
   } finally {
     uploading.value = false
@@ -180,7 +180,7 @@ async function onFileChange(event: Event) {
 }
 
 const beforeUpload: UploadProps['beforeUpload'] = () => {
-  return !(props.disabled || uploading.value);
+  return !(props.disabled || uploading.value)
 }
 
 async function customRequest(options: UploadRequestOption): Promise<void> {

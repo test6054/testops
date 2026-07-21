@@ -367,7 +367,7 @@ function openCreate() {
 
 async function openEdit(record: ReportVO) {
   if (!canEditReport(record.status)) {
-    message.error('当前状态不允许编辑报告')
+    void message.error('当前状态不允许编辑报告')
     return
   }
   editorMode.value = 'edit'
@@ -396,36 +396,36 @@ async function submitEditor() {
   if (editorMode.value === 'edit' && editor.id) {
     const current = list.value.find((item) => item.id === editor.id)
     if (current && !canEditReport(current.status)) {
-      message.error('当前状态不允许编辑报告')
+      void message.error('当前状态不允许编辑报告')
       return
     }
   }
   if (!editor.title.trim()) {
-    message.error('请填写报告标题')
+    void message.error('请填写报告标题')
     return
   }
   if (!editor.programId) {
-    message.error('请选择报告所属专业')
+    void message.error('请选择报告所属专业')
     return
   }
   if (editor.reportType === ReportTypeCode.COURSE_ACHIEVEMENT && !editor.qualityCourseId) {
-    message.error('课程目标达成情况评价报告必须关联质量评价课程')
+    void message.error('课程目标达成情况评价报告必须关联质量评价课程')
     return
   }
   if (editor.reportType === ReportTypeCode.PROGRAM_QUALITY) {
     if (!editor.trainingPlanId) {
-      message.error('专业质量分析报告必须关联培养方案')
+      void message.error('专业质量分析报告必须关联培养方案')
       return
     }
     if (editor.qualityCourseId) {
-      message.error('专业质量分析报告不能关联单门质量评价课程')
+      void message.error('专业质量分析报告不能关联单门质量评价课程')
       return
     }
   }
   const semester = editor.semester
   const selectedSemester = ALL_SEMESTER_CODES.find((code) => code === semester)
   if (!editor.schoolYear || !selectedSemester) {
-    message.error('请填写学年与学期')
+    void message.error('请填写学年与学期')
     return
   }
   submitting.value = true
@@ -444,10 +444,10 @@ async function submitEditor() {
     }
     if (editorMode.value === 'create') {
       await reportApi.create(request)
-      message.success('已创建报告草稿')
+      void message.success('已创建报告草稿')
     } else {
       await reportApi.update(request)
-      message.success('已保存修改')
+      void message.success('已保存修改')
     }
     editorVisible.value = false
     await loadList()
@@ -478,7 +478,7 @@ async function handleTransit(record: ReportVO, to: ReportStatusCode) {
     if (!ok) return
   }
   await reportApi.transitStatus({ id: record.id, targetStatus: to })
-  message.success('流转成功')
+  void message.success('流转成功')
   await loadList()
 }
 
@@ -515,7 +515,7 @@ async function pollExportStatus(id: string) {
       const title = reportTitle(detail)
       const exportStatus = detail.exportStatus
       if (exportStatus === ReportExportStatusCode.COMPLETED) {
-        message.success(`${title} 三格式导出完成`)
+        void message.success(`${title} 三格式导出完成`)
         return
       }
       if (exportStatus === ReportExportStatusCode.FAILED) {
@@ -530,7 +530,7 @@ async function pollExportStatus(id: string) {
         return
       }
     }
-    message.warning(
+    void message.warning(
       `报告导出已超过 ${(EXPORT_POLL_INTERVAL_MS * EXPORT_POLL_MAX_ATTEMPTS) / 60_000} 分钟未完成，已停止轮询；请手工刷新列表查看最新状态。`,
     )
   } finally {
@@ -551,7 +551,7 @@ async function handleExport(record: ReportVO) {
     currentExport === ReportExportStatusCode.PENDING
     || currentExport === ReportExportStatusCode.PROCESSING
   ) {
-    message.info(
+    void message.info(
       `${reportTitle(record)}当前处于「${exportStatusLabel(currentExport)}」，请等待完成`,
     )
     if (!pollingExportIds.value.has(record.id)) void pollExportStatus(record.id)
@@ -563,7 +563,7 @@ async function handleExport(record: ReportVO) {
     type: 'info',
     onOk: async () => {
       await reportApi.export(record.id)
-      message.success('已触发异步导出，后台生成中')
+      void message.success('已触发异步导出，后台生成中')
       // 立即把本行标为 PENDING，UI 先展示「待导出」徽标，避免等 5s 才感知
       const idx = list.value.findIndex((item) => item.id === record.id)
       if (idx >= 0) {
@@ -594,7 +594,7 @@ async function downloadReportExportFile(record: ReportVO, kind: 'word' | 'pdf' |
   const fileId
     = kind === 'word' ? record.wordFileId : kind === 'pdf' ? record.pdfFileId : record.excelFileId
   if (!fileId) {
-    message.warning('该格式文件尚未生成')
+    void message.warning('该格式文件尚未生成')
     return
   }
   const suffix = kind === 'word' ? 'docx' : kind === 'pdf' ? 'pdf' : 'xlsx'
@@ -606,7 +606,7 @@ async function downloadReportExportFile(record: ReportVO, kind: 'word' | 'pdf' |
 
 async function handleDelete(record: ReportVO) {
   if (record.status !== ReportStatusCode.DRAFT) {
-    message.warning('只能删除草稿状态的报告')
+    void message.warning('只能删除草稿状态的报告')
     return
   }
   void confirmAsync({
@@ -614,7 +614,7 @@ async function handleDelete(record: ReportVO) {
     type: 'error',
     onOk: async () => {
       await reportApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadList()
     },
   })
@@ -915,11 +915,7 @@ onBeforeUnmount(() => {
       </QualityPageContextBar>
     </template>
 
-    <QualityPlanGateStrip
-      v-if="planGateMode"
-      :mode="planGateMode"
-      class="report__empty"
-    />
+    <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="report__empty" />
 
     <template v-else>
       <StageRail :stages="stages" compact class="report__stages" />
@@ -1140,9 +1136,7 @@ onBeforeUnmount(() => {
           <UiRow :gutter="12">
             <UiCol :span="6">
               <UiFormItem label="学年" required>
-                <UiInput
-                  size="sm" v-model="editor.schoolYear" :disabled="editorMode === 'edit'"
-                />
+                <UiInput size="sm" v-model="editor.schoolYear" :disabled="editorMode === 'edit'" />
               </UiFormItem>
             </UiCol>
             <UiCol :span="6">
@@ -1170,11 +1164,7 @@ onBeforeUnmount(() => {
       </UiDrawer>
 
       <UiDrawer v-model:open="detailVisible" title="报告详情" :width="760" :hide-footer="true">
-        <UiEmpty
-          v-if="!detailRecord && !detailLoading"
-          description="未加载到报告详情"
-          size="sm"
-        />
+        <UiEmpty v-if="!detailRecord && !detailLoading" description="未加载到报告详情" size="sm" />
         <UiDescriptions v-if="detailRecord" :column="2" size="small" bordered>
           <UiDescriptionsItem label="类型">
             {{ reportTypeLabel(detailRecord.reportType) }}
@@ -1243,11 +1233,7 @@ onBeforeUnmount(() => {
           <UiDescriptionsItem v-if="detailRecord.exportFinishedTime" label="导出结束">
             {{ detailRecord.exportFinishedTime }}
           </UiDescriptionsItem>
-          <UiDescriptionsItem
-            v-if="detailRecord.exportErrorMessage"
-            label="导出处理说明"
-            :span="2"
-          >
+          <UiDescriptionsItem v-if="detailRecord.exportErrorMessage" label="导出处理说明" :span="2">
             <span class="report__export-error">
               {{ reportExportFailureMessage(detailRecord.exportErrorMessage) }}
             </span>

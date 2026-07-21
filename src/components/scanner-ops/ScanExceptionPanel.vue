@@ -503,18 +503,17 @@ function buildExceptionRowActions(row: ExceptionDashboardRow): UiTableRowActionI
   if (canForceReleaseTicket(row)) {
     actions.push({ key: 'force-release', label: '强制解锁', tone: 'danger' })
   }
-  const primaryKey
-    = actions.some((item) => item.key === 'goto-handle' && item.label === '手工绑定')
-      ? 'goto-handle'
-      : actions.some((item) => item.key === 'retry-register')
-        ? 'retry-register'
-        : actions.some((item) => item.key === 'goto-handle')
-          ? 'goto-handle'
-          : actions.some((item) => item.key === 'view-dispatch')
-            ? 'view-dispatch'
-            : actions.some((item) => item.key === 'ignore-partial-tail')
-              ? 'ignore-partial-tail'
-              : undefined
+  const primaryKey = actions.some((item) => item.key === 'goto-handle' && item.label === '手工绑定')
+    ? 'goto-handle'
+    : actions.some((item) => item.key === 'retry-register')
+      ? 'retry-register'
+      : actions.some((item) => item.key === 'goto-handle')
+        ? 'goto-handle'
+        : actions.some((item) => item.key === 'view-dispatch')
+          ? 'view-dispatch'
+          : actions.some((item) => item.key === 'ignore-partial-tail')
+            ? 'ignore-partial-tail'
+            : undefined
   return actions.map((action) =>
     action.key === primaryKey && action.tone !== 'danger'
       ? { ...action, tone: 'primary' as const }
@@ -635,7 +634,7 @@ async function dismissPartialTail(row: ExceptionDashboardRow) {
   }
   // MVR-307：与 canManageOwnerExamWrites / 行动作展示闸同源
   if (row.canManageOwnerExamWrites !== true) {
-    message.warning('仅本场主考可忽略余页异常')
+    void message.warning('仅本场主考可忽略余页异常')
     return
   }
   if (partialTailDismissingKey.value) {
@@ -652,11 +651,11 @@ async function dismissPartialTail(row: ExceptionDashboardRow) {
           examId: row.examId!,
           scanBatchId: row.scanBatchId!,
         })
-        message.success('已忽略余页异常')
+        void message.success('已忽略余页异常')
         await reloadAll()
         emit('metrics-changed')
       } catch (error) {
-        message.error(error instanceof Error ? error.message : '忽略余页异常失败')
+        void message.error(error instanceof Error ? error.message : '忽略余页异常失败')
       } finally {
         partialTailDismissingKey.value = null
       }
@@ -674,7 +673,7 @@ async function retryPageRegister(row: ExceptionDashboardRow) {
   }
   // MVR-307：与 canRetryPageRegisterRow / canManageOwnerExamWrites 同源
   if (!canRetryPageRegisterRow(row)) {
-    message.warning('仅本场主考可重试页登记')
+    void message.warning('仅本场主考可重试页登记')
     return
   }
   if (pageRegisterRetryingKey.value) {
@@ -687,14 +686,14 @@ async function retryPageRegister(row: ExceptionDashboardRow) {
       scanBatchId: row.scanBatchId,
     })
     if (response.pageRegisterBlocked) {
-      message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
+      void message.warning(response.pageRegisterDiagnostic ?? '页登记仍被阻断')
     } else {
-      message.success('页登记重试成功')
+      void message.success('页登记重试成功')
     }
     await reloadAll()
     emit('metrics-changed')
   } catch (error) {
-    message.error(error instanceof Error ? error.message : '页登记重试失败')
+    void message.error(error instanceof Error ? error.message : '页登记重试失败')
   } finally {
     pageRegisterRetryingKey.value = null
   }

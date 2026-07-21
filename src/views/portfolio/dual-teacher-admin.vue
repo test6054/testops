@@ -35,6 +35,7 @@ import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const authStore = useAuthStore()
 const userStore = useUserStore()
@@ -55,11 +56,7 @@ const {
 /** 退回/驳回意见弹窗：负向决策必须填写意见后提交 */
 const opinionModal = reactive({
   open: false,
-  action: '' as
-  | 'collegeReturn'
-  | 'academicReturn'
-  | 'academicReject'
-  | '',
+  action: '' as 'collegeReturn' | 'academicReturn' | 'academicReject' | '',
   id: '',
   title: '',
   opinion: '',
@@ -95,32 +92,33 @@ const highlightedApplicationId = ref('')
 const pendingLocateApplicationId = ref(
   typeof route.query.applicationId === 'string' ? route.query.applicationId.trim() : '',
 )
-const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange } = useQueryTable(
-  (params) =>
-    portfolioDualTeacherApi.page({
-      ...params,
-      locateApplicationId: pendingLocateApplicationId.value || undefined,
-    }),
-  {
-    onLoaded: (loadedRows) => {
-      const locateOnce = pendingLocateApplicationId.value
-      pendingLocateApplicationId.value = ''
-      if (!locateOnce) {
-        return
-      }
-      highlightedApplicationId.value = locateOnce
-      if (!loadedRows.some((item) => item.id === locateOnce)) {
-        return
-      }
-      void nextTick(() => {
-        document.querySelector('.dual-teacher-admin__row-active')?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
+const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handlePageChange }
+  = useQueryTable(
+    (params) =>
+      portfolioDualTeacherApi.page({
+        ...params,
+        locateApplicationId: pendingLocateApplicationId.value || undefined,
+      }),
+    {
+      onLoaded: (loadedRows) => {
+        const locateOnce = pendingLocateApplicationId.value
+        pendingLocateApplicationId.value = ''
+        if (!locateOnce) {
+          return
+        }
+        highlightedApplicationId.value = locateOnce
+        if (!loadedRows.some((item) => item.id === locateOnce)) {
+          return
+        }
+        void nextTick(() => {
+          document.querySelector('.dual-teacher-admin__row-active')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          })
         })
-      })
+      },
     },
-  },
-)
+  )
 
 function dualTeacherRowClassName(record: PortfolioDualTeacherApplicationVO): string {
   return record.id === highlightedApplicationId.value ? 'dual-teacher-admin__row-active' : ''
@@ -145,7 +143,9 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 260 },
 ]
 
-function lifecycleTagTone(record: PortfolioDualTeacherApplicationVO): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(
+  record: PortfolioDualTeacherApplicationVO,
+): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -360,7 +360,7 @@ async function runWorkflow(
       await portfolioDualTeacherApi.academicReject({ id, auditOpinion })
     }
     collegeEligibilityById.value = {}
-    message.success('操作成功')
+    void message.success('操作成功')
     await loadPage()
   } catch (error) {
     showUserError(error, '双师认定流程操作失败')
@@ -377,7 +377,7 @@ async function exportRoster() {
   try {
     const result = await portfolioDualTeacherApi.exportRoster()
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条`)
+    void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出双师认定名册失败')
   } finally {
@@ -460,22 +460,15 @@ async function handleImportSuccess() {
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
-            
+
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'identityLayers'">
-            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-              <UiTag
-                v-for="(layer, idx) in record.ownerIdentityLayers"
-                :key="`${record.id}-${layer.identityType}-${idx}`"
-                size="sm"
-                :tone="layer.externalIdentity ? 'orange' : 'blue'"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-            </div>
-            <span v-else>—</span>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+            />
           </template>
           <template v-else-if="column.key === 'countsInCurrentFacultyStructure'">
             <span>{{
@@ -487,7 +480,7 @@ async function handleImportSuccess() {
             }}</span>
           </template>
           <template v-else-if="column.key === 'eligibilityFreeze'">
-            <UiTag v-if="record.eligibilityFreeze?.eligible === true" tone="green">
+            <UiTag v-if="record.eligibilityFreeze?.eligible" tone="green">
               已冻结·满足
             </UiTag>
             <UiTag v-else-if="record.eligibilityFreeze?.eligible === false" tone="orange">

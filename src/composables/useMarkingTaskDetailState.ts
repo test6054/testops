@@ -70,7 +70,11 @@ import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useTenantStore } from '@/stores/modules/tenant'
 import { ExamStatusCode } from '@/types/enums/exam-status-enum'
 import { PaperInstanceDisplayModeCode } from '@/types/enums/paper-instance-display-mode-enum'
-import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserErrorMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -398,7 +402,7 @@ export function useMarkingTaskDetailState() {
     goToTask: navigation.goToTask,
     submit: async () => {
       if (taskRecycledBlocked.value) {
-        message.warning('该任务已被组长回收，当前批阅将无法提交')
+        void message.warning('该任务已被组长回收，当前批阅将无法提交')
         return
       }
       await submitCtx.submit()
@@ -670,7 +674,8 @@ export function useMarkingTaskDetailState() {
 
   const canRescoreQuestionView = computed(() => {
     // MVR-410：智能复评与给分同源，关考/回收后只读
-    if (isScoreReadOnly.value || submitCtx.submitting.value || rescoringGradeResultId.value) return false
+    if (isScoreReadOnly.value || submitCtx.submitting.value || rescoringGradeResultId.value)
+      return false
     return !!questionView.value?.gradeResultId && !!task.value?.examId
   })
 
@@ -703,9 +708,9 @@ export function useMarkingTaskDetailState() {
       const result = await rescoreQuestionByAi({ examId, gradeResultId })
       syncExperienceAssistMetaFromAudit(result.referenceExperienceAudit)
       if (Boolean(result.scored) && result.aiScore != null) {
-        message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
+        void message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
       } else {
-        message.warning(aiRescoreDiagnosticText(result.diagnostic))
+        void message.warning(aiRescoreDiagnosticText(result.diagnostic))
       }
       await refresh()
       if (executionsDrawerOpen.value && executionsGradeResultId.value === gradeResultId) {
@@ -874,7 +879,7 @@ export function useMarkingTaskDetailState() {
   function focusWholeQuestionPage(question: QuestionMarkingGroupQuestionResponse): void {
     const pageIndex = wholePages.value.findIndex((page) => page.pageId === question.pageId)
     if (pageIndex < 0) {
-      message.error(`第 ${question.questionNo} 题未找到对应答题页`)
+      void message.error(`第 ${question.questionNo} 题未找到对应答题页`)
       return
     }
     scrollToWholePage(pageIndex)
@@ -887,7 +892,7 @@ export function useMarkingTaskDetailState() {
     if (!question) return
     const questionForm = getWholeQuestionForm(question.layoutQuestionId)
     if (questionForm.score === undefined || questionForm.score === null) {
-      message.warning(`请先填写第 ${question.questionNo} 题给分`)
+      void message.warning(`请先填写第 ${question.questionNo} 题给分`)
       return
     }
     if (questionIndex < wholeQuestions.value.length - 1) {
@@ -905,7 +910,7 @@ export function useMarkingTaskDetailState() {
       return
     }
     getWholeQuestionForm(question.layoutQuestionId).score = question.aiScore
-    message.success(`已填入第 ${question.questionNo} 题智能建议分`)
+    void message.success(`已填入第 ${question.questionNo} 题智能建议分`)
   }
 
   async function acceptWholeQuestionAiScore(
@@ -916,14 +921,16 @@ export function useMarkingTaskDetailState() {
     // MVR-413：与 canSubmit / isScoreReadOnly 二次闸；末题提交依赖 submit 内闸
     if (isScoreReadOnly.value || !canSubmit.value) {
       showFormValidationMessage(
-        isScoreReadOnly.value ? '当前不可给分（已定稿/已回收或考试已关闭）' : '当前任务状态不可提交给分',
+        isScoreReadOnly.value
+          ? '当前不可给分（已定稿/已回收或考试已关闭）'
+          : '当前任务状态不可提交给分',
       )
       return
     }
     getWholeQuestionForm(question.layoutQuestionId).score = question.aiScore
     if (questionIndex < wholeQuestions.value.length - 1) {
       focusWholeQuestionScoreInput(questionIndex + 1)
-      message.success(`已采纳第 ${question.questionNo} 题智能分`)
+      void message.success(`已采纳第 ${question.questionNo} 题智能分`)
       return
     }
     await submitCtx.submit()
@@ -955,7 +962,7 @@ export function useMarkingTaskDetailState() {
 
   function openRevealDialog(): void {
     // MVR-375：与 BE canManageOwnerIdentityReveal 二次拦截，禁止仅入口隐藏
-    if (canManageOwnerIdentityReveal.value !== true) {
+    if (!canManageOwnerIdentityReveal.value) {
       showFormValidationMessage('当前账号无解匿名权限')
       return
     }

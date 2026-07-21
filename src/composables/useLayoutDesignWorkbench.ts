@@ -168,7 +168,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     if (detecting.value) {
       return true
     }
-    if (layoutWritable.value === true) {
+    if (layoutWritable.value) {
       if (!document.value) {
         return true
       }
@@ -279,7 +279,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
         focusedQuestionId.value = document.value.questions?.[0]?.id ?? null
         focusedBlockId.value = null
         currentPageNo.value = document.value.pages[0].pageNo
-        message.success('题目识别与划区已完成并自动保存草稿，请核对 ROI 后配置身份填涂区')
+        void message.success('题目识别与划区已完成并自动保存草稿，请核对 ROI 后配置身份填涂区')
         await navigatePhase(LayoutDesignPhaseCode.QUESTIONS)
         await options.workbenchContext?.refreshChrome?.()
         return
@@ -290,7 +290,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       }
       if (taskStatus === ExamLayoutDetectTaskStatusCode.CANCELLED) {
         if (session === detectSessionSeq) {
-          message.info('识别任务已结束，未保存本次识别结果，可重新上传源文件并识别')
+          void message.info('识别任务已结束，未保存本次识别结果，可重新上传源文件并识别')
           await reload()
         }
         return
@@ -338,8 +338,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       return false
     }
     const res = await loadExamLayoutDesign({ examId })
-    // MVR-384：仅认 BE loadExamLayoutDesign.writable===true；禁止 truthy 放行
-    layoutWritable.value = res.writable === true
+    // MVR-384：layoutWritable 承接 BE loadExamLayoutDesign.writable（合同 boolean）
+    layoutWritable.value = res.writable
     writeLockReason.value = res.writeLockReason
     detectPollingPolicy.value = res.detectPollingPolicy
     const detectTaskId = res.activeDetect?.detectTaskId
@@ -377,8 +377,8 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     loading.value = true
     try {
       const res = await loadExamLayoutDesign({ examId })
-      // MVR-384：仅认 BE writable===true
-      layoutWritable.value = res.writable === true
+      // MVR-384：layoutWritable 承接 BE writable（合同 boolean）
+      layoutWritable.value = res.writable
       writeLockReason.value = res.writeLockReason
       detectPollingPolicy.value = res.detectPollingPolicy
       if (res.document) {
@@ -444,7 +444,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
         document: { ...document.value, examId },
       })
       layoutPersisted.value = true
-      message.success('制卷设计已保存')
+      void message.success('制卷设计已保存')
       await options.workbenchContext?.refreshChrome?.()
       return true
     } catch (error) {
@@ -465,7 +465,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       return
     }
     // MVR-411：可写预览须本地 document + 保存校验；只读预览不传 document
-    const writablePreview = layoutWritable.value === true
+    const writablePreview = layoutWritable.value
     if (writablePreview) {
       if (!document.value) {
         return
@@ -516,7 +516,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       if (document.value.pages?.length) {
         currentPageNo.value = document.value.pages[0].pageNo
       }
-      message.success('标准答题卡已生成')
+      void message.success('标准答题卡已生成')
       await navigatePhase(LayoutDesignPhaseCode.LAYOUT)
       await options.workbenchContext?.refreshChrome?.()
     } catch (error) {
@@ -558,7 +558,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
         return
       }
       if (isLayoutDetectInFlightConflict(error)) {
-        message.info('识别任务仍在进行，已切换为查看识别进度')
+        void message.info('识别任务仍在进行，已切换为查看识别进度')
         conflictResumed = await tryResumeDetectOnInFlightConflict(session)
         if (conflictResumed) {
           return
@@ -579,7 +579,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
     // MVR-414：与 BE cancelDetect（owner+ACTIVE+assertLayoutWritable）二次闸；关考/只读漂移不发取消
     if (!examId || !layoutWritable.value || !activeDetectTaskId.value || cancellingDetect.value) {
       if (examId && !layoutWritable.value && activeDetectTaskId.value) {
-        message.warning(writeLockReason.value || '当前制卷只读，无法取消识别')
+        void message.warning(writeLockReason.value || '当前制卷只读，无法取消识别')
       }
       return
     }
@@ -603,7 +603,7 @@ export function useLayoutDesignWorkbench(options: UseLayoutDesignWorkbenchOption
       detecting.value = false
       detectProgressText.value = ''
       activeDetectTaskId.value = null
-      message.info('识别任务已取消')
+      void message.info('识别任务已取消')
     } catch (error) {
       showUserError(error, '取消识别失败')
       detecting.value = false

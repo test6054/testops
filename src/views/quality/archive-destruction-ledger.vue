@@ -169,7 +169,7 @@ async function exportExcel() {
       pageSize: DEFAULT_LIST_PAGE_SIZE,
     })
     downloadArchiveExcelBase64(file.fileName, file.fileContentBase64)
-    message.success('销毁清册已导出')
+    void message.success('销毁清册已导出')
   } catch (error) {
     showUserError(error, '销毁清册导出失败')
   } finally {

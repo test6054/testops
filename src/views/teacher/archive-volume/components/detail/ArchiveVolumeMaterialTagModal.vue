@@ -64,7 +64,7 @@ async function handleSave() {
   if (saving.value) return
   // MVR-311：写 handler 二次拦截
   if (props.canMaintainMaterial !== true) {
-    message.warning('当前账号无维护材料标签权限')
+    void message.warning('当前账号无维护材料标签权限')
     return
   }
   if (!props.materialId) {
@@ -78,7 +78,7 @@ async function handleSave() {
   saving.value = true
   try {
     await updateArchiveVolumeMaterialTags({ materialId: props.materialId, tags })
-    message.success('材料标签已更新')
+    void message.success('材料标签已更新')
     emit('update:open', false)
     emit('success')
   } catch (error) {

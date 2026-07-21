@@ -50,7 +50,7 @@ export function buildRequiredAcademicYearSemesterQuery(
 export function ensureAcademicYearSemesterPair(
   academicYear?: string | null,
   semester?: SemesterCode | null,
-  warn: (text: string) => void = (text) => message.warning(text),
+  warn: (text: string) => void = (text) => void message.warning(text),
 ): boolean {
   if (isAcademicYearSemesterPairFilled(academicYear, semester)) {
     return true
@@ -63,7 +63,7 @@ export function ensureAcademicYearSemesterPair(
 export function ensureRequiredAcademicYearSemester(
   academicYear?: string | null,
   semester?: SemesterCode | null,
-  warn: (text: string) => void = (text) => message.warning(text),
+  warn: (text: string) => void = (text) => void message.warning(text),
 ): boolean {
   if (buildRequiredAcademicYearSemesterQuery(academicYear, semester)) {
     return true

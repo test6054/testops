@@ -34,12 +34,8 @@
         <template #toolbar>
           <div class="archive-supervision-panel__volume-actions">
             <div class="archive-supervision-panel__problem-filters">
-              <UiCheckbox v-model="volumeFilterForm.integrityFailedOnly">
-                缺必交项
-              </UiCheckbox>
-              <UiCheckbox v-model="volumeFilterForm.archiveOverdueOnly">
-                归档逾期
-              </UiCheckbox>
+              <UiCheckbox v-model="volumeFilterForm.integrityFailedOnly"> 缺必交项 </UiCheckbox>
+              <UiCheckbox v-model="volumeFilterForm.archiveOverdueOnly"> 归档逾期 </UiCheckbox>
               <UiCheckbox v-model="volumeFilterForm.delaySubmissionOverdueOnly">
                 补交逾期
               </UiCheckbox>
@@ -199,16 +195,9 @@
             v-else-if="statsFilter.academicYearStartYear != null && statsFilter.semester"
             description="当前学期暂无就绪度数据"
           />
-          <UiAlertStrip
-            v-else
-            tone="info"
-            size="sm"
-            dense
-            inline
-            :show-icon="false"
-          >
+          <UiAlertStrip v-else tone="info" size="sm" dense inline :show-icon="false">
             <template #default>
-              <span style="display:inline-flex;align-items:center;gap:8px">
+              <span style="display: inline-flex; align-items: center; gap: 8px">
                 <UiTag tone="blue" size="sm">未选择学期</UiTag>
                 <span>请选择学年学期后查询就绪度</span>
               </span>
@@ -513,10 +502,10 @@ const { isTenantWideCollegeCoordinator, canViewSupervision, loadGrants } = useAr
 const activeTab = ref('statistics')
 /** MVR-353：标记问题叠状态/移交待验收/开放整改互斥，与 BE markSupervisionProblem 同源 */
 function canMarkSupervisionProblemOnVolume(record: ArchiveVolumeResponse): boolean {
-  if (canViewSupervision.value !== true) {
+  if (!canViewSupervision.value) {
     return false
   }
-  if (record.hasOpenRemediationTask === true) {
+  if (record.hasOpenRemediationTask) {
     return false
   }
   const status = record.volumeStatus
@@ -527,16 +516,15 @@ function canMarkSupervisionProblemOnVolume(record: ArchiveVolumeResponse): boole
   ) {
     return false
   }
-  if (
+  return !(
     status === ArchiveVolumeStatusCode.SUBMITTED
     && record.transferStatus === ArchiveTransferStatusCode.PENDING_REVIEW
-  ) {
-    return false
-  }
-  return true
+  )
 }
 
-function supervisionVolumeRowActions(record: ArchiveVolumeResponse): Array<{ key: string, label: string }> {
+function supervisionVolumeRowActions(
+  record: ArchiveVolumeResponse,
+): Array<{ key: string, label: string }> {
   const items: Array<{ key: string, label: string }> = [{ key: 'detail', label: '详情' }]
   if (canMarkSupervisionProblemOnVolume(record)) {
     items.push({ key: 'mark', label: '标记问题' })
@@ -803,7 +791,7 @@ function goReadinessMatrix() {
 async function handleExportManifest() {
   // MVR-330：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
   if (!isTenantWideCollegeCoordinator.value) {
-    message.warning('仅全校学院协调人可导出评估材料包')
+    void message.warning('仅全校学院协调人可导出评估材料包')
     return
   }
   if (!exportCampaignId.value || exportingManifest.value) return
@@ -826,7 +814,7 @@ async function handleExportManifest() {
 async function handleExportArchive() {
   // MVR-330：与 isTenantWideCollegeCoordinator / BE 导出门禁二次拦截
   if (!isTenantWideCollegeCoordinator.value) {
-    message.warning('仅全校学院协调人可导出评估材料包')
+    void message.warning('仅全校学院协调人可导出评估材料包')
     return
   }
   if (!exportCampaignId.value || exportingArchive.value) return
@@ -1063,13 +1051,15 @@ async function openDetail(volumeId: string) {
 
 function openMarkProblem(volumeId: string) {
   // MVR-342/353：与 canViewSupervision / BE markSupervisionProblem 二次拦截
-  if (canViewSupervision.value !== true) {
-    message.warning('当前账号无督导标记问题权限')
+  if (!canViewSupervision.value) {
+    void message.warning('当前账号无督导标记问题权限')
     return
   }
   const row = volumes.value.find((item) => item.volumeId === volumeId)
   if (row && !canMarkSupervisionProblemOnVolume(row)) {
-    message.warning('当前卷状态不可标记督导问题（需收材/待验收/已入库，非移交待验收，且无开放整改）')
+    void message.warning(
+      '当前卷状态不可标记督导问题（需收材/待验收/已入库，非移交待验收，且无开放整改）',
+    )
     return
   }
   markProblemVolumeId.value = volumeId
@@ -1088,13 +1078,15 @@ function handleSupervisionVolumeRowAction(key: string, volumeId: string) {
 
 async function submitMarkProblem() {
   // MVR-421：与 canMarkSupervisionProblemOnVolume / openMarkProblem 同源二次闸
-  if (canViewSupervision.value !== true) {
-    message.warning('当前账号无督导标记问题权限')
+  if (!canViewSupervision.value) {
+    void message.warning('当前账号无督导标记问题权限')
     return
   }
   const target = volumes.value.find((item) => item.volumeId === markProblemVolumeId.value)
   if (!target || !canMarkSupervisionProblemOnVolume(target)) {
-    message.warning('当前卷状态不可标记督导问题（需收材/待验收/已入库，非移交待验收，且无开放整改）')
+    void message.warning(
+      '当前卷状态不可标记督导问题（需收材/待验收/已入库，非移交待验收，且无开放整改）',
+    )
     return
   }
   if (markProblemSubmitting.value) return
@@ -1110,7 +1102,7 @@ async function submitMarkProblem() {
       problemDescription: description,
       campaignId: markProblemCampaignId.value,
     })
-    message.success('问题已标记，整改任务已创建')
+    void message.success('问题已标记，整改任务已创建')
     markProblemOpen.value = false
     if (activeTab.value === 'remediation') {
       void loadRemediation()

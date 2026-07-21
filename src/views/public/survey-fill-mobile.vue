@@ -384,7 +384,7 @@ function goPrev() {
 function goNext() {
   const item = currentItem.value
   if (item && item.required && !isItemAnswered(item)) {
-    message.warning('此题为必填项，请作答后继续')
+    void message.warning('此题为必填项，请作答后继续')
     return
   }
   slideDirection.value = 'slide-left'
@@ -410,7 +410,7 @@ function itemTypeLabel(type: IndirectEvaluationItemTypeCode): string {
 async function handleSubmit() {
   const item = currentItem.value
   if (item && item.required && !isItemAnswered(item)) {
-    message.warning('此题为必填项，请作答后继续')
+    void message.warning('此题为必填项，请作答后继续')
     return
   }
   await submitSurvey()

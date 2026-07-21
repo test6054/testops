@@ -25,6 +25,7 @@ import {
 import { PortfolioExportTypeDescription } from '@/types/enums/portfolio-export-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 interface ExportFilterModel extends Record<string, unknown> {
   approvalStatus?: PortfolioExportApprovalStatusCode
@@ -83,8 +84,11 @@ const query = reactive({
 const columns: ColumnsType = [
   { title: '申请时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '申请人', dataIndex: 'applicantUserId', key: 'applicantUserId', width: 120 },
+  { title: '标的教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 120 },
   { title: '导出类型', key: 'exportType', width: 140 },
   { title: '用途说明', dataIndex: 'exportPurpose', key: 'exportPurpose', ellipsis: true },
+  { title: '生命周期', key: 'lifecycleStatus', width: 100 },
+  { title: '身份层', key: 'identityLayers', width: 180 },
   { title: '状态', key: 'approvalStatus', width: 100 },
   { title: '审批人', dataIndex: 'approverUserId', key: 'approverUserId', width: 120 },
   { title: '审批时间', dataIndex: 'approvedTime', key: 'approvedTime', width: 170 },
@@ -185,7 +189,7 @@ async function approveRow(row: PortfolioExportApprovalVO) {
   }
   try {
     await portfolioSecurityApi.approveExport({ id: approvalId, approved: true })
-    message.success('已批准导出申请')
+    void message.success('已批准导出申请')
     await loadPage()
   } catch (error) {
     showUserError(error, '批准失败')
@@ -219,7 +223,7 @@ async function submitReject() {
       approved: false,
       rejectReason: reason,
     })
-    message.success('已驳回导出申请')
+    void message.success('已驳回导出申请')
     rejectModalOpen.value = false
     pendingRow.value = null
     await loadPage()
@@ -262,6 +266,19 @@ onMounted(() => {
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'exportType'">
             {{ exportTypeLabel(record.exportType) }}
+          </template>
+          <template v-else-if="column.key === 'lifecycleStatus'">
+            <UiTag v-if="record.lifecycleStatus" tone="gray">
+              {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+            </UiTag>
+            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'identityLayers'">
+            <PortfolioOwnerIdentityLayersCell
+              v-if="record.ownerIdentityLayers?.length"
+              :layers="record.ownerIdentityLayers"
+            />
+            <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'approvalStatus'">
             <UiTag :tone="approvalStatusTone(record.approvalStatus)">

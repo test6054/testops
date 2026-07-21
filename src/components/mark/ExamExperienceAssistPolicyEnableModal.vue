@@ -25,15 +25,11 @@
       </label>
       <label class="policy-config-modal__field">
         <span>签名距离上限</span>
-        <UiInputNumber
-          size="sm" v-model="form.maxHammingDistance" :min="0" :max="16"
-        />
+        <UiInputNumber size="sm" v-model="form.maxHammingDistance" :min="0" :max="16" />
       </label>
       <label class="policy-config-modal__field">
         <span>经验条目上限</span>
-        <UiInputNumber
-          size="sm" v-model="form.maxExperienceItems" :min="1" :max="10"
-        />
+        <UiInputNumber size="sm" v-model="form.maxExperienceItems" :min="1" :max="10" />
       </label>
     </div>
   </UiDialog>
@@ -128,7 +124,7 @@ async function handleConfirm(): Promise<void> {
   if (!props.examId || saving.value) return
   // MVR-372：写 handler 二次拦截；策略页仅隐藏入口不能替代
   if (props.canManageReviewerWrites !== true) {
-    message.warning('仅本场阅卷组织成员或主考可配置经验辅助评阅')
+    void message.warning('仅本场阅卷组织成员或主考可配置经验辅助评阅')
     return
   }
   saving.value = true
@@ -143,7 +139,7 @@ async function handleConfirm(): Promise<void> {
       = props.mode === 'edit'
         ? await saveExamGradingExperienceAssistPolicy(payload)
         : await enableExamGradingExperienceAssistPolicy(payload)
-    message.success(props.mode === 'edit' ? '本场定标阈值已保存' : '已启用本场经验辅助评阅')
+    void message.success(props.mode === 'edit' ? '本场定标阈值已保存' : '已启用本场经验辅助评阅')
     open.value = false
     emit('saved', policy)
   } catch (error) {

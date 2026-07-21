@@ -155,7 +155,15 @@
   >
     <template #footer>
       <UiButton size="sm" variant="outline" @click="createModalOpen = false">取消</UiButton>
-      <UiButton variant="primary" size="sm" :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
+      <UiButton
+        variant="primary"
+        size="sm"
+        :loading="creating"
+        :disabled="!createValid"
+        @click="handleCreate"
+      >
+        创建
+      </UiButton>
     </template>
     <UiForm layout="vertical">
       <UiFormItem label="导出类型" required>
@@ -661,8 +669,7 @@ const exportTypeOptions = computed(() =>
     value: code,
     label: exportTypeLabel(code),
     // 非主考禁用影像归档包，避免点后 BE 主考拒收
-    disabled:
-      code === ExportTypeCode.IMAGE_ARCHIVE && !canManageOwnerImageArchiveExport.value,
+    disabled: code === ExportTypeCode.IMAGE_ARCHIVE && !canManageOwnerImageArchiveExport.value,
   })),
 )
 
@@ -936,19 +943,15 @@ function resetCreateForm(): void {
   createForm.studentUserIds = []
 }
 
-watch(
-  [canManageOwnerImageArchiveExport, () => createForm.exportType],
-  () => {
-    if (
-      createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE
-      && !canManageOwnerImageArchiveExport.value
-    ) {
-      createForm.exportType = ExportTypeCode.SCORE_EXCEL
-      createForm.exportScope = firstSupportedExportScope(createForm.exportType)
-    }
-  },
-)
-
+watch([canManageOwnerImageArchiveExport, () => createForm.exportType], () => {
+  if (
+    createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE
+    && !canManageOwnerImageArchiveExport.value
+  ) {
+    createForm.exportType = ExportTypeCode.SCORE_EXCEL
+    createForm.exportScope = firstSupportedExportScope(createForm.exportType)
+  }
+})
 
 async function loadQuestionOptions(examId: string | undefined): Promise<void> {
   if (!examId) {
@@ -995,7 +998,7 @@ async function handleCreate(): Promise<void> {
     createForm.exportType === ExportTypeCode.IMAGE_ARCHIVE
     && !canManageOwnerImageArchiveExport.value
   ) {
-    message.warning('仅考试主考可创建影像归档包导出任务')
+    void message.warning('仅考试主考可创建影像归档包导出任务')
     return
   }
   creating.value = true
@@ -1017,7 +1020,7 @@ async function handleCreate(): Promise<void> {
       showUserError(null, '导出任务创建失败')
       return
     }
-    message.success('已创建导出任务，系统正在生成文件')
+    void message.success('已创建导出任务，系统正在生成文件')
     createModalOpen.value = false
     activeTaskFilterAutoSync.value = false
     exportFilterForm.statusFilter = undefined
@@ -1079,19 +1082,19 @@ function formatScopeItem(item: ExportScopeItemResponse): string {
 
 async function handleDownload(record: ExportTaskResponse): Promise<void> {
   if (!canDownloadExportTask(record)) {
-    message.warning('该任务尚未生成文件')
+    void message.warning('该任务尚未生成文件')
     return
   }
   downloadingId.value = record.taskId
   try {
     if (!record.fileId) {
-      message.error('导出任务缺少文件引用，暂不可下载')
+      void message.error('导出任务缺少文件引用，暂不可下载')
       return
     }
     const blobResp = await downloadFile({ nodeId: record.fileId })
     const blob = blobResp.data
     if (!blob) {
-      message.error('导出文件暂不可下载，请确认任务已完成后再次下载')
+      void message.error('导出文件暂不可下载，请确认任务已完成后再次下载')
       return
     }
     const url = URL.createObjectURL(blob)

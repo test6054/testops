@@ -26,7 +26,7 @@ export function useQualityTableExport() {
         queryParams: JSON.stringify(params.queryParams),
         bizName: params.bizName,
       })
-      message.success('导出任务已创建，请在导出任务中心查看进度')
+      void message.success('导出任务已创建，请在导出任务中心查看进度')
       exportTaskStore.openCenter()
     } catch (error) {
       showUserError(error, '创建导出任务失败')

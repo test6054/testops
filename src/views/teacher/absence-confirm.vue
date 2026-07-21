@@ -48,10 +48,7 @@
       <SignalBand :metrics="absenceListMetrics" variant="panel" compact />
     </template>
 
-    <ExamSelectGateStrip
-      v-if="!selectedExamId"
-      body="请从考试列表进入工作台后再确认缺考"
-    />
+    <ExamSelectGateStrip v-if="!selectedExamId" body="请从考试列表进入工作台后再确认缺考" />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -65,7 +62,9 @@
         class="absence-page__alert"
       >
         <template #actions>
-          <UiButton variant="outline" size="sm" @click="goScorePublish"> 前往成绩确认与发布 </UiButton>
+          <UiButton variant="outline" size="sm" @click="goScorePublish">
+            前往成绩确认与发布
+          </UiButton>
         </template>
       </UiAlertStrip>
 
@@ -246,20 +245,20 @@
     >
       <UiForm layout="vertical">
         <UiFormItem label="学生">
-          <UiInput
-            size="sm" :value="confirmTargetName" disabled
-          />
+          <UiInput size="sm" :value="confirmTargetName" disabled />
         </UiFormItem>
         <UiFormItem label="缺考原因" required>
           <UiSelect
-            v-model="confirmForm.absenceReason" placeholder="选择缺考原因"
+            v-model="confirmForm.absenceReason"
+            placeholder="选择缺考原因"
             size="sm"
             :options="ABSENCE_REASON_OPTIONS"
           />
         </UiFormItem>
         <UiFormItem label="成绩处理策略" required>
           <UiSelect
-            v-model="confirmForm.scorePolicy" placeholder="选择成绩处理策略"
+            v-model="confirmForm.scorePolicy"
+            placeholder="选择成绩处理策略"
             size="sm"
             :options="SCORE_POLICY_OPTIONS"
           />
@@ -274,7 +273,13 @@
       </UiForm>
       <template #footer>
         <UiButton size="sm" variant="outline" @click="confirmModalOpen = false">取消</UiButton>
-        <UiButton size="sm" variant="primary" :loading="confirming" :disabled="!confirmValid" @click="handleConfirm">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="confirming"
+          :disabled="!confirmValid"
+          @click="handleConfirm"
+        >
           确认
         </UiButton>
       </template>
@@ -289,9 +294,7 @@
     >
       <UiForm layout="vertical">
         <UiFormItem label="学生">
-          <UiInput
-            size="sm" :value="revokeTargetName" disabled
-          />
+          <UiInput size="sm" :value="revokeTargetName" disabled />
         </UiFormItem>
         <UiFormItem label="撤销原因" required>
           <UiTextarea
@@ -325,14 +328,10 @@
       <UiSkeletonState v-if="deriveDetailLoading" variant="card" compact />
       <UiForm v-else layout="vertical">
         <UiFormItem label="待补考学生">
-          <UiInput
-            size="sm" :value="`${pendingMakeupCount} 人`" disabled
-          />
+          <UiInput size="sm" :value="`${pendingMakeupCount} 人`" disabled />
         </UiFormItem>
         <UiFormItem label="补考学年" required>
-          <UiInput
-            size="sm" v-model="deriveForm.academicYear" placeholder="如 2024-2025"
-          />
+          <UiInput size="sm" v-model="deriveForm.academicYear" placeholder="如 2024-2025" />
         </UiFormItem>
         <UiFormItem label="补考学期" required>
           <UiSelect
@@ -343,14 +342,10 @@
           />
         </UiFormItem>
         <UiFormItem label="补考名称" required>
-          <UiInput
-            size="sm" v-model="deriveForm.examName" placeholder="补考名称"
-          />
+          <UiInput size="sm" v-model="deriveForm.examName" placeholder="补考名称" />
         </UiFormItem>
         <UiFormItem label="补考编号" required>
-          <UiInput
-            size="sm" v-model="deriveForm.examNo" placeholder="补考编号"
-          />
+          <UiInput size="sm" v-model="deriveForm.examNo" placeholder="补考编号" />
         </UiFormItem>
         <UiFormItem label="考试时间窗" required>
           <UiRangePicker
@@ -624,10 +619,7 @@ function canRevokeAbsenceRecord(record: AbsenceRecordResponse): boolean {
 }
 
 function requiresWithdrawBeforeRevoke(record: AbsenceRecordResponse): boolean {
-  return (
-    record.absenceStatus === AbsenceStatusCode.CONFIRMED
-    && !canRevokeAbsenceRecord(record)
-  )
+  return record.absenceStatus === AbsenceStatusCode.CONFIRMED && !canRevokeAbsenceRecord(record)
 }
 
 function buildAbsenceRecordActions(record: AbsenceRecordResponse): UiTableRowActionItem[] {
@@ -640,11 +632,13 @@ function buildAbsenceRecordActions(record: AbsenceRecordResponse): UiTableRowAct
     return []
   }
   if (requiresWithdrawBeforeRevoke(record)) {
-    return [{
-      key: 'withdrawThenRevoke',
-      label: '先撤回成绩',
-      // 已发布计零：禁止假可写撤销，引导成绩发布页先撤回。
-    }]
+    return [
+      {
+        key: 'withdrawThenRevoke',
+        label: '先撤回成绩',
+        // 已发布计零：禁止假可写撤销，引导成绩发布页先撤回。
+      },
+    ]
   }
   if (record.absenceStatus === AbsenceStatusCode.CONFIRMED && canRevokeAbsenceRecord(record)) {
     return [{ key: 'revoke', label: '撤销' }]
@@ -662,9 +656,8 @@ function handleAbsenceRecordAction(key: string, record: AbsenceRecordResponse): 
       break
     case 'revoke':
       if (!canRevokeAbsenceRecord(record)) {
-        message.warning(
-          record.revokeBlockedReason
-          || '缺考零分成绩已发布，请先在成绩发布页撤回后再撤销缺考',
+        void message.warning(
+          record.revokeBlockedReason || '缺考零分成绩已发布，请先在成绩发布页撤回后再撤销缺考',
         )
         goScorePublish()
         return
@@ -672,9 +665,8 @@ function handleAbsenceRecordAction(key: string, record: AbsenceRecordResponse): 
       openRevokeModal(record)
       break
     case 'withdrawThenRevoke':
-      message.info(
-        record.revokeBlockedReason
-        || '缺考零分成绩已发布，请先在成绩发布页撤回后再撤销缺考',
+      void message.info(
+        record.revokeBlockedReason || '缺考零分成绩已发布，请先在成绩发布页撤回后再撤销缺考',
       )
       goScorePublish()
       break
@@ -724,7 +716,6 @@ async function loadAbsenceStats(): Promise<void> {
     showUserError(error, '缺考统计加载失败')
   }
 }
-
 
 async function loadAbsentStudents(): Promise<void> {
   if (!selectedExamId.value || !reconcileVO.value || reconcileVO.value.absentCount <= 0) {
@@ -824,7 +815,7 @@ function handleRecordPageChange(page: { current: number, pageSize: number }): vo
 async function handleReconcile(createPending: boolean): Promise<void> {
   if (!selectedExamId.value || reconciling.value) return
   if (!canManageReviewerWrites.value) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可执行缺考核对')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可执行缺考核对')
     return
   }
   reconciling.value = true
@@ -835,7 +826,7 @@ async function handleReconcile(createPending: boolean): Promise<void> {
     })
     absentStudentPagination.pageNum = 1
     if (createPending && reconcileVO.value.createdPendingCount > 0) {
-      message.success(`已为 ${reconcileVO.value.createdPendingCount} 名缺考学生创建待确认记录`)
+      void message.success(`已为 ${reconcileVO.value.createdPendingCount} 名缺考学生创建待确认记录`)
     }
     await loadRecords()
     try {
@@ -869,7 +860,7 @@ const confirmValid = computed(() =>
 
 function openConfirmModal(studentUserId: string, displayName: string): void {
   if (!canManageReviewerWrites.value) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可确认缺考')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可确认缺考')
     return
   }
   confirmForm.studentUserId = studentUserId
@@ -884,11 +875,11 @@ const repairingScoreZero = ref(false)
 const absenceMoreActionItems = computed(() => {
   const items: { key: string, label: string, disabled?: boolean }[] = []
   // MVR-326：派生补考仅主考；仅认 BE canManageOwnerAbsenceMakeup===true
-  if (canManageOwnerAbsenceMakeup.value === true && pendingMakeupCount.value > 0) {
+  if (canManageOwnerAbsenceMakeup.value && pendingMakeupCount.value > 0) {
     items.push({ key: 'deriveMakeup', label: `派生补考 ${pendingMakeupCount.value}` })
   }
   // MVR-287/430：补齐计零与 BE requireExamReviewerPermission 对齐；仅认 === true
-  if (canManageReviewerWrites.value === true) {
+  if (canManageReviewerWrites.value) {
     items.push({
       key: 'repairScoreZero',
       label: '补齐计零',
@@ -908,17 +899,16 @@ function onAbsenceMoreAction(key: string) {
   }
 }
 
-
 async function handleRepairScoreZero(): Promise<void> {
   if (!selectedExamId.value || repairingScoreZero.value) return
   if (!canManageReviewerWrites.value) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可补齐计零终分')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可补齐计零终分')
     return
   }
   repairingScoreZero.value = true
   try {
     const result = await repairScoreZeroFinalScores({ examId: selectedExamId.value })
-    message.success(
+    void message.success(
       result.repairedCount > 0
         ? `已补齐 ${result.repairedCount} 条计零终分`
         : '本场无待补齐的计零缺考',
@@ -934,7 +924,7 @@ async function handleRepairScoreZero(): Promise<void> {
 async function handleConfirm(): Promise<void> {
   if (!selectedExamId.value || !confirmValid.value || confirming.value) return
   if (!canManageReviewerWrites.value) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可确认缺考')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可确认缺考')
     return
   }
   const reason = confirmForm.absenceReason
@@ -948,7 +938,7 @@ async function handleConfirm(): Promise<void> {
       absenceReason: reason,
       scorePolicy: policy,
     })
-    message.success(
+    void message.success(
       policy === ScorePolicyCode.SCORE_ZERO
         ? '已确认缺考并写入零分终分，可前往成绩确认与发布'
         : '已确认缺考',
@@ -977,13 +967,12 @@ const revokeForm = reactive<{ studentUserId: string, revokeReason: string }>({
 
 function openRevokeModal(record: AbsenceRecordResponse): void {
   if (!canManageReviewerWrites.value) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可撤销缺考')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可撤销缺考')
     return
   }
   if (!canRevokeAbsenceRecord(record)) {
-    message.warning(
-      record.revokeBlockedReason
-      || '缺考零分成绩已发布，请先在成绩发布页撤回后再撤销缺考',
+    void message.warning(
+      record.revokeBlockedReason || '缺考零分成绩已发布，请先在成绩发布页撤回后再撤销缺考',
     )
     goScorePublish()
     return
@@ -999,10 +988,10 @@ async function handleRevoke(): Promise<void> {
   // MVR-420：与 canRevokeAbsenceRecord / openRevokeModal 同源二次闸（行级 BE canRevokeAbsence）
   const target = records.value.find((item) => item.studentUserId === revokeForm.studentUserId)
   if (!target || !canRevokeAbsenceRecord(target)) {
-    message.warning(
+    void message.warning(
       !canManageReviewerWrites.value
         ? '仅本场阅卷组织成员、主考或管理员可撤销缺考'
-        : (target?.revokeBlockedReason || '当前缺考记录不可撤销（状态漂移或须先撤回成绩）'),
+        : target?.revokeBlockedReason || '当前缺考记录不可撤销（状态漂移或须先撤回成绩）',
     )
     return
   }
@@ -1015,7 +1004,7 @@ async function handleRevoke(): Promise<void> {
       studentUserId: revokeForm.studentUserId,
       revokeReason: reason,
     })
-    message.success('已撤销缺考')
+    void message.success('已撤销缺考')
     revokeModalOpen.value = false
     await loadRecords()
     try {
@@ -1071,7 +1060,7 @@ function resetDeriveForm(): void {
 async function openDeriveMakeupModal(): Promise<void> {
   // MVR-297：派生补考仅主考；与 more 菜单 / BE requireExamOwnerPermission 对齐
   if (!canManageOwnerAbsenceMakeup.value) {
-    message.warning('仅本场主考可派生补考名单')
+    void message.warning('仅本场主考可派生补考名单')
     return
   }
   if (!selectedExamId.value || pendingMakeupCount.value === 0) return
@@ -1081,12 +1070,12 @@ async function openDeriveMakeupModal(): Promise<void> {
   try {
     const detail = await getExamDetail(selectedExamId.value)
     if (detail.examKind && detail.examKind !== ExamKindCode.REGULAR) {
-      message.error('仅可从正考考试派生补考')
+      void message.error('仅可从正考考试派生补考')
       deriveModalOpen.value = false
       return
     }
     if (detail.status !== ExamStatusCode.CLOSED) {
-      message.error('原考试须已关考后才能派生补考')
+      void message.error('原考试须已关考后才能派生补考')
       deriveModalOpen.value = false
       return
     }
@@ -1102,7 +1091,7 @@ async function openDeriveMakeupModal(): Promise<void> {
 
 async function handleDeriveMakeup(): Promise<void> {
   if (!canManageOwnerAbsenceMakeup.value) {
-    message.warning('仅本场主考可派生补考名单')
+    void message.warning('仅本场主考可派生补考名单')
     return
   }
   if (!selectedExamId.value || !deriveValid.value || deriving.value) return
@@ -1120,7 +1109,7 @@ async function handleDeriveMakeup(): Promise<void> {
       examStartTime: startTime,
       examEndTime: endTime,
     })
-    message.success('已派生补考考试')
+    void message.success('已派生补考考试')
     deriveModalOpen.value = false
     await loadRecords()
     try {

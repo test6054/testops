@@ -335,7 +335,7 @@ async function handleSaveDraft() {
     }
     recordId.value = result.recordId
     recordStatus.value = result.recordStatus
-    message.success('草稿已保存')
+    void message.success('草稿已保存')
   } catch (error) {
     if (scopeRequestToken.value !== requestToken) {
       return
@@ -379,7 +379,7 @@ async function handleSubmit() {
     }
     recordId.value = result.recordId
     recordStatus.value = result.recordStatus
-    message.success('已提交审核')
+    void message.success('已提交审核')
     returnToArchiveSource()
   } catch (error) {
     if (scopeRequestToken.value !== requestToken) {

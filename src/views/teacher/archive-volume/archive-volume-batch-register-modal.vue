@@ -117,7 +117,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  "success": []
+  'success': []
 }>()
 
 interface BatchRow {
@@ -234,7 +234,7 @@ async function handleSubmit() {
       volumeId: props.volumeId,
       materials,
     })
-    message.success(`已登记 ${materials.length} 份材料`)
+    void message.success(`已登记 ${materials.length} 份材料`)
     emit('update:open', false)
     emit('success')
   } catch (error) {

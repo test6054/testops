@@ -114,7 +114,7 @@ async function saveRule() {
   }
   try {
     await portfolioSecurityApi.saveMaskRule(request)
-    message.success('脱敏规则已保存')
+    void message.success('脱敏规则已保存')
     editorOpen.value = false
     await loadPage()
   } catch (error) {
@@ -146,7 +146,12 @@ onMounted(() => {
       />
     </template>
     <UiCard>
-      <UiButton size="sm" class="mask-rule-admin__add" :disabled="saving" @click="editorOpen = true">
+      <UiButton
+        size="sm"
+        class="mask-rule-admin__add"
+        :disabled="saving"
+        @click="editorOpen = true"
+      >
         配置规则
       </UiButton>
       <UiDataTable

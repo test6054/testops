@@ -266,7 +266,7 @@ async function loadCandidates() {
 
 async function confirmCandidate(row: PortfolioCandidateFieldVO) {
   if (confirming.value || !canConfirmRow(row)) {
-    message.error('请先补全真实候选值后再确认')
+    void message.error('请先补全真实候选值后再确认')
     return
   }
   const contextToken = candidateContextToken.value
@@ -281,7 +281,7 @@ async function confirmCandidate(row: PortfolioCandidateFieldVO) {
     if (candidateContextToken.value !== contextToken) {
       return
     }
-    message.success(`已确认字段：${row.fieldLabel}`)
+    void message.success(`已确认字段：${row.fieldLabel}`)
     await loadCandidates()
     if (candidateContextToken.value !== contextToken) {
       return
@@ -324,7 +324,7 @@ async function rejectCandidate(row: PortfolioCandidateFieldVO) {
         if (candidateContextToken.value !== contextToken) {
           return
         }
-        message.success(`已驳回字段：${row.fieldLabel}`)
+        void message.success(`已驳回字段：${row.fieldLabel}`)
         await loadCandidates()
         if (candidateContextToken.value !== contextToken) {
           return
@@ -355,7 +355,7 @@ async function confirmAllEligible() {
   }
   const eligible = candidateRows.value.filter(canConfirmRow)
   if (eligible.length === 0) {
-    message.info('没有可自动确认的字段')
+    void message.info('没有可自动确认的字段')
     return
   }
   const contextToken = candidateContextToken.value
@@ -376,7 +376,7 @@ async function confirmAllEligible() {
       }
       confirmedCount += 1
     }
-    message.success(`已确认 ${eligible.length} 个字段`)
+    void message.success(`已确认 ${eligible.length} 个字段`)
     await loadCandidates()
     if (candidateContextToken.value !== contextToken) {
       return
@@ -387,7 +387,7 @@ async function confirmAllEligible() {
       return
     }
     if (confirmedCount > 0) {
-      message.warning(`已确认 ${confirmedCount} 个字段，其余字段未完成`)
+      void message.warning(`已确认 ${confirmedCount} 个字段，其余字段未完成`)
     }
     showUserError(error, confirmedCount > 0 ? '部分候选字段确认失败' : '批量确认候选字段失败')
     await loadCandidates()

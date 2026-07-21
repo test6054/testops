@@ -6,7 +6,11 @@
     <template v-if="!embedded" #toolbar>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating" @click="handleGenerate"
+          v-if="canManageReviewerWrites"
+          variant="outline"
+          size="sm"
+          :loading="generating"
+          @click="handleGenerate"
         >
           重新生成
         </UiButton>
@@ -25,7 +29,11 @@
     <template v-if="embedded" #actions>
       <div class="ai-analysis-card-toolbar">
         <UiButton
-          v-if="canManageReviewerWrites === true" variant="outline" size="sm" :loading="generating" @click="handleGenerate"
+          v-if="canManageReviewerWrites"
+          variant="outline"
+          size="sm"
+          :loading="generating"
+          @click="handleGenerate"
         >
           重新生成
         </UiButton>
@@ -131,14 +139,8 @@ const loading = ref(false)
 const { generating, runGeneration } = useAiAnalysisGenerationFeedback()
 
 /** MVR-285：默认拒绝假可写；依赖 AI 分析中心 overview 或页面 provide 的能力位 */
-const injectedCanManageReviewerWrites = inject(
-  AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY,
-  null,
-)
-const canManageReviewerWrites = computed(
-  () => injectedCanManageReviewerWrites?.value === true,
-)
-
+const injectedCanManageReviewerWrites = inject(AI_ANALYSIS_CAN_MANAGE_REVIEWER_WRITES_KEY, null)
+const canManageReviewerWrites = computed(() => injectedCanManageReviewerWrites?.value === true)
 
 const canShareRecord = computed(() => record.value?.analysisStatus === AiAnalysisStatusCode.SUCCESS)
 
@@ -187,7 +189,7 @@ async function reload(): Promise<void> {
 }
 
 async function handleGenerate(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
@@ -238,7 +240,7 @@ async function copyShareText(): Promise<void> {
     return
   }
   await navigator.clipboard.writeText(text)
-  message.success('已复制教学改进方案')
+  void message.success('已复制教学改进方案')
 }
 
 function exportRecordText(): void {

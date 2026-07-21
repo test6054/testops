@@ -102,7 +102,7 @@ async function handleSave() {
   if (submitting.value) return
   // MVR-303：与 canEdit 同源二次拦截
   if (props.canEdit !== true) {
-    message.warning('当前账号无柜位维护权限')
+    void message.warning('当前账号无柜位维护权限')
     return
   }
   const building = form.building.trim()
@@ -122,7 +122,7 @@ async function handleSave() {
       slot: form.slot.trim() || undefined,
       physicalLocationNote: form.physicalLocationNote.trim() || undefined,
     })
-    message.success('柜位已更新')
+    void message.success('柜位已更新')
     emit('refreshed')
     await loadLocationHistory()
   } catch (error) {
@@ -318,7 +318,7 @@ onMounted(() => {
 .archive-volume-physical-location__location-text {
   font-size: 18px;
   font-weight: 700;
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-mono), monospace;
   color: var(--dp-primary);
   font-variant-numeric: tabular-nums;
 }
@@ -340,10 +340,6 @@ onMounted(() => {
 }
 .archive-volume-physical-location__audit {
   padding-top: 0;
-}
-.archive-volume-physical-location__field--filled :deep(.ant-input) {
-  border-color: var(--dp-primary);
-  background: color-mix(in srgb, var(--dp-primary) 4%, var(--dp-bg-container));
 }
 .archive-volume-physical-location__field--filled :deep(.ant-form-item-label > label) {
   color: var(--dp-primary);

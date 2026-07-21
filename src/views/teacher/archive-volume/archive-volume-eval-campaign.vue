@@ -400,7 +400,8 @@ type EvalCampaignTabKey = 'list' | 'readiness' | 'mixed-review'
 
 const router = useRouter()
 const route = useRoute()
-const { loadGrants, listScopedDepartmentIds, isTenantWideCollegeCoordinator } = useArchiveDutyAccess()
+const { loadGrants, listScopedDepartmentIds, isTenantWideCollegeCoordinator }
+  = useArchiveDutyAccess()
 
 const activeTab = ref<EvalCampaignTabKey>('list')
 const campaignLoading = ref(false)
@@ -586,7 +587,7 @@ function buildCampaignActions(_record: ArchiveEvaluationCampaignResponse): UiTab
 function handleCampaignAction(key: string, record: ArchiveEvaluationCampaignResponse): void {
   // MVR-318：行动作入口与 canExportCampaign 同源
   if (!canExportCampaign.value) {
-    message.warning('仅全校学院协调人可导出迎评材料包')
+    void message.warning('仅全校学院协调人可导出迎评材料包')
     return
   }
   if (key === 'export-catalog') {
@@ -944,7 +945,7 @@ watch(onlyOpenRemediation, () => {
 async function handleExportArchive(record: ArchiveEvaluationCampaignResponse): Promise<void> {
   // MVR-318：与 canExportCampaign / BE requireTenantWideCollegeCoordinator 二次拦截
   if (!canExportCampaign.value) {
-    message.warning('仅全校学院协调人可导出迎评材料包')
+    void message.warning('仅全校学院协调人可导出迎评材料包')
     return
   }
   if (exportingCampaignId.value) {
@@ -978,7 +979,7 @@ async function handleExportArchive(record: ArchiveEvaluationCampaignResponse): P
 async function handleExportEntity(record: ArchiveEvaluationCampaignResponse): Promise<void> {
   // MVR-318：与 canExportCampaign / BE requireTenantWideCollegeCoordinator 二次拦截
   if (!canExportCampaign.value) {
-    message.warning('仅全校学院协调人可导出迎评材料包')
+    void message.warning('仅全校学院协调人可导出迎评材料包')
     return
   }
   if (exportingCampaignId.value) {

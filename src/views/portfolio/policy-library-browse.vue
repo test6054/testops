@@ -153,7 +153,7 @@ async function downloadPreviewAttachment() {
   try {
     const result = await portfolioPolicyApi.download({ id: documentId })
     if (!result.attachmentFileId || result.attachmentFileId !== expectedFileId) {
-      message.error('政策附件已变更，请重新预览后下载')
+      void message.error('政策附件已变更，请重新预览后下载')
       return
     }
     await handleDownloadFile({ fileId: result.attachmentFileId, fileName: title })

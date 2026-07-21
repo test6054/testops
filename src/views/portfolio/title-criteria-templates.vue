@@ -123,12 +123,10 @@ async function loadData() {
     rows.value = page.list || []
     total.value = Number(page.total || 0)
     okLoad()
-  }
-  catch (error) {
+  } catch (error) {
     failLoad()
     showUserError(error, '加载条件模板失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -167,7 +165,8 @@ function openEdit(row: PortfolioTitleCriteriaTemplateVO) {
   form.jobCategory = row.jobCategory || undefined
   form.expectedValue = row.expectedValue || ''
   form.evidenceCategoryCode = row.evidenceCategoryCode
-  form.blockOnFail = row.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? true : row.blockOnFail
+  form.blockOnFail
+    = row.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? true : row.blockOnFail
   form.enabled = row.enabled
   form.sortNo = row.sortNo || 0
   editorOpen.value = true
@@ -175,38 +174,53 @@ function openEdit(row: PortfolioTitleCriteriaTemplateVO) {
 
 /** 校验表格插槽记录属于条件模板合同，避免把 unknown 行直接强转为业务对象。 */
 function isTemplateRecord(record: unknown): record is PortfolioTitleCriteriaTemplateVO {
-  return typeof record === 'object' && record !== null
-    && 'id' in record && 'templateCode' in record && 'enabled' in record
+  return (
+    typeof record === 'object'
+    && record !== null
+    && 'id' in record
+    && 'templateCode' in record
+    && 'enabled' in record
+  )
 }
 
-watch(() => form.gateKind, (gateKind) => {
-  if (gateKind === PortfolioTitleCriteriaGateKindCode.HARD) {
-    form.blockOnFail = true
-  }
-})
+watch(
+  () => form.gateKind,
+  (gateKind) => {
+    if (gateKind === PortfolioTitleCriteriaGateKindCode.HARD) {
+      form.blockOnFail = true
+    }
+  },
+)
 
-watch(() => form.satisfyMode, (satisfyMode) => {
-  if (satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ALL) {
-    form.groupCode = ''
-  }
-  if (satisfyMode !== PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP) {
-    form.groupMinimumCount = undefined
-  }
-})
+watch(
+  () => form.satisfyMode,
+  (satisfyMode) => {
+    if (satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ALL) {
+      form.groupCode = ''
+    }
+    if (satisfyMode !== PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP) {
+      form.groupMinimumCount = undefined
+    }
+  },
+)
 
 async function saveTemplate() {
   if (!form.templateCode.trim() || !form.templateTitle.trim()) {
     showFormValidationMessage('请填写模板编码与标题')
     return
   }
-  if ((form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ANY_OF_GROUP
-    || form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP)
-  && !form.groupCode.trim()) {
+  if (
+    (form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ANY_OF_GROUP
+      || form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP)
+    && !form.groupCode.trim()
+  ) {
     showFormValidationMessage('组满足模式必须填写业绩组编码')
     return
   }
-  if (form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
-    && (!form.groupMinimumCount || form.groupMinimumCount < 1)) {
+  if (
+    form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
+    && (!form.groupMinimumCount || form.groupMinimumCount < 1)
+  ) {
     showFormValidationMessage('请填写组内最低满足条数')
     return
   }
@@ -214,18 +228,24 @@ async function saveTemplate() {
     showFormValidationMessage('当前核验类型必须选择证据档案分类')
     return
   }
-  if (requiresPositiveExpectedValueCheckType(form.checkType)
-    && !/^[1-9]\d*$/.test(form.expectedValue.trim())) {
+  if (
+    requiresPositiveExpectedValueCheckType(form.checkType)
+    && !/^[1-9]\d*$/.test(form.expectedValue.trim())
+  ) {
     showFormValidationMessage('当前核验类型必须填写正整数阈值')
     return
   }
-  if (form.checkType === PortfolioTitleCriteriaCheckTypeCode.DEGREE_REQUIREMENT
-    && !form.expectedValue.trim()) {
+  if (
+    form.checkType === PortfolioTitleCriteriaCheckTypeCode.DEGREE_REQUIREMENT
+    && !form.expectedValue.trim()
+  ) {
     showFormValidationMessage('学历学位要求必须填写期望值')
     return
   }
-  if (form.checkType === PortfolioTitleCriteriaCheckTypeCode.HONOR_LEVEL
-    && !isPortfolioHonorLevelCode(form.expectedValue.trim())) {
+  if (
+    form.checkType === PortfolioTitleCriteriaCheckTypeCode.HONOR_LEVEL
+    && !isPortfolioHonorLevelCode(form.expectedValue.trim())
+  ) {
     showFormValidationMessage('获奖级别必须填写有效级别编码')
     return
   }
@@ -243,28 +263,29 @@ async function saveTemplate() {
       gateKind: form.gateKind,
       checkType: form.checkType,
       satisfyMode: form.satisfyMode,
-      groupCode: form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ALL
-        ? undefined
-        : form.groupCode || undefined,
-      groupMinimumCount: form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
-        ? form.groupMinimumCount
-        : undefined,
+      groupCode:
+        form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.ALL
+          ? undefined
+          : form.groupCode || undefined,
+      groupMinimumCount:
+        form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP
+          ? form.groupMinimumCount
+          : undefined,
       pathCode: form.pathCode,
       jobCategory: form.jobCategory || undefined,
       expectedValue: form.expectedValue || undefined,
       evidenceCategoryCode: form.evidenceCategoryCode,
-      blockOnFail: form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? true : form.blockOnFail,
+      blockOnFail:
+        form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? true : form.blockOnFail,
       enabled: form.enabled,
       sortNo: form.sortNo,
     })
-    message.success('条件模板已保存')
+    void message.success('条件模板已保存')
     editorOpen.value = false
     await loadData()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '保存条件模板失败')
-  }
-  finally {
+  } finally {
     saving.value = false
   }
 }
@@ -275,7 +296,10 @@ async function loadCategoryOptions() {
   const visit = (nodes: PortfolioArchiveCategoryTreeNodeVO[]) => {
     for (const node of nodes) {
       if (node.status === PortfolioArchiveCategoryStatusCode.ACTIVE) {
-        options.push({ value: node.categoryCode, label: node.categoryName + '（' + node.categoryCode + '）' })
+        options.push({
+          value: node.categoryCode,
+          label: node.categoryName + '（' + node.categoryCode + '）',
+        })
       }
       visit(node.children || [])
     }
@@ -287,17 +311,16 @@ async function loadCategoryOptions() {
 async function toggleEnabled(row: PortfolioTitleCriteriaTemplateVO, enabled: boolean) {
   try {
     await portfolioTitlePromotionApi.enableCriteriaTemplate({ id: row.id, enabled })
-    message.success(enabled ? '已启用' : '已停用')
+    void message.success(enabled ? '已启用' : '已停用')
     await loadData()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '启停失败')
   }
 }
 
 onMounted(() => {
   void loadData()
-  void loadCategoryOptions().catch(error => showUserError(error, '加载档案分类失败'))
+  void loadCategoryOptions().catch((error) => showUserError(error, '加载档案分类失败'))
 })
 </script>
 
@@ -316,12 +339,8 @@ onMounted(() => {
           class="title-criteria__keyword"
           @enter="loadData"
         />
-        <UiButton size="sm" variant="outline" @click="loadData">
-          查询
-        </UiButton>
-        <UiButton size="sm" variant="primary" @click="openCreate">
-          新建模板
-        </UiButton>
+        <UiButton size="sm" variant="outline" @click="loadData"> 查询 </UiButton>
+        <UiButton size="sm" variant="primary" @click="openCreate"> 新建模板 </UiButton>
       </div>
       <UiDataTable
         :columns="columns"
@@ -342,10 +361,22 @@ onMounted(() => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'gateKind'">
-            {{ strictEnumLabel(PortfolioTitleCriteriaGateKindDescription, record.gateKind, '门槛类型') }}
+            {{
+              strictEnumLabel(
+                PortfolioTitleCriteriaGateKindDescription,
+                record.gateKind,
+                '门槛类型',
+              )
+            }}
           </template>
           <template v-else-if="column.key === 'checkType'">
-            {{ strictEnumLabel(PortfolioTitleCriteriaCheckTypeDescription, record.checkType, '核验类型') }}
+            {{
+              strictEnumLabel(
+                PortfolioTitleCriteriaCheckTypeDescription,
+                record.checkType,
+                '核验类型',
+              )
+            }}
           </template>
           <template v-else-if="column.key === 'pathCode'">
             {{ strictEnumLabel(PortfolioTitleCriteriaPathDescription, record.pathCode, '路径') }}
@@ -357,18 +388,14 @@ onMounted(() => {
           </template>
           <template v-else-if="column.key === 'action'">
             <div class="title-criteria__row-actions">
-              <UiButton
-                v-if="isTemplateRecord(record)"
-                size="sm"
-                @click="openEdit(record)"
-              >
+              <UiButton v-if="isTemplateRecord(record)" size="sm" @click="openEdit(record)">
                 编辑
               </UiButton>
               <UiSwitch
                 v-if="isTemplateRecord(record)"
                 :model-value="Boolean(record.enabled)"
                 size="sm"
-                @change="checked => toggleEnabled(record, Boolean(checked))"
+                @change="(checked) => toggleEnabled(record, Boolean(checked))"
               />
             </div>
           </template>
@@ -392,46 +419,58 @@ onMounted(() => {
         <UiSelect
           size="sm"
           v-model="form.gateKind"
-          :options="Object.values(PortfolioTitleCriteriaGateKindCode).map(code => ({
-            value: code,
-            label: PortfolioTitleCriteriaGateKindDescription[code],
-          }))"
-          @change="() => {
-            if (form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD) {
-              form.blockOnFail = true
+          :options="
+            Object.values(PortfolioTitleCriteriaGateKindCode).map((code) => ({
+              value: code,
+              label: PortfolioTitleCriteriaGateKindDescription[code],
+            }))
+          "
+          @change="
+            () => {
+              if (form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD) {
+                form.blockOnFail = true
+              }
             }
-          }"
+          "
         />
         <label class="title-criteria__field-label">核验类型</label>
         <UiSelect
           size="sm"
           v-model="form.checkType"
-          :options="ALL_PORTFOLIO_TITLE_CRITERIA_CHECK_TYPE_CODES.map(code => ({
-            value: code,
-            label: PortfolioTitleCriteriaCheckTypeDescription[code],
-          }))"
+          :options="
+            ALL_PORTFOLIO_TITLE_CRITERIA_CHECK_TYPE_CODES.map((code) => ({
+              value: code,
+              label: PortfolioTitleCriteriaCheckTypeDescription[code],
+            }))
+          "
         />
         <label class="title-criteria__field-label">满足模式</label>
         <UiSelect
           size="sm"
           v-model="form.satisfyMode"
-          :options="Object.values(PortfolioTitleCriteriaSatisfyModeCode).map(code => ({
-            value: code,
-            label: PortfolioTitleCriteriaSatisfyModeDescription[code],
-          }))"
+          :options="
+            Object.values(PortfolioTitleCriteriaSatisfyModeCode).map((code) => ({
+              value: code,
+              label: PortfolioTitleCriteriaSatisfyModeDescription[code],
+            }))
+          "
         />
         <label class="title-criteria__field-label">路径</label>
         <UiSelect
           size="sm"
           v-model="form.pathCode"
-          :options="Object.values(PortfolioTitleCriteriaPathCode).map(code => ({
-            value: code,
-            label: PortfolioTitleCriteriaPathDescription[code],
-          }))"
+          :options="
+            Object.values(PortfolioTitleCriteriaPathCode).map((code) => ({
+              value: code,
+              label: PortfolioTitleCriteriaPathDescription[code],
+            }))
+          "
         />
         <label class="title-criteria__field-label">业绩组编码</label>
         <UiInput v-model="form.groupCode" size="sm" placeholder="组模式时填写" />
-        <template v-if="form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP">
+        <template
+          v-if="form.satisfyMode === PortfolioTitleCriteriaSatisfyModeCode.MIN_COUNT_IN_GROUP"
+        >
           <label class="title-criteria__field-label">组内最低满足条数</label>
           <UiInputNumber v-model="form.groupMinimumCount" size="sm" :min="1" :precision="0" />
         </template>
@@ -441,10 +480,12 @@ onMounted(() => {
           v-model="form.jobCategory"
           allow-clear
           placeholder="可空=全适用"
-          :options="ALL_PORTFOLIO_TITLE_JOB_CATEGORY_CODES.map(code => ({
-            value: code,
-            label: PortfolioTitleJobCategoryDescription[code],
-          }))"
+          :options="
+            ALL_PORTFOLIO_TITLE_JOB_CATEGORY_CODES.map((code) => ({
+              value: code,
+              label: PortfolioTitleJobCategoryDescription[code],
+            }))
+          "
         />
         <label class="title-criteria__field-label">单条核验阈值</label>
         <UiInput v-model="form.expectedValue" size="sm" placeholder="如数量、学时、年限或级别" />
@@ -463,16 +504,16 @@ onMounted(() => {
             v-model="form.blockOnFail"
             :disabled="form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD"
           />
-          <span>不满足阻断提交{{ form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? '（硬门槛强制）' : '' }}</span>
+          <span>不满足阻断提交{{
+            form.gateKind === PortfolioTitleCriteriaGateKindCode.HARD ? '（硬门槛强制）' : ''
+          }}</span>
         </div>
         <div class="title-criteria__switch-row">
           <UiSwitch v-model="form.enabled" />
           <span>启用</span>
         </div>
         <div class="title-criteria__drawer-actions">
-          <UiButton size="sm" @click="editorOpen = false">
-            取消
-          </UiButton>
+          <UiButton size="sm" @click="editorOpen = false"> 取消 </UiButton>
           <UiButton size="sm" variant="primary" :loading="saving" @click="saveTemplate">
             保存
           </UiButton>

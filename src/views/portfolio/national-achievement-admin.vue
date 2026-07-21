@@ -302,7 +302,7 @@ async function saveCatalog() {
       enabled: form.enabled,
       requirements,
     })
-    message.success('成果目录已保存')
+    void message.success('成果目录已保存')
     editorOpen.value = false
     await loadCatalogs()
   } catch (error) {
@@ -326,7 +326,7 @@ async function deleteCatalog(row: PortfolioNationalAchievementCatalogVO) {
   }
   try {
     await portfolioNationalAchievementApi.deleteCatalog({ id: row.id })
-    message.success('成果目录已删除')
+    void message.success('成果目录已删除')
     await loadCatalogs()
   } catch (error) {
     showUserError(error, '删除成果目录失败')
@@ -375,12 +375,8 @@ void loadCatalogs()
       />
       <template v-if="activeTab === 'catalog'">
         <div class="achievement-admin__toolbar">
-          <UiInput
-            size="sm" v-model="filter.keyword" clearable placeholder="目录名称或标准描述"
-          />
-          <UiInput
-            size="sm" v-model="filter.categoryCode" clearable placeholder="分类编码"
-          />
+          <UiInput size="sm" v-model="filter.keyword" clearable placeholder="目录名称或标准描述" />
+          <UiInput size="sm" v-model="filter.categoryCode" clearable placeholder="分类编码" />
           <UiSelect
             v-model="filter.levelCode"
             size="sm"
@@ -398,7 +394,7 @@ void loadCatalogs()
               { value: 'false', label: '已停用' },
             ]"
           />
-          <UiButton size="sm" variant="primary" @click="(pageNum = 1, loadCatalogs())">
+          <UiButton size="sm" variant="primary" @click="((pageNum = 1), loadCatalogs())">
             查询
           </UiButton>
         </div>
@@ -422,25 +418,17 @@ void loadCatalogs()
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'levelCode'">
-              {{
-                levelLabel(record.levelCode)
-              }}
+              {{ levelLabel(record.levelCode) }}
             </template>
             <template v-else-if="column.key === 'buildCycleMonths'">
-              {{
-                record.buildCycleMonths ? `${record.buildCycleMonths} 个月` : '—'
-              }}
+              {{ record.buildCycleMonths ? `${record.buildCycleMonths} 个月` : '—' }}
             </template>
             <template v-else-if="column.key === 'requirementCount'">
-              {{
-                record.requirements.length
-              }}
+              {{ record.requirements.length }}
             </template>
             <template v-else-if="column.key === 'enabled'">
               <UiTag :tone="record.enabled ? 'green' : 'gray'">
-                {{
-                  record.enabled ? '启用' : '停用'
-                }}
+                {{ record.enabled ? '启用' : '停用' }}
               </UiTag>
             </template>
             <template v-else-if="column.key === 'actions'">
@@ -463,10 +451,8 @@ void loadCatalogs()
             clearable
             placeholder="成果名称或教师"
           />
-          <UiInput
-            size="sm" v-model="recordFilter.categoryCode" clearable placeholder="分类编码"
-          />
-          <UiButton size="sm" variant="primary" @click="(recordPageNum = 1, loadRecords())">
+          <UiInput size="sm" v-model="recordFilter.categoryCode" clearable placeholder="分类编码" />
+          <UiButton size="sm" variant="primary" @click="((recordPageNum = 1), loadRecords())">
             查询
           </UiButton>
         </div>
@@ -490,9 +476,7 @@ void loadCatalogs()
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'levelCode'">
-              {{
-                levelLabel(record.levelCode)
-              }}
+              {{ levelLabel(record.levelCode) }}
             </template>
             <template v-else-if="column.key === 'identityLayers'">
               <PortfolioOwnerIdentityLayersCell
@@ -518,9 +502,7 @@ void loadCatalogs()
         <UiForm layout="vertical">
           <div class="achievement-admin__form-grid">
             <UiFormItem label="分类编码" required>
-              <UiInput
-                size="sm" v-model="form.categoryCode" :disabled="operating"
-              />
+              <UiInput size="sm" v-model="form.categoryCode" :disabled="operating" />
             </UiFormItem>
             <UiFormItem label="成果级别" required>
               <UiSelect
@@ -531,14 +513,10 @@ void loadCatalogs()
               />
             </UiFormItem>
             <UiFormItem label="目录名称" required>
-              <UiInput
-                size="sm" v-model="form.catalogName" :disabled="operating"
-              />
+              <UiInput size="sm" v-model="form.catalogName" :disabled="operating" />
             </UiFormItem>
             <UiFormItem label="关联指标">
-              <UiInput
-                size="sm" v-model="form.indicatorCode" :disabled="operating"
-              />
+              <UiInput size="sm" v-model="form.indicatorCode" :disabled="operating" />
             </UiFormItem>
             <UiFormItem label="打造周期（月）">
               <UiInputNumber
@@ -554,10 +532,17 @@ void loadCatalogs()
             </UiFormItem>
           </div>
           <UiFormItem label="标准描述" required>
-            <UiTextarea size="sm" v-model="form.standardDescription" :rows="3" :disabled="operating" />
+            <UiTextarea
+              size="sm"
+              v-model="form.standardDescription"
+              :rows="3"
+              :disabled="operating"
+            />
           </UiFormItem>
           <div class="achievement-admin__requirements-head">
-            <strong>标准要求（权重合计 100）</strong><UiButton variant="primary" size="sm" :disabled="operating" @click="addRequirement">新增要求</UiButton>
+            <strong>标准要求（权重合计 100）</strong><UiButton variant="primary" size="sm" :disabled="operating" @click="addRequirement">
+              新增要求
+            </UiButton>
           </div>
           <div
             v-for="(requirement, index) in form.requirements"

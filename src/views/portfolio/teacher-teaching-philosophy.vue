@@ -12,7 +12,6 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -29,6 +28,7 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
@@ -133,7 +133,7 @@ async function save() {
       academicYear: form.academicYear.trim(),
       philosophyText: form.philosophyText.trim(),
     })
-    message.success('教学理念已保存')
+    void message.success('教学理念已保存')
     modalOpen.value = false
     await loadList()
   } catch (error) {
@@ -167,7 +167,7 @@ async function remove(row: PortfolioTeachingPhilosophyVO) {
   try {
     await portfolioTeachingPhilosophyApi.delete({ id: row.id, teacherId })
     if (requestToken.value !== operationToken) return
-    message.success('已删除')
+    void message.success('已删除')
     await loadList()
   } catch (error) {
     if (requestToken.value !== operationToken) return
@@ -223,17 +223,10 @@ usePortfolioScopedLoader(loadList, () => targetTeacherId.value)
       <UiDataTable :columns="columns" :data-source="rows" row-key="id" :pagination="false">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'identityLayers'">
-            <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-              <UiTag
-                v-for="(layer, idx) in record.ownerIdentityLayers"
-                :key="`${record.id}-${layer.identityType}-${idx}`"
-                size="sm"
-                :tone="layer.externalIdentity ? 'orange' : 'blue'"
-              >
-                {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-              </UiTag>
-            </div>
-            <span v-else>—</span>
+            <PortfolioOwnerIdentityLayersCell
+              :layers="record.ownerIdentityLayers"
+              :note="record.ownerMultiIdentityNote"
+            />
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiButton size="sm" variant="ghost" @click="openModal(record)">

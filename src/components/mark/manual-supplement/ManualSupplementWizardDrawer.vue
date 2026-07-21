@@ -83,14 +83,27 @@
     </div>
 
     <template #footer>
-      <UiButton size="sm" v-if="currentStep > 0 && currentStep < 2" variant="outline" @click="goPrev">
+      <UiButton
+        size="sm"
+        v-if="currentStep > 0 && currentStep < 2"
+        variant="outline"
+        @click="goPrev"
+      >
         上一步
       </UiButton>
-      <UiButton size="sm" v-if="currentStep < 2" variant="primary" :loading="submitting" @click="goNext">
+      <UiButton
+        size="sm"
+        v-if="currentStep < 2"
+        variant="primary"
+        :loading="submitting"
+        @click="goNext"
+      >
         {{ currentStep === 1 ? '提交补录' : '下一步' }}
       </UiButton>
       <template v-if="currentStep === 2">
-        <UiButton size="sm" variant="outline" @click="emit('continue-next')"> 继续补下一页 </UiButton>
+        <UiButton size="sm" variant="outline" @click="emit('continue-next')">
+          继续补下一页
+        </UiButton>
         <UiButton size="sm" variant="primary" @click="handleViewImages"> 查看该卷影像 </UiButton>
       </template>
     </template>
@@ -507,7 +520,7 @@ async function goNext(): Promise<void> {
       return
     }
     if (scenarioBlockReason.value) {
-      message.warning(scenarioBlockReason.value)
+      void message.warning(scenarioBlockReason.value)
       return
     }
     currentStep.value = 1
@@ -520,7 +533,9 @@ async function goNext(): Promise<void> {
   }
 
   if (submitDisabled.value) {
-    message.warning(prepareBlockDescription.value || classScopeWarning.value || '当前不可提交补录')
+    void message.warning(
+      prepareBlockDescription.value || classScopeWarning.value || '当前不可提交补录',
+    )
     return
   }
   if (submitting.value) {

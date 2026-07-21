@@ -75,7 +75,13 @@
             </UiFormItem>
             <UiFormItem>
               <div class="dp-space" style="--dp-space-gap: 8px">
-                <UiButton variant="primary" size="sm" :disabled="!canClaim" :loading="claiming" @click="submitClaim">
+                <UiButton
+                  variant="primary"
+                  size="sm"
+                  :disabled="!canClaim"
+                  :loading="claiming"
+                  @click="submitClaim"
+                >
                   <template #icon><PlusOutlined /></template>
                   批量领取一批
                 </UiButton>
@@ -154,7 +160,10 @@
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'question'">
                 <div class="dp-space dp-space--vertical" style="--dp-space-gap: 2px">
-                  <UiTypographyText v-if="record.taskUnit === AllocationUnitCode.WHOLE_PAPER" strong>
+                  <UiTypographyText
+                    v-if="record.taskUnit === AllocationUnitCode.WHOLE_PAPER"
+                    strong
+                  >
                     整卷批阅
                   </UiTypographyText>
                   <UiTypographyText v-else strong>
@@ -189,7 +198,9 @@
               <template v-else-if="column.key === 'session'">
                 <div class="dp-space dp-space--vertical" style="--dp-space-gap: 2px">
                   <UiTag
-                    :tone="record.markingPhase === MarkingSessionPhaseCode.TRIAL ? 'orange' : 'green'"
+                    :tone="
+                      record.markingPhase === MarkingSessionPhaseCode.TRIAL ? 'orange' : 'green'
+                    "
                     size="sm"
                   >
                     {{ record.sessionStatusMessage }}
@@ -463,7 +474,7 @@ function handleSelectionChange(keys: (string | number)[]): void {
 
 function toggleBatchMode(): void {
   if (!canManageReviewerTaskWrites.value) {
-    message.warning('当前账号无阅卷任务写权限，无法进入批量给分')
+    void message.warning('当前账号无阅卷任务写权限，无法进入批量给分')
     return
   }
   batchMode.value = !batchMode.value
@@ -477,7 +488,7 @@ function clearBatchSelection(): void {
 
 async function openBatchDrawer(): Promise<void> {
   if (!canManageReviewerTaskWrites.value) {
-    message.warning('当前账号无阅卷任务写权限')
+    void message.warning('当前账号无阅卷任务写权限')
     return
   }
   const first = selectedTasks.value[0]
@@ -637,7 +648,7 @@ async function loadTasks(options?: { silent?: boolean, resetPage?: boolean }): P
         new Error('当前登录用户缺少 userId，无法加载阅卷任务'),
         '当前登录用户缺少 userId，无法加载阅卷任务',
       )
-      message.error('登录状态异常，请重新登录后再加载阅卷任务')
+      void message.error('登录状态异常，请重新登录后再加载阅卷任务')
     }
     return
   }
@@ -763,13 +774,11 @@ const selectedClaimSessionPaused = computed(() => {
   return !!sessionId && pausedSessionIds.value.has(sessionId)
 })
 
-
 const claimContext = computed<TeacherClaimContextResponse | null>(() =>
   selectedExamId.value
     ? markTaskStore.getClaimContext(selectedExamId.value, markingPhase.value)
     : null,
 )
-
 
 /** MVR-281：默认拒绝假可写；仅 BE claim-context.canManageReviewerWrites 为 true 时允许批量给分 */
 const canManageReviewerTaskWrites = computed(
@@ -899,15 +908,15 @@ async function submitClaim(): Promise<void> {
     return
   }
   if (claimContext.value?.canClaimTasks !== true) {
-    message.warning('当前账号无可领取的题组评阅身份')
+    void message.warning('当前账号无可领取的题组评阅身份')
     return
   }
   if (selectedClaimSessionPaused.value) {
-    message.warning('当前正评会话已暂停，暂停期间无法领取新任务')
+    void message.warning('当前正评会话已暂停，暂停期间无法领取新任务')
     return
   }
   if (!canClaim.value) {
-    message.warning(isTrialTaskPool.value ? '请选择题组和试评会话' : '请选择题组和正评会话')
+    void message.warning(isTrialTaskPool.value ? '请选择题组和试评会话' : '请选择题组和正评会话')
     return
   }
   claiming.value = true
@@ -918,9 +927,9 @@ async function submitClaim(): Promise<void> {
       markingPhase: markingPhase.value,
     })
     if (claimed.length === 0) {
-      message.info('当前会话 / 题组没有可领取的任务')
+      void message.info('当前会话 / 题组没有可领取的任务')
     } else {
-      message.success(`成功领取 ${claimed.length} 个任务`)
+      void message.success(`成功领取 ${claimed.length} 个任务`)
       await Promise.all([loadTasks(), loadClaimContext()])
       try {
         await refreshSnapshot()

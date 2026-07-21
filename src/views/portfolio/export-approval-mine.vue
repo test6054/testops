@@ -36,6 +36,7 @@ import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const userStore = useUserStore()
 const loading = ref(false)
@@ -69,6 +70,7 @@ const query = reactive({
 const columns: ColumnsType = [
   { title: '申请时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '导出类型', key: 'exportType', width: 140 },
+  { title: '标的身份层', key: 'identityLayers', width: 180 },
   { title: '用途说明', dataIndex: 'exportPurpose', key: 'exportPurpose', ellipsis: true },
   { title: '状态', key: 'approvalStatus', width: 100 },
   { title: '审批时间', dataIndex: 'approvedTime', key: 'approvedTime', width: 170 },
@@ -150,7 +152,7 @@ async function submitRevoke() {
   revokeLoading.value = true
   try {
     await portfolioSecurityApi.revokeExport({ id: target.id, revokeReason: reason })
-    message.success('导出产物已撤销')
+    void message.success('导出产物已撤销')
     revokeOpen.value = false
     await loadPage()
   } catch (error) {
@@ -225,7 +227,7 @@ async function downloadRow(row: PortfolioExportApprovalVO) {
       fileNodeId: result.fileNodeId,
       fileName: result.fileName ?? `档案袋导出-${row.id}.xlsx`,
     })
-    message.success('已开始下载')
+    void message.success('已开始下载')
     await loadPage()
   } catch (error) {
     showUserError(error, '下载失败')
@@ -271,7 +273,7 @@ async function submitApply() {
       },
       exportPurpose,
     })
-    message.success('档案包导出申请已提交')
+    void message.success('档案包导出申请已提交')
     applyOpen.value = false
     query.pageNum = 1
     await loadPage()
@@ -297,7 +299,12 @@ onMounted(() => {
         subtitle="审批通过后可在此下载导出文件"
       >
         <template #actions>
-          <UiButton size="sm" variant="primary" :disabled="downloadLoading || applying" @click="openApply">
+          <UiButton
+            size="sm"
+            variant="primary"
+            :disabled="downloadLoading || applying"
+            @click="openApply"
+          >
             申请导出档案包
           </UiButton>
         </template>
@@ -316,6 +323,13 @@ onMounted(() => {
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'exportType'">
             {{ exportTypeLabel(record.exportType) }}
+          </template>
+          <template v-else-if="column.key === 'identityLayers'">
+            <PortfolioOwnerIdentityLayersCell
+              v-if="record.ownerIdentityLayers?.length"
+              :layers="record.ownerIdentityLayers"
+            />
+            <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'approvalStatus'">
             <UiTag :tone="approvalStatusTone(record.approvalStatus)">

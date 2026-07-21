@@ -158,7 +158,7 @@
         <UiButton size="sm" variant="outline" @click="goTrialSessions">试评定标</UiButton>
         <UiButton size="sm" variant="outline" @click="goFormalSessions">正评会话</UiButton>
         <UiButton
-          v-if="canDeleteOrganization === true"
+          v-if="canDeleteOrganization"
           size="sm"
           variant="outline"
           status="danger"
@@ -232,11 +232,11 @@
           <UiSwitch
             size="sm"
             v-model="editForm.anonymousMode"
-            :disabled="canUpdateOrganizationAnonymousMode !== true"
+            :disabled="!canUpdateOrganizationAnonymousMode"
           />
           <span class="org-index__switch-hint">
             {{
-              canUpdateOrganizationAnonymousMode === true
+              canUpdateOrganizationAnonymousMode
                 ? '启用后阅卷教师不可见考生身份'
                 : '已进入试评/正评或任务后不可修改匿名模式；备注仍可保存'
             }}
@@ -544,7 +544,7 @@ async function submitUpdate(): Promise<void> {
   // MVR-404：匿名模式变更须 canUpdateOrganizationAnonymousMode；仅改备注始终可走
   const anonymityChanged
     = Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
-  if (anonymityChanged && canUpdateOrganizationAnonymousMode.value !== true) {
+  if (anonymityChanged && !canUpdateOrganizationAnonymousMode.value) {
     showFormValidationMessage('已进入试评/正评或任务后不可修改匿名模式')
     return
   }
@@ -557,7 +557,7 @@ async function submitUpdate(): Promise<void> {
   try {
     const request: OrganizationUpdateRequest = {
       organizationId: requireMarkingOrganizationId(organization.value),
-      anonymousMode: canUpdateOrganizationAnonymousMode.value === true
+      anonymousMode: canUpdateOrganizationAnonymousMode.value
         ? editForm.anonymousMode
         : Boolean(organization.value.anonymousMode),
       remark: editForm.remark?.trim() || undefined,
@@ -576,7 +576,7 @@ async function submitUpdate(): Promise<void> {
 async function requestDeleteOrganization(): Promise<void> {
   if (!guardExamOwnerAction()) return
   // MVR-405：与 BE canDeleteOrganization / runtimeRefs 二次闸
-  if (canDeleteOrganization.value !== true) {
+  if (!canDeleteOrganization.value) {
     showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
     return
   }
@@ -594,7 +594,7 @@ async function requestDeleteOrganization(): Promise<void> {
 
 async function submitDelete(): Promise<void> {
   if (!guardExamOwnerAction()) return
-  if (canDeleteOrganization.value !== true) {
+  if (!canDeleteOrganization.value) {
     showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
     return
   }

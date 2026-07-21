@@ -75,8 +75,8 @@ function toggleAll(checked: boolean) {
 async function handleConfirm() {
   if (confirming.value) return
   // MVR-299：与 showPanel/canConfirmDigitalMaterials 同源二次拦截
-  if (canConfirm.value !== true) {
-    message.warning('当前账号无电子材料确认权限')
+  if (!canConfirm.value) {
+    void message.warning('当前账号无电子材料确认权限')
     return
   }
   if (selectedIds.value.length === 0) {
@@ -89,7 +89,7 @@ async function handleConfirm() {
       volumeId: props.volumeId,
       materialIds: selectedIds.value,
     })
-    message.success(`已确认 ${selectedIds.value.length} 项电子材料`)
+    void message.success(`已确认 ${selectedIds.value.length} 项电子材料`)
     selectedIds.value = []
     emit('refreshed')
   } catch (error) {

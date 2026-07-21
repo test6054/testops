@@ -38,6 +38,7 @@ import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { loadTree, departmentOptions: loadDepartmentOptions } = usePortfolioOrgTree()
 const route = useRoute()
@@ -324,7 +325,7 @@ async function exportDeptOneTable() {
       return
     }
     await downloadPortfolioExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 行`)
+    void message.success(`已导出 ${result.rowCount} 行`)
   } catch (error) {
     showUserError(error, '导出部门一张表失败')
   } finally {
@@ -462,7 +463,13 @@ watch(
         subtitle="院系师资结构 · 教师明细 · 职称分布"
       >
         <template #actions>
-          <UiButton size="sm" variant="primary" :loading="exporting" :disabled="!filter.departmentId" @click="exportDeptOneTable">
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="exporting"
+            :disabled="!filter.departmentId"
+            @click="exportDeptOneTable"
+          >
             导出部门一张表
           </UiButton>
         </template>
@@ -663,17 +670,10 @@ watch(
                   }}
                 </template>
                 <template v-else-if="column.key === 'identityLayers'">
-                  <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-                    <UiTag
-                      v-for="(layer, i) in record.ownerIdentityLayers"
-                      :key="`${record.teacherUserId}-${layer.identityType}-${i}`"
-                      size="sm"
-                      :tone="layer.externalIdentity ? 'orange' : 'blue'"
-                    >
-                      {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-                    </UiTag>
-                  </div>
-                  <span v-else>—</span>
+                  <PortfolioOwnerIdentityLayersCell
+                    :layers="record.ownerIdentityLayers"
+                    :note="record.ownerMultiIdentityNote"
+                  />
                 </template>
                 <template v-else-if="column.key === 'actions'">
                   <UiTableActions

@@ -54,7 +54,7 @@
           </template>
         </UiDataTable>
         <div
-          v-if="!templateSetsLoadFailed && canManageArchiveConfig === true"
+          v-if="!templateSetsLoadFailed && canManageArchiveConfig"
           class="archive-template-sets-panel__copy-bar"
         >
           <div class="archive-template-sets-panel__copy-all">
@@ -145,27 +145,19 @@
         <div class="archive-template-editor__meta">
           <label class="archive-template-editor__field">
             <span>套编码</span>
-            <UiInput
-              size="sm" :value="selectedSetCode" disabled
-            />
+            <UiInput size="sm" :value="selectedSetCode" disabled />
           </label>
           <label class="archive-template-editor__field">
             <span>名称</span>
-            <UiInput
-              size="sm" v-model="editorMeta.templateSetName"
-            />
+            <UiInput size="sm" v-model="editorMeta.templateSetName" />
           </label>
           <label class="archive-template-editor__field">
             <span>考核形式</span>
-            <UiInput
-              size="sm" :value="examFormLabel(editorMeta.examForm)" disabled
-            />
+            <UiInput size="sm" :value="examFormLabel(editorMeta.examForm)" disabled />
           </label>
           <label class="archive-template-editor__field">
             <span>来源模板</span>
-            <UiInput
-              size="sm" :value="editorMeta.forkSourceSetCode || '—'" disabled
-            />
+            <UiInput size="sm" :value="editorMeta.forkSourceSetCode || '—'" disabled />
           </label>
           <label class="archive-template-editor__field">
             <span>保管期限</span>
@@ -206,14 +198,10 @@
     >
       <UiForm layout="vertical">
         <UiFormItem label="平台模板套">
-          <UiInput
-            size="sm" :value="copySource?.templateSetName" disabled
-          />
+          <UiInput size="sm" :value="copySource?.templateSetName" disabled />
         </UiFormItem>
         <UiFormItem label="目标租户套编码" required>
-          <UiInput
-            size="sm" v-model="copyTargetSetCode" placeholder="如 PAPER_TYUT_2025"
-          />
+          <UiInput size="sm" v-model="copyTargetSetCode" placeholder="如 PAPER_TYUT_2025" />
         </UiFormItem>
         <UiFormItem>
           <UiCheckbox v-model="copyOverride">覆盖已存在的同名套</UiCheckbox>
@@ -238,19 +226,21 @@
       />
       <UiForm layout="vertical" class="archive-template-sets-panel__resync-form">
         <UiFormItem label="模板集编码">
-          <UiInput
-            size="sm" :value="resyncTarget?.templateSetCode" disabled
-          />
+          <UiInput size="sm" :value="resyncTarget?.templateSetCode" disabled />
         </UiFormItem>
         <UiFormItem label="二次确认：请输入模板集编码" required>
-          <UiInput
-            size="sm" v-model="resyncConfirmCode" placeholder="输入上方编码以确认"
-          />
+          <UiInput size="sm" v-model="resyncConfirmCode" placeholder="输入上方编码以确认" />
         </UiFormItem>
       </UiForm>
       <template #footer>
         <UiButton size="sm" variant="outline" @click="resyncOpen = false">取消</UiButton>
-        <UiButton size="sm" variant="primary" :loading="resyncLoading" :disabled="!canSubmitResync" @click="submitResync">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="resyncLoading"
+          :disabled="!canSubmitResync"
+          @click="submitResync"
+        >
           确认同步
         </UiButton>
       </template>
@@ -376,7 +366,7 @@ const authStore = useAuthStore()
 const userStore = useUserStore()
 /** MVR-314：与路由 requireTenantAdmin / BE requireTenantAdminForConfig 同源 */
 const canManageArchiveConfig = computed(
-  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin === true,
+  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin,
 )
 
 const activeScopeTab = ref<ArchiveTemplateScopeCode>(ArchiveTemplateScopeCode.PLATFORM)
@@ -663,8 +653,8 @@ async function loadTenantSetDetail(templateSetCode: string) {
 
 async function openEditDrawer(templateSetCode: string) {
   // MVR-381：与 canManageArchiveConfig / BE requireTenantAdminForConfig 二次拦截
-  if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可编辑归档模板')
+  if (!canManageArchiveConfig.value) {
+    void message.warning('仅超级管理员或租户管理员可编辑归档模板')
     return
   }
   editorDrawerOpen.value = true
@@ -686,7 +676,7 @@ function findTenantSetByPlatformSource(sourceSetCode: string) {
 async function openPlatformTemplate(record: ArchiveTenantTemplateSetResponse) {
   const tenantSet = findTenantSetByPlatformSource(record.templateSetCode)
   // MVR-381：无配置写权仅预览；有权且已有本校副本才进编辑
-  if (tenantSet && canManageArchiveConfig.value === true) {
+  if (tenantSet && canManageArchiveConfig.value) {
     await openEditDrawer(tenantSet.templateSetCode)
     return
   }
@@ -696,8 +686,8 @@ async function openPlatformTemplate(record: ArchiveTenantTemplateSetResponse) {
 function openCopyModal(record: ArchiveTenantTemplateSetResponse, defaultTargetSetCode = '') {
   if (templateSetsLoadFailed.value) return
   // MVR-381：复制入口与 canManageArchiveConfig 二次拦截
-  if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可复制归档模板')
+  if (!canManageArchiveConfig.value) {
+    void message.warning('仅超级管理员或租户管理员可复制归档模板')
     return
   }
   copySource.value = record
@@ -711,8 +701,8 @@ async function submitCopy() {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档模板')
+  if (!canManageArchiveConfig.value) {
+    void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
   if (templateSetsLoadFailed.value) {
@@ -732,7 +722,7 @@ async function submitCopy() {
       targetSetCode,
       overrideIfExists: copyOverride.value,
     })
-    message.success('模板已复制到本校')
+    void message.success('模板已复制到本校')
     copyOpen.value = false
     await loadTemplateSets()
     await openEditDrawer(targetSetCode)
@@ -748,8 +738,8 @@ async function submitCopyAll() {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档模板')
+  if (!canManageArchiveConfig.value) {
+    void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
   if (templateSetsLoadFailed.value) {
@@ -767,7 +757,7 @@ async function submitCopyAll() {
       targetPrefix,
       overrideIfExists: copyAllOverride.value,
     })
-    message.success('全部平台模板已复制到本校')
+    void message.success('全部平台模板已复制到本校')
     await loadTemplateSets()
   } catch (error) {
     showUserError(error, '批量复制平台模板失败')
@@ -779,12 +769,12 @@ async function submitCopyAll() {
 function openResyncModal(record: ArchiveTenantTemplateSetResponse) {
   if (templateSetsLoadFailed.value) return
   // MVR-381/421：重同步入口与 canManageArchiveConfig ∧ canResyncTenantSet 二次拦截
-  if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可重新同步归档模板')
+  if (!canManageArchiveConfig.value) {
+    void message.warning('仅超级管理员或租户管理员可重新同步归档模板')
     return
   }
   if (!canResyncTenantSet(record)) {
-    message.warning('当前模板集无需或无法重新同步（无更新的平台源版本）')
+    void message.warning('当前模板集无需或无法重新同步（无更新的平台源版本）')
     return
   }
   resyncTarget.value = record
@@ -796,7 +786,7 @@ function buildPlatformTemplateRowActions(
   record: ArchiveTenantTemplateSetResponse,
 ): UiTableRowActionItem[] {
   const tenantSet = findTenantSetByPlatformSource(record.templateSetCode)
-  const canManage = canManageArchiveConfig.value === true
+  const canManage = canManageArchiveConfig.value
   return [
     {
       key: 'open',
@@ -818,7 +808,7 @@ function handlePlatformTemplateRowAction(key: string, record: ArchiveTenantTempl
 function buildTenantTemplateRowActions(
   record: ArchiveTenantTemplateSetResponse,
 ): UiTableRowActionItem[] {
-  const canManage = canManageArchiveConfig.value === true
+  const canManage = canManageArchiveConfig.value
   return [
     { key: 'edit', label: '编辑', hidden: !canManage },
     { key: 'history', label: '版本历史' },
@@ -884,8 +874,8 @@ async function submitRestoreFromAudit(auditId: string): Promise<void> {
   }
   // MVR-314：模板配置写二次拦截
   // MVR-431：恢复写闸与 canManageArchiveConfig 严格叠闸
-  if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档模板')
+  if (!canManageArchiveConfig.value) {
+    void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
   if (!auditTarget.value || auditLoadFailed.value || templateSetsLoadFailed.value) {
@@ -900,7 +890,7 @@ async function submitRestoreFromAudit(auditId: string): Promise<void> {
       restoringAuditId.value = auditId
       try {
         await restoreArchiveTenantTemplateFromAudit({ auditId })
-        message.success('模板版本已恢复')
+        void message.success('模板版本已恢复')
         auditOpen.value = false
         await refreshAll()
         await openEditDrawer(templateSetCode)
@@ -918,12 +908,12 @@ async function submitResync() {
     return
   }
   // MVR-314/421：模板配置写 ∧ 可重同步源版本二次拦截
-  if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档模板')
+  if (!canManageArchiveConfig.value) {
+    void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
   if (!resyncTarget.value || !canResyncTenantSet(resyncTarget.value)) {
-    message.warning('当前模板集无需或无法重新同步（无更新的平台源版本）')
+    void message.warning('当前模板集无需或无法重新同步（无更新的平台源版本）')
     return
   }
   if (!canSubmitResync.value || templateSetsLoadFailed.value) return
@@ -933,7 +923,7 @@ async function submitResync() {
       templateSetCode: resyncTarget.value.templateSetCode,
       confirmSetCode: resyncConfirmCode.value.trim(),
     })
-    message.success('模板集已重新同步')
+    void message.success('模板集已重新同步')
     resyncOpen.value = false
     await refreshAll()
     await openEditDrawer(resyncTarget.value.templateSetCode)
@@ -949,8 +939,8 @@ async function saveTenantSet() {
     return
   }
   // MVR-314：模板配置写二次拦截
-  if (canManageArchiveConfig.value !== true) {
-    message.warning('仅超级管理员或租户管理员可维护归档模板')
+  if (!canManageArchiveConfig.value) {
+    void message.warning('仅超级管理员或租户管理员可维护归档模板')
     return
   }
   if (!selectedSetCode.value || templateSetsLoadFailed.value) return
@@ -966,7 +956,7 @@ async function saveTenantSet() {
     showFormValidationMessage('至少保留一条自查项')
     return
   }
-  if (editorMeta.defaultPermanentRetention !== true && editorMeta.defaultRetentionYears == null) {
+  if (!editorMeta.defaultPermanentRetention && editorMeta.defaultRetentionYears == null) {
     showFormValidationMessage('请填写保管年限或勾选永久')
     return
   }
@@ -1023,7 +1013,7 @@ async function saveTenantSet() {
         itemOrder: item.itemOrder,
       })),
     })
-    message.success('模板集已保存')
+    void message.success('模板集已保存')
     await loadTemplateSets()
     resetEditor()
   } catch (error) {

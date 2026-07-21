@@ -215,7 +215,15 @@
   >
     <template #footer>
       <UiButton size="sm" variant="outline" @click="createModalOpen = false">取消</UiButton>
-      <UiButton variant="primary" size="sm" :loading="creating" :disabled="!createValid" @click="handleCreate">创建</UiButton>
+      <UiButton
+        variant="primary"
+        size="sm"
+        :loading="creating"
+        :disabled="!createValid"
+        @click="handleCreate"
+      >
+        创建
+      </UiButton>
     </template>
     <UiForm layout="vertical">
       <UiFormItem label="外部系统类型" required>
@@ -238,7 +246,9 @@
       </UiFormItem>
       <UiFormItem label="外部课程编号">
         <UiInput
-          size="sm" v-model="createForm.externalCourseId" placeholder="如教务系统中的课程编号"
+          size="sm"
+          v-model="createForm.externalCourseId"
+          placeholder="如教务系统中的课程编号"
         />
       </UiFormItem>
       <UiFormItem label="外部成绩项编号">
@@ -677,7 +687,7 @@ async function withTaskAction(
   actionLoadingId.value = record.id
   try {
     await action()
-    message.success(hint)
+    void message.success(hint)
     await loadAll()
   } catch (error) {
     showUserError(error, `${hint}失败`)
@@ -689,7 +699,7 @@ async function withTaskAction(
 function handleExecute(record: ExamTeachingAffairsSyncTask): void {
   // MVR-420：与 canExecute / 行内 disabled 同源二次闸（PENDING 且未重试）
   if (!canExecute(record)) {
-    message.warning('仅未执行的待处理任务可触发回写')
+    void message.warning('仅未执行的待处理任务可触发回写')
     return
   }
   void withTaskAction(record, () => executeGradePassback(record.id!), '已触发执行回写')
@@ -698,7 +708,7 @@ function handleExecute(record: ExamTeachingAffairsSyncTask): void {
 function handleRetry(record: ExamTeachingAffairsSyncTask): void {
   // MVR-420：与 canRetry / 行内 disabled 同源二次闸
   if (!canRetry(record.taskStatus)) {
-    message.warning('仅失败或部分成功的任务可重试')
+    void message.warning('仅失败或部分成功的任务可重试')
     return
   }
   void withTaskAction(record, () => retrySyncTask(record.id!), '已重试')
@@ -707,7 +717,7 @@ function handleRetry(record: ExamTeachingAffairsSyncTask): void {
 function handleCancel(record: ExamTeachingAffairsSyncTask): void {
   // MVR-420：与 canCancel / 行内 disabled 同源二次闸
   if (!canCancel(record.taskStatus)) {
-    message.warning('当前任务状态不可取消')
+    void message.warning('当前任务状态不可取消')
     return
   }
   void withTaskAction(record, () => cancelSyncTask(record.id!), '已取消')
@@ -759,7 +769,7 @@ async function handleCreate(): Promise<void> {
       externalCourseId: createForm.externalCourseId.trim() || undefined,
       externalLineItemId: createForm.externalLineItemId.trim() || undefined,
     })
-    message.success('已创建同步任务')
+    void message.success('已创建同步任务')
     createModalOpen.value = false
     await loadAll()
   } catch (error) {
@@ -842,7 +852,7 @@ async function handleReconcile(record: ExamTeachingAffairsSyncTask): Promise<voi
   reconciling.value = true
   try {
     await reconcilePassback(record.id)
-    message.success('已执行对账')
+    void message.success('已执行对账')
     await loadAll()
   } catch (error) {
     showUserError(error, '教务回写对账失败')

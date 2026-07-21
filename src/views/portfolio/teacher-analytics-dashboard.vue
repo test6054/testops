@@ -66,6 +66,16 @@ const certColumns: ColumnsType = [
   { title: '数量', dataIndex: 'count', key: 'count', width: 88, align: 'right' },
 ]
 
+const dualDepartmentColumns: ColumnsType = [
+  { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
+  { title: '在岗双师', dataIndex: 'count', key: 'count', width: 100, align: 'right' },
+]
+
+const dualCertYearColumns: ColumnsType = [
+  { title: '认定年份', dataIndex: 'certYear', key: 'certYear' },
+  { title: '通过教师数', dataIndex: 'count', key: 'count', width: 110, align: 'right' },
+]
+
 const doubleDutyStatusColumns: ColumnsType = [
   { title: '台账状态', dataIndex: 'registryStatus', key: 'registryStatus' },
   { title: '数量', dataIndex: 'count', key: 'count', width: 88, align: 'right' },
@@ -319,8 +329,25 @@ onMounted(loadAll)
                 value: String(dualStats.approvedCount),
                 tone: 'green',
               },
+              {
+                key: 'structureTeachers',
+                label: '在岗教师',
+                value: String(dualStats.structureTeacherCount ?? 0),
+              },
+              {
+                key: 'structureDual',
+                label: '在岗双师',
+                value: String(dualStats.structureDualTeacherCount ?? 0),
+                tone: 'green',
+              },
+              {
+                key: 'dualRatio',
+                label: '双师比例%',
+                value: String(dualStats.dualTeacherRatioPercent ?? 0),
+                tone: 'blue',
+              },
             ]"
-            :columns="2"
+            :columns="3"
             variant="grid"
             compact
           />
@@ -353,6 +380,32 @@ onMounted(loadAll)
             :show-pagination="false"
             :sticky-header="false"
             :total="dualStats.certLevelCounts.length"
+            style="margin-top: 16px"
+          />
+          <UiDataTable
+            v-if="(dualStats.departmentCounts || []).length"
+            :columns="dualDepartmentColumns"
+            :data-source="dualStats.departmentCounts || []"
+            row-key="departmentId"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="(dualStats.departmentCounts || []).length"
+            style="margin-top: 16px"
+          />
+          <UiDataTable
+            v-if="(dualStats.certYearCounts || []).length"
+            :columns="dualCertYearColumns"
+            :data-source="dualStats.certYearCounts || []"
+            row-key="certYear"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="(dualStats.certYearCounts || []).length"
             style="margin-top: 16px"
           />
         </UiCard>

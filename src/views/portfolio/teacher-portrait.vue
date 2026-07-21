@@ -72,15 +72,13 @@ import {
   resolveCohortHint,
 } from '@/utils/portfolio-portrait-charts'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  reloadLifecycleState,
-} = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
+const { archiveWriteForbidden, archiveWriteBlockMessage, reloadLifecycleState }
+  = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
 function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' {
@@ -280,7 +278,7 @@ async function dismissTrainingRecommendation(item: PortfolioAnalysisTrainingReco
       return
     }
     currentItem.recommendStatus = PortfolioTrainingRecommendStatusCode.DISMISSED
-    message.success('已忽略培训推荐')
+    void message.success('已忽略培训推荐')
   } catch (error) {
     if (portraitRequestToken.value !== requestToken) {
       return
@@ -343,7 +341,6 @@ async function loadPlanCompletion() {
   }
 }
 
-
 function defaultAppointmentPeriodRange(): { periodStart: string, periodEnd: string } {
   const end = new Date()
   const start = new Date(end.getFullYear() - 2, 0, 1)
@@ -386,7 +383,14 @@ async function loadSecondaryPortraitData() {
         })
       : Promise.resolve(null),
   ])
-  const [cohortSettled, trendSettled, , suggestionSettled, trainingSettled, creditSettled, appointmentSettled] = settled
+  const [
+    cohortSettled,
+    trendSettled,,    
+    suggestionSettled,
+    trainingSettled,
+    creditSettled,
+    appointmentSettled,
+  ] = settled
   if (portraitRequestToken.value !== requestToken) {
     return
   }
@@ -591,7 +595,10 @@ watch(creditCategory, (next, prev) => {
                 （不计入当前在岗结构）
               </span>
             </template>
-            <span v-if="archiveWriteForbidden || portrait.archiveWriteForbidden" class="teacher-portrait__write-ban">
+            <span
+              v-if="archiveWriteForbidden || portrait.archiveWriteForbidden"
+              class="teacher-portrait__write-ban"
+            >
               档案写禁：{{ archiveWriteBlockMessage || '封存/迁出后禁止档案写入' }}
             </span>
           </div>
@@ -731,7 +738,8 @@ watch(creditCategory, (next, prev) => {
         <p class="teacher-portrait__meta">
           数据来源：{{ creditCurve.dataSource }} · 累计 {{ creditCurve.totalCredits }} 学分
           <template v-if="creditCurve.creditCategory">
-            · 当前分类 {{ CREDIT_CATEGORY_LABELS[creditCurve.creditCategory] || creditCurve.creditCategory }}
+            · 当前分类
+            {{ CREDIT_CATEGORY_LABELS[creditCurve.creditCategory] || creditCurve.creditCategory }}
           </template>
           <template v-if="creditCurve.officialFactCount != null">
             · 事实 {{ creditCurve.officialFactCount }} 条
@@ -758,7 +766,11 @@ watch(creditCategory, (next, prev) => {
 
       <div v-if="portrait" class="teacher-portrait__insight">
         <UiCard title="发展建议" class="teacher-portrait__suggestions">
-          <UiEmpty size="sm" v-if="!suggestions.length" description="暂无发展建议，画像重算后将自动生成" />
+          <UiEmpty
+            size="sm"
+            v-if="!suggestions.length"
+            description="暂无发展建议，画像重算后将自动生成"
+          />
           <ul v-else class="teacher-portrait__insight-list">
             <li v-for="item in suggestions" :key="item.id" class="teacher-portrait__insight-item">
               <div class="teacher-portrait__insight-head">
@@ -862,7 +874,11 @@ watch(creditCategory, (next, prev) => {
                   v-if="layer.displayName || layer.appointmentNo || layer.enterpriseName"
                   class="teacher-portrait__hint-text"
                 >
-                  {{ [layer.displayName, layer.appointmentNo, layer.enterpriseName].filter(Boolean).join(' · ') }}
+                  {{
+                    [layer.displayName, layer.appointmentNo, layer.enterpriseName]
+                      .filter(Boolean)
+                      .join(' · ')
+                  }}
                 </div>
               </td>
               <td>
@@ -883,37 +899,22 @@ watch(creditCategory, (next, prev) => {
         </table>
       </UiCard>
 
-
       <UiCard
         v-if="portrait?.digitalLiteracy"
         title="§8.43 数字素养达成度"
         class="teacher-portrait__digital-literacy"
       >
         <p class="teacher-portrait__hint-text">
-          综合 {{ portrait.digitalLiteracy.achievementScore }}
-          · 学年 {{ portrait.digitalLiteracy.academicYear || '—' }}
-          · {{ portrait.digitalLiteracy.shortboard ? '存在短板，请关注培训推荐' : '暂无明显短板' }}
+          综合 {{ portrait.digitalLiteracy.achievementScore }} · 学年
+          {{ portrait.digitalLiteracy.academicYear || '—' }} ·
+          {{ portrait.digitalLiteracy.shortboard ? '存在短板，请关注培训推荐' : '暂无明显短板' }}
         </p>
         <p class="teacher-portrait__hint-text">{{ portrait.digitalLiteracy.formulaLabel }}</p>
-        <div
-          v-if="portrait.digitalLiteracy.ownerIdentityLayers?.length"
-          class="teacher-portrait__identity-layers"
-        >
-          <UiTag
-            v-for="(layer, idx) in portrait.digitalLiteracy.ownerIdentityLayers"
-            :key="layer.identityId || `${layer.identityType}-${idx}`"
-            size="sm"
-            :tone="layer.externalIdentity ? 'orange' : 'blue'"
-          >
-            {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-          </UiTag>
-        </div>
-        <p
-          v-if="portrait.digitalLiteracy.ownerMultiIdentityNote"
-          class="teacher-portrait__hint-text"
-        >
-          {{ portrait.digitalLiteracy.ownerMultiIdentityNote }}
-        </p>
+        <PortfolioOwnerIdentityLayersCell
+          :layers="portrait.digitalLiteracy.ownerIdentityLayers"
+          :note="portrait.digitalLiteracy.ownerMultiIdentityNote"
+          show-note
+        />
         <table class="teacher-portrait__table">
           <thead>
             <tr>
@@ -934,11 +935,15 @@ watch(creditCategory, (next, prev) => {
             </tr>
           </tbody>
         </table>
-        <ul v-if="portrait.digitalLiteracy.evidenceNotes?.length" class="teacher-portrait__hint-text">
-          <li v-for="(note, idx) in portrait.digitalLiteracy.evidenceNotes" :key="idx">{{ note }}</li>
+        <ul
+          v-if="portrait.digitalLiteracy.evidenceNotes?.length"
+          class="teacher-portrait__hint-text"
+        >
+          <li v-for="(note, idx) in portrait.digitalLiteracy.evidenceNotes" :key="idx">
+            {{ note }}
+          </li>
         </ul>
       </UiCard>
-
 
       <UiCard
         v-if="portrait?.guidanceContribution"
@@ -946,34 +951,17 @@ watch(creditCategory, (next, prev) => {
         class="teacher-portrait__guidance"
       >
         <p class="teacher-portrait__hint-text">
-          综合 {{ portrait.guidanceContribution.contributionScore }}
-          · 任务 {{ portrait.guidanceContribution.taskCount }}
-          · 最高单项 {{ portrait.guidanceContribution.topItemScore }}
+          综合 {{ portrait.guidanceContribution.contributionScore }} · 任务
+          {{ portrait.guidanceContribution.taskCount }} · 最高单项
+          {{ portrait.guidanceContribution.topItemScore }}
         </p>
         <p class="teacher-portrait__hint-text">{{ portrait.guidanceContribution.formulaLabel }}</p>
-        <div
-          v-if="portrait.guidanceContribution.ownerIdentityLayers?.length"
-          class="teacher-portrait__identity-layers"
-        >
-          <UiTag
-            v-for="(layer, idx) in portrait.guidanceContribution.ownerIdentityLayers"
-            :key="layer.identityId || `${layer.identityType}-${idx}`"
-            size="sm"
-            :tone="layer.externalIdentity ? 'orange' : 'blue'"
-          >
-            {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-          </UiTag>
-        </div>
-        <p
-          v-if="portrait.guidanceContribution.ownerMultiIdentityNote"
-          class="teacher-portrait__hint-text"
-        >
-          {{ portrait.guidanceContribution.ownerMultiIdentityNote }}
-        </p>
-        <table
-          v-if="portrait.guidanceContribution.items?.length"
-          class="teacher-portrait__table"
-        >
+        <PortfolioOwnerIdentityLayersCell
+          :layers="portrait.guidanceContribution.ownerIdentityLayers"
+          :note="portrait.guidanceContribution.ownerMultiIdentityNote"
+          show-note
+        />
+        <table v-if="portrait.guidanceContribution.items?.length" class="teacher-portrait__table">
           <thead>
             <tr>
               <th>类型</th>
@@ -1002,18 +990,15 @@ watch(creditCategory, (next, prev) => {
             </tr>
           </tbody>
         </table>
-        <ul v-if="portrait.guidanceContribution.evidenceNotes?.length" class="teacher-portrait__hint-text">
-          <li
-            v-for="(note, idx) in portrait.guidanceContribution.evidenceNotes"
-            :key="idx"
-          >
+        <ul
+          v-if="portrait.guidanceContribution.evidenceNotes?.length"
+          class="teacher-portrait__hint-text"
+        >
+          <li v-for="(note, idx) in portrait.guidanceContribution.evidenceNotes" :key="idx">
             {{ note }}
           </li>
         </ul>
       </UiCard>
-
-
-
 
       <UiCard
         v-if="portrait?.industryPackSceneScore"
@@ -1021,35 +1006,27 @@ watch(creditCategory, (next, prev) => {
         class="teacher-portrait__industry-pack"
       >
         <p class="teacher-portrait__hint-text">
-          场景分 {{ portrait.industryPackSceneScore.sceneScore }}
-          · 通用 {{ portrait.industryPackSceneScore.generalScore }}
-          · 行业包 {{ portrait.industryPackSceneScore.industryPackScore }}
-          · 权重 {{ portrait.industryPackSceneScore.packWeight }}
+          场景分 {{ portrait.industryPackSceneScore.sceneScore }} · 通用
+          {{ portrait.industryPackSceneScore.generalScore }} · 行业包
+          {{ portrait.industryPackSceneScore.industryPackScore }} · 权重
+          {{ portrait.industryPackSceneScore.packWeight }}
         </p>
         <p class="teacher-portrait__hint-text">
-          {{ portrait.industryPackSceneScore.packBound ? (portrait.industryPackSceneScore.packName || portrait.industryPackSceneScore.packCode) : '未挂载行业包' }}
+          {{
+            portrait.industryPackSceneScore.packBound
+              ? portrait.industryPackSceneScore.packName || portrait.industryPackSceneScore.packCode
+              : '未挂载行业包'
+          }}
           · 硬性达标 {{ portrait.industryPackSceneScore.hardRequirementsMet ? '是' : '否' }}
         </p>
-        <p class="teacher-portrait__hint-text">{{ portrait.industryPackSceneScore.formulaLabel }}</p>
-        <div
-          v-if="portrait.industryPackSceneScore.ownerIdentityLayers?.length"
-          class="teacher-portrait__identity-layers"
-        >
-          <UiTag
-            v-for="(layer, idx) in portrait.industryPackSceneScore.ownerIdentityLayers"
-            :key="layer.identityId || `${layer.identityType}-${idx}`"
-            size="sm"
-            :tone="layer.externalIdentity ? 'orange' : 'blue'"
-          >
-            {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-          </UiTag>
-        </div>
-        <p
-          v-if="portrait.industryPackSceneScore.ownerMultiIdentityNote"
-          class="teacher-portrait__hint-text"
-        >
-          {{ portrait.industryPackSceneScore.ownerMultiIdentityNote }}
+        <p class="teacher-portrait__hint-text">
+          {{ portrait.industryPackSceneScore.formulaLabel }}
         </p>
+        <PortfolioOwnerIdentityLayersCell
+          :layers="portrait.industryPackSceneScore.ownerIdentityLayers"
+          :note="portrait.industryPackSceneScore.ownerMultiIdentityNote"
+          show-note
+        />
         <table
           v-if="portrait.industryPackSceneScore.dimensionScores?.length"
           class="teacher-portrait__table"
@@ -1074,29 +1051,27 @@ watch(creditCategory, (next, prev) => {
             </tr>
           </tbody>
         </table>
-        <div v-if="portrait.industryPackSceneScore.hardGaps?.length" class="teacher-portrait__hint-text">
+        <div
+          v-if="portrait.industryPackSceneScore.hardGaps?.length"
+          class="teacher-portrait__hint-text"
+        >
           <p>行业达标缺口清单：</p>
           <ul>
-            <li
-              v-for="(gap, idx) in portrait.industryPackSceneScore.hardGaps"
-              :key="`gap-${idx}`"
-            >
+            <li v-for="(gap, idx) in portrait.industryPackSceneScore.hardGaps" :key="`gap-${idx}`">
               [{{ gap.gapType }}] {{ gap.gapTitle }}
               <span v-if="gap.remediationHint"> — {{ gap.remediationHint }}</span>
             </li>
           </ul>
         </div>
-        <ul v-if="portrait.industryPackSceneScore.evidenceNotes?.length" class="teacher-portrait__hint-text">
-          <li
-            v-for="(note, idx) in portrait.industryPackSceneScore.evidenceNotes"
-            :key="idx"
-          >
+        <ul
+          v-if="portrait.industryPackSceneScore.evidenceNotes?.length"
+          class="teacher-portrait__hint-text"
+        >
+          <li v-for="(note, idx) in portrait.industryPackSceneScore.evidenceNotes" :key="idx">
             {{ note }}
           </li>
         </ul>
       </UiCard>
-
-
 
       <UiCard
         v-if="appointmentPeriodEval"
@@ -1104,40 +1079,24 @@ watch(creditCategory, (next, prev) => {
         class="teacher-portrait__appointment-period"
       >
         <p class="teacher-portrait__hint-text">
-          综合 {{ appointmentPeriodEval.compositeScore }}
-          · 年度加权 {{ appointmentPeriodEval.weightedAnnualScore }}
-          · 关键成果 +{{ appointmentPeriodEval.keyAchievementBonus }}
-          · 风险 -{{ appointmentPeriodEval.riskDeduction }}
-          · 周期 {{ appointmentPeriodEval.periodStart }} ~ {{ appointmentPeriodEval.periodEnd }}
-          · {{ appointmentPeriodEval.cycleSceneLabel || appointmentPeriodEval.cycleSceneCode }}
+          综合 {{ appointmentPeriodEval.compositeScore }} · 年度加权
+          {{ appointmentPeriodEval.weightedAnnualScore }} · 关键成果 +{{
+            appointmentPeriodEval.keyAchievementBonus
+          }}
+          · 风险 -{{ appointmentPeriodEval.riskDeduction }} · 周期
+          {{ appointmentPeriodEval.periodStart }} ~ {{ appointmentPeriodEval.periodEnd }} ·
+          {{ appointmentPeriodEval.cycleSceneLabel || appointmentPeriodEval.cycleSceneCode }}
         </p>
         <p class="teacher-portrait__hint-text">{{ appointmentPeriodEval.formulaLabel }}</p>
-        <div
-          v-if="appointmentPeriodEval.ownerIdentityLayers?.length"
-          class="teacher-portrait__identity-layers"
-        >
-          <UiTag
-            v-for="(layer, idx) in appointmentPeriodEval.ownerIdentityLayers"
-            :key="layer.identityId || `${layer.identityType}-${idx}`"
-            size="sm"
-            :tone="layer.externalIdentity ? 'orange' : 'blue'"
-          >
-            {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-          </UiTag>
-        </div>
-        <p
-          v-if="appointmentPeriodEval.ownerMultiIdentityNote"
-          class="teacher-portrait__hint-text"
-        >
-          {{ appointmentPeriodEval.ownerMultiIdentityNote }}
-        </p>
+        <PortfolioOwnerIdentityLayersCell
+          :layers="appointmentPeriodEval.ownerIdentityLayers"
+          :note="appointmentPeriodEval.ownerMultiIdentityNote"
+          show-note
+        />
         <p class="teacher-portrait__hint-text">
           年度来源场景 {{ appointmentPeriodEval.annualSourceSceneCode }}（与查询周期隔离）
         </p>
-        <table
-          v-if="appointmentPeriodEval.yearScores?.length"
-          class="teacher-portrait__table"
-        >
+        <table v-if="appointmentPeriodEval.yearScores?.length" class="teacher-portrait__table">
           <thead>
             <tr>
               <th>年度</th>
@@ -1148,23 +1107,21 @@ watch(creditCategory, (next, prev) => {
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="row in appointmentPeriodEval.yearScores"
-              :key="`year-${row.year}`"
-            >
+            <tr v-for="row in appointmentPeriodEval.yearScores" :key="`year-${row.year}`">
               <td>{{ row.year }}</td>
               <td>{{ row.annualScore }}</td>
               <td>{{ row.weight }}</td>
               <td>{{ row.weightedContribution }}</td>
-              <td>{{ row.referencedTaskNames?.join('、') || row.referencedTaskIds?.join('、') || '—' }}</td>
+              <td>
+                {{
+                  row.referencedTaskNames?.join('、') || row.referencedTaskIds?.join('、') || '—'
+                }}
+              </td>
             </tr>
           </tbody>
         </table>
         <ul v-if="appointmentPeriodEval.evidenceNotes?.length" class="teacher-portrait__hint-text">
-          <li
-            v-for="(note, idx) in appointmentPeriodEval.evidenceNotes"
-            :key="`ap-note-${idx}`"
-          >
+          <li v-for="(note, idx) in appointmentPeriodEval.evidenceNotes" :key="`ap-note-${idx}`">
             {{ note }}
           </li>
         </ul>
@@ -1176,31 +1133,19 @@ watch(creditCategory, (next, prev) => {
         class="teacher-portrait__educating-outcome"
       >
         <p class="teacher-portrait__hint-text">
-          综合 {{ portrait.educatingOutcomeContribution.contributionScore }}
-          · 计入 {{ portrait.educatingOutcomeContribution.itemCount }}
-          · 去重剔除 {{ portrait.educatingOutcomeContribution.dedupDroppedCount ?? 0 }}
-          · 最高单项 {{ portrait.educatingOutcomeContribution.topItemScore }}
+          综合 {{ portrait.educatingOutcomeContribution.contributionScore }} · 计入
+          {{ portrait.educatingOutcomeContribution.itemCount }} · 去重剔除
+          {{ portrait.educatingOutcomeContribution.dedupDroppedCount ?? 0 }} · 最高单项
+          {{ portrait.educatingOutcomeContribution.topItemScore }}
         </p>
-        <p class="teacher-portrait__hint-text">{{ portrait.educatingOutcomeContribution.formulaLabel }}</p>
-        <div
-          v-if="portrait.educatingOutcomeContribution.ownerIdentityLayers?.length"
-          class="teacher-portrait__identity-layers"
-        >
-          <UiTag
-            v-for="(layer, idx) in portrait.educatingOutcomeContribution.ownerIdentityLayers"
-            :key="layer.identityId || `${layer.identityType}-${idx}`"
-            size="sm"
-            :tone="layer.externalIdentity ? 'orange' : 'blue'"
-          >
-            {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-          </UiTag>
-        </div>
-        <p
-          v-if="portrait.educatingOutcomeContribution.ownerMultiIdentityNote"
-          class="teacher-portrait__hint-text"
-        >
-          {{ portrait.educatingOutcomeContribution.ownerMultiIdentityNote }}
+        <p class="teacher-portrait__hint-text">
+          {{ portrait.educatingOutcomeContribution.formulaLabel }}
         </p>
+        <PortfolioOwnerIdentityLayersCell
+          :layers="portrait.educatingOutcomeContribution.ownerIdentityLayers"
+          :note="portrait.educatingOutcomeContribution.ownerMultiIdentityNote"
+          show-note
+        />
         <table
           v-if="portrait.educatingOutcomeContribution.items?.length"
           class="teacher-portrait__table"
@@ -1231,16 +1176,15 @@ watch(creditCategory, (next, prev) => {
             </tr>
           </tbody>
         </table>
-        <ul v-if="portrait.educatingOutcomeContribution.evidenceNotes?.length" class="teacher-portrait__hint-text">
-          <li
-            v-for="(note, idx) in portrait.educatingOutcomeContribution.evidenceNotes"
-            :key="idx"
-          >
+        <ul
+          v-if="portrait.educatingOutcomeContribution.evidenceNotes?.length"
+          class="teacher-portrait__hint-text"
+        >
+          <li v-for="(note, idx) in portrait.educatingOutcomeContribution.evidenceNotes" :key="idx">
             {{ note }}
           </li>
         </ul>
       </UiCard>
-
 
       <UiCard
         v-if="portrait?.textbookContribution"
@@ -1248,34 +1192,17 @@ watch(creditCategory, (next, prev) => {
         class="teacher-portrait__textbook"
       >
         <p class="teacher-portrait__hint-text">
-          综合 {{ portrait.textbookContribution.contributionScore }}
-          · 教材 {{ portrait.textbookContribution.textbookCount }}
-          · 最高单本 {{ portrait.textbookContribution.topItemScore }}
+          综合 {{ portrait.textbookContribution.contributionScore }} · 教材
+          {{ portrait.textbookContribution.textbookCount }} · 最高单本
+          {{ portrait.textbookContribution.topItemScore }}
         </p>
         <p class="teacher-portrait__hint-text">{{ portrait.textbookContribution.formulaLabel }}</p>
-        <div
-          v-if="portrait.textbookContribution.ownerIdentityLayers?.length"
-          class="teacher-portrait__identity-layers"
-        >
-          <UiTag
-            v-for="(layer, idx) in portrait.textbookContribution.ownerIdentityLayers"
-            :key="layer.identityId || `${layer.identityType}-${idx}`"
-            size="sm"
-            :tone="layer.externalIdentity ? 'orange' : 'blue'"
-          >
-            {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-          </UiTag>
-        </div>
-        <p
-          v-if="portrait.textbookContribution.ownerMultiIdentityNote"
-          class="teacher-portrait__hint-text"
-        >
-          {{ portrait.textbookContribution.ownerMultiIdentityNote }}
-        </p>
-        <table
-          v-if="portrait.textbookContribution.items?.length"
-          class="teacher-portrait__table"
-        >
+        <PortfolioOwnerIdentityLayersCell
+          :layers="portrait.textbookContribution.ownerIdentityLayers"
+          :note="portrait.textbookContribution.ownerMultiIdentityNote"
+          show-note
+        />
+        <table v-if="portrait.textbookContribution.items?.length" class="teacher-portrait__table">
           <thead>
             <tr>
               <th>类型</th>
@@ -1304,11 +1231,11 @@ watch(creditCategory, (next, prev) => {
             </tr>
           </tbody>
         </table>
-        <ul v-if="portrait.textbookContribution.evidenceNotes?.length" class="teacher-portrait__hint-text">
-          <li
-            v-for="(note, idx) in portrait.textbookContribution.evidenceNotes"
-            :key="idx"
-          >
+        <ul
+          v-if="portrait.textbookContribution.evidenceNotes?.length"
+          class="teacher-portrait__hint-text"
+        >
+          <li v-for="(note, idx) in portrait.textbookContribution.evidenceNotes" :key="idx">
             {{ note }}
           </li>
         </ul>
@@ -1320,30 +1247,18 @@ watch(creditCategory, (next, prev) => {
         class="teacher-portrait__vtr"
       >
         <p class="teacher-portrait__hint-text">
-          综合 {{ portrait.virtualTeachingRoomContribution.contributionScore }}
-          · 活动 {{ portrait.virtualTeachingRoomContribution.activityCount }}
-          · 最高单项 {{ portrait.virtualTeachingRoomContribution.topItemScore }}
+          综合 {{ portrait.virtualTeachingRoomContribution.contributionScore }} · 活动
+          {{ portrait.virtualTeachingRoomContribution.activityCount }} · 最高单项
+          {{ portrait.virtualTeachingRoomContribution.topItemScore }}
         </p>
-        <p class="teacher-portrait__hint-text">{{ portrait.virtualTeachingRoomContribution.formulaLabel }}</p>
-        <div
-          v-if="portrait.virtualTeachingRoomContribution.ownerIdentityLayers?.length"
-          class="teacher-portrait__identity-layers"
-        >
-          <UiTag
-            v-for="(layer, idx) in portrait.virtualTeachingRoomContribution.ownerIdentityLayers"
-            :key="layer.identityId || `${layer.identityType}-${idx}`"
-            size="sm"
-            :tone="layer.externalIdentity ? 'orange' : 'blue'"
-          >
-            {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-          </UiTag>
-        </div>
-        <p
-          v-if="portrait.virtualTeachingRoomContribution.ownerMultiIdentityNote"
-          class="teacher-portrait__hint-text"
-        >
-          {{ portrait.virtualTeachingRoomContribution.ownerMultiIdentityNote }}
+        <p class="teacher-portrait__hint-text">
+          {{ portrait.virtualTeachingRoomContribution.formulaLabel }}
         </p>
+        <PortfolioOwnerIdentityLayersCell
+          :layers="portrait.virtualTeachingRoomContribution.ownerIdentityLayers"
+          :note="portrait.virtualTeachingRoomContribution.ownerMultiIdentityNote"
+          show-note
+        />
         <table
           v-if="portrait.virtualTeachingRoomContribution.items?.length"
           class="teacher-portrait__table"
@@ -1395,29 +1310,18 @@ watch(creditCategory, (next, prev) => {
         class="teacher-portrait__iep"
       >
         <p class="teacher-portrait__hint-text">
-          综合 {{ portrait.industryEducationProjectContribution.contributionScore }}
-          · 项目 {{ portrait.industryEducationProjectContribution.projectCount }}
-          · 最高单项目 {{ portrait.industryEducationProjectContribution.topItemScore }}
+          综合 {{ portrait.industryEducationProjectContribution.contributionScore }} · 项目
+          {{ portrait.industryEducationProjectContribution.projectCount }} · 最高单项目
+          {{ portrait.industryEducationProjectContribution.topItemScore }}
         </p>
-        <p class="teacher-portrait__hint-text">{{ portrait.industryEducationProjectContribution.formulaLabel }}</p>
-        <div
-          v-if="portrait.industryEducationProjectContribution.ownerIdentityLayers?.length"
-          class="teacher-portrait__identity-layers"
-        >
-          <UiTag
-            v-for="(layer, idx) in portrait.industryEducationProjectContribution.ownerIdentityLayers"
-            :key="layer.identityId || `${layer.identityType}-${idx}`"
-            tone="blue"
-          >
-            {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-          </UiTag>
-        </div>
-        <p
-          v-if="portrait.industryEducationProjectContribution.ownerMultiIdentityNote"
-          class="teacher-portrait__meta"
-        >
-          {{ portrait.industryEducationProjectContribution.ownerMultiIdentityNote }}
+        <p class="teacher-portrait__hint-text">
+          {{ portrait.industryEducationProjectContribution.formulaLabel }}
         </p>
+        <PortfolioOwnerIdentityLayersCell
+          :layers="portrait.industryEducationProjectContribution.ownerIdentityLayers"
+          :note="portrait.industryEducationProjectContribution.ownerMultiIdentityNote"
+          show-note
+        />
         <table
           v-if="portrait.industryEducationProjectContribution.items?.length"
           class="teacher-portrait__table"
@@ -1469,11 +1373,13 @@ watch(creditCategory, (next, prev) => {
         class="teacher-portrait__workload"
       >
         <p class="teacher-portrait__hint-text">
-          课程覆盖 {{ portrait.teachingWorkloadByIdentity.coveredCourseCount }} 门
-          · 校内学时 {{ portrait.teachingWorkloadByIdentity.campusWorkloadHours }}
-          · 外部学时 {{ portrait.teachingWorkloadByIdentity.externalWorkloadHours }}
+          课程覆盖 {{ portrait.teachingWorkloadByIdentity.coveredCourseCount }} 门 · 校内学时
+          {{ portrait.teachingWorkloadByIdentity.campusWorkloadHours }} · 外部学时
+          {{ portrait.teachingWorkloadByIdentity.externalWorkloadHours }}
         </p>
-        <p class="teacher-portrait__hint-text">{{ portrait.teachingWorkloadByIdentity.formulaLabel }}</p>
+        <p class="teacher-portrait__hint-text">
+          {{ portrait.teachingWorkloadByIdentity.formulaLabel }}
+        </p>
         <table
           v-if="portrait.teachingWorkloadByIdentity.identityItems?.length"
           class="teacher-portrait__table"
@@ -1504,10 +1410,7 @@ watch(creditCategory, (next, prev) => {
           v-if="portrait.teachingWorkloadByIdentity.evidenceNotes?.length"
           class="teacher-portrait__hint-text"
         >
-          <li
-            v-for="(note, idx) in portrait.teachingWorkloadByIdentity.evidenceNotes"
-            :key="idx"
-          >
+          <li v-for="(note, idx) in portrait.teachingWorkloadByIdentity.evidenceNotes" :key="idx">
             {{ note }}
           </li>
         </ul>

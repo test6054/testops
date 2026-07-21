@@ -55,7 +55,7 @@ export async function ensureQualityPlanConfirmedForNavigation(
   const qualityStore = useQualityStore()
   const planId = qualityStore.currentTrainingPlanId
   if (!planId) {
-    message.warning(MSG_NO_PLAN)
+    void message.warning(MSG_NO_PLAN)
     return false
   }
   if (qualityStore.currentProgramId && !qualityStore.currentPlan) {
@@ -64,12 +64,12 @@ export async function ensureQualityPlanConfirmedForNavigation(
     })
   }
   if (qualityStore.trainingPlanLoading) {
-    message.warning(MSG_LOADING)
+    void message.warning(MSG_LOADING)
     return false
   }
   const plan = qualityStore.currentPlan
   if (!plan || plan.confirmationStatus !== ConfirmationStatusCode.CONFIRMED) {
-    message.warning(MSG_UNCONFIRMED)
+    void message.warning(MSG_UNCONFIRMED)
     return false
   }
   return true

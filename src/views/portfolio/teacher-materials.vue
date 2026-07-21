@@ -45,7 +45,10 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
-import { usePortfolioPageScope, usePortfolioScopedLoader } from '@/composables/usePortfolioPageScope'
+import {
+  usePortfolioPageScope,
+  usePortfolioScopedLoader,
+} from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import {
@@ -53,15 +56,13 @@ import {
   canReassignPortfolioMaterial,
 } from '@/utils/portfolio-material-reassign'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 
 interface MaterialFilterModel {
   materialType?: PortfolioMaterialTypeCode
@@ -620,17 +621,10 @@ watch(
               {{ materialTypeLabel(record.materialType) }}
             </template>
             <template v-else-if="column.key === 'identityLayers'">
-              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-                <UiTag
-                  v-for="(layer, i) in record.ownerIdentityLayers"
-                  :key="`${record.id}-${layer.identityType}-${i}`"
-                  size="sm"
-                  :tone="layer.externalIdentity ? 'orange' : 'blue'"
-                >
-                  {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-                </UiTag>
-              </div>
-              <span v-else>—</span>
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+              />
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions
@@ -691,17 +685,10 @@ watch(
               </UiTag>
             </template>
             <template v-else-if="column.key === 'identityLayers'">
-              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-                <UiTag
-                  v-for="(layer, i) in record.ownerIdentityLayers"
-                  :key="`${record.id}-${layer.identityType}-${i}`"
-                  size="sm"
-                  :tone="layer.externalIdentity ? 'orange' : 'blue'"
-                >
-                  {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-                </UiTag>
-              </div>
-              <span v-else>—</span>
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+              />
             </template>
             <template v-else-if="column.key === 'actions'">
               <UiTableActions

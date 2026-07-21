@@ -317,7 +317,7 @@ async function handleSave(): Promise<void> {
         sourceExamKind: form.sourceExamKind ?? ExamKindCode.REGULAR,
       }),
     )
-    message.success('租户策略已保存')
+    void message.success('租户策略已保存')
     await loadOpsOverview()
   } catch (error) {
     showUserError(error, '保存失败')

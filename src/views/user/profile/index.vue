@@ -192,7 +192,7 @@ async function refresh() {
   try {
     await userStore.getInfo(true)
     await notificationStore.loadUnreadCount()
-    message.success('已刷新最新信息')
+    void message.success('已刷新最新信息')
   } catch (error) {
     showUserError(error, '个人信息刷新失败')
   } finally {

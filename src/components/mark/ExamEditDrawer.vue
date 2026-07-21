@@ -333,7 +333,7 @@ async function loadDetail(examId: string): Promise<void> {
     const detail = await getExamDetail(examId)
     canManageOwnerExamLifecycleWrites.value = detail.canManageOwnerExamLifecycleWrites === true
     if (!canManageOwnerExamLifecycleWrites.value) {
-      message.warning('仅考试主考可修改考试主信息')
+      void message.warning('仅考试主考可修改考试主信息')
       emit('update:open', false)
       return
     }
@@ -362,7 +362,13 @@ async function loadDetail(examId: string): Promise<void> {
 
 function buildUpdateRequest(): ExamUpdateRequest | null {
   const [startTime, endTime] = examForm.examWindow ?? []
-  if (!props.examId || !examForm.courseId || !examForm.referenceDepartmentId || !startTime || !endTime) {
+  if (
+    !props.examId
+    || !examForm.courseId
+    || !examForm.referenceDepartmentId
+    || !startTime
+    || !endTime
+  ) {
     return null
   }
   const academicYear = examForm.academicYear?.trim()
@@ -386,12 +392,12 @@ function buildUpdateRequest(): ExamUpdateRequest | null {
 
 async function handleSave(): Promise<void> {
   // MVR-428：仅认 BE 下发 canManageOwnerExamLifecycleWrites === true，禁止 truthy 回退
-  if (canManageOwnerExamLifecycleWrites.value !== true) {
-    message.warning('仅考试主考可修改考试主信息')
+  if (!canManageOwnerExamLifecycleWrites.value) {
+    void message.warning('仅考试主考可修改考试主信息')
     return
   }
   if (detailLoading.value) {
-    message.warning('考试详情加载中，请稍候再保存')
+    void message.warning('考试详情加载中，请稍候再保存')
     return
   }
   try {
@@ -401,13 +407,13 @@ async function handleSave(): Promise<void> {
   }
   const request = buildUpdateRequest()
   if (!request) {
-    message.warning('请完整填写必填项')
+    void message.warning('请完整填写必填项')
     return
   }
   saving.value = true
   try {
     await updateExam(request)
-    message.success('考试已更新')
+    void message.success('考试已更新')
     emit('update:open', false)
     emit('saved')
   } catch (error) {
@@ -426,10 +432,12 @@ watch(
   },
 )
 
-defineExpose({ openForExam: (examId: string) => {
-  emit('update:open', true)
-  void loadDetail(examId)
-} })
+defineExpose({
+  openForExam: (examId: string) => {
+    emit('update:open', true)
+    void loadDetail(examId)
+  },
+})
 </script>
 
 <style lang="scss" scoped>

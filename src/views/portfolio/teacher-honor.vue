@@ -15,7 +15,6 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
@@ -40,6 +39,7 @@ import {
 } from '@/types/enums/portfolio-honor-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
@@ -219,7 +219,7 @@ async function saveHonor() {
       descriptionText: form.descriptionText.trim() || undefined,
       fileId: form.fileId || undefined,
     })
-    message.success('荣誉记录已保存')
+    void message.success('荣誉记录已保存')
     modalOpen.value = false
     resetForm()
     await loadData()
@@ -254,7 +254,7 @@ async function removeHonor(row: PortfolioTeacherHonorVO) {
   try {
     await portfolioTeacherHonorApi.delete({ id: row.id, teacherId })
     if (requestToken.value !== operationToken) return
-    message.success('已删除')
+    void message.success('已删除')
     await loadData()
   } catch (error) {
     if (requestToken.value !== operationToken) return
@@ -275,7 +275,7 @@ async function prepareArchiveDraft(row: PortfolioTeacherHonorVO) {
   preparingArchiveId.value = row.id
   try {
     const result = await portfolioTeacherHonorApi.prepareArchiveDraft({ id: row.id })
-    message.success(
+    void message.success(
       result.missingRequiredFieldCodes.length
         ? `档案草稿已准备，尚有 ${result.missingRequiredFieldCodes.length} 个必填字段待完善`
         : '档案草稿已准备',
@@ -314,7 +314,7 @@ async function createCategory() {
       categoryName: categoryForm.categoryName.trim(),
       teacherId: scopeTeacherId(),
     })
-    message.success('自建分类已创建')
+    void message.success('自建分类已创建')
     categoryModalOpen.value = false
     await loadData()
   } catch (error) {
@@ -352,7 +352,7 @@ async function confirmDeleteCategory(row: PortfolioTeacherHonorCategoryVO) {
   try {
     await portfolioTeacherHonorApi.deleteCategory({ id: categoryId, teacherId })
     if (requestToken.value !== operationToken) return
-    message.success('自建分类已删除')
+    void message.success('自建分类已删除')
     await loadData()
   } catch (error) {
     if (requestToken.value !== operationToken) return
@@ -382,7 +382,7 @@ async function onAttachmentPick(event: Event) {
     const uploaded = await stageBusinessFile(FileUploadSceneKey.PORTFOLIO_MATERIAL, file)
     form.fileId = uploaded.id
     form.attachmentName = uploaded.nodeName
-    message.success('证明材料已上传')
+    void message.success('证明材料已上传')
   } catch (error) {
     showUserError(error, '证明材料上传失败')
   } finally {
@@ -444,17 +444,10 @@ usePortfolioScopedLoader(loadData, () => targetTeacherId.value)
         <UiDataTable :columns="honorColumns" :data-source="rows" row-key="id" :pagination="false">
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'identityLayers'">
-              <div v-if="record.ownerIdentityLayers?.length" class="flex flex-wrap gap-1">
-                <UiTag
-                  v-for="(layer, idx) in record.ownerIdentityLayers"
-                  :key="`${record.id}-${layer.identityType}-${idx}`"
-                  size="sm"
-                  :tone="layer.externalIdentity ? 'orange' : 'blue'"
-                >
-                  {{ layer.identityTypeLabel || layer.displayName || layer.identityType }}
-                </UiTag>
-              </div>
-              <span v-else>—</span>
+              <PortfolioOwnerIdentityLayersCell
+                :layers="record.ownerIdentityLayers"
+                :note="record.ownerMultiIdentityNote"
+              />
             </template>
             <template v-else-if="column.key === 'levelCode'">
               {{ honorLevelLabel(record.levelCode) }}

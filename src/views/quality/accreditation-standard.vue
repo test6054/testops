@@ -246,7 +246,7 @@ function openEdit(record: AccreditationStandardVO) {
 
 async function submitEditor() {
   if (!editor.standardCode.trim() || !editor.standardName.trim() || !editor.accreditationType) {
-    message.error('请填写编码、名称、认证类型')
+    void message.error('请填写编码、名称、认证类型')
     return
   }
   submitting.value = true
@@ -266,7 +266,7 @@ async function submitEditor() {
     }
     if (editorMode.value === 'create') await accreditationStandardApi.create(request)
     else await accreditationStandardApi.update(request)
-    message.success('已保存')
+    void message.success('已保存')
     editorVisible.value = false
     await loadPageData()
   } finally {
@@ -301,7 +301,7 @@ async function handleDelete(record: AccreditationStandardVO) {
     type: 'error',
     onOk: async () => {
       await accreditationStandardApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadPageData()
     },
   })
@@ -353,7 +353,12 @@ onActivated(() => {
       <ContextBar layout="workbench" show-title title="认证标准台账" />
     </template>
 
-    <SignalBand :metrics="signals" variant="panel" compact class="accreditation-standard__signals" />
+    <SignalBand
+      :metrics="signals"
+      variant="panel"
+      compact
+      class="accreditation-standard__signals"
+    />
 
     <UiCard class="detail-table-card accreditation-standard__table-card">
       <template #title>认证标准台账</template>
@@ -423,16 +428,12 @@ onActivated(() => {
         <UiRow :gutter="12">
           <UiCol :span="8">
             <UiFormItem label="编码" required>
-              <UiInput
-                size="sm" v-model="editor.standardCode" :disabled="editorMode === 'edit'"
-              />
+              <UiInput size="sm" v-model="editor.standardCode" :disabled="editorMode === 'edit'" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="16">
             <UiFormItem label="名称" required>
-              <UiInput
-                size="sm" v-model="editor.standardName"
-              />
+              <UiInput size="sm" v-model="editor.standardName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -449,28 +450,20 @@ onActivated(() => {
           </UiCol>
           <UiCol :span="6">
             <UiFormItem label="标准年份">
-              <UiInput
-                size="sm" v-model="editor.standardYear" placeholder="如 2024"
-              />
+              <UiInput size="sm" v-model="editor.standardYear" placeholder="如 2024" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="6">
             <UiFormItem label="级别 / 文号">
-              <UiInput
-                size="sm" v-model="editor.documentNumber"
-              />
+              <UiInput size="sm" v-model="editor.documentNumber" />
             </UiFormItem>
           </UiCol>
         </UiRow>
         <UiFormItem label="颁发机构">
-          <UiInput
-            size="sm" v-model="editor.issuingAuthority"
-          />
+          <UiInput size="sm" v-model="editor.issuingAuthority" />
         </UiFormItem>
         <UiFormItem label="来源链接">
-          <UiInput
-            size="sm" v-model="editor.sourceUrl"
-          />
+          <UiInput size="sm" v-model="editor.sourceUrl" />
         </UiFormItem>
         <UiFormItem label="摘要">
           <UiTextarea size="sm" v-model="editor.summary" :rows="4" />

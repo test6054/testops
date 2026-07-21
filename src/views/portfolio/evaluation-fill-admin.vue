@@ -462,7 +462,7 @@ async function saveEntry() {
       commentText: fillForm.commentText.trim() || undefined,
       evaluatorSourceType: fillForm.evaluatorSourceType.trim(),
     })
-    message.success('评价已保存')
+    void message.success('评价已保存')
     fillForm.score = undefined
     fillForm.commentText = ''
     await Promise.all([loadEntries(), loadSummary()])
@@ -485,7 +485,7 @@ async function exportSummaryCsv() {
   try {
     const result = await portfolioEvaluationEntryApi.exportSummary({ id: selectedTaskId.value })
     await downloadPortfolioExcelExport(result)
-    message.success('汇总已导出')
+    void message.success('汇总已导出')
   } catch (error) {
     showUserError(error, '导出评价汇总失败')
   } finally {

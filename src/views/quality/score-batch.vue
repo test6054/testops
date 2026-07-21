@@ -85,7 +85,11 @@ import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
 import { useQualityStore } from '@/stores/modules/quality'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
-import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserProcessFailureMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const qualityStore = useQualityStore()
@@ -232,7 +236,7 @@ async function handleDownloadScoreTemplate(): Promise<void> {
     const blobResponse = await downloadFile({ nodeId: String(template.fileNodeId) })
     const blob = blobResponse.data
     if (!blob) {
-      message.error('模板文件暂不可下载，请确认文件已生成后再次下载')
+      void message.error('模板文件暂不可下载，请确认文件已生成后再次下载')
       return
     }
     const url = URL.createObjectURL(blob)
@@ -524,7 +528,6 @@ async function loadBatchesQuietly(): Promise<void> {
   }
 }
 
-
 const planGateMode = computed<'need-plan' | 'need-confirm' | null>(() => {
   if (!qualityStore.currentTrainingPlanId) {
     return 'need-plan'
@@ -659,7 +662,7 @@ async function submitScoreImport() {
         semester: uploadForm.semester || undefined,
       },
     })
-    message.success('已提交导入任务，解析完成后可预览并确认')
+    void message.success('已提交导入任务，解析完成后可预览并确认')
     uploadFileNodeId.value = undefined
     uploadFileName.value = undefined
     await loadBatches()
@@ -672,7 +675,7 @@ async function submitScoreImport() {
 
 async function openPreview(record: ScoreBatchVO) {
   if (!canPreview(record.status)) {
-    message.warning('当前批次尚未生成可预览结果')
+    void message.warning('当前批次尚未生成可预览结果')
     return
   }
   previewBatch.value = record
@@ -682,7 +685,7 @@ async function openPreview(record: ScoreBatchVO) {
   try {
     const preview = await scoreBatchApi.preview(record.id)
     if (preview.status !== ScoreBatchStatusCode.FAILED && !hasGeneratedRowStatistics(preview)) {
-      message.error('成绩预览结果异常，请重新导入后再试')
+      void message.error('成绩预览结果异常，请重新导入后再试')
       return
     }
     previewSummary.totalRows = preview.totalRows
@@ -709,7 +712,7 @@ async function handleValidate(record: ScoreBatchVO) {
     type: 'info',
     onOk: async () => {
       await scoreBatchApi.validate(record.id)
-      message.success('批次已校验')
+      void message.success('批次已校验')
       await loadBatches()
     },
   })
@@ -722,7 +725,7 @@ async function handleConfirm(record: ScoreBatchVO) {
     type: 'info',
     onOk: async () => {
       await scoreBatchApi.confirm(record.id)
-      message.success('批次已确认')
+      void message.success('批次已确认')
       await loadBatches()
     },
   })
@@ -738,7 +741,7 @@ async function handleCancel(record: ScoreBatchVO) {
         id: record.id,
         status: ScoreBatchStatusCode.CANCELLED,
       })
-      message.success('批次已取消')
+      void message.success('批次已取消')
       await loadBatches()
     },
   })
@@ -751,7 +754,7 @@ async function handleReParse(record: ScoreBatchVO) {
     type: 'warning',
     onOk: async () => {
       await scoreBatchApi.enqueueParse(record.id)
-      message.success('已重新触发解析')
+      void message.success('已重新触发解析')
       await loadBatches()
     },
   })
@@ -801,15 +804,15 @@ async function openEdit(record: ScoreBatchVO) {
 
 async function submitEditor() {
   if (!editor.batchCode.trim() || !editor.batchName.trim()) {
-    message.error('请填写批次编码与名称')
+    void message.error('请填写批次编码与名称')
     return
   }
   if (!editor.qualityCourseId || !editor.assessmentItemId) {
-    message.error('课程与考核环节不能为空')
+    void message.error('课程与考核环节不能为空')
     return
   }
   if (!editor.id) {
-    message.error('批次编号不能为空')
+    void message.error('批次编号不能为空')
     return
   }
   editorSubmitting.value = true
@@ -826,7 +829,7 @@ async function submitEditor() {
       schoolYear: editor.schoolYear?.trim() || undefined,
       semester: editor.semester || undefined,
     })
-    message.success('批次已更新')
+    void message.success('批次已更新')
     editorVisible.value = false
     await loadBatches()
   } finally {
@@ -913,7 +916,7 @@ async function handleDelete(record: ScoreBatchVO) {
     type: 'error',
     onOk: async () => {
       await scoreBatchApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadBatches()
     },
   })
@@ -1060,11 +1063,7 @@ onMounted(async () => {
       </QualityPageContextBar>
     </template>
 
-    <QualityPlanGateStrip
-      v-if="planGateMode"
-      :mode="planGateMode"
-      class="score-batch__empty"
-    />
+    <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="score-batch__empty" />
 
     <template v-else>
       <StageRail :stages="stages" compact class="score-batch__stages" />
@@ -1334,7 +1333,10 @@ onMounted(async () => {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'errorInfo'">
-            <div class="dp-space dp-space--vertical dp-space--block" style="width: 100%; --dp-space-gap: 8px">
+            <div
+              class="dp-space dp-space--vertical dp-space--block"
+              style="width: 100%; --dp-space-gap: 8px"
+            >
               <div
                 v-for="(errorMessage, idx) in previewErrorMessages(record)"
                 :key="`${record.id}-message-${idx}`"
@@ -1375,16 +1377,12 @@ onMounted(async () => {
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="批次编码" required>
-              <UiInput
-                size="sm" v-model="editor.batchCode"
-              />
+              <UiInput size="sm" v-model="editor.batchCode" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="批次名称" required>
-              <UiInput
-                size="sm" v-model="editor.batchName"
-              />
+              <UiInput size="sm" v-model="editor.batchName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -1401,18 +1399,14 @@ onMounted(async () => {
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="接入模式">
-              <UiInput
-                size="sm" :value="sourceModeLabel(editor.sourceMode)" disabled
-              />
+              <UiInput size="sm" :value="sourceModeLabel(editor.sourceMode)" disabled />
             </UiFormItem>
           </UiCol>
         </UiRow>
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="学年">
-              <UiInput
-                size="sm" v-model="editor.schoolYear" placeholder="例：2024-2025"
-              />
+              <UiInput size="sm" v-model="editor.schoolYear" placeholder="例：2024-2025" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">

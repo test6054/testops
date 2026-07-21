@@ -79,7 +79,7 @@ async function submitReveal(): Promise<void> {
     emit('revealed', result)
     open.value = false
     resetForm()
-    message.success(`已解匿名 5 分钟：${result.studentName}（${result.studentNo}）`)
+    void message.success(`已解匿名 5 分钟：${result.studentName}（${result.studentNo}）`)
   } catch (error) {
     showUserError(error, '解匿名失败')
   } finally {

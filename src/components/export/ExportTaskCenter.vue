@@ -120,7 +120,11 @@
               <UiProgressBar
                 :percent="record.progress ?? 0"
                 size="sm"
-                :color="record.status === AsyncTaskStatusEnum.PROCESSING ? 'var(--dp-color-primary)' : 'var(--dp-error)'"
+                :color="
+                  record.status === AsyncTaskStatusEnum.PROCESSING
+                    ? 'var(--dp-color-primary)'
+                    : 'var(--dp-error)'
+                "
                 :show-label="false"
               />
               <span class="progress-text">{{ record.progress ?? 0 }}%</span>
@@ -442,12 +446,12 @@ const businessTypeLabel = (type: ExportBusinessType) => businessTypeMap[type]
 // 下载文件 - 使用统一下载工具，直接通过fileNodeId下载
 const downloadFile = async (task: ExportJobStatusVO) => {
   if (!task.fileNodeId) {
-    message.error('导出文件不存在或已被清理')
+    void message.error('导出文件不存在或已被清理')
     return
   }
   try {
     downloadingJobId.value = task.jobId
-    message.info('正在准备下载文件')
+    void message.info('正在准备下载文件')
     await handleDownloadFile(
       {
         fileId: task.fileNodeId,
@@ -469,7 +473,7 @@ const downloadFile = async (task: ExportJobStatusVO) => {
 const downloadFileByJobId = async (jobId: string) => {
   const task = exportTaskMap.value.get(jobId)
   if (!task) {
-    message.error('导出任务不存在或已被清理')
+    void message.error('导出任务不存在或已被清理')
     return
   }
   await downloadFile(task)
@@ -477,7 +481,7 @@ const downloadFileByJobId = async (jobId: string) => {
 
 const refreshTasks = async () => {
   await fetchTasksWithFilter()
-  message.success('刷新成功')
+  void message.success('刷新成功')
 }
 
 async function requestDeleteTask(jobId: string): Promise<void> {
@@ -496,7 +500,7 @@ async function requestDeleteTask(jobId: string): Promise<void> {
 const deleteTask = async (jobId: string) => {
   try {
     await exportTaskStore.deleteTask(jobId)
-    message.success('删除成功')
+    void message.success('删除成功')
   } catch (error) {
     showUserError(error, '导出任务删除失败')
   }

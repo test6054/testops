@@ -142,7 +142,7 @@ async function submit(): Promise<void> {
       organizationId: props.organizationId,
       groupId: groupId.value,
     })
-    message.success('试评会话已创建')
+    void message.success('试评会话已创建')
     emit('update:open', false)
     emit('success', sessionId)
   } catch (error) {

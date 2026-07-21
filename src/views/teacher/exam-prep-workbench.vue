@@ -227,7 +227,7 @@ async function handleSaveLayoutMode(): Promise<void> {
     return
   }
   if (draftLayoutMode.value === ExamMaterialLayoutModeCode.FULL_PAPER && !draftPrintSource.value) {
-    message.warning('整卷作答需选择印刷来源')
+    void message.warning('整卷作答需选择印刷来源')
     return
   }
   layoutSaving.value = true
@@ -240,7 +240,7 @@ async function handleSaveLayoutMode(): Promise<void> {
           ? draftPrintSource.value
           : undefined,
     })
-    message.success('制卷形态已保存')
+    void message.success('制卷形态已保存')
     layoutModalOpen.value = false
     await workbenchContext?.refreshChrome?.()
     await loadExamFullScore(selectedExamId.value)

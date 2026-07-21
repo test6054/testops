@@ -55,31 +55,22 @@ const signOffState = ref<
 let loadSequence = 0
 
 const baseBlockingItems = computed(
-  () => checklist.value?.blockingItems?.filter(
-    (item) => !item.passed
-      && item.dimension !== ArchiveVolumeSubmitChecklistDimensionCode.DEPARTMENT_REVIEW,
-  ) ?? [],
+  () =>
+    checklist.value?.blockingItems?.filter(
+      (item) =>
+        !item.passed
+        && item.dimension !== ArchiveVolumeSubmitChecklistDimensionCode.DEPARTMENT_REVIEW,
+    ) ?? [],
 )
 
 const formSignOffReady = computed(() => {
   const items = checklist.value?.signOffItems ?? []
   if (items.length !== ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.length) return false
   return ALL_ARCHIVE_VOLUME_SIGN_OFF_ROLE_CODES.every(
-    (role) => signOffState.value[role].confirmed && signOffState.value[role].signatoryName.trim().length > 0,
+    (role) =>
+      signOffState.value[role].confirmed
+      && signOffState.value[role].signatoryName.trim().length > 0,
   )
-})
-
-const canConfirm = computed(() => {
-  if (!checklist.value) return false
-  if (checklist.value.baseReady !== true) return false
-  if (!materialCompleteConfirmed.value || !gradingNormConfirmed.value) return false
-  if (!formSignOffReady.value) return false
-  const scorer = signOffState.value.SCORER.signatoryName.trim()
-  const rechecker = signOffState.value.RECHECKER.signatoryName.trim()
-  if (scorer && rechecker && scorer.localeCompare(rechecker, undefined, { sensitivity: 'accent' }) === 0) {
-    return false
-  }
-  return true
 })
 
 const sameScorerAndRechecker = computed(() => {
@@ -87,6 +78,15 @@ const sameScorerAndRechecker = computed(() => {
   const rechecker = signOffState.value.RECHECKER.signatoryName.trim()
   if (!scorer || !rechecker) return false
   return scorer.localeCompare(rechecker, undefined, { sensitivity: 'accent' }) === 0
+})
+
+const canConfirm = computed(() => {
+  if (!checklist.value) return false
+  if (!checklist.value.baseReady) return false
+  if (!materialCompleteConfirmed.value || !gradingNormConfirmed.value) return false
+  if (!formSignOffReady.value) return false
+  if (sameScorerAndRechecker.value) return false
+  return true
 })
 
 watch(
@@ -146,12 +146,12 @@ async function handleConfirm() {
   if (submitting.value) return
   // MVR-305：权限闸优先于表单就绪 canConfirm
   if (props.canConfirmSelfCheck !== true) {
-    message.warning('当前账号无提交前自查确认权限')
+    void message.warning('当前账号无提交前自查确认权限')
     return
   }
   if (!canConfirm.value) return
   if (!checklist.value?.checklistVersion) {
-    message.error('清单版本缺失，请重新打开')
+    void message.error('清单版本缺失，请重新打开')
     return
   }
   const request: ArchiveVolumeSelfCheckConfirmRequest = {
@@ -169,7 +169,7 @@ async function handleConfirm() {
   submitting.value = true
   try {
     await confirmArchiveVolumeSelfCheck(request)
-    message.success('自查确认已保存')
+    void message.success('自查确认已保存')
     emit('confirmed')
     close()
   } catch (error) {
@@ -252,7 +252,13 @@ async function handleConfirm() {
     </template>
     <template #footer>
       <UiButton size="sm" variant="outline" @click="close">取消</UiButton>
-      <UiButton size="sm" variant="primary" :loading="submitting" :disabled="loading || loadFailed || !canConfirm || canConfirmSelfCheck !== true" @click="handleConfirm">
+      <UiButton
+        size="sm"
+        variant="primary"
+        :loading="submitting"
+        :disabled="loading || loadFailed || !canConfirm || !canConfirmSelfCheck"
+        @click="handleConfirm"
+      >
         确认自查
       </UiButton>
     </template>

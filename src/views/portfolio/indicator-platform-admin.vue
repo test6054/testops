@@ -57,9 +57,7 @@ import {
   buildIndustryPackDefFromForm,
   toIndustryPackDefForm,
 } from '@/utils/indicator-industry-pack-def'
-import {
-  defaultTemplateParams,
-} from '@/utils/indicator-template-params'
+import { defaultTemplateParams } from '@/utils/indicator-template-params'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 function dataSourceLabel(value: PfIndicatorDataSourceChannelCode): string {
@@ -511,7 +509,7 @@ async function saveDefinition() {
   }
   try {
     await portfolioIndicatorPlatformApi.saveDefinition(request)
-    message.success('指标已保存')
+    void message.success('指标已保存')
     editMode.value = false
     detail.value = await portfolioIndicatorPlatformApi.getDefinition({
       indicatorCode,
@@ -589,7 +587,7 @@ async function saveTemplateForm() {
   }
   try {
     await portfolioIndicatorPlatformApi.saveTemplate(request)
-    message.success('规则模板已保存')
+    void message.success('规则模板已保存')
     templateDrawerOpen.value = false
     await loadTemplates()
   } catch (error) {
@@ -657,7 +655,7 @@ async function savePackForm() {
       packDef,
       status: packForm.status,
     })
-    message.success('行业包已保存')
+    void message.success('行业包已保存')
     packDrawerOpen.value = false
     await loadIndustryPacks()
     await loadSummary()
@@ -682,7 +680,7 @@ async function importSeed() {
   }
   try {
     const result = await portfolioIndicatorPlatformApi.importSeed()
-    message.success(
+    void message.success(
       `种子导入完成：指标 ${result.totalIndicatorCount} 项，行业包 ${result.totalIndustryPackCount} 个`,
     )
     await Promise.all([loadSummary(), reloadTab()])
@@ -784,10 +782,20 @@ onMounted(async () => {
             :disabled="writing"
             @press-enter="loadPage"
           />
-          <UiButton size="sm" :loading="loadState.definitions" :disabled="writing" @click="loadPage">
+          <UiButton
+            size="sm"
+            :loading="loadState.definitions"
+            :disabled="writing"
+            @click="loadPage"
+          >
             查询
           </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="interactionLocked" @click="openNewIndicator">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="interactionLocked"
+            @click="openNewIndicator"
+          >
             新建指标
           </UiButton>
         </div>
@@ -858,10 +866,20 @@ onMounted(async () => {
             :options="PF_INDICATOR_STATUS_OPTIONS"
             :disabled="writing"
           />
-          <UiButton size="sm" :loading="loadState.templates" :disabled="writing" @click="loadTemplates">
+          <UiButton
+            size="sm"
+            :loading="loadState.templates"
+            :disabled="writing"
+            @click="loadTemplates"
+          >
             查询
           </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="interactionLocked" @click="openTemplateEdit()">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="interactionLocked"
+            @click="openTemplateEdit()"
+          >
             新建模板
           </UiButton>
         </div>
@@ -898,7 +916,12 @@ onMounted(async () => {
       </template>
       <template v-else-if="activeTab === 'pack'">
         <div class="toolbar">
-          <UiButton size="sm" variant="outline" :disabled="interactionLocked" @click="openPackEdit()">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :disabled="interactionLocked"
+            @click="openPackEdit()"
+          >
             新建行业包
           </UiButton>
         </div>
@@ -927,7 +950,12 @@ onMounted(async () => {
       </template>
       <template v-else-if="activeTab === 'import'">
         <p class="hint">请先下载模板，填写后上传表格文件批量导入指标定义。</p>
-        <UiButton size="sm" variant="primary" :disabled="interactionLocked" @click="importModalOpen = true">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :disabled="interactionLocked"
+          @click="importModalOpen = true"
+        >
           表格文件批量导入
         </UiButton>
       </template>
@@ -992,19 +1020,13 @@ onMounted(async () => {
             />
           </UiFormItem>
           <UiFormItem label="指标名称">
-            <UiInput
-              size="sm" v-model="editForm.indicatorName" :disabled="writing"
-            />
+            <UiInput size="sm" v-model="editForm.indicatorName" :disabled="writing" />
           </UiFormItem>
           <UiFormItem label="一级维度">
-            <UiInput
-              size="sm" v-model="editForm.dimensionL1Name" :disabled="writing"
-            />
+            <UiInput size="sm" v-model="editForm.dimensionL1Name" :disabled="writing" />
           </UiFormItem>
           <UiFormItem label="二级维度">
-            <UiInput
-              size="sm" v-model="editForm.dimensionL2Name" :disabled="writing"
-            />
+            <UiInput size="sm" v-model="editForm.dimensionL2Name" :disabled="writing" />
           </UiFormItem>
           <UiFormItem label="定义说明">
             <UiTextarea size="sm" v-model="editForm.definitionText" :rows="3" :disabled="writing" />
@@ -1026,14 +1048,10 @@ onMounted(async () => {
             />
           </UiFormItem>
           <UiFormItem label="适用对象">
-            <UiInput
-              size="sm" v-model="editForm.applicableTeachers" :disabled="writing"
-            />
+            <UiInput size="sm" v-model="editForm.applicableTeachers" :disabled="writing" />
           </UiFormItem>
           <UiFormItem label="政策对齐">
-            <UiInput
-              size="sm" v-model="editForm.policyAlign" :disabled="writing"
-            />
+            <UiInput size="sm" v-model="editForm.policyAlign" :disabled="writing" />
           </UiFormItem>
           <UiFormItem label="状态">
             <UiSelect
@@ -1080,9 +1098,7 @@ onMounted(async () => {
           />
         </UiFormItem>
         <UiFormItem label="模板名称">
-          <UiInput
-            size="sm" v-model="templateForm.templateName" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="templateForm.templateName" :disabled="writing" />
         </UiFormItem>
         <UiFormItem label="规则类型">
           <UiSelect
@@ -1127,18 +1143,16 @@ onMounted(async () => {
       <UiForm layout="vertical">
         <UiFormItem label="包编码">
           <UiInput
-            size="sm" v-model="packForm.packCode" :disabled="Boolean(packForm.id) || writing"
+            size="sm"
+            v-model="packForm.packCode"
+            :disabled="Boolean(packForm.id) || writing"
           />
         </UiFormItem>
         <UiFormItem label="包名称">
-          <UiInput
-            size="sm" v-model="packForm.packName" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="packForm.packName" :disabled="writing" />
         </UiFormItem>
         <UiFormItem label="版本">
-          <UiInput
-            size="sm" v-model="packForm.packVersion" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="packForm.packVersion" :disabled="writing" />
         </UiFormItem>
         <UiFormItem label="适用专业（每行一个）">
           <UiTextarea

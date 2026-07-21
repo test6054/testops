@@ -949,7 +949,7 @@ function handleArchiveSearchAction(key: string, record: ArchiveVolumeSearchRespo
 function openMaterialTagModal(record: ArchiveVolumeSearchResponse): void {
   // MVR-315：与行级 canMaintainMaterial / BE 材料维护门禁同源
   if (record.canMaintainMaterial !== true) {
-    message.warning('当前账号无维护材料标签权限')
+    void message.warning('当前账号无维护材料标签权限')
     return
   }
   tagModalMaterialId.value = record.materialId
@@ -967,7 +967,7 @@ function handleTagModalSuccess(): void {
 async function handleRetryMaterialOcr(record: ArchiveVolumeSearchResponse): Promise<void> {
   // MVR-315：与行级 canMaintainMaterial 同源二次拦截
   if (record.canMaintainMaterial !== true) {
-    message.warning('当前账号无重跑材料文字识别权限')
+    void message.warning('当前账号无重跑材料文字识别权限')
     return
   }
   if (retryingOcrMaterialIds.has(record.materialId)) return
@@ -982,7 +982,7 @@ async function handleRetryMaterialOcr(record: ArchiveVolumeSearchResponse): Prom
   retryingOcrMaterialIds.add(record.materialId)
   try {
     await triggerArchiveVolumeMaterialOcr(record.materialId)
-    message.success('已提交文字识别重跑')
+    void message.success('已提交文字识别重跑')
     await loadHits()
   } catch (error) {
     showUserError(error, '触发文字识别失败')
@@ -1055,7 +1055,7 @@ async function handleSaveProfile() {
       sharedFlag: saveProfileForm.sharedFlag,
       criteria: buildSearchCriteriaFromFilter(),
     })
-    message.success(saveProfileMode.value === 'update' ? '检索方案已更新' : '检索方案已保存')
+    void message.success(saveProfileMode.value === 'update' ? '检索方案已更新' : '检索方案已保存')
     saveProfileModalOpen.value = false
     await loadSearchProfiles()
     selectedProfileId.value = saved.profileId
@@ -1091,7 +1091,7 @@ function handleDeleteProfile() {
       deletingProfile.value = true
       try {
         await deleteArchiveVolumeSearchProfile(selectedProfileId.value!)
-        message.success('检索方案已删除')
+        void message.success('检索方案已删除')
         selectedProfileId.value = undefined
         await loadSearchProfiles()
       } catch (error) {

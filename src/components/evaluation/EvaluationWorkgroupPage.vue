@@ -308,7 +308,7 @@ function handleEditorConvenerChange(
   const userCode = option.teacherNumber?.trim() || option.userName?.trim()
   const userName = option.nickName.trim()
   if (!userCode || !userName) {
-    message.error('召集人缺少工号或姓名，无法写入成员清单')
+    void message.error('召集人缺少工号或姓名，无法写入成员清单')
     return
   }
   const existingIndex = editor.members.findIndex((member) => member.userId === value)
@@ -346,11 +346,11 @@ function removeMember(index: number) {
 
 async function submitEditor() {
   if (!editor.programId || !editor.workgroupCode.trim() || !editor.workgroupName.trim()) {
-    message.error('请填写专业、编码、名称，并在成员清单中设置召集人')
+    void message.error('请填写专业、编码、名称，并在成员清单中设置召集人')
     return
   }
   if (editor.members.length === 0) {
-    message.error('请至少填写一名工作组成员')
+    void message.error('请至少填写一名工作组成员')
     return
   }
   const members: WorkgroupMember[] = []
@@ -360,11 +360,11 @@ async function submitEditor() {
     const userCode = member.userCode.trim()
     const userName = member.userName.trim()
     if (!userCode || !userName) {
-      message.error(`请完整填写第 ${index + 1} 名成员的工号和姓名`)
+      void message.error(`请完整填写第 ${index + 1} 名成员的工号和姓名`)
       return
     }
     if (userCodes.has(userCode)) {
-      message.error(`成员工号重复：${userCode}`)
+      void message.error(`成员工号重复：${userCode}`)
       return
     }
     userCodes.add(userCode)
@@ -378,7 +378,7 @@ async function submitEditor() {
   }
   const convenerMember = members.find((member) => member.role === WorkgroupMemberRoleCode.CONVENER)
   if (!convenerMember || !convenerMember.userId) {
-    message.error('召集人必须出现在成员清单中且角色为召集人')
+    void message.error('召集人必须出现在成员清单中且角色为召集人')
     return
   }
   const request: EvaluationWorkgroupSaveRequest = {
@@ -397,7 +397,7 @@ async function submitEditor() {
   try {
     if (editorMode.value === 'create') await evaluationWorkgroupApi.create(request)
     else await evaluationWorkgroupApi.update(request)
-    message.success('已保存')
+    void message.success('已保存')
     editorVisible.value = false
     await loadList()
   } catch (error) {
@@ -448,7 +448,7 @@ async function handleDelete(record: EvaluationWorkgroupVO) {
   }
   try {
     await evaluationWorkgroupApi.delete(workgroupId)
-    message.success('已删除')
+    void message.success('已删除')
     await loadList()
   } catch (error) {
     showUserError(error, '删除评价工作组失败')
@@ -674,9 +674,7 @@ onActivated(() => {
           />
         </UiFormItem>
         <UiFormItem label="名称" required>
-          <UiInput
-            size="sm" v-model="editor.workgroupName" :maxlength="128" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="editor.workgroupName" :maxlength="128" :disabled="writing" />
         </UiFormItem>
         <UiFormItem label="专业大类" required>
           <ProgramSelector

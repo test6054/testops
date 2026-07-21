@@ -87,7 +87,11 @@
 
           <GradingImmersionSection title="识别答案">
             <template #icon><FileTextOutlined /></template>
-            <UiEmpty size="sm" v-if="!detail.recognizedAnswer" description="本题暂无 OCR 识别答案" />
+            <UiEmpty
+              size="sm"
+              v-if="!detail.recognizedAnswer"
+              description="本题暂无 OCR 识别答案"
+            />
             <div v-else class="review-task-detail-page__text-block">
               {{ detail.recognizedAnswer }}
             </div>
@@ -431,7 +435,7 @@ function openRescoreConfirm(): void {
 
 async function doRescoreByAi(): Promise<void> {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无阅卷写权限')
+    void message.warning('当前账号无阅卷写权限')
     return
   }
   if (!canRescoreByAi.value || !examId.value || !detail.value) return
@@ -442,9 +446,9 @@ async function doRescoreByAi(): Promise<void> {
       gradeResultId: detail.value.gradeResultId,
     })
     if (Boolean(result.scored) && result.aiScore != null) {
-      message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
+      void message.success(`智能复评完成，智能评分 ${result.aiScore} 分`)
     } else {
-      message.warning(executionDiagnosticText(result.diagnostic))
+      void message.warning(executionDiagnosticText(result.diagnostic))
     }
     await loadTask()
     if (executionsDrawerOpen.value) {

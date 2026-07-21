@@ -308,7 +308,7 @@ const handleChangePassword = async () => {
 // 取消修改
 const handleCancel = () => {
   if (isForceMode.value) {
-    message.warning('您必须修改密码后才能继续使用系统')
+    void message.warning('您必须修改密码后才能继续使用系统')
     return
   }
 
@@ -325,7 +325,7 @@ const handleCancel = () => {
 // 返回上一页
 const handleBack = () => {
   if (isForceMode.value) {
-    message.warning('您必须修改密码后才能继续使用系统')
+    void message.warning('您必须修改密码后才能继续使用系统')
     return
   }
   router.back()

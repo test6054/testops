@@ -163,7 +163,12 @@
     <template #footer>
       <div class="dp-space" style="--dp-space-gap: 8px">
         <UiButton size="sm" variant="ghost" @click="handleCancel">取消</UiButton>
-        <UiButton size="sm" variant="primary" :loading="props.confirmLoading" @click="handleConfirm">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="props.confirmLoading"
+          @click="handleConfirm"
+        >
           确定
         </UiButton>
       </div>
@@ -598,7 +603,7 @@ const handleCancel = () => {
 // 处理确认
 const handleConfirm = () => {
   if (selectedStudents.value.length === 0) {
-    message.warning('请至少选择一名学生')
+    void message.warning('请至少选择一名学生')
     return
   }
 

@@ -353,7 +353,7 @@ function canEditProfile(record: ProfessionAlgorithmProfileVO): boolean {
 
 function openEdit(record: ProfessionAlgorithmProfileVO) {
   if (!canEditProfile(record)) {
-    message.error('已确认实例禁止直接修改，请先退回')
+    void message.error('已确认实例禁止直接修改，请先退回')
     return
   }
   editorMode.value = 'edit'
@@ -396,7 +396,7 @@ async function submitEditor() {
     || !editor.templateId
     || !editor.programId
   ) {
-    message.error('请填写编码、名称、模板、专业')
+    void message.error('请填写编码、名称、模板、专业')
     return
   }
   const hasOverride
@@ -404,7 +404,7 @@ async function submitEditor() {
       || editor.overrideWeightStrategy
       || editor.overrideThresholdStrategy
   if (hasOverride && !editor.overrideReason?.trim()) {
-    message.error('存在模板策略调整时必须填写覆盖原因')
+    void message.error('存在模板策略调整时必须填写覆盖原因')
     return
   }
   submitting.value = true
@@ -440,7 +440,7 @@ async function submitEditor() {
     }
     if (editorMode.value === 'create') await professionAlgorithmProfileApi.create(request)
     else await professionAlgorithmProfileApi.update(request)
-    message.success('已保存')
+    void message.success('已保存')
     editorVisible.value = false
     await loadList()
   } finally {
@@ -455,7 +455,7 @@ async function handleConfirm(record: ProfessionAlgorithmProfileVO) {
     type: 'info',
     onOk: async () => {
       await professionAlgorithmProfileApi.confirm(record.id)
-      message.success('已确认')
+      void message.success('已确认')
       await loadList()
     },
   })
@@ -468,7 +468,7 @@ async function handleRevoke(record: ProfessionAlgorithmProfileVO) {
     type: 'warning',
     onOk: async () => {
       await professionAlgorithmProfileApi.revoke(record.id)
-      message.success('已退回')
+      void message.success('已退回')
       await loadList()
     },
   })
@@ -515,7 +515,7 @@ function handleAlgorithmProfileAction(key: string, record: ProfessionAlgorithmPr
 
 async function handleDelete(record: ProfessionAlgorithmProfileVO) {
   if (!canEditProfile(record)) {
-    message.error('已确认实例禁止删除')
+    void message.error('已确认实例禁止删除')
     return
   }
   void confirmAsync({
@@ -523,7 +523,7 @@ async function handleDelete(record: ProfessionAlgorithmProfileVO) {
     type: 'error',
     onOk: async () => {
       await professionAlgorithmProfileApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadList()
     },
   })
@@ -724,16 +724,12 @@ onActivated(() => {
         <UiRow :gutter="12">
           <UiCol :span="8">
             <UiFormItem label="编码" required>
-              <UiInput
-                size="sm" v-model="editor.profileCode"
-              />
+              <UiInput size="sm" v-model="editor.profileCode" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="16">
             <UiFormItem label="名称" required>
-              <UiInput
-                size="sm" v-model="editor.profileName"
-              />
+              <UiInput size="sm" v-model="editor.profileName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -748,9 +744,13 @@ onActivated(() => {
                 :disabled="editorMode === 'edit'"
                 @search="handleTemplateDictSearch"
                 @change="onTemplateSelectChange"
-              
                 size="sm"
-                :options="templates.map((t) => ({ value: t.id, label: `${t.templateCode} · ${t.templateName}` }))"
+                :options="
+                  templates.map((t) => ({
+                    value: t.id,
+                    label: `${t.templateCode} · ${t.templateName}`,
+                  }))
+                "
               />
             </UiFormItem>
           </UiCol>
@@ -769,22 +769,20 @@ onActivated(() => {
           <UiCol :span="8">
             <UiFormItem label="认证类型" required>
               <UiSelect
-                size="sm" v-model="editor.accreditationType" :options="accreditationOptions"
+                size="sm"
+                v-model="editor.accreditationType"
+                :options="accreditationOptions"
               />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="认证级别">
-              <UiInput
-                size="sm" v-model="editor.accreditationLevel" placeholder="如 二级 / 三级"
-              />
+              <UiInput size="sm" v-model="editor.accreditationLevel" placeholder="如 二级 / 三级" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="标准年份">
-              <UiInput
-                size="sm" v-model="editor.standardYear"
-              />
+              <UiInput size="sm" v-model="editor.standardYear" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -795,9 +793,13 @@ onActivated(() => {
             allow-search
             :filter-option="false"
             @search="handleStandardDictSearch"
-          
             size="sm"
-            :options="standards.map((s) => ({ value: s.id, label: `${s.standardCode} · ${s.standardName}` }))"
+            :options="
+              standards.map((s) => ({
+                value: s.id,
+                label: `${s.standardCode} · ${s.standardName}`,
+              }))
+            "
           />
         </UiFormItem>
 
@@ -815,7 +817,9 @@ onActivated(() => {
           <UiCol :span="8">
             <UiFormItem label="观测点">
               <UiSelect
-                size="sm" v-model="editor.indicatorAggregation" :options="aggregationOptions"
+                size="sm"
+                v-model="editor.indicatorAggregation"
+                :options="aggregationOptions"
               />
             </UiFormItem>
           </UiCol>
@@ -923,28 +927,18 @@ onActivated(() => {
           <UiCol :span="12">
             <UiFormItem label="继承模板策略">
               <div class="dp-space dp-space--vertical" style="--dp-space-gap: 8px">
-                <UiCheckbox v-model="editor.inheritAggregationStrategy">
-                  聚合策略
-                </UiCheckbox>
+                <UiCheckbox v-model="editor.inheritAggregationStrategy"> 聚合策略 </UiCheckbox>
                 <UiCheckbox v-model="editor.inheritWeightStrategy"> 权重策略 </UiCheckbox>
-                <UiCheckbox v-model="editor.inheritThresholdStrategy">
-                  阈值策略
-                </UiCheckbox>
+                <UiCheckbox v-model="editor.inheritThresholdStrategy"> 阈值策略 </UiCheckbox>
               </div>
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="本专业调整项">
               <div class="dp-space dp-space--vertical" style="--dp-space-gap: 8px">
-                <UiCheckbox v-model="editor.overrideAggregationStrategy">
-                  调整聚合策略
-                </UiCheckbox>
-                <UiCheckbox v-model="editor.overrideWeightStrategy">
-                  调整权重策略
-                </UiCheckbox>
-                <UiCheckbox v-model="editor.overrideThresholdStrategy">
-                  调整阈值策略
-                </UiCheckbox>
+                <UiCheckbox v-model="editor.overrideAggregationStrategy"> 调整聚合策略 </UiCheckbox>
+                <UiCheckbox v-model="editor.overrideWeightStrategy"> 调整权重策略 </UiCheckbox>
+                <UiCheckbox v-model="editor.overrideThresholdStrategy"> 调整阈值策略 </UiCheckbox>
               </div>
             </UiFormItem>
           </UiCol>

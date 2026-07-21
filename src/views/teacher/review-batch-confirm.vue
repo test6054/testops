@@ -245,7 +245,7 @@ function updateScore(gradeResultId: string, value: number | string | null): void
 
 function applyAiScores(): void {
   if (!canManageReviewerWrites.value) {
-    message.warning('当前账号无批量复核写权限')
+    void message.warning('当前账号无批量复核写权限')
     return
   }
   let filled = 0
@@ -262,7 +262,7 @@ function applyAiScores(): void {
     showFormValidationMessage('当前页没有可填入的系统建议分（硬判失败或智能未出分须人工给分）')
     return
   }
-  message.success(
+  void message.success(
     skipped > 0
       ? `已用系统建议分填充 ${filled} 条，${skipped} 条无建议分需人工填写`
       : `已用系统建议分填充当前页 ${filled} 条（含客观题硬判与智能建议）`,
@@ -288,9 +288,10 @@ async function loadTasks(): Promise<void> {
     rows.value = records
     pagination.total = result.total
     // MVR-328：列表有项时仅认行级 can===true；空列表用制卷摘要 can===true 补齐
-    canManageReviewerWrites.value = records.length > 0
-      ? records[0].canManageReviewerWrites === true
-      : layoutSummary?.canManageReviewerWrites === true
+    canManageReviewerWrites.value
+      = records.length > 0
+        ? records[0].canManageReviewerWrites === true
+        : layoutSummary?.canManageReviewerWrites === true
     initScoreDraft(records)
     selectedRowKeys.value = selectedRowKeys.value.filter((id) =>
       records.some((row) => row.gradeResultId === id),
@@ -323,8 +324,8 @@ function goSingleReview(): void {
 
 function openConfirm(): void {
   // MVR-394：仅认 canManageReviewerWrites===true
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('当前账号无批量复核写权限')
+  if (!canManageReviewerWrites.value) {
+    void message.warning('当前账号无批量复核写权限')
     return
   }
   if (selectedRowKeys.value.length === 0) return
@@ -344,8 +345,8 @@ function openConfirm(): void {
 async function submitBatch(): Promise<void> {
   if (!selectedExamId.value || selectedRowKeys.value.length === 0) return
   // MVR-394：仅认 canManageReviewerWrites===true
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('当前账号无批量复核写权限')
+  if (!canManageReviewerWrites.value) {
+    void message.warning('当前账号无批量复核写权限')
     return
   }
   if (submitting.value) {
@@ -363,12 +364,12 @@ async function submitBatch(): Promise<void> {
     })
     batchFailures.value = response.failures ?? []
     if (response.failureCount > 0) {
-      message.warning(
+      void message.warning(
         `成功 ${response.successCount} 条，失败 ${response.failureCount} 条，请查看下方失败明细`,
       )
     } else {
       batchFailures.value = []
-      message.success(`已确认 ${response.successCount} 条复核得分`)
+      void message.success(`已确认 ${response.successCount} 条复核得分`)
     }
     selectedRowKeys.value = []
     await loadTasks()

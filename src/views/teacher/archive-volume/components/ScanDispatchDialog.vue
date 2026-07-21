@@ -90,7 +90,7 @@ async function handleSubmit() {
     })
     const ticket = response.ticket
     if (!ticket?.ticketId) {
-      message.error('派单创建失败')
+      void message.error('派单创建失败')
       return
     }
     const kioskUrl = buildScanDispatchKioskUrl(ticket, props.returnTo)
@@ -135,9 +135,7 @@ async function handleSubmit() {
         <UiCheckbox v-model="form.generateTraceLabel">生成追溯标签便携文档</UiCheckbox>
       </UiFormItem>
     </UiForm>
-    <p class="scan-dispatch-dialog__note">
-      工位通过分机链接或二维码进入，不使用同浏览器路由跳转。
-    </p>
+    <p class="scan-dispatch-dialog__note">工位通过分机链接或二维码进入，不使用同浏览器路由跳转。</p>
   </UiDrawer>
 </template>
 

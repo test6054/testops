@@ -11,23 +11,25 @@
   >
     <p v-if="questionNo" class="binding-modal__meta">题号 {{ questionNo }}</p>
     <UiSkeletonState v-if="loading" variant="card" :card-count="1" compact />
-    <UiEmpty v-else-if="candidates.length === 0" size="sm" description="暂无可用定标案例，请先完成有效性评估" />
+    <UiEmpty
+      v-else-if="candidates.length === 0"
+      size="sm"
+      description="暂无可用定标案例，请先完成有效性评估"
+    />
     <div v-else class="binding-modal__list">
-      <label
-        v-for="item in candidates"
-        :key="item.effectivenessEvalId"
-        class="binding-modal__item"
-      >
+      <label v-for="item in candidates" :key="item.effectivenessEvalId" class="binding-modal__item">
         <input
           v-model="selectedEvalId"
           type="radio"
           name="binding-candidate"
           :value="item.effectivenessEvalId"
-        >
+        />
         <div class="binding-modal__item-body">
           <div class="binding-modal__item-head">
             <span>{{ item.sourceExamName ?? item.sourceExamNo ?? '历史考试' }}</span>
-            <UiTag v-if="item.recommendation" size="sm" tone="blue">{{ recommendationLabel(item.recommendation) }}</UiTag>
+            <UiTag v-if="item.recommendation" size="sm" tone="blue">{{
+              recommendationLabel(item.recommendation)
+            }}</UiTag>
           </div>
           <p class="binding-modal__summary">{{ item.experienceSummary ?? '—' }}</p>
           <span v-if="item.consistencyRate != null" class="binding-modal__rate">
@@ -96,7 +98,10 @@ async function loadCandidates(): Promise<void> {
   }
   loading.value = true
   try {
-    candidates.value = await listExamExperienceAssistCandidates(props.examId, props.layoutQuestionId)
+    candidates.value = await listExamExperienceAssistCandidates(
+      props.examId,
+      props.layoutQuestionId,
+    )
     selectedEvalId.value = candidates.value[0]?.effectivenessEvalId
   } catch (error) {
     candidates.value = []
@@ -110,12 +115,14 @@ async function handleSave(): Promise<void> {
   if (!props.examId || !props.layoutQuestionId || saving.value) return
   // MVR-372：写 handler 二次拦截；策略页仅隐藏入口不能替代
   if (props.canManageReviewerWrites !== true) {
-    message.warning('仅本场阅卷组织成员或主考可绑定定标经验')
+    void message.warning('仅本场阅卷组织成员或主考可绑定定标经验')
     return
   }
-  const selected = candidates.value.find((item) => item.effectivenessEvalId === selectedEvalId.value)
+  const selected = candidates.value.find(
+    (item) => item.effectivenessEvalId === selectedEvalId.value,
+  )
   if (!selected) {
-    message.warning('请选择定标案例')
+    void message.warning('请选择定标案例')
     return
   }
   saving.value = true
@@ -126,7 +133,7 @@ async function handleSave(): Promise<void> {
       experienceCaseId: selected.experienceCaseId,
       effectivenessEvalId: selected.effectivenessEvalId,
     })
-    message.success('题目定标已保存')
+    void message.success('题目定标已保存')
     open.value = false
     emit('saved')
   } catch (error) {

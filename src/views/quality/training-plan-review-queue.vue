@@ -51,9 +51,11 @@ const authStore = useAuthStore()
 const hasConfirmPermission = computed(() => authStore.hasPermission('quality:plan:confirm'))
 const hasSubmitPermission = computed(() => authStore.hasPermission('quality:plan:submit'))
 
-const reviewStatus = computed(() => (
-  activeTab.value === 'pending' ? ConfirmationStatusCode.SUBMITTED : ConfirmationStatusCode.CONFIRMED
-))
+const reviewStatus = computed(() =>
+  activeTab.value === 'pending'
+    ? ConfirmationStatusCode.SUBMITTED
+    : ConfirmationStatusCode.CONFIRMED,
+)
 
 const columns: ColumnsType = [
   { title: '方案编码', dataIndex: 'planCode', key: 'planCode', width: 145, fixed: 'left' },
@@ -74,18 +76,23 @@ const auditActionLabel: Record<TrainingPlanStatusAuditVO['actionCode'], string> 
   REVOKE: '撤回发布',
 }
 
-const drawerTitle = computed(() => selectedPlan.value ? `院审：${selectedPlan.value.planName}` : '院审详情')
-const canConfirm = computed(() =>
-  hasConfirmPermission.value
-  && selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.SUBMITTED,
+const drawerTitle = computed(() =>
+  selectedPlan.value ? `院审：${selectedPlan.value.planName}` : '院审详情',
 )
-const canRevoke = computed(() =>
-  hasConfirmPermission.value
-  && selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.CONFIRMED,
+const canConfirm = computed(
+  () =>
+    hasConfirmPermission.value
+    && selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.SUBMITTED,
 )
-const canRemind = computed(() =>
-  hasSubmitPermission.value
-  && selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.SUBMITTED,
+const canRevoke = computed(
+  () =>
+    hasConfirmPermission.value
+    && selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.CONFIRMED,
+)
+const canRemind = computed(
+  () =>
+    hasSubmitPermission.value
+    && selectedPlan.value?.confirmationStatus === ConfirmationStatusCode.SUBMITTED,
 )
 const failedChecklistDescription = computed(() => {
   const items = checklist.value?.failedItems ?? []
@@ -124,14 +131,12 @@ async function loadPage(): Promise<void> {
     records.value = page.list
     total.value = page.total
     okLoad()
-  }
-  catch (error) {
+  } catch (error) {
     records.value = []
     total.value = 0
     failLoad()
     showUserError(error, '院审队列加载失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -158,8 +163,7 @@ async function openReview(plan: TrainingPlanVO): Promise<void> {
   drawerOpen.value = true
   detailLoading.value = true
   try {
-    const detail = await trainingPlanApi.detail(plan.id)
-    selectedPlan.value = detail
+    selectedPlan.value = await trainingPlanApi.detail(plan.id)
     try {
       checklist.value = await trainingPlanApi.checklist(plan.id)
     } catch (error) {
@@ -178,15 +182,13 @@ async function openReview(plan: TrainingPlanVO): Promise<void> {
       audits.value = []
       showUserError(error, '院审状态审计加载失败')
     }
-  }
-  catch (error) {
+  } catch (error) {
     selectedPlan.value = null
     checklist.value = null
     diagnosis.value = null
     audits.value = []
     showUserError(error, '院审详情加载失败')
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -199,14 +201,16 @@ async function confirmPlan(): Promise<void> {
       id: selectedPlan.value.id,
       statusVersion: selectedPlan.value.statusVersion,
     })
-    selectedPlan.value = { ...selectedPlan.value, confirmationStatus: result.confirmationStatus, statusVersion: result.statusVersion }
+    selectedPlan.value = {
+      ...selectedPlan.value,
+      confirmationStatus: result.confirmationStatus,
+      statusVersion: result.statusVersion,
+    }
     drawerOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '培养方案确认发布失败')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -223,11 +227,9 @@ async function returnPlan(): Promise<void> {
     })
     drawerOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '培养方案退回失败')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -244,11 +246,9 @@ async function revokePlan(): Promise<void> {
     })
     drawerOpen.value = false
     await loadPage()
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '培养方案撤回失败')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -258,12 +258,10 @@ async function remindPlan(): Promise<void> {
   submitting.value = true
   try {
     const count = await trainingPlanApi.remindReview(selectedPlan.value.id)
-    message.success(`已向 ${count} 名确认人发送院审催办`)
-  }
-  catch (error) {
+    void message.success(`已向 ${count} 名确认人发送院审催办`)
+  } catch (error) {
     showUserError(error, '培养方案院审催办失败')
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -281,28 +279,34 @@ onActivated(() => {
     <template #context>
       <QualityPageContextBar>
         <template #actions>
-          <UiButton variant="outline" size="sm" :loading="loading" @click="loadPage">刷新队列</UiButton>
+          <UiButton variant="outline" size="sm" :loading="loading" @click="loadPage">
+            刷新队列
+          </UiButton>
         </template>
       </QualityPageContextBar>
     </template>
 
     <div class="training-plan-review-queue">
       <div class="training-plan-review-queue__tabs">
-        <UiButton size="sm" :variant="activeTab === 'pending' ? 'primary' : 'ghost'" @click="switchTab('pending')">待院审</UiButton>
-        <UiButton size="sm" :variant="activeTab === 'published' ? 'primary' : 'ghost'" @click="switchTab('published')">已发布方案</UiButton>
+        <UiButton
+          size="sm"
+          :variant="activeTab === 'pending' ? 'primary' : 'ghost'"
+          @click="switchTab('pending')"
+        >
+          待院审
+        </UiButton>
+        <UiButton
+          size="sm"
+          :variant="activeTab === 'published' ? 'primary' : 'ghost'"
+          @click="switchTab('published')"
+        >
+          已发布方案
+        </UiButton>
       </div>
 
-      <UiAlertStrip
-        v-if="activeTab === 'pending'"
-        tone="info"
-        title="待院审方案已锁定结构"
-      />
+      <UiAlertStrip v-if="activeTab === 'pending'" tone="info" title="待院审方案已锁定结构" />
 
-      <UiAlertStrip
-        v-if="!hasConfirmPermission"
-        tone="error"
-        title="当前账号无培养方案院审权限"
-      />
+      <UiAlertStrip v-if="!hasConfirmPermission" tone="error" title="当前账号无培养方案院审权限" />
 
       <UiDataTable
         pagination-mode="server"
@@ -321,7 +325,11 @@ onActivated(() => {
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'status'">
-            <UiTag :tone="record.confirmationStatus === ConfirmationStatusCode.CONFIRMED ? 'green' : 'orange'">
+            <UiTag
+              :tone="
+                record.confirmationStatus === ConfirmationStatusCode.CONFIRMED ? 'green' : 'orange'
+              "
+            >
               {{ confirmationStatusLabel(record.confirmationStatus) }}
             </UiTag>
           </template>
@@ -347,14 +355,26 @@ onActivated(() => {
     </div>
   </StageWorkbenchShell>
 
-  <UiDrawer v-model:open="drawerOpen" :title="drawerTitle" :width="760" :hide-footer="true" :closable="true">
+  <UiDrawer
+    v-model:open="drawerOpen"
+    :title="drawerTitle"
+    :width="760"
+    :hide-footer="true"
+    :closable="true"
+  >
     <UiSpin :spinning="detailLoading">
       <template v-if="selectedPlan">
         <div class="training-plan-review-queue__drawer-meta">
           <span>{{ selectedPlan.planCode }}</span>
           <span>{{ selectedPlan.programName }}</span>
           <span>{{ selectedPlan.schoolYear }}</span>
-          <UiTag :tone="selectedPlan.confirmationStatus === ConfirmationStatusCode.CONFIRMED ? 'green' : 'orange'">
+          <UiTag
+            :tone="
+              selectedPlan.confirmationStatus === ConfirmationStatusCode.CONFIRMED
+                ? 'green'
+                : 'orange'
+            "
+          >
             {{ confirmationStatusLabel(selectedPlan.confirmationStatus) }}
           </UiTag>
         </div>
@@ -366,11 +386,7 @@ onActivated(() => {
           title="发布 Checklist 未通过"
           :description="failedChecklistDescription"
         />
-        <UiAlertStrip
-          v-else-if="checklist?.passed"
-          tone="success"
-          title="发布 Checklist 已通过"
-        />
+        <UiAlertStrip v-else-if="checklist?.passed" tone="success" title="发布 Checklist 已通过" />
 
         <UiAlertStrip
           v-if="diagnosis"
@@ -386,13 +402,51 @@ onActivated(() => {
             v-if="canConfirm || canRevoke"
             v-model="reviewComment"
             :rows="3"
-            :placeholder="canRevoke ? '撤回原因不少于 10 个字符' : '退回意见不少于 10 个字符；确认发布无需填写'"
+            :placeholder="
+              canRevoke ? '撤回原因不少于 10 个字符' : '退回意见不少于 10 个字符；确认发布无需填写'
+            "
           />
           <div class="training-plan-review-queue__actions">
-            <UiButton size="sm" v-if="canConfirm" variant="primary" :loading="submitting" @click="confirmPlan">确认发布</UiButton>
-            <UiButton size="sm" v-if="canConfirm" variant="outline" status="danger" :disabled="reviewComment.trim().length < 10" :loading="submitting" @click="returnPlan">退回整改</UiButton>
-            <UiButton size="sm" v-if="canRemind" variant="outline" :loading="submitting" @click="remindPlan">催办确认人</UiButton>
-            <UiButton size="sm" v-if="canRevoke" variant="outline" status="danger" :disabled="reviewComment.trim().length < 10" :loading="submitting" @click="revokePlan">撤回发布</UiButton>
+            <UiButton
+              size="sm"
+              v-if="canConfirm"
+              variant="primary"
+              :loading="submitting"
+              @click="confirmPlan"
+            >
+              确认发布
+            </UiButton>
+            <UiButton
+              size="sm"
+              v-if="canConfirm"
+              variant="outline"
+              status="danger"
+              :disabled="reviewComment.trim().length < 10"
+              :loading="submitting"
+              @click="returnPlan"
+            >
+              退回整改
+            </UiButton>
+            <UiButton
+              size="sm"
+              v-if="canRemind"
+              variant="outline"
+              :loading="submitting"
+              @click="remindPlan"
+            >
+              催办确认人
+            </UiButton>
+            <UiButton
+              size="sm"
+              v-if="canRevoke"
+              variant="outline"
+              status="danger"
+              :disabled="reviewComment.trim().length < 10"
+              :loading="submitting"
+              @click="revokePlan"
+            >
+              撤回发布
+            </UiButton>
           </div>
         </section>
 
@@ -400,9 +454,16 @@ onActivated(() => {
           <h4>院审审计</h4>
           <UiTimeline v-if="audits.length">
             <UiTimelineItem v-for="audit in audits" :key="audit.id">
-              <div class="training-plan-review-queue__audit-title">{{ auditActionLabel[audit.actionCode] }} · {{ audit.createTime }}</div>
-              <div class="training-plan-review-queue__audit-meta">{{ audit.previousStatus }} → {{ audit.currentStatus }} · 操作人 {{ audit.operatorUserId }}</div>
-              <div v-if="audit.comment" class="training-plan-review-queue__audit-comment">{{ audit.comment }}</div>
+              <div class="training-plan-review-queue__audit-title">
+                {{ auditActionLabel[audit.actionCode] }} · {{ audit.createTime }}
+              </div>
+              <div class="training-plan-review-queue__audit-meta">
+                {{ audit.previousStatus }} → {{ audit.currentStatus }} · 操作人
+                {{ audit.operatorUserId }}
+              </div>
+              <div v-if="audit.comment" class="training-plan-review-queue__audit-comment">
+                {{ audit.comment }}
+              </div>
             </UiTimelineItem>
           </UiTimeline>
           <UiEmpty v-else size="sm" title="尚无院审审计记录" />

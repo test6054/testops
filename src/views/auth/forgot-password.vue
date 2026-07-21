@@ -245,7 +245,7 @@ const handleIdentityVerify = async () => {
   try {
     loading.value = true
     await sendResetCode(email)
-    message.success('验证码已发送到您的邮箱')
+    void message.success('验证码已发送到您的邮箱')
     currentStep.value = 1
     startCountdown()
   } catch {
@@ -271,7 +271,7 @@ const handleVerificationCode = async () => {
     loading.value = true
     const isValid = await verifyResetCode(identityForm.value.email, verificationForm.value.code)
     if (isValid) {
-      message.success('验证成功')
+      void message.success('验证成功')
       currentStep.value = 2
     } else {
       notification.warning({ message: '验证失败', description: '验证码错误或已过期', duration: 3 })
@@ -309,7 +309,7 @@ const handleResetPassword = async () => {
       newPassword: passwordForm.value.newPassword,
       confirmPassword: passwordForm.value.confirmPassword,
     })
-    message.success('密码重置成功')
+    void message.success('密码重置成功')
     currentStep.value = 3
   } catch {
     // 错误已由拦截器处理
@@ -322,7 +322,7 @@ const handleResetPassword = async () => {
 const resendCode = async () => {
   try {
     await sendResetCode(identityForm.value.email)
-    message.success('验证码已重新发送')
+    void message.success('验证码已重新发送')
     startCountdown()
   } catch {
     // 错误已由拦截器处理

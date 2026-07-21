@@ -12,7 +12,11 @@
       />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+        v-if="canManageReviewerWrites"
+        variant="primary"
+        size="sm"
+        :loading="generating"
+        @click="handleGenerate"
       >
         生成分析
       </UiButton>
@@ -272,9 +276,7 @@ const examSelectAutoSelectLargestCluster = computed(
   () => scopeMode.value === AnalysisScopeTypeCode.COURSE || Boolean(examSelectScopeClassId.value),
 )
 
-const examSelectReady = computed(
-  () => Boolean(form.academicYear?.trim() && form.semester),
-)
+const examSelectReady = computed(() => Boolean(form.academicYear?.trim() && form.semester))
 
 const examSelectPlaceholder = computed(() => {
   if (scopeMode.value === AnalysisScopeTypeCode.CLASS && !examSelectScopeClassId.value) {
@@ -485,7 +487,7 @@ async function reload(): Promise<void> {
     return
   }
   if (scopeMode.value === AnalysisScopeTypeCode.CLASS && !effectiveClassId.value) {
-    message.warning('班级维度需要选择班级')
+    void message.warning('班级维度需要选择班级')
     return
   }
   loading.value = true
@@ -498,14 +500,13 @@ async function reload(): Promise<void> {
         : {}),
     })
     const count = applyLoadedList(list)
-    if (count === 0) message.info('暂无历史记录')
+    if (count === 0) void message.info('暂无历史记录')
   } catch {
     /* 拦截器已统一 Message 提示 */
   } finally {
     loading.value = false
   }
 }
-
 
 /** MVR-286：默认拒绝假可写；所选考试均须 canManageReviewerWrites */
 const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
@@ -514,7 +515,7 @@ const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
 )
 
 async function handleGenerate(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
@@ -533,7 +534,7 @@ async function handleGenerate(): Promise<void> {
     return
   }
   if (examIds.length < 2) {
-    message.warning('至少需要选择 2 场考试')
+    void message.warning('至少需要选择 2 场考试')
     return
   }
   const academicYear = form.academicYear
@@ -544,7 +545,7 @@ async function handleGenerate(): Promise<void> {
   }
   const classId = effectiveClassId.value
   if (scopeMode.value === AnalysisScopeTypeCode.CLASS && !classId) {
-    message.warning('班级维度需要选择班级')
+    void message.warning('班级维度需要选择班级')
     return
   }
   generating.value = true
@@ -565,7 +566,7 @@ async function handleGenerate(): Promise<void> {
             examIds,
           })
     adoptGenerated(generated)
-    message.success('已生成趋势分析')
+    void message.success('已生成趋势分析')
   } catch {
     /* 拦截器已统一 Message 提示 */
   } finally {

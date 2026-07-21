@@ -333,9 +333,10 @@ async function loadTasks(): Promise<void> {
     rows.value = records
     pagination.total = result.total
     // MVR-328：列表有项时仅认行级 can===true；空列表用制卷摘要 can===true 补齐
-    canManageReviewerWrites.value = records.length > 0
-      ? records[0].canManageReviewerWrites === true
-      : layoutSummary?.canManageReviewerWrites === true
+    canManageReviewerWrites.value
+      = records.length > 0
+        ? records[0].canManageReviewerWrites === true
+        : layoutSummary?.canManageReviewerWrites === true
   } catch (error) {
     rows.value = []
     pagination.total = 0
@@ -381,7 +382,7 @@ function enterReview(record: ReviewTaskItemResponse): void {
   }
   // MVR-394：进入复核写工作台仅认行级 canManageReviewerWrites===true（BE 评阅写∧ACTIVE）
   if (record.canManageReviewerWrites !== true) {
-    message.warning('当前账号无本场复核写权限，无法进入复核工作台')
+    void message.warning('当前账号无本场复核写权限，无法进入复核工作台')
     return
   }
   void router.push({
@@ -396,8 +397,8 @@ function goBatchConfirm(): void {
     return
   }
   // MVR-291/394：无写能力不得导航进批量确认页（页内虽叠闸，避免假入口）
-  if (canManageReviewerWrites.value !== true) {
-    message.warning('当前账号无批量复核写权限')
+  if (!canManageReviewerWrites.value) {
+    void message.warning('当前账号无批量复核写权限')
     return
   }
   void router.push({

@@ -49,11 +49,8 @@ function readRouteStringParam(value: unknown): string {
 const route = useRoute()
 const { targetTeacherId, scopeReady } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard()
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard()
 const { canPickTeachers, canManageTeacherAi } = usePortfolioTeacherAccess()
 
 const activeTab = ref<'ask' | 'policy'>(
@@ -232,12 +229,12 @@ async function loadRegisteredMaterial(materialId: string) {
     if (material.teacherId !== targetTeacherId.value) {
       resetMaterialContext()
       resetAnalysisContext()
-      message.error('材料所属教师与当前页教师不一致')
+      void message.error('材料所属教师与当前页教师不一致')
       return
     }
     if (!material.fileNodeId) {
       resetMaterialContext()
-      message.error('材料未关联文件')
+      void message.error('材料未关联文件')
       return
     }
     registeredMaterialId.value = material.id
@@ -349,7 +346,7 @@ async function submitAsk() {
   }
 
   if (!canOperate.value) {
-    message.error('无权为该教师提交智能问数')
+    void message.error('无权为该教师提交智能问数')
     return
   }
   if (!askForm.userQuestion.trim()) {
@@ -383,12 +380,12 @@ async function submitAsk() {
     if (orchestrationToken.value !== taskToken) {
       return
     }
-    message.info('问数任务已提交，正在等待结果…')
+    void message.info('问数任务已提交，正在等待结果…')
     await pollAnalysis(submitResult.taskId, taskToken)
     if (orchestrationToken.value !== taskToken) {
       return
     }
-    message.success('问数完成')
+    void message.success('问数完成')
   } catch (error) {
     if (orchestrationToken.value !== taskToken) {
       return
@@ -410,7 +407,7 @@ async function submitPolicyCheck() {
   }
 
   if (!canOperate.value) {
-    message.error('无权为该教师提交政策核验')
+    void message.error('无权为该教师提交政策核验')
     return
   }
   if (!policyForm.policyClauseText.trim()) {
@@ -451,12 +448,12 @@ async function submitPolicyCheck() {
     if (orchestrationToken.value !== taskToken) {
       return
     }
-    message.info('政策核验任务已提交，正在等待结果…')
+    void message.info('政策核验任务已提交，正在等待结果…')
     await pollAnalysis(submitResult.taskId, taskToken)
     if (orchestrationToken.value !== taskToken) {
       return
     }
-    message.success('政策核验完成')
+    void message.success('政策核验完成')
   } catch (error) {
     if (orchestrationToken.value !== taskToken) {
       return
@@ -575,7 +572,12 @@ usePortfolioScopedLoader(
 
       <UiCard title="材料智能任务">
         <div class="ai-orchestration__task-toolbar">
-          <UiButton size="sm" variant="outline" :loading="materialTaskLoading" @click="loadMaterialTasks">
+          <UiButton
+            size="sm"
+            variant="outline"
+            :loading="materialTaskLoading"
+            @click="loadMaterialTasks"
+          >
             刷新任务
           </UiButton>
         </div>
@@ -679,7 +681,11 @@ usePortfolioScopedLoader(
           placeholder="教师档案摘要（可选）"
         />
         <label class="ai-orchestration__checkbox">
-          <input v-model="policyForm.attachMaterial" type="checkbox" :disabled="loading || polling" />
+          <input
+            v-model="policyForm.attachMaterial"
+            type="checkbox"
+            :disabled="loading || polling"
+          />
           附带材料文件作为佐证
         </label>
         <UiButton
@@ -701,7 +707,8 @@ usePortfolioScopedLoader(
 
         <template
           v-if="
-            supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)
+            supportedOrchestrationAnalysis
+              && isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)
           "
         >
           <p v-if="analysisDetail.reportScene" class="ai-orchestration__meta">
@@ -730,7 +737,8 @@ usePortfolioScopedLoader(
 
         <template
           v-else-if="
-            supportedOrchestrationAnalysis && isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)
+            supportedOrchestrationAnalysis
+              && isAnalysisType(PortfolioAiAnalysisTypeCode.POLICY_MATCH)
           "
         >
           <p v-if="analysisDetail.conclusionCode" class="ai-orchestration__meta">

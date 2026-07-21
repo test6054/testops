@@ -403,7 +403,12 @@ function formatAssignedTeacher(record: ReviewTaskItemResponse): string {
 function buildArbitrationActions(record: ReviewTaskItemResponse): UiTableRowActionItem[] {
   return [
     { key: 'detail', label: '详情' },
-    { key: 'workspace', label: '进入仲裁', tone: 'primary', hidden: !isActionableTask(record) || record.canManageReviewerWrites !== true },
+    {
+      key: 'workspace',
+      label: '进入仲裁',
+      tone: 'primary',
+      hidden: !isActionableTask(record) || record.canManageReviewerWrites !== true,
+    },
   ]
 }
 
@@ -603,11 +608,11 @@ function goReviewWorkspace(record: ReviewTaskItemResponse): void {
   }
   // MVR-394：进入仲裁写工作台与行级 canManageReviewerWrites / isActionableTask 二次拦截
   if (record.canManageReviewerWrites !== true) {
-    message.warning('当前账号无本场复核写权限，无法进入仲裁工作台')
+    void message.warning('当前账号无本场复核写权限，无法进入仲裁工作台')
     return
   }
   if (!isActionableTask(record)) {
-    message.warning('当前任务状态不可进入仲裁工作台')
+    void message.warning('当前任务状态不可进入仲裁工作台')
     return
   }
   void router.push({

@@ -33,11 +33,8 @@ import { strictEnumLabel } from '@/utils/strict-enum'
 const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const {
-  evaluationHeld,
-  evaluationHoldBlockMessage,
-  assertEvaluationParticipable,
-} = usePortfolioArchiveWriteGuard()
+const { evaluationHeld, evaluationHoldBlockMessage, assertEvaluationParticipable }
+  = usePortfolioArchiveWriteGuard()
 const reportYear = ref(String(new Date().getFullYear()))
 const loading = ref(false)
 const generating = ref(false)
@@ -47,8 +44,7 @@ const annualNotices = ref<PortfolioEvaluationTeacherNoticeVO[]>([])
 
 const hasPendingAnnualNotices = computed(() =>
   annualNotices.value.some(
-    (notice) =>
-      notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED,
+    (notice) => notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED,
   ),
 )
 const submittingNoticeId = ref('')
@@ -208,7 +204,7 @@ async function generateAnnualReport() {
     return
   }
   if (!selectionConfirmed.value) {
-    message.warning('生成前请确认：本年度材料已甄选，完整度不等于发展叙事质量')
+    void message.warning('生成前请确认：本年度材料已甄选，完整度不等于发展叙事质量')
     return
   }
   const currentScopeToken = scopeRequestToken.value
@@ -322,7 +318,9 @@ usePortfolioScopedLoader(
                 v-if="notice.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusCode.CONFIRMED"
                 variant="primary"
                 :loading="submittingNoticeId === notice.id"
-                :disabled="Boolean(submittingNoticeId) || Boolean(notice.evaluationHeld) || evaluationHeld"
+                :disabled="
+                  Boolean(submittingNoticeId) || Boolean(notice.evaluationHeld) || evaluationHeld
+                "
                 @click="submitAnnualReviewNotice(notice)"
               >
                 提交考核材料

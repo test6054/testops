@@ -60,7 +60,7 @@ async function handleSubmit() {
       ticketId,
       releaseReason: reason,
     })
-    message.success('派单已强制解锁')
+    void message.success('派单已强制解锁')
     emit('released')
     emit('update:open', false)
   } catch (error) {
@@ -91,7 +91,12 @@ async function handleSubmit() {
     </p>
     <UiForm layout="vertical">
       <UiFormItem label="解锁原因" required>
-        <UiTextarea size="sm" v-model="form.releaseReason" :rows="3" placeholder="说明强制解锁原因" />
+        <UiTextarea
+          size="sm"
+          v-model="form.releaseReason"
+          :rows="3"
+          placeholder="说明强制解锁原因"
+        />
       </UiFormItem>
     </UiForm>
   </UiDrawer>

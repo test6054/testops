@@ -51,7 +51,7 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
     if (!id) return
     if (checking.value || exporting.value) return
     if (loadFailed.value) {
-      message.error('自查清单状态已失效，请重新加载后再操作')
+      void message.error('自查清单状态已失效，请重新加载后再操作')
       return
     }
     checking.value = true
@@ -83,7 +83,7 @@ export function useArchiveVolumeSelfCheck(volumeId: () => string) {
         return
       }
       await downloadFile({ nodeId: result.exportFileId })
-      message.success('自查表导出完成')
+      void message.success('自查表导出完成')
     }
     catch (error) {
       showUserError(error, '导出自查表失败')

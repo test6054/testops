@@ -475,7 +475,7 @@ function openGenerateModal() {
     return
   }
   if (generateBlocked.value) {
-    message.warning(generateDisabledReason.value ?? '考试准备未完成，暂不可生成印刷包')
+    void message.warning(generateDisabledReason.value ?? '考试准备未完成，暂不可生成印刷包')
     return
   }
   generateForm.packageNo = ''
@@ -507,7 +507,7 @@ async function handleGenerate() {
       packageName: generateForm.packageName.trim(),
       sealRemark: generateForm.sealRemark?.trim() || undefined,
     })
-    message.success('印刷包生成成功')
+    void message.success('印刷包生成成功')
     generateModalVisible.value = false
     pagination.pageNum = 1
     await Promise.all([loadPackageList(), loadPrintPackagePanel()])

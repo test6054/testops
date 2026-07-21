@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioEvaluationTaskStatusCode} from '@/apis/portfolio/enums';
+import type { PortfolioEvaluationTaskStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioTenantIndicatorConfigVO } from '@/apis/portfolio/indicator-types'
 import type { PortfolioEvaluationSubjectTeacherOptionVO } from '@/apis/portfolio/teacher-platform'
 import type {
@@ -443,7 +442,7 @@ async function returnMaterialForSupplement() {
     if (previewTaskId.value !== taskId || previewTeacherId.value !== teacherId) return
     previewNotice.value = updated
     returnReason.value = ''
-    message.success('已退回教师补充材料')
+    void message.success('已退回教师补充材料')
   } catch (error) {
     showUserError(error, '退回补充失败')
   } finally {
@@ -490,7 +489,7 @@ async function createTask() {
       startTime: form.startTime,
       endTime: form.endTime,
     })
-    message.success('评价任务已创建')
+    void message.success('评价任务已创建')
     form.taskName = ''
     form.sceneCode = PortfolioEvaluationSceneCode.GENERAL
     form.workgroupId = ''
@@ -526,7 +525,7 @@ async function voidDraftTask(id: string) {
       taskId: id,
       action: PortfolioEvaluationTaskAdvanceActionCode.VOID,
     })
-    message.success('任务已作废')
+    void message.success('任务已作废')
     await loadPage()
   } catch (error) {
     showUserError(error, '作废评价任务失败')
@@ -564,7 +563,7 @@ async function publishTask(id: string) {
     })
     if (!confirmed) return
     await portfolioEvaluationTaskApi.publish({ id })
-    message.success('任务已发布')
+    void message.success('任务已发布')
     await loadPage()
   } catch (error) {
     showUserError(error, '发布评价任务失败')
@@ -581,7 +580,7 @@ async function exportExcel() {
   try {
     const result = await portfolioEvaluationTaskApi.exportExcel()
     await downloadPortfolioExcelExport(result)
-    message.success('评价任务已导出')
+    void message.success('评价任务已导出')
   } catch (error) {
     showUserError(error, '导出评价任务失败')
   } finally {

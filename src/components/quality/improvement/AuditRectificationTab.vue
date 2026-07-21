@@ -278,7 +278,7 @@ function openRectCreate() {
 
 function openRectEdit(record: AuditRectificationVO) {
   if (!canEditAuditRectification(record.status)) {
-    message.error('当前状态不允许编辑整改任务')
+    void message.error('当前状态不允许编辑整改任务')
     return
   }
   rectEditorMode.value = 'edit'
@@ -299,7 +299,7 @@ async function submitRectEditor() {
   if (rectEditorMode.value === 'edit' && rectEditor.id) {
     const current = rectList.value.find((item) => item.id === rectEditor.id)
     if (current && !canEditAuditRectification(current.status)) {
-      message.error('当前状态不允许编辑整改任务')
+      void message.error('当前状态不允许编辑整改任务')
       return
     }
   }
@@ -310,7 +310,7 @@ async function submitRectEditor() {
     || !rectEditor.ownerUserId
     || !rectEditor.dueDate
   ) {
-    message.error('请填写关联问题、编码、标题、责任人、截止日期')
+    void message.error('请填写关联问题、编码、标题、责任人、截止日期')
     return
   }
   rectEditorSubmitting.value = true
@@ -323,10 +323,10 @@ async function submitRectEditor() {
     }
     if (rectEditorMode.value === 'create') {
       await auditRectificationApi.create(request)
-      message.success('已创建')
+      void message.success('已创建')
     } else {
       await auditRectificationApi.update(request)
-      message.success('已保存')
+      void message.success('已保存')
     }
     rectEditorVisible.value = false
     await loadList({ refreshSignals: true })
@@ -341,7 +341,7 @@ async function handleRectDelete(record: AuditRectificationVO) {
     type: 'error',
     onOk: async () => {
       await auditRectificationApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadList({ refreshSignals: true })
     },
   })
@@ -375,16 +375,16 @@ async function submitRectEvidenceEditor() {
   const record = rectEvidenceEditorRecord.value
   if (!record) return
   if (!rectEvidenceEditor.progressRemark.trim()) {
-    message.error('请填写提交说明')
+    void message.error('请填写提交说明')
     return
   }
   if (!rectEvidenceEditor.evidenceItems.length) {
-    message.error('请至少新增一条整改证据')
+    void message.error('请至少新增一条整改证据')
     return
   }
   for (const [index, item] of rectEvidenceEditor.evidenceItems.entries()) {
     if (!item.evidenceTitle?.trim()) {
-      message.error(`第 ${index + 1} 条证据缺少标题`)
+      void message.error(`第 ${index + 1} 条证据缺少标题`)
       return
     }
   }
@@ -404,7 +404,7 @@ async function submitRectEvidenceEditor() {
         remark: item.remark?.trim() || undefined,
       })),
     })
-    message.success('已提交复核')
+    void message.success('已提交复核')
     rectEvidenceEditorVisible.value = false
     rectEvidenceEditorRecord.value = null
     await loadList({ refreshSignals: true })
@@ -443,7 +443,7 @@ async function advanceRectProgress(
     targetStatus: target,
     progressRemark: remark ?? undefined,
   })
-  message.success('已更新')
+  void message.success('已更新')
   await loadList({ refreshSignals: true })
 }
 
@@ -464,7 +464,7 @@ async function verifyRect(
     decision,
     remark: remark ?? undefined,
   })
-  message.success('已复核')
+  void message.success('已复核')
   await loadList({ refreshSignals: true })
 }
 
@@ -475,7 +475,7 @@ async function closeRect(record: AuditRectificationVO) {
     type: 'warning',
     onOk: async () => {
       await auditRectificationApi.close(record.id)
-      message.success('已闭环')
+      void message.success('已闭环')
       await loadList({ refreshSignals: true })
     },
   })
@@ -652,9 +652,7 @@ defineExpose({
       <UiRow :gutter="12">
         <UiCol :span="8">
           <UiFormItem label="编码" required>
-            <UiInput
-              size="sm" v-model="rectEditor.rectificationCode"
-            />
+            <UiInput size="sm" v-model="rectEditor.rectificationCode" />
           </UiFormItem>
         </UiCol>
         <UiCol :span="16">
@@ -668,9 +666,7 @@ defineExpose({
         </UiCol>
       </UiRow>
       <UiFormItem label="标题" required>
-        <UiInput
-          size="sm" v-model="rectEditor.rectificationTitle"
-        />
+        <UiInput size="sm" v-model="rectEditor.rectificationTitle" />
       </UiFormItem>
       <UiFormItem label="整改措施" required>
         <UiTextarea size="sm" v-model="rectEditor.rectificationAction" :rows="4" />
@@ -686,16 +682,12 @@ defineExpose({
         </UiCol>
         <UiCol :span="6">
           <UiFormItem label="角色">
-            <UiInput
-              size="sm" v-model="rectEditor.ownerRole" placeholder="如 专业负责人"
-            />
+            <UiInput size="sm" v-model="rectEditor.ownerRole" placeholder="如 专业负责人" />
           </UiFormItem>
         </UiCol>
         <UiCol :span="6">
           <UiFormItem label="截止日期" required>
-            <UiInput
-              size="sm" v-model="rectEditor.dueDate" placeholder="yyyy-MM-dd"
-            />
+            <UiInput size="sm" v-model="rectEditor.dueDate" placeholder="yyyy-MM-dd" />
           </UiFormItem>
         </UiCol>
       </UiRow>
@@ -724,28 +716,24 @@ defineExpose({
       >
         <div class="iwb-tab__detail-row-head">
           <span class="iwb-tab__detail-row-title">证据 {{ index + 1 }}</span>
-          <UiButton size="sm" status="danger" variant="ghost" @click="removeRectEvidenceItem(index)">删除</UiButton>
+          <UiButton size="sm" status="danger" variant="ghost" @click="removeRectEvidenceItem(index)">
+            删除
+          </UiButton>
         </div>
         <UiRow :gutter="12">
           <UiCol :span="6">
             <UiFormItem label="类型">
-              <UiSelect
-                size="sm" v-model="item.evidenceType" :options="auditEvidenceTypeOptions"
-              />
+              <UiSelect size="sm" v-model="item.evidenceType" :options="auditEvidenceTypeOptions" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="10">
             <UiFormItem label="标题" required>
-              <UiInput
-                size="sm" v-model="item.evidenceTitle"
-              />
+              <UiInput size="sm" v-model="item.evidenceTitle" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="编号">
-              <UiInput
-                size="sm" v-model="item.evidenceCode"
-              />
+              <UiInput size="sm" v-model="item.evidenceCode" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -768,9 +756,7 @@ defineExpose({
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="文件节点 ID">
-              <UiInput
-                size="sm" v-model="item.fileNodeId"
-              />
+              <UiInput size="sm" v-model="item.fileNodeId" />
             </UiFormItem>
           </UiCol>
         </UiRow>

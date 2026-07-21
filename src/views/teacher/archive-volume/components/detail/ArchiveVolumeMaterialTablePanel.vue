@@ -115,7 +115,11 @@
           >
             下载
           </UiTextAction>
-          <UiTextAction v-if="canMaintainMaterial === true" tone="primary" @click="openTagModal(record)">
+          <UiTextAction
+            v-if="canMaintainMaterial"
+            tone="primary"
+            @click="openTagModal(record)"
+          >
             编辑标签
           </UiTextAction>
           <UiTextAction
@@ -182,7 +186,6 @@
       </UiDataTable>
     </div>
 
-
     <UiDrawer
       :open="uploadModalOpen"
       title="登记归档材料"
@@ -210,22 +213,16 @@
           />
         </UiFormItem>
         <UiFormItem label="学号">
-          <UiInput
-            size="sm" v-model="uploadForm.studentNo" placeholder="学生试卷可填学号"
-          />
+          <UiInput size="sm" v-model="uploadForm.studentNo" placeholder="学生试卷可填学号" />
         </UiFormItem>
         <UiFormItem label="姓名">
-          <UiInput
-            size="sm" v-model="uploadForm.studentName" placeholder="学生姓名"
-          />
+          <UiInput size="sm" v-model="uploadForm.studentName" placeholder="学生姓名" />
         </UiFormItem>
         <UiFormItem label="重修/补考">
           <UiCheckbox v-model="uploadForm.retakeFlag">标记为重修或补考答卷</UiCheckbox>
         </UiFormItem>
         <UiFormItem v-if="uploadForm.retakeFlag" label="补考轮次">
-          <UiInput
-            size="sm" v-model="uploadForm.makeupRound" placeholder="如 补考1"
-          />
+          <UiInput size="sm" v-model="uploadForm.makeupRound" placeholder="如 补考1" />
         </UiFormItem>
         <UiFormItem label="自由标签" tooltip="回车或逗号分隔；与目录编码并用，便于检索">
           <ArchiveMaterialTagSelect v-model="uploadForm.tags" :volume-id="volumeId" />
@@ -269,13 +266,13 @@
           />
         </UiFormItem>
         <UiFormItem label="目标材料编号" required>
-          <UiInput
-            size="sm" v-model="sharedRefForm.targetMaterialId" placeholder="目标材料编号"
-          />
+          <UiInput size="sm" v-model="sharedRefForm.targetMaterialId" placeholder="目标材料编号" />
         </UiFormItem>
         <UiFormItem label="目录备注">
           <UiInput
-            size="sm" v-model="sharedRefForm.catalogNote" placeholder="如 合用材料见××班级卷"
+            size="sm"
+            v-model="sharedRefForm.catalogNote"
+            placeholder="如 合用材料见××班级卷"
           />
         </UiFormItem>
       </UiForm>
@@ -508,7 +505,6 @@ const sharedRefColumns: ColumnsType<ArchiveVolumeSharedMaterialRefResponse> = [
   { title: '操作', key: 'sharedRefActions', width: 100 },
 ]
 
-
 const filePreview = useFilePreview()
 
 const materialReadySummary = computed(() => {
@@ -651,10 +647,12 @@ function sharedRefTypeLabel(refType?: ArchiveSharedMaterialRefTypeCode): string 
   return hit?.label ?? String(refType)
 }
 
-async function confirmRemoveSharedRef(record: ArchiveVolumeSharedMaterialRefResponse): Promise<void> {
+async function confirmRemoveSharedRef(
+  record: ArchiveVolumeSharedMaterialRefResponse,
+): Promise<void> {
   if (removingSharedRefId.value || props.canRemoveSharedMaterialRef !== true) {
     if (props.canRemoveSharedMaterialRef !== true) {
-      message.warning('当前账号无解除合用材料引用权限')
+      void message.warning('当前账号无解除合用材料引用权限')
     }
     return
   }
@@ -674,7 +672,7 @@ async function removeSharedRef(record: ArchiveVolumeSharedMaterialRefResponse): 
   }
   // MVR-302：与 canRemoveSharedMaterialRef 同源二次拦截
   if (props.canRemoveSharedMaterialRef !== true) {
-    message.warning('当前账号无解除合用材料引用权限')
+    void message.warning('当前账号无解除合用材料引用权限')
     return
   }
   removingSharedRefId.value = record.refId
@@ -683,7 +681,7 @@ async function removeSharedRef(record: ArchiveVolumeSharedMaterialRefResponse): 
       volumeId: props.volumeId,
       refId: record.refId,
     })
-    message.success('合用材料引用已解除')
+    void message.success('合用材料引用已解除')
     emitRefreshed()
   } catch (error) {
     showUserError(error, '解除合用材料引用失败')
@@ -735,7 +733,7 @@ const registerCatalogLabel = computed(() => {
 })
 
 const courseObjectiveMappingHint = computed(() => {
-  if (props.detail.courseObjectiveReportReady === true) return null
+  if (props.detail.courseObjectiveReportReady) return null
   const total = props.detail.courseObjectiveTotalQuestionCount
   const mapped = props.detail.courseObjectiveMappedQuestionCount
   const goalTotal = props.detail.courseObjectiveTotalGoalCount
@@ -762,7 +760,7 @@ async function handleGenerateExamAnalysis(): Promise<void> {
   if (generatingExamAnalysis.value || generatingCourseObjective.value) return
   // MVR-294：与 BE requireCanManageMaterials 二次拦截
   if (props.canRegisterMaterial !== true) {
-    message.warning('当前账号无权登记本卷材料，无法生成试卷分析报告')
+    void message.warning('当前账号无权登记本卷材料，无法生成试卷分析报告')
     return
   }
   generatingExamAnalysis.value = true
@@ -771,7 +769,7 @@ async function handleGenerateExamAnalysis(): Promise<void> {
       (item) => item.materialType === ArchiveMaterialTypeCode.EXAM_ANALYSIS,
     )?.materialId
     await generateArchiveVolumeExamAnalysisReport({ volumeId: props.volumeId, expectedMaterialId })
-    message.success('试卷分析报告已生成并登记')
+    void message.success('试卷分析报告已生成并登记')
     emitRefreshed()
   } catch (error) {
     showUserError(error, '生成试卷分析报告失败')
@@ -784,7 +782,7 @@ async function handleGenerateCourseObjective(): Promise<void> {
   if (generatingExamAnalysis.value || generatingCourseObjective.value) return
   // MVR-294：与 BE requireCanManageMaterials 二次拦截
   if (props.canRegisterMaterial !== true) {
-    message.warning('当前账号无权登记本卷材料，无法生成课程目标达成报告')
+    void message.warning('当前账号无权登记本卷材料，无法生成课程目标达成报告')
     return
   }
   if (props.detail.courseObjectiveReportReady === false) {
@@ -800,7 +798,7 @@ async function handleGenerateCourseObjective(): Promise<void> {
       volumeId: props.volumeId,
       expectedMaterialId,
     })
-    message.success('课程目标达成报告已生成并登记')
+    void message.success('课程目标达成报告已生成并登记')
     emitRefreshed()
   } catch (error) {
     showUserError(error, '生成课程目标达成报告失败')
@@ -880,9 +878,9 @@ function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void 
   // MVR-422：与 canRetryMaterialOcr 同源二次闸（维护权∧FAILED∧fileId）
   if (!canRetryMaterialOcr(material)) {
     if (props.canMaintainMaterial !== true) {
-      message.warning('当前账号无维护材料识别权限')
+      void message.warning('当前账号无维护材料识别权限')
     } else {
-      message.warning('当前材料不可重试文字识别（非失败态或无文件）')
+      void message.warning('当前材料不可重试文字识别（非失败态或无文件）')
     }
     return
   }
@@ -898,7 +896,7 @@ function confirmRetryMaterialOcr(material: ArchiveVolumeMaterialResponse): void 
       retryingMaterialIds.add(material.materialId)
       try {
         await triggerArchiveVolumeMaterialOcr(material.materialId)
-        message.success('已入队，等待识别')
+        void message.success('已入队，等待识别')
         emitRefreshed()
       } catch (error) {
         showUserError(error, '文字识别重试提交失败')
@@ -987,7 +985,7 @@ function resolveSelectedCatalogContext(): {
 function openUploadModal() {
   // MVR-302：与 canRegisterMaterial 同源二次拦截
   if (props.canRegisterMaterial !== true) {
-    message.warning('当前账号无材料登记权限')
+    void message.warning('当前账号无材料登记权限')
     return
   }
   const context = resolveSelectedCatalogContext()
@@ -1032,7 +1030,7 @@ function resolveArchiveScanQuery(): Record<string, string> | null {
 function openArchiveScan() {
   // MVR-302：扫描收材登记与 canRegisterMaterial 对齐
   if (props.canRegisterMaterial !== true) {
-    message.warning('当前账号无材料登记权限')
+    void message.warning('当前账号无材料登记权限')
     return
   }
   const query = resolveArchiveScanQuery()
@@ -1052,7 +1050,7 @@ function handleDispatchCreated(payload: ScanDispatchResultPayload) {
 function openSharedRefModal() {
   // MVR-302：合用引用登记与 canRegisterMaterial 对齐
   if (props.canRegisterMaterial !== true) {
-    message.warning('当前账号无材料登记权限')
+    void message.warning('当前账号无材料登记权限')
     return
   }
   sharedRefForm.refType = ArchiveSharedMaterialRefTypeCode.MERGED_CLASS_SHARED
@@ -1068,7 +1066,7 @@ async function submitMaterial() {
   }
   // MVR-302：与 canRegisterMaterial 同源二次拦截
   if (props.canRegisterMaterial !== true) {
-    message.warning('当前账号无材料登记权限')
+    void message.warning('当前账号无材料登记权限')
     return
   }
   if (!uploadForm.materialType || !uploadForm.fileNodeId) {
@@ -1098,7 +1096,7 @@ async function submitMaterial() {
       tags,
       triggerOcr: true,
     })
-    message.success('材料登记成功')
+    void message.success('材料登记成功')
     uploadModalOpen.value = false
     emitRefreshed()
   } catch (error) {
@@ -1114,7 +1112,7 @@ async function submitSharedRef() {
   }
   // MVR-302：与 canRegisterMaterial 同源二次拦截
   if (props.canRegisterMaterial !== true) {
-    message.warning('当前账号无材料登记权限')
+    void message.warning('当前账号无材料登记权限')
     return
   }
   if (!sharedRefForm.targetVolumeId.trim() || !sharedRefForm.targetMaterialId.trim()) {
@@ -1130,7 +1128,7 @@ async function submitSharedRef() {
       targetMaterialId: sharedRefForm.targetMaterialId.trim(),
       catalogNote: sharedRefForm.catalogNote.trim() || undefined,
     })
-    message.success('合用材料引用已保存')
+    void message.success('合用材料引用已保存')
     sharedRefModalOpen.value = false
     emitRefreshed()
   } catch (error) {
@@ -1217,8 +1215,8 @@ async function submitSharedRef() {
   padding: var(--dp-space-2) var(--dp-space-3);
   font-size: 13px;
   color: var(--dp-text-secondary);
-  border-left: 3px solid color-mix(in srgb, var(--dp-primary) 40%, transparent);
-  border-radius: 0 var(--dp-radius-control-inner, 4px) var(--dp-radius-control-inner, 4px) 0;
+  border: 1px solid color-mix(in srgb, var(--dp-primary) 18%, transparent);
+  border-radius: var(--dp-radius-control-inner, 4px);
   background: color-mix(in srgb, var(--dp-primary) 4%, transparent);
 }
 

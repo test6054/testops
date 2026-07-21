@@ -329,7 +329,7 @@ async function submitCreateTask() {
       startTime: createForm.startTime,
       endTime: createForm.endTime,
     })
-    message.success('评价任务已创建，请核对后发布')
+    void message.success('评价任务已创建，请核对后发布')
     createModalOpen.value = false
     createForm.taskName = ''
     createForm.evaluationMode = PortfolioEvaluationModeCode.BY_INDICATOR
@@ -381,7 +381,7 @@ async function advanceTask(
       action,
       forceDespiteScoreVariance: forceDespiteScoreVariance || undefined,
     })
-    message.success('任务状态已推进')
+    void message.success('任务状态已推进')
     await loadPage()
   } catch (error) {
     const errText = error instanceof Error ? error.message : String(error ?? '')
@@ -424,7 +424,7 @@ async function archiveTask(row: PortfolioEvaluationTaskVO) {
   archivingId.value = row.id
   try {
     await portfolioEvaluationPublicityApi.archiveTask(row.id)
-    message.success('任务已归档')
+    void message.success('任务已归档')
     await loadPage()
   } catch (error) {
     showUserError(error, '归档任务失败')
@@ -481,7 +481,7 @@ async function submitPublish() {
       startTime,
       endTime,
     })
-    message.success('公示已发布')
+    void message.success('公示已发布')
     publishModalOpen.value = false
     await loadPage()
   } catch (error) {
@@ -510,7 +510,7 @@ async function createRereview(row: PortfolioEvaluationTaskVO) {
       evaluationTaskId: row.id,
       reasonText: `管理员发起更正复核：${row.taskName}`,
     })
-    message.success('已创建复核工单并进入更正复核')
+    void message.success('已创建复核工单并进入更正复核')
     await loadPage()
   } catch (error) {
     showUserError(error, '发起更正复核失败')
@@ -580,7 +580,7 @@ async function submitCompleteRereview() {
         })
       }
     }
-    message.success('更正复核已完成并回写归档')
+    void message.success('更正复核已完成并回写归档')
     completeRereviewModalOpen.value = false
     completeRereviewTarget.value = null
     completeRereviewOrders.value = []
@@ -601,7 +601,7 @@ async function cancelRereviewOrder(order: PortfolioEvaluationRereviewOrderVO): P
   }
   const reason = completeRereviewForm.cancelReason.trim()
   if (!reason) {
-    message.warning('请填写撤销原因')
+    void message.warning('请填写撤销原因')
     return
   }
   cancelRereviewSubmitting.value = true
@@ -613,7 +613,7 @@ async function cancelRereviewOrder(order: PortfolioEvaluationRereviewOrderVO): P
       orderId: order.id,
       reasonText: reason,
     })
-    message.success('复核工单已撤销')
+    void message.success('复核工单已撤销')
     // 刷新开放工单列表；若已无开放工单则关闭弹窗并重载任务
     const task = completeRereviewTarget.value
     if (!task) {

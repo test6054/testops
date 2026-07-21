@@ -47,12 +47,22 @@
           {{ strictEnumLabel(ArchiveTaskProvenanceDescription, record.provenance, 'provenance') }}
         </template>
         <template v-else-if="column.key === 'pendingStatus'">
-          {{ strictEnumLabel(ArchiveVolumeAutoCreatePendingStatusDescription, record.pendingStatus, 'pendingStatus') }}
+          {{
+            strictEnumLabel(
+              ArchiveVolumeAutoCreatePendingStatusDescription,
+              record.pendingStatus,
+              'pendingStatus',
+            )
+          }}
         </template>
         <template v-else-if="column.key === 'failureCategory'">
           {{
             record.failureCategory
-              ? strictEnumLabel(ArchiveAutoCreateFailureCategoryDescription, record.failureCategory, 'failureCategory')
+              ? strictEnumLabel(
+                ArchiveAutoCreateFailureCategoryDescription,
+                record.failureCategory,
+                'failureCategory',
+              )
               : '—'
           }}
         </template>
@@ -61,8 +71,10 @@
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiButton
-            v-if="canManageExternalFondsRetry
-              && record.pendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED"
+            v-if="
+              canManageExternalFondsRetry
+                && record.pendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
+            "
             variant="primary"
             size="sm"
             :loading="retryingKey === rowRetryKey(record)"
@@ -71,8 +83,10 @@
             重新触发
           </UiButton>
           <span
-            v-else-if="!canManageExternalFondsRetry
-              && record.pendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED"
+            v-else-if="
+              !canManageExternalFondsRetry
+                && record.pendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
+            "
             class="archive-ext-fonds-retry__muted"
           >仅教务协调可重试</span>
           <span v-else class="archive-ext-fonds-retry__muted">调度重试中</span>
@@ -106,7 +120,12 @@
         <UiInput v-model="manualForm.externalBusinessNo" placeholder="项目号 / 课题号 / 学号届次" />
       </div>
       <div class="archive-ext-fonds-retry__actions">
-        <UiButton variant="primary" size="sm" :loading="manualSubmitting" @click="submitManualRetry">
+        <UiButton
+          variant="primary"
+          size="sm"
+          :loading="manualSubmitting"
+          @click="submitManualRetry"
+        >
           按外部键重新触发
         </UiButton>
       </div>
@@ -119,10 +138,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ArchiveExternalFondsPendingResponse } from '@/apis/mark/archive-volume'
 import { message } from 'ant-design-vue'
 import { onMounted, reactive, ref } from 'vue'
-import {
-  pageExternalFondsPending,
-  retryExternalFondsAutoCreate,
-} from '@/apis/mark/archive-volume'
+import { pageExternalFondsPending, retryExternalFondsAutoCreate } from '@/apis/mark/archive-volume'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiPagination from '@/components/ui-guide/ui/Pagination.vue'
@@ -178,15 +194,17 @@ const provenanceOptions = [
 const statusFilterOptions = [
   {
     value: ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED,
-    label: ArchiveVolumeAutoCreatePendingStatusDescription[
-      ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
-    ],
+    label:
+      ArchiveVolumeAutoCreatePendingStatusDescription[
+        ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED
+      ],
   },
   {
     value: ArchiveVolumeAutoCreatePendingStatusCode.PENDING,
-    label: ArchiveVolumeAutoCreatePendingStatusDescription[
-      ArchiveVolumeAutoCreatePendingStatusCode.PENDING
-    ],
+    label:
+      ArchiveVolumeAutoCreatePendingStatusDescription[
+        ArchiveVolumeAutoCreatePendingStatusCode.PENDING
+      ],
   },
 ]
 
@@ -238,18 +256,17 @@ function onPageChange(): void {
 
 async function retryRow(record: ArchiveExternalFondsPendingResponse): Promise<void> {
   if (!canManageExternalFondsRetry.value) {
-    message.error('仅具备学院教务协调职责的用户可重试外部全宗自动建卷')
+    void message.error('仅具备学院教务协调职责的用户可重试外部全宗自动建卷')
     return
   }
-  const key = rowRetryKey(record)
-  retryingKey.value = key
+  retryingKey.value = rowRetryKey(record)
   try {
     await retryExternalFondsAutoCreate({
       provenance: record.provenance,
       externalSourceSystem: record.externalSourceSystem,
       externalBusinessNo: record.externalBusinessNo,
     })
-    message.success('已重新触发外部全宗自动建卷')
+    void message.success('已重新触发外部全宗自动建卷')
     await reload()
   } catch (error) {
     showUserError(error, '重新触发外部全宗自动建卷失败')
@@ -260,13 +277,13 @@ async function retryRow(record: ArchiveExternalFondsPendingResponse): Promise<vo
 
 async function submitManualRetry(): Promise<void> {
   if (!canManageExternalFondsRetry.value) {
-    message.error('仅具备学院教务协调职责的用户可重试外部全宗自动建卷')
+    void message.error('仅具备学院教务协调职责的用户可重试外部全宗自动建卷')
     return
   }
   const externalSourceSystem = manualForm.externalSourceSystem.trim()
   const externalBusinessNo = manualForm.externalBusinessNo.trim()
   if (!externalSourceSystem || !externalBusinessNo) {
-    message.error('请填写外部来源系统与业务编号')
+    void message.error('请填写外部来源系统与业务编号')
     return
   }
   manualSubmitting.value = true
@@ -276,7 +293,7 @@ async function submitManualRetry(): Promise<void> {
       externalSourceSystem,
       externalBusinessNo,
     })
-    message.success('已重新触发外部全宗自动建卷')
+    void message.success('已重新触发外部全宗自动建卷')
     await reload()
   } catch (error) {
     showUserError(error, '重新触发外部全宗自动建卷失败')

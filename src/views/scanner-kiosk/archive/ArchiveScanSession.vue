@@ -179,7 +179,7 @@ watch(
     if (status !== ScanWorkOrderStatusCode.DISCARDED || !session.dispatchTicketId.value) {
       return
     }
-    message.info('已放弃，派单已释放')
+    void message.info('已放弃，派单已释放')
     returnToDispatchQueue(false)
   },
 )

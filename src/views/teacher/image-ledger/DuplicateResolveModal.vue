@@ -26,7 +26,13 @@
         </UiRadioGroup>
       </UiFormItem>
       <UiFormItem label="处置原因" required>
-        <UiTextarea size="sm" v-model="resolutionReason" :rows="3" :max-length="200" :show-count="true" />
+        <UiTextarea
+          size="sm"
+          v-model="resolutionReason"
+          :rows="3"
+          :max-length="200"
+          :show-count="true"
+        />
       </UiFormItem>
     </UiForm>
   </UiDialog>
@@ -44,7 +50,11 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiRadio from '@/components/ui-guide/ui/UiRadio.vue'
 import UiRadioGroup from '@/components/ui-guide/ui/UiRadioGroup.vue'
-import { getUserErrorMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserErrorMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 
 defineOptions({ name: 'DuplicateResolveModal' })
 
@@ -85,7 +95,7 @@ async function handleOk(): Promise<void> {
   }
   // MVR-372：写 handler 二次拦截；父页仅隐藏入口不能替代
   if (props.canManageOwnerLedgerWrites !== true) {
-    message.warning('仅考试主考可处置重复影像')
+    void message.warning('仅考试主考可处置重复影像')
     return
   }
   const reason = resolutionReason.value.trim()
@@ -101,13 +111,13 @@ async function handleOk(): Promise<void> {
   }
   if (!props.resolution) {
     submitError.value = '重复影像记录未加载'
-    message.warning('重复影像记录未加载')
+    void message.warning('重复影像记录未加载')
     return
   }
   const allowedIds = [props.resolution.firstPaperInstanceId, props.resolution.secondPaperInstanceId]
   if (!allowedIds.includes(selectedPaperInstanceId.value)) {
     submitError.value = '保留的试卷必须来自当前重复影像记录'
-    message.warning('保留的试卷必须来自当前重复影像记录')
+    void message.warning('保留的试卷必须来自当前重复影像记录')
     return
   }
   submitting.value = true
@@ -119,7 +129,7 @@ async function handleOk(): Promise<void> {
       selectedPaperInstanceId: selectedPaperInstanceId.value,
       resolutionReason: reason,
     })
-    message.success('重复影像处置已提交')
+    void message.success('重复影像处置已提交')
     emit('update:open', false)
     emit('submitted')
   } catch (e) {

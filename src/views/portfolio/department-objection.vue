@@ -147,7 +147,9 @@ const showCorrectedScore = computed(() => {
   )
 })
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -159,9 +161,7 @@ function peerScoreRowKey(record: unknown): string {
   return `${row.anonymousExpertLabel || ''}-${row.indicatorCode || ''}-${row.score ?? ''}`
 }
 
-function evaluationSceneLabel(
-  scene?: PortfolioEvaluationObjectionSummaryVO['sceneCode'],
-): string {
+function evaluationSceneLabel(scene?: PortfolioEvaluationObjectionSummaryVO['sceneCode']): string {
   if (!scene) {
     return '—'
   }
@@ -180,6 +180,8 @@ const columns: ColumnsType<PortfolioEvaluationObjectionSummaryVO> = [
   { title: '争议指标', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 150 },
   { title: '状态', key: 'objectionStatus', width: 110 },
   { title: '复核结论', key: 'handleAction', width: 120 },
+  { title: '原得分', key: 'originalScore', width: 88 },
+  { title: '修正得分', key: 'correctedScore', width: 96 },
   { title: '理由', dataIndex: 'objectionReason', key: 'objectionReason' },
   { title: '佐证', key: 'evidenceRef', width: 100, align: 'center' },
   { title: '操作', key: 'actions', width: 120 },
@@ -325,7 +327,7 @@ async function submitReview() {
     if (reviewContextToken.value !== contextToken) {
       return
     }
-    message.success('复核完成')
+    void message.success('复核完成')
     resetReviewContext()
     await loadPage()
   } catch (error) {
@@ -430,7 +432,6 @@ function handleObjectionRowAction(key: string, row: PortfolioEvaluationObjection
   }
 }
 
-
 /** 导出异议台账 Excel（含业务场景）。 */
 async function exportObjectionExcel(): Promise<void> {
   if (exporting.value || loading.value || Boolean(handlingId.value)) {
@@ -474,7 +475,12 @@ void loadPage()
           >
             导出台账
           </UiButton>
-          <UiButton size="sm" :loading="loading" :disabled="Boolean(handlingId) || exporting" @click="() => void loadPage()">
+          <UiButton
+            size="sm"
+            :loading="loading"
+            :disabled="Boolean(handlingId) || exporting"
+            @click="() => void loadPage()"
+          >
             刷新
           </UiButton>
         </template>
@@ -519,7 +525,20 @@ void loadPage()
             <UiTag v-if="record.handleAction" :tone="actionTone(record.handleAction)">
               {{ actionLabel(record.handleAction) }}
             </UiTag>
-            <span v-else>—</span>
+          </template>
+          <template v-else-if="column.key === 'originalScore'">
+            <span>{{
+              record.originalScore != null && record.originalScore !== ''
+                ? record.originalScore
+                : '—'
+            }}</span>
+          </template>
+          <template v-else-if="column.key === 'correctedScore'">
+            <span>{{
+              record.correctedScore != null && record.correctedScore !== ''
+                ? record.correctedScore
+                : '—'
+            }}</span>
           </template>
           <template v-else-if="column.key === 'evidenceRef'">
             <UiTableActions
@@ -590,17 +609,19 @@ void loadPage()
     <UiDrawer v-model:open="reviewDrawerOpen" title="异议复核" width="640">
       <p v-if="reviewTarget" class="department-objection__meta">
         {{ reviewTarget.teacherName }} · {{ reviewTarget.taskName }}
-        <template v-if="reviewTarget.indicatorCode"> · 指标 {{ reviewTarget.indicatorCode }}</template>
+        <template v-if="reviewTarget.indicatorCode">
+          · 指标 {{ reviewTarget.indicatorCode }}
+        </template>
       </p>
       <section class="department-objection__review-section">
         <h3 class="department-objection__section-title">评分依据与同组分布</h3>
         <p v-if="reviewPackageLoading" class="department-objection__section-hint">材料包加载中…</p>
         <template v-else-if="reviewPackage">
           <p class="department-objection__section-hint">
-            争议条目 {{ reviewPackage.scopedEntryCount ?? 0 }} 条；
-            均分 {{ reviewPackage.scopedAverageScore ?? '—' }}；
-            区间 {{ reviewPackage.peerMinScore ?? '—' }} ~ {{ reviewPackage.peerMaxScore ?? '—' }}；
-            中位 {{ reviewPackage.peerMedianScore ?? '—' }}
+            争议条目 {{ reviewPackage.scopedEntryCount ?? 0 }} 条； 均分
+            {{ reviewPackage.scopedAverageScore ?? '—' }}； 区间
+            {{ reviewPackage.peerMinScore ?? '—' }} ~ {{ reviewPackage.peerMaxScore ?? '—' }}； 中位
+            {{ reviewPackage.peerMedianScore ?? '—' }}
           </p>
           <UiDataTable
             class="department-objection__score-basis"
@@ -636,7 +657,9 @@ void loadPage()
             </p>
           </div>
         </template>
-        <p v-else class="department-objection__section-hint">复核材料包暂不可用，仍可填写复核结论。</p>
+        <p v-else class="department-objection__section-hint">
+          复核材料包暂不可用，仍可填写复核结论。
+        </p>
       </section>
       <UiSelect
         v-model="reviewForm.action"
@@ -665,7 +688,12 @@ void loadPage()
         placeholder="请填写复核意见"
       />
       <template #footer>
-        <UiButton size="sm" variant="ghost" :disabled="Boolean(handlingId)" @click="reviewDrawerOpen = false">
+        <UiButton
+          size="sm"
+          variant="ghost"
+          :disabled="Boolean(handlingId)"
+          @click="reviewDrawerOpen = false"
+        >
           取消
         </UiButton>
         <UiButton

@@ -37,6 +37,7 @@ import {
   portfolioTeacherSelectOptionsFromSummaries,
   resolvePortfolioTeacherDisplayName,
 } from '@/utils/portfolio-teacher-display'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const operation = ref<'preview' | 'create' | 'detail' | 'export' | null>(null)
 const historyLoading = ref(false)
@@ -70,6 +71,13 @@ const historyColumns: ColumnsType = [
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '操作', key: 'actions', width: 130 },
 ]
+
+function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' {
+  if (status === 'ACTIVE') return 'green'
+  if (status === 'TEMP_HOLD') return 'orange'
+  if (status === 'SEALED' || status === 'TRANSFERRED') return 'red'
+  return 'gray'
+}
 
 function resolveTeacherTitle(teacher: PortfolioTeacherPkCompareTeacherVO): string {
   if (teacher.displayName?.trim()) {
@@ -163,7 +171,7 @@ async function createPkSession() {
       sessionPurpose: purpose,
       maskMode: maskMode.value,
     })
-    message.success('对比会话已保存')
+    void message.success('对比会话已保存')
     query.pageNum = 1
     await loadSessionPage()
   } catch (error) {
@@ -243,7 +251,7 @@ async function exportSession(row: PortfolioTeacherPkSessionVO) {
       maskMode: row.maskMode,
     })
     await downloadPortfolioExcelExport(result)
-    message.success('已开始下载教师对比报告')
+    void message.success('已开始下载教师对比报告')
   } catch (error) {
     showUserError(error, '导出教师对比报告失败')
   } finally {
@@ -301,7 +309,11 @@ onUnmounted(() => {
               :filter-option="false"
               option-label-prop="label"
               :disabled="operationPending"
-              @focus="() => loadTeachers()"
+              @focus="
+                () => {
+                  void loadTeachers()
+                }
+              "
               @search="handleTeacherSearch"
             />
           </label>
@@ -325,7 +337,11 @@ onUnmounted(() => {
               variant="outline"
               :loading="operation === 'preview'"
               :disabled="operationPending"
-              @click="previewPkCompare"
+              @click="
+                () => {
+                  void previewPkCompare()
+                }
+              "
             >
               仅预览
             </UiButton>
@@ -334,7 +350,11 @@ onUnmounted(() => {
               variant="primary"
               :loading="operation === 'create'"
               :disabled="operationPending"
-              @click="createPkSession"
+              @click="
+                () => {
+                  void createPkSession()
+                }
+              "
             >
               保存并生成对比
             </UiButton>
@@ -345,14 +365,7 @@ onUnmounted(() => {
       <UiSpin
         :spinning="operation === 'preview' || operation === 'create' || operation === 'detail'"
       >
-        <UiAlertStrip
-          v-if="!pkResult"
-          tone="info"
-          size="sm"
-          dense
-          inline
-          :show-icon="false"
-        >
+        <UiAlertStrip v-if="!pkResult" tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
             <span style="display: inline-flex; align-items: center; gap: 8px">
               <UiTag tone="blue" size="sm">待生成</UiTag>
@@ -376,6 +389,31 @@ onUnmounted(() => {
               :key="teacher.teacherUserId"
               :title="resolveTeacherTitle(teacher)"
             >
+              <div
+                v-if="
+                  teacher.lifecycleStatus
+                    || teacher.evaluationHeld
+                    || teacher.ownerIdentityLayers?.length
+                "
+                class="teacher-pk__identity-bar"
+              >
+                <UiTag
+                  v-if="teacher.lifecycleStatus"
+                  :tone="lifecycleTagTone(teacher.lifecycleStatus)"
+                  size="sm"
+                >
+                  {{ teacher.lifecycleStatusLabel || teacher.lifecycleStatus }}
+                </UiTag>
+                <UiTag v-if="teacher.evaluationHeld" tone="orange" size="sm">参评 hold</UiTag>
+                <UiTag v-if="teacher.archiveWriteForbidden" tone="red" size="sm">写禁</UiTag>
+                <PortfolioOwnerIdentityLayersCell
+                  v-if="teacher.ownerIdentityLayers?.length"
+                  :layers="teacher.ownerIdentityLayers"
+                  :note="teacher.ownerMultiIdentityNote"
+                  :row-key="teacher.teacherUserId"
+                  show-note
+                />
+              </div>
               <div class="teacher-pk__archive-count">
                 正式档案 {{ teacher.officialArchiveCount }} 份
               </div>
@@ -503,6 +541,14 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 12px;
+}
+
+.teacher-pk__identity-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .teacher-pk__archive-count {

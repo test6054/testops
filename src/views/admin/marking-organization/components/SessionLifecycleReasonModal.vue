@@ -30,7 +30,7 @@
     </UiForm>
     <template #footer>
       <UiButton size="sm" variant="outline" @click="handleOpenChange(false)">取消</UiButton>
-      <UiButton variant="primary" size="sm" :loading="submitting" :disabled="canManage !== true" @click="confirm">提交</UiButton>
+      <UiButton variant="primary" size="sm" :loading="submitting" :disabled="!canManage" @click="confirm">提交</UiButton>
     </template>
   </UiDrawer>
 </template>
@@ -137,15 +137,15 @@ async function confirm(): Promise<void> {
     switch (props.action) {
       case 'pauseFormal':
         await pauseFormalSession({ sessionId: props.sessionId, reason: trimmed })
-        message.success('正评会话已暂停')
+        void message.success('正评会话已暂停')
         break
       case 'closeFormal':
         await closeFormalSession({ sessionId: props.sessionId, reason: trimmed })
-        message.success('正评会话已关闭归档')
+        void message.success('正评会话已关闭归档')
         break
       case 'closeTrial':
         await closeTrialSession({ sessionId: props.sessionId, reason: trimmed })
-        message.success('试评会话已关闭')
+        void message.success('试评会话已关闭')
         break
     }
     emit('success')

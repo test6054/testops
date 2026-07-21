@@ -192,7 +192,7 @@ async function loadFacultyProfiles() {
 
 async function saveProfile() {
   if (isProfileLocked.value) {
-    message.error('已确认档案不可修改，如需调整请联系管理员退回后重编')
+    void message.error('已确认档案不可修改，如需调整请联系管理员退回后重编')
     return
   }
   saving.value = true
@@ -211,7 +211,7 @@ async function saveProfile() {
       qualityAssuranceRemark: form.qualityAssuranceRemark?.trim() || undefined,
     }
     form.id = await accreditationApi.saveSupportProfile(request)
-    message.success('师资与支持条件档案已保存')
+    void message.success('师资与支持条件档案已保存')
     await loadProfile()
     emit('refresh')
   } catch (e) {
@@ -223,12 +223,12 @@ async function saveProfile() {
 
 async function confirmProfile() {
   if (!form.id) {
-    message.error('请先保存档案')
+    void message.error('请先保存档案')
     return
   }
   try {
     await accreditationApi.confirmSupportProfile(form.id)
-    message.success('档案已确认，可供自评报告与专家包引用')
+    void message.success('档案已确认，可供自评报告与专家包引用')
     await loadProfile()
     emit('refresh')
   } catch (e) {
@@ -238,11 +238,11 @@ async function confirmProfile() {
 
 function openFacultyCreate() {
   if (!props.trainingPlanId) {
-    message.error('请先选择培养方案')
+    void message.error('请先选择培养方案')
     return
   }
   if (isProfileLocked.value) {
-    message.error('师资与支持条件档案已确认，不可再新增教师档案')
+    void message.error('师资与支持条件档案已确认，不可再新增教师档案')
     return
   }
   facultyDrawerTitle.value = '新增教师档案'
@@ -252,7 +252,7 @@ function openFacultyCreate() {
 
 function openFacultyEdit(record: FacultyProfileVO) {
   if (isProfileLocked.value) {
-    message.error('师资与支持条件档案已确认，不可再编辑教师档案')
+    void message.error('师资与支持条件档案已确认，不可再编辑教师档案')
     return
   }
   facultyDrawerTitle.value = '编辑教师档案'
@@ -361,7 +361,7 @@ function validateFacultyForm() {
     missing.push('毕业设计或工程项目指导情况')
   }
   if (missing.length > 0) {
-    message.error(`师资档案缺少：${missing.join('、')}`)
+    void message.error(`师资档案缺少：${missing.join('、')}`)
     return false
   }
   return true
@@ -392,10 +392,10 @@ async function submitFacultyProfile() {
     }
     if (facultyForm.id) {
       await facultyProfileApi.update(request)
-      message.success('教师档案已更新')
+      void message.success('教师档案已更新')
     } else {
       facultyForm.id = await facultyProfileApi.create(request)
-      message.success('教师档案已创建')
+      void message.success('教师档案已创建')
     }
     facultyDrawerOpen.value = false
     await loadFacultyProfiles()
@@ -409,7 +409,7 @@ async function submitFacultyProfile() {
 
 async function deleteFacultyProfile(record: FacultyProfileVO) {
   if (isProfileLocked.value) {
-    message.error('师资与支持条件档案已确认，不可删除教师档案')
+    void message.error('师资与支持条件档案已确认，不可删除教师档案')
     return
   }
   const ok = await confirmAsync({
@@ -461,14 +461,7 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
 <template>
   <div v-if="loading" class="loading">加载中...</div>
   <div v-else class="support-panel">
-    <UiAlertStrip
-      v-if="!trainingPlanId"
-      tone="info"
-      size="sm"
-      dense
-      inline
-      :show-icon="false"
-    >
+    <UiAlertStrip v-if="!trainingPlanId" tone="info" size="sm" dense inline :show-icon="false">
       <template #default>
         <span style="display: inline-flex; align-items: center; gap: 8px">
           <UiTag tone="blue" size="sm">未选择培养方案</UiTag>
@@ -485,7 +478,10 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
             <h3 class="section-title">师资与支持条件概述档案</h3>
           </div>
           <div class="status-actions">
-            <span v-if="profile?.profileStatus === ProgramSupportProfileStatusCode.CONFIRMED" class="confirmed">已确认</span>
+            <span
+              v-if="profile?.profileStatus === ProgramSupportProfileStatusCode.CONFIRMED"
+              class="confirmed"
+            >已确认</span>
             <span v-else-if="profile" class="draft">草稿</span>
             <span v-else class="draft">尚未建档</span>
             <div class="actions">
@@ -511,7 +507,12 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
         </div>
         <UiForm layout="vertical" class="form-grid">
           <UiFormItem label="师资队伍概况（标准 6）">
-            <UiTextarea size="sm" v-model="form.facultySummary" :rows="4" :disabled="isProfileLocked" />
+            <UiTextarea
+              size="sm"
+              v-model="form.facultySummary"
+              :rows="4"
+              :disabled="isProfileLocked"
+            />
           </UiFormItem>
           <UiFormItem label="师资结构说明">
             <UiTextarea
@@ -538,7 +539,12 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
             />
           </UiFormItem>
           <UiFormItem label="信息化与计算资源">
-            <UiTextarea size="sm" v-model="form.supportItRemark" :rows="3" :disabled="isProfileLocked" />
+            <UiTextarea
+              size="sm"
+              v-model="form.supportItRemark"
+              :rows="3"
+              :disabled="isProfileLocked"
+            />
           </UiFormItem>
           <UiFormItem label="产学合作与实习基地">
             <UiTextarea
@@ -682,32 +688,22 @@ defineExpose({ loadProfile, loadFacultyProfiles, reloadPanel })
           />
         </UiFormItem>
         <UiFormItem label="教师姓名" required>
-          <UiInput
-            size="sm" v-model="facultyForm.teacherName" disabled
-          />
+          <UiInput size="sm" v-model="facultyForm.teacherName" disabled />
         </UiFormItem>
         <UiFormItem label="教工号" required>
-          <UiInput
-            size="sm" v-model="facultyForm.teacherNo" disabled
-          />
+          <UiInput size="sm" v-model="facultyForm.teacherNo" disabled />
         </UiFormItem>
         <UiFormItem label="所属院系" required>
-          <UiInput
-            size="sm" v-model="facultyForm.department" disabled
-          />
+          <UiInput size="sm" v-model="facultyForm.department" disabled />
         </UiFormItem>
         <UiFormItem label="职称" required>
-          <UiInput
-            size="sm" v-model="facultyForm.title" disabled
-          />
+          <UiInput size="sm" v-model="facultyForm.title" disabled />
         </UiFormItem>
         <UiFormItem label="师德师风培训" required>
           <UiSwitch size="sm" v-model="facultyForm.hasTeachingEthicsTraining" />
         </UiFormItem>
         <UiFormItem label="培训日期" required>
-          <UiInput
-            size="sm" v-model="facultyForm.ethicsTrainingDate" placeholder="如 2025-09-10"
-          />
+          <UiInput size="sm" v-model="facultyForm.ethicsTrainingDate" placeholder="如 2025-09-10" />
         </UiFormItem>
         <UiFormItem label="承担课程" required>
           <UiTextarea size="sm" v-model="facultyForm.courses" :rows="2" />

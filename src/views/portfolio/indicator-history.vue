@@ -213,7 +213,7 @@ async function exportDiff(snapshotIdA: string) {
       snapshotIdB: diffSnapshotIdB.value,
     })
     await downloadPortfolioIndicatorExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条差异`)
+    void message.success(`已导出 ${result.rowCount} 条差异`)
   } catch (error) {
     showUserError(error, '导出快照差异失败')
   }
@@ -223,7 +223,7 @@ async function exportImpact(id: string) {
   try {
     const result = await portfolioIndicatorTenantApi.exportImpactReport({ id })
     await downloadPortfolioIndicatorExcelExport(result)
-    message.success('影响报告已导出')
+    void message.success('影响报告已导出')
   } catch (error) {
     showUserError(error, '导出影响报告失败')
   }
@@ -284,7 +284,9 @@ onMounted(loadHistory)
     <template #context>
       <ContextBar show-title layout="workbench" title="规则快照与影响报告">
         <template #actions>
-          <UiButton size="sm" @click="router.push({ name: 'PortfolioIndicatorOps' })"> 计分与审计 </UiButton>
+          <UiButton size="sm" @click="router.push({ name: 'PortfolioIndicatorOps' })">
+            计分与审计
+          </UiButton>
         </template>
       </ContextBar>
     </template>
@@ -347,7 +349,9 @@ onMounted(loadHistory)
             </template>
           </template>
         </UiDataTable>
-        <pre v-if="retroactive?.snapshotSummary" class="json-block">{{ JSON.stringify(retroactive.snapshotSummary, null, 2) }}</pre>
+        <pre v-if="retroactive?.snapshotSummary" class="json-block">{{
+          JSON.stringify(retroactive.snapshotSummary, null, 2)
+        }}</pre>
       </template>
       <template v-else>
         <UiDataTable
@@ -382,7 +386,9 @@ onMounted(loadHistory)
             </template>
           </template>
         </UiDataTable>
-        <pre v-if="impactDetail?.indicatorSummary" class="json-block">{{ JSON.stringify(impactDetail.indicatorSummary, null, 2) }}</pre>
+        <pre v-if="impactDetail?.indicatorSummary" class="json-block">{{
+          JSON.stringify(impactDetail.indicatorSummary, null, 2)
+        }}</pre>
       </template>
     </UiCard>
   </StageWorkbenchShell>

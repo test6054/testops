@@ -16,16 +16,16 @@
 
     <ExamSelectGateStrip v-if="!selectedExamId" class="progress-page__empty" />
 
-    <UiEmpty
-      size="sm"
-      v-else-if="loadFailed"
-      title="加载失败"
-      class="progress-page__empty"
-    />
+    <UiEmpty size="sm" v-else-if="loadFailed" title="加载失败" class="progress-page__empty" />
 
     <UiSkeletonState v-else-if="loading && !progress" variant="card" compact />
 
-    <UiEmpty size="sm" v-else-if="!progress" description="暂无复核进度数据" class="progress-page__empty" />
+    <UiEmpty
+      size="sm"
+      v-else-if="!progress"
+      description="暂无复核进度数据"
+      class="progress-page__empty"
+    />
 
     <template v-else-if="progress">
       <ExamWorkspaceJourneySubNav />
@@ -153,7 +153,6 @@
                     ? successColor
                     : primaryColor
                 "
-              
                 :show-label="false"
               />
               <div class="progress-detail">
@@ -344,9 +343,7 @@ defineOptions({ name: 'TeacherReviewProgress' })
 const route = useRoute()
 const { selectedExamId, selectedExam } = useMarkExamContext()
 /** MVR-289：默认拒绝假可写；与 BE requireExamReviewerPermission 对齐 */
-const canManageReviewerWrites = computed(
-  () => selectedExam.value?.canManageReviewerWrites === true,
-)
+const canManageReviewerWrites = computed(() => selectedExam.value?.canManageReviewerWrites === true)
 const workbenchContext = inject(MARK_WORKBENCH_CONTEXT_KEY, null)
 
 const successColor = toneToColor('green')
@@ -491,7 +488,7 @@ async function retryPaperGradeForTask(record: ExamProcessingTaskItemResponse): P
   if (retryingPaperInstanceId.value || !selectedExamId.value || !record.paperInstanceId) return
   // MVR-420：与 canRetryPaperGrade / 行内显隐同源二次闸（写权∧AI 任务类型∧FAILED/BLOCKED/PROCESSING）
   if (!canRetryPaperGrade(record)) {
-    message.warning(
+    void message.warning(
       canManageReviewerWrites.value
         ? '当前处理任务不可重试整卷智能复评（类型或状态不允许）'
         : '仅本场阅卷组织成员、主考或管理员可重试整卷 AI 批阅',
@@ -504,7 +501,7 @@ async function retryPaperGradeForTask(record: ExamProcessingTaskItemResponse): P
       examId: selectedExamId.value,
       paperInstanceId: record.paperInstanceId,
     })
-    message.success('整卷智能复评重试已受理')
+    void message.success('整卷智能复评重试已受理')
     await loadProcessingTasks()
   } catch (error) {
     showUserError(error, '整卷智能复评重试失败')

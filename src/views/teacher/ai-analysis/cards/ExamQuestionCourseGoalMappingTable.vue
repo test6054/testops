@@ -254,7 +254,7 @@ function handleFilterReset(): void {
             class="exam-goal-mapping-table__select"
             placeholder="选择课程目标"
             :options="goalOptions"
-            :disabled="canManageOwnerWrites !== true"
+            :disabled="!canManageOwnerWrites"
             allow-clear
             allow-search
             option-filter-prop="label"
@@ -273,7 +273,7 @@ function handleFilterReset(): void {
             :max="999"
             :step="0.1"
             :precision="4"
-            :disabled="canManageOwnerWrites !== true"
+            :disabled="!canManageOwnerWrites"
             @change="() => handleWeightChange(record)"
           />
         </template>
@@ -288,7 +288,7 @@ function handleFilterReset(): void {
         </template>
         <template v-else-if="column.key === 'actions'">
           <UiTableActions
-            v-if="canManageOwnerWrites === true"
+            v-if="canManageOwnerWrites"
             :items="[
               { key: 'save', label: '保存', tone: 'primary', disabled: record.saving },
               {

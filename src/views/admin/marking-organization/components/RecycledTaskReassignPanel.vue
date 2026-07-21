@@ -165,7 +165,7 @@ function handlePageChange(pageInfo: { current: number, pageSize: number }): void
 async function submitReassign(task: MarkingTaskResponse): Promise<void> {
   // MVR-317：回收再分配二次拦截
   if (props.canReassign !== true) {
-    message.warning('当前账号无权再分配回收任务')
+    void message.warning('当前账号无权再分配回收任务')
     return
   }
   const targetReviewerUserId = targetReviewerByTaskId[task.id]
@@ -181,7 +181,7 @@ async function submitReassign(task: MarkingTaskResponse): Promise<void> {
       taskId: task.id,
       targetReviewerUserId,
     })
-    message.success('任务已再分配')
+    void message.success('任务已再分配')
     delete targetReviewerByTaskId[task.id]
     await loadTasks()
   } catch (error) {

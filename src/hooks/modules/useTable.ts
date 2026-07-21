@@ -157,7 +157,7 @@ export function useTable<T extends U, U = T>(api: Api<T>, options?: UseTableOpti
           pagination.current = totalPage > 0 ? totalPage : 1
         }
         options?.multiple && (selectedKeys.value = [])
-        message.success(options?.successTip || '删除成功')
+        void message.success(options?.successTip || '删除成功')
         await getTableData()
         return true
       } catch {

@@ -4,7 +4,11 @@
       <AiAnalysisHistorySelect v-model="historySelectedId" :rows="historyRows" :loading="loading" />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+        v-if="canManageReviewerWrites"
+        variant="primary"
+        size="sm"
+        :loading="generating"
+        @click="handleGenerate"
       >
         生成分析
       </UiButton>
@@ -39,12 +43,7 @@
 
     <UiSkeletonState v-if="loading || generating" variant="card" compact />
     <div v-else class="ai-analysis-section__body ai-analysis-section__body--flush">
-      <SignalBand
-        v-if="record"
-        :metrics="qualitySignalMetrics"
-        compact
-        variant="inline"
-      />
+      <SignalBand v-if="record" :metrics="qualitySignalMetrics" compact variant="inline" />
 
       <p v-if="record?.qualitySummary" class="ai-analysis-summary">{{ record.qualitySummary }}</p>
 
@@ -94,7 +93,11 @@
 
 <script lang="ts" setup>
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { SchoolQualityAnalysisResponse, SchoolQualityItemResponse, SchoolQualityRatingCode } from '@/apis/mark/school-quality'
+import type {
+  SchoolQualityAnalysisResponse,
+  SchoolQualityItemResponse,
+  SchoolQualityRatingCode,
+} from '@/apis/mark/school-quality'
 import type { BadgeTone, FilterField, UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { SignalMetric } from '@/types/workbench'
@@ -212,10 +215,15 @@ const examSelectReady = computed(() => {
   if (!effectiveAcademicYear.value || !effectiveSemester.value) {
     return false
   }
-  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {
+  if (
+    form.analysisDimension === SchoolQualityDimensionCode.COURSE
+    && !props.scopeOrgCourseId?.trim()
+  ) {
     return false
   }
-  return !(form.analysisDimension === SchoolQualityDimensionCode.CLASS && !props.scopeOrgClassId?.trim())
+  return !(
+    form.analysisDimension === SchoolQualityDimensionCode.CLASS && !props.scopeOrgClassId?.trim()
+  )
 })
 
 const qualityFilterFields = computed<FilterField[]>(() => [
@@ -267,10 +275,16 @@ const examSelectHint = computed(() => {
   if (!effectiveAcademicYear.value || !effectiveSemester.value) {
     return '请先在上方范围栏选择学年与学期'
   }
-  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {
+  if (
+    form.analysisDimension === SchoolQualityDimensionCode.COURSE
+    && !props.scopeOrgCourseId?.trim()
+  ) {
     return '课程维度请先在上方范围栏选择课程'
   }
-  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !props.scopeOrgClassId?.trim()) {
+  if (
+    form.analysisDimension === SchoolQualityDimensionCode.CLASS
+    && !props.scopeOrgClassId?.trim()
+  ) {
     return '班级维度请先在上方范围栏选择班级'
   }
   return '请选择至少 2 场考试'
@@ -443,11 +457,17 @@ function qualityListDimensionId(): string | undefined {
 }
 
 async function reload(): Promise<void> {
-  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {
+  if (
+    form.analysisDimension === SchoolQualityDimensionCode.COURSE
+    && !props.scopeOrgCourseId?.trim()
+  ) {
     showFormValidationMessage('请先在上方范围栏选择课程')
     return
   }
-  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !props.scopeOrgClassId?.trim()) {
+  if (
+    form.analysisDimension === SchoolQualityDimensionCode.CLASS
+    && !props.scopeOrgClassId?.trim()
+  ) {
     showFormValidationMessage('请先在上方范围栏选择班级')
     return
   }
@@ -475,14 +495,13 @@ async function reload(): Promise<void> {
       ...termQuery,
     })
     const count = applyLoadedList(list)
-    if (count === 0) message.info('暂无历史记录')
+    if (count === 0) void message.info('暂无历史记录')
   } catch (e) {
     showUserError(e, '校级质量分析加载失败')
   } finally {
     loading.value = false
   }
 }
-
 
 /** MVR-286：默认拒绝假可写；所选考试均须 canManageReviewerWrites */
 const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
@@ -491,17 +510,23 @@ const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
 )
 
 async function handleGenerate(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
   if (generating.value) return
   const examIds = form.examIds
-  if (form.analysisDimension === SchoolQualityDimensionCode.COURSE && !props.scopeOrgCourseId?.trim()) {
+  if (
+    form.analysisDimension === SchoolQualityDimensionCode.COURSE
+    && !props.scopeOrgCourseId?.trim()
+  ) {
     showFormValidationMessage('请先在上方范围栏选择课程')
     return
   }
-  if (form.analysisDimension === SchoolQualityDimensionCode.CLASS && !props.scopeOrgClassId?.trim()) {
+  if (
+    form.analysisDimension === SchoolQualityDimensionCode.CLASS
+    && !props.scopeOrgClassId?.trim()
+  ) {
     showFormValidationMessage('请先在上方范围栏选择班级')
     return
   }
@@ -526,7 +551,7 @@ async function handleGenerate(): Promise<void> {
       examIds,
     })
     adoptGenerated(generated)
-    message.success('已生成校级质量分析')
+    void message.success('已生成校级质量分析')
   } catch (e) {
     showUserError(e, '校级质量分析生成失败')
   } finally {

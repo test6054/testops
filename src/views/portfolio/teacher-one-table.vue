@@ -170,7 +170,7 @@ async function exportOneTable() {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
       return
     }
-    message.success(`已导出 ${result.rowCount} 行`)
+    void message.success(`已导出 ${result.rowCount} 行`)
   } catch (error) {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
       return

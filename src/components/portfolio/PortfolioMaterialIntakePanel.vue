@@ -14,9 +14,7 @@
       <div class="portfolio-intake-panel__upload-grid">
         <div>
           <div class="portfolio-intake-panel__label">材料标题</div>
-          <UiInput
-            size="sm" v-model="materialTitle" :disabled="readOnly" placeholder="材料标题"
-          />
+          <UiInput size="sm" v-model="materialTitle" :disabled="readOnly" placeholder="材料标题" />
         </div>
         <div>
           <div class="portfolio-intake-panel__label">材料文件</div>
@@ -192,10 +190,22 @@
       <h3 class="portfolio-intake-panel__section-title">归档动作</h3>
       <p v-if="archiveActionHint" class="portfolio-intake-panel__meta">{{ archiveActionHint }}</p>
       <div v-if="!readOnly" class="portfolio-intake-panel__actions">
-        <UiButton size="sm" variant="outline" :loading="saving" :disabled="writePending || archiveWriteForbidden" @click="handleSaveDraft">
+        <UiButton
+          size="sm"
+          variant="outline"
+          :loading="saving"
+          :disabled="writePending || archiveWriteForbidden"
+          @click="handleSaveDraft"
+        >
           保存草稿
         </UiButton>
-        <UiButton variant="primary" size="sm" :loading="submitting" :disabled="writePending || archiveWriteForbidden" @click="handleSubmit">
+        <UiButton
+          variant="primary"
+          size="sm"
+          :loading="submitting"
+          :disabled="writePending || archiveWriteForbidden"
+          @click="handleSubmit"
+        >
           提交审核
         </UiButton>
       </div>
@@ -259,11 +269,8 @@ const emit = defineEmits<{
 const route = useRoute()
 const { targetTeacherId } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
-const {
-  archiveWriteForbidden,
-  archiveWriteBlockMessage,
-  assertArchiveWritable,
-} = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
+const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
+  = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 
 const fileNodeId = ref<string>()
 const fileName = ref<string>()
@@ -496,7 +503,6 @@ function resetLocalIntakeSourceContext() {
   dispatchResult.value = null
 }
 
-
 async function handleSaveDraft() {
   if (!assertArchiveWritable('保存材料草稿')) {
     return
@@ -506,7 +512,7 @@ async function handleSaveDraft() {
 
 async function handleStart() {
   if (!fileNodeId.value) {
-    message.error('请先上传材料文件')
+    void message.error('请先上传材料文件')
     return
   }
   if (!assertArchiveWritable('开始材料采集')) {
@@ -530,7 +536,7 @@ async function handleStart() {
 
 async function handleRetryAi() {
   if (!categoryId.value) {
-    message.warning('请先选择档案分类')
+    void message.warning('请先选择档案分类')
     return
   }
   if (!assertArchiveWritable('重新智能抽取')) {
@@ -584,7 +590,7 @@ async function handleRestartRejected() {
 
 async function openScan() {
   if (!targetTeacherId.value) {
-    message.error('请先选择教师')
+    void message.error('请先选择教师')
     return
   }
   if (!assertArchiveWritable('一体机扫描登记')) {
@@ -671,7 +677,7 @@ function syncIntakeContextFromRoute() {
 
 async function handleReassign() {
   if (!categoryIdModel.value) {
-    message.warning('请选择目标分类')
+    void message.warning('请选择目标分类')
     return
   }
   if (!assertArchiveWritable('材料重分类')) {

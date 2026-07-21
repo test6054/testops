@@ -37,6 +37,15 @@ export interface PortfolioExportApprovalVO {
   revokeReason?: string
   revokeUserId?: string
   revokeTime?: string
+  /** 导出标的教师用户 ID（业务引用 teacherId） */
+  subjectTeacherUserId?: string
+  lifecycleStatus?: string
+  lifecycleStatusLabel?: string
+  archiveWriteForbidden?: boolean
+  evaluationHeld?: boolean
+  countsInCurrentFacultyStructure?: boolean
+  ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
+  ownerMultiIdentityNote?: string
 }
 
 export interface PortfolioMajorGroupPortfolioSectionSummaryVO {

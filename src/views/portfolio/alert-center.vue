@@ -37,6 +37,7 @@ import {
 } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const activeTab = ref('portrait')
 const tabItems = [
@@ -286,7 +287,7 @@ async function resolvePortraitAlert(
       resolveRemark:
         alertStatus === PortfolioAlertStatusCode.RESOLVED ? '管理端关闭预警' : '管理端已知晓',
     })
-    message.success('画像预警已处置')
+    void message.success('画像预警已处置')
     await loadPortraitAlerts()
   } catch (error) {
     showUserError(error, '画像预警处置失败')
@@ -323,7 +324,7 @@ async function resolveComplianceAlert(
       resolveRemark:
         alertStatus === PortfolioAlertStatusCode.RESOLVED ? '管理端关闭预警' : '管理端已知晓',
     })
-    message.success('合规预警已处置')
+    void message.success('合规预警已处置')
     await loadComplianceAlerts()
   } catch (error) {
     showUserError(error, '合规预警处置失败')
@@ -391,6 +392,34 @@ onMounted(() => {
                   {{ record.teacherNumber || record.teacherId }}
                   <template v-if="record.departmentName"> · {{ record.departmentName }} </template>
                 </span>
+                <div
+                  v-if="record.lifecycleStatus || record.ownerIdentityLayers?.length"
+                  class="alert-center__identity"
+                >
+                  <UiTag
+                    v-if="record.lifecycleStatus"
+                    size="sm"
+                    :tone="
+                      record.lifecycleStatus === 'ACTIVE'
+                        ? 'green'
+                        : record.lifecycleStatus === 'TEMP_HOLD'
+                          ? 'orange'
+                          : record.lifecycleStatus === 'SEALED'
+                            || record.lifecycleStatus === 'TRANSFERRED'
+                            ? 'red'
+                            : 'gray'
+                    "
+                  >
+                    {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
+                  </UiTag>
+                  <UiTag v-if="record.evaluationHeld" size="sm" tone="orange">参评 hold</UiTag>
+                  <PortfolioOwnerIdentityLayersCell
+                    v-if="record.ownerIdentityLayers?.length"
+                    :layers="record.ownerIdentityLayers"
+                    :note="record.ownerMultiIdentityNote"
+                    :row-key="record.id"
+                  />
+                </div>
               </div>
             </template>
             <template v-else-if="column.key === 'alertType'">
@@ -425,7 +454,10 @@ onMounted(() => {
             </template>
           </template>
           <template #emptyText>
-            <UiEmpty size="sm" :description="portraitLoadFailed ? '画像预警加载失败' : '暂无画像预警'" />
+            <UiEmpty
+              size="sm"
+              :description="portraitLoadFailed ? '画像预警加载失败' : '暂无画像预警'"
+            />
           </template>
         </UiDataTable>
       </UiCard>
@@ -503,7 +535,10 @@ onMounted(() => {
             </template>
           </template>
           <template #emptyText>
-            <UiEmpty size="sm" :description="complianceLoadFailed ? '合规预警加载失败' : '暂无合规预警'" />
+            <UiEmpty
+              size="sm"
+              :description="complianceLoadFailed ? '合规预警加载失败' : '暂无合规预警'"
+            />
           </template>
         </UiDataTable>
       </UiCard>

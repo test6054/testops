@@ -19,7 +19,11 @@
       />
     </template>
 
-    <ExamSelectGateStrip v-if="!selectedExamId" class="ledger-page__empty" body="请先选择考试后再查看影像账本" />
+    <ExamSelectGateStrip
+      v-if="!selectedExamId"
+      class="ledger-page__empty"
+      body="请先选择考试后再查看影像账本"
+    />
 
     <template v-else>
       <ExamWorkspaceJourneySubNav />
@@ -96,9 +100,7 @@ const loadingDetail = ref(false)
 const balancing = ref(false)
 
 /** MVR-264/324：仅认 BE canManageOwnerLedgerWrites===true；禁止缺省回退 isExamOwner */
-const canManageOwnerLedgerWrites = computed(
-  () => ledger.value?.canManageOwnerLedgerWrites === true,
-)
+const canManageOwnerLedgerWrites = computed(() => ledger.value?.canManageOwnerLedgerWrites === true)
 
 const ledgerSignalMetrics = computed((): SignalMetric[] => {
   const data = ledger.value
@@ -189,9 +191,9 @@ async function handleBalance(): Promise<void> {
   try {
     const detail = await executeImageLedgerBalance({ examId: selectedExamId.value })
     if (detail?.ledgerStatus === LedgerStatusCode.BALANCED) {
-      message.success('影像账本已平账')
+      void message.success('影像账本已平账')
     } else {
-      message.warning(detail?.diagnostic || '对账已执行，仍存在未关闭异常，请处理后再发布成绩')
+      void message.warning(detail?.diagnostic || '对账已执行，仍存在未关闭异常，请处理后再发布成绩')
     }
     await loadAll()
     await refreshSnapshot()
@@ -208,8 +210,8 @@ const resolveTarget = ref<ExamPaperDuplicateResolutionVO | null>(null)
 
 function openResolve(record: ExamPaperDuplicateResolutionVO): void {
   // MVR-391：打开处置弹窗仅认 canManageOwnerLedgerWrites===true
-  if (canManageOwnerLedgerWrites.value !== true) {
-    message.warning('仅本场主考可处置重复影像')
+  if (!canManageOwnerLedgerWrites.value) {
+    void message.warning('仅本场主考可处置重复影像')
     return
   }
   resolveTarget.value = record

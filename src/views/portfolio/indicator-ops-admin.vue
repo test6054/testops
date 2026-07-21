@@ -211,7 +211,7 @@ async function runTrial() {
   try {
     const result = await portfolioIndicatorTenantApi.computeTrial(request)
     showComputeResult(result)
-    message.success(
+    void message.success(
       result.finalScore != null ? `试算得分 ${result.finalScore}` : '试算完成，待审核',
     )
   } catch (error) {
@@ -255,7 +255,7 @@ async function runSnapshotCompute() {
       return
     }
     showComputeResult(result)
-    message.success(
+    void message.success(
       result.finalScore != null ? `正式计分 ${result.finalScore}` : '计分完成，待审核',
     )
     await loadComputeLogs()
@@ -391,7 +391,7 @@ async function exportSnapshotDiff() {
       snapshotIdB,
     })
     await downloadPortfolioIndicatorExcelExport(result)
-    message.success(`已导出 ${result.rowCount} 条差异`)
+    void message.success(`已导出 ${result.rowCount} 条差异`)
   } catch (error) {
     showUserError(error, '导出快照差异失败')
   } finally {
@@ -405,7 +405,7 @@ async function exportImpact(id: string) {
   try {
     const result = await portfolioIndicatorTenantApi.exportImpactReport({ id })
     await downloadPortfolioIndicatorExcelExport(result)
-    message.success('影响报告已导出')
+    void message.success('影响报告已导出')
   } catch (error) {
     showUserError(error, '导出影响报告失败')
   } finally {
@@ -431,7 +431,7 @@ async function runAutoCollect() {
     collectSummary.value = summary
     collectPageNum.value = 1
     await loadCollectPage()
-    message.success(
+    void message.success(
       `采集 ${collectSummary.value.collectedCount} 条，跳过 ${collectSummary.value.skippedCount} 条`,
     )
   } catch (error) {
@@ -766,8 +766,7 @@ watch(
                 :items="[{ key: 'explain', label: '解释' }]"
                 split
                 @action="
-                  () =>
-                    openExplain(record.id, 'ELIGIBILITY', record.teacherId, record.explainText)
+                  () => openExplain(record.id, 'ELIGIBILITY', record.teacherId, record.explainText)
                 "
               />
             </template>

@@ -15,16 +15,12 @@
       <UiRow :gutter="16">
         <UiCol :xs="24" :md="12">
           <UiFormItem label="扫描批次">
-            <UiInput
-              size="sm" :value="batchLabel" disabled
-            />
+            <UiInput size="sm" :value="batchLabel" disabled />
           </UiFormItem>
         </UiCol>
         <UiCol :xs="24" :md="12">
           <UiFormItem label="扫描设备">
-            <UiInput
-              size="sm" :value="deviceLabel" disabled
-            />
+            <UiInput size="sm" :value="deviceLabel" disabled />
           </UiFormItem>
         </UiCol>
       </UiRow>
@@ -194,7 +190,7 @@ function handleCancel(): void {
 
 async function handleSubmit(): Promise<void> {
   if (submitDisabled.value) {
-    message.warning(prepareBlockDescription.value || '当前不可提交补扫')
+    void message.warning(prepareBlockDescription.value || '当前不可提交补扫')
     return
   }
   if (submitting.value) {
@@ -226,7 +222,7 @@ async function handleSubmit(): Promise<void> {
       sourceFileId: form.sourceFileId,
       paperInstanceId: form.paperInstanceId,
     })
-    message.success(`补扫成功，已登记 ${response.registeredPageCount} 页`)
+    void message.success(`补扫成功，已登记 ${response.registeredPageCount} 页`)
     resetForm()
     emit('update:open', false)
     emit('success')

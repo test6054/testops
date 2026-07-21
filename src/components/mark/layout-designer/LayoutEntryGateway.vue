@@ -136,8 +136,8 @@ watch(
 
 const isAnswerSheetMode = computed(() => props.materialLayoutMode === 'ANSWER_SHEET')
 const isFullPaperMode = computed(() => props.materialLayoutMode === 'FULL_PAPER')
-/** MVR-377：默认拒绝；仅父层显式 readonly===false 且已选模式、非识别中可写 */
-const entryReadonly = computed(() => props.readonly !== false || !props.materialLayoutMode || Boolean(props.detecting))
+/** 只读或未选材料版式模式时不可写 */
+const entryReadonly = computed(() => props.readonly || !props.materialLayoutMode)
 
 const paperSpecOptions = ExamLayoutPaperSpecOptions
 
@@ -146,7 +146,6 @@ const paperSpecTooltip = computed(
 )
 
 function patchDocument(partial: Partial<ExamLayoutDocument>): void {
-  // MVR-388：与 entryReadonly 同源默认拒绝，禁止仅靠模板 disabled 防写
   if (entryReadonly.value || !props.document) {
     return
   }
@@ -203,7 +202,7 @@ function handleGenerateSheet(): void {
   }
   const questions = buildGenerateQuestionsFromDrafts(questionRows.value)
   if (questions.length === 0) {
-    message.warning('请至少配置一道题目后再生成答题卡')
+    void message.warning('请至少配置一道题目后再生成答题卡')
     return
   }
   startBlankSheet()
@@ -260,7 +259,6 @@ async function confirmRedetectIfNeeded(): Promise<boolean> {
 }
 
 async function startAutoDetect(sourceFileId: string): Promise<void> {
-  // MVR-377：默认拒绝；entryReadonly 含 !writable / detecting
   if (entryReadonly.value) {
     showFormValidationMessage('当前制卷设计不可编辑，无法自动预划区')
     return
@@ -280,7 +278,7 @@ function handleAutoDetect(): void {
     return
   }
   if (!sourcePdfFileId.value.trim()) {
-    message.warning('请先上传整卷源文件')
+    void message.warning('请先上传整卷源文件')
     return
   }
   if (!sourceFileCanAutoDetect.value) {
@@ -349,7 +347,7 @@ function onSourcePdfChange(fileId: string | undefined): void {
     return
   }
   if (props.detecting) {
-    message.warning('识别进行中，请等待完成后再更换源文件')
+    void message.warning('识别进行中，请等待完成后再更换源文件')
     sourcePdfFileId.value = props.document?.sourcePdfFileId ?? ''
     return
   }

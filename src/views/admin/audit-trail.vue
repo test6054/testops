@@ -611,7 +611,7 @@ function handleIncidentAction(key: string, record: ExamIncidentRecord): void {
 function openResolveModal(incident: ExamIncidentRecord) {
   // MVR-393：打开/提交仅认行级 canManageReviewerWrites===true 且未解决
   if (canResolveIncident(incident) !== true) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
     return
   }
   resolvingIncident.value = incident
@@ -622,12 +622,12 @@ function openResolveModal(incident: ExamIncidentRecord) {
 async function submitResolve() {
   if (resolving.value || !resolvingIncident.value) return
   if (canResolveIncident(resolvingIncident.value) !== true) {
-    message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
+    void message.warning('仅本场阅卷组织成员、主考或管理员可处置重大事件')
     return
   }
   const note = resolveNote.value.trim()
   if (note.length < 5) {
-    message.warning('处置说明至少 5 个字')
+    void message.warning('处置说明至少 5 个字')
     return
   }
   resolving.value = true
@@ -636,7 +636,7 @@ async function submitResolve() {
       incidentId: resolvingIncident.value.id,
       resolveNote: note,
     })
-    message.success('事件已解决')
+    void message.success('事件已解决')
     resolveModalOpen.value = false
     await loadIncidents()
   } catch (error) {

@@ -291,16 +291,14 @@ function isGroupStartable(groupId: string | undefined): boolean {
 
 function canStart(record: TrialSessionResponse): boolean {
   return (
-    props.canManage === true
-    && record.sessionStatus === TrialSessionStatusCode.TRIAL_CREATED
+    props.canManage === true && record.sessionStatus === TrialSessionStatusCode.TRIAL_CREATED
     && isGroupStartable(record.groupId)
   )
 }
 
 function canCalibrate(status: TrialSessionStatusCode): boolean {
   return (
-    props.canManage === true
-    && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
+    props.canManage === true && (status === TrialSessionStatusCode.TRIAL_ASSIGNED
       || status === TrialSessionStatusCode.TRIAL_SUBMITTED)
   )
 }
@@ -375,7 +373,7 @@ async function submitStart(record: TrialSessionResponse): Promise<void> {
   startingId.value = record.id
   try {
     await startTrialSession(record.id)
-    message.success('试评会话已启动，教师可在试评任务池领取样本卷')
+    void message.success('试评会话已启动，教师可在试评任务池领取样本卷')
     emit('refresh')
   } catch (error) {
     showUserError(error, '启动试评会话失败')
@@ -399,7 +397,7 @@ async function submitDelete(record: TrialSessionResponse): Promise<void> {
   deletingId.value = record.id
   try {
     await deleteTrialSession(record.id)
-    message.success('试评草稿会话已删除')
+    void message.success('试评草稿会话已删除')
     emit('refresh')
   } catch (error) {
     showUserError(error, '删除试评会话失败')

@@ -254,7 +254,7 @@ const doLogin = async () => {
 
     // 检查是否需要强制修改密码
     if (userStore.userInfo.forcePasswordChange) {
-      message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
+      void message.warning('出于安全考虑，您需要修改密码后才能继续使用系统')
       await router.push('/change-password')
       return
     }
@@ -276,7 +276,7 @@ const doLogin = async () => {
       query: { ...othersQuery },
     })
 
-    message.success('登录成功，欢迎使用')
+    void message.success('登录成功，欢迎使用')
   } catch (error: unknown) {
     const stdError = standardizeError(error)
     if (stdError.type === ErrorType.NETWORK) {

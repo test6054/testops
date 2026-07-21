@@ -162,7 +162,7 @@ async function saveSection() {
   const section = activeSection.value
   if (!section) return
   if (!canEdit.value) {
-    message.error('当前认证阶段不允许编辑自评报告章节')
+    void message.error('当前认证阶段不允许编辑自评报告章节')
     return
   }
   saving.value = true
@@ -173,7 +173,7 @@ async function saveSection() {
       evidenceNarrative: editor.evidenceNarrative,
       evidenceRefs: editor.evidenceRefs,
     })
-    message.success('章节已保存')
+    void message.success('章节已保存')
     await loadSections()
     emit('saved')
   } catch (error) {
@@ -216,7 +216,7 @@ async function openEvidenceDrawer() {
   evidenceKeyword.value = ''
   selectedEvidenceIds.value = editor.evidenceRefs
     .filter(
-      item =>
+      (item) =>
         item.refType === SelfAssessmentSectionEvidenceRefTypeCode.ACCREDITATION_EVIDENCE
         && item.accreditationEvidenceId,
     )
@@ -226,7 +226,7 @@ async function openEvidenceDrawer() {
 
 function applySelectedEvidence() {
   const keptFieldRefs = editor.evidenceRefs.filter(
-    item => item.refType === SelfAssessmentSectionEvidenceRefTypeCode.FIELD_PATH,
+    (item) => item.refType === SelfAssessmentSectionEvidenceRefTypeCode.FIELD_PATH,
   )
   const evidenceRefs: SelfAssessmentSectionEvidenceRefItem[] = [...keptFieldRefs]
   for (const evidenceId of selectedEvidenceIds.value) {
@@ -279,14 +279,7 @@ watch(activeSectionKey, () => {
 
     <p class="self-assessment-panel__hint">{{ submitHint }}</p>
 
-    <UiAlertStrip
-      v-if="!activeCycle"
-      tone="info"
-      size="sm"
-      dense
-      inline
-      :show-icon="false"
-    >
+    <UiAlertStrip v-if="!activeCycle" tone="info" size="sm" dense inline :show-icon="false">
       <template #default>
         <span style="display: inline-flex; align-items: center; gap: 8px">
           <UiTag tone="blue" size="sm">未登记周期</UiTag>
@@ -356,7 +349,11 @@ watch(activeSectionKey, () => {
               :key="`${evidenceRef.refType}-${index}`"
             >
               <UiTag tone="gray" size="sm">
-                {{ evidenceRef.refType === SelfAssessmentSectionEvidenceRefTypeCode.FIELD_PATH ? '字段路径' : '认证证据' }}
+                {{
+                  evidenceRef.refType === SelfAssessmentSectionEvidenceRefTypeCode.FIELD_PATH
+                    ? '字段路径'
+                    : '认证证据'
+                }}
               </UiTag>
               <span>
                 {{

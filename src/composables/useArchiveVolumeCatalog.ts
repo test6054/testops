@@ -56,13 +56,13 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
     if (!id || saving.value || confirming.value || exporting.value) return
     const revision = catalog.value?.catalogRevision
     if (!revision || loadFailed.value) {
-      message.error('目录状态已失效，请重新加载后再操作')
+      void message.error('目录状态已失效，请重新加载后再操作')
       return
     }
     saving.value = true
     try {
       await generateArchiveVolumeCatalogDraft(id, revision)
-      message.success('目录草稿已生成')
+      void message.success('目录草稿已生成')
       await loadCatalog()
     }
     catch (error) {
@@ -97,11 +97,11 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
     if (!id || saving.value || confirming.value || exporting.value) return
     const revision = catalog.value?.catalogRevision
     if (!revision || loadFailed.value) {
-      message.error('目录状态已失效，请重新加载后再操作')
+      void message.error('目录状态已失效，请重新加载后再操作')
       return
     }
     if (editableLines.value.some(line => !line.title?.trim())) {
-      message.error('目录题名不能为空')
+      void message.error('目录题名不能为空')
       return
     }
     saving.value = true
@@ -111,7 +111,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
         expectedCatalogRevision: revision,
         lines: buildSaveLines(),
       })
-      message.success('目录已保存')
+      void message.success('目录已保存')
       await loadCatalog()
     }
     catch (error) {
@@ -127,13 +127,13 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
     if (!id || saving.value || confirming.value || exporting.value) return
     const revision = catalog.value?.catalogRevision
     if (!revision || loadFailed.value) {
-      message.error('目录状态已失效，请重新加载后再操作')
+      void message.error('目录状态已失效，请重新加载后再操作')
       return
     }
     confirming.value = true
     try {
       await confirmArchiveVolumeCatalog(id, revision)
-      message.success('目录已确认')
+      void message.success('目录已确认')
       await loadCatalog()
     }
     catch (error) {
@@ -155,7 +155,7 @@ export function useArchiveVolumeCatalog(volumeId: () => string) {
         return
       }
       await downloadFile({ nodeId: result.exportFileId })
-      message.success('目录导出完成')
+      void message.success('目录导出完成')
     }
     catch (error) {
       showUserError(error, '导出归档目录失败')

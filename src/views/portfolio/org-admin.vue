@@ -233,9 +233,11 @@ async function handleSync() {
   try {
     const result = await portfolioOrgApi.sync()
     syncDiagnostics.value = result.invalidPortfolioOrgUnits ?? []
-    message.success(`校验完成：院系 ${result.departmentCount}、专业 ${result.majorCount}`)
+    void message.success(`校验完成：院系 ${result.departmentCount}、专业 ${result.majorCount}`)
     if (syncDiagnostics.value.length > 0) {
-      showFormValidationMessage(`挂接失效扩展组织 ${syncDiagnostics.value.length} 个，见下方诊断列表`)
+      showFormValidationMessage(
+        `挂接失效扩展组织 ${syncDiagnostics.value.length} 个，见下方诊断列表`,
+      )
     }
     await refreshTree()
     await loadLatestSync()
@@ -369,7 +371,7 @@ async function submitUnit() {
   }
   try {
     await portfolioOrgApi.saveUnit(request)
-    message.success(unitMode.value === 'edit' ? '扩展组织已更新' : '扩展组织已创建')
+    void message.success(unitMode.value === 'edit' ? '扩展组织已更新' : '扩展组织已创建')
     unitVisible.value = false
     syncDiagnostics.value = []
     await refreshTree()
@@ -401,7 +403,7 @@ async function deleteSelectedUnit() {
   }
   try {
     await portfolioOrgApi.deleteUnit(unitId)
-    message.success('已删除')
+    void message.success('已删除')
     selectedNode.value = null
     syncDiagnostics.value = []
     await refreshTree()
@@ -480,7 +482,7 @@ async function submitAlias() {
   }
   try {
     await portfolioOrgApi.saveAlias(request)
-    message.success(aliasMode.value === 'edit' ? '历史名称已更新' : '历史名称已添加')
+    void message.success(aliasMode.value === 'edit' ? '历史名称已更新' : '历史名称已添加')
     aliasVisible.value = false
     await refreshTree()
   } catch (error) {
@@ -501,7 +503,7 @@ async function deleteAlias(row: PortfolioOrgAliasVO) {
   }
   try {
     await portfolioOrgApi.deleteAlias(aliasId)
-    message.success('已删除')
+    void message.success('已删除')
     await refreshTree()
   } catch (error) {
     showUserError(error, `删除历史名称「${aliasName}」失败`)
@@ -509,7 +511,6 @@ async function deleteAlias(row: PortfolioOrgAliasVO) {
     endOperation(operation)
   }
 }
-
 
 const orgMoreActionItems = computed(() => [
   {
@@ -672,16 +673,9 @@ onMounted(async () => {
             </template>
           </UiDataTable>
         </template>
-        <UiAlertStrip
-          v-else
-          tone="info"
-          size="sm"
-          dense
-          inline
-          :show-icon="false"
-        >
+        <UiAlertStrip v-else tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
-            <span style="display:inline-flex;align-items:center;gap:8px">
+            <span style="display: inline-flex; align-items: center; gap: 8px">
               <UiTag tone="blue" size="sm">未选择组织</UiTag>
               <span>请在左侧选择组织节点后维护扩展属性</span>
             </span>
@@ -707,24 +701,16 @@ onMounted(async () => {
           />
         </UiFormItem>
         <UiFormItem label="名称" required>
-          <UiInput
-            size="sm" v-model="unitEditor.orgName" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="unitEditor.orgName" :disabled="writing" />
         </UiFormItem>
         <UiFormItem label="编码">
-          <UiInput
-            size="sm" v-model="unitEditor.orgCode" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="unitEditor.orgCode" :disabled="writing" />
         </UiFormItem>
         <UiFormItem v-if="unitEditor.anchorDepartmentId" label="挂接院系">
-          <UiInput
-            size="sm" :value="unitEditor.anchorDepartmentId" disabled
-          />
+          <UiInput size="sm" :value="unitEditor.anchorDepartmentId" disabled />
         </UiFormItem>
         <UiFormItem v-if="unitEditor.anchorMajorId" label="挂接专业">
-          <UiInput
-            size="sm" :value="unitEditor.anchorMajorId" disabled
-          />
+          <UiInput size="sm" :value="unitEditor.anchorMajorId" disabled />
         </UiFormItem>
         <UiFormItem label="负责人">
           <UiSelect
@@ -764,9 +750,7 @@ onMounted(async () => {
           />
         </UiFormItem>
         <UiFormItem label="历史名称" required>
-          <UiInput
-            size="sm" v-model="aliasEditor.aliasName" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="aliasEditor.aliasName" :disabled="writing" />
         </UiFormItem>
         <UiFormItem label="生效起始">
           <UiInput
@@ -785,9 +769,7 @@ onMounted(async () => {
           />
         </UiFormItem>
         <UiFormItem label="备注">
-          <UiInput
-            size="sm" v-model="aliasEditor.remark" :disabled="writing"
-          />
+          <UiInput size="sm" v-model="aliasEditor.remark" :disabled="writing" />
         </UiFormItem>
       </UiForm>
     </UiDialog>

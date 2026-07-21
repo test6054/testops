@@ -43,12 +43,7 @@
       <SignalBand :metrics="signalMetrics" variant="panel" />
     </template>
 
-    <UiEmpty
-      size="sm"
-      v-if="loadFailed"
-      title="加载失败"
-      description="整改任务加载失败"
-    />
+    <UiEmpty size="sm" v-if="loadFailed" title="加载失败" description="整改任务加载失败" />
 
     <UiSkeletonState v-else-if="loading" variant="card" compact />
 
@@ -597,7 +592,7 @@ const evidenceColumns: ColumnsType<ArchiveRemediationEvidenceResponse> = [
 
 const canSaveAssigneeReassign = computed(() => {
   const task = taskDetail.value
-  if (!task || showCoordinatorActions.value !== true) return false
+  if (!task || !showCoordinatorActions.value) return false
   if (task.taskStatus === ArchiveRemediationStatusCode.CLOSED) return false
   if (!editAssigneeUserId.value) return false
   return editAssigneeUserId.value !== task.assigneeUserId
@@ -663,7 +658,7 @@ async function submitEvidenceUpload() {
       taskId: taskDetail.value.taskId,
       fileId: evidenceUploadFileId.value,
     })
-    message.success('整改证据已上传')
+    void message.success('整改证据已上传')
     evidenceUploadOpen.value = false
     await loadTask()
   } catch (error) {
@@ -739,7 +734,7 @@ async function advanceStatus(status: ArchiveRemediationStatusCode) {
       taskId: taskDetail.value.taskId,
       taskStatus: status,
     })
-    message.success('任务状态已更新')
+    void message.success('任务状态已更新')
     if (taskDetail.value.campaignId) {
       await loadCampaignContext(taskDetail.value.campaignId)
     }
@@ -763,7 +758,7 @@ async function reassignAssignee() {
       taskId: taskDetail.value.taskId,
       assigneeUserId: editAssigneeUserId.value,
     })
-    message.success('责任人已改派')
+    void message.success('责任人已改派')
   } catch (error) {
     showUserError(error, '改派整改责任人失败')
   } finally {
@@ -797,7 +792,7 @@ async function submitCloseWithVerification() {
       taskStatus: ArchiveRemediationStatusCode.CLOSED,
       verificationComment: closeVerifyComment.value.trim(),
     })
-    message.success('整改任务已关闭')
+    void message.success('整改任务已关闭')
     closeVerifyModalOpen.value = false
     if (taskDetail.value.campaignId) {
       await loadCampaignContext(taskDetail.value.campaignId)
@@ -1012,7 +1007,11 @@ onMounted(() => {
 :deep(.workbench-surface-card .workbench-surface-card .workbench-surface-card__head) {
   padding: 8px 12px;
 }
-:deep(.workbench-surface-card .workbench-surface-card .workbench-surface-card__body:not(.workbench-surface-card__body--flush)) {
+:deep(
+  .workbench-surface-card
+    .workbench-surface-card
+    .workbench-surface-card__body:not(.workbench-surface-card__body--flush)
+) {
   padding: 12px;
 }
 </style>

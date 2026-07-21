@@ -3,8 +3,8 @@ import type {
   PfImpactApprovalStatusCode,
   PortfolioImpactIndicatorSummaryDto,
   PortfolioIndicatorEngineReadinessVO,
-
-  PortfolioPublishImpactReportVO} from '@/apis/portfolio/indicator-types'
+  PortfolioPublishImpactReportVO,
+} from '@/apis/portfolio/indicator-types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -114,7 +114,7 @@ async function enableAllIndicators() {
   }
   try {
     const result = await portfolioIndicatorTenantApi.enableAllConfig()
-    message.success(`已启用 ${result.enabledCount} 项指标`)
+    void message.success(`已启用 ${result.enabledCount} 项指标`)
     await loadReadiness()
   } catch (error) {
     showUserError(error, '启用全部指标失败')
@@ -133,12 +133,12 @@ async function runTrial() {
     if (sceneCode.value !== targetSceneCode) return
     trialPassed.value = Boolean(model.trialPassed)
     if (!trialPassed.value) {
-      message.error('试算未通过，无法进入影响分析')
+      void message.error('试算未通过，无法进入影响分析')
       return
     }
     workflowSceneCode.value = targetSceneCode
     step.value = 2
-    message.success('试算通过')
+    void message.success('试算通过')
   } catch (error) {
     showUserError(error, '指标试算失败')
   } finally {
@@ -176,13 +176,13 @@ async function runImpactPreview() {
     if (!applyImpactSummary(report)) {
       impactReportId.value = ''
       impactReport.value = null
-      message.error('影响分析摘要缺失，请重新生成影响分析')
+      void message.error('影响分析摘要缺失，请重新生成影响分析')
       return
     }
     impactReportId.value = reportId
     impactReport.value = report
     step.value = 3
-    message.success('影响分析完成')
+    void message.success('影响分析完成')
   } catch (error) {
     impactReportId.value = ''
     impactReport.value = null
@@ -193,13 +193,13 @@ async function runImpactPreview() {
   }
 }
 
-
 const requiresApproval = computed(() =>
   pfRuleChangeLevelRequiresApproval(impactReport.value?.changeLevel),
 )
-const canPublish = computed(() =>
-  Boolean(impactReportId.value)
-  && pfImpactApprovalAllowsPublish(impactReport.value?.approvalStatus),
+const canPublish = computed(
+  () =>
+    Boolean(impactReportId.value)
+    && pfImpactApprovalAllowsPublish(impactReport.value?.approvalStatus),
 )
 const showTaskStrategy = computed(() => {
   const level = impactReport.value?.changeLevel
@@ -208,7 +208,11 @@ const showTaskStrategy = computed(() => {
 
 function changeLevelLabel(code?: string): string {
   if (!code) return '—'
-  return strictEnumLabel(PfRuleChangeLevelDescription, code as PfRuleChangeLevelCode, '规则变更级别')
+  return strictEnumLabel(
+    PfRuleChangeLevelDescription,
+    code as PfRuleChangeLevelCode,
+    '规则变更级别',
+  )
 }
 
 function approvalStatusLabel(code?: string): string {
@@ -234,7 +238,7 @@ async function approveImpact(approved: boolean) {
     if (report.indicatorSummary) {
       impactSummary.value = report.indicatorSummary
     }
-    message.success(approved ? '影响分析已审批通过' : '影响分析已驳回')
+    void message.success(approved ? '影响分析已审批通过' : '影响分析已驳回')
   } catch (error) {
     showUserError(error, approved ? '审批通过失败' : '审批驳回失败')
   } finally {
@@ -289,7 +293,7 @@ async function publish() {
     return
   }
   try {
-    const snapshotId = await portfolioIndicatorTenantApi.publishModel({
+    await portfolioIndicatorTenantApi.publishModel({
       sceneCode: targetSceneCode,
       impactReportId: targetImpactReportId,
       academicYear: targetAcademicYear,
@@ -298,7 +302,7 @@ async function publish() {
           ? currentTaskRuleStrategy.value
           : PfCurrentTaskRuleStrategyCode.KEEP_CURRENT,
     })
-    message.success('发布成功')
+    void message.success('发布成功')
     await router.push({ name: 'PortfolioIndicatorHistory' })
   } catch (error) {
     showUserError(error, '发布指标模型失败')
@@ -319,7 +323,7 @@ async function exportImpact() {
       id: reportId,
     })
     await downloadPortfolioIndicatorExcelExport(result)
-    message.success('影响报告已导出')
+    void message.success('影响报告已导出')
   } catch (error) {
     showUserError(error, '导出影响报告失败')
   } finally {
@@ -388,12 +392,22 @@ onMounted(loadReadiness)
         />
       </div>
       <div v-if="step === 1" class="actions">
-        <UiButton size="sm" variant="primary" :loading="trialing" :disabled="writing" @click="runTrial">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="trialing"
+          :disabled="writing"
+          @click="runTrial"
+        >
           执行试算
         </UiButton>
       </div>
       <div v-else-if="step === 2" class="actions">
-        <UiButton size="sm" :disabled="writing" @click="router.push({ name: 'PortfolioIndicatorOps' })">
+        <UiButton
+          size="sm"
+          :disabled="writing"
+          @click="router.push({ name: 'PortfolioIndicatorOps' })"
+        >
           计分与审计
         </UiButton>
         <UiButton
@@ -418,7 +432,13 @@ onMounted(loadReadiness)
             <span>
               审批状态
               <UiTag
-                :tone="canPublish ? 'green' : impactReport.approvalStatus === 'REJECTED' ? 'red' : 'orange'"
+                :tone="
+                  canPublish
+                    ? 'green'
+                    : impactReport.approvalStatus === 'REJECTED'
+                      ? 'red'
+                      : 'orange'
+                "
               >
                 {{ approvalStatusLabel(impactReport.approvalStatus) }}
               </UiTag>
@@ -426,13 +446,12 @@ onMounted(loadReadiness)
             <span v-if="impactReport.approvedTime">审批时间 {{ impactReport.approvedTime }}</span>
             <span v-if="impactReport.approvalOpinion">审批意见 {{ impactReport.approvalOpinion }}</span>
           </div>
-          <div
-            v-if="impactReport.evaluationTaskSummary"
-            class="impact-summary impact-task-summary"
-          >
+          <div v-if="impactReport.evaluationTaskSummary" class="impact-summary impact-task-summary">
             <span>进行中任务 {{ impactReport.evaluationTaskSummary.inProgressTaskCount ?? 0 }}</span>
-            <span>已冻结规则任务 {{ impactReport.evaluationTaskSummary.frozenInProgressTaskCount ?? 0 }}</span>
-            <span>已公示/归档 {{ impactReport.evaluationTaskSummary.publicizedOrArchivedTaskCount ?? 0 }}</span>
+            <span>已冻结规则任务
+              {{ impactReport.evaluationTaskSummary.frozenInProgressTaskCount ?? 0 }}</span>
+            <span>已公示/归档
+              {{ impactReport.evaluationTaskSummary.publicizedOrArchivedTaskCount ?? 0 }}</span>
             <span>受影响教师 {{ impactReport.evaluationTaskSummary.affectedTeacherCount ?? 0 }}</span>
           </div>
           <template v-if="requiresApproval && impactReport.approvalStatus === 'PENDING_APPROVAL'">
@@ -484,10 +503,7 @@ onMounted(loadReadiness)
             <span>变更 {{ impactSummary.changedCount ?? 0 }}</span>
             <span>移除 {{ impactSummary.removedCount ?? 0 }}</span>
           </div>
-          <ul
-            v-if="impactSummary.changedIndicators?.length"
-            class="impact-changed-list"
-          >
+          <ul v-if="impactSummary.changedIndicators?.length" class="impact-changed-list">
             <li
               v-for="item in impactSummary.changedIndicators"
               :key="`${item.indicatorCode}-${item.changeType}`"

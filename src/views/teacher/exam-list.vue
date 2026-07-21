@@ -236,19 +236,12 @@
   </StageWorkbenchShell>
 
   <!-- 考试维护 Drawer -->
-  <ExamEditDrawer
-    v-model:open="formModalOpen"
-    :exam-id="editingExamId"
-    @saved="handleExamEdited"
-  />
+  <ExamEditDrawer v-model:open="formModalOpen" :exam-id="editingExamId" @saved="handleExamEdited" />
 </template>
 
 <script lang="ts" setup>
 import type { ColumnType, TablePaginationConfig } from 'ant-design-vue/es/table'
-import type {
-  ExamPageQueryRequest,
-  ExamWorkbenchSummaryResponse,
-} from '@/apis/mark/exam'
+import type { ExamPageQueryRequest, ExamWorkbenchSummaryResponse } from '@/apis/mark/exam'
 import type {
   BadgeTone,
   FilterField,
@@ -326,10 +319,7 @@ import ExamListExamWindowCell from '@/views/teacher/components/ExamListExamWindo
 defineOptions({ name: 'TeacherExamList' })
 
 const router = useRouter()
-const {
-  load: loadS1AutoCreateAttention,
-  isAttentionExam,
-} = useArchiveS1AutoCreateAttention()
+const { load: loadS1AutoCreateAttention, isAttentionExam } = useArchiveS1AutoCreateAttention()
 const route = useRoute()
 const authStore = useAuthStore()
 const userStore = useUserStore()
@@ -1169,7 +1159,7 @@ function confirmClose(exam: ExamWorkbenchSummaryResponse): void {
           examActionLoading.value = true
           try {
             await closeExam({ examId: exam.examId })
-            message.success('考试已关闭')
+            void message.success('考试已关闭')
             await reloadAll()
           } catch (error) {
             showUserError(error, '关闭考试失败')
@@ -1202,7 +1192,7 @@ function confirmDelete(exam: ExamWorkbenchSummaryResponse): void {
       examActionLoading.value = true
       try {
         await deleteExam({ examId: exam.examId })
-        message.success('考试已删除')
+        void message.success('考试已删除')
         const scope = tabToScope(listTab.value)
         const dataSourceRef = getDataSourceRefByScope(scope)
         const paginationState = getPaginationByScope(scope)

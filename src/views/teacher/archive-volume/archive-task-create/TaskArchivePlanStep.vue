@@ -247,15 +247,19 @@ async function handleScoreProofBeforeUpload(file: File): Promise<boolean> {
     }
     const previousFileId = planForm.scoreProofFileId
     if (previousFileId) {
+      let previousDiscardError: unknown
       try {
         await discardArchiveTaskScoreProof(previousFileId)
       } catch (error) {
+        previousDiscardError = error
         await discardArchiveTaskScoreProof(node.id)
-        throw error
+      }
+      if (previousDiscardError) {
+        throw previousDiscardError
       }
     }
     planForm.scoreProofFileId = node.id
-    message.success('成绩证明已上传')
+    void message.success('成绩证明已上传')
   } catch (error) {
     showUserError(error, '成绩证明上传失败')
   } finally {

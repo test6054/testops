@@ -12,7 +12,11 @@
         查看历史
       </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+        v-if="canManageReviewerWrites"
+        variant="primary"
+        size="sm"
+        :loading="generating"
+        @click="handleGenerate"
       >
         评估有效性
       </UiButton>
@@ -174,7 +178,11 @@ import { useAiAnalysisHistoryPicker } from '@/composables/useAiAnalysisHistoryPi
 import { useExamSummariesReviewerWriteCapability } from '@/composables/useExamIdsReviewerWriteCapability'
 import { EXPORT_PAGE_SIZE } from '@/constants/pagination'
 import { useChartOption } from '@/hooks/modules/useChartOption'
-import { getUserProcessFailureMessage, showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import {
+  getUserProcessFailureMessage,
+  showFormValidationMessage,
+  showUserError,
+} from '@/utils/error-handler'
 import { formatDateTime } from '@/utils/format'
 import {
   buildBarChartInsight,
@@ -557,14 +565,13 @@ async function reload(): Promise<void> {
   try {
     const list = await listExperienceEvals(experienceCaseId)
     const count = applyLoadedList(list)
-    if (count === 0) message.info('暂无历史记录')
+    if (count === 0) void message.info('暂无历史记录')
   } catch (e) {
     showUserError(e, '经验案例效果评估加载失败')
   } finally {
     loading.value = false
   }
 }
-
 
 /** MVR-286：默认拒绝假可写；所选考试均须 canManageReviewerWrites */
 const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
@@ -573,7 +580,7 @@ const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
 )
 
 async function handleGenerate(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
@@ -599,7 +606,7 @@ async function handleGenerate(): Promise<void> {
     const list = await listExperienceEvals(experienceCaseId)
     applyLoadedList(list)
     historySelectedId.value = generated.id
-    message.success('已完成有效性评估')
+    void message.success('已完成有效性评估')
   } catch (e) {
     showUserError(e, '经验案例效果评估生成失败')
   } finally {

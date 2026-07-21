@@ -6,7 +6,11 @@
         查看历史
       </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+        v-if="canManageReviewerWrites"
+        variant="primary"
+        size="sm"
+        :loading="generating"
+        @click="handleGenerate"
       >
         生成达成度分析
       </UiButton>
@@ -371,7 +375,7 @@ async function reload(options?: { silent?: boolean }): Promise<void> {
     })
     const count = applyLoadedList(list)
     if (!options?.silent && count === 0) {
-      message.info('暂无历史记录')
+      void message.info('暂无历史记录')
     }
   } catch (e) {
     showUserError(e, '课程达成度分析加载失败')
@@ -380,7 +384,6 @@ async function reload(options?: { silent?: boolean }): Promise<void> {
   }
 }
 
-
 /** MVR-286：默认拒绝假可写；所选考试均须 canManageReviewerWrites */
 const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
   computed(() => scopedExamIds.value),
@@ -388,7 +391,7 @@ const { canManageReviewerWrites } = useExamSummariesReviewerWriteCapability(
 )
 
 async function handleGenerate(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
@@ -421,7 +424,7 @@ async function handleGenerate(): Promise<void> {
       ...termQuery,
     })
     adoptGenerated(generated)
-    message.success('已生成达成度分析')
+    void message.success('已生成达成度分析')
   } catch (e) {
     showUserError(e, '课程达成度分析生成失败')
   } finally {

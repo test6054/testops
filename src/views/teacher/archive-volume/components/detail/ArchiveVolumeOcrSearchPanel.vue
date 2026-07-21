@@ -41,7 +41,11 @@
 
     <div v-if="searched" class="archive-volume-ocr-search__results">
       <p class="archive-volume-ocr-search__result-meta">{{ hitPageTotal }} 条匹配 · 当前归档任务</p>
-      <UiEmpty size="sm" v-if="!loading && hits.length === 0 && !hitsLoadFailed" description="本卷无匹配结果">
+      <UiEmpty
+        size="sm"
+        v-if="!loading && hits.length === 0 && !hitsLoadFailed"
+        description="本卷无匹配结果"
+      >
         <UiButton variant="outline" size="sm" @click="goGlobalSearch">切换全局检索</UiButton>
       </UiEmpty>
       <UiDataTable
@@ -110,7 +114,7 @@
         <span class="archive-volume-ocr-search__overview-title">材料文字识别状态</span>
         <UiButton
           size="sm"
-          v-if="canMaintainMaterial === true && pendingOcrCount > 0"
+          v-if="canMaintainMaterial && pendingOcrCount > 0"
           variant="ghost"
           :loading="batchOcrSubmitting"
           @click="handleBatchOcr"
@@ -343,8 +347,7 @@ function canViewMaterialOcrMaterial(record: ArchiveVolumeMaterialResponse): bool
 
 function canTriggerMaterialOcr(record: ArchiveVolumeMaterialResponse): boolean {
   return (
-    props.canMaintainMaterial === true
-    && Boolean(record.fileId)
+    props.canMaintainMaterial === true && Boolean(record.fileId)
     && (record.ocrStatus === ArchiveMaterialOcrStatusCode.PENDING
       || record.ocrStatus === ArchiveMaterialOcrStatusCode.FAILED
       || !record.ocrStatus)
@@ -414,7 +417,7 @@ function goGlobalSearch(): void {
 async function handleBatchOcr(): Promise<void> {
   // MVR-312：与 canMaintainMaterial / 按钮 v-if 同源二次拦截
   if (props.canMaintainMaterial !== true) {
-    message.warning('当前账号无维护材料识别权限')
+    void message.warning('当前账号无维护材料识别权限')
     return
   }
   if (pendingOcrCount.value <= 0) {
@@ -433,9 +436,9 @@ async function handleBatchOcr(): Promise<void> {
   try {
     const result = await batchTriggerArchiveVolumeMaterialOcr(props.volumeId)
     if (result.triggeredCount > 0) {
-      message.success(`已入队 ${result.triggeredCount} 份材料`)
+      void message.success(`已入队 ${result.triggeredCount} 份材料`)
     } else {
-      message.info('未新增入队材料，材料状态已变化并已刷新')
+      void message.info('未新增入队材料，材料状态已变化并已刷新')
     }
     emit('refreshed', { silent: true })
     await reloadOverviewData()
@@ -449,9 +452,8 @@ async function handleBatchOcr(): Promise<void> {
 function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
   // MVR-421：与 canTriggerMaterialOcr 同源二次闸（维护权∧fileId∧PENDING/FAILED/空态）
   if (!canTriggerMaterialOcr(material)) {
-    message.warning(
-      props.canMaintainMaterial !== true
-        ? '当前账号无维护材料识别权限'
+    void message.warning(
+      props.canMaintainMaterial !== true === true ? '当前账号无维护材料识别权限'
         : '当前材料不可触发文字识别（无文件或识别状态不允许）',
     )
     return
@@ -468,7 +470,7 @@ function confirmTriggerOcr(material: ArchiveVolumeMaterialResponse): void {
       triggeringMaterialIds.add(material.materialId)
       try {
         await triggerArchiveVolumeMaterialOcr(material.materialId)
-        message.success('已入队，等待识别')
+        void message.success('已入队，等待识别')
         emit('refreshed', { silent: true })
         await reloadOverviewData()
       } catch (error) {
@@ -545,13 +547,23 @@ onMounted(() => {
     min-width: 0;
     padding: var(--dp-space-2) var(--dp-space-3);
     border-radius: var(--dp-radius-panel, 8px);
-    background: color-mix(in srgb, var(--dp-primary) 4%, var(--dp-surface-subtle, var(--dp-bg-layout)));
+    background: color-mix(
+      in srgb,
+      var(--dp-primary) 4%,
+      var(--dp-surface-subtle, var(--dp-bg-layout))
+    );
     border: 1px solid color-mix(in srgb, var(--dp-primary) 10%, transparent);
-    transition: border-color 0.2s ease, background-color 0.2s ease;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
 
     &:focus-within {
       border-color: color-mix(in srgb, var(--dp-primary) 32%, transparent);
-      background: color-mix(in srgb, var(--dp-primary) 6%, var(--dp-surface-subtle, var(--dp-bg-layout)));
+      background: color-mix(
+        in srgb,
+        var(--dp-primary) 6%,
+        var(--dp-surface-subtle, var(--dp-bg-layout))
+      );
     }
   }
 
@@ -627,7 +639,7 @@ onMounted(() => {
     margin-left: auto;
     font-size: 10px;
     color: var(--dp-text-muted);
-    font-family: var(--dp-font-mono);
+    font-family: var(--dp-font-mono), ui-monospace, monospace;
     padding: 1px 5px;
     border-radius: 3px;
     background: color-mix(in srgb, var(--dp-text-muted) 8%, transparent);

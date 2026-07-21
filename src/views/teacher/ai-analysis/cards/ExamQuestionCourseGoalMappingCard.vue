@@ -59,9 +59,7 @@ import {
 } from '@/apis/mark/exam-question-course-goal-mapping'
 import AiAnalysisSection from '@/components/mark/analysis/AiAnalysisSection.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
-import {
-  ExamQuestionCourseGoalMappingStatusCode,
-} from '@/types/enums/exam-question-course-goal-mapping-status-enum'
+import { ExamQuestionCourseGoalMappingStatusCode } from '@/types/enums/exam-question-course-goal-mapping-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import ExamQuestionCourseGoalMappingTable from './ExamQuestionCourseGoalMappingTable.vue'
 
@@ -173,7 +171,7 @@ async function loadData() {
 }
 
 async function saveRow(row: MappingEditableRow) {
-  if (canManageOwnerCourseGoalWrites.value !== true) {
+  if (!canManageOwnerCourseGoalWrites.value) {
     return
   }
   if (row.saving || row.deleting) return
@@ -191,7 +189,7 @@ async function saveRow(row: MappingEditableRow) {
       weight: row.weight ?? 1,
     })
     row.mappingStatus = ExamQuestionCourseGoalMappingStatusCode.MAPPED
-    message.success('映射已保存')
+    void message.success('映射已保存')
     emit('changed')
     await loadData()
   } catch (error) {
@@ -202,7 +200,7 @@ async function saveRow(row: MappingEditableRow) {
 }
 
 async function deleteRow(row: MappingEditableRow) {
-  if (canManageOwnerCourseGoalWrites.value !== true) {
+  if (!canManageOwnerCourseGoalWrites.value) {
     return
   }
   if (row.saving || row.deleting) return
@@ -215,7 +213,7 @@ async function deleteRow(row: MappingEditableRow) {
   row.deleting = true
   try {
     await deleteExamQuestionCourseGoalMapping({ id: row.mappingId })
-    message.success('映射已清除')
+    void message.success('映射已清除')
     emit('changed')
     await loadData()
   } catch (error) {

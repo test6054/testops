@@ -57,7 +57,9 @@ function gapCourseScopeLabel(row: PortfolioGapTaskSummaryVO): string {
   return parts.join(' · ')
 }
 
-function lifecycleTagTone(record: { lifecycleStatus?: string }): 'green' | 'orange' | 'gray' | 'red' {
+function lifecycleTagTone(record: {
+  lifecycleStatus?: string
+}): 'green' | 'orange' | 'gray' | 'red' {
   if (record.lifecycleStatus === 'ACTIVE') return 'green'
   if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
   if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
@@ -114,7 +116,7 @@ async function urgeTask(row: PortfolioGapTaskSummaryVO) {
   urgingId.value = row.id
   try {
     await portfolioGapApi.urgeTask({ gapTaskId: row.id })
-    message.success('已发送催办通知')
+    void message.success('已发送催办通知')
   } catch (error) {
     showUserError(error, '催办失败')
   } finally {
@@ -147,7 +149,7 @@ async function extendTask() {
       dueTime,
       reason,
     })
-    message.success('延期已生效，教师已收到新的补采期限')
+    void message.success('延期已生效，教师已收到新的补采期限')
     extendDialogOpen.value = false
     await loadPage()
   } catch (error) {
@@ -212,7 +214,7 @@ void loadPage()
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
-            
+
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
             <span v-else>—</span>
           </template>
@@ -264,12 +266,7 @@ void loadPage()
           />
         </UiFormItem>
         <UiFormItem label="延期理由" required>
-          <UiInput
-            v-model="extensionForm.reason"
-            size="sm"
-            :maxlength="500"
-            :disabled="writing"
-          />
+          <UiInput v-model="extensionForm.reason" size="sm" :maxlength="500" :disabled="writing" />
         </UiFormItem>
       </UiForm>
     </UiDialog>

@@ -14,15 +14,15 @@
       <UiRow :gutter="12">
         <UiCol :span="12">
           <UiFormItem label="来源系统" required>
-            <UiInput
-              size="sm" v-model="form.sourceSystem" placeholder="如 COURSE_PLATFORM"
-            />
+            <UiInput size="sm" v-model="form.sourceSystem" placeholder="如 COURSE_PLATFORM" />
           </UiFormItem>
         </UiCol>
         <UiCol :span="12">
           <UiFormItem label="幂等键" required>
             <UiInput
-              size="sm" v-model="form.idempotencyKey" placeholder="同键重放须 payload 一致"
+              size="sm"
+              v-model="form.idempotencyKey"
+              placeholder="同键重放须 payload 一致"
             />
           </UiFormItem>
         </UiCol>
@@ -54,9 +54,7 @@
             />
           </template>
           <template v-else-if="column.key === 'catalogCode'">
-            <UiInput
-              size="sm" v-model="rows[index].catalogCode" placeholder="目录编码"
-            />
+            <UiInput size="sm" v-model="rows[index].catalogCode" placeholder="目录编码" />
           </template>
           <template v-else-if="column.key === 'file'">
             <span v-if="rows[index].fileName" class="archive-volume-course-sync__file-name">
@@ -72,9 +70,7 @@
             </UiButton>
           </template>
           <template v-else-if="column.key === 'studentNo'">
-            <UiInput
-              size="sm" v-model="rows[index].studentNo" placeholder="可选"
-            />
+            <UiInput size="sm" v-model="rows[index].studentNo" placeholder="可选" />
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
@@ -267,7 +263,7 @@ async function handleSubmit() {
       sourceSystem: form.value.sourceSystem.trim(),
       materials,
     })
-    message.success(`已同步 ${materials.length} 份材料`)
+    void message.success(`已同步 ${materials.length} 份材料`)
     emit('update:open', false)
     emit('success')
   } catch (error) {

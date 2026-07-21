@@ -218,7 +218,7 @@ async function confirmLinkArchive() {
       categoryId: linkCategoryId.value,
       submitForReview: linkSubmitForReview.value,
     })
-    message.success(
+    void message.success(
       linkSubmitForReview.value ? '已提交材料审核并回写档案关联' : '已写入档案草稿并回写关联',
     )
     linkDrawerOpen.value = false
@@ -366,7 +366,7 @@ async function saveSession() {
       selectedForMasterpiece: form.selectedForMasterpiece,
       sessionStatus: form.sessionStatus,
     })
-    message.success(editingId.value ? '过程记录已更新' : '过程记录已保存')
+    void message.success(editingId.value ? '过程记录已更新' : '过程记录已保存')
     drawerOpen.value = false
     await loadSessions()
   } catch (error) {
@@ -395,7 +395,7 @@ async function removeSession(row: PortfolioProcessSessionVO) {
       id: row.id,
       ...teacherQuery.value,
     })
-    message.success('已删除')
+    void message.success('已删除')
     await loadSessions()
   } catch (error) {
     showUserError(error, '删除过程记录失败')
@@ -416,7 +416,7 @@ async function toggleMasterpiece(row: PortfolioProcessSessionVO) {
       ...teacherQuery.value,
       selectedForMasterpiece: next,
     })
-    message.success(next ? '已精选进代表作' : '已取消精选')
+    void message.success(next ? '已精选进代表作' : '已取消精选')
     await loadSessions()
   } catch (error) {
     showUserError(error, '更新代表作精选失败')

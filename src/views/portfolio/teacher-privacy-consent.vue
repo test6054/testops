@@ -87,7 +87,7 @@ async function load() {
 
 async function grant() {
   if (privacyWriteBlocked.value) {
-    message.warning('不可代他人签署个人信息处理同意')
+    void message.warning('不可代他人签署个人信息处理同意')
     return
   }
 
@@ -96,7 +96,7 @@ async function grant() {
     state.value = await portfolioPrivacyConsentApi.grant(
       teacherId.value ? { teacherId: teacherId.value } : undefined,
     )
-    message.success('已同意，可开始使用档案袋')
+    void message.success('已同意，可开始使用档案袋')
     await router.replace('/portfolio/teacher/home')
   } catch (error) {
     showUserError(error, '同意失败')
@@ -107,7 +107,7 @@ async function grant() {
 
 async function decline() {
   if (privacyWriteBlocked.value) {
-    message.warning('不可代他人暂不授权')
+    void message.warning('不可代他人暂不授权')
     return
   }
 
@@ -116,7 +116,7 @@ async function decline() {
     state.value = await portfolioPrivacyConsentApi.decline(
       teacherId.value ? { teacherId: teacherId.value } : undefined,
     )
-    message.info('已暂不授权')
+    void message.info('已暂不授权')
   } catch (error) {
     showUserError(error, '暂不授权失败')
   } finally {
@@ -126,7 +126,7 @@ async function decline() {
 
 async function withdraw() {
   if (privacyWriteBlocked.value) {
-    message.warning('不可代他人撤回个人信息处理同意')
+    void message.warning('不可代他人撤回个人信息处理同意')
     return
   }
 
@@ -143,7 +143,7 @@ async function withdraw() {
     state.value = await portfolioPrivacyConsentApi.withdraw(
       targetTeacherId ? { teacherId: targetTeacherId } : undefined,
     )
-    message.success('已撤回同意，新增采集已停止')
+    void message.success('已撤回同意，新增采集已停止')
   } catch (error) {
     showUserError(error, '撤回同意失败')
   } finally {
@@ -177,11 +177,7 @@ watch(
         subtitle="管理教师数据采集与使用授权"
       />
     </template>
-    <div
-      v-if="isProxyPrivacyTarget"
-      class="privacy-consent__proxy-gate"
-      role="status"
-    >
+    <div v-if="isProxyPrivacyTarget" class="privacy-consent__proxy-gate" role="status">
       <span class="privacy-consent__proxy-text">
         当前为目标教师范围：隐私授权仅本人可签，管理员不可代签同意或撤回。
       </span>
@@ -225,7 +221,9 @@ watch(
           >
             撤回同意
           </UiButton>
-          <UiButton size="sm" variant="outline" :disabled="submitting" @click="goHome">返回首页</UiButton>
+          <UiButton size="sm" variant="outline" :disabled="submitting" @click="goHome">
+            返回首页
+          </UiButton>
         </template>
         <template v-else>
           <UiButton
@@ -237,11 +235,22 @@ watch(
           >
             同意并继续
           </UiButton>
-          <UiButton size="sm" :loading="submitting" :disabled="actionDisabled || privacyWriteBlocked" @click="decline">
+          <UiButton
+            size="sm"
+            :loading="submitting"
+            :disabled="actionDisabled || privacyWriteBlocked"
+            @click="decline"
+          >
             暂不授权
           </UiButton>
         </template>
-        <UiButton size="sm" v-if="loadError" variant="outline" :loading="loading" @click="() => load()">
+        <UiButton
+          size="sm"
+          v-if="loadError"
+          variant="outline"
+          :loading="loading"
+          @click="() => load()"
+        >
           重试
         </UiButton>
       </div>

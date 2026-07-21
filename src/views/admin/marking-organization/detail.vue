@@ -51,7 +51,7 @@
           </UiButton>
           <UiButton variant="outline" size="sm" @click="goTrialSessions"> 试评定标 </UiButton>
           <UiDropdownAction
-            v-if="organization && canDeleteOrganization === true"
+            v-if="organization && canDeleteOrganization"
             trigger-style="button"
             button-text="更多"
             :items="orgDetailMoreActionItems"
@@ -601,11 +601,11 @@
           <UiSwitch
             size="sm"
             v-model="editForm.anonymousMode"
-            :disabled="canUpdateOrganizationAnonymousMode !== true"
+            :disabled="!canUpdateOrganizationAnonymousMode"
           />
           <span class="org-detail__switch-hint">
             {{
-              canUpdateOrganizationAnonymousMode === true
+              canUpdateOrganizationAnonymousMode
                 ? '启用后阅卷教师不可见考生身份'
                 : '已进入试评/正评或任务后不可修改匿名模式；备注仍可保存'
             }}
@@ -1084,9 +1084,7 @@ const canUpdateOrganizationAnonymousMode = computed(
   () => organization.value?.canUpdateOrganizationAnonymousMode === true,
 )
 /** MVR-405：仅认 BE canDeleteOrganization===true；有试评/正评/任务时禁删 */
-const canDeleteOrganization = computed(
-  () => organization.value?.canDeleteOrganization === true,
-)
+const canDeleteOrganization = computed(() => organization.value?.canDeleteOrganization === true)
 
 function guardExamOwnerAction(): boolean {
   if (canManageExamOwner.value) return true
@@ -1560,7 +1558,7 @@ async function submitGroup(): Promise<void> {
       reviewerUserIds: groupForm.reviewerUserIds,
     }
     await saveQuestionGroup(request)
-    message.success(groupForm.groupId ? '题组已更新' : '题组已创建')
+    void message.success(groupForm.groupId ? '题组已更新' : '题组已创建')
     groupModalOpen.value = false
     await loadOrganization()
     await refreshSnapshot()
@@ -1585,7 +1583,7 @@ function canDeleteGroup(record: QuestionMarkingGroupResponse): boolean {
 function canCloseGroup(record: QuestionMarkingGroupResponse): boolean {
   // MVR-407：关闭题组须主考∧ACTIVE；状态仅 ACTIVE/CONFIGURED
   return (
-    canManageExamOwner.value === true
+    canManageExamOwner.value
     && (record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_ACTIVE
       || record.groupStatus === QuestionMarkingGroupStatusCode.GROUP_CONFIGURED)
   )
@@ -1632,7 +1630,7 @@ async function submitGroupDelete(record: QuestionMarkingGroupResponse): Promise<
   groupActionLoadingId.value = record.id
   try {
     await deleteQuestionGroup({ groupId: record.id })
-    message.success('题组已删除')
+    void message.success('题组已删除')
     await loadOrganization()
     await refreshSnapshot()
   } catch (error) {
@@ -1655,7 +1653,7 @@ async function submitGroupClose(record: QuestionMarkingGroupResponse): Promise<v
   groupActionLoadingId.value = record.id
   try {
     await closeQuestionGroup({ groupId: record.id })
-    message.success('题组已关闭')
+    void message.success('题组已关闭')
     await loadOrganization()
     await refreshSnapshot()
   } catch (error) {
@@ -1683,7 +1681,7 @@ async function submitUpdate(): Promise<void> {
   // MVR-404：匿名模式变更须 canUpdateOrganizationAnonymousMode；仅改备注始终可走
   const anonymityChanged
     = Boolean(editForm.anonymousMode) !== Boolean(organization.value.anonymousMode)
-  if (anonymityChanged && canUpdateOrganizationAnonymousMode.value !== true) {
+  if (anonymityChanged && !canUpdateOrganizationAnonymousMode.value) {
     showFormValidationMessage('已进入试评/正评或任务后不可修改匿名模式')
     return
   }
@@ -1696,13 +1694,14 @@ async function submitUpdate(): Promise<void> {
   try {
     const request: OrganizationUpdateRequest = {
       organizationId: requireMarkingOrganizationId(organization.value),
-      anonymousMode: canUpdateOrganizationAnonymousMode.value === true
-        ? editForm.anonymousMode
-        : Boolean(organization.value.anonymousMode),
+      anonymousMode:
+        canUpdateOrganizationAnonymousMode.value
+          ? editForm.anonymousMode
+          : Boolean(organization.value.anonymousMode),
       remark: editForm.remark?.trim() || undefined,
     }
     organization.value = await updateOrganization(request)
-    message.success('阅卷组织已更新')
+    void message.success('阅卷组织已更新')
     editDrawerOpen.value = false
     await refreshSnapshot()
   } catch (error) {
@@ -1718,7 +1717,7 @@ const orgDetailMoreActionItems = computed(() => [
     label: '删除组织',
     danger: true,
     // MVR-405：菜单仅在 canDeleteOrganization 时展示；disabled 防并发
-    disabled: deleting.value || canDeleteOrganization.value !== true,
+    disabled: deleting.value || !canDeleteOrganization.value,
   },
 ])
 
@@ -1732,7 +1731,7 @@ async function requestDeleteOrganization(): Promise<void> {
   // MVR-396：删除组织打开确认前叠主考闸，禁止仅靠更多菜单显隐
   if (!guardExamOwnerAction()) return
   // MVR-405：与 BE canDeleteOrganization / runtimeRefs 二次闸
-  if (canDeleteOrganization.value !== true) {
+  if (!canDeleteOrganization.value) {
     showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
     return
   }
@@ -1753,7 +1752,7 @@ async function submitDelete(): Promise<void> {
     return
   }
   if (!guardExamOwnerAction()) return
-  if (canDeleteOrganization.value !== true) {
+  if (!canDeleteOrganization.value) {
     showFormValidationMessage('组织下已有试评、正评或任务，不能删除')
     return
   }
@@ -1762,7 +1761,7 @@ async function submitDelete(): Promise<void> {
   try {
     await deleteOrganization({ organizationId: requireMarkingOrganizationId(organization.value) })
     await refreshSnapshot()
-    message.success('阅卷组织已删除')
+    void message.success('阅卷组织已删除')
     await router.push(resolveMarkingOrganizationIndexRoute(activeExamId.value || undefined))
   } catch (error) {
     showUserError(error, '阅卷组织删除失败')
@@ -1964,7 +1963,7 @@ async function submitAllocation(): Promise<void> {
       anonymousTokenPolicy: policyForm.anonymousTokenPolicy,
     }
     await saveAllocationPolicy(request)
-    message.success('分配策略已保存')
+    void message.success('分配策略已保存')
     policyDrawerOpen.value = false
     await loadMarkingPolicies()
     await refreshSnapshot()
@@ -1997,7 +1996,7 @@ async function submitRecycle(): Promise<void> {
       reassignMode: policyForm.reassignMode,
     }
     await saveRecyclePolicy(request)
-    message.success('回收策略已保存')
+    void message.success('回收策略已保存')
     policyDrawerOpen.value = false
     await loadMarkingPolicies()
     await refreshSnapshot()

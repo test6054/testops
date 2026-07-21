@@ -283,7 +283,7 @@ function handleExamHistoryAction(key: string, record: StudentExamItemVO): void {
   } else if (key === 'appeal') {
     // MVR-320：与 canSubmitReview / BE canSubmitReviewRequest 二次拦截
     if (!canSubmitReview(record)) {
-      message.warning('当前暂不能提交复核申请')
+      void message.warning('当前暂不能提交复核申请')
       return
     }
     goAppeal(record.examId)

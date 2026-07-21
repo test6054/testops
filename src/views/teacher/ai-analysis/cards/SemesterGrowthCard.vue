@@ -5,7 +5,11 @@
       <UiRadioGroup v-model="form.examScopeMode" size="sm" :options="examScopeModeOptions" />
       <UiButton variant="outline" size="sm" :loading="loading" @click="reload"> 查看历史 </UiButton>
       <UiButton
-        v-if="canManageReviewerWrites === true" variant="primary" size="sm" :loading="generating" @click="handleGenerate"
+        v-if="canManageReviewerWrites"
+        variant="primary"
+        size="sm"
+        :loading="generating"
+        @click="handleGenerate"
       >
         生成成长曲线
       </UiButton>
@@ -563,14 +567,13 @@ async function reload(): Promise<void> {
       scopeId: effectiveClassId.value,
     })
     const count = applyLoadedList(list)
-    if (count === 0) message.info('暂无历史记录')
+    if (count === 0) void message.info('暂无历史记录')
   } catch (e) {
     showUserError(e, '学期成长曲线加载失败')
   } finally {
     loading.value = false
   }
 }
-
 
 /** AUTO 模式按开课学期候选考试摘要计算写能力；MANUAL 用已选考试 */
 const autoScopedExamSummaries = ref<ExamSummaryResponse[]>([])
@@ -640,7 +643,7 @@ watch(
 )
 
 async function handleGenerate(): Promise<void> {
-  if (canManageReviewerWrites.value !== true) {
+  if (!canManageReviewerWrites.value) {
     showUserError(null, '仅本场阅卷组织成员、主考或管理员可生成分析')
     return
   }
@@ -682,7 +685,7 @@ async function handleGenerate(): Promise<void> {
         autoSelectExams: true,
       })
       adoptGenerated(generated)
-      message.success('已按开课学期自动选考并生成成长曲线')
+      void message.success('已按开课学期自动选考并生成成长曲线')
     } catch (e) {
       showUserError(e, '学期成长曲线生成失败')
     } finally {
@@ -717,7 +720,7 @@ async function handleGenerate(): Promise<void> {
       autoSelectExams: false,
     })
     adoptGenerated(generated)
-    message.success('已生成成长曲线')
+    void message.success('已生成成长曲线')
   } catch (e) {
     showUserError(e, '学期成长曲线生成失败')
   } finally {

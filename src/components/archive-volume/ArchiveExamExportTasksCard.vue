@@ -15,23 +15,30 @@ import {
   ExportTaskStatusCode,
   ExportTaskStatusDescription,
 } from '@/types/enums/export-task-status-enum'
-import { ALL_EXPORT_TYPE_CODES, ExportTypeCode, ExportTypeDescription } from '@/types/enums/export-type-enum'
+import {
+  ALL_EXPORT_TYPE_CODES,
+  ExportTypeCode,
+  ExportTypeDescription,
+} from '@/types/enums/export-type-enum'
 import { showUserError } from '@/utils/error-handler'
 import { formatFileSize } from '@/utils/format'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 defineOptions({ name: 'ArchiveExamExportTasksCard' })
 
-const props = withDefaults(defineProps<{
-  examId: string
-  /** 双门禁已满足时才允许创建导出任务 */
-  canCreate?: boolean
-  /** MVR-271：影像归档包仅主考；与 BE requireExamOwnerPermission 对齐 */
-  canManageOwnerImageArchiveExport?: boolean
-}>(), {
-  canCreate: false,
-  canManageOwnerImageArchiveExport: false,
-})
+const props = withDefaults(
+  defineProps<{
+    examId: string
+    /** 双门禁已满足时才允许创建导出任务 */
+    canCreate?: boolean
+    /** MVR-271：影像归档包仅主考；与 BE requireExamOwnerPermission 对齐 */
+    canManageOwnerImageArchiveExport?: boolean
+  }>(),
+  {
+    canCreate: false,
+    canManageOwnerImageArchiveExport: false,
+  },
+)
 
 const router = useRouter()
 
@@ -81,7 +88,7 @@ const selectableExportTypes = computed(() =>
     disabled:
       busyExportTypes.value.has(exportType)
       || (exportType === ExportTypeCode.IMAGE_ARCHIVE
-        && props.canManageOwnerImageArchiveExport !== true),
+        && !props.canManageOwnerImageArchiveExport),
 
     checked: selectedTypes.value.includes(exportType),
   })),
@@ -167,8 +174,8 @@ async function loadTasks(): Promise<void> {
 
 async function createSelectedTasks(): Promise<void> {
   // MVR-424：与 v-if canCreate / 父页 gateOpen 同源二次闸；影像包再认主考 can*
-  if (props.canCreate !== true) {
-    message.warning('双门禁未满足，暂不可创建导出任务')
+  if (!props.canCreate) {
+    void message.warning('双门禁未满足，暂不可创建导出任务')
     return
   }
   if (!props.examId || !hasSelectedTypes.value || creating.value) {
@@ -181,10 +188,10 @@ async function createSelectedTasks(): Promise<void> {
     const blockedImageArchive = selectedTypes.value.some(
       (exportType) =>
         exportType === ExportTypeCode.IMAGE_ARCHIVE
-        && props.canManageOwnerImageArchiveExport !== true,
+        && !props.canManageOwnerImageArchiveExport,
     )
     if (blockedImageArchive) {
-      message.warning('仅考试主考可创建影像归档包导出任务')
+      void message.warning('仅考试主考可创建影像归档包导出任务')
       return
     }
 
@@ -196,7 +203,7 @@ async function createSelectedTasks(): Promise<void> {
       })
     }
 
-    message.success(`已创建 ${selectedTypes.value.length} 个导出任务`)
+    void message.success(`已创建 ${selectedTypes.value.length} 个导出任务`)
     selectedTypes.value = []
     await loadTasks()
   } catch (error) {
@@ -271,7 +278,11 @@ defineExpose({ refresh: loadTasks })
       @action="loadTasks"
     />
 
-    <UiEmpty size="sm" v-else-if="!loading && displayTasks.length === 0" description="暂无导出任务" />
+    <UiEmpty
+      size="sm"
+      v-else-if="!loading && displayTasks.length === 0"
+      description="暂无导出任务"
+    />
 
     <UiDataTable
       v-else

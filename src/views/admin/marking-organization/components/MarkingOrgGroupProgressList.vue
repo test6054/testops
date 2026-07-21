@@ -37,7 +37,7 @@
           <span class="org-group-progress__percent">{{ progressPercent(group.id) }}%</span>
         </div>
         <div
-          v-if="group.canEditQuestionGroup === true"
+          v-if="group.canEditQuestionGroup"
           class="org-group-progress__actions"
         >
           <!-- MVR-407：仅认 BE canEditQuestionGroup===true；禁止仅认非 CLOSED 假可编辑 -->

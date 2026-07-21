@@ -119,16 +119,9 @@
           </WorkbenchSurfaceCard>
         </div>
 
-        <UiAlertStrip
-          v-else
-          tone="info"
-          size="sm"
-          dense
-          inline
-          :show-icon="false"
-        >
+        <UiAlertStrip v-else tone="info" size="sm" dense inline :show-icon="false">
           <template #default>
-            <span style="display:inline-flex;align-items:center;gap:8px">
+            <span style="display: inline-flex; align-items: center; gap: 8px">
               <UiTag tone="blue" size="sm">未筛选</UiTag>
               <span>请选择筛选条件后查询统计结果</span>
             </span>
@@ -665,8 +658,8 @@ function goList() {
 
 async function exportOverviewExcel() {
   // MVR-340：与 canViewStatisticsKpi / BE requireStatisticsViewer 二次拦截
-  if (canViewStatisticsKpi.value !== true) {
-    message.warning('当前账号无导出迎评统计权限')
+  if (!canViewStatisticsKpi.value) {
+    void message.warning('当前账号无导出迎评统计权限')
     return
   }
   if (!ensureTriplePeriodPair(filterForm)) {
@@ -689,8 +682,8 @@ async function exportOverviewExcel() {
 
 async function exportDestructionExcel() {
   // MVR-340：与 canViewDestructionLedger / BE requireDestructionLedgerViewer 二次拦截
-  if (canViewDestructionLedger.value !== true) {
-    message.warning('当前账号无导出销毁清册权限')
+  if (!canViewDestructionLedger.value) {
+    void message.warning('当前账号无导出销毁清册权限')
     return
   }
   if (exportDestructionLoading.value) return

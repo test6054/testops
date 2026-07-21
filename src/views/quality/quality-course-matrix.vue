@@ -153,7 +153,7 @@ const isPlanStructureEditable = computed(
 
 function guardCourseMatrixEditable(action: string): boolean {
   if (isPlanStructureEditable.value) return true
-  message.error(`培养方案已确认，请先撤回后再${action}`)
+  void message.error(`培养方案已确认，请先撤回后再${action}`)
   return false
 }
 
@@ -648,8 +648,7 @@ const signals = computed<SignalMetric[]>(() => {
   const courseGoalHealthyCount = summary.courseGoalHealthyCount ?? goalsHealthy.value
   const goalsCoverageOk = courseGoalTotal === 0 || courseGoalCoveredCount === courseGoalTotal
   const itemsHealthOk
-    = assessmentItemWeightedCount === 0
-      || assessmentItemHealthyCount === assessmentItemWeightedCount
+    = assessmentItemWeightedCount === 0 || assessmentItemHealthyCount === assessmentItemWeightedCount
   const goalsWeightHealthOk
     = courseGoalWeightedCount === 0 || courseGoalHealthyCount === courseGoalWeightedCount
   return [
@@ -985,7 +984,7 @@ function handleTrainingPlanChange(value: string | null) {
 
 function handleTeacherChange(value: string | string[] | null) {
   if (Array.isArray(value)) {
-    message.error('授课教师只能选择一位，请重新选择')
+    void message.error('授课教师只能选择一位，请重新选择')
     return
   }
   courseEditor.teacherUserId = value ?? ''
@@ -1009,7 +1008,7 @@ async function submitCourse() {
     || !courseEditor.schoolYear.trim()
     || !selectedSemester
   ) {
-    message.error('请填写专业、培养方案、目录课程、编码、名称、学年、学期')
+    void message.error('请填写专业、培养方案、目录课程、编码、名称、学年、学期')
     return
   }
   const request: QualityCourseSaveRequest = {
@@ -1035,12 +1034,12 @@ async function submitCourse() {
   try {
     if (courseEditorMode.value === 'create') {
       const newId = await qualityCourseApi.create(request)
-      message.success('课程已创建')
+      void message.success('课程已创建')
       qualityStore.setQualityCourse(newId)
       await qualityStore.loadQualityCourseOptions()
     } else {
       await qualityCourseApi.update(request)
-      message.success('课程已更新')
+      void message.success('课程已更新')
     }
     courseEditorVisible.value = false
     await loadCurrentCourse()
@@ -1059,7 +1058,7 @@ async function deleteCourse() {
     type: 'error',
     onOk: async () => {
       await qualityCourseApi.delete(courseId)
-      message.success('课程已删除')
+      void message.success('课程已删除')
       qualityStore.setQualityCourse('')
       currentCourse.value = null
       courseGoals.value = []
@@ -1138,14 +1137,14 @@ function openGoalEdit(record: CourseGoalVO) {
 async function submitGoal() {
   if (!guardCourseMatrixEditable('保存课程目标')) return
   if (!goalEditor.goalCode.trim() || !goalEditor.goalName.trim()) {
-    message.error('请填写编码与名称')
+    void message.error('请填写编码与名称')
     return
   }
   goalSubmitting.value = true
   try {
     if (goalEditorMode.value === 'create') await courseGoalApi.create(goalEditor)
     else await courseGoalApi.update(goalEditor)
-    message.success('课程目标已保存')
+    void message.success('课程目标已保存')
     goalEditorVisible.value = false
     await Promise.all([loadCourseGoals(), loadAllSupports(), loadAllItemMeta()])
   } finally {
@@ -1161,7 +1160,7 @@ async function deleteGoal(record: CourseGoalVO) {
     type: 'error',
     onOk: async () => {
       await courseGoalApi.delete(record.id)
-      message.success('课程目标已删除')
+      void message.success('课程目标已删除')
       await Promise.all([loadCourseGoals(), loadAllSupports(), loadAllItemMeta()])
     },
   })
@@ -1190,7 +1189,7 @@ function openSupportCreate(rowKey: string, colKey: string) {
   if (!colMeta) return
   const courseGoal = courseGoals.value.find((g) => g.id === rowKey)
   if (!courseGoal) {
-    message.error('课程目标数据异常，请返回后重新打开矩阵页')
+    void message.error('课程目标数据异常，请返回后重新打开矩阵页')
     return
   }
   Object.assign(supportEditor, {
@@ -1233,7 +1232,7 @@ function openSupportEdit(record: CourseGoalRequirementVO) {
 async function submitSupport() {
   if (!guardCourseMatrixEditable('保存课程支撑')) return
   if (!supportEditor.requirementId && !supportEditor.indicatorId) {
-    message.error('必须指定毕业要求或观测点')
+    void message.error('必须指定毕业要求或观测点')
     return
   }
   if (
@@ -1241,12 +1240,12 @@ async function submitSupport() {
     || supportEditor.supportWeight <= 0
     || supportEditor.supportWeight > 1
   ) {
-    message.error('权重必须在 (0, 1] 之间')
+    void message.error('权重必须在 (0, 1] 之间')
     return
   }
   if (supportEditorMode.value === 'create') await courseGoalRequirementApi.create(supportEditor)
   else await courseGoalRequirementApi.update(supportEditor)
-  message.success('支撑映射已保存')
+  void message.success('支撑映射已保存')
   supportEditorVisible.value = false
   await loadAllSupports()
 }
@@ -1259,7 +1258,7 @@ function handleDeleteSupportClick() {
       type: 'error',
       onOk: async () => {
         await courseGoalRequirementApi.delete(supportId)
-        message.success('已删除')
+        void message.success('已删除')
         supportEditorVisible.value = false
         await loadAllSupports()
       },
@@ -1356,11 +1355,11 @@ function openItemEdit(record: AssessmentItemVO) {
 async function submitItem() {
   if (!guardCourseMatrixEditable('保存考核环节')) return
   if (!itemEditor.itemCode.trim() || !itemEditor.itemName.trim() || !itemEditor.itemType) {
-    message.error('请填写编码、名称、类型')
+    void message.error('请填写编码、名称、类型')
     return
   }
   if (itemEditor.fullScore == null || itemEditor.fullScore <= 0) {
-    message.error('满分必须 > 0')
+    void message.error('满分必须 > 0')
     return
   }
   itemSubmitting.value = true
@@ -1380,7 +1379,7 @@ async function submitItem() {
     }
     if (itemEditorMode.value === 'create') await assessmentItemApi.create(request)
     else await assessmentItemApi.update(request)
-    message.success('考核环节已保存')
+    void message.success('考核环节已保存')
     itemEditorVisible.value = false
     await Promise.all([loadAssessmentItems(), loadAllItemMeta()])
   } finally {
@@ -1396,7 +1395,7 @@ async function deleteItem(record: AssessmentItemVO) {
     type: 'error',
     onOk: async () => {
       await assessmentItemApi.delete(record.id)
-      message.success('考核环节已删除')
+      void message.success('考核环节已删除')
       await Promise.all([loadAssessmentItems(), loadAllItemMeta()])
     },
   })
@@ -1405,7 +1404,7 @@ async function deleteItem(record: AssessmentItemVO) {
 async function validateItemWeights(item: AssessmentItemVO) {
   try {
     await assessmentGoalWeightApi.validateWeights(item.id)
-    message.success(`考核 ${item.itemCode} 的课程目标行权重校验通过`)
+    void message.success(`考核 ${item.itemCode} 的课程目标行权重校验通过`)
   } catch (error) {
     showUserError(error, '考核行权重校验失败')
   }
@@ -1414,7 +1413,7 @@ async function validateItemWeights(item: AssessmentItemVO) {
 async function validateGoalWeights(goal: CourseGoalVO) {
   try {
     await assessmentGoalWeightApi.validateWeightsByCourseGoal(goal.id)
-    message.success(`课程目标 ${goal.goalCode} 的考核列权重校验通过`)
+    void message.success(`课程目标 ${goal.goalCode} 的考核列权重校验通过`)
   } catch (error) {
     showUserError(error, '课程目标列权重校验失败')
   }
@@ -1427,7 +1426,7 @@ async function validateMatrixWeights() {
   }
   try {
     await assessmentGoalWeightApi.validateMatrixWeights(qualityStore.currentQualityCourseId)
-    message.success('考核×目标权重矩阵已全部配平，可进入达成度计算')
+    void message.success('考核×目标权重矩阵已全部配平，可进入达成度计算')
   } catch (error) {
     showUserError(error, '矩阵权重校验失败')
   }
@@ -1435,7 +1434,7 @@ async function validateMatrixWeights() {
 
 async function validateRubricFullScore(item: AssessmentItemVO) {
   await rubricItemApi.validateFullScore(item.id)
-  message.success(`考核 ${item.itemCode} 的评分量规满分加总校验通过`)
+  void message.success(`考核 ${item.itemCode} 的评分量规满分加总校验通过`)
 }
 
 /* ========== 编辑器：考核 → 目标 权重 ========== */
@@ -1459,11 +1458,11 @@ function openWeightCreate(itemId: string, goalId: string) {
   const item = assessmentItems.value.find((i) => i.id === itemId)
   const courseGoal = courseGoals.value.find((g) => g.id === goalId)
   if (!item) {
-    message.error('考核环节数据异常，请返回后重新打开矩阵页')
+    void message.error('考核环节数据异常，请返回后重新打开矩阵页')
     return
   }
   if (!courseGoal) {
-    message.error('课程目标数据异常，请返回后重新打开矩阵页')
+    void message.error('课程目标数据异常，请返回后重新打开矩阵页')
     return
   }
   const sumNow = itemWeightSum(itemId)
@@ -1502,11 +1501,11 @@ function openWeightEdit(record: AssessmentGoalWeightVO) {
 async function submitWeight() {
   if (!guardCourseMatrixEditable('保存考核权重')) return
   if (weightEditor.weight == null || weightEditor.weight < 0 || weightEditor.weight > 1) {
-    message.error('权重必须在 [0, 1] 之间')
+    void message.error('权重必须在 [0, 1] 之间')
     return
   }
   if (weightEditor.fullScore == null || weightEditor.fullScore <= 0) {
-    message.error('满分必须 > 0')
+    void message.error('满分必须 > 0')
     return
   }
   try {
@@ -1514,7 +1513,7 @@ async function submitWeight() {
     else await assessmentGoalWeightApi.update(weightEditor)
     await assessmentGoalWeightApi.validateWeights(weightEditor.assessmentItemId)
     await assessmentGoalWeightApi.validateWeightsByCourseGoal(weightEditor.courseGoalId)
-    message.success('权重已保存且行列校验通过')
+    void message.success('权重已保存且行列校验通过')
     weightEditorVisible.value = false
     await loadAllItemMeta()
   } catch (error) {
@@ -1529,7 +1528,7 @@ async function deleteWeight(record: AssessmentGoalWeightVO) {
     type: 'error',
     onOk: async () => {
       await assessmentGoalWeightApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadAllItemMeta()
     },
   })
@@ -1647,7 +1646,7 @@ async function submitRubric() {
     || rubricEditor.fullScore == null
     || rubricEditor.fullScore <= 0
   ) {
-    message.error('请填写名称与满分')
+    void message.error('请填写名称与满分')
     return
   }
   const request: RubricItemSaveRequest = {
@@ -1662,7 +1661,7 @@ async function submitRubric() {
   }
   if (rubricEditorMode.value === 'create') await rubricItemApi.create(request)
   else await rubricItemApi.update(request)
-  message.success('评分量规已保存')
+  void message.success('评分量规已保存')
   rubricEditorVisible.value = false
   await Promise.all([loadRubricDrawerPage(), loadAllItemMeta()])
 }
@@ -1674,7 +1673,7 @@ async function deleteRubric(record: RubricItemVO) {
     type: 'error',
     onOk: async () => {
       await rubricItemApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await Promise.all([loadRubricDrawerPage(), loadAllItemMeta()])
     },
   })
@@ -1810,12 +1809,12 @@ async function openRuleEditor(goal: CourseGoalVO) {
 async function submitRule() {
   if (!guardCourseMatrixEditable('保存计算规则')) return
   if (ruleEditor.thresholdValue == null) {
-    message.error('请填写阈值')
+    void message.error('请填写阈值')
     return
   }
   if (ruleEditorMode.value === 'create') await courseGoalAssessmentRuleApi.create(ruleEditor)
   else await courseGoalAssessmentRuleApi.update(ruleEditor)
-  message.success('计算规则已保存')
+  void message.success('计算规则已保存')
   ruleEditorVisible.value = false
 }
 
@@ -1919,11 +1918,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
       </QualityPageContextBar>
     </template>
 
-    <QualityPlanGateStrip
-      v-if="planGateMode"
-      :mode="planGateMode"
-      class="qcm__empty"
-    />
+    <QualityPlanGateStrip v-if="planGateMode" :mode="planGateMode" class="qcm__empty" />
 
     <UiAlertStrip
       v-else-if="!qualityStore.currentQualityCourseId"
@@ -2180,14 +2175,18 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           <UiCol :span="6">
             <UiFormItem label="编码" required>
               <UiInput
-                size="sm" v-model="courseEditor.courseCode" placeholder="目录课程已自动填入"
+                size="sm"
+                v-model="courseEditor.courseCode"
+                placeholder="目录课程已自动填入"
               />
             </UiFormItem>
           </UiCol>
           <UiCol :span="6">
             <UiFormItem label="名称" required>
               <UiInput
-                size="sm" v-model="courseEditor.courseName" placeholder="目录课程已自动填入"
+                size="sm"
+                v-model="courseEditor.courseName"
+                placeholder="目录课程已自动填入"
               />
             </UiFormItem>
           </UiCol>
@@ -2204,16 +2203,12 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           </UiCol>
           <UiCol :span="6">
             <UiFormItem label="课程性质">
-              <UiInput
-                size="sm" v-model="courseEditor.courseNature" placeholder="如 必修 / 选修"
-              />
+              <UiInput size="sm" v-model="courseEditor.courseNature" placeholder="如 必修 / 选修" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="6">
             <UiFormItem label="学年">
-              <UiInput
-                size="sm" v-model="courseEditor.schoolYear"
-              />
+              <UiInput size="sm" v-model="courseEditor.schoolYear" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="6">
@@ -2304,16 +2299,12 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
         <UiRow :gutter="12">
           <UiCol :span="6">
             <UiFormItem label="编码" required>
-              <UiInput
-                size="sm" v-model="goalEditor.goalCode" placeholder="如 G1"
-              />
+              <UiInput size="sm" v-model="goalEditor.goalCode" placeholder="如 G1" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="18">
             <UiFormItem label="名称" required>
-              <UiInput
-                size="sm" v-model="goalEditor.goalName"
-              />
+              <UiInput size="sm" v-model="goalEditor.goalName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -2335,9 +2326,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           </UiCol>
           <UiCol :span="6">
             <UiFormItem label="聚合">
-              <UiSelect
-                size="sm" v-model="goalEditor.aggregation" :options="aggregationOptions"
-              />
+              <UiSelect size="sm" v-model="goalEditor.aggregation" :options="aggregationOptions" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="6">
@@ -2378,9 +2367,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           </UiCol>
         </UiRow>
         <UiFormItem label="排序">
-          <UiInputNumber
-            size="sm" v-model="goalEditor.sortOrder" :min="0" style="width: 200px"
-          />
+          <UiInputNumber size="sm" v-model="goalEditor.sortOrder" :min="0" style="width: 200px" />
         </UiFormItem>
       </UiForm>
     </UiDialog>
@@ -2394,14 +2381,10 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
     >
       <UiForm layout="vertical" :model="supportEditor">
         <UiFormItem label="课程目标">
-          <UiInput
-            size="sm" :value="supportEditorDisplay.courseGoalName" disabled
-          />
+          <UiInput size="sm" :value="supportEditorDisplay.courseGoalName" disabled />
         </UiFormItem>
         <UiFormItem label="支撑对象">
-          <UiInput
-            size="sm" :value="supportEditorDisplay.supportTargetLabel" disabled
-          />
+          <UiInput size="sm" :value="supportEditorDisplay.supportTargetLabel" disabled />
         </UiFormItem>
         <UiRow :gutter="12">
           <UiCol :span="12">
@@ -2457,22 +2440,21 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
         <UiRow :gutter="12">
           <UiCol :span="6">
             <UiFormItem label="编码" required>
-              <UiInput
-                size="sm" v-model="itemEditor.itemCode"
-              />
+              <UiInput size="sm" v-model="itemEditor.itemCode" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">
             <UiFormItem label="名称" required>
-              <UiInput
-                size="sm" v-model="itemEditor.itemName"
-              />
+              <UiInput size="sm" v-model="itemEditor.itemName" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="6">
             <UiFormItem label="排序">
               <UiInputNumber
-                size="sm" v-model="itemEditor.sortOrder" :min="0" style="width: 100%"
+                size="sm"
+                v-model="itemEditor.sortOrder"
+                :min="0"
+                style="width: 100%"
               />
             </UiFormItem>
           </UiCol>
@@ -2480,22 +2462,26 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
         <UiRow :gutter="12">
           <UiCol :span="8">
             <UiFormItem label="类型" required>
-              <UiSelect
-                size="sm" v-model="itemEditor.itemType" :options="itemTypeOptions"
-              />
+              <UiSelect size="sm" v-model="itemEditor.itemType" :options="itemTypeOptions" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="6">
             <UiFormItem label="满分" required>
               <UiInputNumber
-                size="sm" v-model="itemEditor.fullScore" :min="0" style="width: 100%"
+                size="sm"
+                v-model="itemEditor.fullScore"
+                :min="0"
+                style="width: 100%"
               />
             </UiFormItem>
           </UiCol>
           <UiCol :span="6">
             <UiFormItem label="及格分">
               <UiInputNumber
-                size="sm" v-model="itemEditor.passScore" :min="0" style="width: 100%"
+                size="sm"
+                v-model="itemEditor.passScore"
+                :min="0"
+                style="width: 100%"
               />
             </UiFormItem>
           </UiCol>
@@ -2531,14 +2517,10 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
     >
       <UiForm layout="vertical" :model="weightEditor">
         <UiFormItem label="考核环节">
-          <UiInput
-            size="sm" :value="weightEditorDisplay.assessmentItemName" disabled
-          />
+          <UiInput size="sm" :value="weightEditorDisplay.assessmentItemName" disabled />
         </UiFormItem>
         <UiFormItem label="课程目标">
-          <UiInput
-            size="sm" :value="weightEditorDisplay.courseGoalName" disabled
-          />
+          <UiInput size="sm" :value="weightEditorDisplay.courseGoalName" disabled />
         </UiFormItem>
         <UiRow :gutter="12">
           <UiCol :span="12">
@@ -2556,7 +2538,10 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
           <UiCol :span="12">
             <UiFormItem label="对应满分" required>
               <UiInputNumber
-                size="sm" v-model="weightEditor.fullScore" :min="0" style="width: 100%"
+                size="sm"
+                v-model="weightEditor.fullScore"
+                :min="0"
+                style="width: 100%"
               />
             </UiFormItem>
           </UiCol>
@@ -2637,9 +2622,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
         <UiRow :gutter="12">
           <UiCol :span="6">
             <UiFormItem label="编码">
-              <UiInput
-                size="sm" v-model="rubricEditor.rubricCode"
-              />
+              <UiInput size="sm" v-model="rubricEditor.rubricCode" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="18">
@@ -2659,23 +2642,30 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
                 v-model="rubricEditor.courseGoalId"
                 placeholder="可选 - 关联到某课程目标"
                 allow-clear
-              
                 size="sm"
-                :options="courseGoals.map((g) => ({ value: g.id, label: `${g.goalCode} · ${g.goalName}` }))"
+                :options="
+                  courseGoals.map((g) => ({ value: g.id, label: `${g.goalCode} · ${g.goalName}` }))
+                "
               />
             </UiFormItem>
           </UiCol>
           <UiCol :span="6">
             <UiFormItem label="满分" required>
               <UiInputNumber
-                size="sm" v-model="rubricEditor.fullScore" :min="0" style="width: 100%"
+                size="sm"
+                v-model="rubricEditor.fullScore"
+                :min="0"
+                style="width: 100%"
               />
             </UiFormItem>
           </UiCol>
           <UiCol :span="6">
             <UiFormItem label="排序">
               <UiInputNumber
-                size="sm" v-model="rubricEditor.sortOrder" :min="0" style="width: 100%"
+                size="sm"
+                v-model="rubricEditor.sortOrder"
+                :min="0"
+                style="width: 100%"
               />
             </UiFormItem>
           </UiCol>
@@ -2697,9 +2687,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
         <UiRow :gutter="12">
           <UiCol :span="12">
             <UiFormItem label="聚合策略" required>
-              <UiSelect
-                size="sm" v-model="ruleEditor.aggregation" :options="aggregationOptions"
-              />
+              <UiSelect size="sm" v-model="ruleEditor.aggregation" :options="aggregationOptions" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="12">

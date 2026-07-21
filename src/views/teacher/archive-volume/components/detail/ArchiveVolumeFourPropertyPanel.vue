@@ -8,7 +8,7 @@
         </UiTag>
         <div class="archive-quality-panel__section-actions">
           <UiButton
-            v-if="detail.canConfirmSecurityMark === true"
+            v-if="detail.canConfirmSecurityMark"
             size="sm"
             variant="outline"
             :loading="confirmingSecurityMark"
@@ -17,7 +17,7 @@
             确认密级定密
           </UiButton>
           <UiButton
-            v-if="detail.canUpdateSecurityLevel === true"
+            v-if="detail.canUpdateSecurityLevel"
             size="sm"
             variant="ghost"
             :loading="updatingSecurityLevel"
@@ -27,10 +27,7 @@
           </UiButton>
         </div>
       </div>
-      <ConfidentialStatusBar
-        :title="securityBarTitle"
-        :description="securityBarDescription"
-      />
+      <ConfidentialStatusBar :title="securityBarTitle" :description="securityBarDescription" />
     </section>
 
     <section class="archive-quality-panel__section">
@@ -54,7 +51,11 @@
             :loading="checkingFourProperty"
             @click="runFourPropertyCheck"
           >
-            {{ displayedFourProperty || detail.latestFourPropertyCheck ? '重新执行四性检测' : '执行四性检测' }}
+            {{
+              displayedFourProperty || detail.latestFourPropertyCheck
+                ? '重新执行四性检测'
+                : '执行四性检测'
+            }}
           </UiButton>
         </div>
       </div>
@@ -180,7 +181,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'refreshed': []
+  "refreshed": []
   'four-property-checked': [result: Awaited<ReturnType<typeof checkArchiveVolumeFourProperty>>]
 }>()
 
@@ -227,8 +228,8 @@ function securityLevelLabel(code: ArchiveSecurityLevelCode) {
 
 function openConfirmSecurityMarkModal() {
   // MVR-390：打开弹窗与 canConfirmSecurityMark 二次拦截
-  if (props.detail.canConfirmSecurityMark !== true) {
-    message.warning('当前账号无定密确认权限')
+  if (!props.detail.canConfirmSecurityMark) {
+    void message.warning('当前账号无定密确认权限')
     return
   }
   confirmSecurityMarkReason.value = ''
@@ -239,8 +240,8 @@ async function submitConfirmSecurityMark() {
   if (confirmingSecurityMark.value) {
     return
   }
-  if (props.detail.canConfirmSecurityMark !== true) {
-    message.warning('当前账号无定密确认权限')
+  if (!props.detail.canConfirmSecurityMark) {
+    void message.warning('当前账号无定密确认权限')
     return
   }
   if (!confirmSecurityMarkReason.value.trim()) {
@@ -254,7 +255,7 @@ async function submitConfirmSecurityMark() {
       securityLevel: props.detail.volume.securityLevel!,
       reason: confirmSecurityMarkReason.value.trim(),
     })
-    message.success('密级定密已确认')
+    void message.success('密级定密已确认')
     confirmSecurityMarkOpen.value = false
     emit('refreshed')
   } catch (error) {
@@ -266,8 +267,8 @@ async function submitConfirmSecurityMark() {
 
 function openUpdateSecurityLevelModal() {
   // MVR-390：打开弹窗与 canUpdateSecurityLevel 二次拦截
-  if (props.detail.canUpdateSecurityLevel !== true) {
-    message.warning('当前账号无密级变更权限')
+  if (!props.detail.canUpdateSecurityLevel) {
+    void message.warning('当前账号无密级变更权限')
     return
   }
   updateSecurityLevelForm.securityLevel = props.detail.volume.securityLevel
@@ -279,8 +280,8 @@ async function submitUpdateSecurityLevel() {
   if (updatingSecurityLevel.value) {
     return
   }
-  if (props.detail.canUpdateSecurityLevel !== true) {
-    message.warning('当前账号无密级变更权限')
+  if (!props.detail.canUpdateSecurityLevel) {
+    void message.warning('当前账号无密级变更权限')
     return
   }
   if (!updateSecurityLevelForm.securityLevel) {
@@ -303,7 +304,7 @@ async function submitUpdateSecurityLevel() {
       securityLevel: updateSecurityLevelForm.securityLevel,
       reason: updateSecurityLevelForm.reason.trim(),
     })
-    message.success('密级已变更，请重新确认定密并执行四性检测')
+    void message.success('密级已变更，请重新确认定密并执行四性检测')
     updateSecurityLevelOpen.value = false
     emit('refreshed')
   } catch (error) {
@@ -316,7 +317,7 @@ async function submitUpdateSecurityLevel() {
 async function runFourPropertyCheck() {
   // MVR-347：与 canRunFourProperty 同源二次拦截
   if (props.canRunFourProperty !== true) {
-    message.warning('当前账号或卷状态不可执行四性检测')
+    void message.warning('当前账号或卷状态不可执行四性检测')
     return
   }
   if (checkingFourProperty.value) return
@@ -324,7 +325,7 @@ async function runFourPropertyCheck() {
   try {
     const result = await checkArchiveVolumeFourProperty(props.volumeId)
     emit('four-property-checked', result)
-    message.success('四性检测完成')
+    void message.success('四性检测完成')
     emit('refreshed')
   } catch (error) {
     showUserError(error, '四性检测失败')

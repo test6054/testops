@@ -340,7 +340,7 @@ function openCreate() {
 
 function openEdit(record: ProfessionAlgorithmTemplateVO) {
   if (isSharedTemplate(record)) {
-    message.info('平台共享模板仅可查看和继承，不能在租户侧编辑')
+    void message.info('平台共享模板仅可查看和继承，不能在租户侧编辑')
     return
   }
   editorMode.value = 'edit'
@@ -360,13 +360,13 @@ async function openDetail(record: ProfessionAlgorithmTemplateVO) {
 
 async function copyAsTenantTemplate(record: ProfessionAlgorithmTemplateVO) {
   if (!isSharedTemplate(record)) {
-    message.info('租户自定义模板可直接编辑，无需复制')
+    void message.info('租户自定义模板可直接编辑，无需复制')
     return
   }
   copyingTemplateId.value = record.id
   try {
     const newId = await professionAlgorithmTemplateApi.copyToTenant(record.id)
-    message.success('已复制为当前租户模板')
+    void message.success('已复制为当前租户模板')
     await loadList()
     const copied = await professionAlgorithmTemplateApi.detail(newId)
     detailVisible.value = false
@@ -378,7 +378,7 @@ async function copyAsTenantTemplate(record: ProfessionAlgorithmTemplateVO) {
 
 async function submitEditor() {
   if (!editor.templateCode.trim() || !editor.templateName.trim()) {
-    message.error('请填写编码与名称')
+    void message.error('请填写编码与名称')
     return
   }
   submitting.value = true
@@ -408,7 +408,7 @@ async function submitEditor() {
     }
     if (editorMode.value === 'create') await professionAlgorithmTemplateApi.create(request)
     else await professionAlgorithmTemplateApi.update(request)
-    message.success('已保存')
+    void message.success('已保存')
     editorVisible.value = false
     await loadList()
   } finally {
@@ -454,7 +454,7 @@ function handleAlgorithmTemplateAction(key: string, record: ProfessionAlgorithmT
 
 async function handleDelete(record: ProfessionAlgorithmTemplateVO) {
   if (isSharedTemplate(record)) {
-    message.info('平台共享模板不能在租户侧删除')
+    void message.info('平台共享模板不能在租户侧删除')
     return
   }
   void confirmAsync({
@@ -462,7 +462,7 @@ async function handleDelete(record: ProfessionAlgorithmTemplateVO) {
     type: 'error',
     onOk: async () => {
       await professionAlgorithmTemplateApi.delete(record.id)
-      message.success('已删除')
+      void message.success('已删除')
       await loadList()
     },
   })
@@ -558,16 +558,12 @@ onActivated(() => {
         <UiRow :gutter="12">
           <UiCol :span="8">
             <UiFormItem label="编码" required>
-              <UiInput
-                size="sm" v-model="editor.templateCode" :disabled="editorMode === 'edit'"
-              />
+              <UiInput size="sm" v-model="editor.templateCode" :disabled="editorMode === 'edit'" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="16">
             <UiFormItem label="名称" required>
-              <UiInput
-                size="sm" v-model="editor.templateName"
-              />
+              <UiInput size="sm" v-model="editor.templateName" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -584,16 +580,12 @@ onActivated(() => {
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="学科分类">
-              <UiInput
-                size="sm" v-model="editor.disciplineCategory"
-              />
+              <UiInput size="sm" v-model="editor.disciplineCategory" />
             </UiFormItem>
           </UiCol>
           <UiCol :span="8">
             <UiFormItem label="标准年份">
-              <UiInput
-                size="sm" v-model="editor.standardYear"
-              />
+              <UiInput size="sm" v-model="editor.standardYear" />
             </UiFormItem>
           </UiCol>
         </UiRow>
@@ -605,9 +597,13 @@ onActivated(() => {
             :filter-option="false"
             placeholder="可选"
             @search="handleStandardDictSearch"
-          
             size="sm"
-            :options="standards.map((s) => ({ value: s.id, label: `${s.standardCode} · ${s.standardName}` }))"
+            :options="
+              standards.map((s) => ({
+                value: s.id,
+                label: `${s.standardCode} · ${s.standardName}`,
+              }))
+            "
           />
         </UiFormItem>
         <UiFormItem label="描述">
@@ -628,7 +624,9 @@ onActivated(() => {
           <UiCol :span="8">
             <UiFormItem label="观测点聚合">
               <UiSelect
-                size="sm" v-model="editor.indicatorAggregation" :options="aggregationOptions"
+                size="sm"
+                v-model="editor.indicatorAggregation"
+                :options="aggregationOptions"
               />
             </UiFormItem>
           </UiCol>

@@ -33,13 +33,10 @@ const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard()
 
 /** 管理员代办：可代写草稿，不可把申请错绑到操作人本人。 */
-const isProxyMode = computed(
-  () =>
-    Boolean(
-      canPickTeachers.value
-      && targetTeacherId.value
-      && targetTeacherId.value !== currentUserId.value,
-    ),
+const isProxyMode = computed(() =>
+  Boolean(
+    canPickTeachers.value && targetTeacherId.value && targetTeacherId.value !== currentUserId.value,
+  ),
 )
 
 function readRouteStringParam(value: unknown): string {
@@ -139,7 +136,7 @@ function startReReview() {
   form.certYear = String(new Date().getFullYear())
   form.enterprisePracticeDays = application.value?.enterprisePracticeDays ?? 0
   attachmentItems.value = []
-  message.info('已进入复核申请，保存草稿将创建新申请单')
+  void message.info('已进入复核申请，保存草稿将创建新申请单')
 }
 
 const canSubmit = computed(() => {
@@ -256,7 +253,7 @@ async function onAttachmentPick(event: Event) {
         ]
       }
     }
-    message.success('附件已上传')
+    void message.success('附件已上传')
   } catch (error) {
     showUserError(error, '附件上传失败')
   } finally {
@@ -308,7 +305,7 @@ async function saveDraft() {
   saving.value = true
   try {
     await persistDraft()
-    message.success('草稿已保存')
+    void message.success('草稿已保存')
     await loadApplication()
   } catch (error) {
     showUserError(error, '保存双师认定草稿失败')
@@ -341,7 +338,7 @@ async function submitApplication() {
   try {
     await persistDraft()
     await portfolioDualTeacherApi.submit({ id: form.id })
-    message.success('已提交审核')
+    void message.success('已提交审核')
     await loadApplication()
   } catch (error) {
     showUserError(error, '提交双师认定申请失败')
@@ -388,7 +385,15 @@ watch(
           <span>状态 {{ statusLabel(application.applicationStatus) }}</span>
           <UiTag
             v-if="application.lifecycleStatus"
-            :tone="application.lifecycleStatus === 'ACTIVE' ? 'green' : application.lifecycleStatus === 'TEMP_HOLD' ? 'orange' : application.lifecycleStatus === 'SEALED' ? 'red' : 'gray'"
+            :tone="
+              application.lifecycleStatus === 'ACTIVE'
+                ? 'green'
+                : application.lifecycleStatus === 'TEMP_HOLD'
+                  ? 'orange'
+                  : application.lifecycleStatus === 'SEALED'
+                    ? 'red'
+                    : 'gray'
+            "
           >
             {{ application.lifecycleStatusLabel || application.lifecycleStatus }}
           </UiTag>

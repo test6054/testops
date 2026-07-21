@@ -536,7 +536,7 @@ async function addLocalSupportMaterial() {
     })
     await refreshSupportMaterials(archiveRecordId)
     localMaterialModalOpen.value = false
-    message.success('支撑材料已添加')
+    void message.success('支撑材料已添加')
   } catch (error) {
     showUserError(error, '添加支撑材料失败')
   } finally {
@@ -625,7 +625,7 @@ async function linkSupportMaterial(material: PortfolioMaterialVO) {
     })
     await refreshSupportMaterials(archiveRecordId)
     materialLibraryModalOpen.value = false
-    message.success('材料库条目已关联')
+    void message.success('材料库条目已关联')
   } catch (error) {
     showUserError(error, '关联材料失败')
   } finally {
@@ -674,7 +674,7 @@ async function deleteSupportMaterial(material: PortfolioArchiveSupportMaterialVO
   try {
     await portfolioArchiveApi.deleteSupportMaterial(material.id, archiveRecordId)
     await refreshSupportMaterials(archiveRecordId)
-    message.success('支撑材料已删除')
+    void message.success('支撑材料已删除')
   } catch (error) {
     showUserError(error, '删除支撑材料失败')
   } finally {
@@ -703,7 +703,7 @@ async function createRevision() {
     if (requestToken.value !== currentScopeToken) {
       return
     }
-    message.success('修订草稿已创建')
+    void message.success('修订草稿已创建')
     await loadRecords()
     if (result.recordId) {
       void openRecordById(result.recordId)
@@ -798,7 +798,7 @@ async function refreshBagScore(silent = false) {
     }
     scoreResult.value = nextScoreResult
     if (!silent) {
-      message.success(`档案袋评分 ${scoreResult.value.totalScore}`)
+      void message.success(`档案袋评分 ${scoreResult.value.totalScore}`)
     }
   } catch (error) {
     if (requestToken.value !== currentToken) {
@@ -830,7 +830,7 @@ async function assembleBag() {
     }
     bagSummary.value = result
     bagPreview.value = result.preview ?? null
-    message.success(`档案袋完整度 ${result.completenessPercent}%`)
+    void message.success(`档案袋完整度 ${result.completenessPercent}%`)
     await refreshBagScore(true)
   } catch (error) {
     if (requestToken.value !== currentToken) {
@@ -1242,7 +1242,13 @@ watch(
               <PortfolioOwnerIdentityLayersCell
                 :layers="record.ownerIdentityLayers"
                 :note="record.ownerMultiIdentityNote"
-                :row-key="record.id || record.teacherId || record.teacherUserId || record.subjectTeacherUserId || record.userId"
+                :row-key="
+                  record.id
+                    || record.teacherId
+                    || record.teacherUserId
+                    || record.subjectTeacherUserId
+                    || record.userId
+                "
               />
             </template>
             <template v-else-if="column.key === 'documentVersionNo'">

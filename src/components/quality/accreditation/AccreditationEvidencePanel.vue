@@ -200,7 +200,7 @@ function resetEvidenceForm(category?: AccreditationEvidenceCategoryCode) {
 
 function openEvidenceCreate(category?: AccreditationEvidenceCategoryCode) {
   if (!canMutateEvidence.value) {
-    message.error(evidenceMutationHint.value || '当前不可登记认证证据')
+    void message.error(evidenceMutationHint.value || '当前不可登记认证证据')
     return
   }
   evidenceDrawerTitle.value = '登记认证证据'
@@ -210,7 +210,7 @@ function openEvidenceCreate(category?: AccreditationEvidenceCategoryCode) {
 
 function openEvidenceEdit(record: AccreditationEvidenceVO) {
   if (!canMutateEvidence.value) {
-    message.error(evidenceMutationHint.value || '当前不可编辑认证证据')
+    void message.error(evidenceMutationHint.value || '当前不可编辑认证证据')
     return
   }
   evidenceDrawerTitle.value = '编辑认证证据'
@@ -244,11 +244,11 @@ watch(evidenceFileName, (name) => {
 
 async function submitEvidence() {
   if (!evidenceForm.storageFileId) {
-    message.error('请先上传证据文件')
+    void message.error('请先上传证据文件')
     return
   }
   if (!evidenceForm.evidenceCode.trim() || !evidenceForm.evidenceTitle.trim()) {
-    message.error('请填写证据编码与标题')
+    void message.error('请填写证据编码与标题')
     return
   }
   if (evidenceForm.qualityCourseId) {
@@ -277,10 +277,10 @@ async function submitEvidence() {
   try {
     if (evidenceForm.id) {
       await accreditationApi.evidenceUpdate(request)
-      message.success('证据已更新')
+      void message.success('证据已更新')
     } else {
       await accreditationApi.evidenceCreate(request)
-      message.success('证据已登记')
+      void message.success('证据已登记')
     }
     evidenceOpen.value = false
     await loadEvidences()
@@ -298,7 +298,7 @@ async function downloadEvidence(record: AccreditationEvidenceVO) {
 
 async function deleteEvidence(id: string) {
   if (!canMutateEvidence.value) {
-    message.error(evidenceMutationHint.value || '当前不可删除认证证据')
+    void message.error(evidenceMutationHint.value || '当前不可删除认证证据')
     return
   }
   const ok = await confirmAsync({ title: '确认删除该证据？' })
@@ -319,7 +319,7 @@ function handleEvidenceRowAction(key: string, record: AccreditationEvidenceVO) {
 
 async function openMarkImport() {
   if (!canMutateEvidence.value) {
-    message.error(evidenceMutationHint.value || '当前不可同步阅卷考试扫描页证据')
+    void message.error(evidenceMutationHint.value || '当前不可同步阅卷考试扫描页证据')
     return
   }
   await loadLinkedExams()
@@ -338,7 +338,7 @@ async function submitMarkImport() {
       trainingPlanId: props.trainingPlanId,
       examIds: selectedExamIds.value,
     })
-    message.success(`已同步 ${count} 条扫描页证据`)
+    void message.success(`已同步 ${count} 条扫描页证据`)
     markImportOpen.value = false
     await loadEvidences()
   } catch (e) {
@@ -349,7 +349,7 @@ async function submitMarkImport() {
 async function exportExpertPackage() {
   if (!props.trainingPlanId) return
   if (!canExportPackage.value) {
-    message.error(exportPackageHint.value || '专家材料包导出条件未满足')
+    void message.error(exportPackageHint.value || '专家材料包导出条件未满足')
     return
   }
   exporting.value = true
@@ -361,7 +361,7 @@ async function exportExpertPackage() {
       archiveCategory: ExpertPackageTypeCode.PROGRAM_ACCREDITATION,
       notes: '认证驾驶舱导出专业认证专家材料包',
     })
-    message.success('专家材料包导出任务已提交')
+    void message.success('专家材料包导出任务已提交')
     emit('exported')
   } catch (e) {
     showUserError(e, '专家材料包导出失败')
@@ -486,9 +486,19 @@ defineExpose({ loadEvidences })
       <UiForm layout="vertical">
         <UiFormItem label="证据类别" required>
           <UiSelect
-            v-model="evidenceForm.evidenceCategory" :disabled="evidenceEditing"
+            v-model="evidenceForm.evidenceCategory"
+            :disabled="evidenceEditing"
             size="sm"
-            :options="[{ value: 'EXAM_PAPER', label: '试卷样本' }, { value: 'HOMEWORK', label: '作业样本' }, { value: 'LAB_REPORT', label: '实验报告' }, { value: 'GRADUATION_PROJECT', label: '毕业设计' }, { value: 'COURSE_MATERIAL', label: '课程材料' }, { value: 'FACILITY', label: '实验设施' }, { value: 'MANAGEMENT_DOC', label: '管理文件' }, { value: 'OTHER', label: '其他' }]"
+            :options="[
+              { value: 'EXAM_PAPER', label: '试卷样本' },
+              { value: 'HOMEWORK', label: '作业样本' },
+              { value: 'LAB_REPORT', label: '实验报告' },
+              { value: 'GRADUATION_PROJECT', label: '毕业设计' },
+              { value: 'COURSE_MATERIAL', label: '课程材料' },
+              { value: 'FACILITY', label: '实验设施' },
+              { value: 'MANAGEMENT_DOC', label: '管理文件' },
+              { value: 'OTHER', label: '其他' },
+            ]"
           />
         </UiFormItem>
         <UiFormItem label="关联课程">
@@ -501,19 +511,13 @@ defineExpose({ loadEvidences })
           />
         </UiFormItem>
         <UiFormItem label="证据编码" required>
-          <UiInput
-            size="sm" v-model="evidenceForm.evidenceCode" :disabled="evidenceEditing"
-          />
+          <UiInput size="sm" v-model="evidenceForm.evidenceCode" :disabled="evidenceEditing" />
         </UiFormItem>
         <UiFormItem label="证据标题" required>
-          <UiInput
-            size="sm" v-model="evidenceForm.evidenceTitle"
-          />
+          <UiInput size="sm" v-model="evidenceForm.evidenceTitle" />
         </UiFormItem>
         <UiFormItem label="学年">
-          <UiInput
-            size="sm" v-model="evidenceForm.schoolYear" placeholder="如 2024-2025"
-          />
+          <UiInput size="sm" v-model="evidenceForm.schoolYear" placeholder="如 2024-2025" />
         </UiFormItem>
         <UiFormItem label="说明">
           <UiTextarea size="sm" v-model="evidenceForm.evidenceDescription" :rows="3" />

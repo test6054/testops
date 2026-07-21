@@ -34,7 +34,7 @@ const props = withDefaults(
   },
 )
 const emit = defineEmits<{
-  'refreshed': []
+  "refreshed": []
   'open-sign-off': []
 }>()
 const authStore = useAuthStore()
@@ -42,7 +42,7 @@ const userStore = useUserStore()
 
 /** MVR-247：自查空态「打开归档设置」与 settings 路由 requireTenantAdmin 同源 */
 const canManageArchiveConfig = computed(
-  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin === true,
+  () => authStore.userRole === RoleEnum.SUPER_ADMIN || userStore.isTenantAdmin,
 )
 
 const emptySelfCheckBody = computed(() =>
@@ -81,8 +81,8 @@ function statusTone(code: ArchiveSelfCheckStatusCode): BadgeTone {
 
 async function handleToggle(templateItemId: string, checked: boolean) {
   // MVR-306/380：与 readonly（!canEditSelfCheck）同源；仅 readonly===false 可写
-  if (props.readonly !== false) {
-    message.warning('当前账号无自查项编辑权限')
+  if (props.readonly) {
+    void message.warning('当前账号无自查项编辑权限')
     return
   }
   const item = items.value.find((row) => row.templateItemId === templateItemId)
@@ -92,7 +92,7 @@ async function handleToggle(templateItemId: string, checked: boolean) {
 }
 
 function handleRowClick(item: { templateItemId: string, checked?: boolean }) {
-  if (props.readonly !== false || checking.value || loadFailed.value) return
+  if (props.readonly || checking.value || loadFailed.value) return
   void handleToggle(item.templateItemId, !item.checked)
 }
 
@@ -111,7 +111,10 @@ defineExpose({ loadSelfCheck })
         <UiTag :tone="statusTone(effectiveStatus)" size="sm">
           {{ statusLabel(effectiveStatus) }}
         </UiTag>
-        <span v-if="items.length > 0 && !loadFailed" class="archive-volume-self-check-list__progress">
+        <span
+          v-if="items.length > 0 && !loadFailed"
+          class="archive-volume-self-check-list__progress"
+        >
           必查 {{ checkedRequiredCount }}/{{ requiredCount }}
         </span>
         <div class="archive-quality-panel__section-actions">
@@ -125,7 +128,7 @@ defineExpose({ loadSelfCheck })
             导出
           </UiButton>
           <UiButton
-            v-if="readonly === false && allRequiredChecked"
+            v-if="!readonly && allRequiredChecked"
             size="sm"
             variant="primary"
             :disabled="loadFailed"
@@ -168,7 +171,7 @@ defineExpose({ loadSelfCheck })
           :key="item.templateItemId"
           class="self-check-row"
           :class="{
-            'self-check-row--interactive': readonly === false && !checking && !loadFailed,
+            'self-check-row--interactive': !readonly && !checking && !loadFailed,
             'self-check-row--done': item.checked,
           }"
           @click="handleRowClick(item)"
@@ -329,7 +332,7 @@ defineExpose({ loadSelfCheck })
 
 .self-check-row__time {
   font-size: 12px;
-  font-family: var(--dp-font-mono);
+  font-family: var(--dp-font-mono), ui-monospace, monospace;
   color: var(--dp-text-muted);
 }
 

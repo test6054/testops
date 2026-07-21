@@ -14,7 +14,12 @@
       </div>
     </template>
     <template v-if="canConfirmScoreCompletion" #toolbar>
-      <UiButton size="sm" variant="primary" :loading="scoreConfirmSubmitting" @click="handleConfirmScoreCompletion">
+      <UiButton
+        size="sm"
+        variant="primary"
+        :loading="scoreConfirmSubmitting"
+        @click="handleConfirmScoreCompletion"
+      >
         确认成绩完成
       </UiButton>
     </template>
@@ -262,7 +267,7 @@ async function handleConfirmScoreCompletion() {
   }
   // MVR-299：与工具栏 canConfirmScoreCompletion 同源二次拦截
   if (props.canConfirmScoreCompletion !== true) {
-    message.warning('当前账号无成绩完成确认权限')
+    void message.warning('当前账号无成绩完成确认权限')
     return
   }
   scoreConfirmSubmitting.value = true
@@ -270,7 +275,7 @@ async function handleConfirmScoreCompletion() {
     await confirmArchiveVolumeScoreCompletion({
       volumeId: props.volumeId,
     })
-    message.success('成绩完成状态已确认')
+    void message.success('成绩完成状态已确认')
     emit('refreshed')
   } catch (error) {
     showUserError(error, '确认成绩完成失败')

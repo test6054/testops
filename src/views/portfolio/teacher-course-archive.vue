@@ -83,8 +83,9 @@ const highlightCourseCode = ref('')
 const semesterFilter = ref('')
 const overviewRequestToken = ref(0)
 
-const readonlyMode = computed(() =>
-  (canPickTeachers.value && !!targetTeacherId.value) || archiveWriteForbidden.value)
+const readonlyMode = computed(
+  () => (canPickTeachers.value && !!targetTeacherId.value) || archiveWriteForbidden.value,
+)
 
 const displayedCourses = computed(() => {
   const code = highlightCourseCode.value.trim()
@@ -276,7 +277,7 @@ async function createCustomCategory() {
     await portfolioTeacherCustomCategoryApi.create({
       categoryName: customForm.categoryName.trim(),
     })
-    message.success('自建分类已创建')
+    void message.success('自建分类已创建')
     customModalOpen.value = false
     await loadOverview()
   } catch (error) {
@@ -315,7 +316,7 @@ async function confirmDeleteCustomCategory(row: PortfolioTeacherCustomCategoryVO
   try {
     await portfolioTeacherCustomCategoryApi.delete({ categoryId })
     if (overviewRequestToken.value !== scopeToken) return
-    message.success('自建分类已删除')
+    void message.success('自建分类已删除')
     await loadOverview()
   } catch (error) {
     if (overviewRequestToken.value !== scopeToken) return
@@ -358,7 +359,10 @@ watch(
       v-else-if="evaluationHeld || overviewLifecycle.evaluationHeld"
       tone="warning"
       title="评价参评 hold"
-      :description="evaluationHoldBlockMessage || '当前教师处于参评 hold（如暂挂），档案可填报但不可参与进行中评价。'"
+      :description="
+        evaluationHoldBlockMessage
+          || '当前教师处于参评 hold（如暂挂），档案可填报但不可参与进行中评价。'
+      "
       class="mb-3"
     />
 
@@ -385,12 +389,24 @@ watch(
             v-if="overviewLifecycle.lifecycleStatus || lifecycleStatusLabel"
             :tone="overviewLifecycle.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'"
           >
-            {{ overviewLifecycle.lifecycleStatusLabel || lifecycleStatusLabel || overviewLifecycle.lifecycleStatus }}
+            {{
+              overviewLifecycle.lifecycleStatusLabel
+                || lifecycleStatusLabel
+                || overviewLifecycle.lifecycleStatus
+            }}
           </UiTag>
-          <UiTag v-if="overviewLifecycle.evaluationHeld || evaluationHeld" tone="orange" class="ml-1">
+          <UiTag
+            v-if="overviewLifecycle.evaluationHeld || evaluationHeld"
+            tone="orange"
+            class="ml-1"
+          >
             参评 hold
           </UiTag>
-          <UiTag v-if="overviewLifecycle.archiveWriteForbidden || archiveWriteForbidden" tone="red" class="ml-1">
+          <UiTag
+            v-if="overviewLifecycle.archiveWriteForbidden || archiveWriteForbidden"
+            tone="red"
+            class="ml-1"
+          >
             档案写禁
           </UiTag>
           <UiTag
@@ -480,7 +496,11 @@ watch(
                   </UiTag>
                 </template>
                 <template v-else-if="column.key === 'actions'">
-                  <UiButton size="sm" variant="ghost" @click="openFrameworkIntake(record, framework)">
+                  <UiButton
+                    size="sm"
+                    variant="ghost"
+                    @click="openFrameworkIntake(record, framework)"
+                  >
                     {{ framework.completed ? '查看' : '填报' }}
                   </UiButton>
                 </template>
@@ -492,7 +512,9 @@ watch(
 
       <UiCard title="框架外自建分类" :loading="customLoading" style="margin-top: 16px">
         <template #extra>
-          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCustomModal">新建分类</UiButton>
+          <UiButton size="sm" variant="primary" v-if="!readonlyMode" @click="openCustomModal">
+            新建分类
+          </UiButton>
         </template>
         <UiDataTable
           :columns="customColumns"
