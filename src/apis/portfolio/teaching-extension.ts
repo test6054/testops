@@ -1,8 +1,8 @@
-import type { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
 import type { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
+import type { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
 import type { PortfolioTeachingExtensionKindCode } from '@/types/enums/portfolio-teaching-extension-kind-enum'
 import http from '@/config/axios'
 

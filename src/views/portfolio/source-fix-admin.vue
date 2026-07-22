@@ -1,9 +1,5 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import {
-  PortfolioSourceFixDataSourceCode,
-  PortfolioSourceFixDataSourceCodeDescription,
-} from '@/types/enums/portfolio-source-fix-data-source-code-enum'
 import type {
   PortfolioSourceFixBatchRequest,
   PortfolioSourceFixEventVO,
@@ -25,14 +21,18 @@ import {
   PortfolioSourceFixAlertStatusCode,
 } from '@/types/enums/portfolio-source-fix-alert-status-enum'
 import {
+  PortfolioSourceFixDataSourceCode,
+  PortfolioSourceFixDataSourceCodeDescription,
+} from '@/types/enums/portfolio-source-fix-data-source-code-enum'
+import {
   PORTFOLIO_SOURCE_FIX_EVENT_STATUS_LABEL,
   PortfolioSourceFixEventStatusCode,
 } from '@/types/enums/portfolio-source-fix-event-status-enum'
+import { PORTFOLIO_SOURCE_FIX_TRIGGER_SOURCE_LABEL } from '@/types/enums/portfolio-source-fix-trigger-source-enum'
 import {
   PORTFOLIO_SOURCE_FIX_TRIGGER_TYPE_LABEL,
   PortfolioSourceFixTriggerTypeCode,
 } from '@/types/enums/portfolio-source-fix-trigger-type-enum'
-import { PORTFOLIO_SOURCE_FIX_TRIGGER_SOURCE_LABEL } from '@/types/enums/portfolio-source-fix-trigger-source-enum'
 import { showUserError } from '@/utils/error-handler'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 

@@ -1,5 +1,5 @@
-import type { UserStatusEnum } from '@/types/enums/user-status'
 import type { PageResult, QueryDto } from '@/types'
+import type { UserStatusEnum } from '@/types/enums/user-status'
 import http from '@/config/axios'
 
 /** 平台教师目录下拉项。 */

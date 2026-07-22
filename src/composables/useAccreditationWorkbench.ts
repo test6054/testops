@@ -7,11 +7,11 @@ import {
   AccreditationCyclePhaseDescription,
   AccreditationCycleStatusCode,
 } from '@/apis/quality/accreditation'
+import { useAccreditationCockpit } from '@/composables/useAccreditationCockpit'
+import { useQualityStore } from '@/stores/modules/quality'
 import { AccreditationConclusionTypeCode } from '@/types/enums/accreditation-conclusion-type-enum'
 import { SelfAssessmentReviewDecisionCode } from '@/types/enums/self-assessment-review-decision-enum'
 import { SelfAssessmentReviewStatusCode } from '@/types/enums/self-assessment-review-status-enum'
-import { useAccreditationCockpit } from '@/composables/useAccreditationCockpit'
-import { useQualityStore } from '@/stores/modules/quality'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const PHASE_ORDER: AccreditationCyclePhaseCode[] = [

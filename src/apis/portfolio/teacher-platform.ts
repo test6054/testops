@@ -1,6 +1,3 @@
-import type { PortfolioDualTeacherCertLevelCode } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
-import type { PortfolioExternalTeacherContractStatusCode } from '@/types/enums/portfolio-external-teacher-contract-status-enum'
-import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import type {
   PortfolioArchiveBagAssembleVO,
   PortfolioArchiveBagExportResultVO,
@@ -34,6 +31,9 @@ import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PortfolioArchiveScoreRuleTypeCode } from '@/types/enums/portfolio-archive-score-rule-type-enum'
 import type { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
+import type { PortfolioDualTeacherCertLevelCode } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
+import type { PortfolioExternalTeacherContractStatusCode } from '@/types/enums/portfolio-external-teacher-contract-status-enum'
+import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import type { PortfolioImportQualityGradeCode } from '@/types/enums/portfolio-import-quality-grade-enum'
 import type { PortfolioMultiSourceEvaluatorTypeEnum } from '@/types/enums/portfolio-multi-source-evaluator-type-enum'
 import type { PortfolioPlanningSyncConflictStrategyCode } from '@/types/enums/portfolio-planning-sync-conflict-strategy-enum'

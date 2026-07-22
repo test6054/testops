@@ -8,26 +8,26 @@ import {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioDualTeacherApplicationStatusDescription,
 } from '@/apis/portfolio/enums'
-import {
-  PortfolioDualTeacherCertLevelCode,
-  PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL,
-} from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import PortfolioTeacherPickGate from '@/components/portfolio/PortfolioTeacherPickGate.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
-import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
+import {
+  PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL,
+  PortfolioDualTeacherCertLevelCode,
+} from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'

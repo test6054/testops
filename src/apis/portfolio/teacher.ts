@@ -1,5 +1,3 @@
-import type { PortfolioTitleTierCode } from '@/types/enums/portfolio-title-tier-enum'
-import type { PortfolioDevelopmentPlanStatusCode } from '@/types/enums/portfolio-development-plan-status-enum'
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
@@ -15,6 +13,8 @@ import type {
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { PortfolioDevelopmentPlanStatusCode } from '@/types/enums/portfolio-development-plan-status-enum'
+import type { PortfolioTitleTierCode } from '@/types/enums/portfolio-title-tier-enum'
 import http from '@/config/axios'
 
 export interface PortfolioTeacherOneTableSummaryVO {
