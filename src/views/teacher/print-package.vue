@@ -10,6 +10,57 @@
         <template #actions>
           <UiTooltip
             v-if="printPackageApplicable && canManageOwnerPrintPackageWrites"
+            :title="paperGovernanceEditHint"
+          >
+            <UiButton size="sm" variant="outline" :disabled="!paperGovernanceEditable" @click="paperGovernanceDrawerOpen = true">
+              维护命题资料
+            </UiButton>
+          </UiTooltip>
+          <UiTooltip
+            v-if="printPackageApplicable && canManageOwnerPrintPackageWrites"
+            :title="paperGovernanceActionHint"
+          >
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="checkingGovernance"
+              :disabled="!selectedExamId"
+              @click="handleCheckGovernance"
+            >
+              命题规则核验
+            </UiButton>
+          </UiTooltip>
+          <UiTooltip v-if="printPackageApplicable && canManageOwnerPrintPackageWrites" :title="submitApprovalHint">
+            <UiButton
+              size="sm"
+              variant="outline"
+              :loading="submittingApproval"
+              :disabled="submitApprovalBlocked"
+              @click="handleSubmitApproval"
+            >
+              提交指定教师审核
+            </UiButton>
+          </UiTooltip>
+          <UiButton
+            v-if="printPackageApplicable && canApproveCurrentReviewer"
+            size="sm"
+            variant="primary"
+            @click="openApprovalModal"
+          >
+            处理当前审核
+          </UiButton>
+          <a-dropdown v-if="printPackageApplicable && paperGovernance?.paperSets.length" placement="bottomRight">
+            <UiButton size="sm" variant="outline">下载受控试卷</UiButton>
+            <template #overlay>
+              <a-menu @click="handleSourcePaperDownload">
+                <a-menu-item v-for="paperSet in paperGovernance?.paperSets" :key="paperSet.paperCode">
+                  下载 {{ paperSet.paperCode }} 卷原件
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+          <UiTooltip
+            v-if="printPackageApplicable && canManageOwnerPrintPackageWrites"
             :title="generateDisabledReason"
           >
             <UiButton
@@ -31,6 +82,14 @@
       v-if="selectedExamId && printPackageApplicable && printPackagePrepWorkflowSteps.length"
       title="完成以下准备步骤后可生成印刷包"
       :steps="printPackagePrepWorkflowSteps"
+    />
+
+    <UiAlertStrip
+      v-if="selectedExamId && printPackageApplicable && paperGovernanceAlert"
+      :tone="paperGovernanceAlert.tone"
+      :title="paperGovernanceAlert.title"
+      :description="paperGovernanceAlert.description"
+      :closable="false"
     />
 
     <template v-if="selectedExamId && printPackageApplicable" #signal>
@@ -194,6 +253,28 @@
           />
           <UiEmpty size="sm" v-else description="暂无印制包预览" />
         </UiDrawer>
+
+        <ExamPaperGovernanceDrawer
+          v-if="selectedExamId"
+          v-model:open="paperGovernanceDrawerOpen"
+          :exam-id="selectedExamId"
+          :reference-department-id="examDetail?.referenceDepartmentId"
+          :department-name="examDetail?.departmentName"
+          :governance="paperGovernance"
+          :saving="savingGovernance"
+          @save="handleSaveGovernance"
+        />
+        <a-modal v-model:open="approvalModalOpen" title="命题资料审核" :confirm-loading="approvingGovernance" @ok="handleApproval">
+          <UiForm layout="vertical">
+            <UiFormItem label="当前审核"><UiInput model-value="您是本节点被指定的审核教师" disabled /></UiFormItem>
+            <UiFormItem label="签审结论" required>
+              <a-select v-model:value="approvalForm.approvalAction" :options="approvalActionOptions" />
+            </UiFormItem>
+            <UiFormItem label="签审意见" required>
+              <UiTextarea v-model="approvalForm.comment" :rows="4" :maxlength="2000" show-count placeholder="说明通过依据或明确整改项" />
+            </UiFormItem>
+          </UiForm>
+        </a-modal>
       </template>
     </template>
   </StageWorkbenchShell>
@@ -202,6 +283,7 @@
 <script lang="ts" setup>
 import type { ColumnType } from 'ant-design-vue/es/table'
 import type { ExamWorkbenchPrintPackagePanelResponse } from '@/apis/mark/exam-progress'
+import type { ExamPaperGovernanceResponse } from '@/apis/mark/paper-governance'
 import type { ExamPrintPackageResponse, PrintPackageItemVO } from '@/apis/mark/print-package'
 import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
@@ -217,6 +299,16 @@ import {
 } from '@/apis/mark/exam'
 import { getPrintPackagePanel } from '@/apis/mark/exam-progress'
 import {
+  approveExamPaperGovernance,
+  checkExamPaperGovernance,
+  downloadExamPaperSource,
+  ExamPaperApprovalActionCode,
+  ExamPaperGovernanceStatusCode,
+  getExamPaperGovernance,
+  saveExamPaperGovernance,
+  submitExamPaperGovernanceApproval,
+} from '@/apis/mark/paper-governance'
+import {
   generatePrintPackage,
   isLayoutNotReadyError,
   pagePrintPackageItems,
@@ -227,11 +319,13 @@ import {
   PRINT_PACKAGE_STATUS_TONE,
   PrintPackageStatusDescription,
 } from '@/apis/mark/print-package'
+import ExamPaperGovernanceDrawer from '@/components/mark/ExamPaperGovernanceDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
@@ -253,6 +347,7 @@ import { useMarkWorkbenchContext, useWorkspaceExamId } from '@/composables/useMa
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { buildPrepStepCards } from '@/utils/exam-prep-step-ui'
 import { isPrintPackageMenuApplicable } from '@/utils/exam-print-package-applicable'
+import { handleBlobDownload } from '@/utils/file-download'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import { resolvePrintPackageGenerateGate } from '@/utils/workflow-readiness/print-package-prep-readiness'
 
@@ -294,9 +389,17 @@ const printPackageGenerateGate = computed(() => {
   })
 })
 
-const generateBlocked = computed(() => printPackageGenerateGate.value.generateBlocked)
+const governanceApprovedForPrint = computed(
+  () => paperGovernance.value?.governance?.status === ExamPaperGovernanceStatusCode.APPROVED_FOR_PRINT,
+)
+const generateBlocked = computed(() => printPackageGenerateGate.value.generateBlocked || !governanceApprovedForPrint.value)
 const printPackagePrepWorkflowSteps = computed(() => printPackageGenerateGate.value.panelSteps)
-const generateDisabledReason = computed(() => printPackageGenerateGate.value.disabledTooltip)
+const generateDisabledReason = computed(() => {
+  if (!governanceApprovedForPrint.value) {
+    return '须完成本场指定审核教师及学院政策要求的外审后，方可生成印刷包'
+  }
+  return printPackageGenerateGate.value.disabledTooltip
+})
 
 const printPackageApplicable = computed(() => {
   const detail = examDetail.value
@@ -339,10 +442,178 @@ function goPrepWorkbench(): void {
 const loading = ref(false)
 const packageList = ref<ExamPrintPackageResponse[]>([])
 const printPackagePanel = ref<ExamWorkbenchPrintPackagePanelResponse | null>(null)
+const paperGovernance = ref<ExamPaperGovernanceResponse | null>(null)
+const paperGovernanceDrawerOpen = ref(false)
+const savingGovernance = ref(false)
+const checkingGovernance = ref(false)
+const submittingApproval = ref(false)
+const approvingGovernance = ref(false)
+const approvalModalOpen = ref(false)
+const approvalForm = reactive<{ approvalAction: ExamPaperApprovalActionCode, comment: string }>({
+  approvalAction: ExamPaperApprovalActionCode.APPROVED,
+  comment: '',
+})
+const approvalActionOptions = [
+  { value: ExamPaperApprovalActionCode.APPROVED, label: '通过' },
+  { value: ExamPaperApprovalActionCode.REJECTED, label: '退回整改' },
+]
 /** MVR-266/324：仅认 BE canManageOwnerPrintPackageWrites===true；禁止缺省回退 isExamOwner */
 const canManageOwnerPrintPackageWrites = computed(
   () => printPackagePanel.value?.canManageOwnerPrintPackageWrites === true,
 )
+
+const paperGovernanceAlert = computed(() => {
+  const governance = paperGovernance.value?.governance
+  if (!governance) {
+    return {
+      tone: 'warning' as const,
+      title: '尚未维护命题计划与试卷组',
+      description: '请先在制卷设计中维护当前考试的命题资料，再执行规则核验。',
+    }
+  }
+  if (governance.status === ExamPaperGovernanceStatusCode.APPROVED_FOR_PRINT) {
+    return {
+      tone: 'success' as const,
+      title: '命题资料已完成指定教师签审',
+      description: `已于 ${governance.printReadyTime ?? '刚刚'} 批准，可生成系统印刷包。`,
+    }
+  }
+  if (governance.status === ExamPaperGovernanceStatusCode.RECTIFICATION_REQUIRED) {
+    const latestRejection = [...(paperGovernance.value?.approvalRecords ?? [])].reverse().find((item) => item.approvalAction === ExamPaperApprovalActionCode.REJECTED)
+    return {
+      tone: 'error' as const,
+      title: '命题资料已退回整改',
+      description: latestRejection?.comment || '请按签审意见修改资料后重新核验并提交。',
+    }
+  }
+  const failed = paperGovernance.value?.ruleChecks.filter((item) => !item.passedFlag) ?? []
+  return {
+    tone: 'warning' as const,
+    title: governance.status === ExamPaperGovernanceStatusCode.RULE_CHECKED ? '规则已通过，等待提交指定教师审核' : approvalPendingStatuses.has(governance.status) ? '命题资料正在指定教师审核' : '命题规则尚未通过',
+    description: failed.length > 0 ? failed.map((item) => item.message).join('；') : '请按当前治理状态完成下一步。',
+  }
+})
+const approvalPendingStatuses = new Set<ExamPaperGovernanceStatusCode>([
+  ExamPaperGovernanceStatusCode.INTERNAL_REVIEW_PENDING,
+  ExamPaperGovernanceStatusCode.EXTERNAL_REVIEW_PENDING,
+])
+
+const paperGovernanceActionHint = computed(() => {
+  if (!paperGovernance.value?.governance) return '请先在制卷设计中维护命题计划与试卷组'
+  return '按本校当前命题规则核验试卷组、题型与分值'
+})
+const paperGovernanceEditable = computed(() => {
+  const status = paperGovernance.value?.governance?.status
+  return !status || status === ExamPaperGovernanceStatusCode.DRAFT || status === ExamPaperGovernanceStatusCode.RECTIFICATION_REQUIRED
+})
+const paperGovernanceEditHint = computed(() => paperGovernanceEditable.value
+  ? '维护当前考试实际使用的试卷、答案、评分标准和逐题结构'
+  : '命题资料已完成核验或进入签审；请等待签审结论，或在退回整改后修改')
+
+const submitApprovalBlocked = computed(
+  () => !paperGovernance.value?.governance || paperGovernance.value.governance.status !== ExamPaperGovernanceStatusCode.RULE_CHECKED,
+)
+const submitApprovalHint = computed(() =>
+  submitApprovalBlocked.value ? '须先完成并通过命题规则核验' : '提交后由本场已指定的审核教师依次处理',
+)
+const canApproveCurrentReviewer = computed(() => paperGovernance.value?.currentUserCanApprove === true)
+
+async function loadPaperGovernance(): Promise<void> {
+  if (!selectedExamId.value) {
+    paperGovernance.value = null
+    return
+  }
+  try {
+    paperGovernance.value = await getExamPaperGovernance(selectedExamId.value)
+  } catch (error) {
+    paperGovernance.value = null
+    showUserError(error, '命题治理资料加载失败')
+  }
+}
+
+async function handleCheckGovernance(): Promise<void> {
+  if (!selectedExamId.value || checkingGovernance.value) return
+  checkingGovernance.value = true
+  try {
+    paperGovernance.value = await checkExamPaperGovernance(selectedExamId.value)
+    void message.success('命题规则核验已完成')
+  } catch (error) {
+    showUserError(error, '命题规则核验失败')
+  } finally {
+    checkingGovernance.value = false
+  }
+}
+
+async function handleSubmitApproval(): Promise<void> {
+  if (!selectedExamId.value || submitApprovalBlocked.value || submittingApproval.value) return
+  submittingApproval.value = true
+  try {
+    await submitExamPaperGovernanceApproval(selectedExamId.value)
+    await loadPaperGovernance()
+    void message.success('已提交指定审核教师处理')
+  } catch (error) {
+    showUserError(error, '提交指定教师审核失败')
+  } finally {
+    submittingApproval.value = false
+  }
+}
+
+function openApprovalModal(): void {
+  approvalForm.approvalAction = ExamPaperApprovalActionCode.APPROVED
+  approvalForm.comment = ''
+  approvalModalOpen.value = true
+}
+
+async function handleApproval(): Promise<void> {
+  if (!selectedExamId.value || !canApproveCurrentReviewer.value || !approvalForm.comment.trim() || approvingGovernance.value) {
+    showFormValidationMessage('请填写签审意见')
+    return
+  }
+  approvingGovernance.value = true
+  try {
+    await approveExamPaperGovernance({
+      examId: selectedExamId.value,
+      approvalAction: approvalForm.approvalAction,
+      comment: approvalForm.comment.trim(),
+    })
+    approvalModalOpen.value = false
+    await loadPaperGovernance()
+    void message.success('命题签审已提交')
+  } catch (error) {
+    showUserError(error, '命题签审失败')
+  } finally {
+    approvingGovernance.value = false
+  }
+}
+
+/** 下载本场已受控的试卷原件，下载权限由后端按主考/指定审核教师校验。 */
+async function handleSourcePaperDownload({ key }: { key: string | number }): Promise<void> {
+  if (!selectedExamId.value || !paperGovernance.value) return
+  const paperSet = paperGovernance.value.paperSets.find((item) => item.paperCode === String(key))
+  if (!paperSet) return
+  await handleBlobDownload(
+    () => downloadExamPaperSource(selectedExamId.value!, paperSet.paperCode),
+    `${paperSet.paperName || `${paperSet.paperCode}卷`}.pdf`,
+    { errorMessage: '下载受控试卷失败' },
+  )
+}
+
+async function handleSaveGovernance(
+  payload: import('@/apis/mark/paper-governance').ExamPaperGovernanceSaveRequest,
+): Promise<void> {
+  if (savingGovernance.value) return
+  savingGovernance.value = true
+  try {
+    await saveExamPaperGovernance(payload)
+    paperGovernanceDrawerOpen.value = false
+    await loadPaperGovernance()
+    void message.success('命题计划与试卷组已保存，请重新执行规则核验')
+  } catch (error) {
+    showUserError(error, '保存命题资料失败')
+  } finally {
+    savingGovernance.value = false
+  }
+}
 // 加载失败：toast 提示，主区保持空态/列表壳
 const pagination = reactive({ pageNum: 1, pageSize: 10, total: 0 })
 
@@ -655,15 +926,17 @@ watch(
       examDetail.value = null
       packageList.value = []
       printPackagePanel.value = null
+      paperGovernance.value = null
       pagination.total = 0
       return
     }
     void loadExamDetailForPrep(val)
     if (applicable) {
-      void Promise.all([loadPackageList(), loadPrintPackagePanel()])
+      void Promise.all([loadPackageList(), loadPrintPackagePanel(), loadPaperGovernance()])
     } else {
       packageList.value = []
       printPackagePanel.value = null
+      paperGovernance.value = null
       pagination.total = 0
     }
   },
@@ -675,6 +948,10 @@ watch(
 .print-package-page {
   &__empty {
     margin-top: var(--dp-space-3, 12px);
+  }
+
+  :deep(.ui-alert-strip) {
+    margin-bottom: var(--dp-space-4);
   }
 
   &__blocking-strip {

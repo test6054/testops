@@ -8,6 +8,7 @@ import type { PortfolioAlertTypeCode } from '@/types/enums/portfolio-alert-type-
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -21,6 +22,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useUserStore } from '@/stores/modules/user'
 import {
   ALL_PORTFOLIO_ALERT_STATUS_CODES,
   PortfolioAlertStatusCode,
@@ -46,6 +48,18 @@ const tabItems = [
   { key: 'compliance', label: '结构合规' },
 ]
 
+const route = useRoute()
+const userStore = useUserStore()
+/** 院系路由或非租户管理员：合规仅本院系，隐藏全校范围筛选（PRD §7.4.11 / §7.30.2） */
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageTitle = computed(() => (isDepartmentScoped.value ? '院系预警中心' : '预警中心'))
+const pageSubtitle = computed(() =>
+  isDepartmentScoped.value
+    ? '画像预警与结构合规预警 · 本院系范围'
+    : '画像预警与结构合规预警 · 全校与院系范围',
+)
 const portraitLoading = ref(false)
 const complianceLoading = ref(false)
 const actionId = ref('')
@@ -73,6 +87,7 @@ const portraitFilter = reactive({
 const complianceFilter = reactive({
   pageNum: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
+  // 院系侧默认 DEPARTMENT，避免误请求全校 scope
   scopeType: undefined as PortfolioComplianceScopeTypeCode | undefined,
   alertStatus: PortfolioAlertStatusCode.OPEN as PortfolioAlertStatusCode | undefined,
 })
@@ -97,6 +112,12 @@ const scopeTypeOptions = [
     label: PortfolioComplianceScopeTypeDescription.DEPARTMENT,
   },
 ]
+
+const visibleScopeTypeOptions = computed(() =>
+  isDepartmentScoped.value
+    ? scopeTypeOptions.filter((item) => item.value === PortfolioComplianceScopeTypeCode.DEPARTMENT)
+    : scopeTypeOptions,
+)
 
 const portraitColumns: ColumnsType = [
   { title: '教师', key: 'teacher', width: 220 },
@@ -202,10 +223,13 @@ async function loadComplianceAlerts() {
   complianceAlerts.value = []
   complianceTotal.value = 0
   try {
+    const scopeType = isDepartmentScoped.value
+      ? PortfolioComplianceScopeTypeCode.DEPARTMENT
+      : complianceFilter.scopeType
     const result = await portfolioAnalysisApi.pageComplianceAlerts({
       pageNum: complianceFilter.pageNum,
       pageSize: complianceFilter.pageSize,
-      scopeType: complianceFilter.scopeType,
+      scopeType,
       alertStatus: complianceFilter.alertStatus,
     })
     if (currentToken !== complianceRequestToken.value) {
@@ -257,9 +281,17 @@ function resetPortraitFilter() {
 
 function resetComplianceFilter() {
   complianceFilter.pageNum = 1
-  complianceFilter.scopeType = undefined
+  complianceFilter.scopeType = isDepartmentScoped.value
+    ? PortfolioComplianceScopeTypeCode.DEPARTMENT
+    : undefined
   complianceFilter.alertStatus = PortfolioAlertStatusCode.OPEN
   void loadComplianceAlerts()
+}
+
+function initDepartmentComplianceScope() {
+  if (isDepartmentScoped.value) {
+    complianceFilter.scopeType = PortfolioComplianceScopeTypeCode.DEPARTMENT
+  }
 }
 
 async function resolvePortraitAlert(
@@ -337,6 +369,7 @@ async function resolveComplianceAlert(
 }
 
 onMounted(() => {
+  initDepartmentComplianceScope()
   void loadPortraitAlerts()
 })
 </script>
@@ -347,8 +380,8 @@ onMounted(() => {
       <ContextBar
         layout="workbench"
         show-title
-        title="预警中心"
-        subtitle="画像短板与结构合规预警"
+        :title="pageTitle"
+        :subtitle="pageSubtitle"
       />
     </template>
     <UiSectionTabs v-model="activeTab" :items="tabItems" @update:model-value="reloadActiveTab" />
@@ -466,11 +499,12 @@ onMounted(() => {
       <UiCard v-else title="结构合规预警">
         <div class="alert-center__filters">
           <UiSelect
+            v-if="!isDepartmentScoped"
             v-model="complianceFilter.scopeType"
             size="sm"
             allow-clear
             placeholder="范围类型"
-            :options="scopeTypeOptions"
+            :options="visibleScopeTypeOptions"
             class="alert-center__field"
           />
           <UiSelect
@@ -569,5 +603,12 @@ onMounted(() => {
 .alert-center__sub {
   font-size: 12px;
   color: var(--dp-text-secondary);
+}
+
+.alert-center__identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
 }
 </style>

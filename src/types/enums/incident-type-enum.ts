@@ -5,6 +5,7 @@ export enum IncidentTypeCode {
   SCAN_BATCH_REPROCESS = 'SCAN_BATCH_REPROCESS',
   SCORE_ANOMALY = 'SCORE_ANOMALY',
   MISSING_SCAN_PAGE = 'MISSING_SCAN_PAGE',
+  SCAN_PAGE_COUNT_UNDETERMINED = 'SCAN_PAGE_COUNT_UNDETERMINED',
   EXTRA_SCAN_PAGE = 'EXTRA_SCAN_PAGE',
   MISSING_CANDIDATE_BINDING = 'MISSING_CANDIDATE_BINDING',
   MESSAGE_DELIVERY_FAILED = 'MESSAGE_DELIVERY_FAILED',
@@ -16,6 +17,7 @@ export const ALL_INCIDENT_TYPE_CODES: readonly IncidentTypeCode[] = [
   IncidentTypeCode.SCAN_BATCH_REPROCESS,
   IncidentTypeCode.SCORE_ANOMALY,
   IncidentTypeCode.MISSING_SCAN_PAGE,
+  IncidentTypeCode.SCAN_PAGE_COUNT_UNDETERMINED,
   IncidentTypeCode.EXTRA_SCAN_PAGE,
   IncidentTypeCode.MISSING_CANDIDATE_BINDING,
   IncidentTypeCode.MESSAGE_DELIVERY_FAILED,
@@ -27,8 +29,8 @@ export const IncidentTypeDescription: Record<IncidentTypeCode, string> = {
   [IncidentTypeCode.SCAN_BATCH_REPROCESS]: '异常批次重处理',
   [IncidentTypeCode.SCORE_ANOMALY]: '分数异常',
   [IncidentTypeCode.MISSING_SCAN_PAGE]: '扫描页缺失',
+  [IncidentTypeCode.SCAN_PAGE_COUNT_UNDETERMINED]: '单卷页数待推导',
   [IncidentTypeCode.EXTRA_SCAN_PAGE]: '扫描页超出',
   [IncidentTypeCode.MISSING_CANDIDATE_BINDING]: '考生未绑定',
   [IncidentTypeCode.MESSAGE_DELIVERY_FAILED]: '通知投递失败',
 }
-

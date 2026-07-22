@@ -16,11 +16,12 @@
 import type { LocationQueryValue } from 'vue-router'
 import type {
   AgentHealthStatusCode,
+  DirectScanProviderChainCode,
   ScanJobListResponse,
   ScanJobResponse,
   ScannerDeviceInfo,
-  ScannerListResponse,
-} from '@/apis/mark/scanner-agent-local'
+
+  ScannerListResponse} from '@/apis/mark/scanner-agent-local'
 import type {
   ExamScannerBatchResponse,
   ExamScannerBoundPaperItemVO,
@@ -50,8 +51,8 @@ import {
   AgentUpdateStatusDescription,
   cancelScanJob,
   deleteScanJob,
-  DirectScanProviderChainCode,
   discardScanJob,
+  DocumentBusinessSceneCode,
   endBatch,
   getAgentSetupContext,
   getPageImageUrl,
@@ -70,7 +71,6 @@ import {
   retryCommit,
   retryUpload,
   ScannerBlankPagePolicyCode,
-  ScannerBusinessSceneCode,
   ScannerBusyError,
   ScannerOutputContainerFormat,
   ScannerPageImageFormat,
@@ -172,8 +172,8 @@ const KIOSK_BATCH_SUBMITTED_HINT
   = '批次已上传，可在阅卷中心「扫描录入」查看异常；试卷与答题卡均支持在线复核'
 
 /** scanMode 到统一文档采集场景的默认映射 */
-function resolveBusinessSceneFromScanMode(): ScannerBusinessSceneCode {
-  return ScannerBusinessSceneCode.EXAM_DIRECT_SCAN
+function resolveBusinessSceneFromScanMode(): DocumentBusinessSceneCode {
+  return DocumentBusinessSceneCode.EXAM_DIRECT_SCAN
 }
 
 export { getSemesterDescription, SemesterOptions }
@@ -231,7 +231,7 @@ export function useExamKioskWorkflow() {
   const previewPageNo = ref(0)
   const scanMode = ref<ScannerKioskScanModeCode>(ScannerKioskScanModeCode.DIRECT)
   /** 统一文档采集业务场景；默认试卷直扫 */
-  const businessScene = ref<ScannerBusinessSceneCode>(ScannerBusinessSceneCode.EXAM_DIRECT_SCAN)
+  const businessScene = ref<DocumentBusinessSceneCode>(DocumentBusinessSceneCode.EXAM_DIRECT_SCAN)
   /** 试卷直扫识别链路；由 kiosk 上下文 OCR 配置或后续 UI 选择写入 */
   const providerChain = ref<DirectScanProviderChainCode | undefined>()
   const supplementTargetPageNo = ref<number | undefined>()
@@ -2180,33 +2180,9 @@ export function useExamKioskWorkflow() {
     syncRegisterStatePoll()
   }
 
-  const providerChainOptions = computed(() => {
-    const tenantChain = kioskContext.value?.scanConfigOptions?.directScanProviderChain
-    const all = [
-      {
-        value: DirectScanProviderChainCode.BAIDU_QWEN,
-        label: '云端 AI',
-        description: '百度文字识别 + 千问版面切题，适合云端部署',
-      },
-      {
-        value: DirectScanProviderChainCode.PADDLE_LOCAL,
-        label: '本地 Paddle',
-        description: 'PaddleOCR 整页识别与切题，适合一体机离线',
-      },
-    ]
-    if (tenantChain) {
-      return all.filter((option) => option.value === tenantChain)
-    }
-    return all
-  })
-
   const tenantProviderChainLabel = computed(
     () => kioskContext.value?.scanConfigOptions?.directScanProviderChainLabel?.trim() || '',
   )
-
-  function selectProviderChain(chain: DirectScanProviderChainCode) {
-    providerChain.value = chain
-  }
 
   function providerChainText(chain: DirectScanProviderChainCode | undefined): string {
     const apiLabel = kioskContext.value?.scanConfigOptions?.directScanProviderChainLabel?.trim()
@@ -2215,13 +2191,6 @@ export function useExamKioskWorkflow() {
       return strictEnumLabel(DirectScanProviderChainDescription, chain, '直扫识别链路')
     }
     return '租户文字识别未启用'
-  }
-
-  function resolveStartScanProviderChain(): DirectScanProviderChainCode | undefined {
-    if (businessScene.value !== ScannerBusinessSceneCode.EXAM_DIRECT_SCAN) {
-      return undefined
-    }
-    return providerChain.value
   }
 
   async function loadKioskBootstrap() {
@@ -3065,7 +3034,6 @@ export function useExamKioskWorkflow() {
         replaceTargetPage: isSupplement ? supplementReplaceTargetPage.value : false,
         paperInstanceId: isSupplement ? supplementPaperInstanceId.value.trim() || undefined : undefined,
         scanConfig: { ...scanConfig.value },
-        providerChain: resolveStartScanProviderChain(),
       })
       if (!batchLifecycle.batchExternalNo) {
         await handleScanJobStartFailure(
@@ -3113,7 +3081,6 @@ export function useExamKioskWorkflow() {
         reportId: batchLifecycle.reportId,
         businessScene: businessScene.value,
         businessRefId: examId.value,
-        providerChain: resolveStartScanProviderChain(),
         outputContainerFormat: ScannerOutputContainerFormat.PDF,
         pageImageFormat: ScannerPageImageFormat.PNG,
         blankPagePolicy: ScannerBlankPagePolicyCode.BACK_BLANK,
@@ -3326,7 +3293,6 @@ export function useExamKioskWorkflow() {
       scanEndTime,
       scanSessionId: job.batchExternalNo,
       businessRefId: examId.value,
-      providerChain: providerChain.value,
     })
     if (lifecycle.committedExamBatchId) {
       activeScanBatchId.value = String(lifecycle.committedExamBatchId)
@@ -4091,9 +4057,7 @@ export function useExamKioskWorkflow() {
     scanMode,
     businessScene,
     providerChain,
-    providerChainOptions,
     tenantProviderChainLabel,
-    selectProviderChain,
     providerChainText,
     supplementTargetPageNo,
     supplementReason,

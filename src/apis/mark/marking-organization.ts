@@ -331,6 +331,7 @@ export interface MarkingQuestionScoreSubmitItem {
   layoutQuestionId: string
   score: number
   annotationText?: string
+  reviewSuggestion?: string
   correlationId: string
 }
 
@@ -468,6 +469,7 @@ export interface MarkingTaskSubmittedQuestionScoreResponse {
   questionNo: string
   score: number
   annotationText?: string
+  reviewSuggestion?: string
 }
 
 export interface MarkingTaskResponse {
@@ -493,6 +495,7 @@ export interface MarkingTaskResponse {
   taskStatus: MarkingTaskStatusCode
   score?: string | number
   annotationNote?: string
+  reviewSuggestion?: string
   /** 匿名令牌值；匿名模式为真实令牌，实名模式为 null */
   anonymousToken: string | null
   /** MVR-327：解匿名主考能力位；与 BE isExamOwner 同源 */

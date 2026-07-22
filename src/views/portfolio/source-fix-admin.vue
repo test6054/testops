@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import {
+  PortfolioSourceFixDataSourceCode,
+  PortfolioSourceFixDataSourceCodeDescription,
+} from '@/types/enums/portfolio-source-fix-data-source-code-enum'
 import type {
   PortfolioSourceFixBatchRequest,
   PortfolioSourceFixEventVO,
@@ -28,6 +32,7 @@ import {
   PORTFOLIO_SOURCE_FIX_TRIGGER_TYPE_LABEL,
   PortfolioSourceFixTriggerTypeCode,
 } from '@/types/enums/portfolio-source-fix-trigger-type-enum'
+import { PORTFOLIO_SOURCE_FIX_TRIGGER_SOURCE_LABEL } from '@/types/enums/portfolio-source-fix-trigger-source-enum'
 import { showUserError } from '@/utils/error-handler'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -91,6 +96,11 @@ const filterFields = computed(() => [
 
 const query = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 
+const dataSourceCodeOptions = Object.values(PortfolioSourceFixDataSourceCode).map((value) => ({
+  value,
+  label: PortfolioSourceFixDataSourceCodeDescription[value],
+}))
+
 const batchForm = reactive({
   triggerReason: '',
   teacherIdsText: '',
@@ -101,7 +111,7 @@ const batchForm = reactive({
   afterValue: '',
   fieldCode: '',
   fieldLabel: '',
-  dataSourceCode: '',
+  dataSourceCode: undefined as PortfolioSourceFixDataSourceCode | undefined,
 })
 
 const columns: ColumnsType = [
@@ -288,7 +298,7 @@ async function submitBatch() {
     afterValue: batchForm.afterValue.trim() || undefined,
     fieldCode: batchForm.fieldCode.trim() || undefined,
     fieldLabel: batchForm.fieldLabel.trim() || undefined,
-    dataSourceCode: batchForm.dataSourceCode.trim() || undefined,
+    dataSourceCode: batchForm.dataSourceCode,
     teacherIds: teacherIds.length ? teacherIds : undefined,
     departmentOrgId: batchForm.departmentOrgId.trim() || undefined,
     majorGroupOrgId: batchForm.majorGroupOrgId.trim() || undefined,
@@ -391,7 +401,9 @@ watch(
                 size="sm"
                 tone="primary"
                 :disabled="
-                  acting || record.eventStatus === 'SUCCESS' || record.eventStatus === 'RUNNING'
+                  acting
+                    || record.eventStatus === PortfolioSourceFixEventStatusCode.SUCCESS
+                    || record.eventStatus === PortfolioSourceFixEventStatusCode.RUNNING
                 "
                 @click="executeEvent(record)"
               >
@@ -399,7 +411,7 @@ watch(
               </UiButton>
               <UiButton
                 size="sm"
-                :disabled="acting || record.alertStatus !== 'OPEN'"
+                :disabled="acting || record.alertStatus !== PortfolioSourceFixAlertStatusCode.OPEN"
                 @click="ackAlert(record)"
               >
                 确认告警
@@ -413,7 +425,7 @@ watch(
     <a-drawer v-model:open="detailOpen" title="源修复重算事件详情" width="720" destroy-on-close>
       <template v-if="detail">
         <div class="mb-4 space-y-2 text-sm">
-          <div>触发：{{ triggerLabel(detail.triggerType) }} · {{ detail.triggerSource }}</div>
+          <div>触发：{{ triggerLabel(detail.triggerType) }} · {{ detail.triggerSource ? (PORTFOLIO_SOURCE_FIX_TRIGGER_SOURCE_LABEL[detail.triggerSource] ?? detail.triggerSource) : '-' }}</div>
           <div>原因：{{ detail.triggerReason }}</div>
           <div>
             字段：{{ detail.fieldLabel || detail.fieldCode || '—' }}（{{
@@ -421,7 +433,7 @@ watch(
             }}）
           </div>
           <div>变更：{{ detail.beforeValue || '空' }} → {{ detail.afterValue || '空' }}</div>
-          <div v-if="detail.dataSourceCode">数据源：{{ detail.dataSourceCode }}</div>
+          <div v-if="detail.dataSourceCode">数据源：{{ detail.dataSourceCode ? PortfolioSourceFixDataSourceCodeDescription[detail.dataSourceCode] : '' }}</div>
           <div>
             状态：
             <UiTag :tone="statusTone(detail.eventStatus)">
@@ -496,7 +508,13 @@ watch(
           <a-input v-model:value="batchForm.fieldCode" placeholder="字段编码" />
           <a-input v-model:value="batchForm.fieldLabel" placeholder="字段名称" />
         </div>
-        <a-input v-model:value="batchForm.dataSourceCode" placeholder="数据源编码" />
+        <a-select
+          v-model:value="batchForm.dataSourceCode"
+          allow-clear
+          placeholder="数据源编码"
+          :options="dataSourceCodeOptions"
+          style="width: 100%"
+        />
       </div>
     </a-modal>
   </StageWorkbenchShell>

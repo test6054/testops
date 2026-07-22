@@ -24,6 +24,7 @@ import UiTimelineItem from '@/components/ui-guide/ui/UiTimelineItem.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useAuthStore } from '@/stores/modules/auth'
+import { TrainingPlanStatusActionDescription } from '@/types/enums/training-plan-status-action-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
@@ -69,12 +70,7 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 96, fixed: 'right' },
 ]
 
-const auditActionLabel: Record<TrainingPlanStatusAuditVO['actionCode'], string> = {
-  SUBMIT: '提交院审',
-  CONFIRM: '确认发布',
-  RETURN: '退回整改',
-  REVOKE: '撤回发布',
-}
+const auditActionLabel = TrainingPlanStatusActionDescription
 
 const drawerTitle = computed(() =>
   selectedPlan.value ? `院审：${selectedPlan.value.planName}` : '院审详情',

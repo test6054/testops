@@ -11,6 +11,6 @@ export const PortfolioTitleEvidenceTypeDescription: Record<
 > = {
   [PortfolioTitleEvidenceTypeCode.OFFICIAL_RECORD]: '正式档案',
   [PortfolioTitleEvidenceTypeCode.COMMITMENT]: '承诺勾选',
-  [PortfolioTitleEvidenceTypeCode.INTEGRATION_FACT]: '集成事实',
+  [PortfolioTitleEvidenceTypeCode.INTEGRATION_FACT]: '集成同步权威事实',
   [PortfolioTitleEvidenceTypeCode.MANUAL_NOTE]: '人工备注',
 }

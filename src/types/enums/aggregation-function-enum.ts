@@ -12,7 +12,7 @@ export const ALL_AGGREGATION_FUNCTION_CODES: readonly AggregationFunctionCode[] 
 ]
 
 export const AggregationFunctionDescription: Record<AggregationFunctionCode, string> = {
-  [AggregationFunctionCode.WEIGHTED_SUM]: '加权平均',
+  [AggregationFunctionCode.WEIGHTED_SUM]: '加权求和',
   [AggregationFunctionCode.MINIMUM]: '取最小值',
   [AggregationFunctionCode.DIRECT_INDIRECT_WEIGHTED]: '直接间接加权',
 }

@@ -1,7 +1,11 @@
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { PortfolioIndustryEducationProjectStageCode } from '@/types/enums/portfolio-industry-education-project-stage-enum'
+import type { PortfolioIndustryEducationProjectTypeCode } from '@/types/enums/portfolio-industry-education-project-type-enum'
 import type { PortfolioPolicyLedgerReviewStatusCode } from '@/types/enums/portfolio-policy-ledger-review-status-enum'
+import type { PortfolioVirtualTeachingRoomActivityTypeCode } from '@/types/enums/portfolio-virtual-teaching-room-activity-type-enum'
+import type { PortfolioVirtualTeachingRoomRoleCode } from '@/types/enums/portfolio-virtual-teaching-room-role-enum'
 import http from '@/config/axios'
 
 export interface PortfolioVirtualTeachingRoomActivityVO {
@@ -13,10 +17,10 @@ export interface PortfolioVirtualTeachingRoomActivityVO {
   majorGroupCode?: string
   majorGroupName?: string
   courseCodes?: string
-  activityType: string
+  activityType: PortfolioVirtualTeachingRoomActivityTypeCode
   activityTypeLabel?: string
   activityTitle: string
-  roleCode: string
+  roleCode: PortfolioVirtualTeachingRoomRoleCode
   roleLabel?: string
   resultFactor?: number
   applicationFactor?: number
@@ -60,9 +64,9 @@ export interface PortfolioVirtualTeachingRoomActivitySaveRequest {
   majorGroupCode?: string
   majorGroupName?: string
   courseCodes?: string
-  activityType: string
+  activityType: PortfolioVirtualTeachingRoomActivityTypeCode
   activityTitle: string
-  roleCode: string
+  roleCode: PortfolioVirtualTeachingRoomRoleCode
   resultFactor?: number
   applicationFactor?: number
   activityDate?: string
@@ -81,13 +85,13 @@ export interface PortfolioIndustryEducationProjectVO {
   id: string
   teacherUserId: string
   projectName: string
-  projectType: string
+  projectType: PortfolioIndustryEducationProjectTypeCode
   projectTypeLabel?: string
-  stageCode: string
+  stageCode: PortfolioIndustryEducationProjectStageCode
   enterpriseName?: string
   majorGroupCode?: string
   majorGroupName?: string
-  roleCode: string
+  roleCode: PortfolioVirtualTeachingRoomRoleCode
   roleFactor?: number
   stageFactor?: number
   talentOutcomeFactor?: number
@@ -126,12 +130,12 @@ export interface PortfolioIndustryEducationProjectSaveRequest {
   id?: string
   teacherUserId: string
   projectName: string
-  projectType: string
-  stageCode: string
+  projectType: PortfolioIndustryEducationProjectTypeCode
+  stageCode: PortfolioIndustryEducationProjectStageCode
   enterpriseName?: string
   majorGroupCode?: string
   majorGroupName?: string
-  roleCode: string
+  roleCode: PortfolioVirtualTeachingRoomRoleCode
   roleFactor?: number
   stageFactor?: number
   talentOutcomeFactor?: number
@@ -144,7 +148,7 @@ export interface PortfolioIndustryEducationProjectSaveRequest {
 export interface PortfolioIndustryEducationProjectPageRequest extends QueryDto {
   teacherUserId?: string
   reviewStatus?: PortfolioPolicyLedgerReviewStatusCode
-  projectType?: string
+  projectType?: PortfolioIndustryEducationProjectTypeCode
   searchText?: string
 }
 

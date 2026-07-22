@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioExpertAssignmentVO } from '@/apis/portfolio/expert-assignment'
-import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { portfolioExpertAssignmentApi } from '@/apis/portfolio/expert-assignment'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiButton from '@/components/ui-guide/ui/UiButton.vue'
@@ -179,7 +179,7 @@ async function applyAssignmentDeepLink() {
   await loadAssignments()
 }
 
-function onPageChange(page: { current: number; pageSize: number }) {
+function onPageChange(page: { current: number, pageSize: number }) {
   pagination.current = page.current
   pagination.pageSize = page.pageSize
   if (focusedAssignmentId.value) {

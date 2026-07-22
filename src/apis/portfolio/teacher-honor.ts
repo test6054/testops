@@ -1,3 +1,4 @@
+import type { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
@@ -18,7 +19,7 @@ export interface PortfolioTeacherHonorVO {
   descriptionText?: string
   fileId?: string
   sourceType: PortfolioBusinessDataSourceTypeCode
-  syncChannelCode?: string
+  syncChannelCode?: PortfolioIntegrationChannelCodeEnum
   externalId?: string
   sourceSnapshot?: string
   updateTime?: string

@@ -1,4 +1,4 @@
-import type { MarkOcrHealthStatusCode, MarkOcrProviderTypeCode } from './ocr-types'
+import type { AiHealthStatusCode, MarkOcrProviderTypeCode } from './ocr-types'
 import http from '@/config/axios'
 
 export interface MarkOcrConfigResponse {
@@ -7,7 +7,7 @@ export interface MarkOcrConfigResponse {
   providerType?: MarkOcrProviderTypeCode
   providerName?: string
   enabled: boolean
-  healthStatus: MarkOcrHealthStatusCode
+  healthStatus: AiHealthStatusCode
   lastHealthCheckTime?: string
   lastHealthMessage?: string
 }
@@ -18,7 +18,7 @@ export interface MarkOcrConfigHealthCheckRequest {
 
 export interface MarkOcrConfigHealthCheckResponse {
   providerType: MarkOcrProviderTypeCode
-  healthStatus: MarkOcrHealthStatusCode
+  healthStatus: AiHealthStatusCode
   healthMessage: string
 }
 
@@ -51,4 +51,3 @@ export interface MarkOcrConfigSaveRequest {
 export function saveMarkOcrConfig(request: MarkOcrConfigSaveRequest): Promise<string> {
   return http.post<string>('/api/mark/ocr/config/save', request)
 }
-

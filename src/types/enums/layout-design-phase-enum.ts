@@ -1,5 +1,6 @@
 /**
- * 制卷设计器工作台阶段
+ * 制卷设计器工作台阶段（纯前端向导态）。
+ * 非 edu-mark HTTP API 合同，不得写入 Request/Response DTO 或持久化字段。
  */
 export enum LayoutDesignPhaseCode {
   SOURCE = 'source',

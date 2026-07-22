@@ -12,8 +12,8 @@ export const ALL_ACCREDITATION_CONCLUSION_TYPE_CODES: readonly AccreditationConc
 ]
 
 export const AccreditationConclusionTypeDescription: Record<AccreditationConclusionTypeCode, string> = {
-  [AccreditationConclusionTypeCode.FULL_6Y]: '通过（6年）',
-  [AccreditationConclusionTypeCode.CONDITIONAL_6Y]: '有条件通过',
+  [AccreditationConclusionTypeCode.FULL_6Y]: '通过（6 年）',
+  [AccreditationConclusionTypeCode.CONDITIONAL_6Y]: '有条件通过（6 年）',
   [AccreditationConclusionTypeCode.NOT_PASS]: '不通过',
 }
 

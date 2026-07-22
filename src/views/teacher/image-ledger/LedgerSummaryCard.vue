@@ -121,14 +121,16 @@ const scanPercent = computed(() => {
   if (!ledger) return 0
   const expected = ledger.expectedPageCount
   const scanned = ledger.scannedPageCount
-  if (expected <= 0) return 0
+  if (expected == null || expected <= 0) return 0
   return Math.min(Math.round((scanned / expected) * 100), 100)
 })
 
 const scanProgressLabel = computed(() => {
   const ledger = props.ledger
   if (!ledger) return ''
-  return `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
+  return ledger.expectedPageCount == null
+    ? `已扫 ${ledger.scannedPageCount} 页，单卷页数待扫描事实推导`
+    : `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
 })
 
 function formatLedgerMetric(value: number | null | undefined): string | number {
@@ -153,7 +155,9 @@ const { chartOption: scanGaugeOption } = useChartOption(() =>
 const scanGaugeAriaLabel = computed(() => {
   const ledger = props.ledger
   const detail = ledger
-    ? `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
+    ? ledger.expectedPageCount == null
+      ? `已扫 ${ledger.scannedPageCount} 页，单卷页数待扫描事实推导`
+      : `已扫 ${ledger.scannedPageCount} / ${ledger.expectedPageCount} 页`
     : scanProgressLabel.value
   return formatGaugeAriaLabel('扫描进度', scanPercent.value, detail)
 })

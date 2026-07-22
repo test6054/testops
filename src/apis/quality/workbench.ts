@@ -35,7 +35,7 @@ export interface ObeJourneySummaryVO {
   aiTaskTotal?: number
   aiTaskPending?: number
   aiTaskProcessing?: number
-  aiTaskSucceeded?: number
+  aiTaskCompleted?: number
   aiTaskFailed?: number
   steps: ObeJourneyStepVO[]
 }

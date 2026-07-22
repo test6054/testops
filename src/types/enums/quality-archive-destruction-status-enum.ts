@@ -23,12 +23,12 @@ export const QualityArchiveDestructionStatusDescription: Record<
   QualityArchiveDestructionStatusCode,
   string
 > = {
-  [QualityArchiveDestructionStatusCode.NONE]: '正常保管',
-  [QualityArchiveDestructionStatusCode.REQUESTED]: '销毁申请中',
-  [QualityArchiveDestructionStatusCode.APPROVED]: '销毁已批准',
-  [QualityArchiveDestructionStatusCode.EXECUTING]: '销毁执行中',
-  [QualityArchiveDestructionStatusCode.EXECUTED]: '已销毁',
-  [QualityArchiveDestructionStatusCode.FAILED]: '销毁失败',
+  [QualityArchiveDestructionStatusCode.NONE]: '无',
+  [QualityArchiveDestructionStatusCode.REQUESTED]: '已申请',
+  [QualityArchiveDestructionStatusCode.APPROVED]: '已批准',
+  [QualityArchiveDestructionStatusCode.EXECUTING]: '执行中',
+  [QualityArchiveDestructionStatusCode.EXECUTED]: '已执行',
+  [QualityArchiveDestructionStatusCode.FAILED]: '执行失败',
   [QualityArchiveDestructionStatusCode.SUPERVISED]: '已监销',
 }
 

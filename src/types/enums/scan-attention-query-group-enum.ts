@@ -10,7 +10,7 @@ export const ALL_SCAN_ATTENTION_QUERY_GROUP_CODES: readonly ScanAttentionQueryGr
 ]
 
 export const ScanAttentionQueryGroupDescription: Record<ScanAttentionQueryGroupCode, string> = {
-  [ScanAttentionQueryGroupCode.ABNORMAL]: '异常待办',
+  [ScanAttentionQueryGroupCode.ABNORMAL]: '异常阻断',
   [ScanAttentionQueryGroupCode.DUPLICATE]: '重复影像',
 }
 

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { PortfolioKeyTeacherAnalyticsVO } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS,
   PortfolioKeyTeacherRegistryStatusCode,
@@ -24,6 +26,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
@@ -35,12 +38,59 @@ const REGISTRY_TABS = PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_OPTIONS.map((item) => 
   label: item.label,
 }))
 
+const route = useRoute()
+const userStore = useUserStore()
+/** PF-P0-423：院系读台账；登记/作废仅校管 */
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageTitle = computed(() => (isDepartmentScoped.value ? '院系骨干/带头人' : '骨干/带头人'))
+const canWriteRegistry = computed(() => !isDepartmentScoped.value)
+
 const activeType = ref<PortfolioKeyTeacherRegistryTypeCode>(
   PortfolioKeyTeacherRegistryTypeCode.PROGRAM_LEADER,
 )
 const saving = ref(false)
 const revokingId = ref('')
 const exporting = ref(false)
+const analyticsLoading = ref(false)
+const analyticsFailed = ref(false)
+const analytics = ref<PortfolioKeyTeacherAnalyticsVO | null>(null)
+const analyticsToken = ref(0)
+
+const departmentColumns: ColumnsType = [
+  { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
+  { title: '在岗骨干', dataIndex: 'count', key: 'count', width: 100, align: 'right' },
+]
+
+async function loadAnalytics() {
+  const currentToken = analyticsToken.value + 1
+  analyticsToken.value = currentToken
+  analyticsLoading.value = true
+  analyticsFailed.value = false
+  try {
+    const next = await portfolioKeyTeacherApi.analyticsStats()
+    if (analyticsToken.value !== currentToken) {
+      return
+    }
+    analytics.value = next
+  } catch (error) {
+    if (analyticsToken.value !== currentToken) {
+      return
+    }
+    analyticsFailed.value = true
+    analytics.value = null
+    showUserError(error, '加载骨干结构分析失败')
+  } finally {
+    if (analyticsToken.value === currentToken) {
+      analyticsLoading.value = false
+    }
+  }
+}
+
+onMounted(() => {
+  void loadAnalytics()
+})
 const form = reactive({
   teacherUserId: '',
   specialtyName: '',
@@ -126,6 +176,7 @@ async function saveRegistry() {
     form.appointYear = ''
     form.dutyScope = ''
     await loadPage()
+    void loadAnalytics()
   } catch (error) {
     showUserError(error, '登记重点教师失败')
   } finally {
@@ -149,6 +200,7 @@ async function revokeRegistry(id: string, teacherUserId?: string) {
     await portfolioKeyTeacherApi.revoke({ id })
     void message.success('已作废')
     await loadPage()
+    void loadAnalytics()
   } catch (error) {
     showUserError(error, '作废重点教师登记失败')
   } finally {
@@ -188,7 +240,7 @@ function switchType(key: string | number) {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="骨干/带头人登记" />
+      <ContextBar layout="workbench" show-title :title="pageTitle" />
     </template>
     <UiAlertStrip
       v-if="archiveWriteForbidden"
@@ -197,6 +249,46 @@ function switchType(key: string | number) {
       :description="archiveWriteBlockMessage"
       class="mb-3"
     />
+    <div class="analytics-grid mb-3">
+      <UiCard title="台账概览">
+        <template v-if="analyticsLoading">加载中…</template>
+        <template v-else-if="analyticsFailed">结构分析加载失败</template>
+        <template v-else-if="analytics">
+          <p>台账总数 {{ analytics.totalCount }}</p>
+          <p>在册数量 {{ analytics.activeCount }}</p>
+        </template>
+        <template v-else>暂无分析数据</template>
+      </UiCard>
+      <UiCard title="在岗结构骨干/带头人比例">
+        <template v-if="analyticsLoading">加载中…</template>
+        <template v-else-if="analyticsFailed">—</template>
+        <template v-else-if="analytics">
+          <p>在岗教师 {{ analytics.structureTeacherCount ?? 0 }}</p>
+          <p>在岗骨干 {{ analytics.structureKeyTeacherCount ?? 0 }}（{{ analytics.keyTeacherRatioPercent ?? 0 }}%）</p>
+          <p>在岗带头人 {{ analytics.structureProgramLeaderCount ?? 0 }}（{{ analytics.programLeaderRatioPercent ?? 0 }}%）</p>
+        </template>
+        <template v-else>—</template>
+      </UiCard>
+      <UiCard title="在岗骨干院系分布">
+        <UiEmpty
+          v-if="!analyticsLoading && !analyticsFailed && !(analytics?.keyTeacherDepartmentCounts || []).length"
+          size="sm"
+          description="暂无在岗骨干院系分布"
+        />
+        <UiDataTable
+          v-else-if="analytics"
+          :columns="departmentColumns"
+          :data-source="analytics.keyTeacherDepartmentCounts || []"
+          row-key="departmentId"
+          size="small"
+          flat
+          pagination-mode="none"
+          :show-pagination="false"
+          :sticky-header="false"
+          :total="(analytics.keyTeacherDepartmentCounts || []).length"
+        />
+      </UiCard>
+    </div>
     <UiCard>
       <UiSectionTabs
         v-model="activeType"
@@ -206,7 +298,7 @@ function switchType(key: string | number) {
         class="key-teacher-admin__tabs"
         @change="switchType"
       />
-      <div class="form-row">
+      <div v-if="canWriteRegistry" class="form-row">
         <UiSelect
           size="sm"
           v-model="form.teacherUserId"
@@ -236,6 +328,11 @@ function switchType(key: string | number) {
         >
           登记
         </UiButton>
+        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster">
+          导出台账
+        </UiButton>
+      </div>
+      <div v-else class="form-row">
         <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster">
           导出台账
         </UiButton>
@@ -290,7 +387,7 @@ function switchType(key: string | number) {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
-              v-if="record.registryStatus === PortfolioKeyTeacherRegistryStatusCode.ACTIVE"
+              v-if="canWriteRegistry && record.registryStatus === PortfolioKeyTeacherRegistryStatusCode.ACTIVE"
               :items="[{ key: 'revoke', label: '作废', tone: 'danger' }]"
               split
               @action="() => revokeRegistry(record.id, record.teacherUserId)"
@@ -303,6 +400,11 @@ function switchType(key: string | number) {
 </template>
 
 <style scoped>
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
 .form-row {
   display: flex;
   flex-wrap: wrap;

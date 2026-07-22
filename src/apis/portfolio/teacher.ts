@@ -1,6 +1,8 @@
-import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
+import type { PortfolioTitleTierCode } from '@/types/enums/portfolio-title-tier-enum'
+import type { PortfolioDevelopmentPlanStatusCode } from '@/types/enums/portfolio-development-plan-status-enum'
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type {
   PortfolioCompletenessLevelCode,
   PortfolioMultiIdentityLayerVO,
@@ -85,14 +87,14 @@ export interface PortfolioDeptOneTableTeacherRowVO {
   teacherNumber?: string
   nickName?: string
   title?: string
-  titleTier?: string
+  titleTier?: PortfolioTitleTierCode
   dualTeacherApproved?: boolean
   keyTeacherActive?: boolean
   externalTeacher?: boolean
   achievementCount?: number
   honorCount?: number
   planYear?: string
-  developmentPlanStatus?: string
+  developmentPlanStatus?: PortfolioDevelopmentPlanStatusCode
   developmentPlanItemCompletionPercent?: number
   completenessPercent?: number
   completenessLevel?: PortfolioCompletenessLevelCode

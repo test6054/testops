@@ -12,7 +12,7 @@ export const ALL_PORTFOLIO_ORG_ALIAS_TARGET_TYPE_CODES: readonly PortfolioOrgAli
 ]
 
 export const PortfolioOrgAliasTargetTypeDescription: Record<PortfolioOrgAliasTargetTypeCode, string> = {
-  [PortfolioOrgAliasTargetTypeCode.EDU_USER_DEPARTMENT]: '院系',
-  [PortfolioOrgAliasTargetTypeCode.EDU_USER_MAJOR]: '专业',
-  [PortfolioOrgAliasTargetTypeCode.PORTFOLIO_ORG_UNIT]: '扩展组织',
+  [PortfolioOrgAliasTargetTypeCode.EDU_USER_DEPARTMENT]: 'edu-user 院系',
+  [PortfolioOrgAliasTargetTypeCode.EDU_USER_MAJOR]: 'edu-user 专业',
+  [PortfolioOrgAliasTargetTypeCode.PORTFOLIO_ORG_UNIT]: 'portfolio 扩展组织',
 }

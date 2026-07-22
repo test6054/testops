@@ -1,5 +1,7 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import { MarkOcrHealthStatusCode } from '@/types/enums/mark-ocr-health-status-enum'
+import {
+  AiHealthStatusCode,
+} from '@/types/enums/ai-health-status-enum'
 import {
   ALL_MARK_OCR_PROVIDER_TYPE_CODES,
   MarkOcrProviderTypeCode,
@@ -8,10 +10,10 @@ import {
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
-  ALL_MARK_OCR_HEALTH_STATUS_CODES,
-  MarkOcrHealthStatusCode,
-  MarkOcrHealthStatusDescription,
-} from '@/types/enums/mark-ocr-health-status-enum'
+  AiHealthStatusCode,
+  AiHealthStatusDescription,
+  ALL_AI_HEALTH_STATUS_CODES,
+} from '@/types/enums/ai-health-status-enum'
 
 export {
   ALL_MARK_OCR_PROVIDER_TYPE_CODES,
@@ -41,8 +43,8 @@ export const MARK_OCR_PAPER_CUT_CAPABILITY: Record<MarkOcrProviderTypeCode, stri
     '支持直接扫描整页切题，要求本地 PaddleOCR 服务暴露 /paper-cut 并返回真实题块 ROI。',
 }
 
-export const MARK_OCR_HEALTH_STATUS_TONE: Record<MarkOcrHealthStatusCode, BadgeTone> = {
-  [MarkOcrHealthStatusCode.UNKNOWN]: 'gray',
-  [MarkOcrHealthStatusCode.HEALTHY]: 'green',
-  [MarkOcrHealthStatusCode.FAILED]: 'red',
+export const MARK_OCR_HEALTH_STATUS_TONE: Record<AiHealthStatusCode, BadgeTone> = {
+  [AiHealthStatusCode.UNKNOWN]: 'gray',
+  [AiHealthStatusCode.HEALTHY]: 'green',
+  [AiHealthStatusCode.FAILED]: 'red',
 }

@@ -1,3 +1,4 @@
+import { PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
@@ -75,7 +76,9 @@ const canAcademicReview = computed(() =>
     isTenantAdmin: userStore.isTenantAdmin,
   }),
 )
-const canExport = computed(() => canAcademicReview.value)
+/** PF-P0-424：导出=校管或院系审核人；导入模板仍仅校管 */
+const canExport = computed(() => canAcademicReview.value || canCollegeReview.value)
+const canImportRoster = computed(() => canAcademicReview.value)
 
 onMounted(() => {
   void ensureLoaded()
@@ -401,7 +404,7 @@ async function handleImportSuccess() {
             刷新
           </UiButton>
           <UiButton
-            v-if="canExport"
+            v-if="canImportRoster"
             size="sm"
             variant="outline"
             :disabled="writing"
@@ -453,7 +456,14 @@ async function handleImportSuccess() {
         @page-change="handlePageChange"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'applicationStatus'">
+          <template v-if="column.key === 'certLevel'">
+            {{
+              record.certLevel
+                ? (PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL[record.certLevel as PortfolioDualTeacherCertLevelCode] ?? record.certLevel)
+                : '-'
+            }}
+          </template>
+          <template v-else-if="column.key === 'applicationStatus'">
             {{ statusLabel(record.applicationStatus) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">

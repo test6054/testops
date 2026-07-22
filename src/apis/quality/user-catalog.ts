@@ -77,20 +77,6 @@ export interface TenantSchoolDepartmentDto {
   createTime?: string
 }
 
-/* ========== 教师（下拉选择） ========== */
-
-export interface TeacherUserInfoDto {
-  id: string
-  userName: string
-  nickName: string
-  email?: string
-  mobile?: string
-  teacherNumber?: string
-  department?: string
-  title?: string
-  status?: string
-}
-
 export interface ManagedClassDto {
   classId: string
   className: string
@@ -102,39 +88,6 @@ export interface TaughtCourseDto {
   courseId: string
   courseName: string
   courseCode?: string
-}
-
-/** 批量教师详情（用于选择器回显） */
-export interface TeacherDetailsDto {
-  id: string
-  userName: string
-  nickName: string
-  email?: string
-  mobile?: string
-  teacherNumber?: string
-  department?: string
-  title?: string
-  schoolId?: string
-  schoolName?: string
-  departmentId?: string
-  departmentName?: string
-  role?: string
-  status?: string
-  createTime?: string
-  studentCount?: number
-  classCount?: number
-  teacherDetailId?: string
-  managedClasses?: ManagedClassDto[]
-  taughtCourses?: TaughtCourseDto[]
-}
-
-export interface TeacherQueryRequest extends QueryDto {
-  searchText?: string
-  departmentId?: string
-  status?: string
-  roleKey?: string
-  schoolId?: string
-  title?: string
 }
 
 /* ========== API 实现 ========== */
@@ -170,13 +123,4 @@ export const departmentCatalogApi = {
   /** 当前租户的专业列表（MajorVO）；面向班级管理 */
   listTenantMajors: () =>
     http.get<MajorVO[]>('/api/tenant-admin/departments/majors'),
-}
-
-export const teacherCatalogApi = {
-  /** 教师用户下拉分页（SCH_TECH 角色） */
-  userList: (data: TeacherQueryRequest) =>
-    http.post<PageResult<TeacherUserInfoDto>>('/api/admin/teachers/user-list', data),
-  /** 按用户 ID 批量回显教师（选择器已选值不在当前页时使用） */
-  batchDetails: (teacherIds: string[]) =>
-    http.post<TeacherDetailsDto[]>('/api/admin/teachers/batch-details', teacherIds),
 }

@@ -32,6 +32,8 @@ export interface ExamLayoutQuestionDto {
   /** 题目 ID；草稿为雪花临时 ID，保存后为库表主键（后端 Long） */
   id: string
   questionNo: string
+  /** 直扫纸面的原始题号；分节重号时与全局题号不同。 */
+  printedQuestionNo?: string
   normalizedQuestionNo?: string
   questionType: QuestionTypeCode
   ocrScene?: MarkOcrSceneCode
@@ -216,6 +218,14 @@ export interface ExamLayoutQuestionRegionAdjustRequest {
   rectNorm: ExamLayoutRectNorm
 }
 
+/** 扫描卷题号维护请求；原位修正 OCR 漏识别题号，不重建题目切片或阅卷任务。 */
+export interface ExamLayoutQuestionNumberMaintainRequest {
+  examId: string
+  layoutQuestionId: string
+  questionNo: string
+  printedQuestionNo?: string
+}
+
 export function loadExamLayoutDesign(data: ExamLayoutDesignLoadRequest) {
   return http.post<ExamLayoutDesignLoadResponse>('/api/mark/exams/layout-design/load', data)
 }
@@ -268,4 +278,8 @@ export function fetchExamLayoutPageUploadMeta(data: ExamLayoutPageUploadMetaRequ
 
 export function adjustExamLayoutQuestionRegion(data: ExamLayoutQuestionRegionAdjustRequest) {
   return http.post<boolean>('/api/mark/exams/layout-design/question-region/adjust', data)
+}
+
+export function maintainExamLayoutQuestionNumbers(data: ExamLayoutQuestionNumberMaintainRequest) {
+  return http.post<ExamLayoutQuestionDto>('/api/mark/exams/layout-design/question-numbers/maintain', data)
 }

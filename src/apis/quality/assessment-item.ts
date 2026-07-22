@@ -4,6 +4,7 @@ import type { AssessmentItemTypeCode } from './types'
  * 后端对象：AssessmentItemController /api/quality/assessment-items。
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { DataSourceModeCode } from '@/types/enums/data-source-mode-enum'
 import http from '@/config/axios'
 
 const ITEM = '/api/quality/assessment-items'
@@ -20,7 +21,7 @@ export interface AssessmentItemVO {
   isProcessOriented?: boolean
   description?: string
   sortOrder?: number
-  sourceMode?: string
+  sourceMode?: DataSourceModeCode
   sourceExamId?: string
   createTime?: string
   updateTime?: string

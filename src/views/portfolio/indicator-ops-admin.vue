@@ -13,6 +13,7 @@ import type {
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { PfExplainLogTypeCode } from '@/types/enums/pf-explain-log-type-enum'
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -402,7 +403,7 @@ async function loadImpactReports() {
 
 async function openExplain(
   logId: string,
-  logType: 'SCORE' | 'ELIGIBILITY',
+  logType: PfExplainLogTypeCode,
   teacherId: string,
   text?: string,
 ) {

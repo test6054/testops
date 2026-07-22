@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
-import { LocalScanJobStatusCode, ScannerBusinessSceneCode } from '@/apis/mark/scanner-agent-local'
+import { DocumentBusinessSceneCode, LocalScanJobStatusCode } from '@/apis/mark/scanner-agent-local'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { ArchiveScanBatchModeDescription } from '@/types/enums/archive-scan-batch-mode-enum'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
@@ -23,7 +23,7 @@ const bootstrap = useDocumentKioskBootstrap()
 const lease = useLeaseHeartbeat()
 const scanFlow = useWorkOrderScanFlow({
   taskKind: ScanTaskKindCode.EXAM_ARCHIVE,
-  businessScene: ScannerBusinessSceneCode.EXAM_ARCHIVE,
+  businessScene: DocumentBusinessSceneCode.EXAM_ARCHIVE,
   getBusinessRefId: () => session.volumeId.value,
   getArchiveBatchMode: () => session.batchMode.value,
   lifecycle: session.lifecycle,

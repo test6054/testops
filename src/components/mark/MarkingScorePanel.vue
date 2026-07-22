@@ -7,7 +7,7 @@
 
     <UiForm
       ref="innerFormRef"
-      :model="{ score: scoreModel, annotationNote: annotationNoteModel }"
+      :model="{ score: scoreModel, annotationNote: annotationNoteModel, reviewSuggestion: reviewSuggestionModel }"
       :rules="rules"
       layout="vertical"
       :disabled="!canSubmit"
@@ -170,6 +170,15 @@
               placeholder="题目批注，可选"
               :show-count="true"
             />
+            <UiTextarea
+              size="sm"
+              v-model="getWholeQuestionForm(question.layoutQuestionId).reviewSuggestion"
+              :rows="3"
+              :maxlength="1000"
+              :disabled="isReadOnly"
+              placeholder="面向学生的批阅建议，可选"
+              :show-count="true"
+            />
           </UiCollapsePanel>
         </UiCollapse>
         <p class="marking-score-panel__keyboard-hint">
@@ -309,6 +318,16 @@
           :show-count="true"
         />
       </UiFormItem>
+      <UiFormItem v-if="!usesWholePaperWorkspace" label="批阅建议" name="reviewSuggestion">
+        <UiTextarea
+          size="sm"
+          v-model="reviewSuggestionModel"
+          :rows="4"
+          :maxlength="1000"
+          placeholder="可选，面向学生给出改进建议"
+          :show-count="true"
+        />
+      </UiFormItem>
 
       <UiFormItem v-if="canSubmit">
         <UiButton
@@ -357,6 +376,7 @@ defineOptions({ name: 'MarkingScorePanel' })
 
 const scoreModel = defineModel<number | undefined>('score')
 const annotationNoteModel = defineModel<string | undefined>('annotationNote')
+const reviewSuggestionModel = defineModel<string | undefined>('reviewSuggestion')
 
 const expandedWholeQuestionKeyModel = defineModel<string>('expandedWholeQuestionKey', {
   required: true,

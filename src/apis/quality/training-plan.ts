@@ -5,6 +5,9 @@ import type { ConfirmationStatusCode } from './types'
  * 后端路径: /api/quality/training-plans
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { TrainingPlanAiCandidateReviewStatusCode } from '@/types/enums/training-plan-ai-candidate-review-status-enum'
+import type { TrainingPlanAiCandidateTypeCode } from '@/types/enums/training-plan-ai-candidate-type-enum'
+import type { TrainingPlanStatusActionCode } from '@/types/enums/training-plan-status-action-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/training-plans'
@@ -92,7 +95,7 @@ export interface TrainingPlanStatusAuditVO {
   trainingPlanId: string
   previousStatus: ConfirmationStatusCode
   currentStatus: ConfirmationStatusCode
-  actionCode: 'SUBMIT' | 'CONFIRM' | 'RETURN' | 'REVOKE'
+  actionCode: TrainingPlanStatusActionCode
   comment?: string
   operatorUserId: string
   createTime: string
@@ -159,6 +162,36 @@ function normalizeTrainingPlanPage(result: PageResult<TrainingPlanVO>): PageResu
   }
 }
 
+
+/** 培养方案 AI 结构候选 VO - TrainingPlanAiCandidateVO */
+export interface TrainingPlanAiCandidateVO {
+  id: string
+  trainingPlanId: string
+  candidateType: TrainingPlanAiCandidateTypeCode
+  candidatePayload?: string
+  reviewStatus: TrainingPlanAiCandidateReviewStatusCode
+  reviewComment?: string
+  reviewedUserId?: string
+  reviewedAt?: string
+}
+
+/** 培养方案 AI 候选人工确认/驳回请求 */
+export interface TrainingPlanAiCandidateReviewRequest {
+  candidateId: string
+  reviewStatus: TrainingPlanAiCandidateReviewStatusCode
+  reviewComment?: string
+}
+
+/** 培养方案 AI 候选审阅结果 */
+export interface TrainingPlanAiCandidateReviewVO {
+  candidateId: string
+  trainingPlanId: string
+  candidateType: TrainingPlanAiCandidateTypeCode
+  reviewStatus: TrainingPlanAiCandidateReviewStatusCode
+  idempotent?: boolean
+  writtenCount?: number
+}
+
 export const trainingPlanApi = {
   page: async (data: TrainingPlanQueryRequest) =>
     normalizeTrainingPlanPage(await http.post<PageResult<TrainingPlanVO>>(`${BASE}/page`, data)),
@@ -181,4 +214,8 @@ export const trainingPlanApi = {
   revoke: (data: TrainingPlanStatusTransitionRequest) =>
     http.post<TrainingPlanStatusTransitionVO>(`${BASE}/revoke`, data),
   remindReview: (id: string) => http.post<number>(`${BASE}/remind-review`, { id }),
+  listAiCandidates: (id: string) =>
+    http.post<TrainingPlanAiCandidateVO[]>(`${BASE}/ai/candidates`, { id: normalizeTrainingPlanId(id) }),
+  reviewAiCandidate: (data: TrainingPlanAiCandidateReviewRequest) =>
+    http.post<TrainingPlanAiCandidateReviewVO>(`${BASE}/ai/candidates/review`, data),
 }

@@ -15,8 +15,9 @@ import {
   indirectResponseApi,
   IndirectResponseConversionFilterCode,
 } from '@/apis/quality/indirect-response'
+import TeacherSelector from '@/components/platform/TeacherSelector.vue'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
-import { ClassSelector, StudentSelector, TeacherSelector } from '@/components/quality/selectors'
+import { ClassSelector, StudentSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'

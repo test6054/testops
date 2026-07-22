@@ -59,7 +59,7 @@
           {{
             record.failureCategory
               ? strictEnumLabel(
-                ArchiveAutoCreateFailureCategoryDescription,
+                ArchiveVolumeAutoCreateFailureCategoryDescription,
                 record.failureCategory,
                 'failureCategory',
               )
@@ -147,7 +147,7 @@ import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
-import { ArchiveAutoCreateFailureCategoryDescription } from '@/constants/archive-auto-create-failure-category'
+import { ArchiveVolumeAutoCreateFailureCategoryDescription } from '@/constants/archive-volume-auto-create-failure-category'
 import {
   ArchiveTaskProvenanceCode,
   ArchiveTaskProvenanceDescription,

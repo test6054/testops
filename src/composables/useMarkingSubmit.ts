@@ -52,7 +52,7 @@ export interface UseMarkingSubmitOptions {
   loadTask: () => Promise<void>
   ensureBatchLoaded: (examId: string) => Promise<void>
   tenantId: Ref<string>
-  form: { score?: number, annotationNote?: string }
+  form: { score?: number, annotationNote?: string, reviewSuggestion?: string }
   wholeQuestions: Ref<QuestionMarkingGroupQuestionResponse[]>
   getWholeQuestionForm: (layoutQuestionId: string) => WholeQuestionForm
   wholePageAnnotationForms: Record<string, string>
@@ -122,6 +122,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       },
     ],
     annotationNote: [{ max: 1000, message: '批注最多 1000 字', trigger: 'blur' }],
+    reviewSuggestion: [{ max: 1000, message: '批阅建议最多 1000 字', trigger: 'blur' }],
   }
 
   function createCorrelationId(scope: 'question' | 'page', id: string): string {
@@ -141,6 +142,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
       layoutQuestionId: options.questionView.value.layoutQuestionId,
       score: options.form.score,
       annotationText: options.form.annotationNote?.trim() || undefined,
+      reviewSuggestion: options.form.reviewSuggestion?.trim() || undefined,
       correlationId: createCorrelationId('question', options.questionView.value.layoutQuestionId),
     }
   }
@@ -182,19 +184,25 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
   }
 
   function buildDraftPayload() {
-    const wholeQuestionForms: Record<string, { score?: number, annotationText: string }> = {}
+    const wholeQuestionForms: Record<string, {
+      score?: number
+      annotationText: string
+      reviewSuggestion: string
+    }> = {}
     for (const question of options.wholeQuestions.value) {
       const qForm = options.getWholeQuestionForm(question.layoutQuestionId)
-      if (qForm.score !== undefined || qForm.annotationText.trim()) {
+      if (qForm.score !== undefined || qForm.annotationText.trim() || qForm.reviewSuggestion.trim()) {
         wholeQuestionForms[question.layoutQuestionId] = {
           score: qForm.score,
           annotationText: qForm.annotationText,
+          reviewSuggestion: qForm.reviewSuggestion,
         }
       }
     }
     return {
       score: options.form.score,
       annotationNote: options.form.annotationNote,
+      reviewSuggestion: options.form.reviewSuggestion,
       wholeQuestionForms:
         Object.keys(wholeQuestionForms).length > 0 ? wholeQuestionForms : undefined,
       wholePageAnnotationForms: { ...options.wholePageAnnotationForms },
@@ -278,6 +286,7 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
         layoutQuestionId,
         score,
         annotationText: options.form.annotationNote?.trim() || undefined,
+        reviewSuggestion: options.form.reviewSuggestion?.trim() || undefined,
         correlationId: createCorrelationId('question', layoutQuestionId),
       },
     ]
@@ -505,12 +514,15 @@ export function useMarkingSubmit(options: UseMarkingSubmitOptions) {
         return (
           (questionForm.score !== undefined && questionForm.score !== null)
           || (questionForm.annotationText?.trim() ?? '') !== ''
+          || (questionForm.reviewSuggestion?.trim() ?? '') !== ''
         )
       })
       if (hasQuestionDraft) return true
       return Object.values(options.wholePageAnnotationForms).some((text) => text.trim() !== '')
     }
-    return options.form.score !== undefined || (options.form.annotationNote?.trim() ?? '') !== ''
+    return options.form.score !== undefined
+      || (options.form.annotationNote?.trim() ?? '') !== ''
+      || (options.form.reviewSuggestion?.trim() ?? '') !== ''
   })
 
   return {

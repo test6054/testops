@@ -35,9 +35,9 @@ export const RespondentTypeDescription: Record<RespondentTypeCode, string> = {
   [RespondentTypeCode.TEACHER]: '任课教师',
   [RespondentTypeCode.EXPERT]: '校外专家',
   [RespondentTypeCode.SUPERVISOR]: '教学督导',
-  [RespondentTypeCode.PUBLIC]: '公开填报',
+  [RespondentTypeCode.PUBLIC]: '公开链接填写',
   [RespondentTypeCode.EXCEL_IMPORT]: 'Excel 导入',
-  [RespondentTypeCode.AI_DRAFT]: 'AI 解析草稿',
+  [RespondentTypeCode.AI_DRAFT]: 'AI 草稿',
 }
 
 /** 管理端手工录入答卷时可选的应答人类型 */

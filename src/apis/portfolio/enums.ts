@@ -1,60 +1,20 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 
 import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
+import type { PortfolioEvaluationModeCode } from '@/types/enums/portfolio-evaluation-mode-enum'
+import type { PortfolioEvaluationObjectionTypeCode } from '@/types/enums/portfolio-evaluation-objection-type-enum'
+import type { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
+import type { PortfolioExternalTeacherDataStatusCode } from '@/types/enums/portfolio-external-teacher-data-status-enum'
+import type { PortfolioKeyTeacherRegistryTypeCode } from '@/types/enums/portfolio-key-teacher-registry-type-enum'
+import type { PortfolioMaterialStatusCode } from '@/types/enums/portfolio-material-status-enum'
+import type { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
+import type { PortfolioOrgUnitTypeCode } from '@/types/enums/portfolio-org-unit-type-enum'
+import type { PortfolioTeacherIdentityStatusCode } from '@/types/enums/portfolio-teacher-identity-status-enum'
+import type { PortfolioTeacherIdentityTypeCode } from '@/types/enums/portfolio-teacher-identity-type-enum'
 import {
   ALL_PORTFOLIO_ARCHIVE_RECORD_STATUS_CODES,
   PortfolioArchiveRecordStatusDescription,
 } from '@/types/enums/portfolio-archive-record-status-enum'
-import type { PortfolioEvaluationModeCode } from '@/types/enums/portfolio-evaluation-mode-enum'
-import {
-  ALL_PORTFOLIO_EVALUATION_MODE_CODES,
-  PortfolioEvaluationModeDescription,
-} from '@/types/enums/portfolio-evaluation-mode-enum'
-import type { PortfolioEvaluationObjectionTypeCode } from '@/types/enums/portfolio-evaluation-objection-type-enum'
-import {
-  ALL_PORTFOLIO_EVALUATION_OBJECTION_TYPE_CODES,
-  PortfolioEvaluationObjectionTypeDescription,
-} from '@/types/enums/portfolio-evaluation-objection-type-enum'
-import type { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
-import {
-  ALL_PORTFOLIO_EVALUATION_SCENE_CODES,
-  PortfolioEvaluationSceneDescription,
-} from '@/types/enums/portfolio-evaluation-scene-enum'
-import type { PortfolioExternalTeacherDataStatusCode } from '@/types/enums/portfolio-external-teacher-data-status-enum'
-import {
-  ALL_PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_CODES,
-  PortfolioExternalTeacherDataStatusDescription,
-} from '@/types/enums/portfolio-external-teacher-data-status-enum'
-import type { PortfolioKeyTeacherRegistryTypeCode } from '@/types/enums/portfolio-key-teacher-registry-type-enum'
-import {
-  ALL_PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_CODES,
-  PortfolioKeyTeacherRegistryTypeDescription,
-} from '@/types/enums/portfolio-key-teacher-registry-type-enum'
-import type { PortfolioMaterialStatusCode } from '@/types/enums/portfolio-material-status-enum'
-import {
-  ALL_PORTFOLIO_MATERIAL_STATUS_CODES,
-  PortfolioMaterialStatusDescription,
-} from '@/types/enums/portfolio-material-status-enum'
-import type { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
-import {
-  ALL_PORTFOLIO_MATERIAL_TYPE_CODES,
-  PortfolioMaterialTypeDescription,
-} from '@/types/enums/portfolio-material-type-enum'
-import type { PortfolioOrgUnitTypeCode } from '@/types/enums/portfolio-org-unit-type-enum'
-import {
-  ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES,
-  PortfolioOrgUnitTypeDescription,
-} from '@/types/enums/portfolio-org-unit-type-enum'
-import type { PortfolioTeacherIdentityStatusCode } from '@/types/enums/portfolio-teacher-identity-status-enum'
-import {
-  ALL_PORTFOLIO_TEACHER_IDENTITY_STATUS_CODES,
-  PortfolioTeacherIdentityStatusDescription,
-} from '@/types/enums/portfolio-teacher-identity-status-enum'
-import type { PortfolioTeacherIdentityTypeCode } from '@/types/enums/portfolio-teacher-identity-type-enum'
-import {
-  ALL_PORTFOLIO_TEACHER_IDENTITY_TYPE_CODES,
-  PortfolioTeacherIdentityTypeDescription,
-} from '@/types/enums/portfolio-teacher-identity-type-enum'
 import {
   ALL_PORTFOLIO_DEVELOPMENT_PLAN_ITEM_STATUS_CODES,
   PortfolioDevelopmentPlanItemStatusCode,
@@ -66,11 +26,51 @@ import {
   PortfolioDevelopmentPlanStatusDescription,
 } from '@/types/enums/portfolio-development-plan-status-enum'
 import {
+  ALL_PORTFOLIO_EVALUATION_MODE_CODES,
+  PortfolioEvaluationModeDescription,
+} from '@/types/enums/portfolio-evaluation-mode-enum'
+import {
+  ALL_PORTFOLIO_EVALUATION_OBJECTION_TYPE_CODES,
+  PortfolioEvaluationObjectionTypeDescription,
+} from '@/types/enums/portfolio-evaluation-objection-type-enum'
+import {
+  ALL_PORTFOLIO_EVALUATION_SCENE_CODES,
+  PortfolioEvaluationSceneDescription,
+} from '@/types/enums/portfolio-evaluation-scene-enum'
+import {
   ALL_PORTFOLIO_EVALUATION_TASK_STATUS_ENUMS,
   PortfolioEvaluationTaskStatusDescription,
   PortfolioEvaluationTaskStatusEnum,
 } from '@/types/enums/portfolio-evaluation-task-status-enum'
+import {
+  ALL_PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_CODES,
+  PortfolioExternalTeacherDataStatusDescription,
+} from '@/types/enums/portfolio-external-teacher-data-status-enum'
+import {
+  ALL_PORTFOLIO_KEY_TEACHER_REGISTRY_TYPE_CODES,
+  PortfolioKeyTeacherRegistryTypeDescription,
+} from '@/types/enums/portfolio-key-teacher-registry-type-enum'
+import {
+  ALL_PORTFOLIO_MATERIAL_STATUS_CODES,
+  PortfolioMaterialStatusDescription,
+} from '@/types/enums/portfolio-material-status-enum'
+import {
+  ALL_PORTFOLIO_MATERIAL_TYPE_CODES,
+  PortfolioMaterialTypeDescription,
+} from '@/types/enums/portfolio-material-type-enum'
+import {
+  ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES,
+  PortfolioOrgUnitTypeDescription,
+} from '@/types/enums/portfolio-org-unit-type-enum'
 import { PortfolioPortraitDimensionCode } from '@/types/enums/portfolio-portrait-dimension-enum'
+import {
+  ALL_PORTFOLIO_TEACHER_IDENTITY_STATUS_CODES,
+  PortfolioTeacherIdentityStatusDescription,
+} from '@/types/enums/portfolio-teacher-identity-status-enum'
+import {
+  ALL_PORTFOLIO_TEACHER_IDENTITY_TYPE_CODES,
+  PortfolioTeacherIdentityTypeDescription,
+} from '@/types/enums/portfolio-teacher-identity-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
@@ -89,6 +89,11 @@ export {
   PortfolioAiAdoptionTargetTypeCode,
   PortfolioAiAdoptionTargetTypeDescription,
 } from '@/types/enums/portfolio-ai-adoption-target-type-enum'
+export {
+  ALL_PORTFOLIO_AI_ANALYSIS_PRIORITY_CODES,
+  PortfolioAiAnalysisPriorityCode,
+  PortfolioAiAnalysisPriorityDescription,
+} from '@/types/enums/portfolio-ai-analysis-priority-enum'
 export {
   ALL_PORTFOLIO_AI_ANALYSIS_REVIEW_STATUS_CODES,
   PortfolioAiAnalysisReviewStatusCode,
@@ -120,31 +125,11 @@ export {
   PortfolioArchiveFieldTypeDescription,
 } from '@/types/enums/portfolio-archive-field-type-enum'
 export {
-  ALL_PORTFOLIO_PLANNING_ACHIEVEMENT_LINK_STATUS_CODES,
-  isPortfolioPlanningAchievementLinkStatusCode,
-  PortfolioPlanningAchievementLinkStatusCode,
-  PortfolioPlanningAchievementLinkStatusDescription,
-} from '@/types/enums/portfolio-planning-achievement-link-status-enum'
-export {
   ALL_PORTFOLIO_ARCHIVE_RECORD_SOURCE_TYPE_CODES,
   isPortfolioArchiveRecordSourceType,
   PortfolioArchiveRecordSourceTypeCode,
   PortfolioArchiveRecordSourceTypeDescription,
 } from '@/types/enums/portfolio-archive-record-source-type-enum'
-export {
-  ALL_PORTFOLIO_BUSINESS_DATA_SOURCE_TYPE_CODES,
-  isPortfolioBusinessDataSourceType,
-  PortfolioBusinessDataSourceTypeCode,
-  PortfolioBusinessDataSourceTypeDescription,
-} from '@/types/enums/portfolio-business-data-source-type-enum'
-export { PortfolioEvaluationRereviewOrderStatusCode } from '@/types/enums/portfolio-evaluation-rereview-order-status-enum'
-export { PortfolioEvaluationRereviewTriggerTypeCode } from '@/types/enums/portfolio-evaluation-rereview-trigger-type-enum'
-export { PortfolioProcessSessionStatusCode } from '@/types/enums/portfolio-process-session-status-enum'
-export {
-  ALL_PORTFOLIO_SUGGESTION_PRIORITY_CODES,
-  PortfolioSuggestionPriorityCode,
-  PortfolioSuggestionPriorityDescription,
-} from '@/types/enums/portfolio-suggestion-priority-enum'
 export {
   ALL_PORTFOLIO_ARCHIVE_RECORD_STATUS_CODES,
   PortfolioArchiveRecordStatusCode,
@@ -160,6 +145,12 @@ export {
   PortfolioArchiveTemplateVersionStatusCode,
   PortfolioArchiveTemplateVersionStatusDescription,
 } from '@/types/enums/portfolio-archive-template-version-status-enum'
+export {
+  ALL_PORTFOLIO_BUSINESS_DATA_SOURCE_TYPE_CODES,
+  isPortfolioBusinessDataSourceType,
+  PortfolioBusinessDataSourceTypeCode,
+  PortfolioBusinessDataSourceTypeDescription,
+} from '@/types/enums/portfolio-business-data-source-type-enum'
 export {
   ALL_PORTFOLIO_CANDIDATE_CONFIRM_STATUS_CODES,
   PortfolioCandidateConfirmStatusCode,
@@ -195,6 +186,16 @@ export {
   PortfolioCreditFactSourceChannelDescription,
 } from '@/types/enums/portfolio-credit-fact-source-channel-enum'
 export {
+  ALL_PORTFOLIO_DEVELOPMENT_PLAN_AUDIT_ACTION_CODES,
+  PortfolioDevelopmentPlanAuditActionCode,
+  PortfolioDevelopmentPlanAuditActionDescription,
+} from '@/types/enums/portfolio-development-plan-audit-action-enum'
+export {
+  ALL_PORTFOLIO_DEVELOPMENT_PLAN_AUDIT_LEVEL_CODES,
+  PortfolioDevelopmentPlanAuditLevelCode,
+  PortfolioDevelopmentPlanAuditLevelDescription,
+} from '@/types/enums/portfolio-development-plan-audit-level-enum'
+export {
   ALL_PORTFOLIO_DEVELOPMENT_PLAN_HISTORY_IMPORT_BATCH_STATUS_CODES,
   PortfolioDevelopmentPlanHistoryImportBatchStatusCode,
   PortfolioDevelopmentPlanHistoryImportBatchStatusDescription,
@@ -219,7 +220,6 @@ export {
   PortfolioDevelopmentRecordStatusCode,
   PortfolioDevelopmentRecordStatusDescription,
 } from '@/types/enums/portfolio-development-record-status-enum'
-
 export {
   ALL_PORTFOLIO_DEVELOPMENT_RECORD_TYPE_CODES,
   PortfolioDevelopmentRecordTypeCode,
@@ -260,11 +260,14 @@ export {
   PortfolioEvaluationPublicityStatusCode,
   PortfolioEvaluationPublicityStatusDescription,
 } from '@/types/enums/portfolio-evaluation-publicity-status-enum'
+export { PortfolioEvaluationRereviewOrderStatusCode } from '@/types/enums/portfolio-evaluation-rereview-order-status-enum'
+export { PortfolioEvaluationRereviewTriggerTypeCode } from '@/types/enums/portfolio-evaluation-rereview-trigger-type-enum'
 export {
   ALL_PORTFOLIO_EVALUATION_SCENE_CODES,
   PortfolioEvaluationSceneCode,
   PortfolioEvaluationSceneDescription,
 } from '@/types/enums/portfolio-evaluation-scene-enum'
+
 export {
   ALL_PORTFOLIO_EVALUATION_TASK_ADVANCE_ACTION_CODES,
   PortfolioEvaluationTaskAdvanceActionCode,
@@ -291,10 +294,30 @@ export {
   PortfolioExternalTeacherImportBatchStatusDescription,
 } from '@/types/enums/portfolio-external-teacher-import-batch-status-enum'
 export {
+  ALL_PORTFOLIO_FIELD_MAPPING_TRANSFORM_TYPE_CODES,
+  PortfolioFieldMappingTransformTypeCode,
+  PortfolioFieldMappingTransformTypeDescription,
+} from '@/types/enums/portfolio-field-mapping-transform-type-enum'
+export {
   ALL_PORTFOLIO_GAP_TASK_STATUS_CODES,
   PortfolioGapTaskStatusCode,
   PortfolioGapTaskStatusDescription,
 } from '@/types/enums/portfolio-gap-task-status-enum'
+export {
+  ALL_PORTFOLIO_INDUSTRY_EDUCATION_PROJECT_STAGE_CODES,
+  PortfolioIndustryEducationProjectStageCode,
+  PortfolioIndustryEducationProjectStageDescription,
+} from '@/types/enums/portfolio-industry-education-project-stage-enum'
+export {
+  ALL_PORTFOLIO_INDUSTRY_EDUCATION_PROJECT_TYPE_CODES,
+  PortfolioIndustryEducationProjectTypeCode,
+  PortfolioIndustryEducationProjectTypeDescription,
+} from '@/types/enums/portfolio-industry-education-project-type-enum'
+export {
+  ALL_PORTFOLIO_INTEGRATION_CLEAN_ACTION_CODES,
+  PortfolioIntegrationCleanActionCode,
+  PortfolioIntegrationCleanActionDescription,
+} from '@/types/enums/portfolio-integration-clean-action-enum'
 export {
   ALL_PORTFOLIO_KEY_TEACHER_REGISTRY_STATUS_CODES,
   PortfolioKeyTeacherRegistryStatusCode,
@@ -347,10 +370,21 @@ export {
   PortfolioOrgAliasTargetTypeDescription,
 } from '@/types/enums/portfolio-org-alias-target-type-enum'
 export {
+  ALL_PORTFOLIO_ORG_SOURCE_TYPE_CODES,
+  PortfolioOrgSourceTypeCode,
+  PortfolioOrgSourceTypeDescription,
+} from '@/types/enums/portfolio-org-source-type-enum'
+export {
   ALL_PORTFOLIO_ORG_UNIT_TYPE_CODES,
   PortfolioOrgUnitTypeCode,
   PortfolioOrgUnitTypeDescription,
 } from '@/types/enums/portfolio-org-unit-type-enum'
+export {
+  ALL_PORTFOLIO_PLANNING_ACHIEVEMENT_LINK_STATUS_CODES,
+  isPortfolioPlanningAchievementLinkStatusCode,
+  PortfolioPlanningAchievementLinkStatusCode,
+  PortfolioPlanningAchievementLinkStatusDescription,
+} from '@/types/enums/portfolio-planning-achievement-link-status-enum'
 export {
   ALL_PORTFOLIO_POLICY_MATCH_CONCLUSION_CODES,
   PortfolioPolicyMatchConclusionCode,
@@ -371,6 +405,7 @@ export {
   PortfolioPortraitIndicatorEvidenceTypeCode,
   PortfolioPortraitIndicatorEvidenceTypeDescription,
 } from '@/types/enums/portfolio-portrait-indicator-evidence-type-enum'
+export { PortfolioProcessSessionStatusCode } from '@/types/enums/portfolio-process-session-status-enum'
 export {
   ALL_PORTFOLIO_REVIEW_ACTION_TYPE_CODES,
   PortfolioReviewActionTypeCode,
@@ -381,6 +416,16 @@ export {
   PortfolioReviewTaskStatusCode,
   PortfolioReviewTaskStatusDescription,
 } from '@/types/enums/portfolio-review-task-status-enum'
+export {
+  ALL_PORTFOLIO_SUGGESTION_PRIORITY_CODES,
+  PortfolioSuggestionPriorityCode,
+  PortfolioSuggestionPriorityDescription,
+} from '@/types/enums/portfolio-suggestion-priority-enum'
+export {
+  ALL_PORTFOLIO_SYNC_LOG_LEVEL_CODES,
+  PortfolioSyncLogLevelCode,
+  PortfolioSyncLogLevelDescription,
+} from '@/types/enums/portfolio-sync-log-level-enum'
 export {
   ALL_PORTFOLIO_SYNC_TASK_STATUS_ENUMS,
   PortfolioSyncTaskStatusDescription,
@@ -411,6 +456,11 @@ export {
   PortfolioTeacherRecommendSceneCode,
   PortfolioTeacherRecommendSceneDescription,
 } from '@/types/enums/portfolio-teacher-recommend-scene-enum'
+export {
+  ALL_PORTFOLIO_VIRTUAL_TEACHING_ROOM_ACTIVITY_TYPE_CODES,
+  PortfolioVirtualTeachingRoomActivityTypeCode,
+  PortfolioVirtualTeachingRoomActivityTypeDescription,
+} from '@/types/enums/portfolio-virtual-teaching-room-activity-type-enum'
 
 export const PORTFOLIO_ARCHIVE_RECORD_STATUS_OPTIONS: Array<{
   value: PortfolioArchiveRecordStatusCode
@@ -509,20 +559,20 @@ export const PORTFOLIO_EVALUATION_ENTRY_WRITABLE_STATUSES: PortfolioEvaluationTa
 ]
 
 /** 外部专家填报可写状态：仅专家评审阶段 */
-export const PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES: PortfolioEvaluationTaskStatusEnum[] =
-  [PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW]
+export const PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES: PortfolioEvaluationTaskStatusEnum[]
+  = [PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW]
 
 /** 评价材料确认/退回补充可操作任务状态：发布确认期 + 初审/复审/专家评审退回重确认 */
-export const PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES: PortfolioEvaluationTaskStatusEnum[] =
-  [
+export const PORTFOLIO_EVALUATION_NOTICE_MATERIAL_OPERABLE_STATUSES: PortfolioEvaluationTaskStatusEnum[]
+  = [
     PortfolioEvaluationTaskStatusEnum.PUBLISHED,
     PortfolioEvaluationTaskStatusEnum.PRELIMINARY_REVIEW,
     PortfolioEvaluationTaskStatusEnum.SCHOOL_REVIEW,
     PortfolioEvaluationTaskStatusEnum.EXPERT_REVIEW,
   ]
 
-export const PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES: PortfolioEvaluationTaskStatusEnum[] =
-  [
+export const PORTFOLIO_EVALUATION_ENTRY_DATA_READABLE_STATUSES: PortfolioEvaluationTaskStatusEnum[]
+  = [
     PortfolioEvaluationTaskStatusEnum.PUBLISHED,
     PortfolioEvaluationTaskStatusEnum.PRELIMINARY_REVIEW,
     PortfolioEvaluationTaskStatusEnum.SCHOOL_REVIEW,
@@ -605,3 +655,9 @@ export const PORTFOLIO_EXTERNAL_TEACHER_DATA_STATUS_OPTIONS: Array<{
   value,
   label: strictEnumLabel(PortfolioExternalTeacherDataStatusDescription, value, '外部教师数据状态'),
 }))
+
+export {
+  ALL_PORTFOLIO_VIRTUAL_TEACHING_ROOM_ROLE_CODES,
+  PortfolioVirtualTeachingRoomRoleCode,
+  PortfolioVirtualTeachingRoomRoleDescription,
+} from '@/types/enums/portfolio-virtual-teaching-room-role-enum'

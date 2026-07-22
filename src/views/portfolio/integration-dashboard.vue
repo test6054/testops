@@ -56,6 +56,11 @@ import { PortfolioIdentityUnmatchedStatusEnum } from '@/types/enums/portfolio-id
 import { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
 import { PortfolioIntegrationHealthStatusEnum } from '@/types/enums/portfolio-integration-health-status-enum'
 import { PortfolioIntegrationPathwayCodeEnum } from '@/types/enums/portfolio-integration-pathway-code-enum'
+import {
+  ALL_PORTFOLIO_NATIONAL_REPORT_ISSUE_STATUS_CODES,
+  PortfolioNationalReportIssueStatusCode,
+  PortfolioNationalReportIssueStatusDescription,
+} from '@/types/enums/portfolio-national-report-issue-status-enum'
 import { PortfolioNationalTeacherSyncDirectionEnum } from '@/types/enums/portfolio-national-teacher-sync-direction-enum'
 import {
   ALL_PORTFOLIO_SCIENTIFIC_RESEARCH_FACT_KIND_CODES,
@@ -171,7 +176,7 @@ const unmatchedQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE }
 const nationalIssueQuery = reactive({
   pageNum: 1,
   pageSize: DEFAULT_LIST_PAGE_SIZE,
-  status: 'OPEN',
+  status: PortfolioNationalReportIssueStatusCode.OPEN as PortfolioNationalReportIssueStatusCode | undefined,
 })
 const conflictQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 const failedMessageQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
@@ -2782,8 +2787,10 @@ onMounted(async () => {
           allow-clear
           placeholder="全部状态"
           :options="[
-            { label: '待修正', value: 'OPEN' },
-            { label: '已修正', value: 'FIXED' },
+            ...ALL_PORTFOLIO_NATIONAL_REPORT_ISSUE_STATUS_CODES.map((value) => ({
+              label: PortfolioNationalReportIssueStatusDescription[value],
+              value,
+            })),
           ]"
           :disabled="writing"
         />
@@ -2823,7 +2830,7 @@ onMounted(async () => {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiButton
-              v-if="record.status === 'OPEN'"
+              v-if="record.status === PortfolioNationalReportIssueStatusCode.OPEN"
               variant="primary"
               size="sm"
               :loading="operationKey === `national-issue:${record.id}`"

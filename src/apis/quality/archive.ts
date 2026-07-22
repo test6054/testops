@@ -6,6 +6,7 @@ import type { ArchiveBusinessTypeCode, ExpertPackageTypeCode } from './types'
  */
 import type { PageResult, QueryDto } from '@/types'
 import type { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destruction-decision-enum'
+import type { ArchiveDigitalStatusCode } from '@/types/enums/archive-digital-status-enum'
 import type { QualityArchiveDestructionLedgerExportDecisionCode } from '@/types/enums/quality-archive-destruction-ledger-export-decision-enum'
 import type { QualityArchiveDestructionStatusCode } from '@/types/enums/quality-archive-destruction-status-enum'
 import http from '@/config/axios'
@@ -25,7 +26,7 @@ export interface ArchiveVO {
   archiveCategory?: string
   retentionPolicyCode?: string
   retentionYears?: number
-  digitalStatus?: string
+  digitalStatus?: ArchiveDigitalStatusCode
   destructionStatus: QualityArchiveDestructionStatusCode
   destructionApprovedUserId?: string
   destructionRequestUserId?: string
@@ -47,7 +48,7 @@ export interface ArchiveQueryRequest extends QueryDto {
   excludeBusinessType?: ArchiveBusinessTypeCode
   businessId?: string
   archiveCategory?: string
-  digitalStatus?: string
+  digitalStatus?: ArchiveDigitalStatusCode
   destructionStatus?: QualityArchiveDestructionStatusCode
   archiveOfficeConfirmed?: boolean
   keyword?: string
@@ -62,7 +63,7 @@ export interface ArchiveSaveRequest {
   archiveCategory?: string
   retentionPolicyCode?: string
   retentionYears?: number
-  digitalStatus?: string
+  digitalStatus?: ArchiveDigitalStatusCode
   notes?: string
 }
 

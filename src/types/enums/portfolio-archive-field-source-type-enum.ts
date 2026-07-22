@@ -11,7 +11,7 @@ export const ALL_PORTFOLIO_ARCHIVE_FIELD_SOURCE_TYPE_CODES: readonly PortfolioAr
 ]
 
 export const PortfolioArchiveFieldSourceTypeDescription: Record<PortfolioArchiveFieldSourceTypeCode, string> = {
-  [PortfolioArchiveFieldSourceTypeCode.S1]: '权威源 S1',
-  [PortfolioArchiveFieldSourceTypeCode.S2]: '权威源 S2',
-  [PortfolioArchiveFieldSourceTypeCode.MANUAL]: '手工填报',
+  [PortfolioArchiveFieldSourceTypeCode.S1]: '平台主数据',
+  [PortfolioArchiveFieldSourceTypeCode.S2]: '业务系统',
+  [PortfolioArchiveFieldSourceTypeCode.MANUAL]: '手工/AI',
 }

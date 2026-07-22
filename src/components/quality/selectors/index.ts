@@ -27,7 +27,6 @@ import ProgramSelector from './ProgramSelector.vue'
 import ReportSelector from './ReportSelector.vue'
 import RequirementIndicatorSelector from './RequirementIndicatorSelector.vue'
 import StudentSelector from './StudentSelector.vue'
-import TeacherSelector from './TeacherSelector.vue'
 import TrainingObjectiveSelector from './TrainingObjectiveSelector.vue'
 import TrainingPlanSelector from './TrainingPlanSelector.vue'
 
@@ -50,7 +49,6 @@ export {
   ReportSelector,
   RequirementIndicatorSelector,
   StudentSelector,
-  TeacherSelector,
   TrainingObjectiveSelector,
   TrainingPlanSelector,
 }

@@ -11,8 +11,8 @@ import type {
 import type {
   ExamScanBatchPageRegisterRetryRequest,
   ExamScanBatchPageRegisterRetryResponse,
+  IncidentSourceTypeCode,
   QualityDecisionCode,
-  ScanAttentionSourceTypeCode,
   ScanAttentionTypeCode,
   ScanBatchStatusCode,
 } from '@/apis/mark/exam-scan'
@@ -570,7 +570,7 @@ export interface ExamScannerPageLedgerItemVO {
 export interface ExamScannerAttentionItemVO {
   id: string
   attentionType: ScanAttentionTypeCode
-  sourceType: ScanAttentionSourceTypeCode
+  sourceType: IncidentSourceTypeCode
   sourceId?: string
   paperInstanceId?: string
   pageId?: string

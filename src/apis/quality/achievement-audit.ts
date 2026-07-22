@@ -5,6 +5,7 @@ import type { AchievementAuditStatusCode } from './types'
  * 后端对象：AchievementAuditController /api/quality/achievement-audits。
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { AchievementAuditEventCode } from '@/types/enums/achievement-audit-event-enum'
 import http from '@/config/axios'
 
 const AUDIT = '/api/quality/achievement-audits'
@@ -15,7 +16,7 @@ export interface AchievementAuditVO {
   auditorUserId?: string
   auditorNickName?: string
   auditorRole?: string
-  auditEvent?: AchievementAuditStatusCode
+  auditEvent?: AchievementAuditEventCode
   auditStatusFrom?: AchievementAuditStatusCode
   auditStatusTo?: AchievementAuditStatusCode
   auditOpinion?: string
@@ -29,7 +30,7 @@ export interface AchievementAuditVO {
 export interface AchievementAuditCreateRequest {
   achievementResultId: string
   auditorRole?: string
-  auditEvent: AchievementAuditStatusCode
+  auditEvent: AchievementAuditEventCode
   auditStatusFrom?: AchievementAuditStatusCode
   auditStatusTo?: AchievementAuditStatusCode
   auditOpinion?: string

@@ -157,7 +157,7 @@
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
 import type { ArchiveExamFormCode } from '@/apis/mark/archive-volume'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import type { TeacherUserInfoDto } from '@/apis/platform/teacher-catalog'
 import type { UiOptionValue } from '@/components/ui-guide/ui/types'
 import { computed, ref, watch } from 'vue'
 import {
@@ -167,7 +167,7 @@ import {
   discardArchiveTaskScoreProof,
 } from '@/apis/mark/archive-volume'
 import { FileUploadSceneKey } from '@/apis/platform/scene-keys'
-import { TeacherSelector } from '@/components/quality/selectors'
+import TeacherSelector from '@/components/platform/TeacherSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiCheckbox from '@/components/ui-guide/ui/UiCheckbox.vue'

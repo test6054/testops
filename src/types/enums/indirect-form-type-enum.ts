@@ -1,4 +1,4 @@
-/** 间接评价问卷类型 - IndirectFormTypeEnum */
+/** 间接评价问卷类型 - 与后端 IndirectFormTypeEnum 逐值对齐 */
 export enum IndirectFormTypeCode {
   STUDENT_SELF = 'STUDENT_SELF',
   GRADUATE_TRACKING = 'GRADUATE_TRACKING',

@@ -1,14 +1,10 @@
-<!--
-  教师选择器（SCH_TECH 角色）
-  数据源：POST /api/admin/teachers/user-list（远程搜索+分页）
-  已选值回显：POST /api/admin/teachers/batch-details
--->
+<!-- 平台教师目录选择器：仅负责真实教师查询与回显，不承载质量评价或考试审核职位语义。 -->
 <script setup lang="ts">
 import type { LabeledValue } from 'ant-design-vue/es/select'
-import type { TeacherDetailsDto, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import type { TeacherDetailsDto, TeacherUserInfoDto } from '@/apis/platform/teacher-catalog'
 import type { UiOptionValue, UiSelectOption } from '@/components/ui-guide/ui/types'
 import { computed, onMounted, ref, watch } from 'vue'
-import { teacherCatalogApi } from '@/apis/quality/user-catalog'
+import { teacherCatalogApi } from '@/apis/platform/teacher-catalog'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import { showUserError } from '@/utils/error-handler'
 
@@ -80,16 +76,16 @@ watch(
   },
 )
 
-function teacherDisplayName(opt: TeacherUserInfoDto): string {
-  return opt.nickName
+function teacherDisplayName(option: TeacherUserInfoDto): string {
+  return option.nickName
 }
 
 function mergeOptions(teachers: TeacherUserInfoDto[]): void {
-  const map = new Map(options.value.map(item => [item.id, item]))
+  const optionById = new Map(options.value.map(item => [item.id, item]))
   for (const teacher of teachers.map(normalizeTeacherOption)) {
-    map.set(teacher.id, teacher)
+    optionById.set(teacher.id, teacher)
   }
-  options.value = Array.from(map.values())
+  options.value = Array.from(optionById.values())
 }
 
 function toTeacherUserInfo(detail: TeacherDetailsDto): TeacherUserInfoDto {
@@ -122,8 +118,7 @@ async function hydrateSelectedByIds(teacherIds: string[]): Promise<void> {
   try {
     const details = await teacherCatalogApi.batchDetails(missingIds)
     mergeOptions(details.map(toTeacherUserInfo))
-  }
-  catch (error) {
+  } catch (error) {
     showUserError(error, '教师回显加载失败')
   }
 }
@@ -134,71 +129,65 @@ async function syncSelectedTeachers(): Promise<void> {
   await hydrateSelectedByIds(selectedIds)
 }
 
-async function loadOptions(keyword?: string) {
+async function loadOptions(keyword?: string): Promise<void> {
   loading.value = true
   try {
-    const res = await teacherCatalogApi.userList({
+    const response = await teacherCatalogApi.userList({
       pageNum: 1,
       pageSize: 50,
       searchText: keyword ?? searchText.value ?? undefined,
       departmentId: props.departmentId || undefined,
       roleKey: 'SCH_TECH',
     })
-    mergeOptions(res.list)
+    mergeOptions(response.list)
     await syncSelectedTeachers()
-  } catch (e) {
-    showUserError(e, '教师列表加载失败')
+  } catch (error) {
+    showUserError(error, '教师列表加载失败')
   } finally {
     loading.value = false
   }
 }
 
-/** 将 a-select 的 UiOptionValue | UiOptionValue[] | undefined 收敛为本选择器的 string | string[] | null 合同 */
-function selectValueToTeacherIds(val: UiOptionValue | UiOptionValue[] | undefined): string | string[] | null {
-  if (val == null || val === '') {
-    return null
-  }
-  if (Array.isArray(val)) {
-    const ids: string[] = []
-    for (const item of val) {
-      const normalized = selectOptionValueToTeacherId(item)
-      if (normalized) ids.push(normalized)
+function selectValueToTeacherIds(value: UiOptionValue | UiOptionValue[] | undefined): string | string[] | null {
+  if (value == null || value === '') return null
+  if (Array.isArray(value)) {
+    const teacherIds: string[] = []
+    for (const item of value) {
+      const teacherId = selectOptionValueToTeacherId(item)
+      if (teacherId) teacherIds.push(teacherId)
     }
-    return ids
+    return teacherIds
   }
-  if (typeof val === 'object' && val !== null && 'value' in val) {
-    return selectOptionValueToTeacherId(val)
+  if (typeof value === 'object' && value !== null && 'value' in value) {
+    return selectOptionValueToTeacherId(value)
   }
-  return normalizeTeacherUserId(typeof val === 'number' ? val : val)
+  return normalizeTeacherUserId(typeof value === 'number' ? value : value)
 }
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const selectOptions = computed<UiSelectOption[]>(() =>
-  options.value.map((opt) => ({
-    value: opt.id,
-    label: teacherDisplayName(opt),
-  })),
+  options.value.map(option => ({ value: option.id, label: teacherDisplayName(option) })),
 )
 
 const controlStyle = computed(() => ({
   width: typeof props.width === 'number' ? `${props.width}px` : props.width,
 }))
 
-function handleSearch(val: string) {
-  searchText.value = val
+function handleSearch(value: string): void {
+  searchText.value = value
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
-    void loadOptions(val)
+    void loadOptions(value)
   }, 300)
 }
 
-function handleChange(val: UiOptionValue | UiOptionValue[] | undefined) {
-  const next = selectValueToTeacherIds(val)
+function handleChange(value: UiOptionValue | UiOptionValue[] | undefined): void {
+  const next = selectValueToTeacherIds(value)
   internalValue.value = next ?? undefined
   const option = Array.isArray(next)
-    ? options.value.filter((o) => next.includes(o.id))
-    : options.value.find((o) => o.id === next)
+    ? options.value.filter(item => next.includes(item.id))
+    : options.value.find(item => item.id === next)
   emit('update:value', next)
   emit('change', next, option)
 }
@@ -221,7 +210,7 @@ defineExpose({ reload: loadOptions, hydrateSelectedByIds })
 <template>
   <UiSelect
     v-model="internalValue"
-    class="dp-quality-selector"
+    class="dp-platform-teacher-selector"
     :style="controlStyle"
     size="sm"
     :placeholder="placeholder"
@@ -236,11 +225,11 @@ defineExpose({ reload: loadOptions, hydrateSelectedByIds })
     @update:model-value="handleChange"
   >
     <template #option="{ value: optionValue }">
-      <template v-for="opt in options" :key="opt.id">
-        <template v-if="opt.id === optionValue">
-          {{ teacherDisplayName(opt) }}
-          <span v-if="opt.teacherNumber" class="dp-selector-option-meta">({{ opt.teacherNumber }})</span>
-          <span v-if="opt.department" class="dp-selector-option-meta">{{ opt.department }}</span>
+      <template v-for="option in options" :key="option.id">
+        <template v-if="option.id === optionValue">
+          {{ teacherDisplayName(option) }}
+          <span v-if="option.teacherNumber" class="dp-selector-option-meta">({{ option.teacherNumber }})</span>
+          <span v-if="option.department" class="dp-selector-option-meta">{{ option.department }}</span>
         </template>
       </template>
     </template>

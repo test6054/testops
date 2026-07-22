@@ -7,6 +7,9 @@ import {
   AccreditationCyclePhaseDescription,
   AccreditationCycleStatusCode,
 } from '@/apis/quality/accreditation'
+import { AccreditationConclusionTypeCode } from '@/types/enums/accreditation-conclusion-type-enum'
+import { SelfAssessmentReviewDecisionCode } from '@/types/enums/self-assessment-review-decision-enum'
+import { SelfAssessmentReviewStatusCode } from '@/types/enums/self-assessment-review-status-enum'
 import { useAccreditationCockpit } from '@/composables/useAccreditationCockpit'
 import { useQualityStore } from '@/stores/modules/quality'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -63,7 +66,7 @@ export function useAccreditationWorkbench() {
       }
       else if (idx === currentIdx) {
         status
-          = cycle.cycleStatus === 'CLOSED' && key !== AccreditationCyclePhaseCode.MAINTENANCE
+          = cycle.cycleStatus === AccreditationCycleStatusCode.CLOSED && key !== AccreditationCyclePhaseCode.MAINTENANCE
             ? 'warning'
             : 'active'
       }
@@ -220,27 +223,27 @@ export function canSubmitSelfAssessment(row: AccreditationCycleVO) {
   if (row.cycleStatus !== AccreditationCycleStatusCode.ACTIVE) {
     return false
   }
-  if (row.currentPhase === 'SELF_EVALUATION') {
+  if (row.currentPhase === AccreditationCyclePhaseCode.SELF_EVALUATION) {
     return !!row.applicationRecordedTime
   }
   return (
-    row.currentPhase === 'SELF_ASSESSMENT_REVIEW'
-    && row.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'
+    row.currentPhase === AccreditationCyclePhaseCode.SELF_ASSESSMENT_REVIEW
+    && row.selfAssessmentReviewDecision === SelfAssessmentReviewDecisionCode.SUPPLEMENT_REQUIRED
   )
 }
 
 export function canReview(row: AccreditationCycleVO) {
   return (
-    row.currentPhase === 'SELF_ASSESSMENT_REVIEW'
+    row.currentPhase === AccreditationCyclePhaseCode.SELF_ASSESSMENT_REVIEW
     && row.cycleStatus === AccreditationCycleStatusCode.ACTIVE
-    && row.selfAssessmentReviewStatus !== 'DECIDED'
+    && row.selfAssessmentReviewStatus !== SelfAssessmentReviewStatusCode.DECIDED
   )
 }
 
 export function canConclusion(row: AccreditationCycleVO) {
   return (
     row.cycleStatus === AccreditationCycleStatusCode.ACTIVE
-    && row.currentPhase === 'ONSITE_VISIT'
+    && row.currentPhase === AccreditationCyclePhaseCode.ONSITE_VISIT
     && !row.conclusionRegisteredTime
   )
 }
@@ -263,7 +266,7 @@ export function canEditCycle(row: AccreditationCycleVO) {
 }
 
 export function canDeleteCycle(row: AccreditationCycleVO) {
-  return row.currentPhase === 'SELF_EVALUATION' && !row.conclusionRegisteredTime
+  return row.currentPhase === AccreditationCyclePhaseCode.SELF_EVALUATION && !row.conclusionRegisteredTime
 }
 
 /** 与 SelfAssessmentSectionServiceImpl.assertEditableCycle 对齐：校内自评或补正阶段可编辑章节 */
@@ -271,12 +274,12 @@ export function canEditSelfAssessmentSection(cycle: AccreditationCycleVO | undef
   if (!cycle || cycle.cycleStatus !== AccreditationCycleStatusCode.ACTIVE) {
     return false
   }
-  if (cycle.currentPhase === 'SELF_EVALUATION') {
+  if (cycle.currentPhase === AccreditationCyclePhaseCode.SELF_EVALUATION) {
     return true
   }
   return (
-    cycle.currentPhase === 'SELF_ASSESSMENT_REVIEW'
-    && cycle.selfAssessmentReviewDecision === 'SUPPLEMENT_REQUIRED'
+    cycle.currentPhase === AccreditationCyclePhaseCode.SELF_ASSESSMENT_REVIEW
+    && cycle.selfAssessmentReviewDecision === SelfAssessmentReviewDecisionCode.SUPPLEMENT_REQUIRED
   )
 }
 
@@ -290,9 +293,9 @@ export function canMutateAccreditationEvidence(cycle: AccreditationCycleVO | und
     return false
   }
   return (
-    cycle.currentPhase === 'SELF_EVALUATION'
-    || cycle.currentPhase === 'SELF_ASSESSMENT_REVIEW'
-    || cycle.currentPhase === 'ONSITE_VISIT'
+    cycle.currentPhase === AccreditationCyclePhaseCode.SELF_EVALUATION
+    || cycle.currentPhase === AccreditationCyclePhaseCode.SELF_ASSESSMENT_REVIEW
+    || cycle.currentPhase === AccreditationCyclePhaseCode.ONSITE_VISIT
   )
 }
 
@@ -365,24 +368,24 @@ export function canMutateAnnualReportMaterial(cycle: AccreditationCycleVO | unde
   if (!cycle || cycle.cycleStatus !== AccreditationCycleStatusCode.ACTIVE) {
     return false
   }
-  if (cycle.currentPhase !== 'MAINTENANCE') {
+  if (cycle.currentPhase !== AccreditationCyclePhaseCode.MAINTENANCE) {
     return false
   }
   if (!cycle.conclusionRegisteredTime) {
     return false
   }
-  return cycle.conclusionType === 'FULL_6Y' || cycle.conclusionType === 'CONDITIONAL_6Y'
+  return cycle.conclusionType === AccreditationConclusionTypeCode.FULL_6Y || cycle.conclusionType === AccreditationConclusionTypeCode.CONDITIONAL_6Y
 }
 
 export function annualReportMaterialPhaseHint(cycle: AccreditationCycleVO | undefined) {
   if (!cycle) return '请先创建认证周期。'
   if (cycle.cycleStatus !== AccreditationCycleStatusCode.ACTIVE)
     return '认证周期未处于有效状态，不可维护年度报备材料。'
-  if (cycle.currentPhase !== 'MAINTENANCE') {
+  if (cycle.currentPhase !== AccreditationCyclePhaseCode.MAINTENANCE) {
     return '年度报备材料仅允许在保持改进阶段登记；请先完成认证结论登记并进入保持改进。'
   }
   if (!cycle.conclusionRegisteredTime) return '请先登记认证结论后再维护年度报备材料。'
-  if (cycle.conclusionType !== 'FULL_6Y' && cycle.conclusionType !== 'CONDITIONAL_6Y') {
+  if (cycle.conclusionType !== AccreditationConclusionTypeCode.FULL_6Y && cycle.conclusionType !== AccreditationConclusionTypeCode.CONDITIONAL_6Y) {
     return '仅通过或有条件通过的认证周期可登记年度报备材料。'
   }
   return ''

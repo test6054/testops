@@ -3,6 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDevelopmentRecordStatusCode } from '@/apis/portfolio/enums'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import {
   PortfolioDevelopmentRecordStatusDescription,
@@ -24,11 +25,21 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
+
+const route = useRoute()
+const userStore = useUserStore()
+/** 院系路由或非租户管理员：本院系发展档案库口径（PF-P0-420） */
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageScopeTitle = computed(() => (isDepartmentScoped.value ? '院系发展档案' : '发展档案库'))
+
 
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard()
@@ -207,7 +218,7 @@ function switchTab(type: RecordType) {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title :title="tabLabel" />
+      <ContextBar layout="workbench" show-title :title="`${pageScopeTitle} · ${tabLabel}`" />
     </template>
     <UiAlertStrip
       v-if="archiveWriteForbidden"
@@ -227,7 +238,7 @@ function switchTab(type: RecordType) {
         {{ tab.label }}
       </UiButton>
     </div>
-    <UiCard title="新增条目">
+    <UiCard v-if="!isDepartmentScoped" title="新增条目">
       <div class="form-row">
         <input v-model="form.recordTitle" class="input input--wide" placeholder="标题" />
         <UiSelect
@@ -256,8 +267,21 @@ function switchTab(type: RecordType) {
     <UiCard>
       <div class="toolbar">
         <UiButton size="sm" @click="loadPage"> 刷新 </UiButton>
-        <UiButton size="sm" variant="primary" @click="importModalOpen = true"> 批量导入 </UiButton>
-        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportExcel">
+        <UiButton
+          v-if="!isDepartmentScoped"
+          size="sm"
+          variant="primary"
+          @click="importModalOpen = true"
+        >
+          批量导入
+        </UiButton>
+        <UiButton
+          v-if="!isDepartmentScoped"
+          size="sm"
+          :loading="exporting"
+          :disabled="exporting"
+          @click="exportExcel"
+        >
           导出表格文件
         </UiButton>
       </div>
@@ -316,10 +340,12 @@ function switchTab(type: RecordType) {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              v-if="!isDepartmentScoped"
               :items="[{ key: 'delete', label: '删除', tone: 'danger' }]"
               split
               @action="() => removeRecord(record.id)"
             />
+            <span v-else class="text-neutral-400">—</span>
           </template>
         </template>
       </UiDataTable>

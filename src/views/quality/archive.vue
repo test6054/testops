@@ -10,6 +10,8 @@ import type {
   ExpertPackageExportRequest,
 } from '@/apis/quality/archive'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type {
+  ArchiveDigitalStatusCode} from '@/types/enums/archive-digital-status-enum';
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
@@ -74,6 +76,10 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityStore } from '@/stores/modules/quality'
 import { useUserStore } from '@/stores/modules/user'
 import { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destruction-decision-enum'
+import {
+  ALL_ARCHIVE_DIGITAL_STATUS_CODES,
+  ArchiveDigitalStatusDescription,
+} from '@/types/enums/archive-digital-status-enum'
 import {
   QualityArchiveDestructionLedgerExportDecisionCode,
   QualityArchiveDestructionLedgerExportDecisionDescription,
@@ -283,6 +289,11 @@ async function loadProgramExportReadiness(trainingPlanId: string) {
   }
 }
 
+const digitalStatusOptions = ALL_ARCHIVE_DIGITAL_STATUS_CODES.map((value) => ({
+  value,
+  label: ArchiveDigitalStatusDescription[value],
+}))
+
 const detailVisible = ref(false)
 const detailRecord = ref<ArchiveVO | null>(null)
 const detailLoading = ref(false)
@@ -298,7 +309,7 @@ const editor = reactive<ArchiveSaveRequest>({
   archiveCategory: '',
   retentionPolicyCode: '',
   retentionYears: undefined,
-  digitalStatus: '',
+  digitalStatus: '' as ArchiveDigitalStatusCode | '',
   notes: '',
 })
 const editorTrainingPlanId = ref('')
@@ -520,7 +531,7 @@ function openCreate() {
     archiveCategory: '',
     retentionPolicyCode: '',
     retentionYears: undefined,
-    digitalStatus: '',
+    digitalStatus: '' as ArchiveDigitalStatusCode | '',
     notes: '',
   })
   editorTrainingPlanId.value = qualityStore.currentTrainingPlanId || ''
@@ -573,7 +584,7 @@ async function submitEditor() {
       fileId: editor.fileId.trim(),
       archiveCategory: editor.archiveCategory?.trim() || undefined,
       retentionPolicyCode: editor.retentionPolicyCode?.trim() || undefined,
-      digitalStatus: editor.digitalStatus?.trim() || undefined,
+      digitalStatus: editor.digitalStatus || undefined,
       notes: editor.notes?.trim() || undefined,
     }
     if (editorMode.value === 'create') {
@@ -1435,7 +1446,13 @@ onMounted(async () => {
           </UiCol>
         </UiRow>
         <UiFormItem label="电子化保管状态">
-          <UiInput size="sm" v-model="editor.digitalStatus" placeholder="例：全电子化 / 纸电混合" />
+          <UiSelect
+            size="sm"
+            v-model="editor.digitalStatus"
+            allow-clear
+            placeholder="选择电子化状态"
+            :options="digitalStatusOptions"
+          />
         </UiFormItem>
         <UiFormItem label="备注">
           <UiTextarea size="sm" v-model="editor.notes" :rows="2" />

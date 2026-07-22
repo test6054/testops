@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { TeacherUserInfoDto } from '@/apis/platform/teacher-catalog'
 import type {
   ProgramSupportProfileSaveRequest,
   ProgramSupportProfileVO,
 } from '@/apis/quality/accreditation'
 import type { FacultyProfileSaveRequest, FacultyProfileVO } from '@/apis/quality/faculty-profile'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref, watch } from 'vue'
 import { accreditationApi } from '@/apis/quality/accreditation'
 import { facultyProfileApi } from '@/apis/quality/faculty-profile'
-import { TeacherSelector } from '@/components/quality/selectors'
+import TeacherSelector from '@/components/platform/TeacherSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'

@@ -323,7 +323,7 @@ async function pollTaskStatus() {
     pollFailureCount.value = 0
     currentTaskStatus.value = task.status
 
-    if (task.status === 'SUCCEEDED') {
+    if (task.status === AiTaskStatusCode.COMPLETED) {
       stopPolling()
       phase.value = 'succeeded'
       void message.success('智能文档解析完成，答卷草稿已写入')
@@ -331,7 +331,7 @@ async function pollTaskStatus() {
       stopPolling()
       failureReason.value = aiDocumentParseFailureText(task.failureReason)
       phase.value = 'failed'
-    } else if (task.status === 'CANCELLED') {
+    } else if (task.status === AiTaskStatusCode.CANCELLED) {
       stopPolling()
       failureReason.value = '任务已被取消。'
       phase.value = 'failed'

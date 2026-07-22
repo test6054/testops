@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { SelectValue } from 'ant-design-vue/es/select'
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { TeacherUserInfoDto } from '@/apis/platform/teacher-catalog'
 import type { AiResultIssueSeverityCode, AiResultVO } from '@/apis/quality/ai-result'
 /**
  * 质量评价 / AI 能力 - AI 任务与结果审计台
@@ -8,7 +9,7 @@ import type { AiResultIssueSeverityCode, AiResultVO } from '@/apis/quality/ai-re
  * 后端契约（AiTaskController + AiResultController）：
  * - 列表 AiTaskQueryRequest：按能力 / 状态 / 业务类型 / 业务 ID / 操作人 / 业务锚点筛选
  * - 提交 AiTaskSubmitRequest：仅 OBE 主链能力；教学档案袋 AI 在 /portfolio 域提交
- * - 状态机 PENDING -> PROCESSING -> SUCCEEDED / FAILED / CANCELLED，失败可 /run-now重跑
+ * - 状态机 PENDING -> PROCESSING -> COMPLETED / FAILED / CANCELLED，失败任务进入人工处置，不支持自动重试
  * - 结果 updateValidation 可调 PASSED / WARN / REJECTED
  */
 import type {
@@ -19,8 +20,8 @@ import type {
 } from '@/apis/quality/ai-task'
 import type { AiTaskSubmitRequest } from '@/apis/quality/ai-task-trigger'
 import type {
+  AiSensitiveCheckStatusCode,
   AiTaskFailurePhaseCode} from '@/apis/quality/types';
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { AiResultImprovementPriorityCode } from '@/types/enums/ai-result-improvement-priority-enum'
 import type {
@@ -44,11 +45,13 @@ import { aiTaskApi } from '@/apis/quality/ai-task'
 import { aiTaskTriggerApi } from '@/apis/quality/ai-task-trigger'
 import {
   AI_OUTPUT_VALIDATION_COLOR,
+  AI_SENSITIVE_CHECK_STATUS_COLOR,
   AI_TASK_STATUS_COLOR,
   AiManualHandlingStatusCode,
   AiManualHandlingStatusDescription,
   AiOutputValidationCode,
   AiOutputValidationDescription,
+  AiSensitiveCheckStatusDescription,
   AiTaskBusinessTypeCode,
   AiTaskBusinessTypeDescription,
   AiTaskFailurePhaseDescription,
@@ -58,6 +61,7 @@ import {
   AiTaskTypeDescription,
   ConfirmationStatusCode,
 } from '@/apis/quality/types'
+import TeacherSelector from '@/components/platform/TeacherSelector.vue'
 import UiPlatformFileField from '@/components/platform/UiPlatformFileField.vue'
 import QualityPageContextBar from '@/components/quality/QualityPageContextBar.vue'
 import QualityPlanGateStrip from '@/components/quality/QualityPlanGateStrip.vue'
@@ -67,7 +71,6 @@ import {
   IndirectFormSelector,
   ProgramSelector,
   ReportSelector,
-  TeacherSelector,
   TrainingPlanSelector,
 } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -98,7 +101,7 @@ import { usePolling } from '@/composables/usePolling'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { beginQualityScopeRequest } from '@/composables/useScopeRequestGuard'
-import { useAuthStore } from '@/stores'
+import { useAuthStore, useUserStore } from '@/stores'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
 import {
@@ -111,7 +114,14 @@ import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
 const aiTaskStore = useAiTaskStore()
 const authStore = useAuthStore()
+const userStore = useUserStore()
 const isSuperAdmin = computed(() => authStore.userRole === RoleEnum.SUPER_ADMIN)
+
+function isTaskOwner(record: AiTaskVO | null): boolean {
+  return isSuperAdmin.value || record?.operatorUserId === userStore.userInfo.userId
+}
+
+const canValidateTaskResult = computed(() => isTaskOwner(detailRecord.value))
 
 function aiTaskTypeLabel(value: AiTaskTypeCode): string {
   return strictEnumLabel(AiTaskTypeDescription, value, '智能任务类型')
@@ -141,15 +151,14 @@ function validationColor(value: AiOutputValidationCode): BadgeTone {
   return strictEnumTone(AI_OUTPUT_VALIDATION_COLOR, value, '智能输出校验状态')
 }
 
-function sensitiveCheckStatusLabel(value: string | undefined): string {
+function sensitiveCheckStatusLabel(value: AiSensitiveCheckStatusCode | undefined): string {
   if (!value) return '—'
-  if (value === 'CLEAN') return '未发现敏感信息'
-  return '需要人工复核'
+  return strictEnumLabel(AiSensitiveCheckStatusDescription, value, '敏感信息校验状态')
 }
 
-function sensitiveCheckStatusColor(value: string | undefined): BadgeTone {
+function sensitiveCheckStatusColor(value: AiSensitiveCheckStatusCode | undefined): BadgeTone {
   if (!value) return 'gray'
-  return value === 'CLEAN' ? 'green' : 'red'
+  return strictEnumTone(AI_SENSITIVE_CHECK_STATUS_COLOR, value, '敏感信息校验状态')
 }
 
 function manualHandlingStatusLabel(value: AiManualHandlingStatusCode): string {
@@ -272,7 +281,7 @@ const auditTaskTypeOptions = mapTaskTypeOptions([...OBE_AI_TASK_TYPES, ...PORTFO
 const statusOptions: Array<{ value: AiTaskStatusCode, label: string }> = [
   { value: AiTaskStatusCode.PENDING, label: AiTaskStatusDescription.PENDING },
   { value: AiTaskStatusCode.PROCESSING, label: AiTaskStatusDescription.PROCESSING },
-  { value: AiTaskStatusCode.SUCCEEDED, label: AiTaskStatusDescription.SUCCEEDED },
+  { value: AiTaskStatusCode.COMPLETED, label: AiTaskStatusDescription.COMPLETED },
   { value: AiTaskStatusCode.FAILED, label: AiTaskStatusDescription.FAILED },
   { value: AiTaskStatusCode.CANCELLED, label: AiTaskStatusDescription.CANCELLED },
 ]
@@ -898,7 +907,7 @@ async function submitTask() {
 async function runNow(record: AiTaskVO) {
   void confirmAsync({
     title: '立即同步执行当前智能任务？',
-    content: '仅待处理状态可立即执行，常用于演示 / 运维场景。',
+    content: '仅待处理状态可立即执行，仅限任务提交人对本人任务进行业务补救。',
     type: 'info',
     onOk: async () => {
       await aiTaskTriggerApi.runNow(record.id)
@@ -992,7 +1001,7 @@ async function openDetail(record: AiTaskVO) {
   detailLoading.value = true
   detailRecord.value = record
   detailResult.value = null
-  // 非终态任务启动轮询，让抽屉实时反映 PROCESSING/SUCCEEDED/FAILED 状态变化
+  // 非终态任务启动轮询，让抽屉实时反映 PROCESSING/COMPLETED/FAILED 状态变化
   if (!isTerminalAiStatus(record.status)) {
     aiTaskStore.startPolling(record.id)
   }
@@ -1009,14 +1018,15 @@ function buildAiTaskActions(record: AiTaskVO): UiTableRowActionItem[] {
   // 行内仅 1 个 primary：立即执行 > 重置 > 人工处置
   const actions: UiTableRowActionItem[] = [{ key: 'detail', label: '详情' }]
   let primaryAssigned = false
-  if (record.status === AiTaskStatusCode.PENDING) {
+  if (isTaskOwner(record) && record.status === AiTaskStatusCode.PENDING) {
     actions.push({ key: 'run-now', label: '立即执行', tone: 'primary' })
     primaryAssigned = true
   }
-  if (record.status === AiTaskStatusCode.PENDING || record.status === AiTaskStatusCode.PROCESSING) {
+  if (isTaskOwner(record)
+    && (record.status === AiTaskStatusCode.PENDING || record.status === AiTaskStatusCode.PROCESSING)) {
     actions.push({ key: 'cancel', label: '取消', tone: 'danger' })
   }
-  if (isSuperAdmin.value && record.status === AiTaskStatusCode.PROCESSING) {
+  if (isTaskOwner(record) && record.status === AiTaskStatusCode.PROCESSING) {
     actions.push(
       primaryAssigned
         ? { key: 'reset-processing', label: '重置为待处理' }
@@ -1024,11 +1034,13 @@ function buildAiTaskActions(record: AiTaskVO): UiTableRowActionItem[] {
     )
     primaryAssigned = true
   }
-  actions.push(
-    primaryAssigned
-      ? { key: 'manual-handle', label: '人工处置' }
-      : { key: 'manual-handle', label: '人工处置', tone: 'primary' },
-  )
+  if (isTaskOwner(record)) {
+    actions.push(
+      primaryAssigned
+        ? { key: 'manual-handle', label: '人工处置' }
+        : { key: 'manual-handle', label: '人工处置', tone: 'primary' },
+    )
+  }
   actions.push({ key: 'audit', label: '审计' })
   return actions
 }
@@ -1059,7 +1071,7 @@ function handleAiTaskAction(key: string, record: AiTaskVO): void {
 /** 判断任务是否已达终态（如果已终态，抽屉不需轮询） */
 function isTerminalAiStatus(status: AiTaskStatusCode | undefined): boolean {
   return (
-    status === AiTaskStatusCode.SUCCEEDED
+    status === AiTaskStatusCode.COMPLETED
     || status === AiTaskStatusCode.FAILED
     || status === AiTaskStatusCode.CANCELLED
   )
@@ -1210,7 +1222,7 @@ function buildAiTaskStatusBuckets(
   const buckets: Record<AiTaskStatusCode, number> = {
     [AiTaskStatusCode.PENDING]: 0,
     [AiTaskStatusCode.PROCESSING]: 0,
-    [AiTaskStatusCode.SUCCEEDED]: 0,
+    [AiTaskStatusCode.COMPLETED]: 0,
     [AiTaskStatusCode.FAILED]: 0,
     [AiTaskStatusCode.CANCELLED]: 0,
   }
@@ -1230,7 +1242,7 @@ const stages = computed<WorkbenchStage[]>(() => {
   const order: Array<{ key: AiTaskStatusCode, title: string, completed?: boolean }> = [
     { key: AiTaskStatusCode.PENDING, title: '待处理' },
     { key: AiTaskStatusCode.PROCESSING, title: '运行中' },
-    { key: AiTaskStatusCode.SUCCEEDED, title: '成功', completed: true },
+    { key: AiTaskStatusCode.COMPLETED, title: '已完成', completed: true },
     { key: AiTaskStatusCode.FAILED, title: '失败' },
     { key: AiTaskStatusCode.CANCELLED, title: '取消' },
   ]
@@ -1264,8 +1276,8 @@ const signals = computed<SignalMetric[]>(() => {
     {
       key: 'succeeded',
       label: '成功',
-      value: b.SUCCEEDED,
-      tone: b.SUCCEEDED > 0 ? 'green' : 'gray',
+      value: b.COMPLETED,
+      tone: b.COMPLETED > 0 ? 'green' : 'gray',
     },
     { key: 'failed', label: '失败', value: b.FAILED, tone: b.FAILED > 0 ? 'red' : 'gray' },
     { key: 'canceled', label: '取消', value: b.CANCELLED, tone: b.CANCELLED > 0 ? 'gray' : 'gray' },
@@ -1657,7 +1669,7 @@ onMounted(async () => {
       >
         <UiAlertStrip
           tone="warning"
-          title="仅平台超级管理员可执行。重置后任务回到待处理队列，备注会写入审计日志。"
+          title="仅任务提交人可执行。重置后任务回到待处理队列，备注会写入审计日志。"
           class="ai-task__reset-alert"
         />
         <UiForm layout="vertical" class="ai-task__reset-form">
@@ -1726,7 +1738,7 @@ onMounted(async () => {
             <span v-if="detailRecord.businessId"> / {{ detailRecord.businessLabel }} </span>
           </UiDescriptionsItem>
           <UiDescriptionsItem label="业务归属">
-            <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
+            <div v-if="isSuperAdmin" class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
               <UiTag v-if="detailRecord.businessId" tone="gray" size="sm">
                 {{ detailRecord.businessLabel }}
               </UiTag>
@@ -1858,25 +1870,27 @@ onMounted(async () => {
 
             <div class="dp-space dp-space--wrap" style="--dp-space-gap: 8px">
               <span class="ai-task__label">校验状态：</span>
-              <UiButton
-                v-for="opt in validationOptions"
-                :key="opt.value"
-                :variant="
-                  detailResult.outputValidation === opt.value
-                    ? opt.value === AiOutputValidationCode.REJECTED
-                      ? 'destructive'
-                      : 'primary'
-                    : opt.value === AiOutputValidationCode.REJECTED
-                      ? 'ghost'
-                      : 'outline'
-                "
-                :status="opt.value === AiOutputValidationCode.REJECTED ? 'danger' : 'normal'"
-                size="sm"
-                :loading="validationUpdating"
-                @click="updateValidation(opt.value)"
-              >
-                {{ opt.label }}
-              </UiButton>
+              <template v-if="canValidateTaskResult">
+                <UiButton
+                  v-for="opt in validationOptions"
+                  :key="opt.value"
+                  :variant="
+                    detailResult.outputValidation === opt.value
+                      ? opt.value === AiOutputValidationCode.REJECTED
+                        ? 'destructive'
+                        : 'primary'
+                      : opt.value === AiOutputValidationCode.REJECTED
+                        ? 'ghost'
+                        : 'outline'
+                  "
+                  :status="opt.value === AiOutputValidationCode.REJECTED ? 'danger' : 'normal'"
+                  size="sm"
+                  :loading="validationUpdating"
+                  @click="updateValidation(opt.value)"
+                >
+                  {{ opt.label }}
+                </UiButton>
+              </template>
             </div>
 
             <UiDivider class="ai-task__divider" />

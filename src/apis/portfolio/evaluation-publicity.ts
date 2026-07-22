@@ -1,6 +1,6 @@
-import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
 import type {
   PortfolioEvaluationObjectionHandleRequest,
@@ -62,9 +62,9 @@ export const portfolioEvaluationPublicityApi = {
     subjectTeacherUserId?: string | number
     reasonText: string
   }) => http.post<PortfolioEvaluationRereviewOrderVO>(`${BASE}/rereview/create`, data),
-  completeRereview: (data: { orderId: string | number; conclusionSummary: string }) =>
+  completeRereview: (data: { orderId: string | number, conclusionSummary: string }) =>
     http.post<PortfolioEvaluationTaskVO>(`${BASE}/rereview/complete`, data),
-  cancelRereview: (data: { orderId: string | number; reasonText: string }) =>
+  cancelRereview: (data: { orderId: string | number, reasonText: string }) =>
     http.post<PortfolioEvaluationTaskVO>(`${BASE}/rereview/cancel`, data),
   listRereview: (data: { evaluationTaskId: string | number }) =>
     http.post<PortfolioEvaluationRereviewOrderVO[]>(`${BASE}/rereview/list`, data),

@@ -142,8 +142,20 @@ export {
 
 /** AI 能力编码 -> 来源徽标色调 */
 export const AI_ABILITY_TONE: Record<AiAbilityCode, BadgeTone> = {
-  [AiAbilityCode.PAPER_GRADE_SUGGESTION]: 'blue',
   [AiAbilityCode.SUBJECTIVE_GRADE_SUGGESTION]: 'purple',
+  [AiAbilityCode.PAPER_GRADE_SUGGESTION]: 'blue',
+  [AiAbilityCode.TEACHING_IMPROVEMENT]: 'green',
+  [AiAbilityCode.CLASS_WEAKNESS_ANALYSIS]: 'orange',
+  [AiAbilityCode.ERROR_CAUSE_CLUSTER]: 'red',
+  [AiAbilityCode.EXPERIENCE_EXTRACTION]: 'blue',
+  [AiAbilityCode.ANSWER_CLUSTER]: 'purple',
+  [AiAbilityCode.CROSS_EXAM_TREND]: 'blue',
+  [AiAbilityCode.ABILITY_GROWTH]: 'green',
+  [AiAbilityCode.COURSE_ACHIEVEMENT]: 'green',
+  [AiAbilityCode.SCHOOL_QUALITY]: 'blue',
+  [AiAbilityCode.EXPERIENCE_EFFECTIVENESS]: 'orange',
+  [AiAbilityCode.STUDENT_LEARNING_PROFILE]: 'purple',
+  [AiAbilityCode.DIRECT_SCAN_LAYOUT_VISION]: 'orange',
 }
 
 /** AI 执行状态徽标色调 */

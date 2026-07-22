@@ -61,10 +61,7 @@ const resolvedReportScene = computed(() => {
   if (!scene) {
     return ''
   }
-  if (scene in PortfolioReportSceneDescription) {
-    return PortfolioReportSceneDescription[scene as PortfolioReportSceneCode]
-  }
-  return scene
+  return PortfolioReportSceneDescription[scene]
 })
 
 const pageTitle = computed(() => resolvedReportScene.value || '文本分析报告')
@@ -189,7 +186,7 @@ async function pollAnalysis(taskId: string): Promise<PortfolioAiAnalysisDetailVO
     if (currentToken !== reportRequestToken.value) {
       return null
     }
-    if (task.status === 'SUCCEEDED') {
+    if (task.status === AiTaskStatusCode.COMPLETED) {
       const detail = await portfolioAiJobApi.getAnnualReportAnalysisByTask(taskId)
       if (currentToken !== reportRequestToken.value) {
         return null
@@ -295,7 +292,7 @@ async function bootstrapPage() {
         }
       }
       if (reportDetail.value?.reportScene) {
-        form.reportScene = reportDetail.value.reportScene as PortfolioReportSceneCode
+        form.reportScene = reportDetail.value.reportScene
       }
       if (reportDetail.value?.reportPeriodLabel) {
         form.reportPeriodLabel = reportDetail.value.reportPeriodLabel

@@ -211,7 +211,7 @@
           >
             <template v-if="showWorkbenchActions" #actions>
               <UiButton
-                v-if="detailScope.canStartCollecting && !isQualityTab && !isManageTab"
+                v-if="detailScope.canStartCollecting === true && !isQualityTab && !isManageTab"
                 variant="primary"
                 size="sm"
                 @click="setActiveTab('start-collecting')"
@@ -220,7 +220,7 @@
               </UiButton>
               <UiButton
                 v-if="
-                  detailScope.showSubmitActions && !detailScope.canSubmitVolume && !isQualityTab
+                  detailScope.showSubmitActions && detailScope.canSubmitVolume !== true && !isQualityTab
                 "
                 variant="outline"
                 size="sm"
@@ -230,7 +230,7 @@
                 提交归档
               </UiButton>
               <UiButton
-                v-if="detailScope.canSubmitVolume && !isQualityTab"
+                v-if="detailScope.canSubmitVolume === true && !isQualityTab"
                 variant="primary"
                 size="sm"
                 :loading="submitting"

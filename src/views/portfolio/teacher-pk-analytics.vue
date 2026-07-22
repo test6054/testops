@@ -8,6 +8,7 @@ import type {
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { PORTFOLIO_PK_COMPARE_DEFAULT_DIMENSIONS } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
@@ -30,6 +31,7 @@ import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useUserStore } from '@/stores/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
@@ -38,6 +40,18 @@ import {
   portfolioTeacherSelectOptionsFromSummaries,
 } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
+
+const route = useRoute()
+const userStore = useUserStore()
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageTitle = computed(() => (isDepartmentScoped.value ? '院系教师对比' : '教师对比'))
+const pageSubtitle = computed(() =>
+  isDepartmentScoped.value
+    ? '本院系多维画像与正式档案材料横向对比（仅本院系教师）'
+    : '多维画像与正式档案材料横向对比',
+)
 
 const operation = ref<'preview' | 'create' | 'detail' | 'export' | null>(null)
 const historyLoading = ref(false)
@@ -274,8 +288,8 @@ onUnmounted(() => {
       <ContextBar
         layout="workbench"
         show-title
-        title="教师对比"
-        subtitle="多维画像与正式档案材料横向对比"
+        :title="pageTitle"
+        :subtitle="pageSubtitle"
       />
     </template>
 

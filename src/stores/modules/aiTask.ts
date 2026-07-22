@@ -4,7 +4,7 @@
  * 业务边界：
  * - 跨页面共享 AI 任务详情缓存（避免 ai-task / improvement-workbench / ai-mask-mapping 等重复请求同一 taskId）
  * - 提供轮询能力：业务页面提交任务后，可调用 startPolling(taskId) 让 Store 周期拉取任务详情，
- *   PENDING / PROCESSING 状态自动续期；SUCCEEDED / FAILED / CANCELLED 自动停止。
+ *   PENDING / PROCESSING 状态自动续期；COMPLETED / FAILED / CANCELLED 自动停止。
  *
  * 后端契约（edu-quality）：
  * - POST /api/quality/ai/tasks/detail   — AI 任务详情
@@ -16,7 +16,7 @@
  * 设计约束：
  * - Store 不维护"AI 任务列表"（列表用 useQualityTaskStore 拉），本 Store 只关心单条任务的运行态
  * - 同一 taskId 只能存在一个轮询计时器；重复 startPolling 会复用现有计时器
- * - 终态任务（SUCCEEDED / FAILED / CANCELLED）轮询自动 stop；调用方通过 watch(getTaskStatus(id)) 感知
+ * - 终态任务（COMPLETED / FAILED / CANCELLED）轮询自动 stop；调用方通过 watch(getTaskStatus(id)) 感知
  */
 import type { AiTaskVO } from '@/apis/quality/ai-task'
 import { defineStore } from 'pinia'
@@ -25,7 +25,7 @@ import { aiTaskApi } from '@/apis/quality/ai-task'
 import { AiTaskStatusCode } from '@/apis/quality/types'
 
 const TERMINAL_STATUSES: ReadonlySet<AiTaskStatusCode> = new Set<AiTaskStatusCode>([
-  AiTaskStatusCode.SUCCEEDED,
+  AiTaskStatusCode.COMPLETED,
   AiTaskStatusCode.FAILED,
   AiTaskStatusCode.CANCELLED,
 ])

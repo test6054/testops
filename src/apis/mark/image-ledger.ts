@@ -42,7 +42,8 @@ export interface ImageLedgerDetailResponse {
   examId: string
   ledgerStatus: LedgerStatusCode
   expectedCandidateCount: number
-  expectedPageCount: number
+  /** 整卷线下试卷尚未形成页数真源时为空 */
+  expectedPageCount: number | null
   scannedPageCount: number
   reconstructedPaperCount: number
   boundPaperCount: number

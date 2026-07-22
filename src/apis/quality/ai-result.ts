@@ -1,4 +1,4 @@
-import type { AiOutputValidationCode } from './types'
+import type { AiOutputValidationCode, AiSensitiveCheckStatusCode } from './types'
 import type {
   AiResultImprovementPriorityCode} from '@/types/enums/ai-result-improvement-priority-enum';
 import type {
@@ -81,8 +81,8 @@ export interface AiResultVO {
   improvementItems?: AiResultImprovementItem[]
   /** 结构 / 证据 / 敏感综合校验状态 */
   outputValidation: AiOutputValidationCode
-  /** 敏感信息校验状态：运行时取值 CLEAN / LEAK_DETECTED */
-  sensitiveCheckStatus?: string
+  /** 敏感信息校验状态 */
+  sensitiveCheckStatus?: AiSensitiveCheckStatusCode
   /** 敏感信息校验明细文本 */
   sensitiveCheckDetail?: string
   /** 调用模型名 */
@@ -97,34 +97,15 @@ export interface AiResultVO {
   updateTime?: string
 }
 
-/** AI 结果保存请求 - 严格对齐后端 AiResultSaveRequest */
-export interface AiResultSaveRequest {
-  aiTaskId: string
-  resultTitle: string
-  summary?: string
-  issueItems?: AiResultIssueItem[]
-  evidenceItems?: AiResultEvidenceItem[]
-  improvementItems?: AiResultImprovementItem[]
-  outputValidation: AiOutputValidationCode
-  sensitiveCheckStatus?: string
-  sensitiveCheckDetail?: string
-  modelName: string
-  promptTokenCount?: number
-  completionTokenCount?: number
-  generatedTime?: string
-}
-
 /** AI 结果校验状态更新请求 - 严格对齐后端 AiResultValidationUpdateRequest */
 export interface AiResultValidationUpdateRequest {
   id: string
   outputValidation: AiOutputValidationCode
-  sensitiveCheckStatus?: string
+  sensitiveCheckStatus?: AiSensitiveCheckStatusCode
   sensitiveCheckDetail?: string
 }
 
 export const aiResultApi = {
-  /** 创建 AI 结果（任务执行链路内部调用，前端审计场景一般不直接触发） */
-  create: (data: AiResultSaveRequest) => http.post<string>(`${BASE}/create`, data),
   /** 查询 AI 结果详情 */
   detail: (id: string) => http.post<AiResultVO>(`${BASE}/detail`, { id }),
   /** 按 AI 任务查询结果；尚未生成时后端返回 null */

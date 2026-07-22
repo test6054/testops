@@ -20,14 +20,6 @@ export interface AiMaskMappingVO {
   updateTime?: string
 }
 
-export interface AiMaskMappingSaveRequest {
-  aiTaskId: string
-  businessType: AiTaskBusinessTypeCode
-  businessId: string
-  cipherText: string
-  cipherIv: string
-}
-
 export interface AiMaskMappingAuditItemVO {
   mappingType?: string
   sourceId?: string
@@ -47,8 +39,6 @@ export interface AiMaskMappingAuditVO {
 }
 
 export const aiMaskMappingApi = {
-  create: (data: AiMaskMappingSaveRequest) =>
-    http.post<string>(`${BASE}/create`, data),
   detail: (id: string) =>
     http.post<AiMaskMappingVO>(`${BASE}/detail`, { id }),
   /** 按 AI 任务读取脱敏映射审计摘要 */

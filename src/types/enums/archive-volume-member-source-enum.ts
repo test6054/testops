@@ -18,11 +18,11 @@ export const ALL_ARCHIVE_VOLUME_MEMBER_SOURCE_CODES: readonly ArchiveVolumeMembe
 ]
 
 export const ArchiveVolumeMemberSourceDescription: Record<ArchiveVolumeMemberSourceCode, string> = {
-  [ArchiveVolumeMemberSourceCode.MANUAL]: '手工添加',
-  [ArchiveVolumeMemberSourceCode.RESPONSIBLE]: '建卷责任人',
+  [ArchiveVolumeMemberSourceCode.MANUAL]: '组织老师手动添加',
+  [ArchiveVolumeMemberSourceCode.RESPONSIBLE]: '建卷指定组织老师',
   [ArchiveVolumeMemberSourceCode.CREATE_USER_FALLBACK]: '建卷人兜底',
-  [ArchiveVolumeMemberSourceCode.AUTO_EXAM_REVIEWER]: '阅卷组播种',
-  [ArchiveVolumeMemberSourceCode.AUTO_COURSE_TEACHER]: '任课教师播种',
+  [ArchiveVolumeMemberSourceCode.AUTO_EXAM_REVIEWER]: '策略自动播种阅卷组',
+  [ArchiveVolumeMemberSourceCode.AUTO_COURSE_TEACHER]: '策略自动播种任课教师',
 }
 
 export function archiveVolumeMemberSourceLabel(

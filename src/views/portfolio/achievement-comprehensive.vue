@@ -4,7 +4,8 @@ import type {
   PortfolioAchievementStatsVO,
   PortfolioDevelopmentRecordVO,
 } from '@/apis/portfolio/teacher-platform'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   PortfolioDevelopmentRecordTypeCode,
   PortfolioDevelopmentRecordTypeDescription,
@@ -20,10 +21,20 @@ import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
+
+const route = useRoute()
+const userStore = useUserStore()
+/** 院系路由或非租户管理员：本院系成果综合口径（PF-P0-420） */
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageTitle = computed(() => (isDepartmentScoped.value ? '院系成果综合查询' : '成果综合查询'))
+
 
 const recordTypeKeys: PortfolioDevelopmentRecordTypeCode[] = [
   PortfolioDevelopmentRecordTypeCode.ACHIEVEMENT,
@@ -108,7 +119,7 @@ onMounted(loadPage)
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar layout="workbench" show-title title="成果综合查询" />
+      <ContextBar layout="workbench" show-title :title="pageTitle" />
     </template>
     <UiCard v-if="stats" title="成果统计">
       <p>成果总数 {{ stats.totalCount }} · 国家级 {{ stats.nationalCount }}</p>

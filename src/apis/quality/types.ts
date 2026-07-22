@@ -58,6 +58,11 @@ import {
   ALL_AI_PROVIDER_TYPE_CODES,
 } from '@/types/enums/ai-provider-type-enum'
 import {
+  AiSensitiveCheckStatusCode,
+  AiSensitiveCheckStatusDescription,
+  ALL_AI_SENSITIVE_CHECK_STATUS_CODES,
+} from '@/types/enums/ai-sensitive-check-status-enum'
+import {
   AiTaskBusinessTypeCode,
   AiTaskBusinessTypeDescription,
   ALL_AI_TASK_BUSINESS_TYPE_CODES,
@@ -233,11 +238,6 @@ import {
   ScoreBatchStatusDescription,
 } from '@/types/enums/score-batch-status-enum'
 import {
-  ALL_SQL_SAFETY_STATUS_CODES,
-  SqlSafetyStatusCode,
-  SqlSafetyStatusDescription,
-} from '@/types/enums/sql-safety-status-enum'
-import {
   ALL_SUPPORT_LEVEL_CODES,
   SupportLevelCode,
   SupportLevelDescription,
@@ -270,6 +270,8 @@ export {
   AiOutputValidationDescription,
   AiProviderTypeCode,
   AiProviderTypeDescription,
+  AiSensitiveCheckStatusCode,
+  AiSensitiveCheckStatusDescription,
   AiTaskBusinessTypeCode,
   AiTaskBusinessTypeDescription,
   AiTaskFailurePhaseCode,
@@ -290,6 +292,7 @@ export {
   ALL_AI_MANUAL_HANDLING_STATUS_CODES,
   ALL_AI_OUTPUT_VALIDATION_CODES,
   ALL_AI_PROVIDER_TYPE_CODES,
+  ALL_AI_SENSITIVE_CHECK_STATUS_CODES,
   ALL_AI_TASK_BUSINESS_TYPE_CODES,
   ALL_AI_TASK_FAILURE_PHASE_CODES,
   ALL_AI_TASK_SHARD_FAILURE_PHASE_CODES,
@@ -325,7 +328,6 @@ export {
   ALL_SCALE_TYPE_CODES,
   ALL_SCORE_BATCH_FAILURE_PHASE_CODES,
   ALL_SCORE_BATCH_STATUS_CODES,
-  ALL_SQL_SAFETY_STATUS_CODES,
   ALL_SUPPORT_LEVEL_CODES,
   ALL_WORKGROUP_LEVEL_CODES,
   ArchiveBusinessTypeCode,
@@ -388,8 +390,6 @@ export {
   ScoreBatchFailurePhaseDescription,
   ScoreBatchStatusCode,
   ScoreBatchStatusDescription,
-  SqlSafetyStatusCode,
-  SqlSafetyStatusDescription,
   SupportLevelCode,
   SupportLevelDescription,
   WorkgroupLevelCode,
@@ -419,9 +419,10 @@ export const ACHIEVEMENT_STATUS_COLOR: Record<AchievementStatusCode, BadgeTone> 
 }
 
 export const AI_TASK_STATUS_COLOR: Record<AiTaskStatusCode, BadgeTone> = {
+  [AiTaskStatusCode.NOT_STARTED]: 'gray',
   [AiTaskStatusCode.PENDING]: 'gray',
   [AiTaskStatusCode.PROCESSING]: 'blue',
-  [AiTaskStatusCode.SUCCEEDED]: 'green',
+  [AiTaskStatusCode.COMPLETED]: 'green',
   [AiTaskStatusCode.FAILED]: 'red',
   [AiTaskStatusCode.CANCELLED]: 'orange',
 }
@@ -430,6 +431,11 @@ export const AI_OUTPUT_VALIDATION_COLOR: Record<AiOutputValidationCode, BadgeTon
   [AiOutputValidationCode.PASSED]: 'green',
   [AiOutputValidationCode.REJECTED]: 'red',
   [AiOutputValidationCode.WARN]: 'orange',
+}
+
+export const AI_SENSITIVE_CHECK_STATUS_COLOR: Record<AiSensitiveCheckStatusCode, BadgeTone> = {
+  [AiSensitiveCheckStatusCode.CLEAN]: 'green',
+  [AiSensitiveCheckStatusCode.LEAK_DETECTED]: 'red',
 }
 
 export const AI_HEALTH_STATUS_COLOR: Record<AiHealthStatusCode, BadgeTone> = {
@@ -551,12 +557,6 @@ export const EXTERNAL_PULL_CONFIRMATION_STATUS_COLOR: Record<ExternalPullConfirm
   [ExternalPullConfirmationStatusCode.PREVIEW]: 'orange',
   [ExternalPullConfirmationStatusCode.CONFIRMED]: 'green',
   [ExternalPullConfirmationStatusCode.REJECTED]: 'red',
-}
-
-export const SQL_SAFETY_STATUS_COLOR: Record<SqlSafetyStatusCode, BadgeTone> = {
-  [SqlSafetyStatusCode.PASSED]: 'green',
-  [SqlSafetyStatusCode.REJECTED]: 'red',
-  [SqlSafetyStatusCode.ERROR]: 'orange',
 }
 
 /** 过程性评价节点/记录共用确认状态流转表，与后端 ConfirmationStatusEnum.canTransitTo 一致 */

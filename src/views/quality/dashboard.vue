@@ -145,7 +145,7 @@ const aiCounts = reactive({
   total: 0,
   pending: 0,
   processing: 0,
-  succeeded: 0,
+  completed: 0,
   failed: 0,
 })
 
@@ -297,7 +297,7 @@ const qualityChartGroups = computed<QualityChartGroup[]>(() => {
   const ai = buildStatusChartGroup('ai', 'AI 任务状态', [
     { label: '排队中', value: aiCounts.pending, tone: 'gray' },
     { label: '运行中', value: aiCounts.processing, tone: 'blue' },
-    { label: '已成功', value: aiCounts.succeeded, tone: 'green' },
+    { label: '已成功', value: aiCounts.completed, tone: 'green' },
     { label: '已失败', value: aiCounts.failed, tone: 'red' },
   ])
   if (achievement) groups.push(achievement)
@@ -373,7 +373,7 @@ async function loadSummary() {
     aiCounts.total = summary.aiTaskTotal ?? 0
     aiCounts.pending = summary.aiTaskPending ?? 0
     aiCounts.processing = summary.aiTaskProcessing ?? 0
-    aiCounts.succeeded = summary.aiTaskSucceeded ?? 0
+    aiCounts.completed = summary.aiTaskCompleted ?? 0
     aiCounts.failed = summary.aiTaskFailed ?? 0
   } catch (error) {
     summaryLoadFailed.value = true

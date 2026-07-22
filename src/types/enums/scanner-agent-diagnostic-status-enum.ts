@@ -1,4 +1,4 @@
-/** 扫描 Agent 诊断状态（服务端设备视图） */
+/** 扫描 Agent 诊断状态 - 与后端 ScannerAgentDiagnosticStatus 逐值对齐 */
 export enum ScannerAgentDiagnosticStatusCode {
   OK = 'OK',
   WARNING = 'WARNING',

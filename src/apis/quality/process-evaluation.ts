@@ -4,6 +4,7 @@ import type { ConfirmationStatusCode, ProcessNodeTypeCode } from './types'
  * 后端对象：ProcessEvaluationNodeController /api/quality/process-nodes。
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { ProcessEvaluationEvidenceTypeCode } from '@/types/enums/process-evaluation-evidence-type-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
@@ -18,7 +19,7 @@ export interface ProcessEvaluationNodeVO {
   nodeCode: string
   nodeName: string
   nodeType: ProcessNodeTypeCode
-  evidenceType?: string
+  evidenceType?: ProcessEvaluationEvidenceTypeCode
   semester?: SemesterCode
   weight?: number
   fullScore?: number
@@ -37,7 +38,7 @@ export interface ProcessEvaluationNodeSaveRequest {
   nodeCode: string
   nodeName: string
   nodeType: ProcessNodeTypeCode
-  evidenceType?: string
+  evidenceType?: ProcessEvaluationEvidenceTypeCode
   semester?: SemesterCode
   weight?: number
   fullScore?: number
@@ -54,7 +55,7 @@ export interface ProcessEvaluationNodeUpdateRequest {
   nodeCode: string
   nodeName: string
   nodeType: ProcessNodeTypeCode
-  evidenceType?: string
+  evidenceType?: ProcessEvaluationEvidenceTypeCode
   semester?: SemesterCode
   weight?: number
   fullScore?: number

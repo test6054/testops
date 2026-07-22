@@ -5,7 +5,6 @@ import type {
   ScannerKioskScanModeCode,
 } from '@/apis/mark/scanner-kiosk'
 import type { ArchiveScanBatchModeCode } from '@/types/enums/archive-scan-batch-mode-enum'
-import type { DirectScanProviderChainCode } from '@/types/enums/direct-scan-provider-chain-enum'
 import type { DocumentBlankPageStatusCode } from '@/types/enums/document-blank-page-status-enum'
 import type { DocumentBusinessSceneCode } from '@/types/enums/document-business-scene-enum'
 import type { PortfolioAiTaskTypeCode } from '@/types/enums/portfolio-ai-task-type-enum'
@@ -85,7 +84,6 @@ export interface ScanWorkOrderStartRequest {
   taskType?: PortfolioAiTaskTypeCode
   templateCode?: string
   archiveRecordId?: string
-  providerChain?: DirectScanProviderChainCode
 }
 
 export interface ScanWorkOrderLifecycleVO {
@@ -195,7 +193,6 @@ export interface ScanWorkOrderCommitRequest {
   scanSessionId?: string
   businessScene?: DocumentBusinessSceneCode
   businessRefId?: string
-  providerChain?: DirectScanProviderChainCode
   documentPages?: ExamScannerCommitDocumentPageRequest[]
   archiveBatchMode?: ArchiveScanBatchModeCode
 }
@@ -231,7 +228,6 @@ export interface ExamScanWorkOrderStartRequest {
   paperInstanceId?: string
   scanConfig: ExamScannerScanConfigVO
   dispatchTicketId?: string
-  providerChain?: DirectScanProviderChainCode
 }
 
 export interface ExamScanWorkOrderDiscardRequest {

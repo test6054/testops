@@ -84,41 +84,6 @@ export interface AiTaskQueryRequest extends QueryDto {
   reportId?: string
 }
 
-/** AI 任务创建请求 - 对齐后端 AiTaskCreateRequest */
-export interface AiTaskCreateRequest {
-  taskType: AiTaskTypeCode
-  businessType: AiTaskBusinessTypeCode
-  businessId: string
-  programId?: string
-  trainingPlanId?: string
-  qualityCourseId?: string
-  achievementResultId?: string
-  reportId?: string
-}
-
-/** AI 任务抢占请求 - 对齐后端 AiTaskClaimRequest */
-export interface AiTaskClaimRequest {
-  id: string
-}
-
-/** AI 任务完成登记请求 - 对齐后端 AiTaskCompleteRequest */
-export interface AiTaskCompleteRequest {
-  id: string
-  promptSnapshotId: string
-  maskMappingId: string
-  resultId: string
-}
-
-/** AI 任务失败登记请求 - 对齐后端 AiTaskFailRequest */
-export interface AiTaskFailRequest {
-  id: string
-  failurePhase: AiTaskFailurePhaseCode
-  failureReason: string
-  promptSnapshotId?: string
-  maskMappingId?: string
-  resultId?: string
-}
-
 /** AI 人工处置请求 - 严格对齐后端 AiTaskManualHandlingRequest */
 export interface AiTaskManualHandlingRequest {
   id: string
@@ -139,15 +104,11 @@ export interface QualityStatusCountsResponse {
 }
 
 export const aiTaskApi = {
-  create: (data: AiTaskCreateRequest) => http.post<string>(`${TASK}/create`, data),
   page: (data: AiTaskQueryRequest, config?: ExtendedAxiosRequestConfig) =>
     http.post<PageResult<AiTaskVO>>(`${TASK}/page`, data, config),
   statusCounts: (data: AiTaskQueryRequest, config?: ExtendedAxiosRequestConfig) =>
     http.post<QualityStatusCountsResponse>(`${TASK}/status-counts`, data, config),
   detail: (id: string) => http.post<AiTaskVO>(`${TASK}/detail`, { id }),
-  claim: (data: AiTaskClaimRequest) => http.post<void>(`${TASK}/claim`, data),
-  complete: (data: AiTaskCompleteRequest) => http.post<void>(`${TASK}/complete`, data),
-  fail: (data: AiTaskFailRequest) => http.post<void>(`${TASK}/fail`, data),
   cancel: (data: AiTaskCancelRequest) => http.post<void>(`${TASK}/cancel`, data),
   manualHandle: (data: AiTaskManualHandlingRequest) =>
     http.post<void>(`${TASK}/manual-handle`, data),

@@ -6,7 +6,7 @@ import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
 /**
  * 统一归档卷 API - 对接 edu-mark ArchiveVolumeController
  */
-import type { ArchiveAutoCreateFailureCategoryCode } from '@/constants/archive-auto-create-failure-category'
+import type { ArchiveVolumeAutoCreateFailureCategoryCode } from '@/constants/archive-volume-auto-create-failure-category'
 import type { PageResult, QueryDto } from '@/types'
 import type { ArchiveAppraisalDecisionCode } from '@/types/enums/archive-appraisal-decision-enum'
 import type { ArchiveDestructionDecisionCode } from '@/types/enums/archive-destruction-decision-enum'
@@ -1876,7 +1876,7 @@ export interface ArchiveVolumeExamGateResponse {
   autoCreateLastError?: string
   autoCreateFailureStubPresent?: boolean
   classScopeRecoveryAllowed?: boolean
-  autoCreateFailureCategory?: ArchiveAutoCreateFailureCategoryCode
+  autoCreateFailureCategory?: ArchiveVolumeAutoCreateFailureCategoryCode
   archiveAutoCreateRetryAllowed?: boolean
   /** 按参考班级院系 scope 解析的预期正式卷数 */
   expectedAutoCreateVolumeCount?: number
@@ -1927,7 +1927,7 @@ export interface ArchiveVolumeExamAutoCreateAttentionItemVO {
   attemptCount?: number
   nextRetryAt?: string
   lastError?: string
-  failureCategory?: ArchiveAutoCreateFailureCategoryCode
+  failureCategory?: ArchiveVolumeAutoCreateFailureCategoryCode
   triggerContext?: string
 }
 
@@ -2050,7 +2050,7 @@ export interface ArchiveExternalFondsPendingResponse {
   attemptCount?: number
   nextRetryAt?: string
   lastError?: string
-  failureCategory?: ArchiveAutoCreateFailureCategoryCode
+  failureCategory?: ArchiveVolumeAutoCreateFailureCategoryCode
   triggerContext?: string
   volumeId?: string
   updateTime?: string
@@ -2359,7 +2359,7 @@ export interface ArchiveVolumeSubmitChecklistItemVO {
   dimension: ArchiveVolumeSubmitChecklistDimensionCode
   message: string
   passed?: boolean
-  actionType?: ArchiveVolumeSubmitChecklistActionTypeCode | string
+  actionType?: ArchiveVolumeSubmitChecklistActionTypeCode
   targetTab?: string
   actionLabel?: string
 }

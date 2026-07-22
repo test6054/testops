@@ -18,6 +18,7 @@ import {
   ManualConversionStatusDescription,
 } from '@/types/enums/manual-conversion-status-enum'
 import { formatRespondentType } from '@/types/enums/respondent-type-enum'
+import { SurveyIdentityFieldTypeCode } from '@/types/enums/survey-identity-field-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const ITEM_CONFIG_ERROR = '题项配置不完整，请检查后重试'
@@ -262,9 +263,9 @@ export function buildPublicSurveyUrl(accessToken: string): string {
 }
 
 export const DEFAULT_IDENTITY_FIELDS: SurveyIdentityFieldVO[] = [
-  { fieldKey: 'NAME', fieldLabel: '姓名', fieldType: 'TEXT', required: true },
-  { fieldKey: 'ORGANIZATION', fieldLabel: '单位', fieldType: 'TEXT', required: false },
-  { fieldKey: 'CONTACT', fieldLabel: '联系方式', fieldType: 'TEXT', required: false },
+  { fieldKey: 'NAME', fieldLabel: '姓名', fieldType: SurveyIdentityFieldTypeCode.TEXT, required: true },
+  { fieldKey: 'ORGANIZATION', fieldLabel: '单位', fieldType: SurveyIdentityFieldTypeCode.TEXT, required: false },
+  { fieldKey: 'CONTACT', fieldLabel: '联系方式', fieldType: SurveyIdentityFieldTypeCode.TEXT, required: false },
 ]
 
 export const accessModeOptions: { value: IndirectFormAccessModeCode, label: string }[] = [

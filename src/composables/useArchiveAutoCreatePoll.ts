@@ -4,8 +4,8 @@ import { onUnmounted, ref } from 'vue'
 import { getArchiveVolumeExamGate } from '@/apis/mark/archive-volume'
 import {
   CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES,
-  isArchiveAutoCreateFailureCategory,
-} from '@/constants/archive-auto-create-failure-category'
+  isArchiveVolumeAutoCreateFailureCategory,
+} from '@/constants/archive-volume-auto-create-failure-category'
 
 export type ArchiveAutoCreatePollResult = 'healthy' | 'failed' | 'timeout'
 
@@ -27,7 +27,7 @@ function isPollFailed(gate: ArchiveVolumeExamGateResponse): boolean {
     return true
   }
   const category = gate.autoCreateFailureCategory
-  if (category && isArchiveAutoCreateFailureCategory(category)) {
+  if (category && isArchiveVolumeAutoCreateFailureCategory(category)) {
     return CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
   }
   return false

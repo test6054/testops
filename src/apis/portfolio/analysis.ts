@@ -1,7 +1,7 @@
-import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type {
   PortfolioTeacherPkCompareVO,
   PortfolioTeacherRecommendPkCompareRequest,
@@ -36,6 +36,7 @@ import type { PortfolioAnnualReportTaskStatusCode } from '@/types/enums/portfoli
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { PortfolioComplianceScopeTypeCode } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import type { PortfolioEthicsImpactScopeCode } from '@/types/enums/portfolio-ethics-impact-scope-enum'
+import type { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
 import type { PortfolioSuggestionPriorityCode } from '@/types/enums/portfolio-suggestion-priority-enum'
 import type { PortfolioSuggestionTypeCode } from '@/types/enums/portfolio-suggestion-type-enum'
 import type { PortfolioTrainingRecommendStatusCode } from '@/types/enums/portfolio-training-recommend-status-enum'
@@ -234,7 +235,7 @@ export interface PortfolioAppointmentPeriodYearScoreVO {
   weightedInRollup?: boolean
   referencedTaskIds?: string[]
   referencedTaskNames?: string[]
-  sourceSceneCode?: string
+  sourceSceneCode?: PortfolioEvaluationSceneCode
 }
 
 export interface PortfolioAppointmentPeriodKeyAchievementVO {
@@ -256,9 +257,9 @@ export interface PortfolioAppointmentPeriodRiskItemVO {
 export interface PortfolioAppointmentPeriodEvaluationVO {
   formulaLabel?: string
   teacherId?: string
-  cycleSceneCode?: string
+  cycleSceneCode?: PortfolioEvaluationSceneCode
   cycleSceneLabel?: string
-  annualSourceSceneCode?: string
+  annualSourceSceneCode?: PortfolioEvaluationSceneCode
   periodStart?: string
   periodEnd?: string
   weightedAnnualScore?: number | string
@@ -285,7 +286,7 @@ export interface PortfolioAppointmentPeriodEvaluationGetRequest {
   teacherId?: string
   periodStart: string
   periodEnd: string
-  cycleSceneCode?: 'APPOINTMENT' | 'TITLE_REVIEW' | 'DOUBLE_HIGH_CYCLE' | 'ACADEMIC_YEAR'
+  cycleSceneCode?: PortfolioEvaluationSceneCode
 }
 
 export const portfolioAnalysisApi = {
@@ -379,7 +380,7 @@ export const portfolioAnalysisApi = {
     ),
   dismissTrainingRecommendation: (data: { recommendationId: string }) =>
     http.post<void>('/api/portfolio/analysis/recommend/training/dismiss', data),
-  getCreditCurve: (data: { teacherId: string; creditCategory?: string }) =>
+  getCreditCurve: (data: { teacherId: string, creditCategory?: string }) =>
     http.post<PortfolioPortraitCreditCurveVO>('/api/portfolio/portrait/teacher/credit-curve', data),
   getDepartmentPortrait: (data: { departmentId: string }) =>
     http.post<PortfolioDepartmentPortraitVO>('/api/portfolio/portrait/department/get', data),
@@ -407,9 +408,9 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/pk/session/page',
       data,
     ),
-  exportPkSession: (data: { sessionId: string; maskMode?: boolean }) =>
+  exportPkSession: (data: { sessionId: string, maskMode?: boolean }) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/analysis/pk/export', data),
-  generateAnnualReport: (data: { teacherId: string; reportYear: string }) =>
+  generateAnnualReport: (data: { teacherId: string, reportYear: string }) =>
     http.post<PortfolioAnalysisAnnualReportVO>(
       '/api/portfolio/analysis/report/annual/generate',
       data,
