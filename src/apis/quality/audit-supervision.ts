@@ -7,6 +7,7 @@ import type { AuditEvidenceItemRequest, AuditEvidenceItemVO } from './audit-evid
 import type { AuditSupervisionTypeCode } from './types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { AuditSupervisionFindingTypeCode } from '@/types/enums/audit-supervision-finding-type-enum'
 import type { AuditSupervisionScopeCode } from '@/types/enums/audit-supervision-scope-enum'
 import http from '@/config/axios'
 import {
@@ -103,7 +104,7 @@ export interface AuditSupervisionSaveRequest {
 }
 
 export interface AuditSupervisionFindingItemRequest {
-  findingType?: string
+  findingType?: AuditSupervisionFindingTypeCode
   findingTitle?: string
   findingDescription?: string
   severity?: string
@@ -113,7 +114,7 @@ export interface AuditSupervisionFindingItemRequest {
 
 export interface AuditSupervisionFindingItemVO {
   id?: string
-  findingType?: string
+  findingType?: AuditSupervisionFindingTypeCode
   findingTitle?: string
   findingDescription?: string
   severity?: string

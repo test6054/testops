@@ -5,12 +5,15 @@ import type {
   ExamQuestionStandardAnswerOptionRequest,
   ObjectiveComparePolicyCode,
 } from '@/apis/mark/exam-standard-answer'
-import { computed } from 'vue'
+import message from 'ant-design-vue/es/message'
+import { computed, ref, watch } from 'vue'
+import { maintainExamLayoutQuestionNumbers } from '@/apis/mark/exam-layout-design'
 import {
   OBJECTIVE_COMPARE_POLICY_OPTIONS,
   ObjectiveComparePolicyCode as ObjectiveComparePolicy,
 } from '@/apis/mark/exam-standard-answer'
 import { QuestionTypeCode, QuestionTypeDescription } from '@/apis/mark/question-type'
+import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
@@ -52,6 +55,18 @@ const OCR_SCENE_OPTIONS = ALL_MARK_OCR_SCENE_CODES.map((value) => ({
 }))
 
 const focusedQuestion = computed(() => props.question)
+const maintainedQuestionNo = ref('')
+const maintainedPrintedQuestionNo = ref('')
+const maintainingNumbers = ref(false)
+
+watch(
+  focusedQuestion,
+  (question) => {
+    maintainedQuestionNo.value = question?.questionNo ?? ''
+    maintainedPrintedQuestionNo.value = question?.printedQuestionNo ?? ''
+  },
+  { immediate: true },
+)
 
 const sourcePageNo = computed(() => {
   if (!props.document || !props.question) {
@@ -74,6 +89,32 @@ function patchQuestion(partial: Partial<ExamLayoutQuestionDto>): void {
     item.id === props.question?.id ? { ...item, ...partial } : item,
   )
   emit('patch', { ...props.document, questions })
+}
+
+/** 只读版面中的题号维护走题目级接口，不能重存整份 layout 破坏已生成的切片和阅卷任务。 */
+async function maintainQuestionNumbers(): Promise<void> {
+  if (!props.document?.examId || !props.question?.id || maintainingNumbers.value) return
+  const questionNo = maintainedQuestionNo.value.trim()
+  if (!questionNo) {
+    void message.warning('请填写内部评分题号')
+    return
+  }
+  maintainingNumbers.value = true
+  try {
+    const saved = await maintainExamLayoutQuestionNumbers({
+      examId: props.document.examId,
+      layoutQuestionId: props.question.id,
+      questionNo,
+      printedQuestionNo: maintainedPrintedQuestionNo.value.trim() || undefined,
+    })
+    const questions = props.document.questions.map((item) =>
+      item.id === saved.id ? { ...item, ...saved } : item,
+    )
+    emit('patch', { ...props.document, questions })
+    void message.success('题号已维护，现有作答切片和阅卷任务保持不变')
+  } finally {
+    maintainingNumbers.value = false
+  }
 }
 
 function patchQuestionAnswer(partial: NonNullable<ExamLayoutQuestionDto['answer']>): void {
@@ -220,8 +261,9 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
     <h2 class="layout-question-property__title">题目属性</h2>
     <UiEmpty v-if="!focusedQuestion" size="sm" description="在左侧题单中选择题目" />
     <UiForm v-else layout="vertical" class="layout-question-property__form">
-      <UiFormItem label="题号">
+      <UiFormItem label="评分题号">
         <UiInput
+          v-if="!fieldReadonly"
           size="sm"
           :model-value="focusedQuestion.questionNo"
           :disabled="fieldReadonly"
@@ -233,6 +275,37 @@ function answerCompletenessHint(question: ExamLayoutQuestionDto): string {
               })
           "
         />
+        <template v-else>
+          <UiInput v-model="maintainedQuestionNo" size="sm" placeholder="教师维护内部评分题号" />
+        </template>
+      </UiFormItem>
+      <UiFormItem label="纸面题号">
+        <UiInput
+          v-if="!fieldReadonly"
+          size="sm"
+          :model-value="focusedQuestion.printedQuestionNo"
+          :disabled="fieldReadonly"
+          placeholder="未识别时由教师补录"
+          @update:model-value="
+            (value) =>
+              patchQuestion({
+                printedQuestionNo: String(value ?? '').trim() || undefined,
+              })
+          "
+        />
+        <template v-else>
+          <UiInput v-model="maintainedPrintedQuestionNo" size="sm" placeholder="未识别时由教师补录" />
+        </template>
+      </UiFormItem>
+      <UiFormItem v-if="fieldReadonly" label="题号维护">
+        <UiButton
+          size="sm"
+          variant="outline"
+          :loading="maintainingNumbers"
+          @click="void maintainQuestionNumbers()"
+        >
+          保存题号维护
+        </UiButton>
       </UiFormItem>
       <UiFormItem label="OCR 场景">
         <UiSelect

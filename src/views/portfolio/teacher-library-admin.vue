@@ -4,6 +4,7 @@ import type { PortfolioTeacherLibraryBorrowStatsVO } from '@/apis/portfolio/teac
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { portfolioTeacherLibraryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -21,10 +22,20 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
+
+const route = useRoute()
+const userStore = useUserStore()
+/** 院系路由或非租户管理员：本院系只读口径（PF-P0-421） */
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageTitle = computed(() => (isDepartmentScoped.value ? '院系图书借阅' : '图书借阅'))
+
 
 const stats = ref<PortfolioTeacherLibraryBorrowStatsVO | null>(null)
 const form = reactive({
@@ -245,7 +256,7 @@ void loadStats()
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="图书借阅" />
+      <ContextBar show-title layout="workbench" :title="pageTitle" />
     </template>
     <UiAlertStrip
       v-if="archiveWriteForbidden"
@@ -261,60 +272,62 @@ void loadStats()
       <div v-else-if="statsLoadError" class="stats stats--error">借阅统计加载失败</div>
       <div v-else-if="statsLoading" class="stats">借阅统计加载中</div>
       <div class="form-row">
-        <UiSelect
-          size="sm"
-          v-model="form.teacherUserId"
-          allow-search
-          allow-clear
-          placeholder="搜索教师姓名或工号"
-          style="width: 220px"
-          :filter-option="false"
-          :options="teacherOptions"
-          :disabled="operating"
-          @search="searchTeachers"
-        />
-        <UiInput
-          size="sm"
-          v-model="form.bookTitle"
-          placeholder="书名"
-          style="width: 200px"
-          :disabled="operating"
-        />
-        <UiInput
-          size="sm"
-          v-model="form.bookIsbn"
-          placeholder="书号"
-          style="width: 140px"
-          :disabled="operating"
-        />
-        <UiDatePicker
-          size="sm"
-          v-model="form.borrowTime"
-          :show-time="true"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          placeholder="借阅时间"
-          :disabled="operating"
-        />
-        <UiDatePicker
-          size="sm"
-          v-model="form.dueTime"
-          :show-time="true"
-          value-format="YYYY-MM-DD HH:mm:ss"
-          placeholder="应还时间"
-          :disabled="operating"
-        />
-        <UiButton
-          size="sm"
-          variant="primary"
-          :loading="operationKey.startsWith('borrow:save:')"
-          :disabled="operating || archiveWriteForbidden"
-          @click="saveBorrow"
-        >
-          {{ form.id ? '保存修改' : '登记借阅' }}
-        </UiButton>
-        <UiButton size="sm" v-if="form.id" :disabled="operating" @click="resetForm">
-          取消编辑
-        </UiButton>
+        <template v-if="!isDepartmentScoped">
+          <UiSelect
+            size="sm"
+            v-model="form.teacherUserId"
+            allow-search
+            allow-clear
+            placeholder="搜索教师姓名或工号"
+            style="width: 220px"
+            :filter-option="false"
+            :options="teacherOptions"
+            :disabled="operating"
+            @search="searchTeachers"
+          />
+          <UiInput
+            size="sm"
+            v-model="form.bookTitle"
+            placeholder="书名"
+            style="width: 200px"
+            :disabled="operating"
+          />
+          <UiInput
+            size="sm"
+            v-model="form.bookIsbn"
+            placeholder="书号"
+            style="width: 140px"
+            :disabled="operating"
+          />
+          <UiDatePicker
+            size="sm"
+            v-model="form.borrowTime"
+            :show-time="true"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="借阅时间"
+            :disabled="operating"
+          />
+          <UiDatePicker
+            size="sm"
+            v-model="form.dueTime"
+            :show-time="true"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            placeholder="应还时间"
+            :disabled="operating"
+          />
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="operationKey.startsWith('borrow:save:')"
+            :disabled="operating || archiveWriteForbidden"
+            @click="saveBorrow"
+          >
+            {{ form.id ? '保存修改' : '登记借阅' }}
+          </UiButton>
+          <UiButton size="sm" v-if="form.id" :disabled="operating" @click="resetForm">
+            取消编辑
+          </UiButton>
+        </template>
         <UiButton
           size="sm"
           :loading="operationKey === 'borrow:export'"
@@ -360,6 +373,7 @@ void loadStats()
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              v-if="!isDepartmentScoped"
               :items="[
                 ...(!record.returnTime
                   ? [
@@ -371,6 +385,7 @@ void loadStats()
               split
               @action="(key) => (key === 'return' ? returnBorrow(record) : editBorrow(record))"
             />
+            <span v-else class="text-neutral-400">—</span>
           </template>
         </template>
       </UiDataTable>

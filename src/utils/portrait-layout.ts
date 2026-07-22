@@ -38,46 +38,49 @@ export interface PortfolioPortraitChartConfigEntry {
 
 const DIMENSION_CODES = new Set<string>(ALL_PORTFOLIO_PORTRAIT_DIMENSION_CODES)
 
-function isPortraitWidget(value: string): value is PortraitWidgetTypeCode {
-  return (
+function requirePortraitWidget(value: string, index: number): PortraitWidgetTypeCode {
+  if (
     value === PortraitWidgetTypeCode.RADAR
     || value === PortraitWidgetTypeCode.TIMELINE
     || value === PortraitWidgetTypeCode.BAR
     || value === PortraitWidgetTypeCode.SCORE_CARD
-  )
+  ) {
+    return value
+  }
+  throw new Error(`画像模板布局含非法组件类型 index=${index} widget=${value}`)
 }
 
-function isPortraitDimension(value: string): value is PortfolioPortraitDimensionCode {
-  return DIMENSION_CODES.has(value)
+function requirePortraitDimension(value: string, widgetIndex: number): PortfolioPortraitDimensionCode {
+  if (DIMENSION_CODES.has(value)) {
+    return value as PortfolioPortraitDimensionCode
+  }
+  throw new Error(`画像模板图表配置含非法维度编码 widgetIndex=${widgetIndex} dimensionCode=${value}`)
 }
 
 /** 将 API layout + chartConfig 合并为可视化编辑模型 */
 export function mergeLayoutWithChartConfig(
-  layout: Array<{ widget: string, x: number, y: number, w: number, h: number }>,
-  chartConfig?: Array<{ widgetIndex: number, dimensionCode: string }>,
+  layout: Array<{ widget: PortraitWidgetTypeCode, x: number, y: number, w: number, h: number }>,
+  chartConfig?: Array<{ widgetIndex: number, dimensionCode: PortfolioPortraitDimensionCode }>,
 ): PortfolioPortraitLayoutWidget[] {
-  const widgets: PortfolioPortraitLayoutWidget[] = []
-  for (const item of layout) {
-    if (!isPortraitWidget(item.widget)) {
-      continue
-    }
-    widgets.push({
-      widget: item.widget,
-      x: item.x,
-      y: item.y,
-      w: item.w,
-      h: item.h,
-    })
-  }
+  const widgets: PortfolioPortraitLayoutWidget[] = layout.map((item, index) => ({
+    widget: requirePortraitWidget(item.widget, index),
+    x: item.x,
+    y: item.y,
+    w: item.w,
+    h: item.h,
+  }))
   if (!chartConfig?.length) {
     return widgets
   }
   return widgets.map((row, index) => {
     const entry = chartConfig.find((item) => item.widgetIndex === index)
-    if (!entry || !isPortraitDimension(entry.dimensionCode)) {
+    if (!entry) {
       return row
     }
-    return { ...row, dimensionCode: entry.dimensionCode }
+    return {
+      ...row,
+      dimensionCode: requirePortraitDimension(entry.dimensionCode, index),
+    }
   })
 }
 

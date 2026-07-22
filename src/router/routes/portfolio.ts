@@ -39,7 +39,11 @@ const portfolioOrgMenuMeta = {
   menuGroupTitle: '组织与模板',
   menuGroupIcon: 'apartment',
   menuGroupOrder: 2,
-  portfolioWorkShells: CONFIGURATION_WORK_SHELLS,
+  // PF-P0-408：租户管理员默认 SCHOOL_GOVERNANCE；组织/名册/模板等须在默认壳可注册（对齐 PF-407）
+  portfolioWorkShells: [
+    'SCHOOL_GOVERNANCE',
+    'CONFIGURATION',
+  ] as PortfolioWorkShellCode[],
 }
 
 const PORTFOLIO_DEPARTMENT_MENU_GROUP = 'portfolio-department'
@@ -67,7 +71,11 @@ const indicatorMenuMeta = {
   menuGroupTitle: '发展指标',
   menuGroupIcon: 'bar-chart',
   menuGroupOrder: 4,
-  portfolioWorkShells: CONFIGURATION_WORK_SHELLS,
+  // PF-P0-408：发展指标配置在校管默认治理壳可进；配置壳仍保留完整入口
+  portfolioWorkShells: [
+    'SCHOOL_GOVERNANCE',
+    'CONFIGURATION',
+  ] as PortfolioWorkShellCode[],
 }
 
 const PORTFOLIO_EVALUATION_MENU_GROUP = 'portfolio-evaluation'
@@ -112,7 +120,11 @@ const portfolioSecurityMenuMeta = {
   menuGroupTitle: '权限与审计',
   menuGroupIcon: 'safety',
   menuGroupOrder: 9,
-  portfolioWorkShells: CONFIGURATION_WORK_SHELLS,
+  // PF-P0-407：租户管理员默认 SCHOOL_GOVERNANCE；导出审批站内信须在默认壳可注册
+  portfolioWorkShells: [
+    'SCHOOL_GOVERNANCE',
+    'CONFIGURATION',
+  ] as PortfolioWorkShellCode[],
 }
 
 /** 侧栏次要入口：默认收进分组「更多」 */
@@ -147,10 +159,19 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/portfolio-scan-ops.vue'),
         meta: {
           title: '档案袋扫描运营',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-418：BE 档案袋扫描运营仅 requireTeacherMarkOpsPermission（教师运维门禁），
+          // 非租户管理员独占。禁止 requireTenantAdmin 把具备 SCH_TECH 运维权限的教师挡在深链外；
+          // hideInMenu 运维页须在校管默认 SCHOOL_GOVERNANCE / 配置壳 / 教师壳可注册，避免切壳 404。
+          roles: ALL_ROLES,
           icon: 'scan',
           hideInMenu: true,
           keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+            'CONFIGURATION',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -510,6 +531,8 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           hideInMenu: false,
           keepAlive: true,
           ...portfolioOrgMenuMeta,
+          // PF-P0-408：CONFIGURATION 默认着陆页须独占配置壳，避免默认路由多壳合同冲突
+          portfolioWorkShells: CONFIGURATION_WORK_SHELLS,
         },
       },
       {
@@ -636,6 +659,12 @@ export const portfolioRoutes: RouteRecordRaw[] = [
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioOrgMenuMeta,
+          // PF-P0-408：校管 TEACHER 壳 workShellRoutes=/portfolio/teachers；须在教师壳可注册，否则切壳 404
+          portfolioWorkShells: [
+            'TEACHER',
+            'SCHOOL_GOVERNANCE',
+            'CONFIGURATION',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1011,12 +1040,17 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/correction-admin.vue'),
         meta: {
           title: '纠错处理',
+          // PF-P0-406：租户管理员站内信 jump 本路径；禁止仅挂 DEPARTMENT_REVIEW 壳（校管默认治理壳会 404）
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'exception',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioDepartmentMenuMeta,
+          ...portfolioGovernanceMenuMeta,
+          portfolioWorkShells: [
+            'SCHOOL_GOVERNANCE',
+            'CONFIGURATION',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1025,12 +1059,17 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/source-fix-admin.vue'),
         meta: {
           title: '源修复重算',
+          // PF-P0-406：与纠错同为校管写路径，壳与治理/配置对齐
           ...PORTFOLIO_ADMIN_ROUTE_META,
           icon: 'sync',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
-          ...portfolioDepartmentMenuMeta,
+          ...portfolioGovernanceMenuMeta,
+          portfolioWorkShells: [
+            'SCHOOL_GOVERNANCE',
+            'CONFIGURATION',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1191,12 +1230,57 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/dual-teacher-analytics.vue'),
         meta: {
           title: '双师分析',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-419 / PRD §7.12：BE analyticsStats 已按院系 scope；禁止 requireTenantAdmin 挡院系负责人
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'pie-chart',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioDualTeacherMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'school/dual-teacher/analytics',
+        name: 'PortfolioSchoolDualTeacherAnalytics',
+        component: () => import('@/views/portfolio/dual-teacher-analytics.vue'),
+        meta: {
+          title: '双师分析',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'pie-chart',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'department/dual-teacher/analytics',
+        name: 'PortfolioDepartmentDualTeacherAnalytics',
+        component: () => import('@/views/portfolio/dual-teacher-analytics.vue'),
+        meta: {
+          title: '院系双师分析',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'pie-chart',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1308,12 +1392,57 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/honor-library-admin.vue'),
         meta: {
           title: '荣誉库',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-420 / PRD：BE page/honorStats 已 assertCanReadTeacherPlatformRegistry + 院系 scope；禁止 requireTenantAdmin 挡院系
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'trophy',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioResourceMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'school/honor-library',
+        name: 'PortfolioSchoolHonorLibrary',
+        component: () => import('@/views/portfolio/honor-library-admin.vue'),
+        meta: {
+          title: '荣誉库',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'trophy',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'department/honor-library',
+        name: 'PortfolioDepartmentHonorLibrary',
+        component: () => import('@/views/portfolio/honor-library-admin.vue'),
+        meta: {
+          title: '院系荣誉库',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'trophy',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1322,12 +1451,57 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/key-teacher-admin.vue'),
         meta: {
           title: '骨干/带头人',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-423：BE page/export/analytics 已院系 scope；写 save/revoke 仍 tenantWide
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'crown',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioResourceMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'school/key-teacher',
+        name: 'PortfolioSchoolKeyTeacherAdmin',
+        component: () => import('@/views/portfolio/key-teacher-admin.vue'),
+        meta: {
+          title: '骨干/带头人',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'crown',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'department/key-teacher',
+        name: 'PortfolioDepartmentKeyTeacherAdmin',
+        component: () => import('@/views/portfolio/key-teacher-admin.vue'),
+        meta: {
+          title: '院系骨干/带头人',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'crown',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1336,12 +1510,57 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/double-duty-admin.vue'),
         meta: {
           title: '双肩挑台账',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-423：BE page/export/analytics 已院系 scope；写仍 assertCanManage
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'swap',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioResourceMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'school/double-duty',
+        name: 'PortfolioSchoolDoubleDutyAdmin',
+        component: () => import('@/views/portfolio/double-duty-admin.vue'),
+        meta: {
+          title: '双肩挑台账',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'swap',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'department/double-duty',
+        name: 'PortfolioDepartmentDoubleDutyAdmin',
+        component: () => import('@/views/portfolio/double-duty-admin.vue'),
+        meta: {
+          title: '院系双肩挑台账',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'swap',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1350,12 +1569,57 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/teacher-salary-admin.vue'),
         meta: {
           title: '教师工资',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-421：BE page/export 已支持院系 scope；禁止 requireTenantAdmin 挡院系读
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'pay-circle',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioOrgMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'school/teacher-salary',
+        name: 'PortfolioSchoolTeacherSalary',
+        component: () => import('@/views/portfolio/teacher-salary-admin.vue'),
+        meta: {
+          title: '教师工资',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'pay-circle',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'department/teacher-salary',
+        name: 'PortfolioDepartmentTeacherSalary',
+        component: () => import('@/views/portfolio/teacher-salary-admin.vue'),
+        meta: {
+          title: '院系教师工资',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'pay-circle',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1364,12 +1628,57 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/teacher-library-admin.vue'),
         meta: {
           title: '图书借阅',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-421：BE page 已院系 scope；stats 同步 scope；禁止 requireTenantAdmin 挡院系读
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'read',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioOrgMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'school/teacher-library',
+        name: 'PortfolioSchoolTeacherLibrary',
+        component: () => import('@/views/portfolio/teacher-library-admin.vue'),
+        meta: {
+          title: '图书借阅',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'read',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'department/teacher-library',
+        name: 'PortfolioDepartmentTeacherLibrary',
+        component: () => import('@/views/portfolio/teacher-library-admin.vue'),
+        meta: {
+          title: '院系图书借阅',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'read',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1392,12 +1701,57 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/development-record-admin.vue'),
         meta: {
           title: '发展档案库',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-420：BE page 已院系 scope；禁止 requireTenantAdmin 挡院系负责人
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'database',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioResourceMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'school/development-record',
+        name: 'PortfolioSchoolDevelopmentRecord',
+        component: () => import('@/views/portfolio/development-record-admin.vue'),
+        meta: {
+          title: '发展档案库',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'database',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'department/development-record',
+        name: 'PortfolioDepartmentDevelopmentRecord',
+        component: () => import('@/views/portfolio/development-record-admin.vue'),
+        meta: {
+          title: '院系发展档案',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'database',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1406,12 +1760,57 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/achievement-comprehensive.vue'),
         meta: {
           title: '成果综合查询',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-420：BE comprehensivePage/achievementStats 已院系 scope
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'search',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioResourceMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'school/achievement-comprehensive',
+        name: 'PortfolioSchoolAchievementComprehensive',
+        component: () => import('@/views/portfolio/achievement-comprehensive.vue'),
+        meta: {
+          title: '成果综合查询',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'search',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'department/achievement-comprehensive',
+        name: 'PortfolioDepartmentAchievementComprehensive',
+        component: () => import('@/views/portfolio/achievement-comprehensive.vue'),
+        meta: {
+          title: '院系成果综合查询',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'search',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1510,11 +1909,56 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/teacher-analytics-dashboard.vue'),
         meta: {
           title: '师资分析看板',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-417 / PRD §7.12：院系可看本院系群体师资分析；禁止 requireTenantAdmin 挡院系负责人
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'dashboard',
           hideInMenu: false,
           keepAlive: true,
           ...portfolioAnalyticsMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'school/teacher-analytics',
+        name: 'PortfolioSchoolTeacherAnalyticsDashboard',
+        component: () => import('@/views/portfolio/teacher-analytics-dashboard.vue'),
+        meta: {
+          title: '师资分析看板',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'dashboard',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'department/teacher-analytics',
+        name: 'PortfolioDepartmentTeacherAnalyticsDashboard',
+        component: () => import('@/views/portfolio/teacher-analytics-dashboard.vue'),
+        meta: {
+          title: '院系师资分析',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'dashboard',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1523,11 +1967,58 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/alert-center.vue'),
         meta: {
           title: '预警中心',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-415 / PRD §7.4.11 / §7.30.2：学校看全校、院系看本院系；禁止 requireTenantAdmin 把院系负责人挡在门外
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'alert',
           hideInMenu: false,
           keepAlive: true,
           ...portfolioAnalyticsMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        // PRD §7.30.2 学校路由别名；与 admin/alert-center 同页，门禁一致
+        path: 'school/alert-center',
+        name: 'PortfolioSchoolAlertCenter',
+        component: () => import('@/views/portfolio/alert-center.vue'),
+        meta: {
+          title: '预警中心',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'alert',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        // PRD §7.30.2 院系路由；审核人默认院系壳可进，BE 仍强制本院系范围
+        path: 'department/alert-center',
+        name: 'PortfolioDepartmentAlertCenter',
+        component: () => import('@/views/portfolio/alert-center.vue'),
+        meta: {
+          title: '院系预警中心',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'alert',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1536,12 +2027,60 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/teacher-pk-analytics.vue'),
         meta: {
           title: '教师 PK',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-414 / PRD §7.30.3：BE 允许 tenantWide 或档案审核人；禁止 requireTenantAdmin 把院系负责人挡在门外
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'swap',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioAnalyticsMenuMeta,
+          // 覆盖 analytics 默认仅 SCHOOL_GOVERNANCE：院系负责人默认 DEPARTMENT_REVIEW，校管也可能处教师壳
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        // PRD §7.30.3 学校路由别名；与 admin/teacher-pk 同页，门禁一致
+        path: 'school/teacher-pk',
+        name: 'PortfolioSchoolTeacherPkAnalytics',
+        component: () => import('@/views/portfolio/teacher-pk-analytics.vue'),
+        meta: {
+          title: '教师 PK',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'swap',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        // PRD §7.30.3 院系路由；审核人默认院系壳可进，BE 仍 assertPkAccess
+        path: 'department/teacher-pk',
+        name: 'PortfolioDepartmentTeacherPkAnalytics',
+        component: () => import('@/views/portfolio/teacher-pk-analytics.vue'),
+        meta: {
+          title: '教师 PK 对比',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'swap',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {
@@ -1550,12 +2089,57 @@ export const portfolioRoutes: RouteRecordRaw[] = [
         component: () => import('@/views/portfolio/annual-report-analytics.vue'),
         meta: {
           title: '年度报告',
-          ...PORTFOLIO_ADMIN_ROUTE_META,
+          // PF-P0-416 / PRD §7.7.7 / §7.12：院系可生成/查看本院系教师年报；禁止 requireTenantAdmin 挡院系负责人
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
           icon: 'file-text',
           hideInMenu: false,
           ...MENU_SECONDARY,
           keepAlive: true,
           ...portfolioAnalyticsMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'school/annual-report-analytics',
+        name: 'PortfolioSchoolAnnualReportAnalytics',
+        component: () => import('@/views/portfolio/annual-report-analytics.vue'),
+        meta: {
+          title: '年度报告',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'file-text',
+          hideInMenu: true,
+          keepAlive: true,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
+        },
+      },
+      {
+        path: 'department/annual-report-analytics',
+        name: 'PortfolioDepartmentAnnualReportAnalytics',
+        component: () => import('@/views/portfolio/annual-report-analytics.vue'),
+        meta: {
+          title: '院系年度报告',
+          roles: ALL_ROLES,
+          requirePortfolioReviewer: true,
+          icon: 'file-text',
+          hideInMenu: false,
+          ...MENU_SECONDARY,
+          keepAlive: true,
+          ...portfolioDepartmentMenuMeta,
+          portfolioWorkShells: [
+            'TEACHER',
+            'DEPARTMENT_REVIEW',
+            'SCHOOL_GOVERNANCE',
+          ] as PortfolioWorkShellCode[],
         },
       },
       {

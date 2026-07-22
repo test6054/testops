@@ -686,6 +686,18 @@ onMounted(async () => {
       <UiCard>
         <UiButton size="sm" :loading="statsLoading" @click="loadStats"> 刷新统计 </UiButton>
         <UiSpin :spinning="statsLoading">
+          <div v-if="stats" class="analytics-summary mb-3">
+            <UiCard title="台账总量">
+              <p>筛选口径总数 {{ stats.totalCount ?? 0 }}</p>
+              <p>在册有效 {{ stats.activeCount ?? 0 }}</p>
+            </UiCard>
+            <UiCard title="产业导师贡献度均值（§8.42）">
+              <p>综合贡献度 {{ stats.avgContributionScore ?? 0 }}</p>
+              <p>聘任 {{ stats.avgAppointmentValidityScore ?? 0 }} · 教学 {{ stats.avgTeachingParticipationScore ?? 0 }}</p>
+              <p>实践 {{ stats.avgPracticeGuidanceScore ?? 0 }} · 成果 {{ stats.avgIndustryOutcomeScore ?? 0 }} · 考核 {{ stats.avgAssessmentScore ?? 0 }}</p>
+              <p class="hint">校内职称可用：{{ stats.usableForCampusTitleEvaluation === false ? '否' : '—' }}</p>
+            </UiCard>
+          </div>
           <div v-if="stats" class="stats-grid">
             <div>
               <h4>合同状态分布</h4>
@@ -930,6 +942,15 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.analytics-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.analytics-summary .hint {
+  font-size: 12px;
+  color: var(--dp-text-secondary);
+}
 .toolbar {
   display: flex;
   gap: 8px;

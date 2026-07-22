@@ -1,4 +1,4 @@
-/** 最终成绩风险原因编码，与后端 FinalScoreRiskReviewServiceImpl 风险常量逐值一致 */
+/** 最终成绩风险原因编码 - 与后端 FinalScoreRiskReason 逐值对齐 */
 export enum FinalScoreRiskReasonCode {
   ABNORMAL_PAPER = 'ABNORMAL_PAPER',
   UNRECONCILED_ABSENCE = 'UNRECONCILED_ABSENCE',

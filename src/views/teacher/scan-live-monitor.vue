@@ -596,6 +596,7 @@ import { batchBindPapers } from '@/apis/mark/exam-mark-scanner'
 import { getScanMonitorPanel, listExamScanMonitorDevices } from '@/apis/mark/exam-progress'
 import {
   discardScannedPageByTeacher,
+  IncidentSourceTypeDescription,
   listScanAttentions,
   pageScannerBatches,
   QUALITY_DECISION_TONE,
@@ -605,7 +606,6 @@ import {
   SCAN_BATCH_STATUS_OPTIONS,
   SCAN_BATCH_STATUS_TONE,
   ScanAttentionQueryGroupCode,
-  ScanAttentionSourceTypeDescription,
   ScanAttentionTypeCode,
   ScanAttentionTypeDescription,
   ScanBatchStatusDescription,
@@ -661,7 +661,7 @@ import { useWorkspaceConfidentialContext } from '@/composables/useWorkspaceConfi
 import { DEFAULT_LIST_PAGE_SIZE, REMOTE_SEARCH_PAGE_SIZE } from '@/constants/pagination'
 import { AttemptStatusCode } from '@/types/enums/attempt-status-enum'
 import { CandidateStatusCode } from '@/types/enums/candidate-status-enum'
-import { ScanAttentionSourceTypeCode } from '@/types/enums/scan-attention-source-type-enum'
+import { IncidentSourceTypeCode } from '@/types/enums/incident-source-type-enum'
 import { getUserErrorMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { formatDateTimeWithSeconds } from '@/utils/format'
 import mittBus from '@/utils/mitt'
@@ -1582,8 +1582,8 @@ function attentionTypeLabel(type: ScanAttentionTypeCode): string {
   return strictEnumLabel(ScanAttentionTypeDescription, type, '扫描异常类型')
 }
 
-function sourceTypeLabel(type: ScanAttentionSourceTypeCode): string {
-  return strictEnumLabel(ScanAttentionSourceTypeDescription, type, '扫描异常来源类型')
+function sourceTypeLabel(type: IncidentSourceTypeCode): string {
+  return strictEnumLabel(IncidentSourceTypeDescription, type, '扫描异常来源类型')
 }
 
 function assertNeverScanAttentionType(_type: never): never {
@@ -1691,7 +1691,7 @@ async function onDiscardPage(record: ScanAttentionItemResponse): Promise<void> {
     void message.warning('当前账号非本场主考，无法废弃扫描页')
     return
   }
-  if (record.sourceType !== ScanAttentionSourceTypeCode.SCANNED_PAGE || !record.pageId) {
+  if (record.sourceType !== IncidentSourceTypeCode.SCANNED_PAGE || !record.pageId) {
     void message.warning('该异常不是扫描页来源，无法废弃')
     return
   }
@@ -2083,7 +2083,7 @@ function buildAttentionActions(record: ScanAttentionItemResponse): UiTableRowAct
   }
   if (
     canOwnerWrite
-    && record.sourceType === ScanAttentionSourceTypeCode.SCANNED_PAGE
+    && record.sourceType === IncidentSourceTypeCode.SCANNED_PAGE
     && record.pageId
   ) {
     actions.push({

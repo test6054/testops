@@ -1,9 +1,9 @@
-/** 画像模板布局组件类型 */
+/** 画像模板布局组件类型 - 与后端 PortfolioPortraitWidgetTypeEnum 逐值对齐（API / layout_json 合同） */
 export enum PortraitWidgetTypeCode {
-  RADAR = 'radar',
-  TIMELINE = 'timeline',
-  BAR = 'bar',
-  SCORE_CARD = 'score_card',
+  RADAR = 'RADAR',
+  TIMELINE = 'TIMELINE',
+  BAR = 'BAR',
+  SCORE_CARD = 'SCORE_CARD',
 }
 
 export const ALL_PORTRAIT_WIDGET_TYPE_CODES: readonly PortraitWidgetTypeCode[] = [

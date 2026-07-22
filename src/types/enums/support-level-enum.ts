@@ -1,4 +1,4 @@
-/** 课程目标支撑等级 - SupportLevelEnum */
+/** 课程目标支撑等级 - CourseGoalSupportLevelEnum */
 export enum SupportLevelCode {
   HIGH = 'HIGH',
   MEDIUM = 'MEDIUM',

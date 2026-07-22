@@ -3,6 +3,7 @@ import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
 import type { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
 import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
+import type { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
 import http from '@/config/axios'
 
 export interface PortfolioTeacherHonorVO {
@@ -18,7 +19,7 @@ export interface PortfolioTeacherHonorVO {
   descriptionText?: string
   fileId?: string
   sourceType: PortfolioBusinessDataSourceTypeCode
-  syncChannelCode?: string
+  syncChannelCode?: PortfolioIntegrationChannelCodeEnum
   externalId?: string
   sourceSnapshot?: string
   updateTime?: string

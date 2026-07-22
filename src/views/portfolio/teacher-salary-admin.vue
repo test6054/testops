@@ -2,6 +2,7 @@
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { portfolioTeacherSalaryApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -17,10 +18,20 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
+
+const route = useRoute()
+const userStore = useUserStore()
+/** 院系路由或非租户管理员：本院系只读口径（PF-P0-421） */
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageTitle = computed(() => (isDepartmentScoped.value ? '院系教师工资' : '教师工资'))
+
 
 const form = reactive<{
   teacherUserId: string
@@ -163,7 +174,7 @@ async function exportCsv() {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="教师工资" />
+      <ContextBar show-title layout="workbench" :title="pageTitle" />
     </template>
     <UiAlertStrip
       v-if="archiveWriteForbidden"
@@ -174,55 +185,57 @@ async function exportCsv() {
     />
     <UiCard>
       <div class="form-row">
-        <UiSelect
-          size="sm"
-          v-model="form.teacherUserId"
-          allow-search
-          allow-clear
-          placeholder="搜索教师姓名或工号"
-          style="width: 220px"
-          :filter-option="false"
-          :options="teacherOptions"
-          :disabled="operating"
-          @search="searchTeachers"
-        />
-        <UiInput
-          size="sm"
-          v-model="form.salaryMonth"
-          placeholder="月份，例如 2026-07"
-          style="width: 120px"
-          :disabled="operating"
-        />
-        <UiInputNumber
-          size="sm"
-          v-model="form.baseAmount"
-          placeholder="基本工资"
-          style="width: 100px"
-          :disabled="operating"
-        />
-        <UiInputNumber
-          size="sm"
-          v-model="form.performanceAmount"
-          placeholder="绩效工资"
-          style="width: 100px"
-          :disabled="operating"
-        />
-        <UiInputNumber
-          size="sm"
-          v-model="form.allowanceAmount"
-          placeholder="津贴"
-          style="width: 100px"
-          :disabled="operating"
-        />
-        <UiButton
-          size="sm"
-          variant="primary"
-          :loading="operationKey === 'salary:save'"
-          :disabled="operating || archiveWriteForbidden"
-          @click="saveSalary"
-        >
-          录入
-        </UiButton>
+        <template v-if="!isDepartmentScoped">
+          <UiSelect
+            size="sm"
+            v-model="form.teacherUserId"
+            allow-search
+            allow-clear
+            placeholder="搜索教师姓名或工号"
+            style="width: 220px"
+            :filter-option="false"
+            :options="teacherOptions"
+            :disabled="operating"
+            @search="searchTeachers"
+          />
+          <UiInput
+            size="sm"
+            v-model="form.salaryMonth"
+            placeholder="月份，例如 2026-07"
+            style="width: 120px"
+            :disabled="operating"
+          />
+          <UiInputNumber
+            size="sm"
+            v-model="form.baseAmount"
+            placeholder="基本工资"
+            style="width: 100px"
+            :disabled="operating"
+          />
+          <UiInputNumber
+            size="sm"
+            v-model="form.performanceAmount"
+            placeholder="绩效工资"
+            style="width: 100px"
+            :disabled="operating"
+          />
+          <UiInputNumber
+            size="sm"
+            v-model="form.allowanceAmount"
+            placeholder="津贴"
+            style="width: 100px"
+            :disabled="operating"
+          />
+          <UiButton
+            size="sm"
+            variant="primary"
+            :loading="operationKey === 'salary:save'"
+            :disabled="operating || archiveWriteForbidden"
+            @click="saveSalary"
+          >
+            保存
+          </UiButton>
+        </template>
         <UiButton
           size="sm"
           :loading="operationKey === 'salary:export'"

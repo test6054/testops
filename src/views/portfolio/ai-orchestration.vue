@@ -47,7 +47,7 @@ function readRouteStringParam(value: unknown): string {
 }
 
 type AnalysisPollOutcome
-  = | AiTaskStatusCode.SUCCEEDED
+  = | AiTaskStatusCode.COMPLETED
     | AiTaskStatusCode.FAILED
     | AiTaskStatusCode.CANCELLED
     | 'TIMEOUT'
@@ -322,13 +322,13 @@ async function pollAnalysis(
       if (orchestrationToken.value !== taskToken) {
         return 'ABORTED'
       }
-      if (task.status === AiTaskStatusCode.SUCCEEDED) {
+      if (task.status === AiTaskStatusCode.COMPLETED) {
         const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
         if (orchestrationToken.value !== taskToken) {
           return 'ABORTED'
         }
         return applyOrchestrationAnalysisDetail(detail)
-          ? AiTaskStatusCode.SUCCEEDED
+          ? AiTaskStatusCode.COMPLETED
           : 'CONTRACT_ERROR'
       }
       if (task.status === AiTaskStatusCode.FAILED || task.status === AiTaskStatusCode.CANCELLED) {
@@ -400,7 +400,7 @@ async function submitAsk() {
     if (orchestrationToken.value !== taskToken) {
       return
     }
-    if (outcome === AiTaskStatusCode.SUCCEEDED) {
+    if (outcome === AiTaskStatusCode.COMPLETED) {
       void message.success('问数完成')
     }
   } catch (error) {
@@ -470,7 +470,7 @@ async function submitPolicyCheck() {
     if (orchestrationToken.value !== taskToken) {
       return
     }
-    if (outcome === AiTaskStatusCode.SUCCEEDED) {
+    if (outcome === AiTaskStatusCode.COMPLETED) {
       void message.success('政策核验完成')
     }
   } catch (error) {
@@ -614,7 +614,7 @@ usePortfolioScopedLoader(
               </div>
               <UiTag
                 :tone="
-                  task.status === AiTaskStatusCode.SUCCEEDED
+                  task.status === AiTaskStatusCode.COMPLETED
                     ? 'green'
                     : task.status === AiTaskStatusCode.FAILED
                       ? 'red'
@@ -729,8 +729,8 @@ usePortfolioScopedLoader(
               && isAnalysisType(PortfolioAiAnalysisTypeCode.MATERIAL_QA)
           "
         >
-          <p v-if="analysisDetail.reportScene" class="ai-orchestration__meta">
-            用户问题：{{ analysisDetail.reportScene }}
+          <p v-if="analysisDetail.userQuestion" class="ai-orchestration__meta">
+            用户问题：{{ analysisDetail.userQuestion }}
           </p>
           <pre class="ai-orchestration__summary">{{ analysisDetail.summary }}</pre>
           <section v-if="analysisDetail.evidenceItems.length" class="ai-orchestration__section">

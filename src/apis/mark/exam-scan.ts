@@ -13,9 +13,9 @@ import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { BindingStatusCode } from '@/types/enums/binding-status-enum'
 import type { ExamScanBatchWorkbenchSignalBandToneCode } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
+import type { IncidentSourceTypeCode } from '@/types/enums/incident-source-type-enum'
 import type { PageRegisterStateCode } from '@/types/enums/page-register-state-enum'
 import type { ScanAttentionQueryGroupCode } from '@/types/enums/scan-attention-query-group-enum'
-import type { ScanAttentionSourceTypeCode } from '@/types/enums/scan-attention-source-type-enum'
 import type { ScanBatchAttributionReviewStatusCode } from '@/types/enums/scan-batch-attribution-review-status-enum'
 import type { ScanBatchOrderAuditCode } from '@/types/enums/scan-batch-order-audit-enum'
 import type { ScanBatchWorkbenchBindingStatusCode } from '@/types/enums/scan-batch-workbench-binding-status-enum'
@@ -45,6 +45,12 @@ export {
 } from '@/types/enums/exam-scan-batch-workbench-signal-band-tone-enum'
 
 export {
+  ALL_INCIDENT_SOURCE_TYPE_CODES,
+  IncidentSourceTypeCode,
+  IncidentSourceTypeDescription,
+} from '@/types/enums/incident-source-type-enum'
+
+export {
   ALL_QUALITY_DECISION_CODES,
   QualityDecisionCode,
   QualityDecisionDescription,
@@ -55,12 +61,6 @@ export {
   ScanAttentionQueryGroupCode,
   ScanAttentionQueryGroupDescription,
 } from '@/types/enums/scan-attention-query-group-enum'
-
-export {
-  ALL_SCAN_ATTENTION_SOURCE_TYPE_CODES,
-  ScanAttentionSourceTypeCode,
-  ScanAttentionSourceTypeDescription,
-} from '@/types/enums/scan-attention-source-type-enum'
 
 export {
   ALL_SCAN_ATTENTION_TYPE_CODES,
@@ -149,7 +149,7 @@ export interface ScanAttentionQueryRequest extends QueryDto {
 export interface ScanAttentionItemResponse {
   id: string
   attentionType: ScanAttentionTypeCode
-  sourceType: ScanAttentionSourceTypeCode
+  sourceType: IncidentSourceTypeCode
   sourceId: string
   sourceDisplayName: string
   examId: string

@@ -227,11 +227,11 @@ import WorkflowReadinessPanel from '@/components/workbench/workflow-readiness/Wo
 import { useArchiveAutoCreatePoll } from '@/composables/useArchiveAutoCreatePoll'
 import { useScoreReleaseNavigation } from '@/composables/useScoreReleaseNavigation'
 import {
-  ArchiveAutoCreateFailureCategoryCode,
-  ArchiveAutoCreateFailureCategoryHintDescription,
+  ArchiveVolumeAutoCreateFailureCategoryCode,
+  ArchiveVolumeAutoCreateFailureCategoryHintDescription,
   CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES,
-  isArchiveAutoCreateFailureCategory,
-} from '@/constants/archive-auto-create-failure-category'
+  isArchiveVolumeAutoCreateFailureCategory,
+} from '@/constants/archive-volume-auto-create-failure-category'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import {
   ArchivePackageStatusCode,
@@ -522,7 +522,7 @@ const autoCreateFailedNeedsClassScope = computed(() => {
   const category = examGate.value?.autoCreateFailureCategory
   return (
     category != null
-    && isArchiveAutoCreateFailureCategory(category)
+    && isArchiveVolumeAutoCreateFailureCategory(category)
     && CLASS_SCOPE_FIX_AUTO_CREATE_FAILURE_CATEGORIES.has(category)
   )
 })
@@ -553,7 +553,7 @@ const pendingRetryDescription = computed(() => {
   if (gate?.autoCreatePendingStatus === ArchiveVolumeAutoCreatePendingStatusCode.MANUAL_REQUIRED) {
     return gate.autoCreateLastError || '自动创建课程考核袋多次失败，请修复问题后重新触发'
   }
-  if (gate?.autoCreateFailureCategory === ArchiveAutoCreateFailureCategoryCode.PACKAGE_PENDING) {
+  if (gate?.autoCreateFailureCategory === ArchiveVolumeAutoCreateFailureCategoryCode.PACKAGE_PENDING) {
     return gate.autoCreateLastError
       ? `${gate.autoCreateLastError}；系统正在等待归档包投递或材料聚合完成`
       : '双门禁已满足，系统正在投递考后归档包并聚合卷内材料'
@@ -568,9 +568,9 @@ const pendingRetryDescription = computed(() => {
 
 const autoCreateFailedDescription = computed(() => {
   const category = examGate.value?.autoCreateFailureCategory
-  if (category && isArchiveAutoCreateFailureCategory(category)) {
+  if (category && isArchiveVolumeAutoCreateFailureCategory(category)) {
     const base = strictEnumLabel(
-      ArchiveAutoCreateFailureCategoryHintDescription,
+      ArchiveVolumeAutoCreateFailureCategoryHintDescription,
       category,
       '自动建卷失败类别说明',
     )

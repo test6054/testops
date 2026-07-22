@@ -15,12 +15,12 @@ import type {
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import type { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import type { AgentWireJsonObject } from '@/wire/mark/scanner-agent-local-wire'
-import { AgentDiagnosticStatusCode } from '@/types/enums/agent-diagnostic-status-enum'
 import { AgentHealthStatusCode } from '@/types/enums/agent-health-status-enum'
 import { AgentUpdateStatusCode } from '@/types/enums/agent-update-status-enum'
 import { LocalScanJobStatusCode } from '@/types/enums/local-scan-job-status-enum'
 import { LocalScanPageSideCode } from '@/types/enums/local-scan-page-side-enum'
 import { LocalScanPageStatusCode } from '@/types/enums/local-scan-page-status-enum'
+import { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
 import { ALL_SCANNER_DUPLEX_MODE_CODES } from '@/types/enums/scanner-duplex-mode-enum'
 import { ALL_SCANNER_KIOSK_SCAN_MODE_CODES } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import {
@@ -195,13 +195,19 @@ function requireAgentHealthStatus(
 function requireAgentDiagnosticStatus(
   value: AgentWireJsonObject,
   field: string,
-): AgentDiagnosticStatusCode {
+): ScannerAgentDiagnosticStatusCode {
   const fieldValue = value[field]
-  if (fieldValue === AgentDiagnosticStatusCode.OK) {
-    return AgentDiagnosticStatusCode.OK
+  if (fieldValue === ScannerAgentDiagnosticStatusCode.OK) {
+    return ScannerAgentDiagnosticStatusCode.OK
   }
-  if (fieldValue === AgentDiagnosticStatusCode.WARNING) {
-    return AgentDiagnosticStatusCode.WARNING
+  if (fieldValue === ScannerAgentDiagnosticStatusCode.WARNING) {
+    return ScannerAgentDiagnosticStatusCode.WARNING
+  }
+  if (fieldValue === ScannerAgentDiagnosticStatusCode.ERROR) {
+    return ScannerAgentDiagnosticStatusCode.ERROR
+  }
+  if (fieldValue === ScannerAgentDiagnosticStatusCode.AGENT_OFFLINE) {
+    return ScannerAgentDiagnosticStatusCode.AGENT_OFFLINE
   }
   rejectLocalAgentResponse()
 }

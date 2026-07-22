@@ -6,6 +6,8 @@ import type { AchievementManualReviewVO } from '@/apis/quality/achievement-manua
 import type { AchievementResultVO } from '@/apis/quality/achievement-result'
 import type { AchievementDetailTypeCode, AchievementStatusCode } from '@/apis/quality/types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type {
+  AchievementAuditEventCode} from '@/types/enums/achievement-audit-event-enum';
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, reactive, ref, watch } from 'vue'
@@ -56,6 +58,9 @@ import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
+import {
+  AchievementAuditEventDescription,
+} from '@/types/enums/achievement-audit-event-enum'
 import { formatSemester } from '@/types/enums/semester-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
@@ -171,10 +176,8 @@ function manualReviewDecisionLabel(value: ManualReviewDecisionCode): string {
   return strictEnumLabel(ManualReviewDecisionDescription, value, '人工复核决定')
 }
 
-function auditEventLabel(event: AchievementAuditStatusCode | undefined): string {
-  if (!event) return '-'
-  if (event === AchievementAuditStatusCode.CALCULATED) return '达成度计算'
-  return auditStatusLabel(event)
+function auditEventLabel(event: AchievementAuditEventCode | undefined): string {
+  return event ? strictEnumLabel(AchievementAuditEventDescription, event, '审核事件') : '-'
 }
 
 const auditTransitMap: Record<AchievementAuditStatusCode, AchievementAuditStatusCode[]> = {

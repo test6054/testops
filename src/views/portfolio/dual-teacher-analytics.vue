@@ -1,8 +1,11 @@
+import { PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
+import type { PortfolioDualTeacherCertLevelCode } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDualTeacherApplicationStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioDualTeacherAnalyticsVO } from '@/apis/portfolio/teacher-platform'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
 import { portfolioDualTeacherApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
@@ -12,8 +15,22 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
+
+const route = useRoute()
+const userStore = useUserStore()
+/** 院系路由或非租户管理员：本院系双师群体分析口径（PRD §7.12 / PF-P0-419） */
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageTitle = computed(() => (isDepartmentScoped.value ? '院系双师分析' : '双师认定分析'))
+const pageSubtitle = computed(() =>
+  isDepartmentScoped.value
+    ? '本院系双师比例 · 等级 · 年份 · 院系分布'
+    : '全校双师比例 · 等级 · 年份 · 院系分布',
+)
 
 const loading = ref(false)
 const stats = ref<PortfolioDualTeacherAnalyticsVO | null>(null)
@@ -79,7 +96,7 @@ onMounted(loadStats)
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="双师认定分析">
+      <ContextBar show-title layout="workbench" :title="pageTitle" :subtitle="pageSubtitle">
         <template #actions>
           <UiButton size="sm" :loading="loading" @click="loadStats">刷新</UiButton>
         </template>
@@ -131,7 +148,17 @@ onMounted(loadStats)
             :show-pagination="false"
             :sticky-header="false"
             :total="stats.certLevelCounts.length"
-          />
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'certLevel'">
+                {{
+                  record.certLevel
+                    ? (PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL[record.certLevel as PortfolioDualTeacherCertLevelCode] ?? record.certLevel)
+                    : '-'
+                }}
+              </template>
+            </template>
+          </UiDataTable>
         </UiCard>
         <UiCard title="院系分布（在岗）">
           <UiDataTable

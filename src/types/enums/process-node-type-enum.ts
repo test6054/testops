@@ -8,6 +8,7 @@ export enum ProcessNodeTypeCode {
   WORK_ITERATION = 'WORK_ITERATION',
   CASE_DISCUSSION = 'CASE_DISCUSSION',
   INTERNSHIP_EVALUATION = 'INTERNSHIP_EVALUATION',
+  EXAM = 'EXAM',
 }
 
 export const ALL_PROCESS_NODE_TYPE_CODES: readonly ProcessNodeTypeCode[] = [
@@ -19,6 +20,7 @@ export const ALL_PROCESS_NODE_TYPE_CODES: readonly ProcessNodeTypeCode[] = [
   ProcessNodeTypeCode.WORK_ITERATION,
   ProcessNodeTypeCode.CASE_DISCUSSION,
   ProcessNodeTypeCode.INTERNSHIP_EVALUATION,
+  ProcessNodeTypeCode.EXAM,
 ]
 
 export const ProcessNodeTypeDescription: Record<ProcessNodeTypeCode, string> = {
@@ -30,4 +32,5 @@ export const ProcessNodeTypeDescription: Record<ProcessNodeTypeCode, string> = {
   [ProcessNodeTypeCode.WORK_ITERATION]: '作品迭代',
   [ProcessNodeTypeCode.CASE_DISCUSSION]: '案例研讨',
   [ProcessNodeTypeCode.INTERNSHIP_EVALUATION]: '实习过程评价',
+  [ProcessNodeTypeCode.EXAM]: '考试评价',
 }

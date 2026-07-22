@@ -10,7 +10,7 @@ export const ALL_SELF_ASSESSMENT_SECTION_EVIDENCE_REF_TYPE_CODES: readonly SelfA
 ]
 
 export const SelfAssessmentSectionEvidenceRefTypeDescription: Record<SelfAssessmentSectionEvidenceRefTypeCode, string> = {
-  [SelfAssessmentSectionEvidenceRefTypeCode.FIELD_PATH]: '字段路径',
-  [SelfAssessmentSectionEvidenceRefTypeCode.ACCREDITATION_EVIDENCE]: '认证证据',
+  [SelfAssessmentSectionEvidenceRefTypeCode.FIELD_PATH]: '业务真源字段路径',
+  [SelfAssessmentSectionEvidenceRefTypeCode.ACCREDITATION_EVIDENCE]: '认证原始证据',
 }
 

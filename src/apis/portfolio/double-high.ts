@@ -139,7 +139,7 @@ export const portfolioDoubleHighApi = {
     periodStartDate?: string
     periodEndDate?: string
     acceptanceCriteria?: string
-    stages: Array<{ stageIndex: number; stageName: string; stageDeadline?: string }>
+    stages: Array<{ stageIndex: number, stageName: string, stageDeadline?: string }>
   }) => http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/create`, data),
   claimTask: (data: { id: string }) =>
     http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/claim`, data),
@@ -158,7 +158,7 @@ export const portfolioDoubleHighApi = {
     approved: boolean
     reviewComment?: string
   }) => http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/stage/review`, data),
-  voidTask: (data: { id: string; voidReason: string }) =>
+  voidTask: (data: { id: string, voidReason: string }) =>
     http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/void`, data),
   archiveTask: (data: { id: string }) =>
     http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/archive`, data),

@@ -35,11 +35,11 @@ import {
 } from '@/apis/mark/ocr-platform-provider'
 import { listMarkOcrPaperSlices, recognizeMarkOcr } from '@/apis/mark/ocr-recognition'
 import {
+  AiHealthStatusDescription,
   MARK_OCR_HEALTH_STATUS_TONE,
   MARK_OCR_PAPER_CUT_CAPABILITY,
   MARK_OCR_PROVIDER_DESCRIPTION,
   MARK_OCR_PROVIDER_OPTIONS,
-  MarkOcrHealthStatusDescription,
   MarkOcrProviderTypeCode,
   MarkOcrProviderTypeDescription,
 } from '@/apis/mark/ocr-types'
@@ -76,8 +76,8 @@ import { useAuthStore } from '@/stores/modules/auth'
 import { useTenantStore } from '@/stores/modules/tenant'
 import { useUserStore } from '@/stores/modules/user'
 import { RoleEnum } from '@/types/enums'
+import { AiHealthStatusCode } from '@/types/enums/ai-health-status-enum'
 import { ExamMaterialLayoutModeCode } from '@/types/enums/exam-material-layout-mode-enum'
-import { MarkOcrHealthStatusCode } from '@/types/enums/mark-ocr-health-status-enum'
 import { PaddleOcrDeviceKindCode } from '@/types/enums/paddle-ocr-device-kind-enum'
 import { getUserErrorMessage, showUserError } from '@/utils/error-handler'
 import mittBus from '@/utils/mitt'
@@ -217,7 +217,7 @@ const debugRules = computed<Record<string, Rule[]>>(() => ({
   responseSliceId: [{ required: true, message: '请选择当前卷面的正式作答切片', trigger: 'change' }],
 }))
 
-const healthStatus = computed<MarkOcrHealthStatusCode | undefined>(
+const healthStatus = computed<AiHealthStatusCode | undefined>(
   () => currentConfig.value?.healthStatus,
 )
 const healthColor = computed(() =>
@@ -227,7 +227,7 @@ const healthColor = computed(() =>
 )
 const healthLabel = computed(() =>
   healthStatus.value
-    ? strictEnumLabel(MarkOcrHealthStatusDescription, healthStatus.value, '文字识别健康状态')
+    ? strictEnumLabel(AiHealthStatusDescription, healthStatus.value, '文字识别健康状态')
     : '',
 )
 
@@ -555,7 +555,7 @@ async function handleHealthCheck(): Promise<void> {
   try {
     const result = await checkMarkOcrHealth(tenantId)
     void message.success(
-      `文字识别健康检查完成：${strictEnumLabel(MarkOcrHealthStatusDescription, result.healthStatus, '文字识别健康状态')}`,
+      `文字识别健康检查完成：${strictEnumLabel(AiHealthStatusDescription, result.healthStatus, '文字识别健康状态')}`,
     )
     await loadConfig()
   } catch (error) {
@@ -673,7 +673,7 @@ const isPaddleProvider = computed(
 
 const paddleHealthyCount = computed(
   () =>
-    paddleInstances.value.filter((it) => it.healthStatus === MarkOcrHealthStatusCode.HEALTHY)
+    paddleInstances.value.filter((it) => it.healthStatus === AiHealthStatusCode.HEALTHY)
       .length,
 )
 
@@ -745,12 +745,12 @@ watch(
   { immediate: true },
 )
 
-function paddleInstanceHealthTone(status: MarkOcrHealthStatusCode) {
+function paddleInstanceHealthTone(status: AiHealthStatusCode) {
   return strictEnumTone(MARK_OCR_HEALTH_STATUS_TONE, status, '本地文字识别实例健康状态')
 }
 
-function paddleInstanceHealthLabel(status: MarkOcrHealthStatusCode): string {
-  return strictEnumLabel(MarkOcrHealthStatusDescription, status, '本地文字识别实例健康状态')
+function paddleInstanceHealthLabel(status: AiHealthStatusCode): string {
+  return strictEnumLabel(AiHealthStatusDescription, status, '本地文字识别实例健康状态')
 }
 
 async function reloadOcrWorkbench(): Promise<void> {

@@ -3,27 +3,31 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioDualTeacherApplicationStatusCode,
   PortfolioKeyTeacherRegistryStatusCode,
+  PortfolioKeyTeacherRegistryTypeCode,
 } from '@/apis/portfolio/enums'
 import type { PortfolioDeptStructureStatVO } from '@/apis/portfolio/teacher'
 import type {
   PortfolioDoubleDutyAnalyticsVO,
   PortfolioDualTeacherAnalyticsVO,
   PortfolioExternalTeacherStatsVO,
+  PortfolioKeyTeacherAnalyticsVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
 import {
   PortfolioCompletenessLevelCode,
   PortfolioDualTeacherApplicationStatusDescription,
   PortfolioKeyTeacherRegistryStatusDescription,
+  PortfolioKeyTeacherRegistryTypeDescription,
 } from '@/apis/portfolio/enums'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
   portfolioDoubleDutyApi,
   portfolioDualTeacherApi,
   portfolioExternalTeacherApi,
+  portfolioKeyTeacherApi,
 } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -33,15 +37,30 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 const loading = ref(false)
 const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
+/** 院系路由或非租户管理员：院系群体分析口径（PRD §7.12） */
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageTitle = computed(() => (isDepartmentScoped.value ? '院系师资分析' : '师资分析看板'))
+const pageSubtitle = computed(() =>
+  isDepartmentScoped.value
+    ? '本院系结构 · 双师 · 双肩挑 · 骨干 · 档案完整度'
+    : '院系结构 · 档案完整度 · 五框架 · 双师 · 双肩挑 · 骨干 · 外聘',
+)
+
 const deptStats = ref<PortfolioDeptStructureStatVO | null>(null)
 const schoolSummary = ref<PortfolioCockpitSummaryVO | null>(null)
 const dualStats = ref<PortfolioDualTeacherAnalyticsVO | null>(null)
 const doubleDutyStats = ref<PortfolioDoubleDutyAnalyticsVO | null>(null)
+const keyTeacherStats = ref<PortfolioKeyTeacherAnalyticsVO | null>(null)
 const externalStats = ref<PortfolioExternalTeacherStatsVO | null>(null)
 const loadFailed = ref(false)
 const requestToken = ref(0)
@@ -86,6 +105,16 @@ const appointYearColumns: ColumnsType = [
   { title: '数量', dataIndex: 'count', key: 'count', width: 88, align: 'right' },
 ]
 
+const structureDepartmentColumns: ColumnsType = [
+  { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
+  { title: '在岗人数', dataIndex: 'count', key: 'count', width: 100, align: 'right' },
+]
+
+const keyTeacherTypeColumns: ColumnsType = [
+  { title: '类型', dataIndex: 'registryType', key: 'registryType' },
+  { title: '数量', dataIndex: 'count', key: 'count', width: 88, align: 'right' },
+]
+
 function applicationStatusLabel(status: PortfolioDualTeacherApplicationStatusCode): string {
   return strictEnumLabel(
     PortfolioDualTeacherApplicationStatusDescription,
@@ -96,6 +125,10 @@ function applicationStatusLabel(status: PortfolioDualTeacherApplicationStatusCod
 
 function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): string {
   return strictEnumLabel(PortfolioKeyTeacherRegistryStatusDescription, status, '台账状态')
+}
+
+function registryTypeLabel(type: PortfolioKeyTeacherRegistryTypeCode): string {
+  return strictEnumLabel(PortfolioKeyTeacherRegistryTypeDescription, type, '重点教师名录类型')
 }
 
 const completenessDistributionRows: Array<{
@@ -152,6 +185,7 @@ async function loadAll() {
   schoolSummary.value = null
   dualStats.value = null
   doubleDutyStats.value = null
+  keyTeacherStats.value = null
   externalStats.value = null
   const sections: Array<{
     key: string
@@ -167,9 +201,13 @@ async function loadAll() {
     },
     {
       key: 'school',
-      label: '全校档案汇总',
+      label: isDepartmentScoped.value ? '院系档案汇总' : '全校档案汇总',
       load: async () => {
-        schoolSummary.value = await portfolioCockpitApi.schoolSummary()
+        if (isDepartmentScoped.value) {
+          schoolSummary.value = await portfolioCockpitApi.deptSummary({})
+        } else {
+          schoolSummary.value = await portfolioCockpitApi.schoolSummary()
+        }
       },
     },
     {
@@ -187,9 +225,21 @@ async function loadAll() {
       },
     },
     {
+      key: 'keyTeacher',
+      label: '骨干/带头人分析',
+      load: async () => {
+        keyTeacherStats.value = await portfolioKeyTeacherApi.analyticsStats()
+      },
+    },
+    {
       key: 'external',
       label: '外聘教师统计',
       load: async () => {
+        // 外聘台账 stats 仍为 tenantWide 管理口径；院系看板不请求以免越权失败整页红
+        if (isDepartmentScoped.value) {
+          externalStats.value = null
+          return
+        }
         externalStats.value = await portfolioExternalTeacherApi.stats()
       },
     },
@@ -216,6 +266,7 @@ async function loadAll() {
         && !schoolSummary.value
         && !dualStats.value
         && !doubleDutyStats.value
+        && !keyTeacherStats.value
         && !externalStats.value
     }
   } finally {
@@ -234,8 +285,8 @@ onMounted(loadAll)
       <ContextBar
         layout="workbench"
         show-title
-        title="师资分析看板"
-        subtitle="院系结构 · 档案完整度 · 五框架 · 双师 · 外聘"
+        :title="pageTitle"
+        :subtitle="pageSubtitle"
       >
         <template #actions>
           <UiButton size="sm" :loading="loading" @click="loadAll">刷新</UiButton>
@@ -245,11 +296,11 @@ onMounted(loadAll)
     <UiSpin :spinning="loading">
       <UiEmpty
         size="sm"
-        v-if="!loading && !deptStats && !dualStats && !externalStats && !schoolSummary"
+        v-if="!loading && !deptStats && !dualStats && !doubleDutyStats && !keyTeacherStats && !externalStats && !schoolSummary"
         :description="loadFailed ? '师资分析数据加载失败' : '暂无师资分析数据'"
       />
       <div v-else class="grid">
-        <UiCard v-if="schoolSummary" title="全校档案完整度与五框架">
+        <UiCard v-if="schoolSummary" :title="isDepartmentScoped ? '院系档案完整度与五框架' : '全校档案完整度与五框架'">
           <div class="analytics-completeness">
             <button
               v-for="item in completenessDistributionRows"
@@ -419,8 +470,25 @@ onMounted(loadAll)
                 value: String(doubleDutyStats.activeCount),
                 tone: 'green',
               },
+              {
+                key: 'structureTeachers',
+                label: '在岗教师',
+                value: String(doubleDutyStats.structureTeacherCount ?? 0),
+              },
+              {
+                key: 'structureDoubleDuty',
+                label: '在岗双肩挑',
+                value: String(doubleDutyStats.structureDoubleDutyCount ?? 0),
+                tone: 'green',
+              },
+              {
+                key: 'doubleDutyRatio',
+                label: '双肩挑比例%',
+                value: String(doubleDutyStats.doubleDutyRatioPercent ?? 0),
+                tone: 'blue',
+              },
             ]"
-            :columns="2"
+            :columns="3"
             variant="grid"
             compact
           />
@@ -455,8 +523,145 @@ onMounted(loadAll)
             :total="doubleDutyStats.appointYearCounts.length"
             style="margin-top: 16px"
           />
+          <UiDataTable
+            v-if="(doubleDutyStats.departmentCounts || []).length"
+            :columns="structureDepartmentColumns"
+            :data-source="doubleDutyStats.departmentCounts || []"
+            row-key="departmentId"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="(doubleDutyStats.departmentCounts || []).length"
+            style="margin-top: 16px"
+          />
+        </UiCard>
+        <UiCard v-if="keyTeacherStats" title="骨干 / 专业带头人">
+          <UiStatPanel
+            :items="[
+              { key: 'total', label: '台账总数', value: String(keyTeacherStats.totalCount) },
+              {
+                key: 'active',
+                label: '在册',
+                value: String(keyTeacherStats.activeCount),
+                tone: 'green',
+              },
+              {
+                key: 'structureTeachers',
+                label: '在岗教师',
+                value: String(keyTeacherStats.structureTeacherCount ?? 0),
+              },
+              {
+                key: 'structureKey',
+                label: '在岗骨干',
+                value: String(keyTeacherStats.structureKeyTeacherCount ?? 0),
+                tone: 'green',
+              },
+              {
+                key: 'keyRatio',
+                label: '骨干比例%',
+                value: String(keyTeacherStats.keyTeacherRatioPercent ?? 0),
+                tone: 'blue',
+              },
+              {
+                key: 'structureLeader',
+                label: '在岗带头人',
+                value: String(keyTeacherStats.structureProgramLeaderCount ?? 0),
+                tone: 'green',
+              },
+              {
+                key: 'leaderRatio',
+                label: '带头人比例%',
+                value: String(keyTeacherStats.programLeaderRatioPercent ?? 0),
+                tone: 'blue',
+              },
+            ]"
+            :columns="3"
+            variant="grid"
+            compact
+          />
+          <UiDataTable
+            :columns="doubleDutyStatusColumns"
+            :data-source="keyTeacherStats.statusCounts"
+            row-key="registryStatus"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="keyTeacherStats.statusCounts.length"
+            style="margin-top: 16px"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'registryStatus'">
+                {{ registryStatusLabel(record.registryStatus) }}
+              </template>
+            </template>
+          </UiDataTable>
+          <UiDataTable
+            v-if="(keyTeacherStats.typeCounts || []).length"
+            :columns="keyTeacherTypeColumns"
+            :data-source="keyTeacherStats.typeCounts || []"
+            row-key="registryType"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="(keyTeacherStats.typeCounts || []).length"
+            style="margin-top: 16px"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'registryType'">
+                {{ registryTypeLabel(record.registryType) }}
+              </template>
+            </template>
+          </UiDataTable>
+          <UiDataTable
+            v-if="(keyTeacherStats.keyTeacherDepartmentCounts || []).length"
+            :columns="structureDepartmentColumns"
+            :data-source="keyTeacherStats.keyTeacherDepartmentCounts || []"
+            row-key="departmentId"
+            size="small"
+            flat
+            pagination-mode="none"
+            :show-pagination="false"
+            :sticky-header="false"
+            :total="(keyTeacherStats.keyTeacherDepartmentCounts || []).length"
+            style="margin-top: 16px"
+          />
         </UiCard>
         <UiCard v-if="externalStats" title="外聘教师">
+          <UiStatPanel
+            :items="[
+              {
+                key: 'total',
+                label: '筛选总数',
+                value: String(externalStats.totalCount ?? 0),
+              },
+              {
+                key: 'active',
+                label: '在册有效',
+                value: String(externalStats.activeCount ?? 0),
+                tone: 'green',
+              },
+              {
+                key: 'avgContribution',
+                label: '贡献度均值',
+                value: String(externalStats.avgContributionScore ?? 0),
+                tone: 'blue',
+              },
+              {
+                key: 'campusTitle',
+                label: '校内职称可用',
+                value: externalStats.usableForCampusTitleEvaluation === false ? '否' : '—',
+              },
+            ]"
+            :columns="2"
+            variant="grid"
+            compact
+          />
           <UiDataTable
             :columns="dimensionColumns"
             :data-source="externalStats.contractStatusCounts"
@@ -467,7 +672,7 @@ onMounted(loadAll)
             :show-pagination="false"
             :sticky-header="false"
             :total="externalStats.contractStatusCounts.length"
-            style="margin-bottom: 16px"
+            style="margin-top: 16px; margin-bottom: 16px"
           />
           <UiDataTable
             :columns="dimensionColumns"

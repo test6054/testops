@@ -12,7 +12,7 @@ export const ALL_ARCHIVE_DEADLINE_TIER_CODES: readonly ArchiveDeadlineTierCode[]
 ]
 
 export const ArchiveDeadlineTierDescription: Record<ArchiveDeadlineTierCode, string> = {
-  [ArchiveDeadlineTierCode.FACULTY_WINTER_BREAK]: '次学年寒假前（1月20日）',
+  [ArchiveDeadlineTierCode.FACULTY_WINTER_BREAK]: '次学年寒假前',
   [ArchiveDeadlineTierCode.DEPARTMENT_JUNE_END]: '次学年6月底',
 }
 

@@ -32,6 +32,7 @@ interface QuestionRow {
   key: string
   question: ExamLayoutQuestionDto
   questionNo: string
+  printedQuestionNo: string | null
   ocrSceneLabel: string
   questionTypeLabel: string
   fullScore: number
@@ -46,6 +47,7 @@ const rows = computed((): QuestionRow[] =>
       key: question.id,
       question,
       questionNo: question.questionNo,
+      printedQuestionNo: question.printedQuestionNo ?? null,
       ocrSceneLabel: question.ocrScene
         ? strictEnumLabel(MarkOcrSceneDescription, question.ocrScene, 'OCR 场景')
         : '',
@@ -62,7 +64,8 @@ const rows = computed((): QuestionRow[] =>
 )
 
 const columns: ColumnsType<QuestionRow> = [
-  { title: '题号', dataIndex: 'questionNo', width: 72, align: 'center', fixed: 'left' },
+  { title: '全局题号', dataIndex: 'questionNo', width: 84, align: 'center', fixed: 'left' },
+  { title: '纸面题号', dataIndex: 'printedQuestionNo', width: 84, align: 'center' },
   { title: 'OCR 场景', dataIndex: 'ocrSceneLabel', width: 108 },
   { title: '题型', dataIndex: 'questionTypeLabel', width: 72, align: 'center' },
   { title: '满分', dataIndex: 'fullScore', width: 72, align: 'right' },

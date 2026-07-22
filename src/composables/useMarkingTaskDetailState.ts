@@ -1,3 +1,4 @@
+import type { OperationLogResponse } from '@/apis/mark/admin-audit'
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type { ExamDetailResponse } from '@/apis/mark/exam'
 import type {
@@ -21,6 +22,7 @@ import message from 'ant-design-vue/es/message'
 import { storeToRefs } from 'pinia'
 import { computed, inject, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { listOperationLogs } from '@/apis/mark/admin-audit'
 import { AnonymityModeDescription } from '@/apis/mark/anonymity-mode'
 import { getExamDetail } from '@/apis/mark/exam'
 import { listAnnotations } from '@/apis/mark/exam-annotation'
@@ -68,6 +70,7 @@ import { useTenantMarkingWithdrawPolicy } from '@/composables/useTenantMarkingWi
 import { useWholePaperGallery } from '@/composables/useWholePaperGallery'
 import { useMarkTaskStore } from '@/stores/modules/markTask'
 import { useTenantStore } from '@/stores/modules/tenant'
+import { AuditTargetTypeCode } from '@/types/enums/audit-target-type-enum'
 import { ExamStatusCode } from '@/types/enums/exam-status-enum'
 import { PaperInstanceDisplayModeCode } from '@/types/enums/paper-instance-display-mode-enum'
 import {
@@ -131,15 +134,18 @@ export function useMarkingTaskDetailState() {
   const tenantId = computed(() => tenantStore.tenantId ?? '')
 
   const task = ref<MarkingTaskResponse | null>(null)
+  const reviewRecords = ref<OperationLogResponse[]>([])
+  const reviewRecordsLoading = ref(false)
   const examDetail = ref<ExamDetailResponse | null>(null)
   const loading = ref(false)
   const taskRecycledBlocked = ref(false)
   const sessionPausedAlert = ref(false)
   const withdrawToastVisible = ref(false)
   let withdrawToastTimer: ReturnType<typeof setTimeout> | null = null
-  const form = reactive<{ score?: number, annotationNote?: string }>({
+  const form = reactive<{ score?: number, annotationNote?: string, reviewSuggestion?: string }>({
     score: undefined,
     annotationNote: '',
+    reviewSuggestion: '',
   })
 
   const isExamConfidential = computed(() => isExamConfidentialFlag(examDetail.value?.confidential))
@@ -196,6 +202,29 @@ export function useMarkingTaskDetailState() {
     if (!task.value) return undefined
     return resolvePaperInstanceId(task.value.paperDisplay)
   })
+
+  /** 加载当前阅卷任务的不可覆盖操作记录，提交与撤回均以审计真源回放。 */
+  async function loadReviewRecords(detail: MarkingTaskResponse): Promise<void> {
+    reviewRecordsLoading.value = true
+    try {
+      const page = await listOperationLogs({
+        examId: detail.examId,
+        targetType: AuditTargetTypeCode.MARKING_TASK,
+        targetId: detail.id,
+        pageNum: 1,
+        pageSize: 100,
+      })
+      if (page.total > page.list.length) {
+        throw new Error('当前阅卷任务批阅记录超过单页加载上限')
+      }
+      reviewRecords.value = page.list
+    } catch (error) {
+      reviewRecords.value = []
+      showUserError(error, '批阅记录加载失败')
+    } finally {
+      reviewRecordsLoading.value = false
+    }
+  }
 
   const navigation = useMarkingTaskNavigation({ task, isWholePaperTask })
 
@@ -438,12 +467,14 @@ export function useMarkingTaskDetailState() {
         const questionForm = getWholeQuestionForm(item.layoutQuestionId)
         questionForm.score = Number(item.score)
         questionForm.annotationText = item.annotationText || ''
+        questionForm.reviewSuggestion = item.reviewSuggestion || ''
       }
       return
     }
     const first = scores[0]
     form.score = Number(first.score)
     form.annotationNote = first.annotationText || ''
+    form.reviewSuggestion = first.reviewSuggestion || ''
   }
 
   async function loadSubmittedPageAnnotations(): Promise<void> {
@@ -481,11 +512,13 @@ export function useMarkingTaskDetailState() {
     if (!shouldRestore) return
     if (draft.score !== undefined) form.score = draft.score
     if (draft.annotationNote) form.annotationNote = draft.annotationNote
+    if (draft.reviewSuggestion) form.reviewSuggestion = draft.reviewSuggestion
     if (draft.wholeQuestionForms) {
       for (const [templateId, qDraft] of Object.entries(draft.wholeQuestionForms)) {
         const qForm = getWholeQuestionForm(templateId)
         qForm.score = qDraft.score
         qForm.annotationText = qDraft.annotationText
+        qForm.reviewSuggestion = qDraft.reviewSuggestion || ''
       }
     }
     if (draft.wholePageAnnotationForms) {
@@ -505,6 +538,10 @@ export function useMarkingTaskDetailState() {
         return
       }
       task.value = detail
+      await loadReviewRecords(detail)
+      if (loadGeneration !== loadTaskGeneration) {
+        return
+      }
       taskRecycledBlocked.value = detail.taskStatus === MarkingTaskStatusCode.RECYCLED
       examDetail.value = await getExamDetail(detail.examId)
       if (loadGeneration !== loadTaskGeneration) {
@@ -515,6 +552,9 @@ export function useMarkingTaskDetailState() {
       }
       if (!form.annotationNote && detail.annotationNote) {
         form.annotationNote = detail.annotationNote
+      }
+      if (!form.reviewSuggestion && detail.reviewSuggestion) {
+        form.reviewSuggestion = detail.reviewSuggestion
       }
       await navigation.ensureBatchLoaded(detail.examId)
       if (detail.submittedQuestionScores?.length) {
@@ -539,6 +579,7 @@ export function useMarkingTaskDetailState() {
         return
       }
       task.value = null
+      reviewRecords.value = []
       showUserError(error, '阅卷任务详情加载失败')
     } finally {
       loading.value = false
@@ -995,9 +1036,10 @@ export function useMarkingTaskDetailState() {
     () => [
       form.score,
       form.annotationNote,
+      form.reviewSuggestion,
       wholeQuestions.value.map((question) => {
         const qForm = getWholeQuestionForm(question.layoutQuestionId)
-        return [qForm.score, qForm.annotationText]
+        return [qForm.score, qForm.annotationText, qForm.reviewSuggestion]
       }),
       Object.entries(wholePageAnnotationForms).map(([pageId, text]) => [pageId, text]),
     ],
@@ -1021,6 +1063,7 @@ export function useMarkingTaskDetailState() {
     () => {
       form.score = undefined
       form.annotationNote = ''
+      form.reviewSuggestion = ''
       task.value = null
       examDetail.value = null
       taskRecycledBlocked.value = false
@@ -1052,6 +1095,8 @@ export function useMarkingTaskDetailState() {
   return {
     taskId,
     task,
+    reviewRecords,
+    reviewRecordsLoading,
     loading,
     form,
     isExamConfidential,

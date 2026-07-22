@@ -1,4 +1,5 @@
 /** 四性检测 diagnostic JSON 维度键 */
+/** 归档卷四性检测维度 - 与后端 ArchiveFourPropertyDimension 逐值对齐 */
 export enum ArchiveFourPropertyDimensionCode {
   AUTHENTICITY = 'authenticity',
   INTEGRITY = 'integrity',

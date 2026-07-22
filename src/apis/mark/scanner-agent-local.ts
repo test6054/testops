@@ -1,14 +1,13 @@
 import type { ExamScannerKioskContextVO, ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
-import type { AgentDiagnosticStatusCode } from '@/types/enums/agent-diagnostic-status-enum'
 import type { AgentHealthStatusCode } from '@/types/enums/agent-health-status-enum'
 import type { AgentUpdateStatusCode } from '@/types/enums/agent-update-status-enum'
 import type { ArchiveScanBatchModeCode } from '@/types/enums/archive-scan-batch-mode-enum'
-import type { DirectScanProviderChainCode } from '@/types/enums/direct-scan-provider-chain-enum'
+import type { DocumentBusinessSceneCode } from '@/types/enums/document-business-scene-enum'
 import type { LocalScanJobStatusCode } from '@/types/enums/local-scan-job-status-enum'
 import type { LocalScanPageSideCode } from '@/types/enums/local-scan-page-side-enum'
 import type { LocalScanPageStatusCode } from '@/types/enums/local-scan-page-status-enum'
 import type { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
-import type { ScannerBusinessSceneCode } from '@/types/enums/scanner-business-scene-enum'
+import type { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
 import { ScannerKioskScanModeCode } from '@/types/enums/scanner-kiosk-scan-mode-enum'
 import { rejectUserError } from '@/utils/error-handler'
 import {
@@ -53,7 +52,7 @@ export interface AgentHealthResponse {
   bound: boolean
   scannerConnected: boolean
   pendingUploadJobs: number
-  diagnosticStatus: AgentDiagnosticStatusCode
+  diagnosticStatus: ScannerAgentDiagnosticStatusCode
   diagnosticMessage: string
   /** 服务端要求 Agent / WebView2 客户端升级时为 true */
   upgradeRequired: boolean
@@ -96,11 +95,6 @@ export interface AgentHealthResponse {
 }
 
 export {
-  AgentDiagnosticStatusCode,
-  AgentDiagnosticStatusDescription,
-  ALL_AGENT_DIAGNOSTIC_STATUS_CODES,
-} from '@/types/enums/agent-diagnostic-status-enum'
-export {
   AgentHealthStatusCode,
   AgentHealthStatusDescription,
   ALL_AGENT_HEALTH_STATUS_CODES,
@@ -110,6 +104,10 @@ export {
   AgentUpdateStatusDescription,
   ALL_AGENT_UPDATE_STATUS_CODES,
 } from '@/types/enums/agent-update-status-enum'
+export {
+  ALL_DIRECT_SCAN_PROVIDER_CHAIN_CODES,
+  DirectScanProviderChainCode,
+} from '@/types/enums/direct-scan-provider-chain-enum'
 
 export interface LocalScannerAgentInstallUpdateResponse {
   installing: boolean
@@ -118,19 +116,20 @@ export interface LocalScannerAgentInstallUpdateResponse {
 }
 
 export {
-  ALL_DIRECT_SCAN_PROVIDER_CHAIN_CODES,
-  DirectScanProviderChainCode,
-} from '@/types/enums/direct-scan-provider-chain-enum'
+  ALL_DOCUMENT_BUSINESS_SCENE_CODES,
+  DocumentBusinessSceneCode,
+  DocumentBusinessSceneDescription,
+} from '@/types/enums/document-business-scene-enum'
 export {
   ALL_LOCAL_SCAN_JOB_STATUS_CODES,
   LocalScanJobStatusCode,
   LocalScanJobStatusDescription,
 } from '@/types/enums/local-scan-job-status-enum'
-
 export {
   ALL_LOCAL_SCAN_PAGE_SIDE_CODES,
   LocalScanPageSideCode,
 } from '@/types/enums/local-scan-page-side-enum'
+
 export {
   ALL_LOCAL_SCAN_PAGE_STATUS_CODES,
   KioskSyntheticScanPageStatusCode,
@@ -138,11 +137,11 @@ export {
   LocalScanPageStatusCode,
   LocalScanPageStatusDescription,
 } from '@/types/enums/local-scan-page-status-enum'
-
 export {
-  ALL_SCANNER_BUSINESS_SCENE_CODES,
-  ScannerBusinessSceneCode,
-} from '@/types/enums/scanner-business-scene-enum'
+  ALL_SCANNER_AGENT_DIAGNOSTIC_STATUS_CODES,
+  ScannerAgentDiagnosticStatusCode,
+  ScannerAgentDiagnosticStatusDescription,
+} from '@/types/enums/scanner-agent-diagnostic-status-enum'
 
 /** 本地扫描 Agent 输出容器格式。 */
 export enum ScannerOutputContainerFormat {
@@ -289,11 +288,9 @@ export interface StartScanJobRequest {
   /** 后端 work-order/start 签发的扫描报告 ID */
   reportId: string
   /** 统一文档采集业务场景 */
-  businessScene: ScannerBusinessSceneCode
+  businessScene: DocumentBusinessSceneCode
   /** 业务对象 ID；试卷直扫默认使用 examId */
   businessRefId: string
-  /** 试卷直扫识别链路；非 EXAM_DIRECT_SCAN 场景不传 */
-  providerChain?: DirectScanProviderChainCode
   /** 扫描产物容器格式，首期固定 PDF */
   outputContainerFormat: ScannerOutputContainerFormat
   /** 逐页图像格式 */
@@ -320,7 +317,7 @@ export interface DocumentStartScanJobRequest {
   localScannerId: string
   batchExternalNo: string
   reportId: string
-  businessScene: ScannerBusinessSceneCode
+  businessScene: DocumentBusinessSceneCode
   businessRefId: string
   scannerDeviceId: string
   scannerStationId: string

@@ -23,7 +23,7 @@ export const ALL_ARCHIVE_DUTY_TYPE_CODES: readonly ArchiveDutyTypeCode[] = [
 
 export const ArchiveDutyTypeDescription: Record<ArchiveDutyTypeCode, string> = {
   [ArchiveDutyTypeCode.VOLUME_OWNER]: '卷归属人',
-  [ArchiveDutyTypeCode.CONTRIBUTOR]: '任课教师协作',
+  [ArchiveDutyTypeCode.CONTRIBUTOR]: '协作上传人',
   [ArchiveDutyTypeCode.COLLEGE_COORDINATOR]: '学院协调',
   [ArchiveDutyTypeCode.TRANSFER_REVIEWER]: '移交验收',
   [ArchiveDutyTypeCode.ARCHIVE_ADMIN]: '档案管理',

@@ -30,6 +30,7 @@ export interface VisibleWholePage {
 export interface WholeQuestionForm {
   score?: number
   annotationText: string
+  reviewSuggestion: string
   correlationId: string
 }
 
@@ -132,6 +133,7 @@ export function useWholePaperGallery(
       wholeQuestionForms[layoutQuestionId] = {
         score: undefined,
         annotationText: '',
+        reviewSuggestion: '',
         correlationId: createCorrelationId('question', layoutQuestionId),
       }
     }
@@ -338,6 +340,7 @@ export function useWholePaperGallery(
         layoutQuestionId: question.layoutQuestionId,
         score: questionForm.score,
         annotationText: questionForm.annotationText.trim() || undefined,
+        reviewSuggestion: questionForm.reviewSuggestion.trim() || undefined,
         correlationId: questionForm.correlationId,
       })
     }

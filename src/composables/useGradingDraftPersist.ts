@@ -12,11 +12,13 @@ const DEBOUNCE_MS = 500
 export interface GradingDraftWholeQuestionForm {
   score?: number
   annotationText: string
+  reviewSuggestion: string
 }
 
 export interface GradingDraftPayload {
   score?: number
   annotationNote?: string
+  reviewSuggestion?: string
   wholeQuestionForms?: Record<string, GradingDraftWholeQuestionForm>
   wholePageAnnotationForms?: Record<string, string>
   updatedAt: number

@@ -51,6 +51,11 @@ import {
   isQualityScopeStaleError,
 } from '@/composables/useScopeRequestGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
+import {
+  ALL_AUDIT_EVIDENCE_TYPE_CODES,
+  AuditEvidenceTypeCode,
+  AuditEvidenceTypeDescription,
+} from '@/types/enums/audit-evidence-type-enum'
 import { AuditRectificationVerifyDecisionCode } from '@/types/enums/audit-rectification-verify-decision-enum'
 import { showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -185,13 +190,10 @@ const rectEvidenceEditor = reactive<{
   evidenceItems: [],
 })
 
-const auditEvidenceTypeOptions = [
-  { value: 'COURSE_ARCHIVE', label: '课程归档' },
-  { value: 'ASSESSMENT_REPORT', label: '评价报告' },
-  { value: 'REVIEW_RECORD', label: '复核记录' },
-  { value: 'SUPPORTING_FILE', label: '支撑材料' },
-  { value: 'OTHER', label: '其他' },
-]
+const auditEvidenceTypeOptions = ALL_AUDIT_EVIDENCE_TYPE_CODES.map((value) => ({
+  value,
+  label: AuditEvidenceTypeDescription[value],
+}))
 
 async function loadList(options?: { refreshSignals?: boolean }) {
   const scope = beginQualityScopeRequest()
@@ -357,7 +359,7 @@ function canEditAuditRectification(status: AuditRectificationStatusCode): boolea
 
 function addRectEvidenceItem() {
   rectEvidenceEditor.evidenceItems.push({
-    evidenceType: 'REVIEW_RECORD',
+    evidenceType: AuditEvidenceTypeCode.REVIEW_RECORD,
     evidenceTitle: '',
     evidenceCode: '',
     archiveId: '',
@@ -421,7 +423,7 @@ async function advanceRectProgress(
     rectEvidenceEditorRecord.value = record
     rectEvidenceEditor.progressRemark = ''
     rectEvidenceEditor.evidenceItems.splice(0, rectEvidenceEditor.evidenceItems.length, {
-      evidenceType: 'REVIEW_RECORD',
+      evidenceType: AuditEvidenceTypeCode.REVIEW_RECORD,
       evidenceTitle: '',
       evidenceCode: '',
       archiveId: '',

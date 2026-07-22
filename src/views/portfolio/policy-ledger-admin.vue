@@ -29,6 +29,16 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import {
+  ALL_PORTFOLIO_INDUSTRY_EDUCATION_PROJECT_STAGE_CODES,
+  PortfolioIndustryEducationProjectStageCode,
+  PortfolioIndustryEducationProjectStageDescription,
+} from '@/types/enums/portfolio-industry-education-project-stage-enum'
+import {
+  ALL_PORTFOLIO_INDUSTRY_EDUCATION_PROJECT_TYPE_CODES,
+  PortfolioIndustryEducationProjectTypeCode,
+  PortfolioIndustryEducationProjectTypeDescription,
+} from '@/types/enums/portfolio-industry-education-project-type-enum'
+import {
   PortfolioPolicyLedgerReviewStatusCode,
   PortfolioPolicyLedgerReviewStatusDescription,
 } from '@/types/enums/portfolio-policy-ledger-review-status-enum'
@@ -70,8 +80,8 @@ const virtualForm = reactive({
 })
 const industryForm = reactive({
   projectName: '',
-  projectType: 'INDUSTRY_COLLEGE',
-  stageCode: 'ACCEPT',
+  projectType: PortfolioIndustryEducationProjectTypeCode.INDUSTRY_COLLEGE,
+  stageCode: PortfolioIndustryEducationProjectStageCode.ACCEPT,
   roleCode: 'LEADER',
   enterpriseName: '',
 })
@@ -527,24 +537,19 @@ onMounted(() => {
           size="sm"
           v-model="industryForm.projectType"
           style="width: 160px"
-          :options="[
-            { label: '产业学院', value: 'INDUSTRY_COLLEGE' },
-            { label: '订单班', value: 'ORDER_CLASS' },
-            { label: '现代学徒制', value: 'MODERN_APPRENTICE' },
-            { label: '现场工程师', value: 'FIELD_ENGINEER' },
-            { label: '实训基地', value: 'TRAINING_BASE' },
-          ]"
+          :options="ALL_PORTFOLIO_INDUSTRY_EDUCATION_PROJECT_TYPE_CODES.map((code) => ({
+            label: PortfolioIndustryEducationProjectTypeDescription[code],
+            value: code,
+          }))"
         />
         <UiSelect
           size="sm"
           v-model="industryForm.stageCode"
           style="width: 120px"
-          :options="[
-            { label: '验收', value: 'ACCEPT' },
-            { label: '建设中', value: 'RUNNING' },
-            { label: '启动', value: 'START' },
-            { label: '规划', value: 'PLAN' },
-          ]"
+          :options="ALL_PORTFOLIO_INDUSTRY_EDUCATION_PROJECT_STAGE_CODES.map((code) => ({
+            label: PortfolioIndustryEducationProjectStageDescription[code],
+            value: code,
+          }))"
         />
         <UiSelect
           size="sm"

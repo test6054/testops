@@ -45,11 +45,11 @@
 
 <script lang="ts" setup>
 import type { MarkTeacherDashboardPendingTodoItemVO } from '@/apis/mark/teacher-dashboard'
-import { MarkTeacherDashboardTodoTypeDescription } from '@/apis/mark/teacher-dashboard'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import {
+  formatTodoTypeLabel,
   MARK_DASHBOARD_TODO_COUNT_UNIT,
   resolveTodoActionLabel,
   resolveTodoRowContext,
@@ -57,7 +57,6 @@ import {
   resolveTodoRowTitle,
   resolveTodoUrgency,
 } from '@/utils/mark-dashboard-todo'
-import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'PendingTodoFeed' })
 
@@ -81,7 +80,7 @@ const emit = defineEmits<{
 
 function resolveRowTitle(todo: MarkTeacherDashboardPendingTodoItemVO): string {
   if (props.titleSource === 'todo-type') {
-    return strictEnumLabel(MarkTeacherDashboardTodoTypeDescription, todo.todoType, '教师待办类型')
+    return formatTodoTypeLabel(todo.todoType, todo.count)
   }
   return resolveTodoRowTitle(todo)
 }
@@ -95,7 +94,7 @@ function resolveRowLabel(todo: MarkTeacherDashboardPendingTodoItemVO): string {
     if (todo.count > 0) {
       return `${todo.count.toLocaleString('zh-CN')} ${MARK_DASHBOARD_TODO_COUNT_UNIT[todo.todoType]}`
     }
-    return strictEnumLabel(MarkTeacherDashboardTodoTypeDescription, todo.todoType, '教师待办类型')
+    return formatTodoTypeLabel(todo.todoType, todo.count)
   }
   return resolveTodoRowLabel(todo)
 }

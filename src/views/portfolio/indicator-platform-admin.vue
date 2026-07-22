@@ -189,8 +189,7 @@ const packColumns: ColumnsType = [
 const mappingColumns: ColumnsType = [
   { title: '编码', dataIndex: 'indicatorCode', key: 'indicatorCode', width: 88 },
   { title: '名称', dataIndex: 'indicatorName', key: 'indicatorName' },
-  { title: '默认来源', dataIndex: 'defaultDataSource', key: 'defaultDataSource', width: 160 },
-  { title: '采集通道', dataIndex: 'channelLabel', key: 'channelLabel', width: 120 },
+  { title: '采集通道', dataIndex: 'defaultDataSource', key: 'defaultDataSource', width: 160 },
   { title: '自动采集', dataIndex: 'autoCollectSupported', key: 'autoCollectSupported', width: 88 },
   { title: '范围外', dataIndex: 'outOfScope', key: 'outOfScope', width: 72 },
 ]
@@ -968,7 +967,10 @@ onMounted(async () => {
           row-key="indicatorCode"
         >
           <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'autoCollectSupported'">
+            <template v-if="column.key === 'defaultDataSource'">
+              {{ dataSourceLabel(record.defaultDataSource) }}
+            </template>
+            <template v-else-if="column.key === 'autoCollectSupported'">
               {{ record.autoCollectSupported ? '是' : '否' }}
             </template>
             <template v-else-if="column.key === 'outOfScope'">

@@ -1,8 +1,7 @@
 /**
- * 通知类型枚举 - 与后端 NotificationTypeEnum 完全对应
+ * 通知类型枚举 - 与后端 NotificationTypeEnum 逐值对齐（单一真源）
  */
 export enum NotificationTypeEnum {
-  // --- 系统级通知 ---
   /** 系统通知 */
   SYSTEM_NOTIFICATION = 'SYSTEM_NOTIFICATION',
   /** 系统告警 */
@@ -11,40 +10,30 @@ export enum NotificationTypeEnum {
   CLASS_ANNOUNCEMENT = 'CLASS_ANNOUNCEMENT',
   /** 账号安全 */
   ACCOUNT_SECURITY = 'ACCOUNT_SECURITY',
-
-  // --- 任务生命周期通知 ---
-  /** 任务发布：老师布置并发布项目 */
+  /** 任务发布 */
   TASK_ASSIGNED = 'TASK_ASSIGNED',
-  /** 任务到期提醒：2天/1天到期提醒 */
+  /** 任务到期提醒 */
   TASK_DUE_REMINDER = 'TASK_DUE_REMINDER',
   /** 任务逾期提醒 */
   TASK_OVERDUE = 'TASK_OVERDUE',
-  /** 任务驳回：教师驳回学生作答 */
+  /** 任务驳回 */
   TASK_REJECTED = 'TASK_REJECTED',
-  /** 任务延期：教师为学生延期 */
+  /** 任务延期 */
   TASK_EXTENDED = 'TASK_EXTENDED',
-  /** AI评分完成 */
-  AI_GRADING_COMPLETED = 'AI_GRADING_COMPLETED',
+  /** 教师评分完成 */
+  TEACHER_GRADING_COMPLETED = 'TEACHER_GRADING_COMPLETED',
   /** 答辩开启 */
   DEFENSE_OPENED = 'DEFENSE_OPENED',
-  /** 未提交学生提醒（教师） */
+  /** 未提交学生提醒 */
   UNSUBMITTED_STUDENTS_ALERT = 'UNSUBMITTED_STUDENTS_ALERT',
-
-  // --- 实践活动通知 ---
   /** 实践完成通知 */
   PRACTICE_COMPLETION_NOTIFICATION = 'PRACTICE_COMPLETION_NOTIFICATION',
-
-  // --- 资源管理通知 ---
   /** Token使用预警 */
   TOKEN_USAGE_ALERT = 'TOKEN_USAGE_ALERT',
-
-  // --- 成绩发布相关（三期新增） ---
   /** 成绩评分规则发布 */
   SCORE_RULE_PUBLISHED = 'SCORE_RULE_PUBLISHED',
   /** 成绩发布 */
   SCORE_PUBLISHED = 'SCORE_PUBLISHED',
-
-  // --- 考试阅卷通知 ---
   /** 试卷扫描完成 */
   EXAM_SCAN_COMPLETED = 'EXAM_SCAN_COMPLETED',
   /** 试卷待复核 */
@@ -57,8 +46,12 @@ export enum NotificationTypeEnum {
   EXAM_EXPORT_COMPLETED = 'EXAM_EXPORT_COMPLETED',
   /** 试卷复核处理 */
   EXAM_GRADE_REVIEW_UPDATED = 'EXAM_GRADE_REVIEW_UPDATED',
-
-  // --- 教学质量评价通知 ---
+  /** 重新提交申请 */
+  RESUBMIT_REQUESTED = 'RESUBMIT_REQUESTED',
+  /** 重新提交申请通过 */
+  RESUBMIT_APPROVED = 'RESUBMIT_APPROVED',
+  /** 重新提交申请被拒 */
+  RESUBMIT_REJECTED = 'RESUBMIT_REJECTED',
   /** 教学质量评价 AI 任务完成 */
   QUALITY_AI_TASK_COMPLETED = 'QUALITY_AI_TASK_COMPLETED',
   /** 教学质量评价 AI 任务失败 */
@@ -79,17 +72,20 @@ export enum NotificationTypeEnum {
   QUALITY_EXPERT_PACKAGE_EXPORTED = 'QUALITY_EXPERT_PACKAGE_EXPORTED',
   /** 教学质量评价达成度审核流转 */
   QUALITY_ACHIEVEMENT_AUDIT_TRANSITED = 'QUALITY_ACHIEVEMENT_AUDIT_TRANSITED',
-  /** 质量评价考核环节权重缺失 */
+  /** 教学质量评价培养方案待院审 */
+  QUALITY_TRAINING_PLAN_SUBMITTED = 'QUALITY_TRAINING_PLAN_SUBMITTED',
+  /** 教学质量评价培养方案院审退回 */
+  QUALITY_TRAINING_PLAN_RETURNED = 'QUALITY_TRAINING_PLAN_RETURNED',
+  /** 教学质量评价培养方案已发布 */
+  QUALITY_TRAINING_PLAN_CONFIRMED = 'QUALITY_TRAINING_PLAN_CONFIRMED',
+  /** 教学质量评价培养方案已撤回 */
+  QUALITY_TRAINING_PLAN_REVOKED = 'QUALITY_TRAINING_PLAN_REVOKED',
+  /** 教学质量评价培养方案院审滞留催办 */
+  QUALITY_TRAINING_PLAN_REVIEW_OVERDUE = 'QUALITY_TRAINING_PLAN_REVIEW_OVERDUE',
+  /** 教学质量评价 edu-mark 同步考核环节缺权重提醒 */
   QUALITY_MARK_ASSESSMENT_WEIGHT_MISSING = 'QUALITY_MARK_ASSESSMENT_WEIGHT_MISSING',
-
-  // --- 重新提交申请相关（三期新增） ---
-  /** 重新提交申请（发给指导老师） */
-  RESUBMIT_REQUESTED = 'RESUBMIT_REQUESTED',
-  /** 重新提交申请通过（发给学生） */
-  RESUBMIT_APPROVED = 'RESUBMIT_APPROVED',
-  /** 重新提交申请被拒（发给学生） */
-  RESUBMIT_REJECTED = 'RESUBMIT_REJECTED',
-
+  /** edu-mark 质量评价成绩同步失败 */
+  MARK_QUALITY_SCORE_SYNC_FAILED = 'MARK_QUALITY_SCORE_SYNC_FAILED',
   /** 教学档案袋档案审核退回 */
   PORTFOLIO_ARCHIVE_RETURNED = 'PORTFOLIO_ARCHIVE_RETURNED',
   /** 教学档案袋档案审核驳回 */
@@ -148,18 +144,6 @@ export enum NotificationTypeEnum {
   PORTFOLIO_EVALUATION_MATERIAL_ALL_CONFIRMED = 'PORTFOLIO_EVALUATION_MATERIAL_ALL_CONFIRMED',
   /** 教学档案袋评价材料确认齐套已打破 */
   PORTFOLIO_EVALUATION_MATERIAL_CONFIRM_BROKEN = 'PORTFOLIO_EVALUATION_MATERIAL_CONFIRM_BROKEN',
-  /** 教学档案袋评价更正复核启动 */
-  PORTFOLIO_EVALUATION_CORRECTION_STARTED = 'PORTFOLIO_EVALUATION_CORRECTION_STARTED',
-  /** 教学档案袋评价更正复核完成 */
-  PORTFOLIO_EVALUATION_CORRECTION_COMPLETED = 'PORTFOLIO_EVALUATION_CORRECTION_COMPLETED',
-  /** 教学档案袋评价更正复核已撤销 */
-  PORTFOLIO_EVALUATION_CORRECTION_CANCELLED = 'PORTFOLIO_EVALUATION_CORRECTION_CANCELLED',
-  /** 教学档案袋评价更正复核工单已完成（非末单） */
-  PORTFOLIO_EVALUATION_CORRECTION_ORDER_COMPLETED = 'PORTFOLIO_EVALUATION_CORRECTION_ORDER_COMPLETED',
-  /** 教学档案袋评价公示期已结束 */
-  PORTFOLIO_EVALUATION_PUBLICITY_EXPIRED = 'PORTFOLIO_EVALUATION_PUBLICITY_EXPIRED',
-  /** 教学档案袋评价异议已全部办结 */
-  PORTFOLIO_EVALUATION_OBJECTIONS_CLEARED = 'PORTFOLIO_EVALUATION_OBJECTIONS_CLEARED',
   /** 教学档案袋教师生命周期变更 */
   PORTFOLIO_TEACHER_LIFECYCLE_CHANGED = 'PORTFOLIO_TEACHER_LIFECYCLE_CHANGED',
   /** 教学档案袋教师生命周期自助申报待审 */
@@ -174,6 +158,18 @@ export enum NotificationTypeEnum {
   PORTFOLIO_SOURCE_FIX_RECOMPUTE = 'PORTFOLIO_SOURCE_FIX_RECOMPUTE',
   /** 教学档案袋源修复重算告警待确认 */
   PORTFOLIO_SOURCE_FIX_ALERT_OPEN = 'PORTFOLIO_SOURCE_FIX_ALERT_OPEN',
+  /** 教学档案袋评价更正复核启动 */
+  PORTFOLIO_EVALUATION_CORRECTION_STARTED = 'PORTFOLIO_EVALUATION_CORRECTION_STARTED',
+  /** 教学档案袋评价更正复核完成 */
+  PORTFOLIO_EVALUATION_CORRECTION_COMPLETED = 'PORTFOLIO_EVALUATION_CORRECTION_COMPLETED',
+  /** 教学档案袋评价更正复核已撤销 */
+  PORTFOLIO_EVALUATION_CORRECTION_CANCELLED = 'PORTFOLIO_EVALUATION_CORRECTION_CANCELLED',
+  /** 教学档案袋评价更正复核工单已完成 */
+  PORTFOLIO_EVALUATION_CORRECTION_ORDER_COMPLETED = 'PORTFOLIO_EVALUATION_CORRECTION_ORDER_COMPLETED',
+  /** 教学档案袋评价公示期已结束 */
+  PORTFOLIO_EVALUATION_PUBLICITY_EXPIRED = 'PORTFOLIO_EVALUATION_PUBLICITY_EXPIRED',
+  /** 教学档案袋评价异议已全部办结 */
+  PORTFOLIO_EVALUATION_OBJECTIONS_CLEARED = 'PORTFOLIO_EVALUATION_OBJECTIONS_CLEARED',
   /** 教学档案袋双高阶段材料待审 */
   PORTFOLIO_DOUBLE_HIGH_STAGE_SUBMITTED = 'PORTFOLIO_DOUBLE_HIGH_STAGE_SUBMITTED',
   /** 教学档案袋双高阶段材料退回 */
@@ -216,21 +212,18 @@ export enum NotificationTypeEnum {
   PORTFOLIO_EXPERT_ASSIGNMENT_REVOKED = 'PORTFOLIO_EXPERT_ASSIGNMENT_REVOKED',
   /** 教学档案袋外部专家评审授权已过期 */
   PORTFOLIO_EXPERT_ASSIGNMENT_EXPIRED = 'PORTFOLIO_EXPERT_ASSIGNMENT_EXPIRED',
-
   /** 教学档案袋导出审批待处理 */
   PORTFOLIO_EXPORT_APPROVAL_PENDING = 'PORTFOLIO_EXPORT_APPROVAL_PENDING',
   /** 教学档案袋导出审批已通过 */
   PORTFOLIO_EXPORT_APPROVAL_APPROVED = 'PORTFOLIO_EXPORT_APPROVAL_APPROVED',
   /** 教学档案袋导出审批已驳回 */
   PORTFOLIO_EXPORT_APPROVAL_REJECTED = 'PORTFOLIO_EXPORT_APPROVAL_REJECTED',
-
   /** 教学档案袋年度规划待部门审核 */
   PORTFOLIO_DEVELOPMENT_PLAN_DEPARTMENT_PENDING = 'PORTFOLIO_DEVELOPMENT_PLAN_DEPARTMENT_PENDING',
   /** 教学档案袋年度规划已通过 */
   PORTFOLIO_DEVELOPMENT_PLAN_APPROVED = 'PORTFOLIO_DEVELOPMENT_PLAN_APPROVED',
   /** 教学档案袋年度规划已退回 */
   PORTFOLIO_DEVELOPMENT_PLAN_RETURNED = 'PORTFOLIO_DEVELOPMENT_PLAN_RETURNED',
-
   /** 教学档案袋档案纠错待处理 */
   PORTFOLIO_ARCHIVE_CORRECTION_PENDING = 'PORTFOLIO_ARCHIVE_CORRECTION_PENDING',
   /** 教学档案袋档案纠错已驳回 */
@@ -245,9 +238,6 @@ export enum NotificationTypeEnum {
   PORTFOLIO_ETHICS_REVIEW_OVERDUE = 'PORTFOLIO_ETHICS_REVIEW_OVERDUE',
   /** 教学档案袋师德复核结论 */
   PORTFOLIO_ETHICS_REVIEW_CONCLUDED = 'PORTFOLIO_ETHICS_REVIEW_CONCLUDED',
-
-  /** edu-mark 质量评价成绩同步失败 */
-  MARK_QUALITY_SCORE_SYNC_FAILED = 'MARK_QUALITY_SCORE_SYNC_FAILED',
   /** 归档卷自动建卷失败 */
   MARK_ARCHIVE_AUTO_CREATE_FAILED = 'MARK_ARCHIVE_AUTO_CREATE_FAILED',
   /** 归档时限临近提醒 */
@@ -260,16 +250,299 @@ export enum NotificationTypeEnum {
   MARK_ARCHIVE_DELAY_SUBMISSION_OVERDUE = 'MARK_ARCHIVE_DELAY_SUBMISSION_OVERDUE',
   /** 查阅授权到期提醒 */
   MARK_ARCHIVE_ACCESS_EXPIRED = 'MARK_ARCHIVE_ACCESS_EXPIRED',
+  /** 归档销毁 storage 不一致 */
+  MARK_ARCHIVE_DESTRUCTION_STORAGE_INCONSISTENCY = 'MARK_ARCHIVE_DESTRUCTION_STORAGE_INCONSISTENCY',
   /** 归档卷整改任务指派 */
   MARK_ARCHIVE_REMEDIATION_ASSIGNED = 'MARK_ARCHIVE_REMEDIATION_ASSIGNED',
   /** 归档卷整改材料已重提 */
   MARK_ARCHIVE_REMEDIATION_RESUBMITTED = 'MARK_ARCHIVE_REMEDIATION_RESUBMITTED',
   /** 归档卷收材驳回 */
   MARK_ARCHIVE_COLLECTION_REJECTED = 'MARK_ARCHIVE_COLLECTION_REJECTED',
+  /** 归档卷开始收材 */
+  MARK_ARCHIVE_COLLECTING_STARTED = 'MARK_ARCHIVE_COLLECTING_STARTED',
   /** 归档卷待院系审核 */
   MARK_ARCHIVE_DEPARTMENT_REVIEW_REQUESTED = 'MARK_ARCHIVE_DEPARTMENT_REVIEW_REQUESTED',
   /** 归档卷院系审核通过 */
   MARK_ARCHIVE_DEPARTMENT_REVIEW_APPROVED = 'MARK_ARCHIVE_DEPARTMENT_REVIEW_APPROVED',
   /** 归档卷院系审核驳回 */
   MARK_ARCHIVE_DEPARTMENT_REVIEW_REJECTED = 'MARK_ARCHIVE_DEPARTMENT_REVIEW_REJECTED',
+  /** 扫描派单租约释放 */
+  MARK_SCAN_DISPATCH_LEASE_RELEASED = 'MARK_SCAN_DISPATCH_LEASE_RELEASED',
+  /** 扫描工单 commit 失败 */
+  MARK_SCAN_WORK_ORDER_FAILED = 'MARK_SCAN_WORK_ORDER_FAILED',
 }
+
+export const ALL_NOTIFICATION_TYPE_CODES: readonly NotificationTypeEnum[] = [
+  NotificationTypeEnum.SYSTEM_NOTIFICATION,
+  NotificationTypeEnum.SYSTEM_ALERT,
+  NotificationTypeEnum.CLASS_ANNOUNCEMENT,
+  NotificationTypeEnum.ACCOUNT_SECURITY,
+  NotificationTypeEnum.TASK_ASSIGNED,
+  NotificationTypeEnum.TASK_DUE_REMINDER,
+  NotificationTypeEnum.TASK_OVERDUE,
+  NotificationTypeEnum.TASK_REJECTED,
+  NotificationTypeEnum.TASK_EXTENDED,
+  NotificationTypeEnum.TEACHER_GRADING_COMPLETED,
+  NotificationTypeEnum.DEFENSE_OPENED,
+  NotificationTypeEnum.UNSUBMITTED_STUDENTS_ALERT,
+  NotificationTypeEnum.PRACTICE_COMPLETION_NOTIFICATION,
+  NotificationTypeEnum.TOKEN_USAGE_ALERT,
+  NotificationTypeEnum.SCORE_RULE_PUBLISHED,
+  NotificationTypeEnum.SCORE_PUBLISHED,
+  NotificationTypeEnum.EXAM_SCAN_COMPLETED,
+  NotificationTypeEnum.EXAM_REVIEW_PENDING,
+  NotificationTypeEnum.EXAM_SCORE_PUBLISHED,
+  NotificationTypeEnum.EXAM_SCORE_WITHDRAWN,
+  NotificationTypeEnum.EXAM_EXPORT_COMPLETED,
+  NotificationTypeEnum.EXAM_GRADE_REVIEW_UPDATED,
+  NotificationTypeEnum.RESUBMIT_REQUESTED,
+  NotificationTypeEnum.RESUBMIT_APPROVED,
+  NotificationTypeEnum.RESUBMIT_REJECTED,
+  NotificationTypeEnum.QUALITY_AI_TASK_COMPLETED,
+  NotificationTypeEnum.QUALITY_AI_TASK_FAILED,
+  NotificationTypeEnum.QUALITY_SCORE_IMPORT_COMPLETED,
+  NotificationTypeEnum.QUALITY_SCORE_IMPORT_FAILED,
+  NotificationTypeEnum.QUALITY_COURSE_REPORT_REMINDER,
+  NotificationTypeEnum.QUALITY_PROGRAM_REPORT_COMPLETED,
+  NotificationTypeEnum.QUALITY_IMPROVEMENT_TASK_ASSIGNED,
+  NotificationTypeEnum.QUALITY_IMPROVEMENT_TASK_REVIEW_REMINDER,
+  NotificationTypeEnum.QUALITY_EXPERT_PACKAGE_EXPORTED,
+  NotificationTypeEnum.QUALITY_ACHIEVEMENT_AUDIT_TRANSITED,
+  NotificationTypeEnum.QUALITY_TRAINING_PLAN_SUBMITTED,
+  NotificationTypeEnum.QUALITY_TRAINING_PLAN_RETURNED,
+  NotificationTypeEnum.QUALITY_TRAINING_PLAN_CONFIRMED,
+  NotificationTypeEnum.QUALITY_TRAINING_PLAN_REVOKED,
+  NotificationTypeEnum.QUALITY_TRAINING_PLAN_REVIEW_OVERDUE,
+  NotificationTypeEnum.QUALITY_MARK_ASSESSMENT_WEIGHT_MISSING,
+  NotificationTypeEnum.MARK_QUALITY_SCORE_SYNC_FAILED,
+  NotificationTypeEnum.PORTFOLIO_ARCHIVE_RETURNED,
+  NotificationTypeEnum.PORTFOLIO_ARCHIVE_DISMISSED,
+  NotificationTypeEnum.PORTFOLIO_ARCHIVE_PASSED,
+  NotificationTypeEnum.PORTFOLIO_ARCHIVE_REVIEW_ESCALATED,
+  NotificationTypeEnum.PORTFOLIO_ARCHIVE_REVIEW_PENDING,
+  NotificationTypeEnum.PORTFOLIO_TEACHER_ONBOARDING,
+  NotificationTypeEnum.PORTFOLIO_GAP_TASK_PENDING,
+  NotificationTypeEnum.PORTFOLIO_GAP_LIFECYCLE_SUSPENDED,
+  NotificationTypeEnum.PORTFOLIO_GAP_LIFECYCLE_RESUMED,
+  NotificationTypeEnum.PORTFOLIO_REVIEW_LIFECYCLE_SUSPENDED,
+  NotificationTypeEnum.PORTFOLIO_REVIEW_LIFECYCLE_RESUMED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_MATERIAL_CONFIRM,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_RETURNED_SUPPLEMENT,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_MATERIAL_CONFIRMED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_PUBLICITY,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_OBJECTION,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_OBJECTION_HANDLED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_ARCHIVED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_CLOSED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_SUSPENDED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_RESUMED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_LIFECYCLE_SUSPENDED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_LIFECYCLE_RESUMED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_STAGE_SUBJECT,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_STAGE_REVIEWER,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_VOIDED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_PUBLISHED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_MATERIAL_ALL_CONFIRMED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_MATERIAL_CONFIRM_BROKEN,
+  NotificationTypeEnum.PORTFOLIO_TEACHER_LIFECYCLE_CHANGED,
+  NotificationTypeEnum.PORTFOLIO_TEACHER_LIFECYCLE_DECLARE_PENDING,
+  NotificationTypeEnum.PORTFOLIO_TEACHER_LIFECYCLE_DECLARE_APPROVED,
+  NotificationTypeEnum.PORTFOLIO_TEACHER_LIFECYCLE_DECLARE_REJECTED,
+  NotificationTypeEnum.PORTFOLIO_RULE_CHANGE,
+  NotificationTypeEnum.PORTFOLIO_SOURCE_FIX_RECOMPUTE,
+  NotificationTypeEnum.PORTFOLIO_SOURCE_FIX_ALERT_OPEN,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_CORRECTION_STARTED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_CORRECTION_COMPLETED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_CORRECTION_CANCELLED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_CORRECTION_ORDER_COMPLETED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_PUBLICITY_EXPIRED,
+  NotificationTypeEnum.PORTFOLIO_EVALUATION_OBJECTIONS_CLEARED,
+  NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_SUBMITTED,
+  NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_REJECTED,
+  NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_APPROVED,
+  NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_REVIEW,
+  NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_TASK_VOIDED,
+  NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_TASK_ARCHIVED,
+  NotificationTypeEnum.PORTFOLIO_DUAL_TEACHER_COLLEGE_PENDING,
+  NotificationTypeEnum.PORTFOLIO_DUAL_TEACHER_RETURNED,
+  NotificationTypeEnum.PORTFOLIO_DUAL_TEACHER_ACADEMIC_PENDING,
+  NotificationTypeEnum.PORTFOLIO_DUAL_TEACHER_APPROVED,
+  NotificationTypeEnum.PORTFOLIO_DUAL_TEACHER_REJECTED,
+  NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_COLLEGE_PENDING,
+  NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_RETURNED,
+  NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_HR_PENDING,
+  NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_REJECTED,
+  NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_PUBLICITY,
+  NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_ARCHIVED,
+  NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_EXPERT_PENDING,
+  NotificationTypeEnum.PORTFOLIO_EXPERT_ASSIGNMENT_PENDING,
+  NotificationTypeEnum.PORTFOLIO_EXPERT_ASSIGNMENT_REVOKED,
+  NotificationTypeEnum.PORTFOLIO_EXPERT_ASSIGNMENT_EXPIRED,
+  NotificationTypeEnum.PORTFOLIO_EXPORT_APPROVAL_PENDING,
+  NotificationTypeEnum.PORTFOLIO_EXPORT_APPROVAL_APPROVED,
+  NotificationTypeEnum.PORTFOLIO_EXPORT_APPROVAL_REJECTED,
+  NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_DEPARTMENT_PENDING,
+  NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_APPROVED,
+  NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_RETURNED,
+  NotificationTypeEnum.PORTFOLIO_ARCHIVE_CORRECTION_PENDING,
+  NotificationTypeEnum.PORTFOLIO_ARCHIVE_CORRECTION_REJECTED,
+  NotificationTypeEnum.PORTFOLIO_ARCHIVE_CORRECTION_CLOSED,
+  NotificationTypeEnum.PORTFOLIO_ETHICS_SANCTION_REGISTERED,
+  NotificationTypeEnum.PORTFOLIO_ETHICS_SANCTION_PENDING_REVIEW,
+  NotificationTypeEnum.PORTFOLIO_ETHICS_REVIEW_OVERDUE,
+  NotificationTypeEnum.PORTFOLIO_ETHICS_REVIEW_CONCLUDED,
+  NotificationTypeEnum.MARK_ARCHIVE_AUTO_CREATE_FAILED,
+  NotificationTypeEnum.MARK_ARCHIVE_DUE_UPCOMING,
+  NotificationTypeEnum.MARK_ARCHIVE_DUE_OVERDUE,
+  NotificationTypeEnum.MARK_ARCHIVE_RETENTION_REMINDER,
+  NotificationTypeEnum.MARK_ARCHIVE_DELAY_SUBMISSION_OVERDUE,
+  NotificationTypeEnum.MARK_ARCHIVE_ACCESS_EXPIRED,
+  NotificationTypeEnum.MARK_ARCHIVE_DESTRUCTION_STORAGE_INCONSISTENCY,
+  NotificationTypeEnum.MARK_ARCHIVE_REMEDIATION_ASSIGNED,
+  NotificationTypeEnum.MARK_ARCHIVE_REMEDIATION_RESUBMITTED,
+  NotificationTypeEnum.MARK_ARCHIVE_COLLECTION_REJECTED,
+  NotificationTypeEnum.MARK_ARCHIVE_COLLECTING_STARTED,
+  NotificationTypeEnum.MARK_ARCHIVE_DEPARTMENT_REVIEW_REQUESTED,
+  NotificationTypeEnum.MARK_ARCHIVE_DEPARTMENT_REVIEW_APPROVED,
+  NotificationTypeEnum.MARK_ARCHIVE_DEPARTMENT_REVIEW_REJECTED,
+  NotificationTypeEnum.MARK_SCAN_DISPATCH_LEASE_RELEASED,
+  NotificationTypeEnum.MARK_SCAN_WORK_ORDER_FAILED,
+]
+
+export const NotificationTypeDescription: Record<NotificationTypeEnum, string> = {
+  [NotificationTypeEnum.SYSTEM_NOTIFICATION]: '系统通知',
+  [NotificationTypeEnum.SYSTEM_ALERT]: '系统告警',
+  [NotificationTypeEnum.CLASS_ANNOUNCEMENT]: '班级公告',
+  [NotificationTypeEnum.ACCOUNT_SECURITY]: '账号安全',
+  [NotificationTypeEnum.TASK_ASSIGNED]: '任务发布',
+  [NotificationTypeEnum.TASK_DUE_REMINDER]: '任务到期提醒',
+  [NotificationTypeEnum.TASK_OVERDUE]: '任务逾期提醒',
+  [NotificationTypeEnum.TASK_REJECTED]: '任务驳回',
+  [NotificationTypeEnum.TASK_EXTENDED]: '任务延期',
+  [NotificationTypeEnum.TEACHER_GRADING_COMPLETED]: '教师评分完成',
+  [NotificationTypeEnum.DEFENSE_OPENED]: '答辩开启',
+  [NotificationTypeEnum.UNSUBMITTED_STUDENTS_ALERT]: '未提交学生提醒',
+  [NotificationTypeEnum.PRACTICE_COMPLETION_NOTIFICATION]: '实践完成通知',
+  [NotificationTypeEnum.TOKEN_USAGE_ALERT]: 'Token使用预警',
+  [NotificationTypeEnum.SCORE_RULE_PUBLISHED]: '成绩评分规则发布',
+  [NotificationTypeEnum.SCORE_PUBLISHED]: '成绩发布',
+  [NotificationTypeEnum.EXAM_SCAN_COMPLETED]: '试卷扫描完成',
+  [NotificationTypeEnum.EXAM_REVIEW_PENDING]: '试卷待复核',
+  [NotificationTypeEnum.EXAM_SCORE_PUBLISHED]: '试卷成绩发布',
+  [NotificationTypeEnum.EXAM_SCORE_WITHDRAWN]: '试卷成绩撤回',
+  [NotificationTypeEnum.EXAM_EXPORT_COMPLETED]: '试卷导出完成',
+  [NotificationTypeEnum.EXAM_GRADE_REVIEW_UPDATED]: '试卷复核处理',
+  [NotificationTypeEnum.RESUBMIT_REQUESTED]: '重新提交申请',
+  [NotificationTypeEnum.RESUBMIT_APPROVED]: '重新提交申请通过',
+  [NotificationTypeEnum.RESUBMIT_REJECTED]: '重新提交申请被拒',
+  [NotificationTypeEnum.QUALITY_AI_TASK_COMPLETED]: '教学质量评价 AI 任务完成',
+  [NotificationTypeEnum.QUALITY_AI_TASK_FAILED]: '教学质量评价 AI 任务失败',
+  [NotificationTypeEnum.QUALITY_SCORE_IMPORT_COMPLETED]: '教学质量评价成绩导入完成',
+  [NotificationTypeEnum.QUALITY_SCORE_IMPORT_FAILED]: '教学质量评价成绩导入失败',
+  [NotificationTypeEnum.QUALITY_COURSE_REPORT_REMINDER]: '教学质量评价课程报告提交提醒',
+  [NotificationTypeEnum.QUALITY_PROGRAM_REPORT_COMPLETED]: '教学质量评价专业质量报告完成',
+  [NotificationTypeEnum.QUALITY_IMPROVEMENT_TASK_ASSIGNED]: '教学质量评价持续改进任务分配',
+  [NotificationTypeEnum.QUALITY_IMPROVEMENT_TASK_REVIEW_REMINDER]: '教学质量评价持续改进任务复评提醒',
+  [NotificationTypeEnum.QUALITY_EXPERT_PACKAGE_EXPORTED]: '教学质量评价专家材料包导出完成',
+  [NotificationTypeEnum.QUALITY_ACHIEVEMENT_AUDIT_TRANSITED]: '教学质量评价达成度审核流转',
+  [NotificationTypeEnum.QUALITY_TRAINING_PLAN_SUBMITTED]: '教学质量评价培养方案待院审',
+  [NotificationTypeEnum.QUALITY_TRAINING_PLAN_RETURNED]: '教学质量评价培养方案院审退回',
+  [NotificationTypeEnum.QUALITY_TRAINING_PLAN_CONFIRMED]: '教学质量评价培养方案已发布',
+  [NotificationTypeEnum.QUALITY_TRAINING_PLAN_REVOKED]: '教学质量评价培养方案已撤回',
+  [NotificationTypeEnum.QUALITY_TRAINING_PLAN_REVIEW_OVERDUE]: '教学质量评价培养方案院审滞留催办',
+  [NotificationTypeEnum.QUALITY_MARK_ASSESSMENT_WEIGHT_MISSING]: '教学质量评价 edu-mark 同步考核环节缺权重提醒',
+  [NotificationTypeEnum.MARK_QUALITY_SCORE_SYNC_FAILED]: 'edu-mark 质量评价成绩同步失败',
+  [NotificationTypeEnum.PORTFOLIO_ARCHIVE_RETURNED]: '教学档案袋档案审核退回',
+  [NotificationTypeEnum.PORTFOLIO_ARCHIVE_DISMISSED]: '教学档案袋档案审核驳回',
+  [NotificationTypeEnum.PORTFOLIO_ARCHIVE_PASSED]: '教学档案袋档案审核通过',
+  [NotificationTypeEnum.PORTFOLIO_ARCHIVE_REVIEW_ESCALATED]: '教学档案袋档案审核转复审',
+  [NotificationTypeEnum.PORTFOLIO_ARCHIVE_REVIEW_PENDING]: '教学档案袋档案提交待审',
+  [NotificationTypeEnum.PORTFOLIO_TEACHER_ONBOARDING]: '教学档案袋新教师建档欢迎',
+  [NotificationTypeEnum.PORTFOLIO_GAP_TASK_PENDING]: '教学档案袋补采任务通知',
+  [NotificationTypeEnum.PORTFOLIO_GAP_LIFECYCLE_SUSPENDED]: '教学档案袋补采生命周期暂停摘要',
+  [NotificationTypeEnum.PORTFOLIO_GAP_LIFECYCLE_RESUMED]: '教学档案袋补采生命周期恢复摘要',
+  [NotificationTypeEnum.PORTFOLIO_REVIEW_LIFECYCLE_SUSPENDED]: '教学档案袋审核生命周期挂起摘要',
+  [NotificationTypeEnum.PORTFOLIO_REVIEW_LIFECYCLE_RESUMED]: '教学档案袋审核生命周期恢复摘要',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_MATERIAL_CONFIRM]: '教学档案袋评价材料确认',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_RETURNED_SUPPLEMENT]: '教学档案袋评价材料退回补充',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_MATERIAL_CONFIRMED]: '教学档案袋评价材料已确认',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_PUBLICITY]: '教学档案袋评价结果公示',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_OBJECTION]: '教学档案袋评价异议受理',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_OBJECTION_HANDLED]: '教学档案袋评价异议复核结论',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_ARCHIVED]: '教学档案袋评价结果已归档',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_CLOSED]: '教学档案袋评价任务已关闭',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_SUSPENDED]: '教学档案袋评价任务已暂停',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_RESUMED]: '教学档案袋评价任务已恢复',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_LIFECYCLE_SUSPENDED]: '教学档案袋评价生命周期暂停摘要',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_LIFECYCLE_RESUMED]: '教学档案袋评价生命周期恢复摘要',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_STAGE_SUBJECT]: '教学档案袋评价阶段进展',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_STAGE_REVIEWER]: '教学档案袋评价阶段待办',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_VOIDED]: '教学档案袋评价任务已作废',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_PUBLISHED]: '教学档案袋评价任务已发布',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_MATERIAL_ALL_CONFIRMED]: '教学档案袋评价材料全员已确认',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_MATERIAL_CONFIRM_BROKEN]: '教学档案袋评价材料确认齐套已打破',
+  [NotificationTypeEnum.PORTFOLIO_TEACHER_LIFECYCLE_CHANGED]: '教学档案袋教师生命周期变更',
+  [NotificationTypeEnum.PORTFOLIO_TEACHER_LIFECYCLE_DECLARE_PENDING]: '教学档案袋教师生命周期自助申报待审',
+  [NotificationTypeEnum.PORTFOLIO_TEACHER_LIFECYCLE_DECLARE_APPROVED]: '教学档案袋教师生命周期自助申报已通过',
+  [NotificationTypeEnum.PORTFOLIO_TEACHER_LIFECYCLE_DECLARE_REJECTED]: '教学档案袋教师生命周期自助申报已驳回',
+  [NotificationTypeEnum.PORTFOLIO_RULE_CHANGE]: '教学档案袋规则变更通知',
+  [NotificationTypeEnum.PORTFOLIO_SOURCE_FIX_RECOMPUTE]: '教学档案袋源修复重算完成',
+  [NotificationTypeEnum.PORTFOLIO_SOURCE_FIX_ALERT_OPEN]: '教学档案袋源修复重算告警待确认',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_CORRECTION_STARTED]: '教学档案袋评价更正复核启动',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_CORRECTION_COMPLETED]: '教学档案袋评价更正复核完成',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_CORRECTION_CANCELLED]: '教学档案袋评价更正复核已撤销',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_CORRECTION_ORDER_COMPLETED]: '教学档案袋评价更正复核工单已完成',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_PUBLICITY_EXPIRED]: '教学档案袋评价公示期已结束',
+  [NotificationTypeEnum.PORTFOLIO_EVALUATION_OBJECTIONS_CLEARED]: '教学档案袋评价异议已全部办结',
+  [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_SUBMITTED]: '教学档案袋双高阶段材料待审',
+  [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_REJECTED]: '教学档案袋双高阶段材料退回',
+  [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_APPROVED]: '教学档案袋双高阶段材料已通过',
+  [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_STAGE_REVIEW]: '教学档案袋双高阶段审核进行中',
+  [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_TASK_VOIDED]: '教学档案袋双高任务已作废',
+  [NotificationTypeEnum.PORTFOLIO_DOUBLE_HIGH_TASK_ARCHIVED]: '教学档案袋双高任务已归档',
+  [NotificationTypeEnum.PORTFOLIO_DUAL_TEACHER_COLLEGE_PENDING]: '教学档案袋双师认定待院审',
+  [NotificationTypeEnum.PORTFOLIO_DUAL_TEACHER_RETURNED]: '教学档案袋双师认定退回补正',
+  [NotificationTypeEnum.PORTFOLIO_DUAL_TEACHER_ACADEMIC_PENDING]: '教学档案袋双师认定待教务审',
+  [NotificationTypeEnum.PORTFOLIO_DUAL_TEACHER_APPROVED]: '教学档案袋双师认定已通过',
+  [NotificationTypeEnum.PORTFOLIO_DUAL_TEACHER_REJECTED]: '教学档案袋双师认定已驳回',
+  [NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_COLLEGE_PENDING]: '教学档案袋职称申报待院审',
+  [NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_RETURNED]: '教学档案袋职称申报退回补正',
+  [NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_HR_PENDING]: '教学档案袋职称申报待人事复审',
+  [NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_REJECTED]: '教学档案袋职称申报已驳回',
+  [NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_PUBLICITY]: '教学档案袋职称申报进入公示',
+  [NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_ARCHIVED]: '教学档案袋职称申报公示归档',
+  [NotificationTypeEnum.PORTFOLIO_TITLE_PROMOTION_EXPERT_PENDING]: '教学档案袋职称申报待专家评审',
+  [NotificationTypeEnum.PORTFOLIO_EXPERT_ASSIGNMENT_PENDING]: '教学档案袋外部专家评审授权待办',
+  [NotificationTypeEnum.PORTFOLIO_EXPERT_ASSIGNMENT_REVOKED]: '教学档案袋外部专家评审授权已吊销',
+  [NotificationTypeEnum.PORTFOLIO_EXPERT_ASSIGNMENT_EXPIRED]: '教学档案袋外部专家评审授权已过期',
+  [NotificationTypeEnum.PORTFOLIO_EXPORT_APPROVAL_PENDING]: '教学档案袋导出审批待处理',
+  [NotificationTypeEnum.PORTFOLIO_EXPORT_APPROVAL_APPROVED]: '教学档案袋导出审批已通过',
+  [NotificationTypeEnum.PORTFOLIO_EXPORT_APPROVAL_REJECTED]: '教学档案袋导出审批已驳回',
+  [NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_DEPARTMENT_PENDING]: '教学档案袋年度规划待部门审核',
+  [NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_APPROVED]: '教学档案袋年度规划已通过',
+  [NotificationTypeEnum.PORTFOLIO_DEVELOPMENT_PLAN_RETURNED]: '教学档案袋年度规划已退回',
+  [NotificationTypeEnum.PORTFOLIO_ARCHIVE_CORRECTION_PENDING]: '教学档案袋档案纠错待处理',
+  [NotificationTypeEnum.PORTFOLIO_ARCHIVE_CORRECTION_REJECTED]: '教学档案袋档案纠错已驳回',
+  [NotificationTypeEnum.PORTFOLIO_ARCHIVE_CORRECTION_CLOSED]: '教学档案袋档案纠错已关闭',
+  [NotificationTypeEnum.PORTFOLIO_ETHICS_SANCTION_REGISTERED]: '教学档案袋师德处分已登记',
+  [NotificationTypeEnum.PORTFOLIO_ETHICS_SANCTION_PENDING_REVIEW]: '教学档案袋师德处分期满待复核',
+  [NotificationTypeEnum.PORTFOLIO_ETHICS_REVIEW_OVERDUE]: '教学档案袋师德复核逾期督办',
+  [NotificationTypeEnum.PORTFOLIO_ETHICS_REVIEW_CONCLUDED]: '教学档案袋师德复核结论',
+  [NotificationTypeEnum.MARK_ARCHIVE_AUTO_CREATE_FAILED]: '归档卷自动建卷失败',
+  [NotificationTypeEnum.MARK_ARCHIVE_DUE_UPCOMING]: '归档时限临近提醒',
+  [NotificationTypeEnum.MARK_ARCHIVE_DUE_OVERDUE]: '归档时限逾期提醒',
+  [NotificationTypeEnum.MARK_ARCHIVE_RETENTION_REMINDER]: '保管到期鉴定提醒',
+  [NotificationTypeEnum.MARK_ARCHIVE_DELAY_SUBMISSION_OVERDUE]: '延迟补交材料逾期提醒',
+  [NotificationTypeEnum.MARK_ARCHIVE_ACCESS_EXPIRED]: '查阅授权到期提醒',
+  [NotificationTypeEnum.MARK_ARCHIVE_DESTRUCTION_STORAGE_INCONSISTENCY]: '归档销毁 storage 不一致',
+  [NotificationTypeEnum.MARK_ARCHIVE_REMEDIATION_ASSIGNED]: '归档卷整改任务指派',
+  [NotificationTypeEnum.MARK_ARCHIVE_REMEDIATION_RESUBMITTED]: '归档卷整改材料已重提',
+  [NotificationTypeEnum.MARK_ARCHIVE_COLLECTION_REJECTED]: '归档卷收材驳回',
+  [NotificationTypeEnum.MARK_ARCHIVE_COLLECTING_STARTED]: '归档卷开始收材',
+  [NotificationTypeEnum.MARK_ARCHIVE_DEPARTMENT_REVIEW_REQUESTED]: '归档卷待院系审核',
+  [NotificationTypeEnum.MARK_ARCHIVE_DEPARTMENT_REVIEW_APPROVED]: '归档卷院系审核通过',
+  [NotificationTypeEnum.MARK_ARCHIVE_DEPARTMENT_REVIEW_REJECTED]: '归档卷院系审核驳回',
+  [NotificationTypeEnum.MARK_SCAN_DISPATCH_LEASE_RELEASED]: '扫描派单租约释放',
+  [NotificationTypeEnum.MARK_SCAN_WORK_ORDER_FAILED]: '扫描工单 commit 失败',
+}
+

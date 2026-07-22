@@ -13,7 +13,7 @@ export const ALL_ARCHIVE_SCORE_SOURCE_CODES: readonly ArchiveScoreSourceCode[] =
   ArchiveScoreSourceCode.NOT_REQUIRED,
 ]
 export const ArchiveScoreSourceDescription: Record<ArchiveScoreSourceCode, string> = {
-  [ArchiveScoreSourceCode.MARK_INTERNAL]: 'mark 内部成绩',
+  [ArchiveScoreSourceCode.MARK_INTERNAL]: 'mark内部成绩',
   [ArchiveScoreSourceCode.TEACHING_AFFAIRS]: '教务系统',
   [ArchiveScoreSourceCode.OFFLINE_CONFIRMED]: '线下确认',
   [ArchiveScoreSourceCode.NOT_REQUIRED]: '无需成绩',

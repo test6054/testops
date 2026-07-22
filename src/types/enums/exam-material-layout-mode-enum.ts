@@ -1,4 +1,4 @@
-/** 制卷形态 */
+/** 制卷形态 - ExamMaterialLayoutMode */
 export enum ExamMaterialLayoutModeCode {
   ANSWER_SHEET = 'ANSWER_SHEET',
   FULL_PAPER = 'FULL_PAPER',

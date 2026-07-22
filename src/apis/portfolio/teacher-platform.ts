@@ -1,4 +1,3 @@
-import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type {
   PortfolioArchiveBagAssembleVO,
   PortfolioArchiveBagExportResultVO,
@@ -26,22 +25,28 @@ import type {
   PortfolioTeacherRecommendRunStatusCode,
   PortfolioTeacherRecommendSceneCode,
 } from '@/apis/portfolio/enums'
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PortfolioArchiveScoreRuleTypeCode } from '@/types/enums/portfolio-archive-score-rule-type-enum'
-import {
-  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
-  PortfolioArchiveScoreRuleTypeDescription,
-} from '@/types/enums/portfolio-archive-score-rule-type-enum'
+import type { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
+import type { PortfolioDualTeacherCertLevelCode } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
+import type { PortfolioExternalTeacherContractStatusCode } from '@/types/enums/portfolio-external-teacher-contract-status-enum'
+import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import type { PortfolioImportQualityGradeCode } from '@/types/enums/portfolio-import-quality-grade-enum'
 import type { PortfolioMultiSourceEvaluatorTypeEnum } from '@/types/enums/portfolio-multi-source-evaluator-type-enum'
 import type { PortfolioPlanningSyncConflictStrategyCode } from '@/types/enums/portfolio-planning-sync-conflict-strategy-enum'
 import type { PortfolioPlanningSyncOrgScopeCode } from '@/types/enums/portfolio-planning-sync-org-scope-enum'
 import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfolio-portrait-template-status-enum'
+import type { PortraitWidgetTypeCode } from '@/types/enums/portrait-widget-type-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import {
+  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
+  PortfolioArchiveScoreRuleTypeDescription,
+} from '@/types/enums/portfolio-archive-score-rule-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const portfolioArchiveBagApi = {
@@ -125,7 +130,7 @@ export interface PortfolioDualTeacherApplicationVO {
   teacherUserId: string
   applicationNo: string
   applicationStatus: PortfolioDualTeacherApplicationStatusCode
-  certLevel?: string
+  certLevel?: PortfolioDualTeacherCertLevelCode
   certYear?: string
   enterprisePracticeDays?: number
   collegeAuditOpinion?: string
@@ -163,7 +168,7 @@ export interface PortfolioDualTeacherWorkflowRequest {
 export interface PortfolioDualTeacherSaveDraftRequest {
   id?: string
   teacherUserId: string
-  certLevel?: string
+  certLevel?: PortfolioDualTeacherCertLevelCode
   certYear?: string
   enterprisePracticeDays?: number
   attachmentFileIds?: string[]
@@ -239,7 +244,7 @@ export interface PortfolioDualTeacherStatusCountVO {
 }
 
 export interface PortfolioDualTeacherCertLevelCountVO {
-  certLevel: string
+  certLevel: PortfolioDualTeacherCertLevelCode
   count: number
 }
 
@@ -278,7 +283,7 @@ export interface PortfolioExternalTeacherVO {
   teacherSource?: string
   trialScore?: string
   industryExperience?: string
-  contractStatus?: string
+  contractStatus?: PortfolioExternalTeacherContractStatusCode
   contactPhone?: string
   contactEmail?: string
   hireStartDate?: string
@@ -291,6 +296,19 @@ export interface PortfolioExternalTeacherVO {
 }
 
 export interface PortfolioExternalTeacherStatsVO {
+  /** 当前筛选口径台账总数 */
+  totalCount?: number
+  /** 当前筛选口径 ACTIVE 数 */
+  activeCount?: number
+  /** §8.42 产业导师综合贡献度均值 */
+  avgContributionScore?: number | string
+  avgAppointmentValidityScore?: number | string
+  avgTeachingParticipationScore?: number | string
+  avgPracticeGuidanceScore?: number | string
+  avgIndustryOutcomeScore?: number | string
+  avgAssessmentScore?: number | string
+  /** §8.42 固定不可用于校内职称 */
+  usableForCampusTitleEvaluation?: boolean
   contractStatusCounts: PortfolioExternalTeacherStatCountVO[]
   teacherSourceCounts: PortfolioExternalTeacherStatCountVO[]
 }
@@ -316,7 +334,7 @@ export interface PortfolioExternalTeacherSaveRequest {
   teacherSource?: string
   trialScore?: string
   industryExperience?: string
-  contractStatus?: string
+  contractStatus?: PortfolioExternalTeacherContractStatusCode
   contactPhone?: string
   contactEmail?: string
   hireStartDate?: string
@@ -330,7 +348,7 @@ export interface PortfolioImportErrorItemDto {
   rowIndexes?: number[]
   message?: string
   conflictAction?: string
-  qualityGrade?: string
+  qualityGrade?: PortfolioImportQualityGradeCode
   passRate?: number
   teacherMatchRate?: number
   fieldUsableRate?: number
@@ -356,21 +374,21 @@ export interface PortfolioExternalTeacherPageRequest extends QueryDto {
   importBatchId?: string
   teachSubject?: string
   teacherSource?: string
-  contractStatus?: string
+  contractStatus?: PortfolioExternalTeacherContractStatusCode
 }
 
 export interface PortfolioExternalTeacherStatsRequest {
   dataStatus?: PortfolioExternalTeacherDataStatusCode
   teachSubject?: string
   teacherSource?: string
-  contractStatus?: string
+  contractStatus?: PortfolioExternalTeacherContractStatusCode
 }
 
 export interface PortfolioExternalTeacherExportRequest {
   dataStatus?: PortfolioExternalTeacherDataStatusCode
   teachSubject?: string
   teacherSource?: string
-  contractStatus?: string
+  contractStatus?: PortfolioExternalTeacherContractStatusCode
 }
 
 export const portfolioExternalTeacherApi = {
@@ -654,7 +672,7 @@ export interface PortfolioDevelopmentRecordVO {
   recordType: PortfolioDevelopmentRecordTypeCode
   recordStatus?: PortfolioDevelopmentRecordStatusCode
   categoryCode?: string
-  levelCode?: string
+  levelCode?: PortfolioHonorLevelCode
   awardUnit?: string
   recordDate?: string
   teacherUserId?: string
@@ -699,7 +717,7 @@ export interface PortfolioAchievementStatsVO {
 }
 
 export interface PortfolioHonorLevelCountVO {
-  levelCode: string
+  levelCode: PortfolioHonorLevelCode
   count: number
 }
 
@@ -713,7 +731,7 @@ export interface PortfolioDevelopmentRecordPageRequest extends QueryDto {
   teacherUserId?: string
   recordStatus?: PortfolioDevelopmentRecordStatusCode
   searchText?: string
-  levelCode?: string
+  levelCode?: PortfolioHonorLevelCode
   awardUnit?: string
   recordDateFrom?: string
   recordDateTo?: string
@@ -723,7 +741,7 @@ export interface PortfolioDevelopmentRecordPageRequest extends QueryDto {
 export interface PortfolioDevelopmentRecordComprehensivePageRequest extends QueryDto {
   searchText?: string
   recordTypes?: PortfolioDevelopmentRecordTypeCode[]
-  levelCode?: string
+  levelCode?: PortfolioHonorLevelCode
   nationalOnly?: boolean
   teacherUserId?: string
   recordDateFrom?: string
@@ -736,7 +754,7 @@ export interface PortfolioDevelopmentRecordSaveRequest {
   recordTitle: string
   teacherUserId?: string
   categoryCode?: string
-  levelCode?: string
+  levelCode?: PortfolioHonorLevelCode
   awardUnit?: string
   recordDate?: string
   descriptionText?: string
@@ -747,7 +765,7 @@ export interface PortfolioDevelopmentRecordSaveRequest {
 export interface PortfolioDevelopmentRecordExportRequest {
   recordType?: PortfolioDevelopmentRecordTypeCode
   categoryCode?: string
-  levelCode?: string
+  levelCode?: PortfolioHonorLevelCode
   nationalOnly?: boolean
   teacherUserId?: string
   awardUnit?: string
@@ -759,7 +777,7 @@ export interface PortfolioHonorExportRequest {
   teacherUserId?: string
   recordStatus?: PortfolioDevelopmentRecordStatusCode
   searchText?: string
-  levelCode?: string
+  levelCode?: PortfolioHonorLevelCode
   awardUnit?: string
   recordDateFrom?: string
   recordDateTo?: string
@@ -855,6 +873,42 @@ export interface PortfolioKeyTeacherSaveRequest {
   attachmentFileIds?: string[]
 }
 
+
+export interface PortfolioKeyTeacherStatusCountVO {
+  registryStatus: PortfolioKeyTeacherRegistryStatusCode
+  count: number
+}
+
+export interface PortfolioKeyTeacherTypeCountVO {
+  registryType: PortfolioKeyTeacherRegistryTypeCode
+  count: number
+}
+
+export interface PortfolioKeyTeacherDepartmentCountVO {
+  departmentId: string
+  departmentName: string
+  count: number
+}
+
+export interface PortfolioKeyTeacherAnalyticsVO {
+  totalCount: number
+  activeCount: number
+  statusCounts: PortfolioKeyTeacherStatusCountVO[]
+  typeCounts: PortfolioKeyTeacherTypeCountVO[]
+  /** §8.61 在岗结构教师数 */
+  structureTeacherCount?: number
+  /** 在岗结构内在册骨干教师数 */
+  structureKeyTeacherCount?: number
+  /** 在岗结构内在册专业带头人数 */
+  structureProgramLeaderCount?: number
+  /** 骨干比例百分比 */
+  keyTeacherRatioPercent?: number | string
+  /** 专业带头人比例百分比 */
+  programLeaderRatioPercent?: number | string
+  /** 在岗骨干院系分布 */
+  keyTeacherDepartmentCounts?: PortfolioKeyTeacherDepartmentCountVO[]
+}
+
 export const portfolioKeyTeacherApi = {
   page: (data: PortfolioKeyTeacherPageRequest) =>
     http.post<PageResult<PortfolioKeyTeacherRegistryVO>>('/api/portfolio/key-teacher/page', data),
@@ -863,6 +917,8 @@ export const portfolioKeyTeacherApi = {
   revoke: (data: { id: string }) => http.post<void>('/api/portfolio/key-teacher/revoke', data),
   exportRoster: (data: PortfolioKeyTeacherExportRequest = {}) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/key-teacher/export-roster', data),
+  analyticsStats: () =>
+    http.post<PortfolioKeyTeacherAnalyticsVO>('/api/portfolio/key-teacher/analytics/stats', {}),
 }
 
 export interface PortfolioDoubleDutyRegistryVO {
@@ -901,11 +957,25 @@ export interface PortfolioDoubleDutyAppointYearCountVO {
   count: number
 }
 
+export interface PortfolioDoubleDutyDepartmentCountVO {
+  departmentId: string
+  departmentName: string
+  count: number
+}
+
 export interface PortfolioDoubleDutyAnalyticsVO {
   totalCount: number
   activeCount: number
   statusCounts: PortfolioDoubleDutyStatusCountVO[]
   appointYearCounts: PortfolioDoubleDutyAppointYearCountVO[]
+  /** §8.61 在岗结构教师数 */
+  structureTeacherCount?: number
+  /** 在岗结构内在册双肩挑教师数 */
+  structureDoubleDutyCount?: number
+  /** 双肩挑比例百分比 */
+  doubleDutyRatioPercent?: number | string
+  /** 在岗双肩挑院系分布 */
+  departmentCounts?: PortfolioDoubleDutyDepartmentCountVO[]
 }
 
 export interface PortfolioDoubleDutyPageRequest extends QueryDto {
@@ -955,7 +1025,7 @@ export interface PortfolioTeacherSalaryVO {
   baseAmountDisplay?: string
   performanceAmountDisplay?: string
   allowanceAmountDisplay?: string
-  dataSource?: string
+  dataSource?: PortfolioBusinessDataSourceTypeCode
   remark?: string
   createTime?: string
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
@@ -987,7 +1057,7 @@ export interface PortfolioTeacherSalarySaveRequest {
   baseAmount?: number
   performanceAmount?: number
   allowanceAmount?: number
-  dataSource?: string
+  dataSource?: PortfolioBusinessDataSourceTypeCode
   remark?: string
 }
 
@@ -1013,7 +1083,7 @@ export interface PortfolioTeacherLibraryBorrowVO {
   dueTime?: string
   returnTime?: string
   overdueDays?: number
-  dataSource?: string
+  dataSource?: PortfolioBusinessDataSourceTypeCode
   remark?: string
   createTime?: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
@@ -1061,7 +1131,7 @@ export interface PortfolioTeacherLibraryBorrowSaveRequest {
   dueTime?: string
   returnTime?: string
   overdueDays?: number
-  dataSource?: string
+  dataSource?: PortfolioBusinessDataSourceTypeCode
   remark?: string
 }
 
@@ -1293,7 +1363,7 @@ export const portfolioTeacherRecommendationApi = {
 }
 
 export interface PortfolioPortraitLayoutWidgetDto {
-  widget: string
+  widget: PortraitWidgetTypeCode
   x: number
   y: number
   w: number
@@ -1302,7 +1372,7 @@ export interface PortfolioPortraitLayoutWidgetDto {
 
 export interface PortfolioPortraitChartConfigEntryDto {
   widgetIndex: number
-  dimensionCode: string
+  dimensionCode: PortfolioPortraitDimensionCode
 }
 
 export interface PortfolioPortraitTemplateVO {

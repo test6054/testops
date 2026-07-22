@@ -18,7 +18,7 @@ export const ALL_ARCHIVE_VOLUME_MEMBER_ROLE_CODES: readonly ArchiveVolumeMemberR
 ]
 
 export const ArchiveVolumeMemberRoleDescription: Record<ArchiveVolumeMemberRoleCode, string> = {
-  [ArchiveVolumeMemberRoleCode.ORGANIZER]: '归档责任人（任课教师）',
+  [ArchiveVolumeMemberRoleCode.ORGANIZER]: '组织老师',
   [ArchiveVolumeMemberRoleCode.SCAN_OPERATOR]: '协作老师',
   [ArchiveVolumeMemberRoleCode.CATALOG_EDITOR]: '编目老师',
   [ArchiveVolumeMemberRoleCode.SUBMITTER]: '提交老师',

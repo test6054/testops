@@ -18,11 +18,16 @@ import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
+import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { stageBusinessFile } from '@/composables/platform/usePlatformFileStage'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
+import {
+  PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL,
+  PortfolioDualTeacherCertLevelCode,
+} from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -65,10 +70,15 @@ const operationPending = computed(() => saving.value || submitting.value || uplo
 
 const form = reactive({
   id: '',
-  certLevel: '',
+  certLevel: undefined as PortfolioDualTeacherCertLevelCode | undefined,
   certYear: String(new Date().getFullYear()),
   enterprisePracticeDays: 0,
 })
+
+const certLevelOptions = Object.values(PortfolioDualTeacherCertLevelCode).map((value) => ({
+  value,
+  label: PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL[value],
+}))
 
 /** 申请单作用域变化时清空旧表单，避免旧加载结果回写当前申请页。 */
 function resetApplicationContext(): void {
@@ -79,7 +89,7 @@ function resetApplicationContext(): void {
   uploading.value = false
   application.value = null
   form.id = ''
-  form.certLevel = ''
+  form.certLevel = undefined
   form.certYear = String(new Date().getFullYear())
   form.enterprisePracticeDays = 0
   attachmentItems.value = []
@@ -135,7 +145,7 @@ function startReReview() {
   }
   applicationFormEpoch.value += 1
   form.id = ''
-  form.certLevel = application.value?.certLevel ?? ''
+  form.certLevel = application.value?.certLevel
   form.certYear = String(new Date().getFullYear())
   form.enterprisePracticeDays = application.value?.enterprisePracticeDays ?? 0
   attachmentItems.value = []
@@ -146,7 +156,7 @@ const canSubmit = computed(() => {
   if (!canEdit.value || operationPending.value) {
     return false
   }
-  if (!form.certLevel.trim()) {
+  if (!form.certLevel) {
     return false
   }
   return /^\d{4}$/.test(form.certYear.trim())
@@ -189,7 +199,7 @@ async function loadApplication() {
         // 保留 token 递增后的空表单，允许新建
         application.value = null
         form.id = ''
-        form.certLevel = ''
+        form.certLevel = undefined
         form.certYear = String(new Date().getFullYear())
         form.enterprisePracticeDays = 0
         attachmentItems.value = []
@@ -205,14 +215,14 @@ async function loadApplication() {
       application.value.applicationStatus === PortfolioDualTeacherApplicationStatusCode.REJECTED
     ) {
       form.id = ''
-      form.certLevel = application.value.certLevel ?? ''
+      form.certLevel = application.value.certLevel
       form.certYear = application.value.certYear ?? form.certYear
       form.enterprisePracticeDays = application.value.enterprisePracticeDays ?? 0
       attachmentItems.value = []
       return
     }
     form.id = application.value.id
-    form.certLevel = application.value.certLevel ?? ''
+    form.certLevel = application.value.certLevel
     form.certYear = application.value.certYear ?? form.certYear
     form.enterprisePracticeDays = application.value.enterprisePracticeDays ?? 0
     attachmentItems.value = (application.value.attachmentFileIds ?? []).map((fileNodeId) => ({
@@ -298,7 +308,7 @@ function buildDraftPayload() {
   return {
     id: form.id || undefined,
     teacherUserId: targetTeacherId.value!,
-    certLevel: form.certLevel.trim() || undefined,
+    certLevel: form.certLevel,
     certYear: form.certYear.trim() || undefined,
     enterprisePracticeDays: form.enterprisePracticeDays ?? undefined,
     attachmentFileIds: attachmentFileIds().length ? attachmentFileIds() : undefined,
@@ -347,8 +357,8 @@ async function submitApplication() {
     showFormValidationMessage('当前状态不可提交')
     return
   }
-  if (!form.certLevel.trim()) {
-    showFormValidationMessage('请填写认定等级')
+  if (!form.certLevel) {
+    showFormValidationMessage('请选择认定等级')
     return
   }
   if (!/^\d{4}$/.test(form.certYear.trim())) {
@@ -428,11 +438,12 @@ watch(
         </div>
         <UiForm layout="vertical" class="form">
           <UiFormItem label="认定等级" required>
-            <UiInput
+            <UiSelect
               size="sm"
               v-model="form.certLevel"
+              :options="certLevelOptions"
               :disabled="!canEdit || operationPending"
-              placeholder="如 高级"
+              placeholder="请选择认定等级"
             />
           </UiFormItem>
           <UiFormItem label="认定年度" required>

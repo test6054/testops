@@ -1,4 +1,4 @@
-/** 租户续期类型 - 与后端 TenantRenewalRequest.RenewalType 对齐。 */
+/** 租户续期类型 - 对齐后端 TenantRenewalTypeEnum */
 export enum TenantRenewalTypeCode {
   TRIAL_EXTEND = 'TRIAL_EXTEND',
   FORMAL_RENEW = 'FORMAL_RENEW',

@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioIndicatorReferenceStatusVO } from '@/apis/portfolio/indicator-types'
+import type {
+  PortfolioIndicatorBusinessSceneReferenceVO,
+  PortfolioIndicatorReferenceSceneVO,
+  PortfolioIndicatorReferenceStatusVO,
+} from '@/apis/portfolio/indicator-types'
 import { onMounted, ref } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
-import { PfIndicatorDataSourceChannelDescription } from '@/apis/portfolio/indicator-types'
+import {
+  PfIndicatorBusinessReferenceSceneDescription,
+  PfIndicatorDataSourceChannelDescription,
+  PfSceneCodeDescription,
+} from '@/apis/portfolio/indicator-types'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
@@ -19,6 +27,18 @@ function dataSourceLabel(
   return strictEnumLabel(PfIndicatorDataSourceChannelDescription, value, '数据来源')
 }
 
+function modelSceneLabel(scene: PortfolioIndicatorReferenceSceneVO): string {
+  return strictEnumLabel(PfSceneCodeDescription, scene.sceneCode, '模型场景编码')
+}
+
+function businessSceneLabel(scene: PortfolioIndicatorBusinessSceneReferenceVO): string {
+  return strictEnumLabel(
+    PfIndicatorBusinessReferenceSceneDescription,
+    scene.referenceScene,
+    '业务引用场景',
+  )
+}
+
 const loading = ref(false)
 const listRequestToken = ref(0)
 const rows = ref<PortfolioIndicatorReferenceStatusVO[]>([])
@@ -28,7 +48,8 @@ const columns: ColumnsType = [
   { title: '名称', dataIndex: 'indicatorName', key: 'indicatorName' },
   { title: '租户启用', key: 'tenantEnabled', width: 88 },
   { title: '数据来源', dataIndex: 'defaultDataSource', key: 'defaultDataSource', width: 160 },
-  { title: '场景引用', key: 'sceneReferences' },
+  { title: '模型场景', key: 'sceneReferences' },
+  { title: '业务场景', key: 'businessSceneReferences' },
 ]
 
 async function loadList() {
@@ -85,9 +106,20 @@ onMounted(loadList)
               tone="blue"
               style="margin-right: 4px"
             >
-              {{ scene.sceneName }}{{ scene.enabled === false ? '(停)' : '' }}
+              {{ modelSceneLabel(scene) }}{{ scene.enabled === false ? '(停)' : '' }}
             </UiTag>
             <span v-if="!record.sceneReferences?.length">—</span>
+          </template>
+          <template v-else-if="column.key === 'businessSceneReferences'">
+            <UiTag
+              v-for="scene in record.businessSceneReferences"
+              :key="scene.referenceScene"
+              tone="purple"
+              style="margin-right: 4px"
+            >
+              {{ businessSceneLabel(scene) }}{{ scene.enabled === false ? '(停)' : '' }}
+            </UiTag>
+            <span v-if="!record.businessSceneReferences?.length">—</span>
           </template>
         </template>
       </UiDataTable>

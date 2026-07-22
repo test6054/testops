@@ -13,7 +13,8 @@ export interface ExamManualSupplementWorkbenchQueryRequest {
 
 export interface ExamManualSupplementWorkbenchResponse {
   examId: string
-  missingPageCandidateCount: number
+  /** 整卷线下试卷尚未形成单卷页数真源时为空，不能将其解释为零缺页。 */
+  missingPageCandidateCount: number | null
   supplementEligibleBatchCount: number
   pendingAttentionCount: number
   webSupplementDeviceCount: number

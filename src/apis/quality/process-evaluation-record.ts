@@ -4,6 +4,7 @@ import type { ConfirmationStatusCode, DataSourceModeCode } from './types'
  * 后端对象：ProcessEvaluationRecordController /api/quality/process-records。
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { ProcessEvaluationValidationResultCode } from '@/types/enums/process-evaluation-validation-result-enum'
 import http from '@/config/axios'
 
 const RECORD = '/api/quality/process-records'
@@ -20,7 +21,7 @@ export interface ProcessEvaluationRecordVO {
   evidenceFileId?: string
   sourceBatchId?: string
   sourceMode?: DataSourceModeCode
-  validationResult?: string
+  validationResult?: ProcessEvaluationValidationResultCode
   confirmationStatus: ConfirmationStatusCode
   confirmedUserId?: string
   confirmedTime?: string
@@ -39,7 +40,7 @@ export interface ProcessEvaluationRecordSaveRequest {
   evidenceFileId?: string
   sourceBatchId?: string
   sourceMode?: DataSourceModeCode
-  validationResult?: string
+  validationResult?: ProcessEvaluationValidationResultCode
   notes?: string
 }
 
@@ -54,7 +55,7 @@ export interface ProcessEvaluationRecordUpdateRequest {
   evidenceFileId?: string
   sourceBatchId?: string
   sourceMode?: DataSourceModeCode
-  validationResult?: string
+  validationResult?: ProcessEvaluationValidationResultCode
   notes?: string
 }
 

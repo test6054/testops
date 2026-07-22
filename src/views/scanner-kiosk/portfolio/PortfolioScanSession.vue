@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ScannerColorModeCode, ScannerDuplexModeCode } from '@/apis/mark/exam-mark-scanner'
-import { LocalScanJobStatusCode, ScannerBusinessSceneCode } from '@/apis/mark/scanner-agent-local'
+import { DocumentBusinessSceneCode, LocalScanJobStatusCode } from '@/apis/mark/scanner-agent-local'
 import { ScanWorkOrderStatusDescription } from '@/apis/mark/scanner-work-order'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import { ScanTaskKindCode } from '@/types/enums/scan-task-kind-enum'
@@ -23,7 +23,7 @@ const bootstrap = useDocumentKioskBootstrap()
 const lease = useLeaseHeartbeat()
 const scanFlow = useWorkOrderScanFlow({
   taskKind: ScanTaskKindCode.PORTFOLIO_COLLECT,
-  businessScene: ScannerBusinessSceneCode.TEACHER_PORTFOLIO,
+  businessScene: DocumentBusinessSceneCode.TEACHER_PORTFOLIO,
   getBusinessRefId: () => session.teacherId.value,
   lifecycle: session.lifecycle,
   refreshWorkOrderLifecycle: () => session.loadContext({ silent: true }),

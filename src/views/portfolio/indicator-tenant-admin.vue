@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
+  PfIndicatorBusinessReferenceSceneCode,
   PfIndicatorStatusCode,
   PortfolioIndustryPackVO,
-  PortfolioTenantIndicatorConfigVO,
-} from '@/apis/portfolio/indicator-types'
+
+  PortfolioTenantIndicatorConfigVO} from '@/apis/portfolio/indicator-types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -13,6 +14,7 @@ import {
   portfolioIndicatorTenantApi,
 } from '@/apis/portfolio/indicator'
 import {
+  PF_INDICATOR_BUSINESS_REFERENCE_SCENE_OPTIONS,
   PF_SCENE_CODE_OPTIONS,
   PfIndicatorStatusDescription,
   PfModelStatusCode,
@@ -82,14 +84,14 @@ const editForm = reactive<{
   enabled: boolean
   standardScore?: number
   capScore?: number
-  applicableScenes: string
+  applicableScenes: PfIndicatorBusinessReferenceSceneCode[]
 }>({
   indicatorCode: '',
   indicatorName: '',
   enabled: true,
   standardScore: undefined,
   capScore: undefined,
-  applicableScenes: '',
+  applicableScenes: [],
 })
 
 /** 租户指标配置写操作必须串行，避免配置变更、试算与冻结跨场景执行。 */
@@ -248,7 +250,7 @@ function openEdit(record: PortfolioTenantIndicatorConfigVO) {
   editForm.enabled = record.enabled
   editForm.standardScore = record.standardScore
   editForm.capScore = record.capScore
-  editForm.applicableScenes = record.applicableScenes ?? ''
+  editForm.applicableScenes = [...(record.applicableScenes ?? [])]
   editDrawerOpen.value = true
 }
 
@@ -270,7 +272,7 @@ async function saveEdit() {
     enabled: editForm.enabled,
     standardScore: editForm.standardScore,
     capScore: editForm.capScore,
-    applicableScenes: editForm.applicableScenes.trim() || undefined,
+    applicableScenes: [...editForm.applicableScenes],
   }
   try {
     await portfolioIndicatorTenantApi.saveConfig(request)
@@ -733,11 +735,13 @@ onMounted(loadConfig)
             :disabled="writing"
           />
         </UiFormItem>
-        <UiFormItem label="适用场景">
-          <UiInput
+        <UiFormItem label="适用业务场景">
+          <UiSelect
             size="sm"
+            mode="multiple"
             v-model="editForm.applicableScenes"
-            placeholder="如 PORTRAIT,EVALUATION"
+            :options="PF_INDICATOR_BUSINESS_REFERENCE_SCENE_OPTIONS"
+            placeholder="选择画像/规划/评价"
             :disabled="writing"
           />
         </UiFormItem>

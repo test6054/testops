@@ -3,46 +3,53 @@ import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PfCurrentTaskRuleStrategyCode } from '@/types/enums/pf-current-task-rule-strategy-enum'
 import type { PfEligibilityAuditStatusCode } from '@/types/enums/pf-eligibility-audit-status-enum'
+import type { PfEligibilityNodeTypeCode } from '@/types/enums/pf-eligibility-node-type-enum'
+import type { PfEligibilityRuleStatusCode } from '@/types/enums/pf-eligibility-rule-status-enum'
+import type { PfExplainLogTypeCode } from '@/types/enums/pf-explain-log-type-enum'
+import type { PfImpactApprovalStatusCode } from '@/types/enums/pf-impact-approval-status-enum'
+import type {
+  PfIndicatorBusinessReferenceSceneCode} from '@/types/enums/pf-indicator-business-reference-scene-enum';
+import type { PfIndicatorDataSourceChannelCode } from '@/types/enums/pf-indicator-data-source-channel-enum'
+import type { PfIndicatorPublishChangeTypeCode } from '@/types/enums/pf-indicator-publish-change-type-enum'
+import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
+import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
+import type { PfRuleChangeLevelCode } from '@/types/enums/pf-rule-change-level-enum'
+import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
+import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
 import {
   ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
   PfEligibilityAuditStatusDescription,
 } from '@/types/enums/pf-eligibility-audit-status-enum'
-import type { PfEligibilityNodeTypeCode } from '@/types/enums/pf-eligibility-node-type-enum'
 import {
   ALL_PF_ELIGIBILITY_NODE_TYPE_CODES,
   PfEligibilityNodeTypeDescription,
 } from '@/types/enums/pf-eligibility-node-type-enum'
-import type { PfEligibilityRuleStatusCode } from '@/types/enums/pf-eligibility-rule-status-enum'
-import type { PfImpactApprovalStatusCode } from '@/types/enums/pf-impact-approval-status-enum'
-import type { PfIndicatorBusinessReferenceSceneCode } from '@/types/enums/pf-indicator-business-reference-scene-enum'
-import type { PfIndicatorDataSourceChannelCode } from '@/types/enums/pf-indicator-data-source-channel-enum'
+import { PfImpactReportStatusCode } from '@/types/enums/pf-impact-report-status-enum'
+import {
+  ALL_PF_INDICATOR_BUSINESS_REFERENCE_SCENE_CODES,
+  PfIndicatorBusinessReferenceSceneDescription,
+} from '@/types/enums/pf-indicator-business-reference-scene-enum'
 import {
   ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES,
   PfIndicatorDataSourceChannelDescription,
 } from '@/types/enums/pf-indicator-data-source-channel-enum'
-import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
 import {
   ALL_PF_INDICATOR_STATUS_CODES,
   PfIndicatorStatusDescription,
 } from '@/types/enums/pf-indicator-status-enum'
-import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
 import {
   ALL_PF_MODEL_STATUS_CODES,
   PfModelStatusDescription,
 } from '@/types/enums/pf-model-status-enum'
-import type { PfRuleChangeLevelCode } from '@/types/enums/pf-rule-change-level-enum'
-import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
-import {
-  ALL_PF_SCORE_RULE_TYPE_CODES,
-  PfScoreRuleTypeDescription,
-} from '@/types/enums/pf-score-rule-type-enum'
-import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
-import { PfImpactReportStatusCode } from '@/types/enums/pf-impact-report-status-enum'
 import {
   ALL_PF_SCENE_CODES,
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/types/enums/pf-scene-code-enum'
+import {
+  ALL_PF_SCORE_RULE_TYPE_CODES,
+  PfScoreRuleTypeDescription,
+} from '@/types/enums/pf-score-rule-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export {
@@ -51,8 +58,8 @@ export {
   PfCurrentTaskRuleStrategyDescription,
 } from '@/types/enums/pf-current-task-rule-strategy-enum'
 
-export const PF_SCENE_CODE_OPTIONS: Array<{ value: PfSceneCode; label: string }> =
-  ALL_PF_SCENE_CODES.map((value) => ({
+export const PF_SCENE_CODE_OPTIONS: Array<{ value: PfSceneCode, label: string }>
+  = ALL_PF_SCENE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PfSceneCodeDescription, value, '指标场景编码'),
   }))
@@ -63,8 +70,8 @@ export {
   PfEligibilityAuditStatusDescription,
 } from '@/types/enums/pf-eligibility-audit-status-enum'
 
-export const PF_INDICATOR_STATUS_OPTIONS: Array<{ value: PfIndicatorStatusCode; label: string }> =
-  ALL_PF_INDICATOR_STATUS_CODES.map((value) => ({
+export const PF_INDICATOR_STATUS_OPTIONS: Array<{ value: PfIndicatorStatusCode, label: string }>
+  = ALL_PF_INDICATOR_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PfIndicatorStatusDescription, value, '指标状态'),
   }))
@@ -100,6 +107,18 @@ export {
   PfIndicatorBusinessReferenceSceneDescription,
 } from '@/types/enums/pf-indicator-business-reference-scene-enum'
 
+export const PF_INDICATOR_BUSINESS_REFERENCE_SCENE_OPTIONS: Array<{
+  value: PfIndicatorBusinessReferenceSceneCode
+  label: string
+}> = ALL_PF_INDICATOR_BUSINESS_REFERENCE_SCENE_CODES.map((value) => ({
+  value,
+  label: strictEnumLabel(
+    PfIndicatorBusinessReferenceSceneDescription,
+    value,
+    '指标业务引用场景',
+  ),
+}))
+
 export const PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS: Array<{
   value: PfIndicatorDataSourceChannelCode
   label: string
@@ -114,8 +133,8 @@ export {
   PfIndicatorDataSourceChannelDescription,
 } from '@/types/enums/pf-indicator-data-source-channel-enum'
 
-export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode; label: string }> =
-  ALL_PF_SCORE_RULE_TYPE_CODES.map((value) => ({
+export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode, label: string }>
+  = ALL_PF_SCORE_RULE_TYPE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PfScoreRuleTypeDescription, value, '计分规则类型'),
   }))
@@ -126,8 +145,8 @@ export {
   PfIndicatorStatusDescription,
 } from '@/types/enums/pf-indicator-status-enum'
 
-export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode; label: string }> =
-  ALL_PF_MODEL_STATUS_CODES.map((value) => ({
+export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode, label: string }>
+  = ALL_PF_MODEL_STATUS_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PfModelStatusDescription, value, '场景模型状态'),
   }))
@@ -159,10 +178,15 @@ export interface PortfolioIndicatorDefinitionTreeNodeVO {
 }
 
 export interface PortfolioIndicatorReferenceSceneVO {
-  sceneCode: string
-  sceneName: string
+  sceneCode: PfSceneCode
   enabled?: boolean
   weightPct?: string
+}
+
+/** 指标业务场景引用行 - PortfolioIndicatorBusinessSceneReferenceVO */
+export interface PortfolioIndicatorBusinessSceneReferenceVO {
+  referenceScene: PfIndicatorBusinessReferenceSceneCode
+  enabled?: boolean
 }
 
 export interface PortfolioIndicatorReferenceStatusVO {
@@ -171,6 +195,7 @@ export interface PortfolioIndicatorReferenceStatusVO {
   tenantEnabled?: boolean
   defaultDataSource?: PfIndicatorDataSourceChannelCode
   sceneReferences: PortfolioIndicatorReferenceSceneVO[]
+  businessSceneReferences: PortfolioIndicatorBusinessSceneReferenceVO[]
 }
 
 export interface PortfolioIndicatorDefinitionVO {
@@ -271,16 +296,16 @@ export interface PortfolioIndicatorIndustryPackMaterialChecklistDto {
   optional?: string[]
 }
 
-export type PortfolioIndustryPackDictionarySectionDto =
-  PortfolioIndicatorIndustryPackDictionarySectionDto
+export type PortfolioIndustryPackDictionarySectionDto
+  = PortfolioIndicatorIndustryPackDictionarySectionDto
 export type PortfolioIndustryPackDictionaryDto = PortfolioIndicatorIndustryPackDictionaryDto
 export type PortfolioIndustryPackWeightsDto = PortfolioIndicatorIndustryPackWeightsDto
-export type PortfolioIndustryPackAssessmentSectionDto =
-  PortfolioIndicatorIndustryPackAssessmentSectionDto
-export type PortfolioIndustryPackAssessmentTemplateDto =
-  PortfolioIndicatorIndustryPackAssessmentTemplateDto
-export type PortfolioIndustryPackMaterialChecklistDto =
-  PortfolioIndicatorIndustryPackMaterialChecklistDto
+export type PortfolioIndustryPackAssessmentSectionDto
+  = PortfolioIndicatorIndustryPackAssessmentSectionDto
+export type PortfolioIndustryPackAssessmentTemplateDto
+  = PortfolioIndicatorIndustryPackAssessmentTemplateDto
+export type PortfolioIndustryPackMaterialChecklistDto
+  = PortfolioIndicatorIndustryPackMaterialChecklistDto
 
 /** 行业包结构化定义 — PortfolioIndicatorIndustryPackDefDto */
 export interface PortfolioIndicatorIndustryPackDefDto {
@@ -386,7 +411,7 @@ export interface PortfolioImpactIndicatorSummaryDto {
 
 export interface PortfolioImpactChangedIndicatorItemDto {
   indicatorCode?: string
-  changeType?: string
+  changeType?: PfIndicatorPublishChangeTypeCode
   draftWeightPct?: number
   publishedWeightPct?: number
   paramsChanged?: boolean
@@ -402,7 +427,7 @@ export interface PortfolioTenantIndicatorConfigVO {
   capScore?: number
   paramsOverride?: PortfolioIndicatorSeedTemplateParamsDto
   applicableTeacherTypes?: string
-  applicableScenes?: string
+  applicableScenes?: PfIndicatorBusinessReferenceSceneCode[]
   auditChain?: PortfolioIndicatorAuditChainDto
 }
 
@@ -413,7 +438,7 @@ export interface PortfolioTenantIndicatorConfigSaveRequest {
   capScore?: number
   paramsOverride?: PortfolioIndicatorSeedTemplateParamsDto
   applicableTeacherTypes?: string
-  applicableScenes?: string
+  applicableScenes?: PfIndicatorBusinessReferenceSceneCode[]
   auditChain?: PortfolioIndicatorAuditChainDto
 }
 
@@ -447,7 +472,7 @@ export interface PortfolioIndicatorDefinitionSaveRequest {
   dimensionL1Name?: string
   dimensionL2Name?: string
   definitionText?: string
-  defaultDataSource?: string
+  defaultDataSource?: PfIndicatorDataSourceChannelCode
   defaultRuleTemplateId?: string
   policyAlign?: string
   applicableTeachers?: string
@@ -455,17 +480,17 @@ export interface PortfolioIndicatorDefinitionSaveRequest {
   auditRequired?: boolean
   redLineFlag?: boolean
   sortOrder?: number
-  status?: string
+  status?: PfIndicatorStatusCode
 }
 
 export interface PortfolioIndicatorRuleTemplatePageRequest extends QueryDto {
   templateCode?: string
-  ruleType?: string
-  status?: string
+  ruleType?: PfScoreRuleTypeCode
+  status?: PfIndicatorStatusCode
 }
 
 export interface PortfolioIndicatorComputeTrialRequest {
-  ruleType: string
+  ruleType: PfScoreRuleTypeCode
   indicatorCode?: string
   params: PortfolioIndicatorSeedTemplateParamsDto
   rawValue: number
@@ -482,7 +507,7 @@ export interface PortfolioIndicatorSnapshotComputeRequest {
 
 export interface PortfolioExplainGetRequest {
   logId: string
-  logType: 'SCORE' | 'ELIGIBILITY'
+  logType: PfExplainLogTypeCode
   teacherId: string
 }
 
@@ -593,7 +618,7 @@ export interface PfScoreExplainInputsDto {
 }
 
 export interface PfScoreExplainRuleHitDto {
-  ruleType?: string
+  ruleType?: PfScoreRuleTypeCode
   segmentLabel?: string
   standardScore?: number
   dimensionWeight?: number
@@ -603,7 +628,7 @@ export interface PfScoreExplainRuleHitDto {
 
 export interface PfScoreExplainAuditDto {
   required?: boolean
-  status?: string
+  status?: PfEligibilityAuditStatusCode
   nodes?: string[]
 }
 
@@ -630,13 +655,13 @@ export interface PortfolioExplainVO {
 export interface PortfolioPlatformRuleTemplateDraftItem {
   templateId?: string
   indicatorCode?: string
-  ruleType?: string
+  ruleType?: PfScoreRuleTypeCode
   params?: PortfolioIndicatorSeedTemplateParamsDto
   templateUpdateTime?: string
 }
 
 export interface PortfolioIndicatorDraftPayloadDto {
-  sceneCode?: string
+  sceneCode?: PfSceneCode
   configs?: PortfolioTenantIndicatorConfigVO[]
   indicators?: PortfolioTenantSceneIndicatorItem[]
   eligibilityCodes?: string[]
@@ -718,9 +743,7 @@ export interface PortfolioRulePublishSnapshotVO {
 export interface PortfolioIndicatorSourceMappingVO {
   indicatorCode: string
   indicatorName: string
-  defaultDataSource?: string
-  channelCode: PfIndicatorDataSourceChannelCode
-  channelLabel: string
+  defaultDataSource: PfIndicatorDataSourceChannelCode
   outOfScope: boolean
   autoCollectSupported: boolean
 }
@@ -799,7 +822,7 @@ export interface PortfolioIndicatorScoreComputeResult {
   calcScore?: number
   finalScore?: number | null
   hitSegment?: string
-  ruleType?: string
+  ruleType?: PfScoreRuleTypeCode
   explainText: string
   explainStruct: PfScoreExplainStructDto
 }
@@ -808,7 +831,7 @@ export interface PortfolioIndicatorDefinitionPageRequest extends QueryDto {
   indicatorCode?: string
   indicatorName?: string
   dimensionL1Name?: string
-  status?: string
+  status?: PfIndicatorStatusCode
 }
 
 export interface PortfolioSceneCodeRequest {
@@ -865,7 +888,7 @@ export interface PortfolioEligibilityFieldValueItem {
 
 export interface PortfolioEligibilityAuditStatusItem {
   fieldKey: string
-  auditStatus: string
+  auditStatus: PfEligibilityAuditStatusCode
 }
 
 export interface PortfolioEligibilityEvaluateRequest {

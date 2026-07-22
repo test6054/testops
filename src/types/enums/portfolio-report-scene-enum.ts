@@ -1,4 +1,4 @@
-/** 文本分析报告场景 */
+/** 文本分析报告场景 - 对齐后端 PortfolioReportSceneEnum */
 export enum PortfolioReportSceneCode {
   PORTRAIT = 'PORTRAIT',
   DEVELOPMENT_PLAN = 'DEVELOPMENT_PLAN',
@@ -12,6 +12,7 @@ export const ALL_PORTFOLIO_REPORT_SCENE_CODES: readonly PortfolioReportSceneCode
   PortfolioReportSceneCode.DEVELOPMENT_PLAN,
   PortfolioReportSceneCode.EVALUATION,
   PortfolioReportSceneCode.ANNUAL_DEVELOPMENT,
+  PortfolioReportSceneCode.ANNUAL_SUMMARY,
 ]
 
 export const PortfolioReportSceneDescription: Record<PortfolioReportSceneCode, string> = {

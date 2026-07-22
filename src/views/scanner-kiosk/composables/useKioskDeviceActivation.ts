@@ -10,11 +10,11 @@ import {
   LOCAL_AGENT_UNAVAILABLE_ERROR,
   LocalAgentUnavailableError,
 } from '@/apis/mark/scanner-agent-local'
-import { AgentDiagnosticStatusCode } from '@/types/enums/agent-diagnostic-status-enum'
 import {
   KioskActivationGateReasonCode,
   KioskActivationGateReasonDescription,
 } from '@/types/enums/kiosk-activation-gate-reason-enum'
+import { ScannerAgentDiagnosticStatusCode } from '@/types/enums/scanner-agent-diagnostic-status-enum'
 import { getUserErrorMessage } from '@/utils/error-handler'
 import {
   clearKioskAuthSession,
@@ -179,7 +179,7 @@ function createKioskDeviceActivation() {
       health.value = {
         ...health.value,
         scannerConnected: false,
-        diagnosticStatus: AgentDiagnosticStatusCode.WARNING,
+        diagnosticStatus: ScannerAgentDiagnosticStatusCode.WARNING,
         diagnosticMessage: LOCAL_AGENT_UNAVAILABLE_ERROR,
       }
     }

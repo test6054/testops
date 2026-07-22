@@ -415,7 +415,8 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     component: () => import('@/views/quality/ai-model-profile.vue'),
     meta: {
       title: 'AI 模型配置',
-      roles: SUPER_ADMIN_ROLES,
+      roles: ALL_ROLES,
+      requireTenantAdmin: true,
       icon: 'setting',
       hideInMenu: false,
       keepAlive: true,
@@ -429,7 +430,7 @@ const qualityWorkspaceChildren: RouteRecordRaw[] = [
     component: () => import('@/views/quality/ai-mask-mapping.vue'),
     meta: {
       title: 'AI 脱敏映射审计',
-      roles: SUPER_ADMIN_ROLES,
+      roles: ALL_ROLES,
       icon: 'safety',
       hideInMenu: false,
       menuTier: 'secondary',

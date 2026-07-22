@@ -250,30 +250,33 @@ for (const shell of backendShells) {
     defaultRoute.meta?.hideInMenu === false,
     `工作壳 ${shell.code} 默认路由不是可见菜单：${shell.defaultRoute}`,
   )
+  // PF-P0-408：站内信/切壳深链可多壳注册；默认路由须包含本壳，不再强制「仅一壳」
   invariant(
     Array.isArray(defaultRoute.meta?.portfolioWorkShells)
-    && defaultRoute.meta.portfolioWorkShells.length === 1
-    && defaultRoute.meta.portfolioWorkShells[0] === shell.code,
-    `工作壳 ${shell.code} 默认路由归属错误：${shell.defaultRoute}`,
+    && defaultRoute.meta.portfolioWorkShells.includes(shell.code),
+    `工作壳 ${shell.code} 默认路由未归属本壳：${shell.defaultRoute}`,
   )
 }
 
 for (const route of visibleMenuRoutes) {
   const owners = route.meta?.portfolioWorkShells
   invariant(
-    Array.isArray(owners) && owners.length === 1,
-    `可见菜单必须且只能归属一个工作壳：${route.fullPath}`,
+    Array.isArray(owners) && owners.length > 0,
+    `可见菜单必须声明至少一个工作壳：${route.fullPath}`,
   )
-  invariant(
-    backendShellCodes.includes(owners[0]),
-    `可见菜单使用未知工作壳 ${owners[0]}：${route.fullPath}`,
-  )
+  for (const owner of owners) {
+    invariant(
+      backendShellCodes.includes(owner),
+      `可见菜单使用未知工作壳 ${owner}：${route.fullPath}`,
+    )
+  }
   invariant(typeof route.name === 'string', `可见菜单缺少命名路由：${route.fullPath}`)
 }
 
 const shellRows = backendShells.map((shell) => {
   const shellRoutes = visibleMenuRoutes.filter(
-    (route) => route.meta.portfolioWorkShells[0] === shell.code,
+    (route) => Array.isArray(route.meta?.portfolioWorkShells)
+      && route.meta.portfolioWorkShells.includes(shell.code),
   )
   invariant(shellRoutes.length > 0, `工作壳没有可见菜单：${shell.code}`)
   return { ...shell, routes: shellRoutes }
@@ -324,8 +327,8 @@ const lines = [
   '## 2. 自动门禁',
   '',
   '- [x] 后端 `PortfolioWorkShellEnum`、前端 `PortfolioWorkShellCode` 与会话白名单编码完全一致。',
-  '- [x] 每个服务端默认路由均存在、可见，且只归属于对应工作壳。',
-  '- [x] 每个可见菜单均有且只有一个服务端工作壳归属。',
+  '- [x] 每个服务端默认路由均存在、可见，且 portfolioWorkShells 包含对应工作壳（允许多壳深链注册）。',
+  '- [x] 每个可见菜单均声明至少一个合法服务端工作壳（允许 SCHOOL_GOVERNANCE+CONFIGURATION 等同菜单多壳）。',
   '- [x] 命名路由的 name 与 path 均无重复。',
   '- [x] 切壳目标只从服务端 `availableWorkShells + workShellRoutes` 读取。',
   '- [x] 权限投影重置会清理旧工作壳编码和路由。',

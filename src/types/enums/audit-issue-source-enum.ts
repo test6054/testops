@@ -1,4 +1,4 @@
-/** 审核评估问题来源 - AuditIssueSourceEnum */
+/** 审核评估问题来源 - 与后端 AuditIssueSourceEnum 逐值对齐 */
 export enum AuditIssueSourceCode {
   SELF_AUDIT = 'SELF_AUDIT',
   EXPERT_AUDIT = 'EXPERT_AUDIT',

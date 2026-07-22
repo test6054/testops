@@ -7,6 +7,8 @@ import type {
   AchievementResultVO,
 } from '@/apis/quality/achievement-result'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type {
+  AchievementAuditEventCode} from '@/types/enums/achievement-audit-event-enum';
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type {
   AuditTimelineEvent,
@@ -16,8 +18,8 @@ import type {
   WorkbenchStageStatus,
 } from '@/types/workbench'
 import DownloadOutlined from '@ant-design/icons-vue/DownloadOutlined'
-import message from 'ant-design-vue/es/message'
 
+import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ExportBusinessType } from '@/apis/edu/export'
@@ -67,6 +69,9 @@ import { useQualityScopedLoader } from '@/composables/useQualityPageScope'
 import { useQualityTableExport } from '@/composables/useQualityTableExport'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
+import {
+  AchievementAuditEventDescription,
+} from '@/types/enums/achievement-audit-event-enum'
 import { ConfirmationStatusCode } from '@/types/enums/confirmation-status-enum'
 import { formatSemester, SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
@@ -97,10 +102,9 @@ function isResultStale(record: AchievementResultVO): boolean {
   return record.staleFlag === true
 }
 
-function auditEventLabel(event: AchievementAuditStatusCode | undefined): string {
+function auditEventLabel(event: AchievementAuditEventCode | undefined): string {
   if (!event) return '-'
-  if (event === AchievementAuditStatusCode.CALCULATED) return '达成度计算'
-  return auditStatusLabel(event)
+  return strictEnumLabel(AchievementAuditEventDescription, event, '达成审核事件')
 }
 
 function auditStatusLabelMaybe(value: AchievementAuditStatusCode | undefined): string {
@@ -994,7 +998,7 @@ async function openAuditDrawer(record: AchievementResultVO) {
       operatorName: a.auditorNickName,
       operationType: a.auditEvent,
       operationLabel:
-        a.auditEvent === AchievementAuditStatusCode.CALCULATED
+        a.auditEvent
           ? auditEventLabel(a.auditEvent)
           : `${auditStatusLabelMaybe(a.auditStatusFrom)} → ${auditStatusLabelMaybe(a.auditStatusTo)}`,
       time: a.auditedTime,

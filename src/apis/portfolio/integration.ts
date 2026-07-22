@@ -1,14 +1,21 @@
-import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioSyncTaskStatusEnum } from '@/apis/portfolio/enums'
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
+import type { ConfirmationStatusCode } from '@/types/enums/confirmation-status-enum'
 import type { PortfolioConflictTicketStatusEnum } from '@/types/enums/portfolio-conflict-ticket-status-enum'
+import type { PortfolioDevelopmentRecordTypeCode } from '@/types/enums/portfolio-development-record-type-enum'
+import type { PortfolioFieldMappingTransformTypeCode } from '@/types/enums/portfolio-field-mapping-transform-type-enum'
 import type { PortfolioIdentityUnmatchedStatusEnum } from '@/types/enums/portfolio-identity-unmatched-status-enum'
 import type { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
+import type { PortfolioIntegrationCleanActionCode } from '@/types/enums/portfolio-integration-clean-action-enum'
 import type { PortfolioIntegrationHealthStatusEnum } from '@/types/enums/portfolio-integration-health-status-enum'
 import type { PortfolioIntegrationMessageInboxStatusEnum } from '@/types/enums/portfolio-integration-message-inbox-status-enum'
 import type { PortfolioIntegrationPathwayCodeEnum } from '@/types/enums/portfolio-integration-pathway-code-enum'
+import type { PortfolioNationalReportIssueStatusCode } from '@/types/enums/portfolio-national-report-issue-status-enum'
+import type { PortfolioNationalReportStatusCode } from '@/types/enums/portfolio-national-report-status-enum'
 import type { PortfolioNationalTeacherSyncDirectionEnum } from '@/types/enums/portfolio-national-teacher-sync-direction-enum'
+import type { PortfolioSyncTriggerTypeCode } from '@/types/enums/portfolio-sync-trigger-type-enum'
 import http from '@/config/axios'
 
 export interface PortfolioNationalTeacherInboundRecord {
@@ -21,14 +28,14 @@ export interface PortfolioNationalTeacherInboundRecord {
 /** 对齐后端 PortfolioIntegrationExcelImportContextDto */
 export interface PortfolioIntegrationExcelImportContextDto {
   fileName?: string
-  defaultRecordType?: string
+  defaultRecordType?: PortfolioDevelopmentRecordTypeCode
   defaultCategoryCode?: string
   defaultLevelCode?: string
   commit?: boolean
   confirmManualConflicts?: boolean
   expectedConfigUpdateToken?: string
   nodeId?: string
-  confirmationStatus?: string
+  confirmationStatus?: ConfirmationStatusCode
 }
 
 /** 对齐后端 PortfolioIntegrationConnectionConfigDto */
@@ -83,7 +90,7 @@ export interface PortfolioIntegrationFieldMappingVO {
   targetFieldCode: string
   targetCategoryCode?: string
   dictionaryCode?: string
-  transformType?: string
+  transformType?: PortfolioFieldMappingTransformTypeCode
   transformExpr?: string
   enabled: boolean
 }
@@ -94,7 +101,7 @@ export interface PortfolioIntegrationSyncTaskVO {
   channelCode: PortfolioIntegrationChannelCodeEnum
   pathwayCode: PortfolioIntegrationPathwayCodeEnum
   taskStatus: PortfolioSyncTaskStatusEnum
-  triggerType: string
+  triggerType: PortfolioSyncTriggerTypeCode
   successCount: number
   failedCount: number
   skippedCount: number
@@ -197,8 +204,8 @@ export interface PortfolioIntegrationCleanLogVO {
   targetFieldCode: string
   rawValue?: string
   cleanedValue?: string
-  transformType?: string
-  cleanAction?: string
+  transformType?: PortfolioFieldMappingTransformTypeCode
+  cleanAction?: PortfolioIntegrationCleanActionCode
   detailMessage?: string
   createTime?: string
 }
@@ -233,7 +240,7 @@ export interface PortfolioNationalReportIssueVO {
   teacherName?: string
   issueCodes?: string
   issueDetails?: string[]
-  status: string
+  status: PortfolioNationalReportIssueStatusCode
   statusLabel?: string
   fixedTime?: string
   fixRemark?: string
@@ -261,7 +268,7 @@ export interface PortfolioNationalReportBatchVO {
   successCount: number
   failedCount: number
   packageJson?: string
-  reportStatus?: string
+  reportStatus?: PortfolioNationalReportStatusCode
   artifactFileNodeId?: string
   artifactFileName?: string
   exportedTime?: string
@@ -305,7 +312,7 @@ export const portfolioIntegrationApi = {
     targetFieldCode: string
     targetCategoryCode?: string
     dictionaryCode?: string
-    transformType?: string
+    transformType?: PortfolioFieldMappingTransformTypeCode
     transformExpr?: string
     enabled: boolean
   }) {
@@ -369,7 +376,7 @@ export const portfolioIntegrationApi = {
   }) {
     return http.post<string>(`${BASE}/message/enqueue`, data)
   },
-  pageFailedMessages(data: { pageNum: number; pageSize: number; datasourceConfigId: string }) {
+  pageFailedMessages(data: { pageNum: number, pageSize: number, datasourceConfigId: string }) {
     return http.post<PageResult<PortfolioIntegrationMessageInboxVO>>(
       `${BASE}/message/failed/page`,
       data,
@@ -387,7 +394,7 @@ export const portfolioIntegrationApi = {
   }) {
     return http.post<void>(`${BASE}/message/requeue`, data)
   },
-  pageCleanLog(data: { pageNum: number; pageSize: number; datasourceConfigId?: string }) {
+  pageCleanLog(data: { pageNum: number, pageSize: number, datasourceConfigId?: string }) {
     return http.post<PageResult<PortfolioIntegrationCleanLogVO>>(`${BASE}/clean-log/page`, data)
   },
   pageCourseCodeMap(data: {
@@ -413,7 +420,7 @@ export const portfolioIntegrationApi = {
   deleteCourseCodeMap(id: string) {
     return http.post<void>(`${BASE}/course-code-map/delete`, { id })
   },
-  pageDictEntry(data: { pageNum: number; pageSize: number; dictionaryCode?: string }) {
+  pageDictEntry(data: { pageNum: number, pageSize: number, dictionaryCode?: string }) {
     return http.post<PageResult<PortfolioIntegrationDictEntryVO>>(`${BASE}/dict-entry/page`, data)
   },
   saveDictEntry(data: {
@@ -433,7 +440,7 @@ export const portfolioIntegrationApi = {
   pageNationalReportIssues(data: {
     pageNum: number
     pageSize: number
-    status?: string
+    status?: PortfolioNationalReportIssueStatusCode
     teacherUserId?: string
   }) {
     return http.post<PageResult<PortfolioNationalReportIssueVO>>(
@@ -441,19 +448,19 @@ export const portfolioIntegrationApi = {
       data,
     )
   },
-  fixNationalReportIssue(data: { issueId: string; fixRemark?: string }) {
+  fixNationalReportIssue(data: { issueId: string, fixRemark?: string }) {
     return http.post<void>(`${BASE}/national-report/issue/fix`, data)
   },
   getNationalReportBatch(id: string) {
     return http.post<PortfolioNationalReportBatchVO>(`${BASE}/national-report/batch/get`, { id })
   },
-  exportNationalReportPackage(data: { syncTaskId: string; maskMode?: boolean }) {
+  exportNationalReportPackage(data: { syncTaskId: string, maskMode?: boolean }) {
     return http.post<PortfolioArchiveBagExportResultVO>(
       `${BASE}/national-report/package/export`,
       data,
     )
   },
-  retransmitNationalReportIssues(data: { datasourceConfigId: string; sourceSyncTaskId?: string }) {
+  retransmitNationalReportIssues(data: { datasourceConfigId: string, sourceSyncTaskId?: string }) {
     return http.post<PortfolioNationalReportBatchVO>(
       `${BASE}/national-report/issue/retransmit`,
       data,

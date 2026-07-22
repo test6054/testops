@@ -9,6 +9,7 @@ import { useRouter } from 'vue-router'
 import { ConfirmationStatusCode } from '@/apis/quality/types'
 import { useObeJourneySummary } from '@/composables/useObeJourneySummary'
 import { useQualityStore } from '@/stores/modules/quality'
+import { ObeJourneyStepStatusCode } from '@/types/enums/obe-journey-step-status-enum'
 import {
   buildQualityPlanWorkbenchLocation,
   QUALITY_PLAN_GATE_REASON_UNCONFIRMED,
@@ -32,7 +33,16 @@ function stepClass(step: ObeJourneyStepVO): string {
   return `quality-obe-journey-strip__step quality-obe-journey-strip__step--${step.status}`
 }
 
+function isStepBlocked(step: ObeJourneyStepVO): boolean {
+  return step.status === ObeJourneyStepStatusCode.PENDING
+}
+
 function goStep(step: ObeJourneyStepVO): void {
+  if (step.status === ObeJourneyStepStatusCode.LOCKED) {
+    void message.warning('培养方案尚未确认。请先完成确认，再进入后续阶段')
+    void router.push(buildQualityPlanWorkbenchLocation(QUALITY_PLAN_GATE_REASON_UNCONFIRMED))
+    return
+  }
   if (!step.routeName) return
   if (
     PLAN_CONFIRMED_ROUTE_NAMES.has(step.routeName)
@@ -58,7 +68,7 @@ function goStep(step: ObeJourneyStepVO): void {
       type="button"
       class="quality-obe-journey-strip__btn"
       :class="stepClass(step)"
-      :disabled="loading || step.status === 'pending'"
+      :disabled="loading || isStepBlocked(step)"
       @click="goStep(step)"
     >
       <span class="quality-obe-journey-strip__dot" aria-hidden="true" />
@@ -119,6 +129,11 @@ function goStep(step: ObeJourneyStepVO): void {
 
   &__step--pending {
     color: var(--dp-text-secondary);
+  }
+
+  &__step--locked {
+    color: var(--dp-text-tertiary, var(--dp-text-secondary));
+    opacity: 0.72;
   }
 }
 </style>

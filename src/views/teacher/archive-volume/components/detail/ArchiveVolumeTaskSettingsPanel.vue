@@ -9,7 +9,8 @@ import type {
   ArchiveVolumeTaskSettingsUpdateRequest,
 } from '@/apis/mark/archive-volume'
 import type { ExamSummaryResponse } from '@/apis/mark/exam'
-import type { CourseListVO, TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import type { TeacherUserInfoDto } from '@/apis/platform/teacher-catalog'
+import type { CourseListVO } from '@/apis/quality/user-catalog'
 import type { UiOptionValue } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -26,7 +27,7 @@ import {
 } from '@/apis/mark/archive-volume'
 import { pageExams } from '@/apis/mark/exam'
 import { departmentCatalogApi } from '@/apis/quality/user-catalog'
-import { TeacherSelector } from '@/components/quality/selectors'
+import TeacherSelector from '@/components/platform/TeacherSelector.vue'
 import CatalogCourseSelector from '@/components/quality/selectors/CatalogCourseSelector.vue'
 import ClassSelector from '@/components/quality/selectors/ClassSelector.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'

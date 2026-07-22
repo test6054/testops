@@ -74,9 +74,9 @@
 
 <script setup lang="ts">
 import type { FormInstance, Rule } from 'ant-design-vue/es/form'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
+import type { TeacherUserInfoDto } from '@/apis/platform/teacher-catalog'
 import { computed, onMounted, ref, watch } from 'vue'
-import { TeacherSelector } from '@/components/quality/selectors'
+import TeacherSelector from '@/components/platform/TeacherSelector.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiCol from '@/components/ui-guide/ui/UiCol.vue'

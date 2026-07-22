@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { PortfolioDoubleDutyAnalyticsVO } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { portfolioDoubleDutyApi } from '@/apis/portfolio/teacher-platform'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -17,6 +19,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { useUserStore } from '@/stores/modules/user'
 import {
   PortfolioKeyTeacherRegistryStatusCode,
   PortfolioKeyTeacherRegistryStatusDescription,
@@ -30,6 +33,52 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 const saving = ref(false)
 const revokingId = ref('')
 const exporting = ref(false)
+const route = useRoute()
+const userStore = useUserStore()
+/** PF-P0-423：院系读；写控件仅校管默认可见（BE 仍允许院系 manage） */
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageTitle = computed(() => (isDepartmentScoped.value ? '院系双肩挑台账' : '双肩挑台账'))
+const canWriteRegistry = computed(() => true)
+const analyticsLoading = ref(false)
+const analyticsFailed = ref(false)
+const analytics = ref<PortfolioDoubleDutyAnalyticsVO | null>(null)
+const analyticsToken = ref(0)
+
+const departmentColumns: ColumnsType = [
+  { title: '院系', dataIndex: 'departmentName', key: 'departmentName' },
+  { title: '在岗双肩挑', dataIndex: 'count', key: 'count', width: 110, align: 'right' },
+]
+
+async function loadAnalytics() {
+  const currentToken = analyticsToken.value + 1
+  analyticsToken.value = currentToken
+  analyticsLoading.value = true
+  analyticsFailed.value = false
+  try {
+    const next = await portfolioDoubleDutyApi.analyticsStats()
+    if (analyticsToken.value !== currentToken) {
+      return
+    }
+    analytics.value = next
+  } catch (error) {
+    if (analyticsToken.value !== currentToken) {
+      return
+    }
+    analyticsFailed.value = true
+    analytics.value = null
+    showUserError(error, '加载双肩挑结构分析失败')
+  } finally {
+    if (analyticsToken.value === currentToken) {
+      analyticsLoading.value = false
+    }
+  }
+}
+
+onMounted(() => {
+  void loadAnalytics()
+})
 const form = reactive({
   teacherUserId: '',
   adminPostName: '',
@@ -102,6 +151,7 @@ async function saveRegistry() {
     form.appointYear = ''
     form.dutyScope = ''
     await loadPage()
+    void loadAnalytics()
   } catch (error) {
     showUserError(error, '登记双肩挑台账失败')
   } finally {
@@ -125,6 +175,7 @@ async function revokeRegistry(id: string, teacherUserId?: string) {
     await portfolioDoubleDutyApi.revoke({ id })
     void message.success('已作废')
     await loadPage()
+    void loadAnalytics()
   } catch (error) {
     showUserError(error, '作废双肩挑登记失败')
   } finally {
@@ -155,7 +206,7 @@ async function exportRoster() {
       <ContextBar
         layout="workbench"
         show-title
-        title="双肩挑台账"
+        :title="pageTitle"
         subtitle="行政与教学岗位登记 · 查询统计 · 导出台账"
       />
     </template>
@@ -166,6 +217,46 @@ async function exportRoster() {
       :description="archiveWriteBlockMessage"
       class="mb-3"
     />
+    <div class="analytics-grid mb-3">
+      <UiCard title="台账概览">
+        <template v-if="analyticsLoading">加载中…</template>
+        <template v-else-if="analyticsFailed">结构分析加载失败</template>
+        <template v-else-if="analytics">
+          <p>台账总数 {{ analytics.totalCount }}</p>
+          <p>在册数量 {{ analytics.activeCount }}</p>
+        </template>
+        <template v-else>暂无分析数据</template>
+      </UiCard>
+      <UiCard title="在岗结构双肩挑比例">
+        <template v-if="analyticsLoading">加载中…</template>
+        <template v-else-if="analyticsFailed">—</template>
+        <template v-else-if="analytics">
+          <p>在岗教师 {{ analytics.structureTeacherCount ?? 0 }}</p>
+          <p>在岗双肩挑 {{ analytics.structureDoubleDutyCount ?? 0 }}</p>
+          <p>双肩挑比例 {{ analytics.doubleDutyRatioPercent ?? 0 }}%</p>
+        </template>
+        <template v-else>—</template>
+      </UiCard>
+      <UiCard title="在岗双肩挑院系分布">
+        <UiEmpty
+          v-if="!analyticsLoading && !analyticsFailed && !(analytics?.departmentCounts || []).length"
+          size="sm"
+          description="暂无在岗双肩挑院系分布"
+        />
+        <UiDataTable
+          v-else-if="analytics"
+          :columns="departmentColumns"
+          :data-source="analytics.departmentCounts || []"
+          row-key="departmentId"
+          size="small"
+          flat
+          pagination-mode="none"
+          :show-pagination="false"
+          :sticky-header="false"
+          :total="(analytics.departmentCounts || []).length"
+        />
+      </UiCard>
+    </div>
     <UiCard>
       <div class="form-row">
         <UiSelect
@@ -276,6 +367,11 @@ async function exportRoster() {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
 }
 .dept-hint {
   display: block;

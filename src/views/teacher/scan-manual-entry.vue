@@ -10,13 +10,15 @@
         <template #status>
           <UiTag
             v-if="workbench"
-            :tone="workbench.missingPageCandidateCount > 0 ? 'orange' : 'green'"
+            :tone="workbench.missingPageCandidateCount == null ? 'orange' : workbench.missingPageCandidateCount > 0 ? 'orange' : 'green'"
             size="sm"
           >
             {{
-              workbench.missingPageCandidateCount > 0
-                ? `${workbench.missingPageCandidateCount} 名缺页`
-                : '无缺页考生'
+              workbench.missingPageCandidateCount == null
+                ? '页数待推导'
+                : workbench.missingPageCandidateCount > 0
+                  ? `${workbench.missingPageCandidateCount} 名缺页`
+                  : '无缺页考生'
             }}
           </UiTag>
           <UiTag
@@ -254,7 +256,10 @@ const classScopeWarning = computed(() =>
 )
 
 const candidateEmptyDescription = computed(() => {
-  if (workbench.value && workbench.value.missingPageCandidateCount === 0) {
+  if (workbench.value?.missingPageCandidateCount == null) {
+    return '整卷线下试卷尚未形成单卷页数真源，暂不能判定缺页；可查看已扫描卷面并替换污损页'
+  }
+  if (workbench.value.missingPageCandidateCount === 0) {
     return '当前无缺页考生，可前往影像账本核对'
   }
   return '暂无待补考生'
@@ -289,9 +294,9 @@ const signalMetrics = computed((): SignalMetric[] => {
     {
       key: 'missing-page',
       label: '缺页考生',
-      value: String(data.missingPageCandidateCount),
-      unit: '人',
-      tone: data.missingPageCandidateCount > 0 ? 'orange' : 'green',
+      value: data.missingPageCandidateCount == null ? '—' : String(data.missingPageCandidateCount),
+      unit: data.missingPageCandidateCount == null ? '页数待推导' : '人',
+      tone: data.missingPageCandidateCount == null || data.missingPageCandidateCount > 0 ? 'orange' : 'green',
       clickable: true,
     },
     {

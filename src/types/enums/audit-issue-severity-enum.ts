@@ -1,4 +1,4 @@
-/** 审核评估问题严重度 - AuditIssueSeverityEnum */
+/** 审核评估问题严重度 - 与后端 AuditIssueSeverityEnum 逐值对齐 */
 export enum AuditIssueSeverityCode {
   MINOR = 'MINOR',
   MAJOR = 'MAJOR',

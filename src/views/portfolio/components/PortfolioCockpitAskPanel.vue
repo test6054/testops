@@ -53,8 +53,8 @@ const teacherColumns: ColumnsType = [
 const historyColumns: ColumnsType = [
   {
     title: '问数问题',
-    dataIndex: 'reportScene',
-    key: 'reportScene',
+    dataIndex: 'userQuestion',
+    key: 'userQuestion',
     ellipsis: true,
     fixed: 'left',
   },
@@ -186,7 +186,7 @@ async function pollAnalysis(taskId: string, requestToken = resultRequestToken.va
       if (requestToken !== resultRequestToken.value) {
         return
       }
-      if (task.status === 'SUCCEEDED') {
+      if (task.status === AiTaskStatusCode.COMPLETED) {
         const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
         if (requestToken !== resultRequestToken.value) {
           return
@@ -288,7 +288,7 @@ async function openTaskResult(taskId: string) {
     if (currentToken !== resultRequestToken.value) {
       return
     }
-    if (task.status === 'SUCCEEDED') {
+    if (task.status === AiTaskStatusCode.COMPLETED) {
       const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
       if (currentToken !== resultRequestToken.value) {
         return
@@ -364,8 +364,8 @@ async function openTaskResult(taskId: string) {
 
   <UiCard v-if="analysisDetail" title="问数结果">
     <p class="cockpit-ask__title">{{ analysisDetail.resultTitle }}</p>
-    <p v-if="analysisDetail.reportScene" class="cockpit-ask__meta">
-      问题：{{ analysisDetail.reportScene }}
+    <p v-if="analysisDetail.userQuestion" class="cockpit-ask__meta">
+      问题：{{ analysisDetail.userQuestion }}
     </p>
     <pre class="cockpit-ask__summary">{{ analysisDetail.summary }}</pre>
     <section v-if="issueItems.length" class="cockpit-ask__section">

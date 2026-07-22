@@ -21,8 +21,8 @@ export const ALL_ARCHIVE_TASK_PROVENANCE_CODES: readonly ArchiveTaskProvenanceCo
 
 export const ArchiveTaskProvenanceDescription: Record<ArchiveTaskProvenanceCode, string> = {
   [ArchiveTaskProvenanceCode.EXAM_GATE_AUTO]: '考试双门禁自动',
-  [ArchiveTaskProvenanceCode.CURRENT_TERM_OFFLINE]: '本学期课程考核袋（手工）',
-  [ArchiveTaskProvenanceCode.HISTORICAL_DIGITIZE]: '历史考核袋补录（手工）',
+  [ArchiveTaskProvenanceCode.CURRENT_TERM_OFFLINE]: '本学期线下考核归档',
+  [ArchiveTaskProvenanceCode.HISTORICAL_DIGITIZE]: '历史档案数字化',
   [ArchiveTaskProvenanceCode.BATCH_EXCEL]: '批量 Excel 建卷（已关闭）',
   [ArchiveTaskProvenanceCode.RESEARCH_PROJECT_AUTO]: '科研项目自动归档',
   [ArchiveTaskProvenanceCode.THESIS_AUTO]: '毕设自动归档',

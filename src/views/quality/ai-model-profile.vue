@@ -8,9 +8,9 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
  * - POST /api/quality/ai/model-profiles/save         保存 / 启用切换，apiKey 留空 = 保留原密钥
  * - POST /api/quality/ai/model-profiles/health-check 人工触发健康检查
  *
- * 唯一启用约束：平台同供应商 enabled=true 最多 1 条。切换启用时后端会在 advisory lock 下
- *   串行化并把平台同供应商其它配置置为停用。mark 直接扫描视觉能力使用 QWEN，
- *   quality 文本任务和 mark 其他 AI 能力使用 DEEPSEEK。
+ * 唯一启用约束：当前租户同供应商 enabled=true 最多 1 条。切换启用时后端会在 advisory lock 下
+ *   串行化并把当前租户同供应商其它配置置为停用。质量评价文本任务仅使用 DeepSeek V4，
+ *   千问多模态不属于本页面的配置范围。
  */
 import type {
   AiModelProfileSaveRequest,
@@ -121,7 +121,7 @@ const filterFields: FilterField[] = [{ key: 'enabledOnly', type: 'custom' }]
 const list = ref<AiModelProfileVO[]>([])
 const loading = ref(false)
 
-/** 平台当前启用配置，独立查询避免分页列表只展示当前页启用项。 */
+/** 当前租户的启用配置，独立查询避免分页列表只展示当前页启用项。 */
 const activeProfiles = ref<AiModelProfileVO[]>([])
 
 const editorVisible = ref(false)
@@ -195,7 +195,7 @@ async function loadList() {
     list.value = []
     pageTotal.value = 0
     signalSummary.value = null
-    showUserError(error, '平台智能模型配置列表加载失败')
+    showUserError(error, '当前租户智能模型配置列表加载失败')
   } finally {
     loading.value = false
   }
@@ -314,7 +314,7 @@ async function submitEditor() {
 /**
  * 将某条配置设为同供应商唯一启用。
  *
- * 后端会在 advisory lock 下把平台同供应商其它配置置为停用，前端仅负责颗粒度提交
+ * 后端会在 advisory lock 下把当前租户同供应商其它配置置为停用，前端仅负责颗粒度提交
  * （携带原记录 + apiKey 留空保留原密钥）。
  */
 function buildAiModelProfileActions(record: AiModelProfileVO): UiTableRowActionItem[] {
@@ -363,8 +363,8 @@ async function handleActivate(record: AiModelProfileVO) {
     title: `将「${record.profileName}」设为当前启用模型？`,
     type: 'warning',
     content: current
-      ? `当前启用的同供应商配置「${current.profileName}」将被自动置为停用。平台同供应商只保留一条启用记录。`
-      : `提交后本条配置将作为平台 ${providerTypeLabel(record.providerType)} 的启用模型。`,
+      ? `当前启用的同供应商配置「${current.profileName}」将被自动置为停用。当前租户同供应商只保留一条启用记录。`
+      : `提交后本条配置将作为当前租户 ${providerTypeLabel(record.providerType)} 的启用模型。`,
     onOk: async () => {
       activatingId.value = record.id
       try {
@@ -396,7 +396,7 @@ async function handleDisable(record: AiModelProfileVO) {
     title: `停用「${record.profileName}」？`,
     type: 'error',
     content: record.enabled
-      ? '该配置是当前启用模型。停用后平台对应供应商将没有可用 AI 模型，相关 AI 任务会进入阻断状态。请谨慎操作。'
+      ? '该配置是当前启用模型。停用后当前租户对应供应商将没有可用 AI 模型，相关 AI 任务会进入阻断状态。请谨慎操作。'
       : '该配置本来就未启用，停用后仅从候选库序列中维持停用状态。',
     onOk: async () => {
       await aiModelProfileApi.save({

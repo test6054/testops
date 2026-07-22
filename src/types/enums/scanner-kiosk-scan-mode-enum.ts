@@ -10,6 +10,6 @@ export const ALL_SCANNER_KIOSK_SCAN_MODE_CODES: readonly ScannerKioskScanModeCod
 ]
 
 export const ScannerKioskScanModeDescription: Record<ScannerKioskScanModeCode, string> = {
-  [ScannerKioskScanModeCode.DIRECT]: '直扫',
+  [ScannerKioskScanModeCode.DIRECT]: '首次扫描',
   [ScannerKioskScanModeCode.SUPPLEMENT]: '补扫',
 }

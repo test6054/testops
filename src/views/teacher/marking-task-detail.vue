@@ -19,6 +19,8 @@ defineOptions({ name: 'TeacherExamWorkspaceMarkingTaskDetail' })
 const {
   taskId,
   task,
+  reviewRecords,
+  reviewRecordsLoading,
   loading,
   form,
   isExamConfidential,
@@ -192,6 +194,8 @@ const {
       <template #queue>
         <MarkingTaskToolbar
           :task="task"
+          :review-records="reviewRecords"
+          :review-records-loading="reviewRecordsLoading"
           :loading="loading"
           :is-read-only="isScoreReadOnly"
           :can-manage-owner-identity-reveal="canManageOwnerIdentityReveal"
@@ -258,6 +262,8 @@ const {
 
         <MarkingTaskInfoCard
           :task="task"
+          :review-records="reviewRecords"
+          :review-records-loading="reviewRecordsLoading"
           :format-date-time="formatDateTime"
           :task-status-tone="taskStatusTone"
           :task-status-label="taskStatusLabel"
@@ -270,6 +276,7 @@ const {
         <MarkingScorePanel
           v-model:score="form.score"
           v-model:annotation-note="form.annotationNote"
+          v-model:review-suggestion="form.reviewSuggestion"
           v-model:expanded-whole-question-key="expandedWholeQuestionKey"
           :bind-form-ref="
             (el: FormInstance | null) => {

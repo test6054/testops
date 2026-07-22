@@ -22,12 +22,12 @@ export const ALL_ARCHIVE_DESTRUCTION_STATUS_CODES: readonly ArchiveDestructionSt
 ]
 export const ArchiveDestructionStatusDescription: Record<ArchiveDestructionStatusCode, string> = {
   [ArchiveDestructionStatusCode.NONE]: '无',
-  [ArchiveDestructionStatusCode.REQUESTED]: '销毁申请中',
-  [ArchiveDestructionStatusCode.REJECTED]: '销毁已驳回',
-  [ArchiveDestructionStatusCode.APPROVED]: '销毁已批准',
-  [ArchiveDestructionStatusCode.EXECUTING]: '销毁执行中',
-  [ArchiveDestructionStatusCode.EXECUTED]: '已销毁',
-  [ArchiveDestructionStatusCode.FAILED]: '销毁失败',
+  [ArchiveDestructionStatusCode.REQUESTED]: '已申请',
+  [ArchiveDestructionStatusCode.REJECTED]: '已驳回',
+  [ArchiveDestructionStatusCode.APPROVED]: '已批准',
+  [ArchiveDestructionStatusCode.EXECUTING]: '执行中',
+  [ArchiveDestructionStatusCode.EXECUTED]: '已执行',
+  [ArchiveDestructionStatusCode.FAILED]: '执行失败',
   [ArchiveDestructionStatusCode.LEDGER_ARCHIVED]: '清册已归档',
 }
 

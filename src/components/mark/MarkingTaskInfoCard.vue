@@ -44,11 +44,33 @@
           {{ task.annotationNote }}
         </UiTypographyParagraph>
       </UiDescriptionsItem>
+      <UiDescriptionsItem v-if="task.reviewSuggestion" label="批阅建议" :span="2">
+        <UiTypographyParagraph :ellipsis="{ rows: 3, expandable: true, symbol: '展开' }">
+          {{ task.reviewSuggestion }}
+        </UiTypographyParagraph>
+      </UiDescriptionsItem>
+      <UiDescriptionsItem label="批阅记录" :span="2">
+        <UiTypographyText v-if="reviewRecordsLoading" type="secondary">记录加载中...</UiTypographyText>
+        <UiTypographyText v-else-if="reviewRecords.length === 0" type="secondary">
+          暂无已提交的批阅记录
+        </UiTypographyText>
+        <div v-else class="marking-task-info-card__records">
+          <div v-for="record in reviewRecords" :key="record.id" class="marking-task-info-card__record">
+            <UiTypographyText strong>{{ operationLabel(record.operationType) }}</UiTypographyText>
+            <span>{{ formatDateTime(record.createTime) }}</span>
+            <span>{{ record.operatorName }}</span>
+            <UiTypographyParagraph v-if="record.reason" :ellipsis="{ rows: 2, expandable: true, symbol: '展开' }">
+              {{ record.reason }}
+            </UiTypographyParagraph>
+          </div>
+        </div>
+      </UiDescriptionsItem>
     </UiDescriptions>
   </GradingImmersionSection>
 </template>
 
 <script lang="ts" setup>
+import type { OperationLogResponse } from '@/apis/mark/admin-audit'
 import type { AnonymityModeCode } from '@/apis/mark/anonymity-mode'
 import type {
   AllocationUnitCode,
@@ -63,23 +85,55 @@ import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
 import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
 import UiTypographyParagraph from '@/components/ui-guide/ui/UiTypographyParagraph.vue'
 import UiTypographyText from '@/components/ui-guide/ui/UiTypographyText.vue'
+import { OperationTypeDescription } from '@/types/enums/operation-type-enum'
+import { strictEnumLabel } from '@/utils/strict-enum'
 
 defineOptions({ name: 'MarkingTaskInfoCard' })
 
 defineProps<{
   task: MarkingTaskResponse
+  reviewRecords: OperationLogResponse[]
+  reviewRecordsLoading: boolean
   formatDateTime: (value?: string) => string
   taskStatusTone: (status: MarkingTaskStatusCode) => BadgeTone
   taskStatusLabel: (status: MarkingTaskStatusCode) => string
   allocationUnitLabel: (unit: AllocationUnitCode) => string
   anonymityModeLabel: (mode: AnonymityModeCode) => string
 }>()
+
+function operationLabel(operationType: OperationLogResponse['operationType']): string {
+  return strictEnumLabel(OperationTypeDescription, operationType, '批阅操作类型')
+}
 </script>
 
 <style lang="scss" scoped>
 .marking-task-info-card {
   &__desc :deep(.ant-descriptions-item-label) {
     width: 108px;
+  }
+
+  &__records {
+    display: grid;
+    gap: 8px;
+  }
+
+  &__record {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 4px 8px;
+    padding: 8px;
+    border: 1px solid var(--dp-border-subtle);
+    border-radius: var(--dp-radius-panel);
+    color: var(--dp-text-secondary);
+    font-size: 12px;
+
+    :deep(.ant-typography) {
+      margin: 0;
+    }
+
+    :deep(.ant-typography-paragraph) {
+      grid-column: 1 / -1;
+    }
   }
 }
 </style>

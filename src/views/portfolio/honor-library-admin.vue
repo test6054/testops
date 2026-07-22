@@ -3,6 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioHonorStatsVO } from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ExcelImportSceneKey } from '@/apis/platform/scene-keys'
 import { PortfolioDevelopmentRecordTypeCode } from '@/apis/portfolio/enums'
 import { portfolioDevelopmentRecordApi } from '@/apis/portfolio/teacher-platform'
@@ -23,10 +24,20 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
+
+const route = useRoute()
+const userStore = useUserStore()
+/** 院系路由或非租户管理员：本院系荣誉库口径（PF-P0-420） */
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageTitle = computed(() => (isDepartmentScoped.value ? '院系荣誉库' : '荣誉库'))
+
 
 const importModalOpen = ref(false)
 const stats = ref<PortfolioHonorStatsVO | null>(null)
@@ -208,7 +219,7 @@ async function exportHonor() {
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="荣誉库" />
+      <ContextBar show-title layout="workbench" :title="pageTitle" />
     </template>
     <UiCard>
       <UiAlertStrip
@@ -242,12 +253,18 @@ async function exportHonor() {
           placeholder="截止日期"
         />
         <UiButton size="sm" :disabled="writing" @click="search"> 查询 </UiButton>
-        <UiButton size="sm" :disabled="writing" @click="exportHonor"> 导出 </UiButton>
-        <UiButton variant="primary" size="sm" :disabled="writing" @click="importModalOpen = true">
+        <UiButton v-if="!isDepartmentScoped" size="sm" :disabled="writing" @click="exportHonor"> 导出 </UiButton>
+        <UiButton
+          v-if="!isDepartmentScoped"
+          variant="primary"
+          size="sm"
+          :disabled="writing"
+          @click="importModalOpen = true"
+        >
           批量导入
         </UiButton>
       </div>
-      <div class="form-row">
+      <div v-if="!isDepartmentScoped" class="form-row">
         <UiInput size="sm" v-model="form.recordTitle" placeholder="荣誉标题" style="width: 180px" />
         <UiSelect
           size="sm"
@@ -331,6 +348,7 @@ async function exportHonor() {
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions
+              v-if="!isDepartmentScoped"
               :items="[
                 {
                   key: 'delete',
@@ -342,6 +360,7 @@ async function exportHonor() {
               split
               @action="() => removeRecord(record.id, record.recordTitle)"
             />
+            <span v-else class="text-neutral-400">—</span>
           </template>
         </template>
       </UiDataTable>

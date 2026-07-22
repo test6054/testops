@@ -34,7 +34,7 @@ export interface PortfolioNationalAchievementRequirementVO {
 export interface PortfolioNationalAchievementCatalogVO {
   id: string
   categoryCode: string
-  levelCode: string
+  levelCode: PortfolioHonorLevelCode
   catalogName: string
   standardDescription: string
   indicatorCode?: string
@@ -134,7 +134,7 @@ export const portfolioNationalAchievementApi = {
   deleteCatalog: (data: { id: string }) =>
     http.post<void>('/api/portfolio/national-achievement/catalog/delete', data),
 
-  link: (data: { planItemId: string; catalogId: string }) =>
+  link: (data: { planItemId: string, catalogId: string }) =>
     http.post<PortfolioPlanningAchievementLinkVO>('/api/portfolio/planning/achievement/link', data),
 
   gapAnalysis: (data: { planItemId: string }) =>

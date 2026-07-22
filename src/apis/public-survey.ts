@@ -1,6 +1,8 @@
 import type {
   IndirectEvaluationItemTypeCode,
 } from '@/types/enums/indirect-evaluation-item-type-enum'
+import type { IndirectFormStatusCode } from '@/types/enums/indirect-form-status-enum'
+import type { SurveyIdentityFieldTypeCode } from '@/types/enums/survey-identity-field-type-enum'
 /**
  * 公开问卷填写 API（无需认证）。
  *
@@ -18,7 +20,7 @@ export interface PublicSurveyVO {
   formName: string
   description?: string
   welcomeMessage?: string
-  status: string
+  status: IndirectFormStatusCode
   startTime?: string
   endTime?: string
   allowAnonymous?: boolean
@@ -29,14 +31,14 @@ export interface PublicSurveyVO {
 export interface SurveyIdentityFieldVO {
   fieldKey: string
   fieldLabel: string
-  fieldType: string
+  fieldType: SurveyIdentityFieldTypeCode
   required: boolean
 }
 
 export interface SurveyIdentityFieldRequest {
   fieldKey: string
   fieldLabel: string
-  fieldType: string
+  fieldType: SurveyIdentityFieldTypeCode
   required?: boolean
 }
 

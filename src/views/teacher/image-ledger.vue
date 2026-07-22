@@ -112,10 +112,10 @@ const ledgerSignalMetrics = computed((): SignalMetric[] => {
       key: 'scanned',
       label: '已扫页数',
       value: data.scannedPageCount,
-      unit: ` / ${data.expectedPageCount}`,
-      tone: data.scannedPageCount >= data.expectedPageCount ? 'green' : 'blue',
-      clickable: data.scannedPageCount < data.expectedPageCount,
-      helper: data.scannedPageCount < data.expectedPageCount ? '前往手动补录' : undefined,
+      unit: data.expectedPageCount == null ? '页（页数待推导）' : ` / ${data.expectedPageCount}`,
+      tone: data.expectedPageCount != null && data.scannedPageCount >= data.expectedPageCount ? 'green' : 'blue',
+      clickable: data.expectedPageCount != null && data.scannedPageCount < data.expectedPageCount,
+      helper: data.expectedPageCount != null && data.scannedPageCount < data.expectedPageCount ? '前往手动补录' : undefined,
     },
     {
       key: 'bound',
@@ -144,7 +144,7 @@ const ledgerSignalMetrics = computed((): SignalMetric[] => {
 function handleLedgerMetricClick(key: string): void {
   if (key !== 'scanned' || !selectedExamId.value) return
   const data = ledger.value
-  if (!data || data.scannedPageCount >= data.expectedPageCount) return
+  if (!data || data.expectedPageCount == null || data.scannedPageCount >= data.expectedPageCount) return
   void router.push({
     name: 'TeacherExamWorkspaceScanManualEntry',
     params: { examId: selectedExamId.value },

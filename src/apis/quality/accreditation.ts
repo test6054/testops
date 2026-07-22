@@ -1,6 +1,9 @@
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { AnnualEvaluationPlanStatusCode } from '@/types/enums/annual-evaluation-plan-status-enum'
+import type { OnsiteVisitPlanStatusCode } from '@/types/enums/onsite-visit-plan-status-enum'
 import type { ProgramSupportProfileStatusCode } from '@/types/enums/program-support-profile-status-enum'
+import type { SelfAssessmentReviewStatusCode } from '@/types/enums/self-assessment-review-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import {
@@ -120,7 +123,7 @@ export interface AccreditationCycleVO {
   cycleStatus: AccreditationCycleStatusCode
   applicationRecordedTime?: string
   selfAssessmentSubmittedTime?: string
-  selfAssessmentReviewStatus?: string
+  selfAssessmentReviewStatus?: SelfAssessmentReviewStatusCode
   selfAssessmentReviewDecision?: SelfAssessmentReviewDecisionCode
   selfAssessmentReviewRemark?: string
   selfAssessmentReviewTime?: string
@@ -284,7 +287,7 @@ export interface OnsiteVisitPlanVO {
   reportDueDate?: string
   leadExpertName?: string
   expertGroupRemark?: string
-  planStatus?: string
+  planStatus?: OnsiteVisitPlanStatusCode
   completedChecklistCount?: number
   totalChecklistCount?: number
   remark?: string
@@ -326,7 +329,7 @@ export interface AnnualEvaluationPlanQueryRequest extends QueryDto {
   programId?: string
   trainingPlanId: string
   planYear?: string
-  planStatus?: string
+  planStatus?: AnnualEvaluationPlanStatusCode
   keyword?: string
 }
 
@@ -338,7 +341,7 @@ export interface OnsiteVisitPlanQueryRequest extends QueryDto {
   programId?: string
   trainingPlanId: string
   accreditationCycleId?: string
-  planStatus?: string
+  planStatus?: AnnualEvaluationPlanStatusCode
   keyword?: string
 }
 
@@ -359,7 +362,7 @@ export interface AnnualEvaluationPlanVO {
   accreditationCycleId?: string
   planYear: string
   planTitle: string
-  planStatus?: string
+  planStatus?: AnnualEvaluationPlanStatusCode
   coverageTargetRate?: number
   actualCoverageRate?: number
   requiredCourseCount?: number
@@ -487,8 +490,8 @@ export interface AccreditationLinkedExamOptionVO {
   label: string
 }
 
-export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone> =
-  {
+export const ANNUAL_REPORT_MATERIAL_STATUS_TONE: Record<AnnualReportMaterialStatusCode, BadgeTone>
+  = {
     [AnnualReportMaterialStatusCode.DRAFT]: 'gray',
     [AnnualReportMaterialStatusCode.SUBMITTED]: 'blue',
     [AnnualReportMaterialStatusCode.APPROVED]: 'green',
@@ -569,7 +572,7 @@ export const accreditationApi = {
     http.post<void>(`${BASE}/support-profiles/confirm`, { id }),
   evidencePage: (data: AccreditationEvidenceQueryRequest) =>
     http.post<PageResult<AccreditationEvidenceVO>>(`${BASE}/evidences/page`, data),
-  linkedExamOptions: (data: { trainingPlanId: string; programId?: string }) =>
+  linkedExamOptions: (data: { trainingPlanId: string, programId?: string }) =>
     http.post<AccreditationLinkedExamOptionVO[]>(`${BASE}/evidences/linked-exam-options`, data),
   evidenceCreate: (data: AccreditationEvidenceSaveRequest) =>
     http.post<string>(`${BASE}/evidences/create`, data),

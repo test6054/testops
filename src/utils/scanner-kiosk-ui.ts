@@ -1,15 +1,9 @@
-import { ExamMaterialLayoutModeCode } from '@/apis/mark/exam'
-import {
-  KioskScanMaterialKindCode,
-  KioskScanMaterialKindDescription,
-} from '@/types/enums/kiosk-scan-material-kind-enum'
+import type { ExamMaterialLayoutModeCode} from '@/types/enums/exam-material-layout-mode-enum';
+import { ExamMaterialLayoutModeDescription } from '@/types/enums/exam-material-layout-mode-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
+/** 扫描台材料类型标签：真源为 ExamMaterialLayoutMode（与制卷形态同一合同） */
 export function kioskMaterialKindLabel(mode?: ExamMaterialLayoutModeCode): string {
   if (!mode) return '未配置'
-  const materialKind
-    = mode === ExamMaterialLayoutModeCode.ANSWER_SHEET
-      ? KioskScanMaterialKindCode.ANSWER_SHEET
-      : KioskScanMaterialKindCode.FULL_PAPER
-  return strictEnumLabel(KioskScanMaterialKindDescription, materialKind, '扫描材料类型')
+  return strictEnumLabel(ExamMaterialLayoutModeDescription, mode, '扫描材料类型')
 }

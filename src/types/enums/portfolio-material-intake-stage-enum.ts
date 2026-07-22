@@ -30,15 +30,15 @@ export const ALL_PORTFOLIO_MATERIAL_INTAKE_STAGE_CODES: readonly PortfolioMateri
 ]
 
 export const PortfolioMaterialIntakeStageDescription: Record<PortfolioMaterialIntakeStageCode, string> = {
-  [PortfolioMaterialIntakeStageCode.EMPTY]: '待上传',
+  [PortfolioMaterialIntakeStageCode.EMPTY]: '未上传',
   [PortfolioMaterialIntakeStageCode.UPLOADED]: '已上传',
-  [PortfolioMaterialIntakeStageCode.OCR_PENDING]: 'OCR 处理中',
-  [PortfolioMaterialIntakeStageCode.AI_PROCESSING]: 'AI 抽取中',
-  [PortfolioMaterialIntakeStageCode.AI_FAILED]: 'AI 抽取失败',
-  [PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED]: 'AI 候选均已驳回',
-  [PortfolioMaterialIntakeStageCode.CATEGORY_PENDING]: '待确认分类',
-  [PortfolioMaterialIntakeStageCode.FIELDS_INCOMPLETE]: '字段待补全',
-  [PortfolioMaterialIntakeStageCode.READY_TO_SUBMIT]: '可提交审核',
+  [PortfolioMaterialIntakeStageCode.OCR_PENDING]: 'OCR处理中',
+  [PortfolioMaterialIntakeStageCode.AI_PROCESSING]: 'AI处理中',
+  [PortfolioMaterialIntakeStageCode.AI_FAILED]: 'AI抽取失败',
+  [PortfolioMaterialIntakeStageCode.CANDIDATES_REJECTED]: 'AI候选均驳回',
+  [PortfolioMaterialIntakeStageCode.CATEGORY_PENDING]: '待选分类',
+  [PortfolioMaterialIntakeStageCode.FIELDS_INCOMPLETE]: '字段未完整',
+  [PortfolioMaterialIntakeStageCode.READY_TO_SUBMIT]: '可提交',
   [PortfolioMaterialIntakeStageCode.SUBMITTED]: '已提交',
   [PortfolioMaterialIntakeStageCode.UNDER_REVIEW]: '审核中',
   [PortfolioMaterialIntakeStageCode.RETURNED]: '已退回',

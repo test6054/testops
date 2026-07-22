@@ -8,7 +8,7 @@
         </UiTag>
         <div class="archive-quality-panel__section-actions">
           <UiButton
-            v-if="detail.canConfirmSecurityMark"
+            v-if="detail.canConfirmSecurityMark === true"
             size="sm"
             variant="outline"
             :loading="confirmingSecurityMark"
@@ -17,7 +17,7 @@
             确认密级定密
           </UiButton>
           <UiButton
-            v-if="detail.canUpdateSecurityLevel"
+            v-if="detail.canUpdateSecurityLevel === true"
             size="sm"
             variant="ghost"
             :loading="updatingSecurityLevel"

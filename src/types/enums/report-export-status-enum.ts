@@ -16,7 +16,7 @@ export const ALL_REPORT_EXPORT_STATUS_CODES: readonly ReportExportStatusCode[] =
 ]
 
 export const ReportExportStatusDescription: Record<ReportExportStatusCode, string> = {
-  [ReportExportStatusCode.IDLE]: '未导出',
+  [ReportExportStatusCode.IDLE]: '从未导出',
   [ReportExportStatusCode.PENDING]: '待导出',
   [ReportExportStatusCode.PROCESSING]: '导出中',
   [ReportExportStatusCode.COMPLETED]: '已导出',

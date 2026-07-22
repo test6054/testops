@@ -350,7 +350,7 @@ async function pollTask(taskId: string, token: number): Promise<void> {
       return
     }
     const task = await portfolioAiJobApi.get(taskId)
-    if (task.status === AiTaskStatusCode.SUCCEEDED) {
+    if (task.status === AiTaskStatusCode.COMPLETED) {
       const detail = await portfolioAiJobApi.getAnalysisByTask(taskId)
       if (pollToken.value !== token) {
         return

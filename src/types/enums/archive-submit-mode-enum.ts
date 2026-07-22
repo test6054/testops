@@ -10,6 +10,6 @@ export const ALL_ARCHIVE_SUBMIT_MODE_CODES: readonly ArchiveSubmitModeCode[] = [
 ]
 
 export const ArchiveSubmitModeDescription: Record<ArchiveSubmitModeCode, string> = {
-  [ArchiveSubmitModeCode.ORGANIZER_AND_ASSIGNED]: '归档责任人与被指定提交老师',
-  [ArchiveSubmitModeCode.ORGANIZER_ONLY]: '仅归档责任人可提交',
+  [ArchiveSubmitModeCode.ORGANIZER_AND_ASSIGNED]: '组织老师与被指定提交老师',
+  [ArchiveSubmitModeCode.ORGANIZER_ONLY]: '仅组织老师可提交',
 }

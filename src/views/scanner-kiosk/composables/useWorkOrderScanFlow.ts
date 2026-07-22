@@ -1,8 +1,8 @@
 import type { Ref } from 'vue'
 import type {
+  DocumentBusinessSceneCode,
   DocumentStartScanJobRequest,
   ScanJobResponse,
-  ScannerBusinessSceneCode,
 } from '@/apis/mark/scanner-agent-local'
 import type { ExamScannerScanConfigVO } from '@/apis/mark/scanner-kiosk'
 import type {
@@ -36,7 +36,7 @@ import { getUserErrorMessage, rejectUserError } from '@/utils/error-handler'
 
 export interface WorkOrderScanFlowOptions {
   taskKind: ScanTaskKindCode
-  businessScene: ScannerBusinessSceneCode
+  businessScene: DocumentBusinessSceneCode
   getBusinessRefId: () => string
   getArchiveBatchMode?: () => ArchiveScanBatchModeCode | undefined
   getScanConfig: () => ExamScannerScanConfigVO

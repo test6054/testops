@@ -21,7 +21,7 @@ export const OnsiteChecklistCategoryDescription: Record<OnsiteChecklistCategoryC
   [OnsiteChecklistCategoryCode.FACILITY]: '实验与工程训练设施',
   [OnsiteChecklistCategoryCode.PAPER_SAMPLE]: '试卷与作业样本',
   [OnsiteChecklistCategoryCode.CLASS_OBSERVATION]: '课堂听课',
-  [OnsiteChecklistCategoryCode.INTERVIEW]: '访谈座谈',
+  [OnsiteChecklistCategoryCode.INTERVIEW]: '师生与管理人员访谈',
   [OnsiteChecklistCategoryCode.DOCUMENT]: '支撑材料与档案',
   [OnsiteChecklistCategoryCode.OTHER]: '其他',
 }

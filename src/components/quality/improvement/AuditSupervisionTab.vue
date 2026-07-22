@@ -59,6 +59,16 @@ import {
 } from '@/composables/useScopeRequestGuard'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useQualityStore } from '@/stores/modules/quality'
+import {
+  ALL_AUDIT_EVIDENCE_TYPE_CODES,
+  AuditEvidenceTypeCode,
+  AuditEvidenceTypeDescription,
+} from '@/types/enums/audit-evidence-type-enum'
+import {
+  ALL_AUDIT_SUPERVISION_FINDING_TYPE_CODES,
+  AuditSupervisionFindingTypeCode,
+  AuditSupervisionFindingTypeDescription,
+} from '@/types/enums/audit-supervision-finding-type-enum'
 import { showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -182,13 +192,10 @@ function handleSupFilterSearch() {
   loadList()
 }
 
-const supFindingTypeOptions = [
-  { value: 'PROCESS', label: '过程执行' },
-  { value: 'MATERIAL', label: '材料支撑' },
-  { value: 'OUTCOME', label: '结果达成' },
-  { value: 'GOVERNANCE', label: '治理闭环' },
-  { value: 'OTHER', label: '其他' },
-]
+const supFindingTypeOptions = ALL_AUDIT_SUPERVISION_FINDING_TYPE_CODES.map((value) => ({
+  value,
+  label: AuditSupervisionFindingTypeDescription[value],
+}))
 const supFindingSeverityOptions = [
   { value: 'MINOR', label: '轻微' },
   { value: 'MAJOR', label: '严重' },
@@ -222,17 +229,14 @@ const supEditor = reactive<AuditSupervisionEditorState>({
 })
 const supEditorSubmitting = ref(false)
 
-const auditEvidenceTypeOptions = [
-  { value: 'COURSE_ARCHIVE', label: '课程归档' },
-  { value: 'ASSESSMENT_REPORT', label: '评价报告' },
-  { value: 'REVIEW_RECORD', label: '复核记录' },
-  { value: 'SUPPORTING_FILE', label: '支撑材料' },
-  { value: 'OTHER', label: '其他' },
-]
+const auditEvidenceTypeOptions = ALL_AUDIT_EVIDENCE_TYPE_CODES.map((value) => ({
+  value,
+  label: AuditEvidenceTypeDescription[value],
+}))
 
 function addSupervisionFindingItem() {
   supEditor.findingItems.push({
-    findingType: 'PROCESS',
+    findingType: AuditSupervisionFindingTypeCode.PROCESS,
     findingTitle: '',
     findingDescription: '',
     severity: 'MINOR',
@@ -247,7 +251,7 @@ function removeSupervisionFindingItem(index: number) {
 
 function addSupervisionEvidenceItem() {
   supEditor.evidenceItems.push({
-    evidenceType: 'REVIEW_RECORD',
+    evidenceType: AuditEvidenceTypeCode.REVIEW_RECORD,
     evidenceTitle: '',
     evidenceCode: '',
     archiveId: '',

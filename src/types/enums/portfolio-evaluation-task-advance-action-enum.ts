@@ -36,7 +36,7 @@ export const PortfolioEvaluationTaskAdvanceActionDescription: Record<PortfolioEv
   [PortfolioEvaluationTaskAdvanceActionCode.START_SCHOOL_REVIEW]: '进入学校复审',
   [PortfolioEvaluationTaskAdvanceActionCode.START_EXPERT_REVIEW]: '进入专家评审',
   [PortfolioEvaluationTaskAdvanceActionCode.START_RESULT_SUMMARY]: '进入结果汇总',
-  [PortfolioEvaluationTaskAdvanceActionCode.START_PUBLICITY]: '进入公示',
+  [PortfolioEvaluationTaskAdvanceActionCode.START_PUBLICITY]: '发布公示',
   [PortfolioEvaluationTaskAdvanceActionCode.START_OBJECTION_HANDLING]: '进入异议处理',
   [PortfolioEvaluationTaskAdvanceActionCode.ARCHIVE]: '归档',
   [PortfolioEvaluationTaskAdvanceActionCode.SUSPEND]: '暂停',

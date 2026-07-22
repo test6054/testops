@@ -1,4 +1,4 @@
-/** 教师讲授课程来源 - TeacherTaughtCourseSourceTypeEnum */
+/** 教师讲授课程来源 - 与 edu-common TeacherTaughtCourseSourceTypeEnum 逐值对齐 */
 export enum TeacherTaughtCourseSourceTypeCode {
   SYNC = 'SYNC',
   MANUAL = 'MANUAL',

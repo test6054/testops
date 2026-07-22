@@ -1,4 +1,4 @@
-/** 文档业务场景 */
+/** 文档采集业务场景 - 与后端 DocumentBusinessScene 逐值对齐 */
 export enum DocumentBusinessSceneCode {
   EXAM_DIRECT_SCAN = 'EXAM_DIRECT_SCAN',
   EXAM_ARCHIVE = 'EXAM_ARCHIVE',

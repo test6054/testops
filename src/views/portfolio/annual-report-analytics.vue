@@ -3,7 +3,7 @@ import type { PortfolioAnalysisAnnualReportVO } from '@/apis/portfolio/analysis'
 import type { PortfolioTeacherSummaryVO } from '@/apis/portfolio/types'
 import type { UiDataTableChangeEvent } from '@/components/ui-guide/ui/data-table'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import {
@@ -19,7 +19,9 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
+import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { useUserStore } from '@/stores/modules/user'
 import {
   PortfolioAnnualReportTaskStatusCode,
   PortfolioAnnualReportTaskStatusDescription,
@@ -35,6 +37,19 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 const POLL_INTERVAL_MS = 3000
 
 const router = useRouter()
+const route = useRoute()
+const userStore = useUserStore()
+/** 院系路由或非租户管理员：院系年度报告口径（PRD §7.7.7 / §7.12） */
+const isDepartmentScoped = computed(
+  () => route.path.includes('/department/') || !userStore.isTenantAdmin,
+)
+const pageTitle = computed(() => (isDepartmentScoped.value ? '院系年度报告' : '年度报告'))
+const pageSubtitle = computed(() =>
+  isDepartmentScoped.value
+    ? '生成与查询本院系教师年度报告任务'
+    : '生成与查询教师年度报告任务',
+)
+
 const loading = ref(false)
 const historyLoading = ref(false)
 const teachers = ref<PortfolioTeacherSummaryVO[]>([])
@@ -54,6 +69,14 @@ const form = reactive({
 
 const teacherOptions = computed(() => portfolioTeacherSelectOptionsFromSummaries(teachers.value))
 let teacherSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+/** 管理端为选中教师生成年报：写禁以目标教师生命周期为准 */
+const selectedTeacherId = computed(() => form.teacherId || undefined)
+const {
+  archiveWriteForbidden,
+  archiveWriteBlockMessage,
+  assertArchiveWritable,
+} = usePortfolioArchiveWriteGuard({ teacherId: selectedTeacherId })
 
 const historyPagination = computed(() => ({
   current: historyQuery.pageNum,
@@ -244,6 +267,9 @@ async function generateReport() {
     showUserError(null, '报告年度须在 2000 年至当前自然年之间')
     return
   }
+  if (!assertArchiveWritable('提交年度报告生成')) {
+    return
+  }
   if (loading.value) {
     return
   }
@@ -315,8 +341,8 @@ watch(
       <ContextBar
         layout="workbench"
         show-title
-        title="年度报告"
-        subtitle="异步生成教师年度发展分析报告"
+        :title="pageTitle"
+        :subtitle="pageSubtitle"
       />
     </template>
     <UiCard title="生成任务">
@@ -340,10 +366,19 @@ watch(
           class="annual-report__field annual-report__field--year"
           :maxlength="4"
         />
-        <UiButton size="sm" variant="primary" :loading="loading" @click="generateReport">
+        <UiButton
+          size="sm"
+          variant="primary"
+          :loading="loading"
+          :disabled="archiveWriteForbidden"
+          @click="generateReport"
+        >
           提交生成
         </UiButton>
       </div>
+      <p v-if="archiveWriteForbidden" class="annual-report__block">
+        {{ archiveWriteBlockMessage }}
+      </p>
     </UiCard>
     <UiCard v-if="latestTask" title="最近任务" class="annual-report__result">
       <dl class="annual-report__meta">
@@ -501,5 +536,18 @@ watch(
 
 .annual-report__view-btn {
   margin-left: 8px;
+}
+
+.annual-report__block {
+  margin: 8px 0 0;
+  color: var(--dp-color-danger, #cf1322);
+  font-size: 13px;
+}
+
+.annual-report__identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
 }
 </style>

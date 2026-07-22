@@ -1,4 +1,8 @@
-/** 本地 Scanner Agent 扫描任务状态 */
+/**
+ * 本地扫描任务状态。
+ * 线缆值为 nybc-scanner-agent `ScanJobStatus.ToString().ToUpperInvariant()`
+ * （如 ReadyToUpload → READYTOUPLOAD）；非 edu-mark HTTP API 合同。
+ */
 export enum LocalScanJobStatusCode {
   CREATED = 'CREATED',
   SCANNING = 'SCANNING',

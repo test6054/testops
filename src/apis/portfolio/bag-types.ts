@@ -1,9 +1,10 @@
-import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioArchiveBagSectionTypeCode } from '@/types/enums/portfolio-archive-bag-section-type-enum'
 import type { PortfolioArchiveBagSourceTypeCode } from '@/types/enums/portfolio-archive-bag-source-type-enum'
 import type { PortfolioCompletenessLevelCode } from '@/types/enums/portfolio-completeness-level-enum'
 import type { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
+import type { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 
 export {
@@ -57,7 +58,7 @@ export interface PortfolioArchiveBagItemVO {
   categoryId?: string
   sourceType: PortfolioArchiveBagSourceTypeCode
   achievementType?: string
-  materialType?: string
+  materialType?: PortfolioMaterialTypeCode
   title: string
   categoryName?: string
   courseName?: string
@@ -161,5 +162,5 @@ export interface PortfolioArchiveBagTeacherRequest {
   semester?: SemesterCode
   courseCode?: string
   achievementType?: string
-  materialType?: string
+  materialType?: PortfolioMaterialTypeCode
 }

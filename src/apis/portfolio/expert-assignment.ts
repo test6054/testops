@@ -1,5 +1,5 @@
-import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PageResult } from '@/types'
 import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfolio-archive-record-source-type-enum'
 import type { PortfolioExpertAssignmentStatusCode } from '@/types/enums/portfolio-expert-assignment-status-enum'

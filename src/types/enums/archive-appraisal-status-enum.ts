@@ -18,11 +18,11 @@ export const ALL_ARCHIVE_APPRAISAL_STATUS_CODES: readonly ArchiveAppraisalStatus
 ]
 export const ArchiveAppraisalStatusDescription: Record<ArchiveAppraisalStatusCode, string> = {
   [ArchiveAppraisalStatusCode.NOT_DUE]: '未到期',
-  [ArchiveAppraisalStatusCode.REMINDER_SENT]: '到期提醒',
-  [ArchiveAppraisalStatusCode.REQUESTED]: '鉴定申请中',
-  [ArchiveAppraisalStatusCode.APPROVED]: '鉴定审批通过',
-  [ArchiveAppraisalStatusCode.REJECTED]: '鉴定驳回',
-  [ArchiveAppraisalStatusCode.OPINION_RECORDED]: '鉴定意见已记录',
+  [ArchiveAppraisalStatusCode.REMINDER_SENT]: '已提醒',
+  [ArchiveAppraisalStatusCode.REQUESTED]: '已申请',
+  [ArchiveAppraisalStatusCode.APPROVED]: '已通过',
+  [ArchiveAppraisalStatusCode.REJECTED]: '已驳回',
+  [ArchiveAppraisalStatusCode.OPINION_RECORDED]: '意见已记录',
 }
 
 

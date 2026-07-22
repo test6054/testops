@@ -11,6 +11,7 @@ import type { ExtendedAxiosRequestConfig } from '@/config/axios/types'
  * AI 改进草稿生成通过 ai-task-trigger.ts 显式提交，不混入保存请求。
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { ImprovementTaskReviewDecisionCode } from '@/types/enums/improvement-task-review-decision-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/improvement-tasks'
@@ -45,7 +46,7 @@ export interface ImprovementTaskVO {
   progressRemark?: string
   /** 整改证据条目 */
   rectificationEvidenceItems?: string[]
-  reviewDecision?: string
+  reviewDecision?: ImprovementTaskReviewDecisionCode
   reviewRemark?: string
   closedTime?: string
   createUser?: string
@@ -95,7 +96,7 @@ export interface ImprovementTaskStatusUpdateRequest {
 /** 闭环复评 - 严格对齐后端 ImprovementTaskCloseRequest */
 export interface ImprovementTaskCloseRequest {
   id: string
-  reviewDecision: string
+  reviewDecision: ImprovementTaskReviewDecisionCode
   reviewRemark?: string
 }
 

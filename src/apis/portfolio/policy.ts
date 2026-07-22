@@ -149,6 +149,6 @@ export const portfolioPolicyApi = {
       '/api/portfolio/policy-document/mapping/save',
       data,
     ),
-  compare: (data: { leftDocumentId: string; rightDocumentId: string }) =>
+  compare: (data: { leftDocumentId: string, rightDocumentId: string }) =>
     http.post<PortfolioPolicyDocumentCompareVO>('/api/portfolio/policy-document/compare', data),
 }

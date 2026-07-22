@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
+import type { TeacherUserInfoDto } from '@/apis/platform/teacher-catalog'
 /**
  * 校院两级评价工作组管理
  *
@@ -13,7 +14,6 @@ import type {
   EvaluationWorkgroupVO,
   WorkgroupMember,
 } from '@/apis/quality/evaluation-workgroup'
-import type { TeacherUserInfoDto } from '@/apis/quality/user-catalog'
 import type { FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
@@ -31,8 +31,9 @@ import {
   WorkgroupLevelCode,
   WorkgroupLevelDescription,
 } from '@/apis/quality/types'
+import TeacherSelector from '@/components/platform/TeacherSelector.vue'
 import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImportModal.vue'
-import { ProgramSelector, TeacherSelector } from '@/components/quality/selectors'
+import { ProgramSelector } from '@/components/quality/selectors'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'

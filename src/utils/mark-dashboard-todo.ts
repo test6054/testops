@@ -144,7 +144,7 @@ export function resolveTodoRowTitle(todo: MarkTeacherDashboardPendingTodoItemVO)
   if (examName) {
     return examName
   }
-  return strictEnumLabel(MarkTeacherDashboardTodoTypeDescription, todo.todoType, '教师待办类型')
+  return formatTodoTypeLabel(todo.todoType, todo.count)
 }
 
 /** 待办行任务文案：仅消费后端 label。 */
@@ -156,7 +156,21 @@ export function resolveTodoRowLabel(todo: MarkTeacherDashboardPendingTodoItemVO)
   if (todo.count > 0) {
     return `${todo.count.toLocaleString('zh-CN')} ${MARK_DASHBOARD_TODO_COUNT_UNIT[todo.todoType]}`
   }
-  return strictEnumLabel(MarkTeacherDashboardTodoTypeDescription, todo.todoType, '教师待办类型')
+  return formatTodoTypeLabel(todo.todoType, todo.count)
+}
+
+/** 将后端 labelTemplate（含 {n}）渲染为展示文案。 */
+export function formatTodoTypeLabel(
+  todoType: MarkTeacherDashboardTodoTypeCode,
+  count: number | undefined,
+): string {
+  const template = strictEnumLabel(
+    MarkTeacherDashboardTodoTypeDescription,
+    todoType,
+    '教师待办类型',
+  )
+  const n = count == null ? 0 : count
+  return template.replaceAll('{n}', String(n))
 }
 
 /** 待办行考试上下文：标题已有考试名时只展示学年学期，避免编号重复。 */

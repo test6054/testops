@@ -3,7 +3,7 @@
     <UiAlertStrip v-if="!taskId" tone="info" title="尚未关联智能抽取任务" />
     <template v-else>
       <UiAlertStrip
-        v-if="taskStatus && taskStatus !== AiTaskStatusCode.SUCCEEDED"
+        v-if="taskStatus && taskStatus !== AiTaskStatusCode.COMPLETED"
         tone="warning"
         title="智能抽取尚未完成，完成后方可确认候选字段"
       />
@@ -13,7 +13,7 @@
         :title="`有 ${manualFillPendingCount} 个字段含脱敏占位符，请补全真实值后再确认`"
       />
       <div
-        v-if="taskStatus === AiTaskStatusCode.SUCCEEDED && !readonly"
+        v-if="taskStatus === AiTaskStatusCode.COMPLETED && !readonly"
         class="portfolio-ai-candidate-panel__actions"
       >
         <UiButton variant="primary" size="sm" :loading="confirming" @click="confirmAllEligible">
@@ -88,7 +88,7 @@
       </UiDataTable>
       <UiEmpty
         size="sm"
-        v-if="!loading && taskStatus === AiTaskStatusCode.SUCCEEDED && candidateRows.length === 0"
+        v-if="!loading && taskStatus === AiTaskStatusCode.COMPLETED && candidateRows.length === 0"
         description="暂无候选字段"
       />
     </template>
@@ -240,7 +240,7 @@ async function loadCandidates() {
       return
     }
     taskStatus.value = detail.status
-    if (detail.status !== AiTaskStatusCode.SUCCEEDED) {
+    if (detail.status !== AiTaskStatusCode.COMPLETED) {
       candidateRows.value = []
       return
     }

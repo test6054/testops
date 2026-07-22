@@ -12,8 +12,8 @@ export const ALL_SELF_ASSESSMENT_REVIEW_DECISION_CODES: readonly SelfAssessmentR
 ]
 
 export const SelfAssessmentReviewDecisionDescription: Record<SelfAssessmentReviewDecisionCode, string> = {
-  [SelfAssessmentReviewDecisionCode.ACCEPTED]: '接受',
+  [SelfAssessmentReviewDecisionCode.ACCEPTED]: '受理',
   [SelfAssessmentReviewDecisionCode.SUPPLEMENT_REQUIRED]: '需补正',
-  [SelfAssessmentReviewDecisionCode.REJECTED]: '驳回',
+  [SelfAssessmentReviewDecisionCode.REJECTED]: '不通过',
 }
 
