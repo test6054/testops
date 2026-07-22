@@ -1,5 +1,7 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
+import type { PortfolioProcessSessionStatusCode } from '@/types/enums/portfolio-process-session-status-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
@@ -21,10 +23,10 @@ export interface PortfolioProcessSessionVO {
   /** 教师可读：关联档案说明（分类 + 状态） */
   linkedArchiveLabel?: string
   selectedForMasterpiece?: boolean
-  sessionStatus?: string
+  sessionStatus?: PortfolioProcessSessionStatusCode
   updateTime?: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -57,7 +59,7 @@ export interface PortfolioProcessSessionSaveRequest {
   feedbackText?: string
   linkedArchiveRecordId?: string
   selectedForMasterpiece?: boolean
-  sessionStatus?: string
+  sessionStatus?: PortfolioProcessSessionStatusCode
 }
 
 export interface PortfolioProcessSessionDeleteRequest {

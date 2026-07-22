@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfolio-archive-record-source-type-enum'
 import http from '@/config/axios'
@@ -8,7 +9,7 @@ export interface PortfolioPublicExpertReviewSubjectVO {
   subjectRef: string
   maskedDisplayName: string
   /** 生命周期状态编码（脱敏可读；不默认过滤） */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   /** 档案写禁 */
   archiveWriteForbidden?: boolean
@@ -36,7 +37,7 @@ export interface PortfolioPublicExpertReviewMaterialVO {
   identityScope?: string
   /** EXTERNAL 切片不可用于校内硬性条件 */
   usableForCampusHardCriteria?: boolean
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   countsInCurrentFacultyStructure?: boolean
@@ -57,6 +58,6 @@ export interface PortfolioPublicExpertReviewBundleVO {
 }
 
 export const portfolioPublicExpertApi = {
-  reviewBundle: (data: { tenantId: string, accessToken: string }) =>
+  reviewBundle: (data: { tenantId: string; accessToken: string }) =>
     http.post<PortfolioPublicExpertReviewBundleVO>(`${PUBLIC_EXPERT}/review-bundle`, data),
 }

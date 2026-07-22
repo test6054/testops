@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PortfolioPolicyLedgerReviewStatusCode } from '@/types/enums/portfolio-policy-ledger-review-status-enum'
@@ -35,7 +36,7 @@ export interface PortfolioVirtualTeachingRoomActivityVO {
   reviewOpinion?: string
   statusVersion: number
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -110,7 +111,7 @@ export interface PortfolioIndustryEducationProjectVO {
   ownerMultiIdentityNote?: string
 
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */

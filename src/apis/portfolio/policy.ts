@@ -1,4 +1,6 @@
 import type { PageResult } from '@/types'
+import type { PortfolioPolicyDocumentStatusCode } from '@/types/enums/portfolio-policy-document-status-enum'
+import type { PortfolioPolicyLevelCode } from '@/types/enums/portfolio-policy-level-enum'
 import http from '@/config/axios'
 
 export interface PortfolioPolicyDocumentVO {
@@ -7,13 +9,13 @@ export interface PortfolioPolicyDocumentVO {
   versionNo: number
   documentCode: string
   documentTitle: string
-  policyLevel: string
+  policyLevel: PortfolioPolicyLevelCode
   topicCategory: string
   publishOrg?: string
   publishDate: string
   effectiveDate?: string
   expireDate?: string
-  documentStatus: string
+  documentStatus: PortfolioPolicyDocumentStatusCode
   supersededById?: string
   attachmentFileId?: string
   beyondTenYearRemark?: string
@@ -24,9 +26,9 @@ export interface PortfolioPolicyDocumentSearchVO {
   id: string
   documentCode: string
   documentTitle: string
-  policyLevel: string
+  policyLevel: PortfolioPolicyLevelCode
   topicCategory: string
-  documentStatus: string
+  documentStatus: PortfolioPolicyDocumentStatusCode
   snippet: string
 }
 
@@ -75,7 +77,7 @@ export const portfolioPolicyApi = {
     id?: string
     documentCode: string
     documentTitle: string
-    policyLevel: string
+    policyLevel: PortfolioPolicyLevelCode
     topicCategory: string
     publishOrg?: string
     publishDate: string
@@ -90,16 +92,21 @@ export const portfolioPolicyApi = {
   page: (data: {
     pageNum: number
     pageSize: number
-    policyLevel?: string
+    policyLevel?: PortfolioPolicyLevelCode
     topicCategory?: string
-    documentStatus?: string
+    documentStatus?: PortfolioPolicyDocumentStatusCode
     documentCode?: string
     documentTitle?: string
   }) =>
     http.post<PageResult<PortfolioPolicyDocumentVO>>('/api/portfolio/policy-document/page', data),
   get: (data: { id: string }) =>
     http.post<PortfolioPolicyDocumentDetailVO>('/api/portfolio/policy-document/get', data),
-  search: (data: { pageNum: number, pageSize: number, keyword: string, includeHistory?: boolean }) =>
+  search: (data: {
+    pageNum: number
+    pageSize: number
+    keyword: string
+    includeHistory?: boolean
+  }) =>
     http.post<PageResult<PortfolioPolicyDocumentSearchVO>>(
       '/api/portfolio/policy-document/search',
       data,
@@ -109,7 +116,7 @@ export const portfolioPolicyApi = {
       id: string
       documentTitle: string
       documentCode: string
-      documentStatus: string
+      documentStatus: PortfolioPolicyDocumentStatusCode
       fullTextContent: string
       attachmentFileId?: string
     }>('/api/portfolio/policy-document/preview', data),
@@ -119,7 +126,7 @@ export const portfolioPolicyApi = {
     sourceDocumentId: string
     documentCode: string
     documentTitle: string
-    policyLevel: string
+    policyLevel: PortfolioPolicyLevelCode
     topicCategory: string
     publishOrg?: string
     publishDate: string
@@ -142,6 +149,6 @@ export const portfolioPolicyApi = {
       '/api/portfolio/policy-document/mapping/save',
       data,
     ),
-  compare: (data: { leftDocumentId: string, rightDocumentId: string }) =>
+  compare: (data: { leftDocumentId: string; rightDocumentId: string }) =>
     http.post<PortfolioPolicyDocumentCompareVO>('/api/portfolio/policy-document/compare', data),
 }

@@ -4,6 +4,7 @@
  * 后端路径：/api/quality/faculty-profiles
  */
 import type { PageResult, QueryDto } from '@/types'
+import type { FacultyProfileStatusCode } from '@/types/enums/faculty-profile-status-enum'
 import http from '@/config/axios'
 
 const BASE = '/api/quality/faculty-profiles'
@@ -53,7 +54,7 @@ export interface FacultyProfileVO {
   teacherDevelopmentRecord: string
   teachingReformContribution: string
   graduationDesignGuidance: string
-  profileStatus: string
+  profileStatus: FacultyProfileStatusCode
   createTime?: string
   updateTime?: string
 }

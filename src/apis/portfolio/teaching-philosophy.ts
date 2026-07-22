@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import http from '@/config/axios'
 
@@ -8,7 +9,7 @@ export interface PortfolioTeachingPhilosophyVO {
   philosophyText: string
   updateTime?: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -21,7 +22,6 @@ export interface PortfolioTeachingPhilosophyVO {
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 贡献教师多身份口径说明 */
   ownerMultiIdentityNote?: string
-
 }
 
 export interface PortfolioTeachingPhilosophyListRequest {

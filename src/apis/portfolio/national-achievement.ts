@@ -1,7 +1,9 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioDevelopmentRecordVO } from '@/apis/portfolio/teacher-platform'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
+import type { PortfolioPlanningAchievementLinkStatusCode } from '@/types/enums/portfolio-planning-achievement-link-status-enum'
 import http from '@/config/axios'
 
 export enum PortfolioAchievementEvidenceTypeCode {
@@ -70,10 +72,10 @@ export interface PortfolioPlanningAchievementLinkVO {
   catalogId: string
   catalogName?: string
   teacherUserId: string
-  linkStatus: string
+  linkStatus: PortfolioPlanningAchievementLinkStatusCode
   completionRate?: string
   lockedTime?: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -83,9 +85,7 @@ export interface PortfolioPlanningAchievementLinkVO {
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 多身份贡献说明；层数大于 1 时非空 */
   ownerMultiIdentityNote?: string
-
 }
-
 
 export interface PortfolioAchievementGapMissingItemVO {
   requirementCode: string
@@ -102,7 +102,7 @@ export interface PortfolioAchievementGapAnalysisVO {
   catalogId: string
   catalogName: string
   completionRate: string
-  linkStatus: string
+  linkStatus: PortfolioPlanningAchievementLinkStatusCode
   targetSummary: string
   missingItems: PortfolioAchievementGapMissingItemVO[]
   satisfiedItems: PortfolioAchievementGapMissingItemVO[]
@@ -134,7 +134,7 @@ export const portfolioNationalAchievementApi = {
   deleteCatalog: (data: { id: string }) =>
     http.post<void>('/api/portfolio/national-achievement/catalog/delete', data),
 
-  link: (data: { planItemId: string, catalogId: string }) =>
+  link: (data: { planItemId: string; catalogId: string }) =>
     http.post<PortfolioPlanningAchievementLinkVO>('/api/portfolio/planning/achievement/link', data),
 
   gapAnalysis: (data: { planItemId: string }) =>

@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
@@ -30,7 +31,14 @@ import type {
 } from '@/apis/portfolio/types'
 import type { IdRequest, PageResult, QueryDto } from '@/types'
 import type { PortfolioAlertStatusCode } from '@/types/enums/portfolio-alert-status-enum'
+import type { PortfolioAlertTypeCode } from '@/types/enums/portfolio-alert-type-enum'
+import type { PortfolioAnnualReportTaskStatusCode } from '@/types/enums/portfolio-annual-report-task-status-enum'
+import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
+import type { PortfolioComplianceScopeTypeCode } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import type { PortfolioEthicsImpactScopeCode } from '@/types/enums/portfolio-ethics-impact-scope-enum'
+import type { PortfolioSuggestionPriorityCode } from '@/types/enums/portfolio-suggestion-priority-enum'
+import type { PortfolioSuggestionTypeCode } from '@/types/enums/portfolio-suggestion-type-enum'
+import type { PortfolioTrainingRecommendStatusCode } from '@/types/enums/portfolio-training-recommend-status-enum'
 import http from '@/config/axios'
 
 export interface PortfolioAnalysisAlertVO {
@@ -39,7 +47,7 @@ export interface PortfolioAnalysisAlertVO {
   teacherName?: string
   teacherNumber?: string
   departmentName?: string
-  alertType: string
+  alertType: PortfolioAlertTypeCode
   alertStatus: PortfolioAlertStatusCode
   indicatorCode?: string
   alertTitle: string
@@ -48,7 +56,7 @@ export interface PortfolioAnalysisAlertVO {
   portraitComputedTime?: string
 
   /** 归属教师生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 归属教师生命周期状态标签 */
   lifecycleStatusLabel?: string
   /** 档案写禁 */
@@ -66,14 +74,14 @@ export interface PortfolioAnalysisAlertVO {
 export interface PortfolioAnalysisSuggestionVO {
   id: string
   teacherId: string
-  suggestionType: string
+  suggestionType: PortfolioSuggestionTypeCode
   suggestionTitle: string
   suggestionContent: string
   indicatorCode?: string
-  priorityLevel: string
+  priorityLevel: PortfolioSuggestionPriorityCode
   ruleSnapshotId?: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -96,11 +104,11 @@ export interface PortfolioAnalysisTrainingRecommendVO {
   recommendReason: string
   indicatorCode?: string
   dimensionCode: string
-  recommendStatus: string
+  recommendStatus: PortfolioTrainingRecommendStatusCode
   trainingActivityId?: string
   ruleSnapshotId?: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -133,7 +141,7 @@ export interface PortfolioPortraitCreditCurveVO {
   trendNote?: string | null
   officialFactCount?: number
   dedupDroppedCount?: number
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -147,10 +155,10 @@ export interface PortfolioPortraitCreditCurveVO {
 
 export interface PortfolioAnalysisComplianceAlertVO {
   id: string
-  scopeType: string
+  scopeType: PortfolioComplianceScopeTypeCode
   departmentId?: string
   departmentName?: string
-  alertType: string
+  alertType: PortfolioComplianceAlertTypeCode
   alertStatus: PortfolioAlertStatusCode
   currentValue?: string
   thresholdValue?: string
@@ -185,11 +193,11 @@ export interface PortfolioAnalysisAnnualReportVO {
   teacherName?: string
   teacherNumber?: string
   reportYear: string
-  taskStatus: string
+  taskStatus: PortfolioAnnualReportTaskStatusCode
   aiTaskId?: string
   errorSummary?: string
   createTime: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -266,7 +274,7 @@ export interface PortfolioAppointmentPeriodEvaluationVO {
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 贡献教师多身份口径说明 */
   ownerMultiIdentityNote?: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   evaluationHeld?: boolean
@@ -359,7 +367,7 @@ export const portfolioAnalysisApi = {
     pageNum: number
     pageSize: number
     teacherId?: string
-    alertType?: string
+    alertType?: PortfolioAlertTypeCode
     alertStatus?: PortfolioAlertStatusCode
   }) => http.post<PageResult<PortfolioAnalysisAlertVO>>('/api/portfolio/analysis/alert/page', data),
   listSuggestions: (data: { teacherId: string }) =>
@@ -371,7 +379,7 @@ export const portfolioAnalysisApi = {
     ),
   dismissTrainingRecommendation: (data: { recommendationId: string }) =>
     http.post<void>('/api/portfolio/analysis/recommend/training/dismiss', data),
-  getCreditCurve: (data: { teacherId: string, creditCategory?: string }) =>
+  getCreditCurve: (data: { teacherId: string; creditCategory?: string }) =>
     http.post<PortfolioPortraitCreditCurveVO>('/api/portfolio/portrait/teacher/credit-curve', data),
   getDepartmentPortrait: (data: { departmentId: string }) =>
     http.post<PortfolioDepartmentPortraitVO>('/api/portfolio/portrait/department/get', data),
@@ -380,7 +388,7 @@ export const portfolioAnalysisApi = {
   pageComplianceAlerts: (data: {
     pageNum: number
     pageSize: number
-    scopeType?: string
+    scopeType?: PortfolioComplianceScopeTypeCode
     departmentId?: string
     alertStatus?: PortfolioAlertStatusCode
   }) =>
@@ -399,9 +407,9 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/pk/session/page',
       data,
     ),
-  exportPkSession: (data: { sessionId: string, maskMode?: boolean }) =>
+  exportPkSession: (data: { sessionId: string; maskMode?: boolean }) =>
     http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/analysis/pk/export', data),
-  generateAnnualReport: (data: { teacherId: string, reportYear: string }) =>
+  generateAnnualReport: (data: { teacherId: string; reportYear: string }) =>
     http.post<PortfolioAnalysisAnnualReportVO>(
       '/api/portfolio/analysis/report/annual/generate',
       data,
@@ -413,7 +421,7 @@ export const portfolioAnalysisApi = {
     pageSize: number
     teacherId?: string
     reportYear?: string
-    taskStatus?: string
+    taskStatus?: PortfolioAnnualReportTaskStatusCode
   }) =>
     http.post<PageResult<PortfolioAnalysisAnnualReportVO>>(
       '/api/portfolio/analysis/report/annual/page',

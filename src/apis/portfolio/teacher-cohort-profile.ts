@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import http from '@/config/axios'
 
@@ -6,7 +7,7 @@ export interface PortfolioTeacherCohortProfileVO {
   jobLevel?: string
   majorGroupCode?: string
   majorGroupName?: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -17,7 +18,6 @@ export interface PortfolioTeacherCohortProfileVO {
   /** 多身份贡献说明；层数大于 1 时非空 */
   ownerMultiIdentityNote?: string
 }
-
 
 export interface PortfolioTeacherCohortProfileSaveRequest {
   teacherId: string

@@ -1,5 +1,7 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
+import type { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
 import type { PortfolioTeachingExtensionKindCode } from '@/types/enums/portfolio-teaching-extension-kind-enum'
 import http from '@/config/axios'
 
@@ -21,9 +23,13 @@ export interface PortfolioTeachingExtensionActivityVO {
   archiveRecordId?: string
   archiveRecordStatus?: PortfolioArchiveRecordStatusCode
   archiveCategoryId?: string
+  sourceType: PortfolioBusinessDataSourceTypeCode
+  syncChannelCode?: string
+  externalId?: string
+  sourceSnapshot?: string
   updateTime?: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -36,7 +42,6 @@ export interface PortfolioTeachingExtensionActivityVO {
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 贡献教师多身份口径说明 */
   ownerMultiIdentityNote?: string
-
 }
 
 export interface PortfolioTrainingArchivePrepareVO {

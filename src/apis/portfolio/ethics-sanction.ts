@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
 import type { PortfolioEthicsEventTypeCode } from '@/types/enums/portfolio-ethics-event-type-enum'
@@ -28,7 +29,7 @@ export interface PortfolioEthicsSanctionVO {
   lastReviewOpinion?: string
   lastReviewedTime?: string
   updateTime: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -46,7 +47,7 @@ export interface PortfolioEthicsConstraintStatusVO {
   redlineCoefficient: string
   activeSanctionCount: number
   publicSummary?: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */

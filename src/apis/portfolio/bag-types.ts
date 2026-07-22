@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
 import type { PortfolioArchiveBagSectionTypeCode } from '@/types/enums/portfolio-archive-bag-section-type-enum'
 import type { PortfolioArchiveBagSourceTypeCode } from '@/types/enums/portfolio-archive-bag-source-type-enum'
@@ -24,7 +25,7 @@ export interface PortfolioArchiveBagAssembleVO {
   openGapTaskCount: number
   latestMaterialPackageExport?: PortfolioArchiveBagLatestExportVO
   preview?: PortfolioArchiveBagPreviewVO
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -98,7 +99,7 @@ export interface PortfolioArchiveBagPreviewVO {
   sections: PortfolioArchiveBagSectionVO[]
   catalogItems: PortfolioArchiveBagItemVO[]
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -142,7 +143,7 @@ export interface PortfolioArchiveScoreResultVO {
   totalScore: number
   breakdown: PortfolioArchiveScoreBreakdownItemVO[]
   computedTime?: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */

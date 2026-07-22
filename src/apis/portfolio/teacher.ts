@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioExportApprovalVO } from '@/apis/portfolio/governance'
 import type {
@@ -8,7 +9,8 @@ import type {
   PortfolioTeacherIdentityTypeCode,
   PortfolioTeacherOneTableCategoryVO,
   PortfolioTeacherOneTableGetRequest,
-  PortfolioTeacherPageRequest, PortfolioTeacherSummaryVO 
+  PortfolioTeacherPageRequest,
+  PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
 import http from '@/config/axios'
@@ -33,7 +35,7 @@ export interface PortfolioTeacherOneTableSummaryVO {
   courseArchiveFrameworkSlotDone?: number
   courseArchiveFrameworkSlotTotal?: number
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -46,7 +48,6 @@ export interface PortfolioTeacherOneTableSummaryVO {
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 多身份说明 */
   ownerMultiIdentityNote?: string
-
 }
 
 export interface PortfolioDeptOneTableSummaryVO {
@@ -100,7 +101,7 @@ export interface PortfolioDeptOneTableTeacherRowVO {
   courseArchiveFrameworkSlotDone?: number
   courseArchiveFrameworkSlotTotal?: number
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -113,7 +114,6 @@ export interface PortfolioDeptOneTableTeacherRowVO {
   ownerIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   /** 多身份说明 */
   ownerMultiIdentityNote?: string
-
 }
 
 export interface PortfolioDeptTeacherSegmentItemVO {

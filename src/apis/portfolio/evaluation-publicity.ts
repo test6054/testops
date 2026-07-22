@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
 import type { PortfolioEvaluationTaskVO } from '@/apis/portfolio/teacher-platform'
@@ -16,6 +17,8 @@ import type {
   PortfolioEvaluationTeacherResultSummaryVO,
 } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
+import type { PortfolioEvaluationRereviewOrderStatusCode } from '@/types/enums/portfolio-evaluation-rereview-order-status-enum'
+import type { PortfolioEvaluationRereviewTriggerTypeCode } from '@/types/enums/portfolio-evaluation-rereview-trigger-type-enum'
 import http from '@/config/axios'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 
@@ -59,9 +62,9 @@ export const portfolioEvaluationPublicityApi = {
     subjectTeacherUserId?: string | number
     reasonText: string
   }) => http.post<PortfolioEvaluationRereviewOrderVO>(`${BASE}/rereview/create`, data),
-  completeRereview: (data: { orderId: string | number, conclusionSummary: string }) =>
+  completeRereview: (data: { orderId: string | number; conclusionSummary: string }) =>
     http.post<PortfolioEvaluationTaskVO>(`${BASE}/rereview/complete`, data),
-  cancelRereview: (data: { orderId: string | number, reasonText: string }) =>
+  cancelRereview: (data: { orderId: string | number; reasonText: string }) =>
     http.post<PortfolioEvaluationTaskVO>(`${BASE}/rereview/cancel`, data),
   listRereview: (data: { evaluationTaskId: string | number }) =>
     http.post<PortfolioEvaluationRereviewOrderVO[]>(`${BASE}/rereview/list`, data),
@@ -75,16 +78,16 @@ export interface PortfolioEvaluationRereviewOrderVO {
   subjectTeacherName?: string
   /** edu-user 被评教师工号 */
   subjectTeacherNumber?: string
-  triggerType?: string
+  triggerType?: PortfolioEvaluationRereviewTriggerTypeCode
   triggerRefId?: string | number
-  orderStatus: string
+  orderStatus: PortfolioEvaluationRereviewOrderStatusCode
   freezeSnapshotId?: string | number
   reasonText?: string
   conclusionSummary?: string
   completedTime?: string
   createTime?: string
   /** 被评教师生命周期状态编码；整任务工单可空 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   countsInCurrentFacultyStructure?: boolean

@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type {
   PortfolioArchiveBagAssembleVO,
   PortfolioArchiveBagExportResultVO,
@@ -29,6 +30,10 @@ import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { AiTaskStatusCode } from '@/apis/quality/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PortfolioArchiveScoreRuleTypeCode } from '@/types/enums/portfolio-archive-score-rule-type-enum'
+import {
+  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
+  PortfolioArchiveScoreRuleTypeDescription,
+} from '@/types/enums/portfolio-archive-score-rule-type-enum'
 import type { PortfolioImportQualityGradeCode } from '@/types/enums/portfolio-import-quality-grade-enum'
 import type { PortfolioMultiSourceEvaluatorTypeEnum } from '@/types/enums/portfolio-multi-source-evaluator-type-enum'
 import type { PortfolioPlanningSyncConflictStrategyCode } from '@/types/enums/portfolio-planning-sync-conflict-strategy-enum'
@@ -37,10 +42,6 @@ import type { PortfolioPortraitTemplateStatusCode } from '@/types/enums/portfoli
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
-import {
-  ALL_PORTFOLIO_ARCHIVE_SCORE_RULE_TYPE_CODES,
-  PortfolioArchiveScoreRuleTypeDescription,
-} from '@/types/enums/portfolio-archive-score-rule-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 export const portfolioArchiveBagApi = {
@@ -134,7 +135,7 @@ export interface PortfolioDualTeacherApplicationVO {
   attachmentFileIds?: string[]
   eligibilityFreeze?: PortfolioDualTeacherEligibilityFreezeVO
   /** 生命周期状态编码 ACTIVE/SEALED/... */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -420,7 +421,7 @@ export interface PortfolioDevelopmentPlanVO {
   portfolioOrgId?: string
   ownerUserId?: string
   planSummary?: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -664,7 +665,7 @@ export interface PortfolioDevelopmentRecordVO {
   descriptionText?: string
   fileId?: string
   createTime?: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -817,7 +818,7 @@ export interface PortfolioKeyTeacherRegistryVO {
   createTime?: string
   updateTime?: string
   /** 生命周期状态编码 ACTIVE/SEALED/... */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -876,7 +877,7 @@ export interface PortfolioDoubleDutyRegistryVO {
   dutyScope?: string
   remark?: string
   registryStatus: PortfolioKeyTeacherRegistryStatusCode
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -957,7 +958,7 @@ export interface PortfolioTeacherSalaryVO {
   dataSource?: string
   remark?: string
   createTime?: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -1016,7 +1017,7 @@ export interface PortfolioTeacherLibraryBorrowVO {
   remark?: string
   createTime?: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -1119,7 +1120,7 @@ export interface PortfolioTeacherRecommendCandidateVO {
   ruleScore?: number
   reasonText?: string
   evidenceSummary?: PortfolioTeacherRecommendEvidenceSummary
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -1148,7 +1149,7 @@ export interface PortfolioTeacherRecommendExplainCandidateItemVO {
   /** edu-user 教师工号 */
   teacherNumber: string
   reasonText: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
@@ -1195,7 +1196,7 @@ export interface PortfolioTeacherPkCompareTeacherVO {
   dimensionRows: PortfolioTeacherPkCompareDimensionRowVO[]
 
   /** 归属教师生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 归属教师生命周期状态标签 */
   lifecycleStatusLabel?: string
   /** 档案写禁 */
@@ -1357,7 +1358,7 @@ export interface PortfolioEvaluationSubjectTeacherOptionVO {
   fullName: string
   teacherNumber: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -1526,7 +1527,7 @@ export interface PortfolioEvaluationComprehensiveTeacherRowVO {
   entryCount: number
   averageScore: number
   /** 归属教师生命周期状态编码 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 归属教师生命周期状态标签 */
   lifecycleStatusLabel?: string
   /** 档案写禁 */

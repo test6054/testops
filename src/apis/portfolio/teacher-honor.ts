@@ -1,5 +1,7 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
+import type { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
 import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import http from '@/config/axios'
 
@@ -15,12 +17,16 @@ export interface PortfolioTeacherHonorVO {
   recordDate?: string
   descriptionText?: string
   fileId?: string
+  sourceType: PortfolioBusinessDataSourceTypeCode
+  syncChannelCode?: string
+  externalId?: string
+  sourceSnapshot?: string
   updateTime?: string
   affiliationStaffNo?: string
   affiliationDepartmentId?: string
 
   /** 归属教师生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 归属教师生命周期状态标签 */
   lifecycleStatusLabel?: string
   /** 档案写禁 */

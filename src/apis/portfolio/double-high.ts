@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
 import type { PortfolioDoubleHighStageReviewStatusCode } from '@/types/enums/portfolio-double-high-stage-review-status-enum'
@@ -66,7 +67,7 @@ export interface PortfolioDoubleHighTaskVO {
   responsibleIdentityLayers?: PortfolioMultiIdentityLayerVO[]
   responsibleMultiIdentityNote?: string
   /** 责任人生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 责任人生命周期状态标签 */
   lifecycleStatusLabel?: string
   /** 责任人档案写禁 */
@@ -104,7 +105,7 @@ export interface PortfolioDoubleHighEvidenceArchiveVO {
   hasDownloadableFile: boolean
 
   /** 归属教师生命周期状态编码（台账可见不默认过滤；结构态仅标注） */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 归属教师生命周期状态标签 */
   lifecycleStatusLabel?: string
   /** 档案写禁 */
@@ -138,7 +139,7 @@ export const portfolioDoubleHighApi = {
     periodStartDate?: string
     periodEndDate?: string
     acceptanceCriteria?: string
-    stages: Array<{ stageIndex: number, stageName: string, stageDeadline?: string }>
+    stages: Array<{ stageIndex: number; stageName: string; stageDeadline?: string }>
   }) => http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/create`, data),
   claimTask: (data: { id: string }) =>
     http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/claim`, data),
@@ -157,7 +158,7 @@ export const portfolioDoubleHighApi = {
     approved: boolean
     reviewComment?: string
   }) => http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/stage/review`, data),
-  voidTask: (data: { id: string, voidReason: string }) =>
+  voidTask: (data: { id: string; voidReason: string }) =>
     http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/void`, data),
   archiveTask: (data: { id: string }) =>
     http.post<PortfolioDoubleHighTaskVO>(`${BASE}/task/archive`, data),

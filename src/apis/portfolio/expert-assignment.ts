@@ -1,6 +1,8 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
 import type { PageResult } from '@/types'
 import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfolio-archive-record-source-type-enum'
+import type { PortfolioExpertAssignmentStatusCode } from '@/types/enums/portfolio-expert-assignment-status-enum'
 import http from '@/config/axios'
 
 /** 对齐后端 PortfolioExpertMaterialScope */
@@ -18,7 +20,7 @@ export interface PortfolioExpertAssignmentVO {
   materialScope: PortfolioExpertMaterialScope
   accessToken?: string
   maskRequired: boolean
-  assignmentStatus: string
+  assignmentStatus: PortfolioExpertAssignmentStatusCode
   expireTime: string
   createTime: string
 }
@@ -31,7 +33,7 @@ export interface PortfolioExpertAssignmentSubjectTeacherVO {
   teacherUserId?: string
   maskedDisplayName: string
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -79,7 +81,7 @@ export interface PortfolioExpertReviewMaterialItemVO {
   /** 是否可用于校内硬性条件 */
   usableForCampusHardCriteria?: boolean
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   /** 生命周期状态中文标签 */
   lifecycleStatusLabel?: string
   /** 是否禁止档案写 */
@@ -100,7 +102,7 @@ export interface PortfolioExpertAssignmentReviewBundleVO {
   evaluationTaskName: string
   maskRequired: boolean
   materialScope: PortfolioExpertMaterialScope
-  assignmentStatus: string
+  assignmentStatus: PortfolioExpertAssignmentStatusCode
   expireTime: string
   readOnly: boolean
   subjectTeachers: PortfolioExpertAssignmentSubjectTeacherVO[]
@@ -121,7 +123,7 @@ export const portfolioExpertAssignmentApi = {
     id?: string | number
     evaluationTaskId?: string
     expertUserId?: string
-    assignmentStatus?: string
+    assignmentStatus?: PortfolioExpertAssignmentStatusCode
   }) =>
     http.post<PageResult<PortfolioExpertAssignmentVO>>(
       '/api/portfolio/expert-assignment/page',

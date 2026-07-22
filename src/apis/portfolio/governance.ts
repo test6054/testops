@@ -1,3 +1,4 @@
+import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioAnalysisComplianceAlertVO } from '@/apis/portfolio/analysis'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PageResult } from '@/types'
@@ -53,7 +54,7 @@ export interface PortfolioExportApprovalVO {
   subjectTeacherName?: string
   /** edu-user 标的教师工号 */
   subjectTeacherNumber?: string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   evaluationHeld?: boolean
@@ -101,7 +102,7 @@ export interface PortfolioMajorGroupPortfolioSectionItemVO {
   externalIdentity?: boolean
   identityCompositeScore?: number | string
   workloadHours?: number | string
-  lifecycleStatus?: string
+  lifecycleStatus?: PortfolioTeacherLifecycleStatusCode
   lifecycleStatusLabel?: string
   archiveWriteForbidden?: boolean
   /** 评价参评 hold（TEMP_HOLD/SEALED 等；与档案写禁分离） */
