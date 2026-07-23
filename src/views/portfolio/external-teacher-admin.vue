@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { ExcelImportRowDiagnostic } from '@/apis/platform/types'
-import type { PortfolioExternalTeacherImportBatchStatusCode } from '@/apis/portfolio/enums'
+import type {
+  PortfolioExternalTeacherImportBatchStatusCode,
+} from '@/apis/portfolio/enums'
 import type {
   PortfolioExternalTeacherImportBatchVO,
   PortfolioExternalTeacherPageRequest,
@@ -11,6 +13,7 @@ import type {
   PortfolioIndustryMentorContributionVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { PortfolioExternalTeacherContractStatusCode } from '@/types/enums/portfolio-external-teacher-contract-status-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ExcelImportSceneKey, FileUploadSceneKey } from '@/apis/platform/scene-keys'
@@ -71,11 +74,9 @@ const batchDetailOpen = ref(false)
 const batchDetail = ref<PortfolioExternalTeacherImportBatchVO | null>(null)
 const importModalOpen = ref(false)
 
-type ExternalTeacherFilters = Pick<
-  PortfolioExternalTeacherPageRequest,
-  'dataStatus' | 'teachSubject' | 'teacherSource' | 'contractStatus'
->
-& Record<string, unknown>
+type ExternalTeacherFilters = Omit<PortfolioExternalTeacherPageRequest, 'contractStatus'>
+  & { contractStatus: PortfolioExternalTeacherContractStatusCode | '' }
+  & Record<string, unknown>
 
 const {
   loading,
@@ -96,7 +97,7 @@ const {
       dataStatus: params.dataStatus,
       teachSubject: params.teachSubject?.trim() || undefined,
       teacherSource: params.teacherSource?.trim() || undefined,
-      contractStatus: params.contractStatus?.trim() || undefined,
+      contractStatus: (params.contractStatus?.trim() || undefined) as PortfolioExternalTeacherContractStatusCode | undefined,
     }),
   {
     defaultFilters: (): ExternalTeacherFilters => ({
@@ -132,7 +133,9 @@ const attachmentInputRef = ref<HTMLInputElement>()
 const uploadingAttachment = ref(false)
 const editorEpoch = ref(0)
 
-const form = reactive<PortfolioExternalTeacherSaveRequest>({
+const form = reactive<Omit<PortfolioExternalTeacherSaveRequest, 'contractStatus'> & {
+  contractStatus: PortfolioExternalTeacherContractStatusCode | ''
+}>({
   id: undefined,
   fullName: '',
   gender: '',
@@ -337,7 +340,7 @@ function buildRosterFilters() {
     dataStatus: filters.value.dataStatus,
     teachSubject: filters.value.teachSubject?.trim() || undefined,
     teacherSource: filters.value.teacherSource?.trim() || undefined,
-    contractStatus: filters.value.contractStatus?.trim() || undefined,
+    contractStatus: (filters.value.contractStatus?.trim() || undefined) as PortfolioExternalTeacherContractStatusCode | undefined,
   }
 }
 
@@ -478,7 +481,7 @@ async function saveRecord() {
       teacherSource: form.teacherSource?.trim() || undefined,
       trialScore: form.trialScore?.trim() || undefined,
       industryExperience: form.industryExperience?.trim() || undefined,
-      contractStatus: form.contractStatus?.trim() || undefined,
+      contractStatus: (form.contractStatus?.trim() || undefined) as PortfolioExternalTeacherContractStatusCode | undefined,
       contactPhone: form.contactPhone?.trim() || undefined,
       contactEmail: form.contactEmail?.trim() || undefined,
       hireStartDate: form.hireStartDate,

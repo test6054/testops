@@ -16,6 +16,7 @@ import type {
   PortfolioTeacherOneTableCategoryVO,
 } from '@/apis/portfolio/types'
 import type { BadgeTone, FilterField } from '@/components/ui-guide/ui/types'
+import type { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, ref, watch } from 'vue'
@@ -233,7 +234,7 @@ const bagFilter = ref<{
   semester: SemesterCode | undefined
   courseCode: string
   achievementType: string
-  materialType: string
+  materialType: PortfolioMaterialTypeCode | ''
 }>({
   academicYear: '',
   semester: undefined,

@@ -69,6 +69,7 @@
           />
           <UiInputNumber v-model="question.fullScore" :min="0.5" :max="1000" :step="0.5" />
           <UiTextarea v-model="question.stemText" :rows="2" placeholder="填写与受控试卷文件一致的完整题干；系统自动核验并生成指纹" :maxlength="3000" />
+          <UiTextarea v-model="question.answerInstruction" :rows="2" placeholder="填写与受控试卷一致的答题要求或特别作答说明" :maxlength="1000" />
           <UiButton v-if="paperSet.questions.length > 1" variant="ghost" size="sm" @click="removeQuestion(paperIndex, questionIndex)">移除</UiButton>
         </div>
       </section>
@@ -109,6 +110,7 @@ interface EditableQuestion {
   questionType: ExamPaperQuestionTypeCode | undefined
   fullScore: number | null
   stemText: string
+  answerInstruction: string
   layoutQuestionId?: string
 }
 interface EditablePaperSet {
@@ -171,7 +173,7 @@ const questionTypeOptions = ALL_EXAM_PAPER_QUESTION_TYPE_CODES.map((code) => ({
 const departmentName = computed(() => props.departmentName || '未配置参考院系')
 const nextKey = () => `${Date.now()}-${Math.random()}`
 function emptyQuestion(): EditableQuestion {
-  return { key: nextKey(), questionNo: '', questionType: undefined, fullScore: null, stemText: '' }
+  return { key: nextKey(), questionNo: '', questionType: undefined, fullScore: null, stemText: '', answerInstruction: '' }
 }
 function emptyPaperSet(code = 'A'): EditablePaperSet {
   return {
@@ -214,6 +216,7 @@ function resetForm(): void {
       questionType: question.questionType,
       fullScore: question.fullScore,
       stemText: question.stemText,
+      answerInstruction: question.answerInstruction,
       layoutQuestionId: question.layoutQuestionId,
     })),
   }))
@@ -247,8 +250,8 @@ function handleSave(): void {
     for (const question of item.questions) {
       if (!item.paperCode.trim() || !item.paperName.trim() || !item.sourcePdfFileId || !item.answerFileId
         || !item.scoringRubricFileId || !question.questionNo.trim() || !question.questionType
-        || !question.fullScore || !question.stemText.trim()) {
-        showFormValidationMessage('请完整填写试卷文件、答案、评分标准和受控试卷中的完整题干')
+        || !question.fullScore || !question.stemText.trim() || !question.answerInstruction.trim()) {
+        showFormValidationMessage('请完整填写试卷文件、答案、评分标准、题干和答题要求')
         return
       }
       questions.push({
@@ -256,6 +259,7 @@ function handleSave(): void {
         questionType: question.questionType,
         fullScore: question.fullScore,
         stemText: question.stemText.trim(),
+        answerInstruction: question.answerInstruction.trim(),
         layoutQuestionId: question.layoutQuestionId,
       })
     }
@@ -306,6 +310,6 @@ function handleSave(): void {
 .paper-governance-drawer__section-head p { margin: var(--dp-space-1) 0 0; color: var(--dp-text-secondary); }
 .paper-governance-drawer__paper-set { padding: var(--dp-space-4); margin-bottom: var(--dp-space-4); border: 1px solid var(--dp-border-subtle); border-radius: var(--dp-radius-panel); }
 .paper-governance-drawer__question-head { margin-top: var(--dp-space-2); }
-.paper-governance-drawer__question-row { display: grid; grid-template-columns: 100px 180px 120px minmax(0, 1fr) auto; gap: var(--dp-space-2); margin-top: var(--dp-space-2); }
+.paper-governance-drawer__question-row { display: grid; grid-template-columns: 100px 180px 120px minmax(0, 1fr) minmax(0, 1fr) auto; gap: var(--dp-space-2); margin-top: var(--dp-space-2); }
 @media (max-width: 900px) { .paper-governance-drawer__file-grid, .paper-governance-drawer__question-row { grid-template-columns: 1fr; } }
 </style>

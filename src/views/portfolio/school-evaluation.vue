@@ -854,6 +854,9 @@ void loadPage()
             <span v-if="record.suspendedFromStatus" class="school-evaluation__suspended-from">
               恢复至 {{ taskStatusLabel(record.suspendedFromStatus) }}
             </span>
+            <span v-if="record.suspendedAt" class="school-evaluation__suspended-from">
+              · 暂停自 {{ record.suspendedAt }}
+            </span>
           </template>
           <template v-else-if="column.key === 'actions'">
             <UiTableActions

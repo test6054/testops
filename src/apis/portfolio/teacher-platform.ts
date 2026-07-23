@@ -1471,6 +1471,9 @@ export interface PortfolioEvaluationTaskVO {
   sceneCode?: PortfolioEvaluationSceneCode
   targetIndicatorCode?: string
   taskStatus: PortfolioEvaluationTaskStatusEnum
+  suspendedFromStatus?: PortfolioEvaluationTaskStatusEnum
+  /** 暂停开始时间；公示期与流程时钟在此时点冻结。 */
+  suspendedAt?: string
   workgroupId?: string
   startTime?: string
   endTime?: string

@@ -1220,6 +1220,7 @@ function buildAiTaskStatusBuckets(
   counts: QualityStatusCountsResponse | null,
 ): Record<AiTaskStatusCode, number> {
   const buckets: Record<AiTaskStatusCode, number> = {
+    [AiTaskStatusCode.NOT_STARTED]: 0,
     [AiTaskStatusCode.PENDING]: 0,
     [AiTaskStatusCode.PROCESSING]: 0,
     [AiTaskStatusCode.COMPLETED]: 0,

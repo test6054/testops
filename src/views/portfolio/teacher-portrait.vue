@@ -51,6 +51,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
 import {
   ALL_PORTFOLIO_PORTRAIT_COHORT_TYPE_CODES,
   PortfolioPortraitCohortTypeCode,
@@ -379,7 +380,7 @@ async function loadSecondaryPortraitData() {
           teacherId,
           periodStart: appointmentRange.periodStart,
           periodEnd: appointmentRange.periodEnd,
-          cycleSceneCode: 'APPOINTMENT',
+          cycleSceneCode: PortfolioEvaluationSceneCode.APPOINTMENT,
         })
       : Promise.resolve(null),
   ])

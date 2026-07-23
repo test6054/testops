@@ -477,15 +477,17 @@ export function useMarkingTaskDetailState() {
     form.reviewSuggestion = first.reviewSuggestion || ''
   }
 
-  async function loadSubmittedPageAnnotations(): Promise<void> {
+  async function loadTaskPageAnnotationDrafts(): Promise<void> {
     const examId = task.value?.examId
     const paperId = paperInstanceId.value
-    if (!examId || !paperId || !wholePages.value.length) return
+    const currentTaskId = task.value?.id
+    if (!examId || !paperId || !currentTaskId || !wholePages.value.length) return
     const pageSize = Math.max(wholePages.value.length, 1)
     try {
       const page = await listAnnotations({
         examId,
         paperInstanceId: paperId,
+        taskId: currentTaskId,
         pageNum: 1,
         pageSize,
       })
@@ -568,8 +570,8 @@ export function useMarkingTaskDetailState() {
           return
         }
         syncWholeQuestionAccordion()
-        if (isWholePaperTask.value && detail.taskStatus === MarkingTaskStatusCode.FINALIZED) {
-          await loadSubmittedPageAnnotations()
+        if (isWholePaperTask.value) {
+          await loadTaskPageAnnotationDrafts()
         }
       } else {
         await openQuestionView(detail, loadGeneration)

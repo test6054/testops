@@ -249,13 +249,6 @@ async function loadMonitor() {
     showFormValidationMessage('填写基线周期时必须同时指定建设周期')
     return
   }
-  if (baselinePeriodLabel && filterForm.portfolioOrgId) {
-    loading.value = false
-    monitor.value = null
-    signals.value = []
-    showFormValidationMessage('专业群监测暂不支持基线周期对比')
-    return
-  }
   const request = {
     departmentId: filterForm.departmentId || undefined,
     portfolioOrgId: filterForm.portfolioOrgId || undefined,

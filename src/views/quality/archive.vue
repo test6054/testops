@@ -10,8 +10,6 @@ import type {
   ExpertPackageExportRequest,
 } from '@/apis/quality/archive'
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
-import type {
-  ArchiveDigitalStatusCode} from '@/types/enums/archive-digital-status-enum';
 import type { AuditTimelineEvent, SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
@@ -309,7 +307,7 @@ const editor = reactive<ArchiveSaveRequest>({
   archiveCategory: '',
   retentionPolicyCode: '',
   retentionYears: undefined,
-  digitalStatus: '' as ArchiveDigitalStatusCode | '',
+  digitalStatus: undefined,
   notes: '',
 })
 const editorTrainingPlanId = ref('')
@@ -531,7 +529,7 @@ function openCreate() {
     archiveCategory: '',
     retentionPolicyCode: '',
     retentionYears: undefined,
-    digitalStatus: '' as ArchiveDigitalStatusCode | '',
+    digitalStatus: undefined,
     notes: '',
   })
   editorTrainingPlanId.value = qualityStore.currentTrainingPlanId || ''
@@ -554,7 +552,7 @@ async function openEdit(record: ArchiveVO) {
       archiveCategory: detail.archiveCategory || '',
       retentionPolicyCode: detail.retentionPolicyCode || '',
       retentionYears: detail.retentionYears,
-      digitalStatus: detail.digitalStatus || '',
+      digitalStatus: detail.digitalStatus || undefined,
       notes: detail.notes || '',
     })
     editorTrainingPlanId.value = qualityStore.currentTrainingPlanId || ''

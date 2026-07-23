@@ -22,5 +22,5 @@ export function isPortfolioPlanningAchievementLinkStatusCode(
   value: unknown,
 ): value is PortfolioPlanningAchievementLinkStatusCode {
   return typeof value === 'string'
-    && ALL_PORTFOLIO_PLANNING_ACHIEVEMENT_LINK_STATUS_CODES.includes(value)
+    && ALL_PORTFOLIO_PLANNING_ACHIEVEMENT_LINK_STATUS_CODES.map(String).includes(value)
 }

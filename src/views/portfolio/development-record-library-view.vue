@@ -22,6 +22,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
@@ -33,7 +34,7 @@ const props = defineProps<{
   subtitle: string
   recordType: PortfolioDevelopmentRecordTypeCode
   categoryCode?: string
-  levelCode?: string
+  levelCode?: PortfolioHonorLevelCode
   nationalOnly?: boolean
   readonly?: boolean
 }>()
@@ -62,7 +63,7 @@ const {
     ...params,
     recordType: props.recordType,
     categoryCode: props.categoryCode,
-    levelCode: props.levelCode ?? (props.nationalOnly ? 'NATIONAL' : undefined),
+    levelCode: props.levelCode ?? (props.nationalOnly ? PortfolioHonorLevelCode.NATIONAL : undefined),
   }),
 )
 
@@ -75,7 +76,7 @@ const importContext = computed(() => ({
   defaultRecordType: props.recordType,
   ...(props.categoryCode ? { defaultCategoryCode: props.categoryCode } : {}),
   ...(props.levelCode ? { defaultLevelCode: props.levelCode } : {}),
-  ...(props.nationalOnly ? { defaultLevelCode: 'NATIONAL' } : {}),
+  ...(props.nationalOnly ? { defaultLevelCode: PortfolioHonorLevelCode.NATIONAL } : {}),
 }))
 
 const columns = computed<ColumnsType>(() => {
@@ -169,7 +170,7 @@ async function exportExcel() {
     const result = await portfolioDevelopmentRecordApi.exportExcel({
       recordType: props.recordType,
       categoryCode: props.categoryCode,
-      levelCode: props.levelCode ?? (props.nationalOnly ? 'NATIONAL' : undefined),
+      levelCode: props.levelCode ?? (props.nationalOnly ? PortfolioHonorLevelCode.NATIONAL : undefined),
       nationalOnly: props.nationalOnly,
     })
     await downloadPortfolioExcelExport(result)

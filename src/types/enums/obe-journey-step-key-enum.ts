@@ -1,12 +1,12 @@
 /** OBE 旅程步骤键 - ObeJourneyStepKeyEnum */
 export enum ObeJourneyStepKeyCode {
-  CONFIG = 'config',
-  PLAN = 'plan',
-  DATA = 'data',
-  CALC = 'calc',
-  AUDIT = 'audit',
-  IMPROVE = 'improve',
-  ARCHIVE = 'archive',
+  CONFIG = 'CONFIG',
+  PLAN = 'PLAN',
+  DATA = 'DATA',
+  CALC = 'CALC',
+  AUDIT = 'AUDIT',
+  IMPROVE = 'IMPROVE',
+  ARCHIVE = 'ARCHIVE',
 }
 
 export const ALL_OBE_JOURNEY_STEP_KEY_CODES: readonly ObeJourneyStepKeyCode[] = [

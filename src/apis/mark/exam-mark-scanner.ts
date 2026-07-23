@@ -342,11 +342,14 @@ export function deleteScannerDevice(id: string): Promise<boolean> {
 }
 
 /**
- * 解绑扫描设备当前 Agent 端点
+ * 解绑扫描设备当前 Agent 端点，并返回新的激活码交接信息
  * POST /api/mark/exams/scan-devices/agent-unbind
  */
-export function unbindScannerDeviceAgent(id: string): Promise<boolean> {
-  return http.post<boolean>('/api/mark/exams/scan-devices/agent-unbind', { id })
+export function unbindScannerDeviceAgent(id: string): Promise<ExamScannerDeviceActivationHandoffResponse> {
+  return http.post<ExamScannerDeviceActivationHandoffResponse>(
+    '/api/mark/exams/scan-devices/agent-unbind',
+    { id },
+  )
 }
 
 /**

@@ -19,6 +19,7 @@ import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchive
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { useUserStore } from '@/stores/modules/user'
+import { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
@@ -128,7 +129,7 @@ async function saveSalary() {
     baseAmount: form.baseAmount,
     performanceAmount: form.performanceAmount,
     allowanceAmount: form.allowanceAmount,
-    dataSource: 'MANUAL',
+    dataSource: PortfolioBusinessDataSourceTypeCode.MANUAL,
   }
   try {
     await portfolioTeacherSalaryApi.save(request)

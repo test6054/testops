@@ -15,6 +15,7 @@ export {
 export interface AnnotationQueryRequest extends QueryDto {
   examId: string
   paperInstanceId?: string
+  taskId?: string
   layoutQuestionId?: string
   gradeResultId?: string
 }
@@ -24,6 +25,7 @@ export interface AnnotationResponse {
   annotationId: string
   examId?: string
   paperInstanceId?: string
+  taskId?: string
   layoutQuestionId?: string
   pageId?: string
   gradeResultId?: string

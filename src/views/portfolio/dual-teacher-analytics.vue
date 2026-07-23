@@ -1,9 +1,8 @@
-import { PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
-import type { PortfolioDualTeacherCertLevelCode } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioDualTeacherApplicationStatusCode } from '@/apis/portfolio/enums'
 import type { PortfolioDualTeacherAnalyticsVO } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioDualTeacherCertLevelCode } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { PortfolioDualTeacherApplicationStatusDescription } from '@/apis/portfolio/enums'
@@ -16,6 +15,7 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUserStore } from '@/stores/modules/user'
+import { PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 

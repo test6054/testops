@@ -126,6 +126,7 @@ export interface ExamPaperGovernanceResponse {
     questionType: ExamPaperQuestionTypeCode
     fullScore: number
     stemText: string
+    answerInstruction: string
     stemDigest: string
     layoutQuestionId?: string
   }>>
@@ -155,6 +156,7 @@ export interface ExamPaperGovernanceQuestionItem {
   questionType: ExamPaperQuestionTypeCode
   fullScore: number
   stemText: string
+  answerInstruction: string
   layoutQuestionId?: string
 }
 

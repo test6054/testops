@@ -284,6 +284,7 @@ export const PORTFOLIO_POLICY_MATCH_CONCLUSION_TONE: Record<
 > = {
   [PortfolioPolicyMatchConclusionCode.MATCHED]: 'green',
   [PortfolioPolicyMatchConclusionCode.PARTIAL]: 'blue',
+  [PortfolioPolicyMatchConclusionCode.NEED_SUPPLEMENT]: 'orange',
   [PortfolioPolicyMatchConclusionCode.NOT_MATCHED]: 'orange',
   [PortfolioPolicyMatchConclusionCode.INSUFFICIENT_EVIDENCE]: 'gray',
 }

@@ -13,7 +13,6 @@ import type {
   PortfolioTenantConfigAuditLogVO,
 } from '@/apis/portfolio/indicator-types'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { PfExplainLogTypeCode } from '@/types/enums/pf-explain-log-type-enum'
 import type { PortfolioIndicatorTemplateParams } from '@/utils/indicator-template-params'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
@@ -47,6 +46,8 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { promptInputAsync } from '@/composables/usePromptInputDialog'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
+import { PfExplainLogTypeCode } from '@/types/enums/pf-explain-log-type-enum'
+import { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { defaultTemplateParams } from '@/utils/indicator-template-params'
 import { downloadPortfolioIndicatorExcelExport } from '@/utils/portfolio-excel-export'
@@ -102,13 +103,13 @@ const scoreExplain = ref<PfScoreExplainStructDto | undefined>()
 const eligibilityExplain = ref<PfEligibilityExplainStructDto | undefined>()
 
 const trialForm = reactive({
-  ruleType: 'THRESHOLD',
+  ruleType: PfScoreRuleTypeCode.THRESHOLD,
   indicatorCode: 'T001',
   rawValue: 8,
   auditRequired: false,
   auditApproved: true,
 })
-const trialParams = ref<PortfolioIndicatorTemplateParams>(defaultTemplateParams('THRESHOLD'))
+const trialParams = ref<PortfolioIndicatorTemplateParams>(defaultTemplateParams(PfScoreRuleTypeCode.THRESHOLD))
 
 watch(
   () => trialForm.ruleType,
@@ -762,7 +763,7 @@ watch(
                 :items="[{ key: 'explain', label: '解释' }]"
                 split
                 @action="
-                  () => openExplain(record.id, 'SCORE', record.teacherId, record.explainText)
+                  () => openExplain(record.id, PfExplainLogTypeCode.SCORE, record.teacherId, record.explainText)
                 "
               />
             </template>
@@ -817,7 +818,7 @@ watch(
                 :items="[{ key: 'explain', label: '解释' }]"
                 split
                 @action="
-                  () => openExplain(record.id, 'ELIGIBILITY', record.teacherId, record.explainText)
+                  () => openExplain(record.id, PfExplainLogTypeCode.ELIGIBILITY, record.teacherId, record.explainText)
                 "
               />
             </template>

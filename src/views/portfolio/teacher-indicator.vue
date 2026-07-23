@@ -15,6 +15,7 @@ import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
+import { PfEligibilityAuditStatusCode } from '@/types/enums/pf-eligibility-audit-status-enum'
 import { showUserError } from '@/utils/error-handler'
 
 const { targetTeacherId, canPickTeachers, scopeReady } = usePortfolioPageScope()
@@ -46,7 +47,9 @@ const evaluateRequest = computed(() => ({
   auditStatuses: [
     {
       fieldKey: 'ethicsAudit',
-      auditStatus: ethicsApproved.value ? 'APPROVED' : 'PENDING',
+      auditStatus: ethicsApproved.value
+        ? PfEligibilityAuditStatusCode.APPROVED
+        : PfEligibilityAuditStatusCode.PENDING,
     },
   ],
 }))
