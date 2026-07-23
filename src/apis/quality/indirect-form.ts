@@ -5,8 +5,8 @@
  */
 import type {
   AchievementTargetTypeCode,
+  IndirectEvaluationFormStatusCode,
   IndirectFormAccessModeCode,
-  IndirectFormStatusCode,
   IndirectFormTypeCode,
 } from './types'
 import type { SurveyIdentityFieldRequest, SurveyIdentityFieldVO } from '@/apis/public-survey'
@@ -26,7 +26,7 @@ export interface IndirectEvaluationFormVO {
   description?: string
   expectedSample?: number
   enabled?: boolean
-  status?: IndirectFormStatusCode
+  status?: IndirectEvaluationFormStatusCode
   accessToken?: string
   startTime?: string
   endTime?: string
@@ -81,7 +81,7 @@ export interface IndirectEvaluationPublishResultVO {
 export interface IndirectEvaluationProgressVO {
   formId: string
   formName: string
-  status: IndirectFormStatusCode
+  status: IndirectEvaluationFormStatusCode
   submissionCount: number
   validCount: number
   itemCount?: number

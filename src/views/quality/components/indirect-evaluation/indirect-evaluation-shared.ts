@@ -5,10 +5,10 @@ import type { RespondentTypeCode } from '@/types/enums/respondent-type-enum'
 import {
   AchievementTargetTypeCode,
   AchievementTargetTypeDescription,
+  IndirectEvaluationFormStatusCode,
+  IndirectEvaluationFormStatusDescription,
   IndirectFormAccessModeCode,
   IndirectFormAccessModeDescription,
-  IndirectFormStatusCode,
-  IndirectFormStatusDescription,
   IndirectFormTypeCode,
   IndirectFormTypeDescription,
 } from '@/apis/quality/types'
@@ -134,38 +134,38 @@ export function formTypeLabel(value: IndirectFormTypeCode): string {
   return strictEnumLabel(IndirectFormTypeDescription, value, '间接评价问卷类型')
 }
 
-export function formStatusLabel(value: IndirectFormStatusCode | undefined): string {
+export function formStatusLabel(value: IndirectEvaluationFormStatusCode | undefined): string {
   if (!value) {
     return strictEnumLabel(
-      IndirectFormStatusDescription,
-      IndirectFormStatusCode.DRAFT,
+      IndirectEvaluationFormStatusDescription,
+      IndirectEvaluationFormStatusCode.DRAFT,
       '间接评价问卷状态',
     )
   }
-  return strictEnumLabel(IndirectFormStatusDescription, value, '间接评价问卷状态')
+  return strictEnumLabel(IndirectEvaluationFormStatusDescription, value, '间接评价问卷状态')
 }
 
 export function formStatusTone(
-  value: IndirectFormStatusCode | undefined,
+  value: IndirectEvaluationFormStatusCode | undefined,
 ): 'gray' | 'green' | 'orange' | 'blue' {
-  const status = value ?? IndirectFormStatusCode.DRAFT
-  if (status === IndirectFormStatusCode.PUBLISHED) return 'green'
-  if (status === IndirectFormStatusCode.CLOSED) return 'orange'
-  if (status === IndirectFormStatusCode.ARCHIVED) return 'blue'
+  const status = value ?? IndirectEvaluationFormStatusCode.DRAFT
+  if (status === IndirectEvaluationFormStatusCode.PUBLISHED) return 'green'
+  if (status === IndirectEvaluationFormStatusCode.CLOSED) return 'orange'
+  if (status === IndirectEvaluationFormStatusCode.ARCHIVED) return 'blue'
   return 'gray'
 }
 
 export function canPublishForm(record: IndirectEvaluationFormVO): boolean {
-  const status = record.status ?? IndirectFormStatusCode.DRAFT
-  return status === IndirectFormStatusCode.DRAFT || status === IndirectFormStatusCode.CLOSED
+  const status = record.status ?? IndirectEvaluationFormStatusCode.DRAFT
+  return status === IndirectEvaluationFormStatusCode.DRAFT || status === IndirectEvaluationFormStatusCode.CLOSED
 }
 
 export function isFormStructureMutable(
   record: IndirectEvaluationFormVO | null | undefined,
 ): boolean {
   if (!record) return false
-  const status = record.status ?? IndirectFormStatusCode.DRAFT
-  return status === IndirectFormStatusCode.DRAFT || status === IndirectFormStatusCode.CLOSED
+  const status = record.status ?? IndirectEvaluationFormStatusCode.DRAFT
+  return status === IndirectEvaluationFormStatusCode.DRAFT || status === IndirectEvaluationFormStatusCode.CLOSED
 }
 
 /** C10：PUBLISHED 问卷改题型阻断文案 */
@@ -181,7 +181,7 @@ export function isFormContentEditable(
   record: IndirectEvaluationFormVO | null | undefined,
 ): boolean {
   if (!record) return false
-  return record.status === IndirectFormStatusCode.PUBLISHED
+  return record.status === IndirectEvaluationFormStatusCode.PUBLISHED
 }
 
 /** 已发布 / 已归档问卷题项结构不可编辑（与后端 assertStructureMutable 一致） */
@@ -189,8 +189,8 @@ export function isIndirectFormStructureLocked(
   record: IndirectEvaluationFormVO | null | undefined,
 ): boolean {
   if (!record) return false
-  const status = record.status ?? IndirectFormStatusCode.DRAFT
-  return status === IndirectFormStatusCode.PUBLISHED || status === IndirectFormStatusCode.ARCHIVED
+  const status = record.status ?? IndirectEvaluationFormStatusCode.DRAFT
+  return status === IndirectEvaluationFormStatusCode.PUBLISHED || status === IndirectEvaluationFormStatusCode.ARCHIVED
 }
 
 /** C10 内联引导：按问卷状态返回结构锁定说明 */
@@ -198,10 +198,10 @@ export function indirectFormStructureLockMessage(
   record: IndirectEvaluationFormVO | null | undefined,
 ): string {
   if (!record) return ''
-  if (record.status === IndirectFormStatusCode.ARCHIVED) {
+  if (record.status === IndirectEvaluationFormStatusCode.ARCHIVED) {
     return '该问卷已归档，题项结构已锁定，仅可查看配置。'
   }
-  if (record.status === IndirectFormStatusCode.PUBLISHED) {
+  if (record.status === IndirectEvaluationFormStatusCode.PUBLISHED) {
     return PUBLISHED_INDIRECT_ITEM_TYPE_CHANGE_MESSAGE
   }
   return ''
@@ -241,20 +241,20 @@ export function isTeacherResponseWritable(
   record: IndirectEvaluationFormVO | null | undefined,
 ): boolean {
   if (!record) return false
-  const status = record.status ?? IndirectFormStatusCode.DRAFT
-  return status === IndirectFormStatusCode.DRAFT || status === IndirectFormStatusCode.PUBLISHED
+  const status = record.status ?? IndirectEvaluationFormStatusCode.DRAFT
+  return status === IndirectEvaluationFormStatusCode.DRAFT || status === IndirectEvaluationFormStatusCode.PUBLISHED
 }
 
 export function canCloseForm(record: IndirectEvaluationFormVO): boolean {
-  return record.status === IndirectFormStatusCode.PUBLISHED
+  return record.status === IndirectEvaluationFormStatusCode.PUBLISHED
 }
 
 export function canShowWorkflowInsights(record: IndirectEvaluationFormVO): boolean {
-  const status = record.status ?? IndirectFormStatusCode.DRAFT
+  const status = record.status ?? IndirectEvaluationFormStatusCode.DRAFT
   return (
-    status === IndirectFormStatusCode.PUBLISHED
-    || status === IndirectFormStatusCode.CLOSED
-    || status === IndirectFormStatusCode.ARCHIVED
+    status === IndirectEvaluationFormStatusCode.PUBLISHED
+    || status === IndirectEvaluationFormStatusCode.CLOSED
+    || status === IndirectEvaluationFormStatusCode.ARCHIVED
   )
 }
 

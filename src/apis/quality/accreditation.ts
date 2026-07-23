@@ -42,11 +42,6 @@ import {
   AnnualReportMaterialCategoryDescription,
 } from '@/types/enums/annual-report-material-category-enum'
 import {
-  ALL_ANNUAL_REPORT_MATERIAL_REVIEW_STATUS_CODES,
-  AnnualReportMaterialReviewStatusCode,
-  AnnualReportMaterialReviewStatusDescription,
-} from '@/types/enums/annual-report-material-review-status-enum'
-import {
   ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES,
   AnnualReportMaterialStatusCode,
   AnnualReportMaterialStatusDescription,
@@ -88,15 +83,12 @@ export {
   ALL_ACCREDITATION_EVIDENCE_CATEGORY_CODES,
   ALL_ACCREDITATION_EVIDENCE_STATUS_CODES,
   ALL_ANNUAL_REPORT_MATERIAL_CATEGORY_CODES,
-  ALL_ANNUAL_REPORT_MATERIAL_REVIEW_STATUS_CODES,
   ALL_ANNUAL_REPORT_MATERIAL_STATUS_CODES,
   ALL_ONSITE_CHECKLIST_CATEGORY_CODES,
   ALL_ONSITE_CHECKLIST_ITEM_STATUS_CODES,
   ALL_SELF_ASSESSMENT_REVIEW_DECISION_CODES,
   AnnualReportMaterialCategoryCode,
   AnnualReportMaterialCategoryDescription,
-  AnnualReportMaterialReviewStatusCode,
-  AnnualReportMaterialReviewStatusDescription,
   AnnualReportMaterialStatusCode,
   AnnualReportMaterialStatusDescription,
   OnsiteChecklistCategoryCode,
@@ -394,7 +386,7 @@ export interface AnnualReportMaterialQueryRequest extends QueryDto {
 
 export interface AnnualReportMaterialReviewRequest {
   id: string
-  reviewStatus: AnnualReportMaterialReviewStatusCode
+  reviewStatus: AnnualReportMaterialStatusCode
   reviewComment?: string
 }
 

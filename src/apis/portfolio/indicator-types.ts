@@ -7,8 +7,6 @@ import type { PfEligibilityNodeTypeCode } from '@/types/enums/pf-eligibility-nod
 import type { PfEligibilityRuleStatusCode } from '@/types/enums/pf-eligibility-rule-status-enum'
 import type { PfExplainLogTypeCode } from '@/types/enums/pf-explain-log-type-enum'
 import type { PfImpactApprovalStatusCode } from '@/types/enums/pf-impact-approval-status-enum'
-import type {
-  PfIndicatorBusinessReferenceSceneCode} from '@/types/enums/pf-indicator-business-reference-scene-enum';
 import type { PfIndicatorDataSourceChannelCode } from '@/types/enums/pf-indicator-data-source-channel-enum'
 import type { PfIndicatorPublishChangeTypeCode } from '@/types/enums/pf-indicator-publish-change-type-enum'
 import type { PfIndicatorStatusCode } from '@/types/enums/pf-indicator-status-enum'
@@ -26,10 +24,6 @@ import {
 } from '@/types/enums/pf-eligibility-node-type-enum'
 import { PfImpactReportStatusCode } from '@/types/enums/pf-impact-report-status-enum'
 import {
-  ALL_PF_INDICATOR_BUSINESS_REFERENCE_SCENE_CODES,
-  PfIndicatorBusinessReferenceSceneDescription,
-} from '@/types/enums/pf-indicator-business-reference-scene-enum'
-import {
   ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES,
   PfIndicatorDataSourceChannelDescription,
 } from '@/types/enums/pf-indicator-data-source-channel-enum'
@@ -42,7 +36,8 @@ import {
   PfModelStatusDescription,
 } from '@/types/enums/pf-model-status-enum'
 import {
-  ALL_PF_SCENE_CODES,
+  PF_BUSINESS_REFERENCE_SCENE_CODES,
+  PF_MODEL_SCENE_CODES,
   PfSceneCode,
   PfSceneCodeDescription,
 } from '@/types/enums/pf-scene-code-enum'
@@ -59,7 +54,7 @@ export {
 } from '@/types/enums/pf-current-task-rule-strategy-enum'
 
 export const PF_SCENE_CODE_OPTIONS: Array<{ value: PfSceneCode, label: string }>
-  = ALL_PF_SCENE_CODES.map((value) => ({
+  = PF_MODEL_SCENE_CODES.map((value) => ({
     value,
     label: strictEnumLabel(PfSceneCodeDescription, value, '指标场景编码'),
   }))
@@ -100,20 +95,19 @@ export {
   PfImpactReportStatusDescription,
 } from '@/types/enums/pf-impact-report-status-enum'
 
-/** 指标业务引用场景 - PfIndicatorBusinessReferenceSceneEnum */
 export {
-  ALL_PF_INDICATOR_BUSINESS_REFERENCE_SCENE_CODES,
-  PfIndicatorBusinessReferenceSceneCode,
-  PfIndicatorBusinessReferenceSceneDescription,
-} from '@/types/enums/pf-indicator-business-reference-scene-enum'
+  ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES,
+  PfIndicatorDataSourceChannelCode,
+  PfIndicatorDataSourceChannelDescription,
+} from '@/types/enums/pf-indicator-data-source-channel-enum'
 
 export const PF_INDICATOR_BUSINESS_REFERENCE_SCENE_OPTIONS: Array<{
-  value: PfIndicatorBusinessReferenceSceneCode
+  value: PfSceneCode
   label: string
-}> = ALL_PF_INDICATOR_BUSINESS_REFERENCE_SCENE_CODES.map((value) => ({
+}> = PF_BUSINESS_REFERENCE_SCENE_CODES.map((value) => ({
   value,
   label: strictEnumLabel(
-    PfIndicatorBusinessReferenceSceneDescription,
+    PfSceneCodeDescription,
     value,
     '指标业务引用场景',
   ),
@@ -128,10 +122,10 @@ export const PF_INDICATOR_DATA_SOURCE_CHANNEL_OPTIONS: Array<{
 }))
 
 export {
-  ALL_PF_INDICATOR_DATA_SOURCE_CHANNEL_CODES,
-  PfIndicatorDataSourceChannelCode,
-  PfIndicatorDataSourceChannelDescription,
-} from '@/types/enums/pf-indicator-data-source-channel-enum'
+  ALL_PF_INDICATOR_STATUS_CODES,
+  PfIndicatorStatusCode,
+  PfIndicatorStatusDescription,
+} from '@/types/enums/pf-indicator-status-enum'
 
 export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode, label: string }>
   = ALL_PF_SCORE_RULE_TYPE_CODES.map((value) => ({
@@ -140,10 +134,10 @@ export const PF_SCORE_RULE_TYPE_OPTIONS: Array<{ value: PfScoreRuleTypeCode, lab
   }))
 
 export {
-  ALL_PF_INDICATOR_STATUS_CODES,
-  PfIndicatorStatusCode,
-  PfIndicatorStatusDescription,
-} from '@/types/enums/pf-indicator-status-enum'
+  ALL_PF_MODEL_STATUS_CODES,
+  PfModelStatusCode,
+  PfModelStatusDescription,
+} from '@/types/enums/pf-model-status-enum'
 
 export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode, label: string }>
   = ALL_PF_MODEL_STATUS_CODES.map((value) => ({
@@ -152,10 +146,10 @@ export const PF_MODEL_STATUS_OPTIONS: Array<{ value: PfModelStatusCode, label: s
   }))
 
 export {
-  ALL_PF_MODEL_STATUS_CODES,
-  PfModelStatusCode,
-  PfModelStatusDescription,
-} from '@/types/enums/pf-model-status-enum'
+  PfRuleChangeLevelCode,
+  PfRuleChangeLevelDescription,
+  pfRuleChangeLevelRequiresApproval,
+} from '@/types/enums/pf-rule-change-level-enum'
 
 export const PF_IMPACT_REPORT_STATUS_TONE: Record<
   PfImpactReportStatusCode,
@@ -185,7 +179,7 @@ export interface PortfolioIndicatorReferenceSceneVO {
 
 /** 指标业务场景引用行 - PortfolioIndicatorBusinessSceneReferenceVO */
 export interface PortfolioIndicatorBusinessSceneReferenceVO {
-  referenceScene: PfIndicatorBusinessReferenceSceneCode
+  referenceScene: PfSceneCode
   enabled?: boolean
 }
 
@@ -374,13 +368,15 @@ export interface PortfolioIndicatorPlatformSummaryVO {
 }
 
 export {
-  PfRuleChangeLevelCode,
-  PfRuleChangeLevelDescription,
-  pfRuleChangeLevelRequiresApproval,
-} from '@/types/enums/pf-rule-change-level-enum'
+  ALL_PF_SCENE_CODES,
+  PF_BUSINESS_REFERENCE_SCENE_CODES,
+  PF_MODEL_SCENE_CODES,
+  PfSceneCode,
+  PfSceneCodeDescription,
+} from '@/types/enums/pf-scene-code-enum'
 
 export interface PortfolioIndicatorBusinessReferenceStatusVO {
-  referenceScene: PfIndicatorBusinessReferenceSceneCode
+  referenceScene: PfSceneCode
   referencedIndicatorCount: number
   enabledIndicatorCount: number
   referenceReady: boolean
@@ -427,7 +423,7 @@ export interface PortfolioTenantIndicatorConfigVO {
   capScore?: number
   paramsOverride?: PortfolioIndicatorSeedTemplateParamsDto
   applicableTeacherTypes?: string
-  applicableScenes?: PfIndicatorBusinessReferenceSceneCode[]
+  applicableScenes?: PfSceneCode[]
   auditChain?: PortfolioIndicatorAuditChainDto
 }
 
@@ -438,7 +434,7 @@ export interface PortfolioTenantIndicatorConfigSaveRequest {
   capScore?: number
   paramsOverride?: PortfolioIndicatorSeedTemplateParamsDto
   applicableTeacherTypes?: string
-  applicableScenes?: PfIndicatorBusinessReferenceSceneCode[]
+  applicableScenes?: PfSceneCode[]
   auditChain?: PortfolioIndicatorAuditChainDto
 }
 
@@ -775,12 +771,6 @@ export interface PortfolioIndicatorAutoCollectSummaryResponse {
 export interface PortfolioIndicatorAutoCollectPageRequest extends QueryDto {
   teacherId: string
 }
-
-export {
-  ALL_PF_SCENE_CODES,
-  PfSceneCode,
-  PfSceneCodeDescription,
-} from '@/types/enums/pf-scene-code-enum'
 
 export const PF_ELIGIBILITY_NODE_TYPE_OPTIONS: Array<{
   value: PfEligibilityNodeTypeCode

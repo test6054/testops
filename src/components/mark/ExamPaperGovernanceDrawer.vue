@@ -85,7 +85,8 @@ import type {
 } from '@/apis/mark/paper-governance'
 import { computed, reactive, watch } from 'vue'
 import {
-  ALL_EXAM_PAPER_QUESTION_TYPE_CODES,
+  EXAM_PAPER_OBJECTIVE_QUESTION_TYPE_CODES,
+  EXAM_PAPER_SUBJECTIVE_QUESTION_TYPE_CODES,
   ExamAssessmentModeCode,
   ExamPaperQuestionTypeDescription,
   ExamPaperReviewStageCode,
@@ -166,10 +167,22 @@ const writtenExamModeOptions = [
   { value: ExamWrittenExamModeCode.CLOSED_BOOK, label: '闭卷' },
   { value: ExamWrittenExamModeCode.OPEN_BOOK, label: '开卷' },
 ]
-const questionTypeOptions = ALL_EXAM_PAPER_QUESTION_TYPE_CODES.map((code) => ({
-  value: code,
-  label: ExamPaperQuestionTypeDescription[code],
-}))
+const questionTypeOptions = [
+  {
+    label: '客观性试题',
+    options: EXAM_PAPER_OBJECTIVE_QUESTION_TYPE_CODES.map((code) => ({
+      value: code,
+      label: ExamPaperQuestionTypeDescription[code],
+    })),
+  },
+  {
+    label: '主观性试题',
+    options: EXAM_PAPER_SUBJECTIVE_QUESTION_TYPE_CODES.map((code) => ({
+      value: code,
+      label: ExamPaperQuestionTypeDescription[code],
+    })),
+  },
+]
 const departmentName = computed(() => props.departmentName || '未配置参考院系')
 const nextKey = () => `${Date.now()}-${Math.random()}`
 function emptyQuestion(): EditableQuestion {

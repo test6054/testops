@@ -6,6 +6,7 @@ export enum PortfolioHonorLevelCode {
   MUNICIPAL = 'MUNICIPAL',
   SCHOOL = 'SCHOOL',
   CSSCI = 'CSSCI',
+  SCI = 'SCI',
   OTHER = 'OTHER',
 }
 
@@ -15,6 +16,7 @@ export const ALL_PORTFOLIO_HONOR_LEVEL_CODES: readonly PortfolioHonorLevelCode[]
   PortfolioHonorLevelCode.MUNICIPAL,
   PortfolioHonorLevelCode.SCHOOL,
   PortfolioHonorLevelCode.CSSCI,
+  PortfolioHonorLevelCode.SCI,
   PortfolioHonorLevelCode.OTHER,
 ]
 
@@ -24,6 +26,7 @@ export const PortfolioHonorLevelDescription: Record<PortfolioHonorLevelCode, str
   [PortfolioHonorLevelCode.MUNICIPAL]: '市级',
   [PortfolioHonorLevelCode.SCHOOL]: '校级',
   [PortfolioHonorLevelCode.CSSCI]: 'CSSCI',
+  [PortfolioHonorLevelCode.SCI]: 'SCI',
   [PortfolioHonorLevelCode.OTHER]: '其他',
 }
 

@@ -8,7 +8,6 @@ import type {
 import { onMounted, ref } from 'vue'
 import { portfolioIndicatorTenantApi } from '@/apis/portfolio/indicator'
 import {
-  PfIndicatorBusinessReferenceSceneDescription,
   PfIndicatorDataSourceChannelDescription,
   PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
@@ -33,7 +32,7 @@ function modelSceneLabel(scene: PortfolioIndicatorReferenceSceneVO): string {
 
 function businessSceneLabel(scene: PortfolioIndicatorBusinessSceneReferenceVO): string {
   return strictEnumLabel(
-    PfIndicatorBusinessReferenceSceneDescription,
+    PfSceneCodeDescription,
     scene.referenceScene,
     '业务引用场景',
   )
