@@ -38,6 +38,7 @@ import {
   PortfolioComplianceScopeTypeDescription,
 } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import { showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -435,14 +436,7 @@ onMounted(() => {
                     v-if="record.lifecycleStatus"
                     size="sm"
                     :tone="
-                      record.lifecycleStatus === 'ACTIVE'
-                        ? 'green'
-                        : record.lifecycleStatus === 'TEMP_HOLD'
-                          ? 'orange'
-                          : record.lifecycleStatus === 'SEALED'
-                            || record.lifecycleStatus === 'TRANSFERRED'
-                            ? 'red'
-                            : 'gray'
+                      portfolioLifecycleTagTone(record.lifecycleStatus)
                     "
                   >
                     {{ record.lifecycleStatusLabel || record.lifecycleStatus }}

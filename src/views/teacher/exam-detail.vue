@@ -32,15 +32,6 @@
       </ContextBar>
     </template>
 
-    <template v-if="detail && overviewSignalMetrics.length > 0" #signal>
-      <SignalBand
-        compact
-        variant="panel"
-        :metrics="overviewSignalMetrics"
-        @metric-click="handleOverviewMetricClick"
-      />
-    </template>
-
     <UiSkeletonState
       v-if="pageLoading"
       variant="card"
@@ -50,42 +41,25 @@
     />
 
     <UiEmpty
-      v-else-if="!detail || !snapshot?.dashboardPanel"
+      v-else-if="!detail || !examId"
       size="sm"
       description="考试概览暂不可用，请刷新或从考试列表重新进入"
       class="exam-overview__empty"
     />
 
-    <template v-else>
-      <div class="exam-overview__merged">
-        <ExamWorkbenchPrepChecklist
-          :steps="snapshot.prepSteps"
-          @step-navigate="handlePrepStepNavigate"
-        />
-        <ExamQuestionTypeChart
-          :data="questionTypeDistribution"
-          :loading="questionTypeLoading"
-        />
-      </div>
-
-      <ExamWorkbenchOverviewDashboard
-        :detail="detail"
-        :marking-progress="markingProgress ?? null"
-        :stages="snapshot.stages"
-        :dashboard-panel="snapshot.dashboardPanel"
-        :suggested-stage-title="suggestedStage?.title"
-        :suggested-stage-status="suggestedStageStatus"
-        :recommended-primary-label="recommendedPrimaryLabel"
-        :recommended-secondary-label="recommendedSecondaryLabel"
-        :recommended-primary-disabled="recommendedPrimaryDisabled"
-        :recommended-primary-disabled-reason="recommendedPrimaryDisabledReason"
-        @stage-click="handleStageClick"
-        @primary-action="runRecommendedPrimaryAction"
-        @secondary-action="runRecommendedSecondaryAction"
-        @enter-quality="goMarkQuality"
-        @todo-navigate="handleTodoNavigate"
-      />
-    </template>
+    <ExamWorkbenchOverviewDashboard
+      v-else
+      ref="overviewDashboardRef"
+      :exam-id="examId"
+      :detail="detail"
+      :recommended-primary-label="recommendedPrimaryLabel"
+      :recommended-secondary-label="recommendedSecondaryLabel"
+      @primary-action="runRecommendedPrimaryAction"
+      @secondary-action="runRecommendedSecondaryAction"
+      @enter-quality="goMarkQuality"
+      @todo-navigate="handleTodoNavigate"
+      @prep-step-navigate="handlePrepStepNavigate"
+    />
   </StageWorkbenchShell>
 
   <ExamEditDrawer
@@ -97,21 +71,18 @@
 
 <script lang="ts" setup>
 import type { ExamDetailResponse } from '@/apis/mark/exam'
-import type { ExamQuestionTypeDistributionResponse, ExamWorkbenchStageKeyCode } from '@/apis/mark/exam-progress'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
-import type { SignalMetric, WorkbenchStage } from '@/types/workbench'
+import type { WorkbenchStage } from '@/types/workbench'
 import { storeToRefs } from 'pinia'
-import { computed, onActivated, ref, watch } from 'vue'
+import { computed, onActivated, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { EXAM_KIND_TONE, ExamKindDescription, ExamStatusCode } from '@/apis/mark/exam'
-import { getQuestionTypeDistribution } from '@/apis/mark/exam-progress'
 import ExamEditDrawer from '@/components/mark/ExamEditDrawer.vue'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
-import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useExamJourneyContextBar } from '@/composables/useExamJourneyContextBar'
 import { useMarkWorkbenchContext } from '@/composables/useMarkWorkbenchContext'
@@ -125,9 +96,7 @@ import {
 } from '@/utils/exam-workspace-entry-gates'
 import { navigateToMarkStage } from '@/utils/mark-stage-navigation'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
-import ExamQuestionTypeChart from '@/views/teacher/exam-workspace/ExamQuestionTypeChart.vue'
 import ExamWorkbenchOverviewDashboard from '@/views/teacher/exam-workspace/ExamWorkbenchOverviewDashboard.vue'
-import ExamWorkbenchPrepChecklist from '@/views/teacher/exam-workspace/ExamWorkbenchPrepChecklist.vue'
 
 defineOptions({ name: 'TeacherExamWorkspaceOverview' })
 
@@ -138,7 +107,6 @@ const {
   examDetailLoading,
   markingProgress,
   snapshot,
-  loading: snapshotLoading,
   refreshChrome,
 } = useMarkWorkbenchContext()
 
@@ -154,34 +122,10 @@ const { suggestedStageKey, orderedStages } = storeToRefs(markStageStore)
 
 const detail = computed(() => examDetail?.value ?? null)
 const pageLoading = computed(
-  () =>
-    (snapshotLoading.value && !snapshot.value)
-    || (examDetailLoading?.value === true && !detail.value),
+  () => examDetailLoading?.value === true && !detail.value,
 )
 
-const questionTypeDistribution = ref<ExamQuestionTypeDistributionResponse | null>(null)
-const questionTypeLoading = ref(false)
-
-async function loadQuestionTypeDistribution(): Promise<void> {
-  const id = examId.value
-  if (!id) return
-  questionTypeLoading.value = true
-  try {
-    questionTypeDistribution.value = await getQuestionTypeDistribution(id)
-  } catch {
-    questionTypeDistribution.value = null
-  } finally {
-    questionTypeLoading.value = false
-  }
-}
-
-watch(
-  examId,
-  () => {
-    void loadQuestionTypeDistribution()
-  },
-  { immediate: true },
-)
+const overviewDashboardRef = ref<InstanceType<typeof ExamWorkbenchOverviewDashboard> | null>(null)
 
 const editDrawerOpen = ref(false)
 // MVR-328：编辑考试仅主考；仅认 BE canManageOwnerExamLifecycleWrites===true
@@ -201,18 +145,13 @@ async function handleExamEdited(): Promise<void> {
   if (refreshChrome) {
     await refreshChrome()
   }
+  await overviewDashboardRef.value?.reload?.()
 }
 
 const suggestedStage = computed<WorkbenchStage | null>(() => {
   const key = suggestedStageKey.value
   if (!key) return null
   return orderedStages.value.find((stage) => stage.key === key) ?? null
-})
-
-const suggestedStageStatus = computed(() => {
-  const key = suggestedStageKey.value
-  if (!key || !snapshot.value) return undefined
-  return snapshot.value.stages.find((stage) => stage.key === key)?.status
 })
 
 const prepBlockingReasons = computed(() => snapshot.value?.prepBlockingReasons ?? [])
@@ -258,52 +197,6 @@ const recommendedSecondaryLabel = computed(() => {
   return '扫描运营'
 })
 
-const recommendedPrimaryDisabled = computed(() => false)
-const recommendedPrimaryDisabledReason = computed(() => '')
-
-const markingPercent = computed(() => {
-  const progress = markingProgress?.value
-  if (!progress || progress.totalQuestionGradeCount <= 0) return 0
-  return Math.round((progress.confirmedQuestionGradeCount / progress.totalQuestionGradeCount) * 100)
-})
-
-const overviewSignalMetrics = computed((): SignalMetric[] => {
-  const metrics: SignalMetric[] = []
-  const progress = markingProgress?.value
-  if (progress && progress.totalQuestionGradeCount > 0) {
-    metrics.push({
-      key: 'marking',
-      label: '批阅完成率',
-      value: markingPercent.value,
-      unit: '%',
-      tone: markingPercent.value >= 100 ? 'green' : 'blue',
-      clickable: true,
-    })
-  }
-  if (progress && progress.scanAttentionCount > 0) {
-    metrics.push({
-      key: 'scanAttention',
-      label: '扫描待处理',
-      value: progress.scanAttentionCount,
-      unit: '项',
-      tone: 'orange',
-      clickable: true,
-    })
-  }
-  const panel = snapshot.value?.dashboardPanel
-  if (panel && panel.quickStats.arbitrationPendingCount > 0) {
-    metrics.push({
-      key: 'arbitration',
-      label: '仲裁待审核',
-      value: panel.quickStats.arbitrationPendingCount,
-      unit: '项',
-      tone: 'orange',
-      clickable: true,
-    })
-  }
-  return metrics.slice(0, 6)
-})
-
 function examKindTone(examKind: ExamDetailResponse['examKind']): BadgeTone {
   return strictEnumTone(EXAM_KIND_TONE, examKind, '考试性质')
 }
@@ -316,13 +209,6 @@ function examKindLabel(exam: ExamDetailResponse): string {
 function goSuggestedStage(): void {
   const key = suggestedStageKey.value
   if (!key || !examId.value) return
-  navigateToMarkStage(router, key, examId.value, {
-    scanAttentionCount: markingProgress?.value?.scanAttentionCount,
-  })
-}
-
-function handleStageClick(key: ExamWorkbenchStageKeyCode): void {
-  if (!examId.value) return
   navigateToMarkStage(router, key, examId.value, {
     scanAttentionCount: markingProgress?.value?.scanAttentionCount,
   })
@@ -424,30 +310,14 @@ function handleTodoNavigate(routeName: string | undefined, targetExamId: string 
   })
 }
 
-function handleOverviewMetricClick(key: string): void {
-  if (key === 'marking') {
-    void router.push({
-      name: 'TeacherExamWorkspaceMarkingProgress',
-      params: { examId: examId.value },
-    })
-    return
-  }
-  if (key === 'scanAttention') {
-    goScanMonitor()
-    return
-  }
-  if (key === 'arbitration') {
-    void router.push({
-      name: 'TeacherExamWorkspaceMarkingArbitration',
-      params: { examId: examId.value },
-    })
-  }
-}
-
 onActivated(() => {
-  if (examId.value && refreshChrome) {
+  if (!examId.value) {
+    return
+  }
+  if (refreshChrome) {
     void refreshChrome()
   }
+  void overviewDashboardRef.value?.reload?.()
 })
 </script>
 
@@ -458,16 +328,5 @@ onActivated(() => {
 
 .exam-overview__empty {
   padding: 20px 0;
-}
-
-.exam-overview__merged {
-  display: grid;
-  grid-template-columns: 1.6fr 1fr;
-  gap: var(--dp-space-4);
-  margin-bottom: var(--dp-space-4);
-
-  @media (max-width: 960px) {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

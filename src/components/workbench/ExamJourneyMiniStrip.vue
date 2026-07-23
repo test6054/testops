@@ -6,7 +6,7 @@
       type="button"
       class="journey-mini__step"
       :class="stepClass(stage.status)"
-      :title="stage.title"
+      :title="stageTitle(stage)"
       @click="emit('stage-click', stage.key)"
     />
     <span class="journey-mini__label">{{ completedCount }}/{{ stages.length }} 已完成</span>
@@ -14,29 +14,37 @@
 </template>
 
 <script lang="ts" setup>
-import type { ExamWorkbenchStageItemResponse, ExamWorkbenchStageKeyCode, WorkbenchStageStatusCode } from '@/apis/mark/exam-progress'
+import type { WorkbenchStage } from '@/types/workbench'
 import { computed } from 'vue'
 
 defineOptions({ name: 'ExamJourneyMiniStrip' })
 
 const props = defineProps<{
-  stages: ExamWorkbenchStageItemResponse[]
+  stages: WorkbenchStage[]
 }>()
 
 const emit = defineEmits<{
-  'stage-click': [key: ExamWorkbenchStageKeyCode]
+  'stage-click': [key: string]
 }>()
 
 const completedCount = computed(() =>
   props.stages.filter((stage) => stage.status === 'completed').length,
 )
 
-function stepClass(status: WorkbenchStageStatusCode): string {
+function stepClass(status: WorkbenchStage['status']): string {
   if (status === 'completed') return 'journey-mini__step--done'
   if (status === 'active') return 'journey-mini__step--active'
   if (status === 'warning' || status === 'error' || status === 'blocked') {
     return 'journey-mini__step--warning'
   }
   return ''
+}
+
+function stageTitle(stage: WorkbenchStage): string {
+  const parts = [stage.title]
+  if (stage.statusText?.trim()) {
+    parts.push(stage.statusText.trim())
+  }
+  return parts.join(' · ')
 }
 </script>

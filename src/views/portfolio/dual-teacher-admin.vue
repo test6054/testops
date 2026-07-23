@@ -36,6 +36,7 @@ import { PORTFOLIO_DUAL_TEACHER_CERT_LEVEL_LABEL } from '@/types/enums/portfolio
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -161,14 +162,6 @@ const columns: ColumnsType = [
   { title: '操作', key: 'actions', width: 260 },
 ]
 
-function lifecycleTagTone(
-  record: PortfolioDualTeacherApplicationVO,
-): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
 
 async function previewEligibility(id: string) {
   if (writing.value) {
@@ -484,7 +477,7 @@ async function handleImportSuccess() {
             </UiTag>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
 

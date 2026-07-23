@@ -17,6 +17,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
@@ -50,12 +51,12 @@ function materialRowKey(record: unknown): string {
   return row.materialRef || row.archiveRecordId || `${row.maskedTeacherLabel}-${row.categoryCode}-${row.academicYear}`
 }
 
-function subjectLifecycleTone(record: unknown): 'green' | 'orange' {
-  return subjectTeacherRow(record).lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'
+function subjectLifecycleTone(record: unknown) {
+  return portfolioLifecycleTagTone(subjectTeacherRow(record).lifecycleStatus)
 }
 
-function materialLifecycleTone(record: unknown): 'green' | 'orange' {
-  return materialRow(record).lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'
+function materialLifecycleTone(record: unknown) {
+  return portfolioLifecycleTagTone(materialRow(record).lifecycleStatus)
 }
 
 function identityScopeTone(record: unknown): 'orange' | 'green' | 'blue' {

@@ -52,6 +52,19 @@
         </div>
         <span v-if="metric.helper" class="signal-band__helper">{{ metric.helper }}</span>
         <span
+          v-if="shouldShowProgress(metric)"
+          class="signal-band__progress"
+          role="progressbar"
+          :aria-valuenow="metric.progress"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
+          <span
+            class="signal-band__progress-bar"
+            :style="{ width: `${metric.progress}%` }"
+          />
+        </span>
+        <span
           v-if="sparkPolyline(metric)"
           class="signal-band__spark"
           aria-hidden="true"
@@ -137,6 +150,15 @@ function trendClass(metric: SignalMetric): string {
   const isUp = trend > 0
   const isAdverse = polarity === 'negative' ? isUp : !isUp
   return isAdverse ? 'signal-band__trend--adverse' : 'signal-band__trend--favorable'
+}
+
+/** 仅 showProgress 显式开启且 progress 为 [0,100] 有限数时渲染 */
+function shouldShowProgress(metric: SignalMetric): boolean {
+  if (metric.showProgress !== true) {
+    return false
+  }
+  const progress = metric.progress
+  return typeof progress === 'number' && Number.isFinite(progress) && progress >= 0 && progress <= 100
 }
 
 /** 仅渲染 Live sparkValues，不编造序列 */
@@ -461,6 +483,24 @@ function sparkPolyline(metric: SignalMetric): string {
   font-size: var(--dp-type-hint-size);
   line-height: var(--dp-type-hint-line-height);
   color: var(--dp-text-muted);
+}
+
+.signal-band__progress {
+  display: block;
+  width: 100%;
+  max-width: 120px;
+  height: 3px;
+  margin-top: var(--dp-space-1);
+  border-radius: var(--dp-radius-full);
+  background: var(--dp-gray-100);
+  overflow: hidden;
+}
+
+.signal-band__progress-bar {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--dp-color-primary);
 }
 
 .signal-band__value--green {

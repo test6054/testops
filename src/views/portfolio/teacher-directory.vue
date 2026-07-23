@@ -63,6 +63,7 @@ import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAcce
 import { getUserStatusLabel, USER_STATUS_FILTER_OPTIONS } from '@/types/enums/user-status'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -278,12 +279,6 @@ function identityStatusLabel(status?: PortfolioTeacherIdentityVO['identityStatus
   return strictEnumLabel(PortfolioTeacherIdentityStatusDescription, status, '教师身份状态')
 }
 
-function lifecycleTagTone(record: PortfolioTeacherSummaryVO): 'green' | 'red' | 'orange' | 'gray' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.archiveWriteForbidden) return 'red'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  return 'gray'
-}
 
 function completenessRowLabel(record: PortfolioTeacherSummaryVO): string {
   if (record.completenessPercent == null) {
@@ -988,7 +983,7 @@ watch(
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus, { archiveWriteForbidden: record.archiveWriteForbidden })">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>

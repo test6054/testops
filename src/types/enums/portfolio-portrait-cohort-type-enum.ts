@@ -4,6 +4,7 @@ export enum PortfolioPortraitCohortTypeCode {
   TITLE = 'TITLE',
   JOB_LEVEL = 'JOB_LEVEL',
   PROGRAM_GROUP = 'PROGRAM_GROUP',
+  AGE_BAND = 'AGE_BAND',
   SCHOOL = 'SCHOOL',
 }
 
@@ -12,6 +13,7 @@ export const ALL_PORTFOLIO_PORTRAIT_COHORT_TYPE_CODES: readonly PortfolioPortrai
   PortfolioPortraitCohortTypeCode.TITLE,
   PortfolioPortraitCohortTypeCode.JOB_LEVEL,
   PortfolioPortraitCohortTypeCode.PROGRAM_GROUP,
+  PortfolioPortraitCohortTypeCode.AGE_BAND,
   PortfolioPortraitCohortTypeCode.SCHOOL,
 ]
 
@@ -20,5 +22,6 @@ export const PortfolioPortraitCohortTypeDescription: Record<PortfolioPortraitCoh
   [PortfolioPortraitCohortTypeCode.TITLE]: '同职称',
   [PortfolioPortraitCohortTypeCode.JOB_LEVEL]: '同岗位等级',
   [PortfolioPortraitCohortTypeCode.PROGRAM_GROUP]: '同专业群',
+  [PortfolioPortraitCohortTypeCode.AGE_BAND]: '同年龄段',
   [PortfolioPortraitCohortTypeCode.SCHOOL]: '全校',
 }

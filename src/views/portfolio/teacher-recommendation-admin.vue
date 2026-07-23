@@ -37,6 +37,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   formatPortfolioTeacherDisplay,
   formatPortfolioTeacherPkDisplay,
@@ -81,14 +82,6 @@ const candidateColumns: ColumnsType = [
   { title: '推荐理由', dataIndex: 'reasonText', key: 'reasonText' },
 ]
 
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
 
 const runColumns: ColumnsType = [
   { title: '运行编号', dataIndex: 'id', key: 'id', width: 100 },
@@ -475,7 +468,7 @@ watch(
               />
             </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>

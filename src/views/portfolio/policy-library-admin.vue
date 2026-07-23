@@ -62,8 +62,7 @@ const mappingSaving = computed(() => operationKey.value.startsWith('mapping:save
 const detail = ref<PortfolioPolicyDocumentDetailVO | null>(null)
 const supersedeSourceId = ref('')
 const editingId = ref<string | undefined>(undefined)
-/** 含历史版本筛选：勾选后列表应包含同一政策根的历史版本。 */
-// TODO: page 接口尚未支持 includeHistory 查询参数，待后端补充后在 loadPage 请求中传入 includeHistory.value
+/** 含历史版本筛选：勾选后列表包含被替代/已废止版本。 */
 const includeHistory = ref(false)
 
 const filterForm = reactive({
@@ -182,6 +181,7 @@ async function loadPage() {
     policyLevel: filterForm.policyLevel,
     documentStatus: filterForm.documentStatus,
     documentTitle: filterForm.documentTitle.trim() || undefined,
+    includeHistory: includeHistory.value || undefined,
   }
   loading.value = true
   loadError.value = false

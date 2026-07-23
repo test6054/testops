@@ -25,6 +25,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   formatPortfolioTeacherDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
@@ -409,14 +410,7 @@ watch(
               v-if="reportDetail.lifecycleStatus"
               size="sm"
               :tone="
-                reportDetail.lifecycleStatus === 'ACTIVE'
-                  ? 'green'
-                  : reportDetail.lifecycleStatus === 'TEMP_HOLD'
-                    ? 'orange'
-                    : reportDetail.lifecycleStatus === 'SEALED'
-                      || reportDetail.lifecycleStatus === 'TRANSFERRED'
-                      ? 'red'
-                      : 'gray'
+                portfolioLifecycleTagTone(reportDetail.lifecycleStatus)
               "
             >
               {{ reportDetail.lifecycleStatusLabel || reportDetail.lifecycleStatus }}

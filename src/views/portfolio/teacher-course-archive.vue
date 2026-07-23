@@ -3,6 +3,7 @@ import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
   PortfolioCourseArchiveCourseVO,
   PortfolioCourseArchiveFrameworkVO,
+  PortfolioCourseArchiveOverviewVO,
 } from '@/apis/portfolio/course-archive'
 import type { PortfolioTeacherCustomCategoryVO } from '@/apis/portfolio/teacher-custom-category'
 import type {
@@ -37,6 +38,7 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 
 const router = useRouter()
 const route = useRoute()
@@ -52,13 +54,10 @@ const {
 } = usePortfolioArchiveWriteGuard()
 
 /** 课程档案概览返回的生命周期结构态（与写禁 guard 双源对齐展示）。 */
-const overviewLifecycle = ref<{
-  lifecycleStatus?: string
-  lifecycleStatusLabel?: string
-  archiveWriteForbidden?: boolean
-  evaluationHeld?: boolean
-  countsInCurrentFacultyStructure?: boolean
-}>({})
+const overviewLifecycle = ref<Pick<
+  PortfolioCourseArchiveOverviewVO,
+  'lifecycleStatus' | 'lifecycleStatusLabel' | 'archiveWriteForbidden' | 'evaluationHeld' | 'countsInCurrentFacultyStructure'
+>>({})
 
 const loading = ref(false)
 const customLoading = ref(false)
@@ -387,7 +386,7 @@ watch(
         >
           <UiTag
             v-if="overviewLifecycle.lifecycleStatus || lifecycleStatusLabel"
-            :tone="overviewLifecycle.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'"
+            :tone="portfolioLifecycleTagTone(overviewLifecycle.lifecycleStatus)"
           >
             {{
               overviewLifecycle.lifecycleStatusLabel

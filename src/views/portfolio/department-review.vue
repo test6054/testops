@@ -59,6 +59,7 @@ import {
   showUserError,
 } from '@/utils/error-handler'
 import { formatPortfolioArchiveEvidenceRef } from '@/utils/portfolio-archive-evidence'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -177,14 +178,6 @@ const hasSensitiveRows = computed(() => rows.value.some((item) => item.riskLevel
 const showReviewActions = computed(() => Boolean(activeRow.value?.reviewActionAllowed))
 const activeAssociationBroken = computed(() => Boolean(activeRow.value?.associationBroken))
 
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
 
 const filterModel = computed<Record<string, unknown>>({
   get: () => filterForm,
@@ -1055,7 +1048,7 @@ watch(
             <UiTag v-else tone="green">正常</UiTag>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -1193,7 +1186,7 @@ watch(
           class="review-lifecycle-hint"
         >
           教师生命周期：
-          <UiTag :tone="lifecycleTagTone(activeRow)">
+          <UiTag :tone="portfolioLifecycleTagTone(activeRow.lifecycleStatus)">
             {{ activeRow.lifecycleStatusLabel || activeRow.lifecycleStatus }}
           </UiTag>
           <span v-if="activeRow.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>

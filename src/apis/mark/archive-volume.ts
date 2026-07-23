@@ -739,7 +739,6 @@ export const ARCHIVE_ACCESS_STATUS_TONE: Record<
   'gray' | 'blue' | 'green' | 'red' | 'orange' | 'purple'
 > = {
   [ArchiveAccessStatusCode.PENDING]: 'orange',
-  [ArchiveAccessStatusCode.APPROVED]: 'blue',
   [ArchiveAccessStatusCode.REJECTED]: 'red',
   [ArchiveAccessStatusCode.ACTIVE]: 'green',
   [ArchiveAccessStatusCode.EXPIRED]: 'gray',
@@ -2701,6 +2700,27 @@ export function rejectArchiveVolumeAccess(
   )
 }
 
+export function closeArchiveVolumeAccess(
+  request: ArchiveVolumeAccessDecisionRequest,
+): Promise<ArchiveVolumeAccessRecordResponse> {
+  return http.post<ArchiveVolumeAccessRecordResponse>(
+    '/api/mark/archive-volumes/access/close',
+    request,
+  )
+}
+
+export interface ArchiveVolumeAccessStatsResponse {
+  pendingCount: number
+  activeCount: number
+  rejectedCount: number
+  expiredCount: number
+  closedCount: number
+}
+
+export function getArchiveAccessStatusStats(): Promise<ArchiveVolumeAccessStatsResponse> {
+  return http.post<ArchiveVolumeAccessStatsResponse>('/api/mark/archive-volumes/access/stats', {})
+}
+
 export function listArchiveVolumeAccessRecords(
   volumeId: string,
 ): Promise<ArchiveVolumeAccessRecordResponse[]> {
@@ -2734,6 +2754,11 @@ export interface ArchiveVolumeStatisticsSummaryVO {
   overdueVolumeCount: number
   departmentRowCount: number
   missingMaterialKindCount: number
+  storedVolumeCountTrendPercent?: number | null
+  avgCompletionRateTrendPercent?: number | null
+  compareAcademicYear?: string | null
+  helperStored?: string | null
+  helperCompletion?: string | null
 }
 
 export interface ArchiveVolumeStatisticsPageRequest extends QueryDto {
@@ -3035,6 +3060,8 @@ export interface ArchiveVolumeGlobalAuditPageRequest extends QueryDto {
 export interface ArchiveVolumeAuditEventResponse {
   eventId: string
   volumeId?: string
+  archiveNo?: string
+  archiveTitle?: string
   eventType?: ArchiveVolumeEventTypeCode
   operatorUserId?: string
   operatorNickName?: string

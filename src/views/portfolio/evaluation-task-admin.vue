@@ -536,7 +536,7 @@ async function voidDraftTask(id: string) {
   }
 }
 
-function handleTaskAdminAction(key: string, record: { id: string, taskStatus?: string }) {
+function handleTaskAdminAction(key: string, record: { id: string, taskStatus?: PortfolioEvaluationTaskStatusEnum }) {
   if (key === 'preview') {
     openMaterialPreview(record.id)
     return

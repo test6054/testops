@@ -47,6 +47,7 @@ import {
 } from '@/types/enums/portfolio-double-high-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 interface TaskFilterModel extends Record<string, unknown> {
@@ -214,14 +215,6 @@ const reviewOptions = [
 
 const query = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
 
 const columns: ColumnsType = [
   { title: '任务编码', dataIndex: 'taskCode', key: 'taskCode', width: 140 },
@@ -801,7 +794,7 @@ watch(
             <span v-else class="shuanggao-tasks__cell-muted">—</span>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
 
@@ -937,7 +930,7 @@ watch(
           </p>
           <div v-if="detailTask.lifecycleStatus" class="shuanggao-tasks__lifecycle">
             责任人生命周期：
-            <UiTag :tone="lifecycleTagTone(detailTask)">
+            <UiTag :tone="portfolioLifecycleTagTone(detailTask.lifecycleStatus)">
               {{ detailTask.lifecycleStatusLabel || detailTask.lifecycleStatus }}
             </UiTag>
             <span v-if="detailTask.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>

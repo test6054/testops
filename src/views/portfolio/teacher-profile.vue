@@ -8,7 +8,7 @@ import type {
   PortfolioTeacherTaughtCourseSaveRequest,
   PortfolioTeacherTaughtCourseVO,
 } from '@/apis/portfolio/teacher-profile'
-import type { BadgeTone, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { UiTableRowActionItem } from '@/components/ui-guide/ui/types'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { TeacherTaughtCourseSourceTypeCode } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { PlusOutlined } from '@ant-design/icons-vue'
@@ -45,6 +45,7 @@ import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { TeacherTaughtCourseSourceTypeDescription } from '@/types/enums/teacher-taught-course-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -55,12 +56,6 @@ const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
 
 const loading = ref(false)
 
-function lifecycleTagTone(status?: string): BadgeTone {
-  if (status === 'ACTIVE') return 'green'
-  if (status === 'TEMP_HOLD') return 'orange'
-  if (status === 'SEALED') return 'red'
-  return 'gray'
-}
 
 const profileActiveTab = ref('education')
 const profileTabItems = [
@@ -737,7 +732,7 @@ usePortfolioScopedLoader(loadProfile, () => targetTeacherId.value)
           class="profile-status-band"
           role="status"
         >
-          <UiTag v-if="profile?.lifecycleStatus" :tone="lifecycleTagTone(profile.lifecycleStatus)">
+          <UiTag v-if="profile?.lifecycleStatus" :tone="portfolioLifecycleTagTone(profile.lifecycleStatus)">
             {{ profile.lifecycleStatusLabel || profile.lifecycleStatus }}
           </UiTag>
           <UiTag v-if="profile?.evaluationHeld" tone="orange">参评 hold</UiTag>

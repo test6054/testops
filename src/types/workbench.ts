@@ -75,6 +75,10 @@ export interface SignalMetric {
   sparkValues?: number[]
   /** panel 模式图标区色调；缺省按 tone 推导 */
   iconTone?: SignalMetricIconTone
+  /** 0–100 进度值；仅 showProgress 为 true 时渲染进度条 */
+  progress?: number
+  /** 为 true 且 progress 为 [0,100] 有限数时渲染进度条 */
+  showProgress?: boolean
 }
 
 // ─── 任务结果面板（TaskResultPanel）──────────────────────

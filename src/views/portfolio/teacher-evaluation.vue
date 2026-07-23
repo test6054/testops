@@ -55,6 +55,7 @@ import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWrit
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -276,14 +277,6 @@ function evaluationMaterialRowKey(record: unknown): string {
   ].join(':')
 }
 
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
 
 const publicityColumns: ColumnsType<PortfolioEvaluationPublicityListItemVO> = [
   { title: '任务', dataIndex: 'taskName', key: 'taskName', fixed: 'left' },
@@ -904,7 +897,7 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
               <span v-else>-</span>
@@ -1065,7 +1058,7 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
               <span v-else>-</span>
@@ -1169,7 +1162,7 @@ watch(
               "
               class="teacher-evaluation__meta teacher-evaluation__result-lifecycle"
             >
-              <UiTag v-if="resultSummary.lifecycleStatus" :tone="lifecycleTagTone(resultSummary)">
+              <UiTag v-if="resultSummary.lifecycleStatus" :tone="portfolioLifecycleTagTone(resultSummary.lifecycleStatus)">
                 {{ resultSummary.lifecycleStatusLabel || resultSummary.lifecycleStatus }}
               </UiTag>
               <UiTag

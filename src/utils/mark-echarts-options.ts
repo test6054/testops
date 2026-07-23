@@ -67,6 +67,7 @@ const TONE_HEX: Record<BadgeTone, string> = {
   yellow: '#ca8a04',
   red: MARK_ECHARTS_PALETTE.danger,
   purple: MARK_ECHARTS_PALETTE.purple,
+  ink: MARK_ECHARTS_PALETTE.axisLabel,
 }
 
 export function toneToChartColor(tone?: BadgeTone): string {

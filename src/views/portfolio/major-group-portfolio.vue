@@ -41,6 +41,7 @@ import {
   PortfolioMajorGroupSectionDescription,
 } from '@/types/enums/portfolio-major-group-section-code-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -557,7 +558,7 @@ watch(
               <template v-else-if="column.key === 'lifecycleStatus'">
                 <UiTag
                   v-if="record.lifecycleStatus"
-                  :tone="record.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'"
+                  :tone="portfolioLifecycleTagTone(record.lifecycleStatus)"
                 >
                   {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
                 </UiTag>

@@ -29,6 +29,7 @@ import {
   PortfolioDualTeacherCertLevelCode,
 } from '@/types/enums/portfolio-dual-teacher-cert-level-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -417,13 +418,7 @@ watch(
           <UiTag
             v-if="application.lifecycleStatus"
             :tone="
-              application.lifecycleStatus === 'ACTIVE'
-                ? 'green'
-                : application.lifecycleStatus === 'TEMP_HOLD'
-                  ? 'orange'
-                  : application.lifecycleStatus === 'SEALED'
-                    ? 'red'
-                    : 'gray'
+              portfolioLifecycleTagTone(application.lifecycleStatus)
             "
           >
             {{ application.lifecycleStatusLabel || application.lifecycleStatus }}

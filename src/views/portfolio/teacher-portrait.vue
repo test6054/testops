@@ -65,6 +65,7 @@ import {
 } from '@/types/enums/portfolio-training-recommend-status-enum'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   buildPortraitCohortRangeChartOption,
   buildPortraitCompositeTrendChartOption,
@@ -82,12 +83,6 @@ const { archiveWriteForbidden, archiveWriteBlockMessage, reloadLifecycleState }
   = usePortfolioArchiveWriteGuard({ teacherId: targetTeacherId })
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 
-function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' {
-  if (status === 'ACTIVE') return 'green'
-  if (status === 'TEMP_HOLD') return 'orange'
-  if (status === 'SEALED' || status === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -588,7 +583,7 @@ watch(creditCategory, (next, prev) => {
           >
             <template v-if="portrait.lifecycleStatus">
               生命周期：
-              <UiTag :tone="lifecycleTagTone(portrait.lifecycleStatus)">
+              <UiTag :tone="portfolioLifecycleTagTone(portrait.lifecycleStatus)">
                 {{ portrait.lifecycleStatusLabel || portrait.lifecycleStatus }}
               </UiTag>
               <UiTag v-if="portrait.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>

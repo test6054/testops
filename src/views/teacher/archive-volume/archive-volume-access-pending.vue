@@ -13,12 +13,13 @@
       </ContextBar>
     </template>
 
+    <template #signal>
+      <SignalBand v-if="accessStatsMetrics.length" :metrics="accessStatsMetrics" variant="panel" />
+    </template>
+
     <WorkbenchSurfaceCard flush>
       <UiSkeletonState v-if="loading" variant="card" compact />
-      <div v-else-if="loadFailed" class="archive-access-pending__load-error">
-        <p>待审批查阅申请加载失败</p>
-        <UiButton size="sm" variant="outline" @click="loadRecords">重试</UiButton>
-      </div>
+      <UiEmpty size="sm" v-else-if="loadFailed" title="加载失败" description="待审批查阅申请加载失败" />
       <UiEmpty size="sm" v-else-if="records.length === 0" description="暂无待审批查阅申请" />
       <div v-else class="archive-access-pending__list">
         <article
@@ -143,11 +144,13 @@
 <script lang="ts" setup>
 import type { ArchiveVolumeAccessRecordResponse } from '@/apis/mark/archive-volume'
 import type { BadgeTone } from '@/components/ui-guide/ui/types'
+import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   approveArchiveVolumeAccess,
+  getArchiveAccessStatusStats,
   listPendingArchiveAccessRecords,
   rejectArchiveVolumeAccess,
 } from '@/apis/mark/archive-volume'
@@ -157,6 +160,7 @@ import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiSkeletonState from '@/components/ui-guide/ui/UiSkeletonState.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
+import SignalBand from '@/components/workbench/SignalBand.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vue'
 import {
@@ -185,6 +189,22 @@ const rejectingId = ref('')
 const approveComment = ref('')
 const rejectComment = ref('')
 
+const accessStatsMetrics = computed<SignalMetric[]>(() => {
+  const stats = accessStats.value
+  if (!stats) {
+    return []
+  }
+  return [
+    { key: 'pending', label: '待审批', value: stats.pendingCount, unit: '条', tone: 'orange' },
+    { key: 'active', label: '生效中', value: stats.activeCount, unit: '条', tone: 'green' },
+    { key: 'rejected', label: '已驳回', value: stats.rejectedCount, unit: '条', tone: 'red' },
+    { key: 'expired', label: '已过期', value: stats.expiredCount, unit: '条', tone: 'gray' },
+    { key: 'closed', label: '已关闭', value: stats.closedCount, unit: '条', tone: 'blue' },
+  ]
+})
+
+const accessStats = ref<Awaited<ReturnType<typeof getArchiveAccessStatusStats>> | null>(null)
+
 /** 密级标签色调：公开/内部灰色、限制蓝色、机密深墨色，逐级加重视觉警示。 */
 function archiveSecurityLevelTagTone(level: ArchiveSecurityLevelCode): BadgeTone {
   switch (level) {
@@ -202,11 +222,21 @@ function canApprove(record: ArchiveVolumeAccessRecordResponse): boolean {
   return record.canApprove === true
 }
 
+async function loadAccessStats(): Promise<void> {
+  try {
+    accessStats.value = await getArchiveAccessStatusStats()
+  } catch (error) {
+    accessStats.value = null
+    showUserError(error, '查阅状态统计加载失败')
+  }
+}
+
 async function loadRecords(): Promise<void> {
   loading.value = true
   try {
     records.value = await listPendingArchiveAccessRecords()
     loadFailed.value = false
+    await loadAccessStats()
   } catch (error) {
     loadFailed.value = true
     showUserError(error, '待审批查阅列表加载失败')
@@ -320,18 +350,6 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--dp-space-2);
   padding: var(--dp-space-3) 0;
-}
-
-.archive-access-pending__load-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--dp-space-3);
-}
-
-.archive-access-pending__load-error p {
-  margin: 0;
-  color: var(--dp-text-secondary);
 }
 
 .approval-card__reason-label {

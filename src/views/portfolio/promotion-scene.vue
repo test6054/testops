@@ -53,6 +53,7 @@ import {
 } from '@/types/enums/portfolio-title-promotion-application-status-enum'
 import { PortfolioTitlePromotionTaskStatusCode } from '@/types/enums/portfolio-title-promotion-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -797,14 +798,7 @@ usePortfolioScopedLoader(
                 v-if="matchResult.lifecycleStatus"
                 size="sm"
                 :tone="
-                  matchResult.lifecycleStatus === 'ACTIVE'
-                    ? 'green'
-                    : matchResult.lifecycleStatus === 'TEMP_HOLD'
-                      ? 'orange'
-                      : matchResult.lifecycleStatus === 'SEALED'
-                        || matchResult.lifecycleStatus === 'TRANSFERRED'
-                        ? 'red'
-                        : 'gray'
+                  portfolioLifecycleTagTone(matchResult.lifecycleStatus)
                 "
               >
                 {{ matchResult.lifecycleStatusLabel || matchResult.lifecycleStatus }}

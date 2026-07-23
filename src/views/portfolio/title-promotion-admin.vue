@@ -73,6 +73,7 @@ import {
   PortfolioTitlePromotionTaskStatusDescription,
 } from '@/types/enums/portfolio-title-promotion-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -247,14 +248,6 @@ const appColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 280 },
 ]
 
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
 
 /** 匹配度按阈值着色：<60% 红、60-80% 橙、>80% 绿，便于审核台快速识别风险申报。
  *  后端 matchScore 可能返回 0-1 比率或百分比文本，统一归一到百分制再比阈值。 */
@@ -1266,7 +1259,7 @@ onMounted(() => {
                 {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
               </template>
               <template v-else-if="column.key === 'lifecycleStatus'">
-                <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+                <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                   {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
                 </UiTag>
                 <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>

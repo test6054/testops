@@ -35,6 +35,7 @@ import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag'
 import {
   formatPortfolioTeacherPkDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
@@ -86,12 +87,6 @@ const historyColumns: ColumnsType = [
   { title: '操作', key: 'actions', width: 130 },
 ]
 
-function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' {
-  if (status === 'ACTIVE') return 'green'
-  if (status === 'TEMP_HOLD') return 'orange'
-  if (status === 'SEALED' || status === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
 
 function resolveTeacherTitle(teacher: PortfolioTeacherPkCompareTeacherVO): string {
   return formatPortfolioTeacherPkDisplay(teacher.displayName, teacher.teacherNumber)
@@ -398,7 +393,7 @@ onUnmounted(() => {
               >
                 <UiTag
                   v-if="teacher.lifecycleStatus"
-                  :tone="lifecycleTagTone(teacher.lifecycleStatus)"
+                  :tone="portfolioLifecycleTagTone(teacher.lifecycleStatus)"
                   size="sm"
                 >
                   {{ teacher.lifecycleStatusLabel || teacher.lifecycleStatus }}

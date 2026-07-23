@@ -401,6 +401,7 @@ const BADGE_TONE_TO_ALERT_STRIP: Record<BadgeTone, UiAlertStripTone> = {
   orange: 'warning',
   yellow: 'warning',
   purple: 'info',
+  ink: 'info',
 }
 
 const stageTone = computed((): UiAlertStripTone => {

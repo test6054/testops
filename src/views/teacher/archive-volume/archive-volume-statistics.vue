@@ -40,13 +40,9 @@
           v-if="statisticsSummaryLoadFailed"
           tone="error"
           title="统计摘要加载失败"
-          description="已保留上次成功结果，请重试当前筛选条件。"
+          description="请调整筛选条件后重新查询。"
           class="archive-volume-statistics__error"
-        >
-          <template #actions>
-            <UiButton size="sm" variant="outline" @click="loadStatistics">重新加载</UiButton>
-          </template>
-        </UiAlertStrip>
+        />
 
         <div v-if="statisticsSummary" class="archive-volume-statistics__export">
           <UiButton
@@ -64,13 +60,7 @@
         <div v-else-if="statisticsSummary" class="archive-volume-statistics__grid">
           <WorkbenchSurfaceCard flush>
             <template #head>院系完成率</template>
-            <UiAlertStrip v-if="departmentLoadFailed" tone="error" title="院系完成率加载失败">
-              <template #actions>
-                <UiButton size="sm" variant="outline" @click="loadDepartmentCompletions">
-                  重新加载
-                </UiButton>
-              </template>
-            </UiAlertStrip>
+            <UiAlertStrip v-if="departmentLoadFailed" tone="error" title="院系完成率加载失败" />
             <UiDataTable
               v-model:current="deptPagination.pageNum"
               v-model:page-size="deptPagination.pageSize"
@@ -106,13 +96,7 @@
 
           <WorkbenchSurfaceCard flush>
             <template #head>缺项材料分布</template>
-            <UiAlertStrip v-if="missingLoadFailed" tone="error" title="缺项材料分布加载失败">
-              <template #actions>
-                <UiButton size="sm" variant="outline" @click="loadMissingMaterials">
-                  重新加载
-                </UiButton>
-              </template>
-            </UiAlertStrip>
+            <UiAlertStrip v-if="missingLoadFailed" tone="error" title="缺项材料分布加载失败" />
             <UiDataTable
               v-model:current="missingPagination.pageNum"
               v-model:page-size="missingPagination.pageSize"
@@ -410,6 +394,8 @@ const signalMetrics = computed<SignalMetric[]>(() => {
     unit: card.unit,
     tone: card.badgeTone,
     clickable: card.clickable,
+    trend: card.trend,
+    helper: card.helper,
   }))
 })
 
@@ -421,6 +407,8 @@ interface OverviewAnalyticsCard {
   unit?: string
   badgeTone?: BadgeTone
   clickable?: boolean
+  trend?: number
+  helper?: string
 }
 
 const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
@@ -447,6 +435,8 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
       unit: '卷',
       badgeTone: 'green',
       clickable: summary.storedVolumeCount > 0,
+      trend: summary.storedVolumeCountTrendPercent ?? undefined,
+      helper: summary.helperStored ?? undefined,
     },
     {
       key: 'rate',
@@ -455,6 +445,8 @@ const overviewAnalyticsCards = computed<OverviewAnalyticsCard[]>(() => {
       signalValue: `${avgCompletionRate}%`,
       badgeTone: avgCompletionRate >= 90 ? 'green' : avgCompletionRate < 70 ? 'orange' : 'blue',
       clickable: false,
+      trend: summary.avgCompletionRateTrendPercent ?? undefined,
+      helper: summary.helperCompletion ?? undefined,
     },
     {
       key: 'overdue',

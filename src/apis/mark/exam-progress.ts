@@ -15,6 +15,7 @@ import type { WorkbenchNextActionKeyCode } from '@/types/enums/exam-workbench-ne
 import type { ExamWorkbenchStageKeyCode } from '@/types/enums/exam-workbench-stage-key-enum'
 import type { WorkbenchStageStatusCode } from '@/types/enums/exam-workbench-stage-status-enum'
 import type { LedgerStatusCode } from '@/types/enums/ledger-status-enum'
+import type { MarkTeacherDashboardJourneyKeyCode } from '@/types/enums/mark-teacher-dashboard-journey-key-enum'
 import http from '@/config/axios'
 import { isExamScanMonitorSignalActionKeyCode } from '@/types/enums/exam-scan-monitor-signal-action-key-enum'
 import { isExamScanMonitorSignalCode } from '@/types/enums/exam-scan-monitor-signal-code-enum'
@@ -548,6 +549,74 @@ export function getQuestionTypeDistribution(
 ): Promise<ExamQuestionTypeDistributionResponse> {
   return http.post<ExamQuestionTypeDistributionResponse>(
     '/api/mark/exams/question-type-distribution',
+    { examId },
+  )
+}
+
+/** 考试工作台旅程摘要 - 对应 ExamWorkbenchJourneySummaryResponse */
+export interface ExamWorkbenchJourneySummaryResponse {
+  journeyKey: MarkTeacherDashboardJourneyKeyCode
+  status: WorkbenchStageStatusCode
+  blockingCount: number
+  blockingLabel?: string
+  routeHint?: string
+}
+
+/** 考试工作台 KPI 带单项 - 对应 ExamWorkbenchKpiBandItemResponse */
+export interface ExamWorkbenchKpiBandItemResponse {
+  drillKey: string
+  label: string
+  value: string
+  helper?: string
+  trendPercent?: number | null
+  clickable?: boolean
+}
+
+/** 考试工作台安全提示 - 对应 ExamWorkbenchSecurityNoticeResponse */
+export interface ExamWorkbenchSecurityNoticeResponse {
+  message: string
+  level?: string
+}
+
+/** 考试工作台总览发布风险摘要 - 对应 ExamWorkbenchLifecyclePublishRiskSummaryResponse */
+export interface ExamWorkbenchLifecyclePublishRiskSummaryResponse {
+  readyToPublish: boolean
+  riskItemCount: number
+  summaryLabel?: string
+}
+
+/** 考试工作台总览归档摘要 - 对应 ExamWorkbenchLifecycleArchiveSummaryResponse */
+export interface ExamWorkbenchLifecycleArchiveSummaryResponse {
+  archiveClosed: boolean
+  archiveStageStatus: WorkbenchStageStatusCode
+  summaryLabel?: string
+}
+
+/** 考试工作台生命周期总览 - 对应 ExamWorkbenchLifecycleOverviewResponse */
+export interface ExamWorkbenchLifecycleOverviewResponse {
+  examId: string
+  examName: string
+  examNo: string
+  examStatus: ExamStatusCode
+  journeySummaries: ExamWorkbenchJourneySummaryResponse[]
+  kpiBand: ExamWorkbenchKpiBandItemResponse[]
+  securityNotice?: ExamWorkbenchSecurityNoticeResponse | null
+  questionTypeStats?: ExamQuestionTypeDistributionResponse | null
+  prepSteps: ExamWorkbenchPrepStepResponse[]
+  scanAttentionCount: number
+  markingProgress: MarkingProgressResponse
+  publishRisk: ExamWorkbenchLifecyclePublishRiskSummaryResponse
+  archiveSummary: ExamWorkbenchLifecycleArchiveSummaryResponse
+  nextActions: ExamWorkbenchNextActionResponse[]
+  dashboardPanel: ExamWorkbenchDashboardPanelResponse
+}
+
+/** 查询考试工作台生命周期总览（总览页专用）。 */
+export function getWorkbenchLifecycleOverview(
+  examId: string,
+): Promise<ExamWorkbenchLifecycleOverviewResponse> {
+  return http.post<ExamWorkbenchLifecycleOverviewResponse>(
+    '/api/mark/exams/workbench-lifecycle-overview',
     { examId },
   )
 }
