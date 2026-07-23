@@ -14,7 +14,7 @@ defineOptions({
 <style lang="scss" scoped>
 .ui-breadcrumb {
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-breadcrumb :deep(.ant-breadcrumb-link),

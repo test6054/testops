@@ -109,7 +109,7 @@ async function handleSubmit() {
 }
 .scan-dispatch-force-release__warn {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-warning);
 }
 </style>

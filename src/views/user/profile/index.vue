@@ -257,7 +257,7 @@ onActivated(() => {
     gap: var(--dp-space-3, 12px);
     padding: var(--dp-space-2, 8px) 0;
     border-bottom: 1px dashed var(--dp-border-subtle);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
 
     &:last-child {
       border-bottom: none;
@@ -298,14 +298,14 @@ onActivated(() => {
 
   &__title {
     margin: 0 0 4px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text);
   }
 
   &__desc {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 }
@@ -319,3 +319,5 @@ onActivated(() => {
   min-width: 0;
 }
 </style>
+
+

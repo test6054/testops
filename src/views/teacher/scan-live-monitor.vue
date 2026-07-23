@@ -2494,7 +2494,7 @@ onBeforeUnmount(() => {
     gap: 6px;
     margin-top: 12px;
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__surface {
@@ -2547,13 +2547,13 @@ onBeforeUnmount(() => {
 
   &__panel-title {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__panel-meta {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -2582,12 +2582,12 @@ onBeforeUnmount(() => {
 
   &__hint {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__diagnostic-text {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     color: var(--dp-text-primary);
@@ -2614,7 +2614,7 @@ onBeforeUnmount(() => {
   &__identity-evidence-title {
     margin: 0;
     color: var(--dp-text-primary);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     line-height: 1.4;
   }
@@ -2622,7 +2622,7 @@ onBeforeUnmount(() => {
   &__identity-evidence-subtitle {
     margin: 4px 0 0;
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
   }
 
@@ -2643,7 +2643,7 @@ onBeforeUnmount(() => {
   &__identity-pane-title {
     margin-bottom: 8px;
     color: var(--dp-text-primary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
   }
 
@@ -2703,7 +2703,7 @@ onBeforeUnmount(() => {
 
   &__batch-diagnostic {
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     word-break: break-all;
   }

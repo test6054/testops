@@ -1199,7 +1199,7 @@ onBeforeUnmount(() => {
 
   &__flow-hint {
     margin-right: auto;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--c-text-4);
     white-space: nowrap;
   }
@@ -1221,12 +1221,12 @@ onBeforeUnmount(() => {
 
 .hint-text {
   color: var(--dp-text-tertiary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .error-text {
   color: var(--dp-error);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .scope-items {

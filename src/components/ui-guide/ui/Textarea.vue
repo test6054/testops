@@ -112,19 +112,19 @@ const resolvedStatus = computed<UiFieldStatus>(() => (props.error ? 'error' : pr
 
 .ui-textarea :deep(.ant-input-data-count) {
   color: var(--dp-text-muted) !important;
-  font-size: 12px !important;
+  font-size: var(--dp-font-size-xs) !important;
 }
 
 .ui-textarea--sm :deep(.ant-input) {
   min-height: 64px !important;
   padding: var(--dp-space-2, 8px) var(--dp-space-3, 12px) !important;
-  font-size: 13px !important;
+  font-size: var(--dp-font-size-sm) !important;
 }
 
 .ui-textarea--md :deep(.ant-input) {
   min-height: 80px !important;
   padding: 8px var(--dp-space-3, 12px) !important;
-  font-size: 14px !important;
+  font-size: var(--dp-font-size-md) !important;
 }
 
 .ui-textarea--lg :deep(.ant-input) {

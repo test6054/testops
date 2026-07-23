@@ -56,7 +56,7 @@ const props = withDefaults(
 .ui-typography-paragraph {
   margin-bottom: 0;
   color: var(--dp-text-primary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 

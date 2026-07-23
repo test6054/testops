@@ -440,7 +440,7 @@ onActivated(() => {
   }
 
   &__sub {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-tertiary);
   }
 

@@ -60,7 +60,7 @@ const emit = defineEmits<{
 
 .archive-quality-guide__title {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
   line-height: 1.4;
   color: var(--dp-text-primary);
@@ -68,7 +68,7 @@ const emit = defineEmits<{
 
 .archive-quality-guide__desc {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.4;
   color: var(--dp-text-secondary);
 }

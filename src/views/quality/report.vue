@@ -1324,7 +1324,7 @@ onBeforeUnmount(() => {
 
   &__section-title {
     margin: 16px 0 8px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1338,7 +1338,7 @@ onBeforeUnmount(() => {
     padding: 12px;
     white-space: pre-wrap;
     word-break: break-word;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.7;
     background: var(--dp-gray-50);
     border: 1px solid var(--dp-border);
@@ -1357,7 +1357,7 @@ onBeforeUnmount(() => {
   &__body-editor {
     :deep(textarea) {
       font-family: var(--dp-font-family);
-      font-size: 13px;
+      font-size: var(--dp-font-size-sm);
       line-height: 1.7;
     }
   }

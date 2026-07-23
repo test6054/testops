@@ -338,7 +338,7 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
 }
 
 .ongoing-exam-card__metric-label {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   line-height: 1.35;
   color: var(--dp-text-muted);
   white-space: nowrap;
@@ -347,7 +347,7 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
 }
 
 .ongoing-exam-card__metric-value {
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   line-height: 1.3;
   font-variant-numeric: tabular-nums;
@@ -407,7 +407,7 @@ function progressFillClass(exam: MarkTeacherDashboardOngoingExamItemVO): string 
 
 @media (max-width: 1100px) and (min-width: bp.$layout-desktop-min) {
   .ongoing-exam-card__metric-value {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
   }
 }
 </style>

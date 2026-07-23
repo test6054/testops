@@ -118,6 +118,6 @@ watch(
 
 .mark-quality-sync-chip__message {
   color: var(--dp-text-muted);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 </style>

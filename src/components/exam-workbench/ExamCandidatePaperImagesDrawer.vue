@@ -130,7 +130,7 @@ watch(
   }
 
   &__page-no {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 500;
     color: var(--dp-text-primary);
   }

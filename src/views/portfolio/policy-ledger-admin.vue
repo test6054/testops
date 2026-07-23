@@ -644,7 +644,7 @@ onMounted(() => {
 }
 .policy-ledger__hint {
   margin: 12px 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .policy-ledger__form {
@@ -657,7 +657,7 @@ onMounted(() => {
 .input {
   padding: 6px 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   min-width: 140px;
 }
 </style>

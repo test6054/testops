@@ -97,21 +97,21 @@ onBeforeUnmount(clearTimer)
   }
 
   &__title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__desc {
     margin: 8px 0 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
 
   &__countdown {
     margin: 8px 0 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 

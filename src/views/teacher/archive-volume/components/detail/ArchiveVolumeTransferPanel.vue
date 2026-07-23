@@ -362,7 +362,7 @@ onMounted(() => {
 
 .archive-volume-transfer-panel__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
 }
 

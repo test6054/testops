@@ -1164,7 +1164,7 @@ function handleRecordFilterReset() {
 <style lang="scss" scoped>
 .hint-text {
   color: var(--dp-text-muted);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .absence-page {
@@ -1190,13 +1190,13 @@ function handleRecordFilterReset() {
   &__flow-hint {
     flex: 1 1 100%;
     margin: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__section-title {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
     line-height: 1.5;
   }

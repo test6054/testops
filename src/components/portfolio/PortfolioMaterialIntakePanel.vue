@@ -752,7 +752,7 @@ watch(
 
 .portfolio-intake-panel__section-title {
   margin: 0 0 var(--dp-space-2, 8px);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
   color: var(--dp-text-primary);
 }

@@ -531,7 +531,7 @@ onMounted(() => {
   }
 
   &__hint {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.4;
     color: var(--dp-text-muted);
   }
@@ -585,7 +585,7 @@ onMounted(() => {
 
   &__result-meta {
     margin: 0 0 var(--dp-space-2);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
     font-variant-numeric: tabular-nums;
   }
@@ -627,13 +627,13 @@ onMounted(() => {
   }
 
   &__file-name {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 500;
     color: var(--dp-text-primary);
   }
 
   &__student {
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
     color: var(--dp-text-muted);
   }
 
@@ -652,7 +652,7 @@ onMounted(() => {
     flex-wrap: wrap;
     gap: var(--dp-space-3);
     margin-top: 6px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__pager {
@@ -673,14 +673,14 @@ onMounted(() => {
   }
 
   &__overview-title {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__muted {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 }
 
@@ -688,7 +688,7 @@ onMounted(() => {
   padding: var(--dp-space-2) var(--dp-space-3);
   border-radius: var(--dp-radius-control-inner, 4px);
   background: color-mix(in srgb, var(--dp-text-muted) 5%, transparent);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
   margin-bottom: 4px;

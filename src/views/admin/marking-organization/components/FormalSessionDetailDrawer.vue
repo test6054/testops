@@ -119,26 +119,26 @@ const emit = defineEmits<{
 
   &__title {
     margin: 0 0 8px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 
   &__text {
     margin: 0 0 6px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.6;
     color: var(--dp-text-secondary);
   }
 
   &__warn {
     margin: 8px 0 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-color-warning);
   }
 
   &__error {
     margin: 8px 0 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-color-error);
   }
 }

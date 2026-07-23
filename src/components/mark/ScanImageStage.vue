@@ -298,7 +298,7 @@ watch(
 
 .scan-stage__empty {
   color: var(--dp-text-muted);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .scan-stage__paper-wrap {
@@ -380,7 +380,7 @@ watch(
   border: none;
   border-radius: var(--dp-radius-control-inner);
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   cursor: pointer;
   transition: background var(--dp-duration-fast) ease;
 }
@@ -406,13 +406,13 @@ watch(
   padding: 0 4px;
   text-align: center;
   font-variant-numeric: tabular-nums;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-primary);
 }
 
 .scan-stage__caption {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 </style>

@@ -359,7 +359,7 @@ const resolveAntSize = (size?: FilterField['size']): SizeType => {
 }
 
 .dp-filter-bar__label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 500;
   color: var(--dp-text-secondary);
   line-height: 1.4;

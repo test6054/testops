@@ -66,13 +66,13 @@ function handleSelect(step: ScoreReleaseStep): void {
   margin-top: var(--dp-space-3);
 
   &__title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 
   &__meta {
     margin-left: 8px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: 400;
     color: var(--dp-text-secondary);
   }
@@ -140,7 +140,7 @@ function handleSelect(step: ScoreReleaseStep): void {
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
     background: var(--dp-surface-muted);
     color: var(--dp-text-secondary);
@@ -158,13 +158,13 @@ function handleSelect(step: ScoreReleaseStep): void {
   }
 
   &__label {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__desc {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.4;
     color: var(--dp-text-secondary);
   }

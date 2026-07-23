@@ -712,7 +712,7 @@ onActivated(() => {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -747,7 +747,7 @@ onActivated(() => {
 
   &__panel-title {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
     display: flex;
@@ -772,7 +772,7 @@ onActivated(() => {
 
   &__empty-desc {
     margin: 8px 0 16px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
@@ -800,7 +800,7 @@ onActivated(() => {
 
   &__switch-hint {
     margin-left: 8px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 }

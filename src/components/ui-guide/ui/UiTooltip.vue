@@ -86,7 +86,7 @@ const getPopupContainer = (triggerNode?: HTMLElement) => {
   color: var(--dp-text-inverse);
   background: color-mix(in srgb, var(--dp-text-primary) 92%, transparent);
   box-shadow: var(--dp-shadow-md);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.6;
 }
 

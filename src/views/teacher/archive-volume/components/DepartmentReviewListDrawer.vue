@@ -240,13 +240,13 @@ function openDetail(tabKey?: string) {
   align-items: center;
   gap: 8px;
   margin-bottom: 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
 .dept-review-list-drawer__denied {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 

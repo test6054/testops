@@ -744,7 +744,7 @@ void loadPage()
 
 .department-objection__meta {
   margin: 0 0 var(--dp-space-3);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
@@ -757,14 +757,14 @@ void loadPage()
 
 .department-objection__section-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .department-objection__section-hint {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
@@ -776,7 +776,7 @@ void loadPage()
 }
 
 .department-objection__materials-label {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
@@ -787,7 +787,7 @@ void loadPage()
 }
 
 .department-objection__opinion {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 </style>

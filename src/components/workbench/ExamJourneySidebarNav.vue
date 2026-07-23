@@ -145,7 +145,7 @@ function statusClass(status: WorkbenchStageStatus): string {
 
   &__section-label {
     margin: 8px 8px 4px;
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
     font-weight: 600;
     letter-spacing: 0.02em;
     color: var(--dp-text-muted);
@@ -188,11 +188,11 @@ function statusClass(status: WorkbenchStageStatus): string {
   }
 
   &__check {
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
   }
 
   &__icon {
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     color: var(--dp-text-secondary);
     flex-shrink: 0;
     margin-top: 1px;
@@ -206,7 +206,7 @@ function statusClass(status: WorkbenchStageStatus): string {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: 600;
     background: var(--dp-surface-subtle);
     color: var(--dp-text-secondary);
@@ -241,7 +241,7 @@ function statusClass(status: WorkbenchStageStatus): string {
   &__title {
     flex: 1;
     min-width: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.4;
     color: var(--dp-text-primary);
   }

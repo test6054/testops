@@ -582,11 +582,11 @@ defineExpose({ loadEvidences })
   gap: 8px;
 }
 .hint {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-tertiary);
 }
 .file-hint {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
   margin: 8px 0 0;
 }

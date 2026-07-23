@@ -249,7 +249,7 @@ onBeforeUnmount(releaseImages)
 
 .marking-scan-material__solo-label {
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
 }
 

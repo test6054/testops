@@ -402,7 +402,7 @@ void loadStats()
   margin-bottom: 8px;
 }
 .stats {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--text-secondary);
 }
 .stats--error {

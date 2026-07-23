@@ -145,13 +145,13 @@ function moveLayer(delta: number): void {
 
   &__title {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__count {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -190,18 +190,18 @@ function moveLayer(delta: number): void {
   }
 
   &__type {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-primary);
   }
 
   &__meta {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
   &__empty {
     padding: var(--dp-space-3, 12px) var(--dp-space-2, 8px);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 }

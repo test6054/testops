@@ -1367,20 +1367,20 @@ watch(
 
   h4 {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: 600;
   }
 }
 .teacher-directory__extension-error {
   margin: 12px 0 0;
   color: var(--dp-error);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .teacher-directory__lifecycle {
   margin-top: 16px;
   h4 {
     margin: 0 0 8px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 }
@@ -1395,14 +1395,14 @@ watch(
   margin-top: 12px;
   h5 {
     margin: 0 0 6px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
   }
   ul {
     margin: 0;
     padding-left: 18px;
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 }
 
@@ -1424,7 +1424,7 @@ watch(
   margin-top: 16px;
   h4 {
     margin: 0 0 8px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 }
@@ -1432,7 +1432,7 @@ watch(
   margin: 0;
   padding-left: 18px;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 .teacher-directory__contribution {
   margin: 0 0 12px;
@@ -1442,23 +1442,23 @@ watch(
   background: var(--dp-bg-subtle, #fafafa);
   h5 {
     margin: 0 0 6px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
   }
   p {
     margin: 0 0 4px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
   ul {
     margin: 4px 0 0;
     padding-left: 18px;
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 }
 .teacher-directory__muted {
   margin: 0;
   color: var(--dp-text-muted);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 </style>

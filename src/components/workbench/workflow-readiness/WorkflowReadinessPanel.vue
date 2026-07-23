@@ -94,7 +94,7 @@ function navigate(step: WorkflowReadinessStep): void {
 
 .workflow-readiness-panel__title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text);
 }
@@ -106,7 +106,7 @@ function navigate(step: WorkflowReadinessStep): void {
 }
 
 .workflow-readiness-panel__metric {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-4);
 }
 
@@ -135,14 +135,14 @@ function navigate(step: WorkflowReadinessStep): void {
 }
 
 .workflow-readiness-panel__step-label {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
   color: var(--dp-text);
 }
 
 .workflow-readiness-panel__step-desc {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-4);
 }

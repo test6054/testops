@@ -96,7 +96,7 @@ function connectorClass(index: number): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   font-weight: 700;
   transition:
     background-color 0.2s ease,

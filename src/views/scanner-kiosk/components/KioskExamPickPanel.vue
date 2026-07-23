@@ -309,7 +309,7 @@ function goNextPage() {
   border: none;
   background: transparent;
   font-family: inherit;
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   color: var(--kiosk-ink-primary);
   outline: none;
 }
@@ -326,7 +326,7 @@ function goNextPage() {
   border-radius: var(--kiosk-radius-md);
   background: var(--kiosk-surface-alt);
   font-family: inherit;
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   font-weight: var(--kiosk-fw-medium);
   color: var(--kiosk-ink-secondary);
   cursor: pointer;
@@ -346,7 +346,7 @@ function goNextPage() {
 
 .exam-pick__state--empty p {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   font-weight: var(--kiosk-fw-medium);
 }
 
@@ -364,7 +364,7 @@ function goNextPage() {
   border-radius: var(--kiosk-radius-md);
   background: var(--kiosk-surface);
   font-family: inherit;
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   font-weight: var(--kiosk-fw-medium);
   color: var(--kiosk-ink-primary);
   cursor: pointer;
@@ -495,7 +495,7 @@ function goNextPage() {
 .exam-tile--selected {
   border-color: var(--kiosk-primary);
   background: var(--kiosk-primary-soft);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+  box-shadow: 0 0 0 3px var(--dp-focus-ring);
 }
 
 .exam-tile__foot {
@@ -515,7 +515,7 @@ function goNextPage() {
   padding: 2px var(--kiosk-space-2);
   border-radius: var(--kiosk-radius-sm);
   background: var(--kiosk-neutral-soft);
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--kiosk-ink-secondary);
   font-variant-numeric: tabular-nums;
 }
@@ -546,7 +546,7 @@ function goNextPage() {
   border-radius: var(--kiosk-radius-md);
   background: var(--kiosk-surface);
   font-family: inherit;
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   font-weight: var(--kiosk-fw-medium);
   color: var(--kiosk-ink-primary);
   cursor: pointer;
@@ -564,7 +564,7 @@ function goNextPage() {
 
 .pager-indicator {
   min-width: 88px;
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   font-weight: var(--kiosk-fw-semibold);
   font-variant-numeric: tabular-nums;
   color: var(--kiosk-ink-secondary);

@@ -1285,18 +1285,18 @@ onMounted(async () => {
 .obs-meta {
   margin-left: 8px;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 .detail-link {
   margin-left: 8px;
 }
 .tree-foot {
   margin-top: 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .meta {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .detail-tags {

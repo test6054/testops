@@ -148,7 +148,7 @@ function goFullStatistics(): void {
 
   &__title {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 

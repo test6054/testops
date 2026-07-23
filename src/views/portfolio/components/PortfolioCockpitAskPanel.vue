@@ -441,7 +441,7 @@ async function openTaskResult(taskId: string) {
 }
 .cockpit-ask__meta {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .cockpit-ask__summary {
@@ -450,8 +450,8 @@ async function openTaskResult(taskId: string) {
   white-space: pre-wrap;
   word-break: break-word;
   background: var(--dp-fill-quaternary);
-  border-radius: 4px;
-  font-size: 13px;
+  border-radius: var(--dp-radius-xs);
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 .cockpit-ask__section {
@@ -459,13 +459,13 @@ async function openTaskResult(taskId: string) {
 }
 .cockpit-ask__section-title {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .cockpit-ask__list {
   margin: 0;
   padding-left: 20px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 .cockpit-ask__link {

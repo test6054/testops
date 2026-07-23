@@ -959,7 +959,7 @@ watch(
   margin-top: 16px;
   padding: 12px;
   background: var(--dp-fill-quaternary);
-  border-radius: 4px;
-  font-size: 13px;
+  border-radius: var(--dp-radius-xs);
+  font-size: var(--dp-font-size-sm);
 }
 </style>

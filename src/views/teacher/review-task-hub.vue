@@ -453,7 +453,7 @@ watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
 }
 
 .review-task-hub__paper-secondary {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
 }
 </style>

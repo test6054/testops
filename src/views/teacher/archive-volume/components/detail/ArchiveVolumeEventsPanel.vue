@@ -82,12 +82,12 @@ async function handleExport() {
 
 .archive-volume-events-panel__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: var(--dp-font-weight-title);
 }
 
 .archive-volume-events-panel__count {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 </style>

@@ -306,7 +306,7 @@ function goHub() {
 }
 .dispatch-landing__panel h2 {
   margin: 0 0 8px;
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
 }
 .dispatch-landing__actions {
   display: flex;

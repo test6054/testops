@@ -556,7 +556,7 @@ watch(
 }
 .teacher-lifecycle-admin__header h2 {
   margin: 0 0 4px;
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   font-weight: 600;
 }
 .teacher-lifecycle-admin__header p {

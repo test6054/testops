@@ -339,7 +339,7 @@ onMounted(() => {
 
 .tenant-policy__title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 
@@ -353,7 +353,7 @@ onMounted(() => {
 .tenant-policy__hint {
   margin: 0 0 var(--dp-space-4);
   color: var(--dp-gray-600);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .tenant-policy__ops-summary {
@@ -361,7 +361,7 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: var(--dp-space-4);
   margin-bottom: var(--dp-space-3);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-gray-700);
 }
 
@@ -376,7 +376,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-gray-700);
 
   &--switch {

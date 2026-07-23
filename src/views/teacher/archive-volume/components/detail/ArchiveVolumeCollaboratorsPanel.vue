@@ -548,13 +548,13 @@ async function handleRemove(row: CollaboratorMemberRow) {
 }
 
 .av-collab__role-count {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-variant-numeric: tabular-nums;
   color: var(--dp-text-muted);
 }
 
 .av-collab__name {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-primary);
 }
 
@@ -562,13 +562,13 @@ async function handleRemove(row: CollaboratorMemberRow) {
 .av-collab__locked,
 .av-collab__hint {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.45;
   color: var(--dp-text-muted);
 }
 
 .av-collab__cap-text {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.45;
   color: var(--dp-text-secondary);
 }

@@ -476,6 +476,6 @@ watch(
 <style scoped>
 .export-approval-mine__reject-reason {
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 </style>

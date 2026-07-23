@@ -1875,7 +1875,7 @@ onMounted(() => {
 }
 .title-promo__toolbar-hint {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 .title-promo__score {
@@ -1897,24 +1897,24 @@ onMounted(() => {
   gap: 8px;
 }
 .title-promo__form label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .title-promo__match {
   margin: 0;
   padding-left: 16px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 .title-promo__match-desc {
   margin-top: 2px;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 .title-promo__match-gap {
   margin-top: 2px;
   color: var(--dp-danger);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 .title-promo__criteria-grid {
   display: grid;
@@ -1986,7 +1986,7 @@ onMounted(() => {
 }
 
 .title-promo__field-label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

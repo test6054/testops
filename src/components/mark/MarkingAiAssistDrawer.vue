@@ -231,13 +231,13 @@ watch(
   &__trace,
   &__model,
   &__match-mode {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__diagnostic,
   &__summary {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 }

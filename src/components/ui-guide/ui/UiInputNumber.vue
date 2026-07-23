@@ -124,7 +124,7 @@ function handleChange(value: number | string | null) {
 .ui-input-number__addon {
   flex: 0 0 auto;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.2;
   white-space: nowrap;
 }

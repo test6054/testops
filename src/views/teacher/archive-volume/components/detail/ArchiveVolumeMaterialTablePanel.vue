@@ -1177,7 +1177,7 @@ async function submitSharedRef() {
 
 .archive-volume-material-table__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
 }
 
@@ -1189,7 +1189,7 @@ async function submitSharedRef() {
   font-variant-numeric: tabular-nums;
   color: var(--dp-text-secondary);
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   background: color-mix(in srgb, var(--dp-text-muted) 7%, transparent);
 }
 
@@ -1202,14 +1202,14 @@ async function submitSharedRef() {
 .archive-volume-material-table__ocr-failure {
   display: block;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
 .archive-volume-material-table__mapping-hint {
   margin: 0;
   padding: var(--dp-space-2) var(--dp-space-3);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
   border: 1px solid color-mix(in srgb, var(--dp-primary) 18%, transparent);
   border-radius: var(--dp-radius-control-inner, 4px);
@@ -1268,7 +1268,7 @@ async function submitSharedRef() {
 }
 
 .material-status-icon {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1;
 }
 

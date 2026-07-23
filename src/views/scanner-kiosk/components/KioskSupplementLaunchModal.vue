@@ -330,7 +330,7 @@ async function confirmSupplement() {
   border: 1px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-md);
   background: var(--kiosk-surface);
-  font-size: 24px;
+  font-size: var(--dp-font-size-3xl);
   line-height: 1;
   cursor: pointer;
 }

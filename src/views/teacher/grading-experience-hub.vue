@@ -1213,7 +1213,7 @@ onActivated(() => {
   }
 
   &__flow-hint {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--c-text-4);
     white-space: nowrap;
   }
@@ -1229,13 +1229,13 @@ onActivated(() => {
 
 .error-text {
   color: var(--dp-error);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .similar-digest {
   margin: 6px 0 0;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .experience-items,
@@ -1254,7 +1254,7 @@ onActivated(() => {
   &__muted {
     margin-left: 8px;
     color: var(--dp-text-tertiary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__text {
@@ -1274,7 +1274,7 @@ onActivated(() => {
   border: 1px solid var(--dp-border-subtle);
   border-radius: 6px;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 </style>

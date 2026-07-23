@@ -3202,7 +3202,7 @@ onMounted(async () => {
   max-width: 720px;
   padding: 12px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .integration-dashboard__message-enqueue .ant-input,
 .integration-dashboard__message-enqueue .ant-select,
@@ -3226,7 +3226,7 @@ onMounted(async () => {
   margin-bottom: 12px;
   padding: 12px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .integration-dashboard__config-panel .integration-dashboard__input--wide,
 .integration-dashboard__config-panel .integration-dashboard__textarea {
@@ -3236,7 +3236,7 @@ onMounted(async () => {
   min-height: 96px;
   padding: 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   font-family: inherit;
   resize: vertical;
 }
@@ -3244,7 +3244,7 @@ onMounted(async () => {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .integration-dashboard__form-actions {
   display: flex;
@@ -3277,7 +3277,7 @@ onMounted(async () => {
   margin-bottom: 12px;
 }
 .integration-dashboard__preset-label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .integration-dashboard__form--mapping {
@@ -3329,7 +3329,7 @@ onMounted(async () => {
   height: 32px;
   padding: 0 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .integration-dashboard__select {
   min-width: 240px;
@@ -3341,11 +3341,11 @@ onMounted(async () => {
 .integration-dashboard__hint {
   margin: 0 0 12px;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .integration-dashboard__sub-title {
   margin: 16px 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .integration-dashboard__health-list {

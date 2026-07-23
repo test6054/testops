@@ -1033,7 +1033,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .create-form__field--full,
@@ -1046,7 +1046,7 @@ watch(
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .create-form__stage-row {
@@ -1058,7 +1058,7 @@ watch(
 }
 
 .create-form__stage-index {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -1073,24 +1073,24 @@ watch(
 }
 
 .shuanggao-tasks__cell-text {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-primary);
 }
 
 .shuanggao-tasks__cell-muted {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 
 .shuanggao-tasks__detail-title {
   margin: 0 0 var(--dp-space-2);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-primary);
 }
 
 .shuanggao-tasks__detail-meta {
   margin: 0 0 var(--dp-space-1);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
 }
@@ -1106,7 +1106,7 @@ watch(
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .shuanggao-tasks__stage-item {
@@ -1135,7 +1135,7 @@ watch(
   display: flex;
   flex-direction: column;
   gap: var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

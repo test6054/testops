@@ -329,12 +329,12 @@ watch(
 
 .archive-volume-scores-panel__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
 }
 
 .archive-volume-scores-panel__meta {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
@@ -346,7 +346,7 @@ watch(
 
 .archive-volume-scores-panel__subheading {
   margin: 0 0 var(--dp-space-2);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 
@@ -372,7 +372,7 @@ watch(
 }
 
 .material-status-icon {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1;
 }
 

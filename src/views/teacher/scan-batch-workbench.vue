@@ -850,6 +850,6 @@ onBeforeUnmount(() => {
 
 .muted {
   color: var(--dp-text-tertiary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 </style>

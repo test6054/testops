@@ -1103,7 +1103,7 @@ onMounted(() => {
 .archive-volume-settings__duty-footer {
   padding: var(--dp-space-2) var(--dp-space-4);
   border-top: 1px solid var(--dp-border-subtle);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 .archive-volume-settings__panel {
@@ -1122,7 +1122,7 @@ onMounted(() => {
 }
 
 .archive-volume-settings__section-hint {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-muted);
 }

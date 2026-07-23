@@ -209,7 +209,7 @@ const descColumn = { xs: 1, sm: 1, md: 2 }
 
   &__title {
     margin: 0 0 6px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     line-height: 1.35;
     letter-spacing: -0.01em;
@@ -219,7 +219,7 @@ const descColumn = { xs: 1, sm: 1, md: 2 }
   &__desc :deep(.ant-descriptions-item-label),
   &__desc :deep(.ant-descriptions-item-content) {
     padding-bottom: 6px !important;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.4;
   }
 

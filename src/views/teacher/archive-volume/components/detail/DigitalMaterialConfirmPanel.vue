@@ -150,7 +150,7 @@ async function handleConfirm() {
 .digital-confirm-panel__hint {
   margin: 0 0 12px;
   padding: 0 16px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 
@@ -159,7 +159,7 @@ async function handleConfirm() {
   align-items: center;
   gap: 8px;
   padding: 0 16px 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .digital-confirm-panel__list {
@@ -174,7 +174,7 @@ async function handleConfirm() {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 </style>

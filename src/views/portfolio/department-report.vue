@@ -355,7 +355,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .report-filter__field--wide {

@@ -425,7 +425,7 @@ onUnmounted(() => {
   margin-bottom: 16px;
 
   .captcha-title {
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: 500;
     color: var(--ant-color-text);
   }
@@ -516,14 +516,14 @@ onUnmounted(() => {
     }
 
     .anticon {
-      font-size: 18px;
+      font-size: var(--dp-font-size-xl);
       color: var(--ant-color-primary);
     }
   }
 
   .slider-tip {
     text-align: center;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--ant-color-text-tertiary);
     margin-top: 8px;
   }
@@ -583,7 +583,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   color: var(--ant-color-bg-container);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
   box-shadow: var(--dp-shadow-sm);
 }
@@ -591,7 +591,7 @@ onUnmounted(() => {
 .click-word-tip {
   margin-top: 12px;
   text-align: center;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--ant-color-text-secondary);
 
   .word-list {
@@ -615,11 +615,11 @@ onUnmounted(() => {
   padding: 8px 12px;
   background-color: var(--ant-color-error-bg);
   border-radius: var(--dp-radius-xs);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--ant-color-error);
 
   .anticon {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
   }
 }
 </style>

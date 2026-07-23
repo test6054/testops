@@ -154,7 +154,7 @@ watch(
 <style lang="scss" scoped>
 .binding-modal__meta {
   margin: 0 0 var(--dp-space-3);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-gray-600);
 }
 
@@ -189,20 +189,20 @@ watch(
   display: flex;
   align-items: center;
   gap: var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
 }
 
 .binding-modal__summary {
   margin: var(--dp-space-1) 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-gray-700);
 }
 
 .binding-modal__rate {
   display: inline-block;
   margin-top: var(--dp-space-1);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-gray-500);
 }
 </style>

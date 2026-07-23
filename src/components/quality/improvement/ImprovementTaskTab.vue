@@ -942,7 +942,7 @@ defineExpose({
 
   &__ai-hint {
     margin: 4px 0 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-tertiary);
   }
 }

@@ -146,7 +146,7 @@ async function handleSubmit() {
 }
 .scan-dispatch-dialog__note {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 </style>

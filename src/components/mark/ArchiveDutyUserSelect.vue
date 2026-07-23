@@ -150,6 +150,6 @@ defineExpose({ reload: loadOptions, hydrateById })
 .archive-duty-user-select__dept {
   margin-left: 4px;
   color: var(--dp-color-text-tertiary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 </style>

@@ -2774,7 +2774,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
 <style scoped lang="scss">
 .qcm {
   &__context-label {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
@@ -2808,13 +2808,13 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
   }
 
   &__hint {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__card {
     background: var(--dp-surface);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
   }
 
   &__muted {
@@ -2823,7 +2823,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
 
   &__file-name {
     margin-top: var(--dp-space-2);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -2838,7 +2838,7 @@ const itemTypeOptions: { value: AssessmentItemTypeCode, label: string }[]
 }
 
 .text-xs {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .text-gray-500 {

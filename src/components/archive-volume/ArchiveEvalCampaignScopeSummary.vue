@@ -47,7 +47,7 @@ const countMismatch = computed(() => {
 
   &__line {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     line-height: 1.5;
   }
 

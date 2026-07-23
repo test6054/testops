@@ -96,7 +96,7 @@ function goStep(step: ObeJourneyStepVO): void {
     border: 0;
     background: transparent;
     color: var(--dp-text-secondary);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 32px;
     white-space: nowrap;
     cursor: pointer;

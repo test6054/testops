@@ -555,7 +555,7 @@ const getFormatColor = (format: ExportFormatEnum): string => {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
@@ -578,7 +578,7 @@ const getFormatColor = (format: ExportFormatEnum): string => {
 }
 
 .export-task-center__empty-icon {
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   color: var(--dp-text-muted);
 }
 
@@ -590,7 +590,7 @@ const getFormatColor = (format: ExportFormatEnum): string => {
   width: 100%;
 
   .progress-text {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     font-weight: 500;
   }

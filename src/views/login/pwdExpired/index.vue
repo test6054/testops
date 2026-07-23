@@ -87,7 +87,7 @@ const logo = computed(() => appStore.getLogo())
       width: 100%;
       height: 104px;
       font-weight: 700;
-      font-size: 20px;
+      font-size: var(--dp-font-size-2xl);
       line-height: 32px;
       display: flex;
       padding: 0 20px;
@@ -124,7 +124,7 @@ const logo = computed(() => appStore.getLogo())
     &__title {
       color: var(--dp-text-primary);
       font-weight: 500;
-      font-size: 20px;
+      font-size: var(--dp-font-size-2xl);
       line-height: 32px;
       margin-bottom: 20px;
     }
@@ -142,7 +142,7 @@ const logo = computed(() => appStore.getLogo())
       }
 
       :deep(.ant-tabs-tab-btn) {
-        font-size: 16px;
+        font-size: var(--dp-font-size-lg);
         font-weight: 500;
         line-height: 22px;
       }
@@ -187,7 +187,7 @@ const logo = computed(() => appStore.getLogo())
 
     .icp-info {
       .text {
-        font-size: 12px;
+        font-size: var(--dp-font-size-xs);
         font-weight: 400;
         letter-spacing: 0.2px;
         line-height: 20px;
@@ -222,7 +222,7 @@ const logo = computed(() => appStore.getLogo())
       z-index: calc(var(--dp-z-modal) + 20);
       color: var(--dp-text-primary);
       font-weight: 500;
-      font-size: 20px;
+      font-size: var(--dp-font-size-2xl);
       line-height: 32px;
       margin-bottom: 20px;
       display: flex;
@@ -260,7 +260,7 @@ const logo = computed(() => appStore.getLogo())
     &__title {
       color: var(--dp-text-primary);
       font-weight: 500;
-      font-size: 20px;
+      font-size: var(--dp-font-size-2xl);
       line-height: 32px;
       margin-bottom: 20px;
     }
@@ -277,7 +277,7 @@ const logo = computed(() => appStore.getLogo())
       }
 
       :deep(.ant-tabs-tab-btn) {
-        font-size: 16px;
+        font-size: var(--dp-font-size-lg);
         font-weight: 500;
         line-height: 22px;
       }
@@ -306,7 +306,7 @@ const logo = computed(() => appStore.getLogo())
 
       :deep(.ant-divider-inner-text) {
         color: var(--dp-text-muted);
-        font-size: 12px;
+        font-size: var(--dp-font-size-xs);
         font-weight: 400;
         line-height: 20px;
       }
@@ -323,7 +323,7 @@ const logo = computed(() => appStore.getLogo())
 
         .mode {
           color: var(--dp-text-secondary);
-          font-size: 12px;
+          font-size: var(--dp-font-size-xs);
           font-weight: 400;
           line-height: 20px;
           padding: 6px 10px;
@@ -343,7 +343,7 @@ const logo = computed(() => appStore.getLogo())
         }
 
         .mode svg {
-          font-size: 16px;
+          font-size: var(--dp-font-size-lg);
           margin-right: 10px;
         }
 
@@ -378,7 +378,7 @@ const logo = computed(() => appStore.getLogo())
 
     .icp-info {
       .text {
-        font-size: 12px;
+        font-size: var(--dp-font-size-xs);
         font-weight: 400;
         letter-spacing: 0.2px;
         line-height: 20px;

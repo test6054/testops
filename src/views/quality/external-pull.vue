@@ -2011,7 +2011,7 @@ onMounted(async () => {
 
   &__panel-meta {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__panel-actions {
@@ -2029,7 +2029,7 @@ onMounted(async () => {
 
   &__entry-card {
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     padding: 12px;
     background: var(--dp-surface-subtle);
 
@@ -2051,7 +2051,7 @@ onMounted(async () => {
   }
 
   &__entry-title {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -2066,7 +2066,7 @@ onMounted(async () => {
 
   &__section-title {
     margin: 16px 0 8px;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -2101,20 +2101,20 @@ onMounted(async () => {
 
   &__audit-line {
     margin: 0 0 2px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 
   &__audit-detail {
     margin: 4px 0;
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__sub-text {
     margin: 4px 0 0;
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__audit-pager {

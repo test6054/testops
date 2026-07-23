@@ -942,7 +942,7 @@ onMounted(async () => {
 .input {
   padding: 6px 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .input--wide {
   flex: 1;
@@ -956,7 +956,7 @@ onMounted(async () => {
 }
 .evaluation-task-admin__preview-meta {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .evaluation-task-admin__identity-material {
@@ -968,7 +968,7 @@ onMounted(async () => {
 }
 .evaluation-task-admin__identity-policy {
   margin: 8px 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
@@ -979,7 +979,7 @@ onMounted(async () => {
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .evaluation-task-admin__identity-layers li {

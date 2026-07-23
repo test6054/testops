@@ -278,19 +278,19 @@ async function handleCancel() {
 }
 .scan-dispatch-result__hint {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 .scan-dispatch-result__context {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-primary);
 }
 .scan-dispatch-result__status {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .scan-dispatch-result__qr {
   align-self: center;
@@ -298,7 +298,7 @@ async function handleCancel() {
 .scan-dispatch-result__url,
 .scan-dispatch-result__preview {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   word-break: break-all;
 }
 .scan-dispatch-result__actions {
@@ -308,7 +308,7 @@ async function handleCancel() {
 }
 .scan-dispatch-result__pending h3 {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .scan-dispatch-result__pending ul {
   margin: 0;
@@ -322,6 +322,6 @@ async function handleCancel() {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 </style>

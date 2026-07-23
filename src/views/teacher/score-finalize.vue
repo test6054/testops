@@ -2624,7 +2624,7 @@ watch(
     border: 1px solid var(--dp-border);
     border-radius: var(--dp-radius-control);
     background: var(--dp-surface);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-text-secondary);
     cursor: pointer;
@@ -2651,7 +2651,7 @@ watch(
   }
 
   &__bulk-meta {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     margin-top: 4px;
   }
@@ -2729,7 +2729,7 @@ watch(
 
   &__detail-section-title {
     margin: var(--dp-space-4) 0 var(--dp-space-2) 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 
@@ -2767,14 +2767,14 @@ watch(
   }
 
   &__risk-review-title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__risk-review-desc {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
@@ -2786,13 +2786,13 @@ watch(
   }
 
   &__bias-delta {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__detail-section-helper {
     margin-left: var(--dp-space-2);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: normal;
     color: var(--dp-text-muted);
   }

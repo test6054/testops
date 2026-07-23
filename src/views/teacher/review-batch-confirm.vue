@@ -423,7 +423,7 @@ watch(workbenchRefreshing, (isRefreshing, wasRefreshing) => {
 .batch-confirm__full-score {
   margin-left: 4px;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .batch-confirm__failures {

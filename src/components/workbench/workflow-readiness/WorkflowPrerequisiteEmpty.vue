@@ -66,7 +66,7 @@ function navigate(action: WorkflowReadinessAction): void {
 .workflow-prerequisite-empty__step {
   position: relative;
   padding-left: 16px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
 }

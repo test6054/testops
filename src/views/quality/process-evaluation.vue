@@ -1367,7 +1367,7 @@ function handleCourseChange(courseId: string | null) {
 .pe {
   &__filter-label {
     color: var(--dp-text-muted);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__signals {
@@ -1423,7 +1423,7 @@ function handleCourseChange(courseId: string | null) {
 
   &__sub-desc {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
@@ -1432,13 +1432,13 @@ function handleCourseChange(courseId: string | null) {
   }
 
   &__import-status-label {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
   &__file-name {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 }

@@ -604,7 +604,7 @@ defineExpose({ loadAccessRecords })
 
 .archive-volume-access-panel__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   color: var(--dp-text);
 }

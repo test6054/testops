@@ -1269,13 +1269,13 @@ watch(
 
 .teacher-evaluation__meta {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
 .teacher-evaluation__handle-opinion {
   margin: var(--dp-space-1) 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
@@ -1294,7 +1294,7 @@ watch(
 
 .teacher-evaluation__identity-policy {
   margin: var(--dp-space-2) 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
@@ -1306,7 +1306,7 @@ watch(
   margin: var(--dp-space-2) 0 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

@@ -95,7 +95,7 @@ const iconComponent = computed(() => {
   align-items: center;
   justify-content: center;
   padding-top: 1px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--alert-icon);
 }
 
@@ -106,13 +106,13 @@ const iconComponent = computed(() => {
 
 .ui-alert__title {
   margin-bottom: 4px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 700;
   color: var(--dp-text-primary);
 }
 
 .ui-alert__description {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
 }

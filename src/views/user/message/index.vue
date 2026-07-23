@@ -707,7 +707,7 @@ onActivated(() => {
     padding: 0;
     cursor: pointer;
     color: var(--dp-text);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     text-align: left;
     display: inline-flex;
@@ -723,7 +723,7 @@ onActivated(() => {
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     flex-wrap: wrap;
     margin-top: 4px;
@@ -747,13 +747,13 @@ onActivated(() => {
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     flex-wrap: wrap;
   }
 
   &__content {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     line-height: 1.7;
     color: var(--dp-text);
 

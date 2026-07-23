@@ -51,14 +51,14 @@ $create-form-page-max-width: 1400px;
 
   &__title {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--dp-font-size-xl);
     font-weight: 700;
     color: var(--dp-text-primary);
   }
 
   &__subtitle {
     margin: 4px 0 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
@@ -169,7 +169,7 @@ $create-form-page-max-width: 1400px;
 
   .section-desc {
     margin: 0 0 12px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
@@ -180,7 +180,7 @@ $create-form-page-max-width: 1400px;
 
   .section-title {
     margin: 0;
-    font-size: 18px;
+    font-size: var(--dp-font-size-xl);
     font-weight: 600;
     color: var(--dp-text-primary);
     display: flex;
@@ -240,7 +240,7 @@ $create-form-page-max-width: 1400px;
     margin: 0;
     height: var(--dp-control-height-sm, 32px);
     line-height: var(--dp-control-height-sm, 32px);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 500;
     color: var(--dp-text-primary);
     white-space: nowrap;
@@ -302,7 +302,7 @@ $create-form-page-max-width: 1400px;
   .create-form .ant-form-item-extra,
   .create-form .create-form__field-hint {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
@@ -342,7 +342,7 @@ $create-form-page-max-width: 1400px;
   }
 
   .create-form__switch-label {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     color: var(--dp-text-secondary);
   }
 
@@ -372,7 +372,7 @@ $create-form-page-max-width: 1400px;
   .create-form-summary__group-title,
   .archive-create-summary__group-title {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 500;
     color: var(--dp-text-secondary);
   }
@@ -390,7 +390,7 @@ $create-form-page-max-width: 1400px;
     grid-template-columns: 88px minmax(0, 1fr);
     gap: 12px;
     align-items: baseline;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     line-height: 1.5;
   }
 
@@ -430,7 +430,7 @@ $create-form-page-max-width: 1400px;
 
   .retention-field__unit {
     flex: 0 0 auto;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     line-height: 32px;
     color: var(--dp-text-secondary);
   }
@@ -444,7 +444,7 @@ $create-form-page-max-width: 1400px;
   }
 
   .score-proof-field__id {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 
@@ -469,7 +469,7 @@ $create-form-page-max-width: 1400px;
       border: none;
       border-radius: 6px;
       padding: 10px 14px;
-      font-size: 14px;
+      font-size: var(--dp-font-size-md);
       font-weight: 500;
       color: var(--dp-text-primary);
       position: relative;
@@ -499,7 +499,7 @@ $create-form-page-max-width: 1400px;
     }
 
     .ui-sidebar-nav__item-label {
-      font-size: 16px;
+      font-size: var(--dp-font-size-lg);
       font-weight: 600;
       color: inherit;
     }

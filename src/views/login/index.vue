@@ -252,12 +252,12 @@ onMounted(async () => {
       color-mix(in srgb, var(--dp-blue-100) 70%, transparent) 0%,
       transparent 24%
     ),
-    linear-gradient(180deg, #f6faff 0%, #eaf3ff 100%);
+    linear-gradient(180deg, var(--dp-surface-elevated) 0%, var(--dp-blue-50) 100%);
 }
 
 .login-page__glow {
   position: absolute;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   filter: blur(12px);
   pointer-events: none;
 }
@@ -641,7 +641,7 @@ onMounted(async () => {
   }
 
   .login-panel__title {
-    font-size: 24px;
+    font-size: var(--dp-font-size-3xl);
   }
 
   .login-panel__surface {

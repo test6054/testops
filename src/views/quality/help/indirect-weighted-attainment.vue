@@ -123,7 +123,7 @@ function handleReturn() {
 
   &__title {
     margin: 0 0 var(--dp-space-3);
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: var(--dp-font-weight-title);
     color: var(--dp-text-primary);
     line-height: 1.5;
@@ -132,7 +132,7 @@ function handleReturn() {
   &__p {
     margin: 0 0 var(--dp-space-3);
     color: var(--dp-text-secondary);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     line-height: 1.6;
 
     &--numeric {
@@ -145,7 +145,7 @@ function handleReturn() {
     padding: var(--dp-space-3) var(--dp-space-4);
     background: var(--dp-surface-subtle);
     border-radius: var(--dp-radius-panel);
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     text-align: center;
     font-variant-numeric: tabular-nums;
   }
@@ -154,7 +154,7 @@ function handleReturn() {
     margin: 0;
     padding-left: 20px;
     color: var(--dp-text-secondary);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     line-height: 1.7;
   }
 }

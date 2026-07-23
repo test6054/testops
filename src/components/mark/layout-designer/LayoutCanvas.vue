@@ -620,7 +620,7 @@ onMounted(() => {
 
   &__ruler {
     margin-bottom: 8px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -643,7 +643,7 @@ onMounted(() => {
 
   &__error {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-error);
   }
 }

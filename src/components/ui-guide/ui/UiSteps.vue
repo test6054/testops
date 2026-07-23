@@ -56,7 +56,7 @@ const antSize = computed<'small' | 'default'>(() => (resolvedSize.value === 'sm'
 }
 
 .ui-steps--compact :deep(.ant-steps-item-title) {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.4;
 }
 

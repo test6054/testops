@@ -1057,7 +1057,7 @@ watch(
 
   &__readiness-title {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -1065,7 +1065,7 @@ watch(
   &__focus-hint,
   &__resolve-hint {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 
@@ -1085,7 +1085,7 @@ watch(
 
   &__mixed-hint {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 
@@ -1100,7 +1100,7 @@ watch(
 
   &__pick-hint {
     margin: 0 0 var(--dp-space-2);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 

@@ -742,13 +742,13 @@ defineExpose({ openCreate, loadCycles })
   padding: 12px 16px;
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .readiness-panel {
   padding: 14px 16px;
   background: var(--dp-warning-bg);
   border: 1px solid var(--dp-warning-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .readiness-header {
   display: flex;
@@ -766,9 +766,9 @@ defineExpose({ openCreate, loadCycles })
   align-items: flex-start;
   gap: 8px;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.82);
+  background: color-mix(in srgb, var(--dp-surface) 82%, transparent);
   border: 1px solid color-mix(in srgb, var(--dp-success) 16%, transparent);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .readiness-item.is-blocked {
   border-color: var(--dp-warning-border);
@@ -776,7 +776,7 @@ defineExpose({ openCreate, loadCycles })
 }
 .readiness-item p {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-tertiary);
   line-height: 1.5;
 }
@@ -790,7 +790,7 @@ defineExpose({ openCreate, loadCycles })
 }
 .meta {
   margin-left: 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-tertiary);
 }
 .muted {
@@ -803,7 +803,7 @@ defineExpose({ openCreate, loadCycles })
   display: grid;
   grid-template-columns: 100px 1fr;
   gap: 8px 12px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .detail-dl dt {
   color: var(--dp-text-tertiary);

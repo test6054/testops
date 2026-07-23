@@ -948,7 +948,7 @@ onMounted(async () => {
   gap: 12px;
 }
 .analytics-summary .hint {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 .toolbar {
@@ -966,14 +966,14 @@ onMounted(async () => {
 }
 .stats-grid h4 {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .error-report {
   margin-top: 12px;
   padding: 8px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   background: var(--dp-fill-quaternary);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   white-space: pre-wrap;
   word-break: break-all;
 }
@@ -986,14 +986,14 @@ onMounted(async () => {
   display: flex;
   gap: 8px;
   align-items: center;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .contribution-panel {
   margin: 12px 0;
   padding: 12px;
   border: 1px solid var(--dp-border-subtle, #e5e7eb);
-  border-radius: 8px;
+  border-radius: var(--dp-radius-panel);
 }
 .contribution-panel__title {
   font-weight: 600;
@@ -1001,6 +1001,6 @@ onMounted(async () => {
 }
 .contribution-panel__hint {
   color: var(--dp-text-secondary, #6b7280);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 </style>

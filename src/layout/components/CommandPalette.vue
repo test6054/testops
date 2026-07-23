@@ -199,7 +199,7 @@ function handleAfterOpenChange(open: boolean) {
 }
 
 .command-palette__search-icon {
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   color: var(--dp-text-muted);
   flex-shrink: 0;
 }
@@ -222,7 +222,7 @@ function handleAfterOpenChange(open: boolean) {
   padding: 2px 6px;
   border: 1px solid var(--dp-border);
   border-radius: var(--dp-radius-xs, 4px);
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--dp-text-muted);
   background: var(--dp-surface-elevated);
   font-family: var(--dp-font-family-code);

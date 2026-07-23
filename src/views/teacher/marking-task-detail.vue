@@ -412,7 +412,7 @@ const {
     gap: 8px 16px;
     flex: 1;
     min-width: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 

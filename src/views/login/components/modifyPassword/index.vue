@@ -121,7 +121,7 @@ const onModify = async () => {
 :deep(.ant-select-single .ant-select-selector) {
   height: 40px;
   border-radius: var(--dp-radius-xs);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ant-input-affix-wrapper-status-error {
@@ -135,7 +135,7 @@ const onModify = async () => {
 }
 
 .ant-input-affix-wrapper .ant-input {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-primary);
 }
 

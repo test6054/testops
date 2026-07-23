@@ -405,7 +405,7 @@ function formatBytes(bytes: number): string {
   &__file-label {
     display: block;
     margin-bottom: var(--dp-space-3);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     color: var(--dp-text-secondary);
   }
 
@@ -422,7 +422,7 @@ function formatBytes(bytes: number): string {
 
     h4 {
       margin: 0 0 8px;
-      font-size: 16px;
+      font-size: var(--dp-font-size-lg);
       font-weight: 600;
       color: var(--dp-text-primary);
     }
@@ -430,12 +430,12 @@ function formatBytes(bytes: number): string {
 
   &__processing-hint {
     margin: 0 0 4px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-muted);
   }
 
   &__poll-count {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
@@ -445,7 +445,7 @@ function formatBytes(bytes: number): string {
 
   &__warning-line {
     margin: 0 0 4px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
   }
 
@@ -458,7 +458,7 @@ function formatBytes(bytes: number): string {
     border-radius: var(--dp-radius-control);
     background: var(--dp-bg-container);
     font-family: var(--dp-font-family);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;

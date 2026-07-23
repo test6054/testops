@@ -1166,7 +1166,7 @@ onMounted(async () => {
 }
 .archive-search-toolbar__profile-error {
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .archive-search-primary {
@@ -1189,7 +1189,7 @@ onMounted(async () => {
 }
 
 .archive-search-primary__label {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   color: var(--dp-text-secondary);
 }
@@ -1257,7 +1257,7 @@ onMounted(async () => {
 
 .archive-search-result-meta {
   margin: 0 0 var(--dp-space-3);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -1296,6 +1296,6 @@ onMounted(async () => {
   flex: 1;
   min-width: 0;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 </style>

@@ -56,7 +56,7 @@ const inGroup = inject(uiCheckboxGroupKey, undefined) === true
   align-items: center;
   min-height: 22px;
   color: var(--dp-text-primary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.6;
   font-family: var(--dp-font-family);
 }
@@ -73,10 +73,10 @@ const inGroup = inject(uiCheckboxGroupKey, undefined) === true
 .ui-checkbox :deep(.ant-checkbox-inner) {
   width: 18px;
   height: 18px;
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   border-color: var(--dp-border);
   background: var(--dp-bg-control);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dp-surface) 35%, transparent);
   transition:
     border-color 0.2s ease,
     background-color 0.2s ease,
@@ -107,7 +107,7 @@ const inGroup = inject(uiCheckboxGroupKey, undefined) === true
 .ui-checkbox :deep(.ant-checkbox-indeterminate .ant-checkbox-inner::after) {
   width: 8px;
   height: 2px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   background-color: var(--dp-text-inverse);
 }
 

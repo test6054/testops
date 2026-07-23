@@ -352,20 +352,20 @@ watch(
   gap: 12px;
   align-items: center;
   margin-bottom: 16px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .expert-review__teachers {
   margin-bottom: 16px;
 }
 .expert-review__section-title {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .expert-review__hold-hint {
   margin: 0 0 12px;
   color: var(--dp-color-warning, #d48806);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .expert-review__ai {
   display: flex;
@@ -374,17 +374,17 @@ watch(
   align-items: flex-start;
 }
 .expert-review__ai-title {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   color: var(--dp-text);
 }
 .expert-review__ai-summary {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   line-height: 1.4;
 }
 .expert-review__ai-muted {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 </style>

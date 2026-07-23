@@ -313,7 +313,7 @@ function handleExitAction() {
   cursor: not-allowed;
 }
 .action-btn__icon {
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
 }
 .action-btn--secondary:hover:not(:disabled) {
   background: var(--kiosk-primary-soft);

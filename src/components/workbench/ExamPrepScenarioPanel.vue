@@ -99,27 +99,27 @@ const tipLine = computed(() => {
   }
 
   &__title {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     line-height: 1.35;
     color: var(--dp-text-primary);
   }
 
   &__expand-hint {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: 400;
     color: var(--dp-color-primary);
   }
 
   &__summary {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-weight: 400;
     line-height: 1.45;
     color: var(--dp-text-secondary);
   }
 
   &__tip-inline {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.45;
     color: var(--dp-text-muted);
   }
@@ -137,7 +137,7 @@ const tipLine = computed(() => {
     display: flex;
     align-items: flex-start;
     gap: 8px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.45;
     color: var(--dp-text-primary);
   }
@@ -146,10 +146,10 @@ const tipLine = computed(() => {
     flex-shrink: 0;
     width: 18px;
     height: 18px;
-    border-radius: 4px;
+    border-radius: var(--dp-radius-xs);
     background: var(--dp-color-primary-bg);
     color: var(--dp-color-primary);
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
     font-weight: 600;
     line-height: 18px;
     text-align: center;
@@ -164,7 +164,7 @@ const tipLine = computed(() => {
     padding: 8px 12px;
     border-top: 1px solid var(--dp-border);
     background: var(--dp-bg-layout);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.45;
     color: var(--dp-text-secondary);
   }

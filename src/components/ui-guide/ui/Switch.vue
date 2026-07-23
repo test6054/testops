@@ -82,7 +82,7 @@ function handleChange(value: SwitchProps['checked']) {
 }
 
 .ui-switch.ant-switch :deep(.ant-switch-handle::before) {
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   box-shadow: var(--dp-shadow-sm);
 }
 

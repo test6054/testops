@@ -108,21 +108,21 @@ function dotClass(status: ArchiveVolumeExamArchivePackageTimelineStepVO['stepSta
 }
 
 .archive-package-timeline__title {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .archive-package-timeline__desc {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
 
 .archive-package-timeline__time {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   font-family: var(--dp-font-mono);
   color: var(--dp-text-tertiary);
 }

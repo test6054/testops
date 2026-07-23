@@ -174,7 +174,7 @@ defineExpose({
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
 
   &--pass {
     color: var(--dp-text-inverse);
@@ -207,14 +207,14 @@ defineExpose({
 }
 
 .archive-exam-score-gate-panel__title {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .archive-exam-score-gate-panel__hint {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
@@ -241,7 +241,7 @@ defineExpose({
 }
 
 .archive-exam-score-gate-panel__stat-val {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
@@ -257,14 +257,14 @@ defineExpose({
 }
 
 .archive-exam-score-gate-panel__stat-label {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
 .archive-exam-score-gate-panel__empty-papers {
   margin: 0;
   padding: var(--dp-space-3);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-secondary);
   border-radius: var(--dp-radius-md);

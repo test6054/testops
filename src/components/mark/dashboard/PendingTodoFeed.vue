@@ -182,7 +182,7 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
 }
 
 .todo-feed__title {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   line-height: 1.5;
   color: var(--dp-text-primary);
@@ -200,14 +200,14 @@ function resolveRowContext(todo: MarkTeacherDashboardPendingTodoItemVO): string 
 }
 
 .todo-feed__label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
 
 .todo-feed__context {
   margin-top: var(--dp-space-1);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary);
   overflow: hidden;

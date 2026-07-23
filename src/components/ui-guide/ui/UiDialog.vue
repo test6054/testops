@@ -117,7 +117,7 @@ const handleOk = () => {
 
 .ui-dialog__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--dp-text-primary);

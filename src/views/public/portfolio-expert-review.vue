@@ -201,7 +201,7 @@ onMounted(() => {
 .public-expert-review__header p {
   margin: 0;
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .public-expert-review__meta {
   display: flex;
@@ -209,14 +209,14 @@ onMounted(() => {
   gap: var(--dp-space-2, 8px);
   align-items: center;
   margin-bottom: var(--dp-space-3, 12px);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .public-expert-review__teachers {
   margin-bottom: 16px;
 }
 .public-expert-review__section-title {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 </style>

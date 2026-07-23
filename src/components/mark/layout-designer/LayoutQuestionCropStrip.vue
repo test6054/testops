@@ -131,7 +131,7 @@ watch(
 
   &__title {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -139,7 +139,7 @@ watch(
   &__meta,
   &__empty,
   &__label {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -178,7 +178,7 @@ watch(
     max-height: 96px;
     object-fit: contain;
     background: var(--dp-gray-50);
-    border-radius: 4px;
+    border-radius: var(--dp-radius-xs);
   }
 }
 </style>

@@ -521,7 +521,7 @@ void loadPage()
 <style scoped lang="scss">
 .correction-admin__reject-meta {
   margin: 0 0 var(--dp-space-3);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
@@ -544,7 +544,7 @@ void loadPage()
   padding: var(--dp-space-3);
   border: 1px solid var(--dp-border-subtle);
   border-radius: var(--dp-radius-control);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   overflow-wrap: anywhere;
 }
 
@@ -564,7 +564,7 @@ void loadPage()
   grid-template-columns: 88px minmax(0, 1fr);
   gap: var(--dp-space-2) var(--dp-space-3);
   margin: var(--dp-space-4) 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .correction-admin__impact-grid dt {

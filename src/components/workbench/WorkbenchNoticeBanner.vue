@@ -70,7 +70,7 @@ const iconMap = {
 
 .workbench-notice-banner__icon {
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .workbench-notice-banner--warning .workbench-notice-banner__icon {
@@ -89,7 +89,7 @@ const iconMap = {
   margin: 0;
   min-width: 0;
   flex: 1;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
 }
 

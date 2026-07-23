@@ -316,7 +316,7 @@ function qualityFillClass(rate: number): string {
 
   :deep(.exam-status-card__meta--lead) {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 500;
     color: var(--dp-text-secondary);
     line-height: 1.5;
@@ -364,7 +364,7 @@ function qualityFillClass(rate: number): string {
   &__quality-name {
     width: 72px;
     flex-shrink: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 500;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -398,7 +398,7 @@ function qualityFillClass(rate: number): string {
   &__quality-rate {
     width: 40px;
     text-align: right;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
@@ -417,7 +417,7 @@ function qualityFillClass(rate: number): string {
     border-radius: var(--dp-radius-full);
     background: var(--dp-red-500);
     color: var(--dp-text-inverse);
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
     font-weight: 600;
   }
 
@@ -430,7 +430,7 @@ function qualityFillClass(rate: number): string {
       display: flex;
       justify-content: space-between;
       padding: var(--dp-space-2) 0;
-      font-size: 13px;
+      font-size: var(--dp-font-size-sm);
       border-bottom: 1px solid var(--dp-border);
 
       &:last-child {

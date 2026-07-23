@@ -959,7 +959,7 @@ watch(
   }
 
   &__flow-hint {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-tertiary);
     line-height: 1.5;
   }

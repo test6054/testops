@@ -14,7 +14,7 @@ defineOptions({
 <style lang="scss" scoped>
 .ui-typography-link {
   color: var(--dp-primary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-typography-link:hover {

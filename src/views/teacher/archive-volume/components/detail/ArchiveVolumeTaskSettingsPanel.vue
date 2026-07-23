@@ -860,14 +860,14 @@ onMounted(() => {
   display: inline-flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .section-desc {
   margin: 0 0 var(--dp-space-4);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }
@@ -888,7 +888,7 @@ onMounted(() => {
 }
 
 .retention-field__unit {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -902,7 +902,7 @@ onMounted(() => {
 }
 
 .av-task-settings__count {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 500;
   color: var(--dp-text-muted);
   font-variant-numeric: tabular-nums;
@@ -924,7 +924,7 @@ onMounted(() => {
   justify-content: space-between;
   gap: var(--dp-space-3);
   padding: 8px 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   border-bottom: 1px solid var(--dp-border-subtle);
 
   &:last-child {
@@ -938,13 +938,13 @@ onMounted(() => {
 
 .av-task-settings__material-status {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
 .av-task-settings__empty {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 

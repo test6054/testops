@@ -236,7 +236,7 @@ function handleOpenSettings() {
   border: 1px solid var(--kiosk-divider);
   border-radius: var(--kiosk-radius-md);
   color: var(--kiosk-ink-secondary);
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   cursor: pointer;
   transition:
     background var(--kiosk-dur-fast) var(--kiosk-easing),

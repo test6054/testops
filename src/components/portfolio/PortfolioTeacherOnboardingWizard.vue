@@ -15,8 +15,8 @@
           <UiTag tone="red" size="sm">未启用</UiTag>
           <span>
             {{
-              readiness?.blockingReason ||
-              '本校档案模板尚未发布，请联系管理员发布后再启用我的教学档案袋'
+              readiness?.blockingReason
+                || '本校档案模板尚未发布，请联系管理员发布后再启用我的教学档案袋'
             }}
           </span>
         </span>
@@ -168,11 +168,11 @@ import PortfolioCategoryTreePicker from '@/components/portfolio/PortfolioCategor
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
-import UiStep from '@/components/ui-guide/ui/UiStep.vue'
-import UiSteps from '@/components/ui-guide/ui/UiSteps.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiStep from '@/components/ui-guide/ui/UiStep.vue'
+import UiSteps from '@/components/ui-guide/ui/UiSteps.vue'
 import UiTree from '@/components/ui-guide/ui/UiTree.vue'
 import { usePortfolioPageScope } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
@@ -225,7 +225,7 @@ const stepTitle = computed(() => {
 
 function mapTreeNodes(
   nodes: PortfolioArchiveCategoryTreeNodeVO[],
-): Array<{ key: string; title: string; children?: ReturnType<typeof mapTreeNodes> }> {
+): Array<{ key: string, title: string, children?: ReturnType<typeof mapTreeNodes> }> {
   return nodes.map((node) => ({
     key: node.id,
     title: node.categoryName,
@@ -306,8 +306,8 @@ async function loadReviewContent() {
 async function loadCategoryTree() {
   const requestToken = onboardingRequestToken.value
   try {
-    const nextCategoryTree =
-      (await portfolioArchiveTemplateApi.listCategoryTree({
+    const nextCategoryTree
+      = (await portfolioArchiveTemplateApi.listCategoryTree({
         teacherId: targetTeacherId.value || undefined,
       })) ?? []
     if (onboardingRequestToken.value !== requestToken) {
@@ -348,18 +348,18 @@ async function loadPreviewFields(categoryId: string) {
   try {
     const published = await portfolioArchiveTemplateApi.listPublishedFields({ categoryId })
     if (
-      onboardingRequestToken.value !== requestToken ||
-      previewFieldRequestToken.value !== fieldRequestToken ||
-      previewCategoryId.value !== categoryId
+      onboardingRequestToken.value !== requestToken
+      || previewFieldRequestToken.value !== fieldRequestToken
+      || previewCategoryId.value !== categoryId
     ) {
       return
     }
     previewFields.value = published.targetFields
   } catch (error) {
     if (
-      onboardingRequestToken.value !== requestToken ||
-      previewFieldRequestToken.value !== fieldRequestToken ||
-      previewCategoryId.value !== categoryId
+      onboardingRequestToken.value !== requestToken
+      || previewFieldRequestToken.value !== fieldRequestToken
+      || previewCategoryId.value !== categoryId
     ) {
       return
     }

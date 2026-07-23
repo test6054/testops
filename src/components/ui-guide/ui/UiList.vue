@@ -88,13 +88,13 @@ const antSize = computed<'small' | 'default' | 'large'>(() => {
 .ui-list :deep(.ant-list-item-meta-title) {
   margin-bottom: 2px;
   color: var(--dp-text-primary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
 }
 
 .ui-list :deep(.ant-list-item-meta-description) {
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
 }
 </style>

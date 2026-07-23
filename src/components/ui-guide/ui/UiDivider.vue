@@ -42,7 +42,7 @@ const props = withDefaults(
   border-color: var(--dp-border);
   margin: 12px 0;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-divider :deep(.ant-divider-inner-text) {

@@ -786,7 +786,7 @@ const registerProgressText = computed(() => {
 }
 
 .issue-item-icon {
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   flex: 0 0 auto;
   display: flex;
   padding-top: 2px;
@@ -813,7 +813,7 @@ const registerProgressText = computed(() => {
 }
 .registered-head h4 {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .registered-head small {
   color: var(--kiosk-text-secondary);

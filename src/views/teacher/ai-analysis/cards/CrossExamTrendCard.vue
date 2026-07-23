@@ -583,17 +583,17 @@ async function handleGenerate(): Promise<void> {
 }
 .diagnosis-rate {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 .diagnosis-type {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 .diagnosis-text {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
 }
@@ -601,11 +601,11 @@ async function handleGenerate(): Promise<void> {
   color: var(--dp-text-primary);
 }
 .diagnosis-text--muted {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 .scope-hint {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   line-height: 32px;
 }

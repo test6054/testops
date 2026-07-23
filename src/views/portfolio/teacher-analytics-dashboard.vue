@@ -63,7 +63,7 @@ const requestToken = ref(0)
 
 /** 顶部 KPI 摘要：专任教师总数、双师教师、双岗教师、外聘教师 */
 const kpiStats = computed(() => {
-  const items: Array<{ key: string; label: string; value: number; hint: string }> = []
+  const items: Array<{ key: string, label: string, value: number, hint: string }> = []
   if (deptStats.value) {
     items.push({
       key: 'totalTeachers',
@@ -685,7 +685,7 @@ onMounted(loadAll)
   font-variant-numeric: tabular-nums;
 }
 .kpi-panel__hint {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--dp-text-muted, rgba(0, 0, 0, 0.45));
   margin-top: 4px;
 }
@@ -703,9 +703,9 @@ onMounted(loadAll)
 .analytics-completeness__chip {
   padding: 4px 10px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   background: transparent;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   cursor: pointer;
 }
 .analytics-completeness__chip:hover {

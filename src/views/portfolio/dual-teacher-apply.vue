@@ -524,7 +524,7 @@ watch(
   flex-wrap: wrap;
   gap: var(--dp-space-3, 12px);
   margin-bottom: var(--dp-space-3, 12px);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .re-review-hint {
   color: var(--dp-color-warning);
@@ -540,7 +540,7 @@ watch(
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .attachment-list li {
   display: flex;

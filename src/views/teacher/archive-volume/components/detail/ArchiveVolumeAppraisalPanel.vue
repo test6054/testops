@@ -1125,7 +1125,7 @@ onUnmounted(() => {
 }
 
 .archive-volume-appraisal-panel__title {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
@@ -1151,13 +1151,13 @@ onUnmounted(() => {
 
 .archive-volume-appraisal-panel__section-title {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .archive-volume-appraisal-panel__destruction-hint {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
@@ -1172,7 +1172,7 @@ onUnmounted(() => {
 .archive-volume-appraisal-panel__destruction-step {
   display: flex;
   gap: var(--dp-space-3);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .archive-volume-appraisal-panel__destruction-step-label {
@@ -1204,7 +1204,7 @@ onUnmounted(() => {
 
 .archive-volume-appraisal-panel__section-title {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
   color: var(--dp-text-primary);
 }

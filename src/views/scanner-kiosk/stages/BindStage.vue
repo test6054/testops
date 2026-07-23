@@ -186,7 +186,7 @@ onMounted(() => {
   background: var(--kiosk-primary);
   color: var(--kiosk-primary-on);
   font-family: inherit;
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   font-weight: var(--kiosk-fw-semibold);
   cursor: pointer;
 }

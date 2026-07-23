@@ -497,7 +497,7 @@ onUnmounted(() => {
   gap: 6px;
   min-width: 0;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .teacher-pk__mask {
@@ -533,7 +533,7 @@ onUnmounted(() => {
 
 .teacher-pk__result-head span {
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .teacher-pk__grid {
@@ -553,14 +553,14 @@ onUnmounted(() => {
 .teacher-pk__archive-count {
   margin-bottom: 8px;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .teacher-pk__table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .teacher-pk__table th,
@@ -585,7 +585,7 @@ onUnmounted(() => {
   gap: 6px;
   margin-top: 12px;
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .teacher-pk__materials ul {

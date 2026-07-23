@@ -624,7 +624,7 @@ watch(
 }
 .major-group-portfolio__compare-result dt {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .major-group-portfolio__compare-result dd {

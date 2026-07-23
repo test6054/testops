@@ -1016,7 +1016,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: var(--dp-font-weight-title);
 }
 
@@ -1078,7 +1078,7 @@ onBeforeUnmount(() => {
     white-space: pre-wrap;
     word-break: break-word;
     line-height: 1.7;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text);
   }
 
@@ -1095,7 +1095,7 @@ onBeforeUnmount(() => {
   &__ai-line {
     margin: 0;
     line-height: 1.7;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text);
     display: flex;
     align-items: baseline;
@@ -1154,7 +1154,7 @@ onBeforeUnmount(() => {
 }
 
 .diagnosis-text {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
   color: var(--dp-text-secondary);
 }

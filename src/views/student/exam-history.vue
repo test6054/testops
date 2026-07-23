@@ -330,7 +330,7 @@ onActivated(reloadPage)
 
 .link-cell__sub {
   margin-top: 2px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 

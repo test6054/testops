@@ -1320,13 +1320,13 @@ watch(
 }
 .review-section__title {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .review-sensitive-hint {
   margin: 0 0 12px;
   color: var(--dp-error);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .review-meta {
   margin: 0 0 12px;
@@ -1341,7 +1341,7 @@ watch(
 .review-broken-alert {
   margin: 12px 0;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--dp-radius-panel);
   border: 1px solid var(--dp-danger-border, #ffccc7);
   background: var(--dp-danger-bg, #fff2f0);
   color: var(--dp-danger, #cf1322);
@@ -1358,16 +1358,16 @@ watch(
   gap: 8px;
   margin: 8px 0 12px;
   color: var(--dp-text-secondary, #595959);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .review-ai-summary {
   margin: 0 0 8px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .review-ai-issues {
   margin: 0 0 12px 16px;
   padding: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-color-text-secondary);
 }
 .review-ai-absent {

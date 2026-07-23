@@ -700,7 +700,7 @@ onMounted(async () => {
   gap: 8px;
 }
 .ethics-admin__form label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .ethics-admin__constraint {
@@ -719,7 +719,7 @@ onMounted(async () => {
 .ethics-admin__logs {
   margin: 0;
   padding-left: 16px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 </style>

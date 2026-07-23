@@ -136,13 +136,13 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
 
   &__title {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__count {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -192,7 +192,7 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
   }
 
   &__no {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -200,7 +200,7 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
   &__scene,
   &__stem {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
@@ -212,7 +212,7 @@ function formatQuestionTypeLabel(question: ExamLayoutQuestionDto): string {
 
   &__empty {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }

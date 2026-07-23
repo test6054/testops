@@ -120,13 +120,13 @@ function lightenColor(hex: string, percent: number): string {
 }
 
 .ui-progress-bar__label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 500;
   color: var(--dp-text-primary);
 }
 
 .ui-progress-bar__percent {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 700;
   color: var(--dp-text-primary);
   font-variant-numeric: tabular-nums;
@@ -134,7 +134,7 @@ function lightenColor(hex: string, percent: number): string {
 
 .ui-progress-bar__track {
   width: 100%;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   overflow: hidden;
   background-color: color-mix(in srgb, var(--dp-gray-200) 70%, var(--dp-surface));
   box-shadow: inset 0 1px 2px color-mix(in srgb, var(--dp-text-primary) 4%, transparent);
@@ -142,7 +142,7 @@ function lightenColor(hex: string, percent: number): string {
 
 .ui-progress-bar__fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   background: linear-gradient(90deg, var(--dp-color-primary), color-mix(in srgb, var(--dp-color-primary) 75%, var(--dp-blue-200)));
   box-shadow: 0 0 6px color-mix(in srgb, var(--dp-color-primary) 25%, transparent);
@@ -151,11 +151,11 @@ function lightenColor(hex: string, percent: number): string {
 .ui-progress-bar--striped .ui-progress-bar__fill {
   background-image: linear-gradient(
     45deg,
-    rgba(255, 255, 255, 0.18) 25%,
+    color-mix(in srgb, var(--dp-surface) 18%, transparent) 25%,
     transparent 25%,
     transparent 50%,
-    rgba(255, 255, 255, 0.18) 50%,
-    rgba(255, 255, 255, 0.18) 75%,
+    color-mix(in srgb, var(--dp-surface) 18%, transparent) 50%,
+    color-mix(in srgb, var(--dp-surface) 18%, transparent) 75%,
     transparent 75%,
     transparent
   );

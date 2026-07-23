@@ -288,7 +288,7 @@ watch(
 
 :deep(.appeal-section__flow-hint) {
   margin-right: auto;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--c-text-4);
   white-space: nowrap;
 }
@@ -303,7 +303,7 @@ watch(
 :deep(.appeal-section__count) {
   flex-shrink: 0;
   padding-top: 8px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--c-text-4);
   white-space: nowrap;
 }

@@ -316,7 +316,7 @@
 }
 
 .ai-cluster-tile__pct {
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--dp-color-primary);
@@ -484,7 +484,7 @@
 }
 
 .ai-student-profile-tile__score {
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   margin-bottom: var(--dp-space-2);

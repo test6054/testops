@@ -93,7 +93,7 @@
     .ant-dropdown-menu-item {
       padding: 8px 12px !important;
       border-radius: var(--dp-radius-control-inner) !important;
-      font-size: 14px;
+      font-size: var(--dp-font-size-md);
       color: var(--dp-text-primary);
       transition: all 0.15s ease;
 
@@ -131,7 +131,7 @@
 
 .ant-popconfirm {
   .ant-popconfirm-message {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
   }
 
   .ant-popconfirm-buttons {
@@ -176,13 +176,13 @@
     gap: 8px;
     min-height: 40px;
     padding: 10px 14px !important;
-    border-radius: 8px !important;
-    border: 1px solid rgba(0, 0, 0, 0.06) !important;
+    border-radius: var(--dp-radius-panel) !important;
+    border: 1px solid var(--dp-border-subtle) !important;
     background: color-mix(in srgb, var(--ant-color-bg-container) 92%, var(--dp-bg-layout)) !important;
     box-shadow:
-      0 1px 2px rgba(26, 35, 50, 0.04),
-      0 8px 24px rgba(26, 35, 50, 0.08) !important;
-    font-size: 13px;
+      var(--dp-shadow-xs),
+      var(--dp-shadow-card) !important;
+    font-size: var(--dp-font-size-sm);
     font-weight: 500;
     line-height: 1.4;
     color: var(--ant-color-text) !important;

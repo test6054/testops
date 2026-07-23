@@ -427,7 +427,7 @@ async function loadCampaignOptions(): Promise<void> {
   padding: var(--dp-space-2) var(--dp-space-4);
   background: var(--dp-surface);
   border-bottom: 1px solid var(--dp-border-subtle);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -471,11 +471,11 @@ async function loadCampaignOptions(): Promise<void> {
 
 .archive-readiness-matrix__cell-sub {
   color: var(--dp-text-muted);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .matrix-cell {
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;

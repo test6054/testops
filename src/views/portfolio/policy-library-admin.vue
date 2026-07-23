@@ -891,7 +891,7 @@ onMounted(() => {
 }
 .policy-admin__preview {
   white-space: pre-wrap;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   max-height: 420px;
   overflow: auto;
@@ -904,7 +904,7 @@ onMounted(() => {
 }
 .policy-admin__detail-meta dt {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 .policy-admin__detail-meta dd {
@@ -912,7 +912,7 @@ onMounted(() => {
 }
 .policy-admin__section-title {
   margin: 16px 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .policy-admin__mapping-row {
@@ -933,7 +933,7 @@ onMounted(() => {
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .policy-admin__version-item {
   display: flex;
@@ -954,7 +954,7 @@ onMounted(() => {
   border-radius: var(--dp-radius-full);
   background: var(--dp-blue-50);
   color: var(--dp-blue-600);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
 }
 .policy-admin__version-badge--muted {
@@ -980,7 +980,7 @@ onMounted(() => {
   padding: 0;
   margin: 0;
   overflow: auto;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   list-style: none;
 }
 .policy-admin__diff li {

@@ -234,7 +234,7 @@ defineExpose({ loadSelfCheck })
 }
 
 .archive-volume-self-check-list__progress {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
@@ -309,7 +309,7 @@ defineExpose({ loadSelfCheck })
   display: flex;
   align-items: flex-start;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.45;
   color: var(--dp-text-primary);
 }
@@ -331,7 +331,7 @@ defineExpose({ loadSelfCheck })
 }
 
 .self-check-row__time {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-family: var(--dp-font-mono), ui-monospace, monospace;
   color: var(--dp-text-muted);
 }

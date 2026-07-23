@@ -406,19 +406,19 @@ watch(
   grid-column: 1 / -1;
   margin: 0;
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.6;
 }
 
 .archive-template-preview__label {
   color: var(--dp-text-secondary);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.4;
 }
 
 .archive-template-preview__value {
   color: var(--dp-text-primary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.5;
   word-break: break-all;
 }
@@ -437,7 +437,7 @@ watch(
 }
 
 .archive-template-preview__tabs :deep(.ant-table) {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .archive-template-preview__muted {
@@ -447,6 +447,6 @@ watch(
 .archive-template-preview__empty {
   margin: 0;
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 </style>

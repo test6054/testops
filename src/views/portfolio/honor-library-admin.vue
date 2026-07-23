@@ -386,7 +386,7 @@ async function exportHonor() {
   margin-bottom: 8px;
 }
 .stats span {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--text-secondary);
 }
 </style>

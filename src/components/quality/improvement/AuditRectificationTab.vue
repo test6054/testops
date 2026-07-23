@@ -774,7 +774,7 @@ defineExpose({
 .iwb-tab {
   &__sub-desc {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
@@ -789,7 +789,7 @@ defineExpose({
     margin-bottom: 12px;
     background: var(--dp-surface-subtle);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
   }
 
   &__detail-row-head {
@@ -801,7 +801,7 @@ defineExpose({
   }
 
   &__detail-row-title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }

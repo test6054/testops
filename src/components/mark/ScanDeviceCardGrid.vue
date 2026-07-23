@@ -112,19 +112,19 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
   }
 
   &__title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 
   &__meta {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__empty {
     padding: var(--dp-space-3, 12px) 0;
     text-align: center;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-muted);
   }
 
@@ -188,19 +188,19 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
 
   &__name {
     flex: 1;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__id {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     font-family: var(--dp-font-mono);
     color: var(--dp-text-muted);
   }
 
   &__batch {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -212,25 +212,25 @@ function handleSelect(device: ExamScanMonitorDeviceResponse): void {
   }
 
   &__stat-label {
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
     color: var(--dp-text-muted);
   }
 
   &__stat-value {
-    font-size: 18px;
+    font-size: var(--dp-font-size-xl);
     font-weight: 700;
     font-family: var(--dp-font-mono);
     color: var(--dp-text-primary);
   }
 
   &__stat-version {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 500;
     color: var(--dp-text-secondary);
   }
 
   &__heartbeat {
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
     color: var(--dp-text-muted);
   }
 }

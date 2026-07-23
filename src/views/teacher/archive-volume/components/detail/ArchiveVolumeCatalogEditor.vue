@@ -315,7 +315,7 @@ defineExpose({ loadCatalog })
 
 .archive-volume-catalog-editor__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
 }
 
@@ -343,7 +343,7 @@ defineExpose({ loadCatalog })
 }
 
 .archive-volume-catalog-editor__empty-text {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 </style>

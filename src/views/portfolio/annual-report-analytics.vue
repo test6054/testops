@@ -526,7 +526,7 @@ watch(
 
 .annual-report__meta dt {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -541,7 +541,7 @@ watch(
 .annual-report__block {
   margin: 8px 0 0;
   color: var(--dp-color-danger, #cf1322);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .annual-report__identity {

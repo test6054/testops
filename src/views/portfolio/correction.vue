@@ -620,6 +620,6 @@ watch(
 
 .correction-page__detail-line {
   margin: 0 0 var(--dp-space-2);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 </style>

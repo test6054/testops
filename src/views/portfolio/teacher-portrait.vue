@@ -1611,13 +1611,13 @@ watch(creditCategory, (next, prev) => {
 <style scoped lang="scss">
 .teacher-portrait__meta {
   margin: var(--dp-space-4) 0 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
 .teacher-portrait__hint-text {
   margin: 0 0 var(--dp-space-3);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
@@ -1694,7 +1694,7 @@ watch(creditCategory, (next, prev) => {
 .teacher-portrait__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 
   th,
   td {
@@ -1731,13 +1731,13 @@ watch(creditCategory, (next, prev) => {
 
   dt {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
   dd {
     margin: var(--dp-space-1) 0 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }

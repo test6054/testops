@@ -224,7 +224,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 700;
   color: var(--dp-blue-700);
   background: var(--dp-blue-50);
@@ -240,7 +240,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 
 .ui-activity-timeline__group-count {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 600;
   color: var(--dp-text-muted);
 }
@@ -269,7 +269,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   z-index: 1;
   width: 14px;
   height: 14px;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   margin-top: 14px;
   border: 3px solid var(--dp-surface);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--dp-text-primary) 8%, transparent);
@@ -342,7 +342,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 
 .ui-activity-timeline__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   line-height: 1.5;
   font-weight: 700;
   color: var(--dp-text-primary);
@@ -359,14 +359,14 @@ const resolveTagVariant = (tag: TimelineTag) => {
 .ui-activity-timeline__time,
 .ui-activity-timeline__actor,
 .ui-activity-timeline__meta {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-muted);
 }
 
 .ui-activity-timeline__content {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.7;
   color: var(--dp-text-secondary);
 }
@@ -406,7 +406,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 .ui-activity-timeline__file-name {
   min-width: 0;
   flex: 1;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
   color: var(--dp-text-primary);
   white-space: nowrap;
@@ -417,7 +417,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 .ui-activity-timeline__file-state,
 .ui-activity-timeline__file-size {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -435,7 +435,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
 }
 
 .ui-activity-timeline--compact .ui-activity-timeline__content {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.65;
 }
 
@@ -477,7 +477,7 @@ const resolveTagVariant = (tag: TimelineTag) => {
   }
 
   .ui-activity-timeline__title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
   }
 
   .ui-activity-timeline__meta-row {

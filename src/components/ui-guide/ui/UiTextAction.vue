@@ -62,17 +62,17 @@ const onClick = (event: MouseEvent) => {
 }
 
 .ui-text-action--md {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .ui-text-action--sm {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-text-action--table {
   padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 13px;
+  border-radius: var(--dp-radius-xs);
+  font-size: var(--dp-font-size-sm);
   font-weight: 400;
   transition: background 0.1s ease, color 0.15s ease;
 }

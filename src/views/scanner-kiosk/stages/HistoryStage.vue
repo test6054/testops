@@ -692,7 +692,7 @@ watch(
   border-radius: 50%;
   background: var(--kiosk-neutral-soft);
   color: var(--kiosk-ink-tertiary);
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   flex: 0 0 auto;
 }
 .event.tone-success .event-icon {
@@ -1022,7 +1022,7 @@ watch(
 }
 .history-item.active {
   border-color: var(--kiosk-primary);
-  box-shadow: 0 0 0 2px rgba(31, 95, 255, 0.12);
+  box-shadow: 0 0 0 2px var(--dp-focus-ring);
 }
 
 .history-row {

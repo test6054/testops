@@ -246,7 +246,7 @@ defineExpose({
     .info {
       margin-bottom: 12px; // 减小信息区域下边距
       color: var(--dp-text-secondary);
-      font-size: 14px;
+      font-size: var(--dp-font-size-md);
       line-height: 1.5715;
       text-align: center;
 
@@ -267,7 +267,7 @@ defineExpose({
       align-items: center;
 
       .pagination-info {
-        font-size: 14px;
+        font-size: var(--dp-font-size-md);
         color: var(--dp-text-secondary);
       }
 
@@ -293,7 +293,7 @@ defineExpose({
   align-items: center;
   height: 200px;
   color: var(--dp-text-tertiary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 // 兼容原有样式
@@ -312,7 +312,7 @@ defineExpose({
       gap: 12px;
 
       .notice-time {
-        font-size: 12px;
+        font-size: var(--dp-font-size-xs);
         color: var(--dp-text-tertiary);
       }
     }
@@ -322,7 +322,7 @@ defineExpose({
     margin-bottom: var(--dp-space-4, 16px);
 
     .notice-title {
-      font-size: 18px;
+      font-size: var(--dp-font-size-xl);
       font-weight: 600;
       color: var(--dp-text);
       margin-bottom: var(--dp-space-3, 12px);
@@ -330,7 +330,7 @@ defineExpose({
     }
 
     .notice-text {
-      font-size: 14px;
+      font-size: var(--dp-font-size-md);
       color: var(--dp-text-secondary);
       line-height: 1.6;
       max-height: 300px;

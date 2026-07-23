@@ -1541,7 +1541,7 @@ onMounted(async () => {
   align-items: center;
 }
 .filter-label {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 .audit-flow-row {
@@ -1553,7 +1553,7 @@ onMounted(async () => {
 
 .audit-flow-label {
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .meta-row {
@@ -1565,7 +1565,7 @@ onMounted(async () => {
 }
 .readonly-hint {
   margin: 0 0 12px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 .change-log {
@@ -1573,7 +1573,7 @@ onMounted(async () => {
 }
 .change-log h4 {
   margin: 0 0 12px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 .change-log-item {
@@ -1582,7 +1582,7 @@ onMounted(async () => {
 }
 .change-log-meta {
   margin-bottom: 8px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 .diff-row {
@@ -1594,12 +1594,12 @@ onMounted(async () => {
 }
 .diff-label {
   min-width: 32px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 .diff-error {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-error);
 }
 </style>

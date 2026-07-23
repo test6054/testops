@@ -81,14 +81,14 @@ const emit = defineEmits<{
 }
 
 .exam-workflow-task-dock__title {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   line-height: 1.5;
   color: var(--dp-text-primary);
 }
 
 .exam-workflow-task-dock__badge {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 500;
   line-height: 1.5;
   color: var(--dp-text-secondary);
@@ -97,7 +97,7 @@ const emit = defineEmits<{
 
 .exam-workflow-task-dock__description {
   margin: 2px 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-secondary);
 }

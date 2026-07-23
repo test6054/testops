@@ -409,7 +409,7 @@ onActivated(() => {
 }
 
 .strength-label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
   white-space: nowrap;
 }
@@ -452,7 +452,7 @@ onActivated(() => {
 }
 
 .strength-text {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   min-width: 30px;
   font-weight: 500;
@@ -479,12 +479,12 @@ onActivated(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
   transition: color 0.2s;
 
   .anticon {
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     flex-shrink: 0;
   }
 
@@ -510,7 +510,7 @@ onActivated(() => {
 
 .ip-address {
   font-family: var(--dp-font-family-code);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   background: var(--dp-fill-tertiary);
   padding: 2px 6px;
   border-radius: var(--dp-radius-xs);

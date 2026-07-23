@@ -1606,12 +1606,12 @@ watch(
 
 .teacher-archive__category-name {
   flex: 1 1 100%;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: var(--dp-font-weight-medium);
 }
 
 .teacher-archive__category-count {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
@@ -1623,7 +1623,7 @@ watch(
 
 .teacher-archive__latest-export {
   margin-top: var(--dp-space-3);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
@@ -1643,18 +1643,18 @@ watch(
   align-items: center;
   gap: var(--dp-space-2);
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .teacher-archive__timeline-meta {
   margin: var(--dp-space-1) 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
 .teacher-archive__detail-meta {
   margin: 0 0 var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -1668,7 +1668,7 @@ watch(
 
 .teacher-archive__version-title {
   margin: 0 0 var(--dp-space-2);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: var(--dp-font-weight-medium);
 }
 
@@ -1685,7 +1685,7 @@ watch(
   padding: var(--dp-space-2) 0;
   border-bottom: 1px solid var(--dp-border-subtle);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .teacher-archive__version-time {
@@ -1751,14 +1751,14 @@ watch(
 
 .teacher-archive__support-title {
   overflow-wrap: anywhere;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: var(--dp-font-weight-medium);
 }
 
 .teacher-archive__support-meta {
   margin-top: var(--dp-space-1);
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 
@@ -1769,14 +1769,14 @@ watch(
 
 .teacher-archive__material-label {
   margin-top: var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: var(--dp-font-weight-medium);
 }
 
 .teacher-archive__score-list {
   margin: 8px 0 0;
   padding-left: 18px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .teacher-archive__bag-grid {
@@ -1817,7 +1817,7 @@ watch(
 
 .teacher-archive__section-title {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: var(--dp-font-weight-medium);
 }
 
@@ -1827,7 +1827,7 @@ watch(
 
 .teacher-archive__group-title {
   margin: 0 0 4px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -1838,7 +1838,7 @@ watch(
 
 .teacher-archive__bag p {
   margin: 0 0 var(--dp-space-2);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

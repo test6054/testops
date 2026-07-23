@@ -860,7 +860,7 @@ onMounted(() => {
 
 .archive-remediation-detail__desc {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.7;
   color: var(--dp-text-secondary);
 }
@@ -870,7 +870,7 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: var(--dp-space-4);
   margin-top: var(--dp-space-3);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 
@@ -879,7 +879,7 @@ onMounted(() => {
 }
 
 .archive-remediation-detail__flow-hint {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -899,14 +899,14 @@ onMounted(() => {
 }
 
 .archive-remediation-detail__completion-label {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   white-space: nowrap;
 }
 
 .archive-remediation-detail__mono {
   font-family: var(--dp-font-mono);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .archive-remediation-detail__campaign-grid {
@@ -917,7 +917,7 @@ onMounted(() => {
 
 .archive-remediation-detail__campaign-deadline {
   margin: var(--dp-space-3) 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 
@@ -952,7 +952,7 @@ onMounted(() => {
 
 .archive-remediation-detail__timeline-time {
   flex: 0 0 148px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -966,13 +966,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--dp-space-2);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
 }
 
 .archive-remediation-detail__timeline-desc {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   line-height: 1.5;
 }
@@ -990,14 +990,14 @@ onMounted(() => {
 
 .archive-remediation-detail__verify-notes {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
   line-height: 1.6;
 }
 
 .archive-remediation-detail__verify-meta {
   margin: var(--dp-space-2) 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -1010,7 +1010,7 @@ onMounted(() => {
 
 .archive-remediation-detail__evidence-count {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 

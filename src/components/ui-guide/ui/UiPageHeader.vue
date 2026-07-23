@@ -103,7 +103,7 @@ const emit = defineEmits<{
 
 .ui-page-header__title {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   line-height: 1.2;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -121,7 +121,7 @@ const emit = defineEmits<{
 
 .ui-page-header__subtitle {
   margin: var(--dp-space-2, 8px) 0 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.7;
   color: var(--dp-text-secondary);
 }

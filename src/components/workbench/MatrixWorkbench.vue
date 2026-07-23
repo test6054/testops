@@ -254,7 +254,7 @@ function handleRowClick(row: MatrixRow) {
   flex-direction: column;
   background: var(--dp-surface);
   border: 1px solid var(--dp-border);
-  border-radius: 8px;
+  border-radius: var(--dp-radius-panel);
   overflow: hidden;
 }
 
@@ -276,13 +276,13 @@ function handleRowClick(row: MatrixRow) {
 
 .matrix-workbench__title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .matrix-workbench__subtitle {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -310,7 +310,7 @@ function handleRowClick(row: MatrixRow) {
   border-collapse: separate;
   border-spacing: 0;
   table-layout: fixed;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-primary);
 }
 
@@ -379,7 +379,7 @@ function handleRowClick(row: MatrixRow) {
 
 .matrix-workbench__corner-axis {
   margin-left: 6px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 400;
   color: var(--dp-text-muted);
 }
@@ -393,7 +393,7 @@ function handleRowClick(row: MatrixRow) {
 .matrix-workbench__col-hint,
 .matrix-workbench__row-hint {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 400;
   color: var(--dp-text-muted);
 }
@@ -403,8 +403,8 @@ function handleRowClick(row: MatrixRow) {
   display: inline-block;
   margin-top: 4px;
   padding: 0 6px;
-  border-radius: 8px;
-  font-size: 11px;
+  border-radius: var(--dp-radius-panel);
+  font-size: var(--dp-font-size-xxs);
   line-height: 18px;
   font-weight: 600;
 }
@@ -416,7 +416,7 @@ function handleRowClick(row: MatrixRow) {
 
 .matrix-workbench__row-warning {
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-color-danger);
 }
 
@@ -459,13 +459,13 @@ function handleRowClick(row: MatrixRow) {
 
 .matrix-workbench__cell-secondary {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--dp-text-muted);
 }
 
 .matrix-workbench__cell-empty {
   color: var(--dp-text-disabled);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .matrix-workbench__cell--empty-state {
@@ -481,7 +481,7 @@ function handleRowClick(row: MatrixRow) {
   border-radius: 50%;
   background: var(--dp-color-danger);
   color: var(--dp-text-inverse);
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   font-weight: 700;
   line-height: 14px;
   text-align: center;

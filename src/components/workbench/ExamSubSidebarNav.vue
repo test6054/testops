@@ -108,7 +108,7 @@ function onMenuClick(info: MenuInfo): void {
     border-radius: 9px;
     background: var(--dp-warning-bg);
     color: var(--dp-warning);
-    font-size: 11px;
+    font-size: var(--dp-font-size-xxs);
     font-weight: 600;
     line-height: 18px;
     text-align: center;

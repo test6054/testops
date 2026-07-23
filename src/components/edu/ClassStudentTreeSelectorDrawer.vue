@@ -645,7 +645,7 @@ defineExpose({
 
   .selection-stats {
     margin-bottom: 12px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-tertiary);
 
     .selection-count {
@@ -686,7 +686,7 @@ defineExpose({
 
     .node-stats {
       margin-left: 8px;
-      font-size: 12px;
+      font-size: var(--dp-font-size-xs);
       color: var(--dp-text-tertiary);
     }
   }

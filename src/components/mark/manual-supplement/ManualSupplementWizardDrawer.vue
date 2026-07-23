@@ -631,7 +631,7 @@ watch(
 .manual-supplement-wizard__warn,
 .manual-supplement-wizard__success {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.5;
 }
 

@@ -375,7 +375,7 @@ function switchTab(type: RecordType) {
 .input {
   padding: 6px 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .input--wide {
   flex: 1;

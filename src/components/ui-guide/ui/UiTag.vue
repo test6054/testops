@@ -64,19 +64,19 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
 .ui-tag--sm {
   min-height: 22px;
   padding: 0 9px;
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
 }
 
 .ui-tag--md {
   min-height: 26px;
   padding: 0 11px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .ui-tag--lg {
   min-height: 30px;
   padding: 0 13px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-tag--soft {

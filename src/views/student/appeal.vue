@@ -937,7 +937,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: var(--dp-font-weight-title);
 }
 
@@ -1028,7 +1028,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
     display: flex;
     align-items: center;
     gap: var(--dp-space-3, 12px);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
     flex-wrap: wrap;
 
@@ -1061,7 +1061,7 @@ async function loadSelectedExamQuestions(): Promise<void> {
   }
 
   &__sub {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-tertiary);
   }
 }
@@ -1084,12 +1084,12 @@ async function loadSelectedExamQuestions(): Promise<void> {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .appeal-evidence-hint {
   margin-top: 6px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
   line-height: 1.5;
 }
@@ -1110,12 +1110,12 @@ async function loadSelectedExamQuestions(): Promise<void> {
 
   &__score {
     margin-left: auto;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
 
     strong {
       color: var(--dp-success);
-      font-size: 16px;
+      font-size: var(--dp-font-size-lg);
     }
   }
 }
@@ -1123,6 +1123,6 @@ async function loadSelectedExamQuestions(): Promise<void> {
 .question-load-error {
   margin-top: 6px;
   color: var(--dp-error);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 </style>

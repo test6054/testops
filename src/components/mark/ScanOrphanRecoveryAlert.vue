@@ -171,7 +171,7 @@ async function handleRecover(): Promise<void> {
 .scan-orphan-recovery__failure-summary {
   margin: 0 0 4px;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
 }
 
@@ -179,7 +179,7 @@ async function handleRecover(): Promise<void> {
   margin: 8px 0 0;
   padding-left: 18px;
   color: var(--dp-text);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 </style>

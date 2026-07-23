@@ -532,13 +532,13 @@ watch(
   align-items: center;
   gap: var(--dp-space-2);
   margin: 0 0 var(--dp-space-4);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 
 .teacher-gap__return {
   margin: 0 0 var(--dp-space-4);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-warning);
 }
 
@@ -552,7 +552,7 @@ watch(
 
 .teacher-gap__file-id {
   margin-left: var(--dp-space-2);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 </style>

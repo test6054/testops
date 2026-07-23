@@ -112,7 +112,7 @@ function resolveNavigatePhase(reason: string): LayoutDesignPhaseCode | null {
 
   &__title {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 
@@ -140,7 +140,7 @@ function resolveNavigatePhase(reason: string): LayoutDesignPhaseCode | null {
 
   &__text {
     flex: 1;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-primary);
   }
 }

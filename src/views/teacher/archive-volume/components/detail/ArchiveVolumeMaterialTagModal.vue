@@ -92,7 +92,7 @@ async function handleSave() {
 <style scoped>
 .archive-material-tag-modal__hint {
   margin: 0 0 var(--dp-space-3);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 </style>

@@ -305,7 +305,7 @@ onMounted(() => {
 .forgot-link {
   flex-shrink: 0;
   color: var(--dp-color-primary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   text-decoration: none;
 
@@ -323,7 +323,7 @@ onMounted(() => {
   border: 1px solid rgba(37, 99, 235, 0.15);
   border-radius: var(--dp-radius-control);
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
 
   .hint-icon {
@@ -352,7 +352,7 @@ onMounted(() => {
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--dp-radius-control);
   color: var(--dp-red-500);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
 
   svg {

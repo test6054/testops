@@ -1650,7 +1650,7 @@ watch(
   width: 96px;
   padding: 6px 8px;
   border: 1px solid var(--dp-border);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
 }
 .input--wide {
   flex: 1;
@@ -1664,14 +1664,14 @@ watch(
   width: 72px;
 }
 .stats {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .completion-grid {
   display: flex;
   flex-wrap: wrap;
   gap: var(--dp-space-3, 12px);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .history-settings,
 .history-batches {
@@ -1692,17 +1692,17 @@ watch(
 .history-settings h4 {
   margin: 0;
   color: var(--dp-text-primary);
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
 }
 .history-settings h4 {
   margin-bottom: 12px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .history-section-heading p {
   margin: 4px 0 0;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .history-settings-grid {
   display: grid;

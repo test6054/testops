@@ -296,13 +296,13 @@ onMounted(() => {
 
 .archive-volume-physical-location__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
 }
 
 .archive-volume-physical-location__hint {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .archive-volume-physical-location__hero {
@@ -316,14 +316,14 @@ onMounted(() => {
   border-radius: var(--dp-radius-control);
 }
 .archive-volume-physical-location__location-text {
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
   font-weight: 700;
   font-family: var(--dp-font-mono), monospace;
   color: var(--dp-primary);
   font-variant-numeric: tabular-nums;
 }
 .archive-volume-physical-location__hero-meta {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 .archive-volume-physical-location__form {
@@ -331,7 +331,7 @@ onMounted(() => {
 }
 .archive-volume-physical-location__readonly {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .archive-volume-physical-location__timeline {
@@ -352,7 +352,7 @@ onMounted(() => {
 }
 .archive-volume-physical-location__empty {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 

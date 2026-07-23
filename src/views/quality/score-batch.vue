@@ -1486,23 +1486,23 @@ onMounted(async () => {
 
   &__upload-title {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__upload-hint {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
     line-height: 1.6;
 
     code {
       padding: 1px 6px;
       margin: 0 2px;
-      font-size: 12px;
+      font-size: var(--dp-font-size-xs);
       background: var(--dp-gray-100);
-      border-radius: 4px;
+      border-radius: var(--dp-radius-xs);
     }
   }
 
@@ -1512,12 +1512,12 @@ onMounted(async () => {
 
   &__table {
     background: var(--dp-surface);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
   }
 
   &__sub-text {
     color: var(--dp-text-muted);
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__num-success {

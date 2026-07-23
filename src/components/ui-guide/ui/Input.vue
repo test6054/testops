@@ -175,7 +175,7 @@ const handleClear = () => {
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
   background-color: var(--dp-bg-control);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 22px;
   color: var(--dp-text-primary);
   font-family: var(--dp-font-family);
@@ -194,7 +194,7 @@ const handleClear = () => {
   padding: 0 var(--dp-space-3, 12px);
   border: none;
   background: transparent;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 22px;
   color: inherit;
   font-family: inherit;
@@ -282,7 +282,7 @@ const handleClear = () => {
   height: 22px;
   margin-right: var(--dp-space-2, 8px);
   border: none;
-  border-radius: 999px;
+  border-radius: var(--dp-radius-full);
   background: transparent;
   color: var(--dp-text-muted);
   cursor: pointer;

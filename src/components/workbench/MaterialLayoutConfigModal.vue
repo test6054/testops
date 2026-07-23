@@ -144,7 +144,7 @@ function handleSave(): void {
 .material-layout-modal {
   &__desc {
     margin: 0 0 12px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.6;
     color: var(--dp-text-muted);
   }
@@ -165,7 +165,7 @@ function handleSave(): void {
     text-align: left;
     background: var(--dp-surface);
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     cursor: pointer;
     transition:
       border-color 0.2s ease,
@@ -188,13 +188,13 @@ function handleSave(): void {
   }
 
   &__mode-option-title {
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__mode-option-desc {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }
@@ -205,14 +205,14 @@ function handleSave(): void {
 
   &__hint {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-muted);
   }
 
   &__advisory {
     margin: 8px 0 0;
     padding: 8px 10px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     line-height: 1.5;
     color: var(--dp-warning);
     background: var(--dp-warning-bg);

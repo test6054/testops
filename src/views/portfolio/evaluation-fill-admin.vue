@@ -736,10 +736,10 @@ onMounted(async () => {
   gap: var(--dp-space-3, 12px);
   align-items: center;
   margin-bottom: 12px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 .fill-window-hint {
   color: var(--dp-text-muted);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 </style>

@@ -472,7 +472,7 @@ function quickDigitScores(fullScore: number): number[] {
 
   &__keyboard-hint {
     margin: 8px 0 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
@@ -541,29 +541,29 @@ function quickDigitScores(fullScore: number): number[] {
     display: flex;
     align-items: baseline;
     gap: 4px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-secondary);
 
     strong {
       color: var(--dp-color-primary);
-      font-size: 14px;
+      font-size: var(--dp-font-size-md);
     }
   }
 
   &__ai-diagnostic {
     margin-bottom: 0;
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__ai-pending {
     margin-bottom: 8px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__match-mode {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 }

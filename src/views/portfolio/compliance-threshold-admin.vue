@@ -533,7 +533,7 @@ onMounted(() => {
   grid-template-columns: 1fr;
 }
 .compliance-threshold-form label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .w-full {

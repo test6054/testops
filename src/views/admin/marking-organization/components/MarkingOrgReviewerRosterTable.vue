@@ -191,7 +191,7 @@ const rows = computed((): RosterRow[] => {
 
   &__title {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
   }
 
@@ -200,7 +200,7 @@ const rows = computed((): RosterRow[] => {
   }
 
   &__sub {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
@@ -208,7 +208,7 @@ const rows = computed((): RosterRow[] => {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__bar {

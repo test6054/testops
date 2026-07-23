@@ -997,7 +997,7 @@ watch(
 .archive-volume-remediation-panel__export-hint {
   flex-basis: 100%;
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
   line-height: 1.5;
 }
@@ -1010,7 +1010,7 @@ watch(
 }
 
 .archive-volume-remediation-panel__campaign-rate-label {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   white-space: nowrap;
 }
@@ -1066,14 +1066,14 @@ watch(
 }
 
 .remediation-card__title {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text);
 }
 
 .remediation-card__desc {
   margin: var(--dp-space-1) 0 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-3);
 }
@@ -1090,7 +1090,7 @@ watch(
   flex-wrap: wrap;
   gap: var(--dp-space-4);
   margin-top: var(--dp-space-2);
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-4);
 }
 

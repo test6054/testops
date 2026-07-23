@@ -174,30 +174,30 @@ function pageStatusTone(code?: DocumentOcrPageResultStatusCode): BadgeTone {
   flex-wrap: wrap;
   gap: var(--dp-space-3, 12px);
   margin-bottom: 12px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .archive-ocr-detail__diagnostic,
 .archive-ocr-detail__page-diagnostic {
   margin: 8px 0;
   color: var(--dp-danger);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 .archive-ocr-detail__text {
   margin-top: 12px;
   padding: 12px;
   background: var(--dp-bg-subtle);
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 360px;
   overflow: auto;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.6;
 }
 .archive-ocr-detail__empty {
   margin: 16px 0;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 </style>

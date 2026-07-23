@@ -107,7 +107,7 @@ const submitReady = computed(() => props.canSubmitVolume)
 }
 
 .archive-volume-submit-progress-band__label {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 
@@ -116,7 +116,7 @@ const submitReady = computed(() => props.canSubmitVolume)
   font-weight: 600;
   color: var(--dp-text-primary);
   padding: 1px 8px;
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   background: color-mix(in srgb, var(--dp-primary) 7%, transparent);
 }
 

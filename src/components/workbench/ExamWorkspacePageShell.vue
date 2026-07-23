@@ -79,7 +79,7 @@ const showPageHeading = computed(() =>
 
   &__title {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: 600;
     line-height: 1.4;
     color: var(--dp-text-primary);
@@ -87,7 +87,7 @@ const showPageHeading = computed(() =>
 
   &__subtitle {
     margin: 4px 0 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.5;
     color: var(--dp-text-secondary);
   }

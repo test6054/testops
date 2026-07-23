@@ -1076,10 +1076,12 @@ onUnmounted(() => {
                 <p v-if="todoCourseScopeLabel(item)" class="teacher-home__meta">
                   课程 {{ todoCourseScopeLabel(item) }}
                 </p>
-                <p v-if="item.dueTime" class="teacher-home__meta" :class="{
-                  'teacher-home__due--danger': formatTodoDue(item.dueTime).tone === 'danger',
-                  'teacher-home__due--warning': formatTodoDue(item.dueTime).tone === 'warning',
-                }">
+                <p
+                  v-if="item.dueTime" class="teacher-home__meta" :class="{
+                    'teacher-home__due--danger': formatTodoDue(item.dueTime).tone === 'danger',
+                    'teacher-home__due--warning': formatTodoDue(item.dueTime).tone === 'warning',
+                  }"
+                >
                   {{ formatTodoDue(item.dueTime).text }}
                 </p>
                 <div class="teacher-home__todo-actions">
@@ -1180,21 +1182,21 @@ onUnmounted(() => {
 
 .teacher-home__portrait-score {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--dp-font-size-2xl);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
 
 .teacher-home__portrait-unit {
   margin-left: 2px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 500;
   color: var(--dp-text-muted);
 }
 
 .teacher-home__meta {
   margin: var(--dp-space-2) 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 .teacher-home__meta--link {
@@ -1207,12 +1209,12 @@ onUnmounted(() => {
 
 .teacher-home__onboarding {
   margin: var(--dp-space-2) 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-warning);
 }
 
 .teacher-home__todo-count {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 
@@ -1241,7 +1243,7 @@ onUnmounted(() => {
 
 .teacher-home__todo-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 500;
   color: var(--dp-text-primary);
 }

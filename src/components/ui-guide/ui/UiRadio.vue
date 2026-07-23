@@ -51,7 +51,7 @@ const inGroup = inject(uiRadioGroupKey, undefined) === true
 <style lang="scss" scoped>
 .ui-radio--single {
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 .ui-radio--single :deep(.ant-radio-inner) {

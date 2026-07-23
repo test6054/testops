@@ -88,7 +88,7 @@ const handleSelect = (item: UiSidebarNavItem) => {
 }
 
 .ui-sidebar-nav__title {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.5;
   font-weight: 800;
   color: var(--dp-text-primary);

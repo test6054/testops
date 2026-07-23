@@ -189,7 +189,7 @@ const handleClose = () => {
   height: 18px;
   margin-top: 1px;
   color: var(--alert-icon);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   background: transparent;
   border: 0;
 }
@@ -198,7 +198,7 @@ const handleClose = () => {
   margin-top: 0;
   width: 14px;
   height: 14px;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .ui-alert-strip__main {
@@ -240,14 +240,14 @@ const handleClose = () => {
 .ui-alert-strip__title {
   min-width: 0;
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
   line-height: 20px;
   color: var(--dp-text-primary, var(--dp-text-primary));
 }
 
 .ui-alert-strip--inline .ui-alert-strip__title {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 18px;
 }
 
@@ -257,7 +257,7 @@ const handleClose = () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 18px;
   color: var(--dp-text-secondary, var(--dp-text-secondary));
 }
@@ -272,7 +272,7 @@ const handleClose = () => {
 
 .ui-alert-strip__description {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-secondary, var(--dp-text-secondary));
 }

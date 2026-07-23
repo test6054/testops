@@ -382,7 +382,7 @@ defineExpose({
 .archive-template-editor__tip {
   margin: 0 0 16px;
   color: var(--dp-text-secondary);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 :deep(.archive-template-editor__meta) {
@@ -396,7 +396,7 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 
 :deep(.archive-template-editor__field--wide) {
@@ -412,7 +412,7 @@ defineExpose({
 }
 
 .archive-template-editor__tabs :deep(.ant-table) {
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .archive-template-editor__drag-handle {
@@ -442,6 +442,6 @@ defineExpose({
 .archive-template-editor__empty {
   margin: 0;
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
 }
 </style>

@@ -732,7 +732,7 @@ async function handleStart(): Promise<void> {
 
 .av-start__title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--dp-text-primary);
@@ -768,7 +768,7 @@ async function handleStart(): Promise<void> {
 
 .av-start__heading {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   font-weight: 600;
   color: var(--dp-text-primary);
 }
@@ -780,7 +780,7 @@ async function handleStart(): Promise<void> {
 }
 
 .av-start__label {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   font-weight: 500;
   color: var(--dp-text-secondary);
 }
@@ -793,7 +793,7 @@ async function handleStart(): Promise<void> {
 }
 
 .av-start__meta-text {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -823,9 +823,9 @@ async function handleStart(): Promise<void> {
   align-items: center;
   gap: var(--dp-space-2);
   padding: 8px 10px;
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   background: var(--dp-surface);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 
   &--action {
     cursor: pointer;
@@ -871,7 +871,7 @@ async function handleStart(): Promise<void> {
 }
 
 .av-start__required {
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   color: var(--ant-color-error);
 }
 
@@ -882,7 +882,7 @@ async function handleStart(): Promise<void> {
 
 .av-start__check-go {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--ant-color-primary);
 }
 
@@ -898,9 +898,9 @@ async function handleStart(): Promise<void> {
   grid-template-columns: 88px 1fr;
   gap: var(--dp-space-2);
   padding: 8px 10px;
-  border-radius: 4px;
+  border-radius: var(--dp-radius-xs);
   background: var(--dp-surface);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 
   dt {
     margin: 0;
@@ -936,7 +936,7 @@ async function handleStart(): Promise<void> {
 
 .av-start__hint {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   line-height: 1.5;
   color: var(--dp-text-secondary);
   max-width: 56ch;

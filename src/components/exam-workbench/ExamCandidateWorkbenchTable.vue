@@ -166,7 +166,7 @@ function buildActions(item: ExamCandidateRosterWorkbenchItemResponse): UiTableRo
   }
 
   &__no {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -183,7 +183,7 @@ function buildActions(item: ExamCandidateRosterWorkbenchItemResponse): UiTableRo
     display: flex;
     flex-direction: column;
     gap: 2px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 }
 </style>

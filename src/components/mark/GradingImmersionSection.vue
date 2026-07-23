@@ -55,7 +55,7 @@ defineProps<{
 
   &__title {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     font-weight: 600;
     line-height: 1.4;
     color: var(--dp-text-primary);

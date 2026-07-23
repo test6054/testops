@@ -624,7 +624,7 @@ onMounted(() => {
 
 .archive-volume-ledger__title {
   font-weight: 600;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
 }
 
 .archive-volume-ledger__cards {
@@ -642,7 +642,7 @@ onMounted(() => {
 
 .archive-volume-ledger__filter-label {
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-secondary);
 }
 </style>

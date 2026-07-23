@@ -1524,18 +1524,18 @@ onBeforeUnmount(() => {
   }
 
   &__keyboard-hint {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__queue-progress-title {
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
 
   &__queue-progress-text {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -1561,7 +1561,7 @@ onBeforeUnmount(() => {
 
   &__text-block {
     margin: 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     line-height: 1.6;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -1581,14 +1581,14 @@ onBeforeUnmount(() => {
 
   &__hint {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__annotation-meta {
     display: flex;
     gap: 12px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
   }
 
   &__empty {
@@ -1598,7 +1598,7 @@ onBeforeUnmount(() => {
   &__sticky-left {
     flex: 1;
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__sticky-actions {
@@ -1618,7 +1618,7 @@ onBeforeUnmount(() => {
   }
 
   &__ai-actions-hint {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
     margin-left: 8px;
   }

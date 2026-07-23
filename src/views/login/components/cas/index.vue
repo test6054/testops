@@ -495,7 +495,7 @@ defineExpose({
 }
 
 .cas-school-fixed__label {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-muted);
 }
 
@@ -518,7 +518,7 @@ defineExpose({
   }
 
   h3 {
-    font-size: 18px;
+    font-size: var(--dp-font-size-xl);
     font-weight: 600;
     color: var(--dp-text-primary);
     margin: 0;
@@ -526,7 +526,7 @@ defineExpose({
 
   p {
     color: var(--dp-text-muted);
-    font-size: 14px;
+    font-size: var(--dp-font-size-md);
     margin: 0;
   }
 }
@@ -540,7 +540,7 @@ defineExpose({
 
   p {
     margin: 4px 0;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     color: var(--dp-text-muted);
     line-height: 1.6;
   }
@@ -553,7 +553,7 @@ defineExpose({
   border-radius: var(--dp-radius-control);
   background: var(--dp-gray-50);
   color: var(--dp-text-secondary);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1.6;
   text-align: center;
 }
@@ -571,7 +571,7 @@ defineExpose({
 
 .cas-disabled__hint {
   margin: 8px 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-muted);
 }
 
@@ -585,7 +585,7 @@ defineExpose({
   border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: var(--dp-radius-control);
   color: var(--dp-red-500);
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 
   svg {
     flex-shrink: 0;
@@ -601,7 +601,7 @@ defineExpose({
   background: none;
   color: inherit;
   cursor: pointer;
-  font-size: 16px;
+  font-size: var(--dp-font-size-lg);
   padding: 0 4px;
   opacity: 0.6;
 

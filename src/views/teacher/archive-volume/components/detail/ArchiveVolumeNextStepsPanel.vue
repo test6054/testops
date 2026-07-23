@@ -81,14 +81,14 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
 }
 
 .archive-next-steps__head-icon {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   line-height: 1;
   color: var(--dp-primary);
 }
 
 .archive-next-steps__title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text);
 }
@@ -146,13 +146,13 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
   border-radius: var(--dp-radius-xs);
   background: color-mix(in srgb, var(--dp-primary) 10%, transparent);
   color: var(--dp-primary);
-  font-size: 11px;
+  font-size: var(--dp-font-size-xxs);
   font-weight: 700;
   flex-shrink: 0;
 }
 
 .archive-next-steps__item-label {
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
   color: var(--dp-text);
 }
@@ -160,7 +160,7 @@ function handleAction(action: ArchiveVolumeNextStepActionVO): void {
 .archive-next-steps__item-desc {
   margin: 0;
   padding-left: 30px;
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   line-height: 1.5;
   color: var(--dp-text-4);
 }

@@ -340,7 +340,7 @@ onMounted(async () => {
 
 .school-cockpit__alert-meta {
   margin: 4px 0 0;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
   color: var(--dp-text-secondary);
 }
 </style>

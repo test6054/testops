@@ -602,7 +602,7 @@ onActivated(() => {
 
   &__panel-title {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--dp-font-size-lg);
     font-weight: 600;
     color: var(--dp-text-primary);
   }
@@ -632,7 +632,7 @@ onActivated(() => {
 
   &__items-tip {
     color: var(--dp-text-secondary);
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
   }
 
   &__item-list {
@@ -648,7 +648,7 @@ onActivated(() => {
     align-items: center;
     padding: 12px;
     border: 1px solid var(--dp-border);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
     background: var(--dp-surface-elevated);
   }
 
@@ -661,7 +661,7 @@ onActivated(() => {
     align-items: center;
     justify-content: center;
     height: 32px;
-    font-size: 13px;
+    font-size: var(--dp-font-size-sm);
     font-weight: 600;
     color: var(--dp-text-secondary);
   }

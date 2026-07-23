@@ -79,7 +79,7 @@ const handleSearch = () => {
   border-radius: var(--dp-radius-control);
   border: 1px solid var(--dp-border);
   background-color: var(--dp-bg-control);
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   color: var(--dp-text-primary);
   transition:
     border-color 0.2s ease,

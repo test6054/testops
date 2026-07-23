@@ -407,7 +407,7 @@ onMounted(async () => {
 }
 .section-title {
   margin: 16px 0 8px;
-  font-size: 14px;
+  font-size: var(--dp-font-size-md);
   font-weight: 600;
 }
 </style>

@@ -511,7 +511,7 @@ function pageRowTone(
 }
 .page-warn {
   color: var(--kiosk-warning);
-  font-size: 18px;
+  font-size: var(--dp-font-size-xl);
 }
 .page-row.tone-danger .page-warn {
   color: var(--kiosk-danger);

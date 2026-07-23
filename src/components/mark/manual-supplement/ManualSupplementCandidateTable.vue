@@ -181,7 +181,7 @@ function handleAction(key: string, record: ExamManualSupplementCandidateItemResp
 }
 
 .manual-supplement-candidate-table__no {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
   color: var(--dp-text-secondary);
 }
 

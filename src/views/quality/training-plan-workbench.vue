@@ -2494,12 +2494,12 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 <style scoped lang="scss">
 .tpw {
   &__context-label {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-muted);
   }
 
   &__context-meta {
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 
@@ -2539,7 +2539,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
   &__card {
     background: var(--dp-surface);
-    border-radius: 8px;
+    border-radius: var(--dp-radius-panel);
   }
 
   &__matrix-block {
@@ -2552,7 +2552,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 
   &__file-name {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: var(--dp-font-size-xs);
     color: var(--dp-text-secondary);
   }
 }
@@ -2562,7 +2562,7 @@ function handlePlanAccreditationProfileChange(value: string | null): void {
 }
 
 .text-xs {
-  font-size: 12px;
+  font-size: var(--dp-font-size-xs);
 }
 
 .text-gray-500 {

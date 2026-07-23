@@ -2025,7 +2025,7 @@ onMounted(async () => {
 
 .archive-volume-list__title {
   font-weight: 500;
-  font-size: 13px;
+  font-size: var(--dp-font-size-sm);
 }
 
 .archive-volume-list__urgent-tag {
