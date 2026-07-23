@@ -27,6 +27,11 @@ import {
   ExamLayoutPaperSpecCode,
   ExamLayoutPaperSpecOptions,
 } from '@/types/enums/exam-layout-paper-spec-enum'
+import {
+  ALL_MARK_OCR_SCENE_CODES,
+  MarkOcrSceneCode,
+  MarkOcrSceneDescription,
+} from '@/types/enums/mark-ocr-scene-enum'
 import { createClientSnowflakeId } from '@/utils/client-snowflake'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { layoutHasSourceFileDetectResult } from '@/utils/exam-layout-designer'
@@ -54,33 +59,19 @@ const emit = defineEmits<{
   "patch": [document: ExamLayoutDocument]
 }>()
 
-const OCR_SCENE_OPTIONS = [
-  { label: '选择题', value: 'CHOICE' },
-  { label: '判断题', value: 'TRUE_FALSE' },
-  { label: '填空题', value: 'FILL_BLANK' },
-  { label: '数值题', value: 'NUMERIC' },
-  { label: '名词解释', value: 'TERM_EXPLANATION' },
-  { label: '简答题', value: 'SHORT_ANSWER' },
-  { label: '论述题', value: 'ESSAY' },
-  { label: '计算题', value: 'CALCULATION' },
-  { label: '证明题', value: 'PROOF' },
-  { label: '案例分析', value: 'CASE_ANALYSIS' },
-  { label: '病案分析', value: 'MEDICAL_CASE' },
-  { label: '设计题', value: 'DESIGN' },
-  { label: '作图题', value: 'DRAWING' },
-  { label: '图表题', value: 'TABLE_CHART' },
-  { label: '编程题', value: 'PROGRAMMING' },
-  { label: '通用文本题', value: 'GENERAL_TEXT' },
-]
+const OCR_SCENE_OPTIONS = ALL_MARK_OCR_SCENE_CODES.map((value) => ({
+  label: MarkOcrSceneDescription[value],
+  value,
+}))
 
 const QUICK_SCENE_OPTIONS = [
-  { label: '选择', value: 'CHOICE' },
-  { label: '判断', value: 'TRUE_FALSE' },
-  { label: '填空', value: 'FILL_BLANK' },
-  { label: '数值', value: 'NUMERIC' },
-  { label: '计算', value: 'CALCULATION' },
-  { label: '作图', value: 'DRAWING' },
-  { label: '编程', value: 'PROGRAMMING' },
+  { label: '选择', value: MarkOcrSceneCode.CHOICE },
+  { label: '判断', value: MarkOcrSceneCode.TRUE_FALSE },
+  { label: '填空', value: MarkOcrSceneCode.FILL_BLANK },
+  { label: '数值', value: MarkOcrSceneCode.NUMERIC },
+  { label: '计算', value: MarkOcrSceneCode.CALCULATION },
+  { label: '作图', value: MarkOcrSceneCode.DRAWING },
+  { label: '编程', value: MarkOcrSceneCode.PROGRAMMING },
 ]
 
 const PAPER_SPEC_TOOLTIP: Partial<Record<ExamLayoutPaperSpecCode, string>> = {
@@ -208,7 +199,7 @@ function handleGenerateSheet(): void {
   startBlankSheet()
   emit('generate-sheet', paperSpec.value, questions)
 }
-function addQuestion(ocrScene: string): void {
+function addQuestion(ocrScene: MarkOcrSceneCode): void {
   if (entryReadonly.value) {
     return
   }
@@ -524,8 +515,8 @@ function onSourcePdfChange(fileId: string | undefined): void {
                 size="sm"
                 :min="2"
                 :max="8"
-                :disabled="entryReadonly || row.ocrScene !== 'CHOICE'"
-                :placeholder="row.ocrScene === 'TRUE_FALSE' ? '2' : '-'"
+                :disabled="entryReadonly || row.ocrScene !== MarkOcrSceneCode.CHOICE"
+                :placeholder="row.ocrScene === MarkOcrSceneCode.TRUE_FALSE ? '2' : '-'"
                 aria-label="选项数量"
               />
               <button

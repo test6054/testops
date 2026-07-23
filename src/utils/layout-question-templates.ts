@@ -1,4 +1,5 @@
 import type { ExamLayoutGenerateQuestionRequest } from '@/apis/mark/exam-layout-design'
+import { MarkOcrSceneCode } from '@/types/enums/mark-ocr-scene-enum'
 import { createClientSnowflakeId } from '@/utils/client-snowflake'
 
 export type LayoutQuestionType = 'OBJECTIVE' | 'SUBJECTIVE'
@@ -6,47 +7,60 @@ export type LayoutQuestionType = 'OBJECTIVE' | 'SUBJECTIVE'
 export interface LayoutQuestionDraft {
   id: string
   questionNo: string
-  ocrScene: string
+  ocrScene: MarkOcrSceneCode
   questionType: LayoutQuestionType
   fullScore: number
   optionCount?: number
 }
 
-const OBJECTIVE_SCENES = new Set(['CHOICE', 'TRUE_FALSE', 'FILL_BLANK', 'NUMERIC'])
+const OBJECTIVE_SCENES = new Set<MarkOcrSceneCode>([
+  MarkOcrSceneCode.CHOICE,
+  MarkOcrSceneCode.TRUE_FALSE,
+  MarkOcrSceneCode.FILL_BLANK,
+  MarkOcrSceneCode.NUMERIC,
+])
 
-export function deriveQuestionType(ocrScene: string): LayoutQuestionType {
+export function deriveQuestionType(ocrScene: MarkOcrSceneCode): LayoutQuestionType {
   return OBJECTIVE_SCENES.has(ocrScene) ? 'OBJECTIVE' : 'SUBJECTIVE'
 }
 
-export function defaultFullScore(ocrScene: string): number {
-  if (ocrScene === 'TRUE_FALSE') {
+export function defaultFullScore(ocrScene: MarkOcrSceneCode): number {
+  if (ocrScene === MarkOcrSceneCode.TRUE_FALSE) {
     return 1
   }
-  if (ocrScene === 'CHOICE' || ocrScene === 'FILL_BLANK' || ocrScene === 'NUMERIC') {
+  if (
+    ocrScene === MarkOcrSceneCode.CHOICE
+    || ocrScene === MarkOcrSceneCode.FILL_BLANK
+    || ocrScene === MarkOcrSceneCode.NUMERIC
+  ) {
     return 2
   }
   if (
-    ocrScene === 'CALCULATION'
-    || ocrScene === 'PROOF'
-    || ocrScene === 'PROGRAMMING'
-    || ocrScene === 'DRAWING'
+    ocrScene === MarkOcrSceneCode.CALCULATION
+    || ocrScene === MarkOcrSceneCode.PROOF
+    || ocrScene === MarkOcrSceneCode.PROGRAMMING
+    || ocrScene === MarkOcrSceneCode.DRAWING
+    || ocrScene === MarkOcrSceneCode.APPLICATION
+    || ocrScene === MarkOcrSceneCode.MATERIAL_ANALYSIS
+    || ocrScene === MarkOcrSceneCode.TRANSLATION
+    || ocrScene === MarkOcrSceneCode.COMPOSITION
   ) {
     return 10
   }
   return 8
 }
 
-export function defaultOptionCount(ocrScene: string): number | undefined {
-  if (ocrScene === 'TRUE_FALSE') {
+export function defaultOptionCount(ocrScene: MarkOcrSceneCode): number | undefined {
+  if (ocrScene === MarkOcrSceneCode.TRUE_FALSE) {
     return 2
   }
-  if (ocrScene === 'CHOICE') {
+  if (ocrScene === MarkOcrSceneCode.CHOICE) {
     return 4
   }
   return undefined
 }
 
-export function createQuestionDraft(ocrScene: string, sortNo: number): LayoutQuestionDraft {
+export function createQuestionDraft(ocrScene: MarkOcrSceneCode, sortNo: number): LayoutQuestionDraft {
   return {
     id: createClientSnowflakeId(),
     questionNo: String(sortNo),
@@ -61,10 +75,10 @@ export function createQuestionDraft(ocrScene: string, sortNo: number): LayoutQue
 export function createAnswerSheetDefaultQuestionRows(): LayoutQuestionDraft[] {
   const rows: LayoutQuestionDraft[] = []
   for (let index = 0; index < 20; index += 1) {
-    rows.push(createQuestionDraft('CHOICE', rows.length + 1))
+    rows.push(createQuestionDraft(MarkOcrSceneCode.CHOICE, rows.length + 1))
   }
   for (let index = 0; index < 5; index += 1) {
-    rows.push(createQuestionDraft('SHORT_ANSWER', rows.length + 1))
+    rows.push(createQuestionDraft(MarkOcrSceneCode.SHORT_ANSWER, rows.length + 1))
   }
   return rows
 }
@@ -80,8 +94,8 @@ export function buildGenerateQuestionsFromDrafts(
       fullScore: row.fullScore,
       sortNo: index + 1,
     }
-    if (row.ocrScene === 'CHOICE' || row.ocrScene === 'TRUE_FALSE') {
-      question.optionCount = row.ocrScene === 'TRUE_FALSE' ? 2 : row.optionCount
+    if (row.ocrScene === MarkOcrSceneCode.CHOICE || row.ocrScene === MarkOcrSceneCode.TRUE_FALSE) {
+      question.optionCount = row.ocrScene === MarkOcrSceneCode.TRUE_FALSE ? 2 : row.optionCount
     }
     return question
   })
