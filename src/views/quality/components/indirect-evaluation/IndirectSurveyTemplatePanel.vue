@@ -48,13 +48,13 @@ import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQualityStore } from '@/stores/modules/quality'
+import { IndirectEvaluationFormStatusCode } from '@/types/enums/indirect-evaluation-form-status-enum'
 import {
   formatIndirectEvaluationItemType,
   INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS,
   IndirectEvaluationItemTypeCode,
   isIndirectEvaluationItemType,
 } from '@/types/enums/indirect-evaluation-item-type-enum'
-import { IndirectFormStatusCode } from '@/types/enums/indirect-form-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import {
   canCloseForm,
@@ -183,7 +183,7 @@ const itemEditorVisible = ref(false)
 const itemEditorMode = ref<'create' | 'edit'>('create')
 const itemEditorContentOnlyMode = computed(() => isFormContentEditable(selectedForm.value))
 const itemEditorViewOnly = computed(
-  () => selectedForm.value?.status === IndirectFormStatusCode.ARCHIVED,
+  () => selectedForm.value?.status === IndirectEvaluationFormStatusCode.ARCHIVED,
 )
 const itemEditorStructureLocked = computed(
   () => isIndirectFormStructureLocked(selectedForm.value) && !itemEditorContentOnlyMode.value,
@@ -529,7 +529,7 @@ function defaultScaleLabels(min: number, max: number) {
 }
 
 function structureEditBlockedMessage(form: IndirectEvaluationFormVO): string {
-  if (form.status === IndirectFormStatusCode.PUBLISHED) {
+  if (form.status === IndirectEvaluationFormStatusCode.PUBLISHED) {
     return PUBLISHED_INDIRECT_ITEM_TYPE_CHANGE_MESSAGE
   }
   return '当前问卷已归档，不允许维护题项结构'
@@ -649,7 +649,7 @@ async function submitItem() {
   }
   const v = itemEditor.value
   if (
-    selectedForm.value?.status === IndirectFormStatusCode.PUBLISHED
+    selectedForm.value?.status === IndirectEvaluationFormStatusCode.PUBLISHED
     && v.id
     && itemEditorOriginalItemType.value
     && itemEditorOriginalItemType.value !== v.itemType
@@ -1324,7 +1324,7 @@ defineExpose({
               :options="INDIRECT_EVALUATION_ITEM_TYPE_OPTIONS"
               :disabled="
                 itemEditorContentOnlyMode
-                  || selectedForm?.status === IndirectFormStatusCode.PUBLISHED
+                  || selectedForm?.status === IndirectEvaluationFormStatusCode.PUBLISHED
               "
               placeholder="请选择题型"
             />

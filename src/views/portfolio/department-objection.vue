@@ -685,7 +685,7 @@ void loadPage()
           </div>
         </template>
         <p v-else class="department-objection__section-hint">
-          复核材料包暂不可用，仍可填写复核结论。
+          复核材料包不可用，暂不能提交复核结论。
         </p>
       </section>
       <UiSelect
@@ -727,6 +727,7 @@ void loadPage()
           size="sm"
           variant="primary"
           :loading="handlingId === reviewTarget?.objectionId"
+          :disabled="!reviewPackage || Boolean(handlingId)"
           @click="() => void submitReview()"
         >
           提交复核

@@ -23,5 +23,5 @@ export const PortfolioBusinessDataSourceTypeDescription: Record<PortfolioBusines
 export function isPortfolioBusinessDataSourceType(
   value: string,
 ): value is PortfolioBusinessDataSourceTypeCode {
-  return ALL_PORTFOLIO_BUSINESS_DATA_SOURCE_TYPE_CODES.includes(value)
+  return ALL_PORTFOLIO_BUSINESS_DATA_SOURCE_TYPE_CODES.map(String).includes(value)
 }

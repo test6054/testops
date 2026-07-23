@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type { PortfolioTeacherLibraryBorrowStatsVO } from '@/apis/portfolio/teacher-platform'
+import type {
+  PortfolioTeacherLibraryBorrowSaveRequest,
+  PortfolioTeacherLibraryBorrowStatsVO,
+} from '@/apis/portfolio/teacher-platform'
 import message from 'ant-design-vue/es/message'
 import dayjs from 'dayjs'
 import { computed, reactive, ref } from 'vue'
@@ -23,6 +26,7 @@ import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchive
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { useUserStore } from '@/stores/modules/user'
+import { PortfolioBusinessDataSourceTypeCode } from '@/types/enums/portfolio-business-data-source-type-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
@@ -162,14 +166,14 @@ async function saveBorrow() {
   }
   const operation = `borrow:save:${form.id || 'new'}`
   if (!beginOperation(operation)) return
-  const request = {
+  const request: PortfolioTeacherLibraryBorrowSaveRequest = {
     id: form.id || undefined,
     teacherUserId: form.teacherUserId,
     bookTitle: form.bookTitle.trim(),
     bookIsbn: form.bookIsbn.trim() || undefined,
     borrowTime: form.borrowTime,
     dueTime: form.dueTime,
-    dataSource: 'MANUAL',
+    dataSource: PortfolioBusinessDataSourceTypeCode.MANUAL,
   }
   try {
     await portfolioTeacherLibraryApi.save(request)
@@ -224,7 +228,7 @@ async function returnBorrow(row: (typeof rows.value)[number]) {
       dueTime: row.dueTime,
       returnTime,
       overdueDays,
-      dataSource: row.dataSource || 'MANUAL',
+      dataSource: row.dataSource || PortfolioBusinessDataSourceTypeCode.MANUAL,
       remark: row.remark,
     })
     void message.success('已登记归还')

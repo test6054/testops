@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type { PortfolioHonorStatsVO } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
@@ -92,7 +93,7 @@ const {
     portfolioDevelopmentRecordApi.page({
       ...params,
       recordType: PortfolioDevelopmentRecordTypeCode.HONOR,
-      levelCode: params.levelCode || undefined,
+      levelCode: (params.levelCode || undefined) as PortfolioHonorLevelCode | undefined,
       awardUnit: params.awardUnit || undefined,
       recordDateFrom: params.recordDateFrom || undefined,
       recordDateTo: params.recordDateTo || undefined,
@@ -109,7 +110,7 @@ const {
     onLoaded: async (list, params) => {
       const currentToken = ++statsRequestToken.value
       const nextStats = await portfolioDevelopmentRecordApi.honorStats({
-        levelCode: params.levelCode || undefined,
+        levelCode: (params.levelCode || undefined) as PortfolioHonorLevelCode | undefined,
         awardUnit: params.awardUnit || undefined,
         recordDateFrom: params.recordDateFrom || undefined,
         recordDateTo: params.recordDateTo || undefined,
@@ -151,7 +152,7 @@ async function saveRecord() {
       recordType: PortfolioDevelopmentRecordTypeCode.HONOR,
       recordTitle: form.recordTitle.trim(),
       teacherUserId: form.teacherUserId,
-      levelCode: form.levelCode.trim() || undefined,
+      levelCode: (form.levelCode.trim() || undefined) as PortfolioHonorLevelCode | undefined,
       awardUnit: form.awardUnit.trim() || undefined,
       recordDate: form.recordDate || undefined,
       categoryCode: form.categoryCode.trim() || undefined,
@@ -200,7 +201,7 @@ async function exportHonor() {
   operationKey.value = 'export'
   try {
     const result = await portfolioDevelopmentRecordApi.honorExport({
-      levelCode: query.value.levelCode || undefined,
+      levelCode: (query.value.levelCode || undefined) as PortfolioHonorLevelCode | undefined,
       awardUnit: query.value.awardUnit || undefined,
       recordDateFrom: query.value.recordDateFrom || undefined,
       recordDateTo: query.value.recordDateTo || undefined,

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
 import type {
-  PfIndicatorBusinessReferenceSceneCode,
   PfIndicatorStatusCode,
   PortfolioIndustryPackVO,
 
@@ -84,7 +83,7 @@ const editForm = reactive<{
   enabled: boolean
   standardScore?: number
   capScore?: number
-  applicableScenes: PfIndicatorBusinessReferenceSceneCode[]
+  applicableScenes: PfSceneCode[]
 }>({
   indicatorCode: '',
   indicatorName: '',

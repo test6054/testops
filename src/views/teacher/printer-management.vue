@@ -887,8 +887,9 @@ function handleUnbindAgent(record: ExamScannerDeviceResponse): void {
       }
       deviceActionLoading.value = true
       try {
-        await unbindScannerDeviceAgent(record.id)
-        void message.success('扫描组件已解绑')
+        const handoff = await unbindScannerDeviceAgent(record.id)
+        openActivationHandoff(handoff)
+        void message.success('扫描组件已解绑，已生成新的激活码')
         await syncAfterDeviceMutation()
       } catch (error) {
         showUserError(error, '扫描组件解绑失败')

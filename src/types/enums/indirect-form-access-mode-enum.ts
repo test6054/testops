@@ -1,4 +1,4 @@
-/** 间接评价问卷访问模式 - IndirectFormAccessModeEnum */
+/** 间接评价问卷访问模式 - IndirectFormAccessMode */
 export enum IndirectFormAccessModeCode {
   PUBLIC_LINK = 'PUBLIC_LINK',
   AUTHENTICATED = 'AUTHENTICATED',

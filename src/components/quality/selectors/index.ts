@@ -9,6 +9,7 @@
  * - 上下游 selector 通过 props 联动（如 RequirementIndicatorSelector 必须传 requirementId）
  * - 默认对真源 API 做一次 onMounted 加载，远程搜索类使用 300ms 防抖
  */
+import TeacherSelector from '@/components/platform/TeacherSelector.vue'
 import AchievementResultSelector from './AchievementResultSelector.vue'
 import ArchiveSelector from './ArchiveSelector.vue'
 import AssessmentItemSelector from './AssessmentItemSelector.vue'
@@ -49,6 +50,7 @@ export {
   ReportSelector,
   RequirementIndicatorSelector,
   StudentSelector,
+  TeacherSelector,
   TrainingObjectiveSelector,
   TrainingPlanSelector,
 }

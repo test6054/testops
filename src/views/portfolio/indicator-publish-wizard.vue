@@ -15,11 +15,11 @@ import {
   PfCurrentTaskRuleStrategyCode,
   pfImpactApprovalAllowsPublish,
   PfImpactApprovalStatusDescription,
-  PfIndicatorBusinessReferenceSceneDescription,
   PfRuleChangeLevelCode,
   PfRuleChangeLevelDescription,
   pfRuleChangeLevelRequiresApproval,
   PfSceneCode,
+  PfSceneCodeDescription,
 } from '@/apis/portfolio/indicator-types'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
@@ -317,7 +317,7 @@ onMounted(loadReadiness)
         >
           {{
             strictEnumLabel(
-              PfIndicatorBusinessReferenceSceneDescription,
+              PfSceneCodeDescription,
               scene.referenceScene,
               '指标业务引用场景',
             )

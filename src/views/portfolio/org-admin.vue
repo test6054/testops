@@ -42,6 +42,7 @@ import { isPortfolioUnitNode, usePortfolioOrgTree } from '@/composables/usePortf
 import { usePortfolioTeacherSearch } from '@/composables/usePortfolioTeacherSearch'
 import { useAuthStore } from '@/stores/modules/auth'
 import { useUserStore } from '@/stores/modules/user'
+import { PortfolioOrgUnitStatusCode } from '@/types/enums/portfolio-org-unit-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { hasTeacherTenantPermission } from '@/utils/permission'
 import { strictEnumLabel } from '@/utils/strict-enum'
@@ -99,7 +100,7 @@ const unitEditor = reactive<PortfolioOrgUnitSaveRequest>({
   orgName: '',
   orgCode: '',
   sortOrder: 0,
-  status: 'ACTIVE',
+  status: PortfolioOrgUnitStatusCode.ACTIVE,
   leaderUserId: '',
 })
 
@@ -324,7 +325,7 @@ function openUnitEditor(mode: 'create' | 'edit') {
     unitEditor.anchorDepartmentId = node.anchorDepartmentId
     unitEditor.anchorMajorId = node.anchorMajorId
     unitEditor.sortOrder = 0
-    unitEditor.status = 'ACTIVE'
+    unitEditor.status = PortfolioOrgUnitStatusCode.ACTIVE
     unitEditor.leaderUserId = node.leaderUserId ?? ''
   } else {
     unitEditor.id = undefined
@@ -342,7 +343,7 @@ function openUnitEditor(mode: 'create' | 'edit') {
         ? selectedRaw.value.id
         : selectedRaw.value?.anchorMajorId
     unitEditor.sortOrder = 0
-    unitEditor.status = 'ACTIVE'
+    unitEditor.status = PortfolioOrgUnitStatusCode.ACTIVE
     unitEditor.leaderUserId = ''
   }
   unitVisible.value = true

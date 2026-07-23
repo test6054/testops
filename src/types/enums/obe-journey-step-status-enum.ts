@@ -1,10 +1,10 @@
-/** OBE 旅程步骤状态 - ObeJourneyStepStatusEnum；wire code 为小写 */
+/** OBE 旅程步骤状态 - ObeJourneyStepStatusEnum */
 export enum ObeJourneyStepStatusCode {
-  PENDING = 'pending',
-  ACTIVE = 'active',
-  COMPLETED = 'completed',
+  PENDING = 'PENDING',
+  ACTIVE = 'ACTIVE',
+  COMPLETED = 'COMPLETED',
   /** 培养方案未发布锁定，点击须回到培养方案工作台 */
-  LOCKED = 'locked',
+  LOCKED = 'LOCKED',
 }
 
 export const ALL_OBE_JOURNEY_STEP_STATUS_CODES: readonly ObeJourneyStepStatusCode[] = [

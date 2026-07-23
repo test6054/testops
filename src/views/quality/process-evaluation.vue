@@ -26,6 +26,7 @@ import type { ProcessEvaluationSignalSummaryVO } from '@/apis/quality/workbench'
  * - 已确认记录才进入达成度计算
  */
 import type { BadgeTone, FilterField, UiTableRowActionItem } from '@/components/ui-guide/ui/types'
+import type { ProcessEvaluationEvidenceTypeCode } from '@/types/enums/process-evaluation-evidence-type-enum'
 import type { SignalMetric } from '@/types/workbench'
 import message from 'ant-design-vue/es/message'
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
@@ -210,7 +211,9 @@ useQualityScopedLoader(handleScopeChange, {
 const nodeEditorVisible = ref(false)
 const nodeEditorMode = ref<'create' | 'edit'>('create')
 
-const nodeEditor = ref<ProcessEvaluationNodeUpdateRequest>({
+const nodeEditor = ref<Omit<ProcessEvaluationNodeUpdateRequest, 'evidenceType'> & {
+  evidenceType: ProcessEvaluationEvidenceTypeCode | ''
+}>({
   id: '',
   qualityCourseId: '',
   nodeCode: '',
@@ -273,7 +276,7 @@ function openNodeEdit(record: ProcessEvaluationNodeVO) {
     nodeCode: record.nodeCode,
     nodeName: record.nodeName,
     nodeType: record.nodeType,
-    evidenceType: record.evidenceType,
+    evidenceType: record.evidenceType ?? '',
     semester: record.semester,
     weight: record.weight,
     fullScore: record.fullScore,
@@ -306,7 +309,7 @@ async function submitNode() {
         nodeCode: v.nodeCode,
         nodeName: v.nodeName,
         nodeType: v.nodeType,
-        evidenceType: v.evidenceType,
+        evidenceType: v.evidenceType || undefined,
         semester: v.semester,
         weight: v.weight,
         fullScore: v.fullScore,
@@ -328,7 +331,7 @@ async function submitNode() {
         nodeCode: v.nodeCode,
         nodeName: v.nodeName,
         nodeType: v.nodeType,
-        evidenceType: v.evidenceType,
+        evidenceType: v.evidenceType || undefined,
         semester: v.semester,
         weight: v.weight,
         fullScore: v.fullScore,

@@ -58,6 +58,7 @@ import {
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
 import { useAiTaskStore } from '@/stores/modules/aiTask'
 import { useQualityStore } from '@/stores/modules/quality'
+import { ImprovementTaskReviewDecisionCode } from '@/types/enums/improvement-task-review-decision-enum'
 import { showFormValidationMessage, showUserError, toUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone, strictEnumValue } from '@/utils/strict-enum'
 
@@ -493,7 +494,9 @@ async function handleImprovementTransit(
     if (to === ImprovementTaskStatusCode.RETURNED && !reviewRemark) return
     await improvementTaskApi.close({
       id: record.id,
-      reviewDecision: to === ImprovementTaskStatusCode.CLOSED ? 'APPROVED' : 'REJECTED',
+      reviewDecision: to === ImprovementTaskStatusCode.CLOSED
+        ? ImprovementTaskReviewDecisionCode.APPROVED
+        : ImprovementTaskReviewDecisionCode.REJECTED,
       reviewRemark: reviewRemark || undefined,
     })
     void message.success(to === ImprovementTaskStatusCode.CLOSED ? '已闭环' : '已退回')

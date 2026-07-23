@@ -42,6 +42,8 @@ import {
   PortfolioPolicyLedgerReviewStatusCode,
   PortfolioPolicyLedgerReviewStatusDescription,
 } from '@/types/enums/portfolio-policy-ledger-review-status-enum'
+import { PortfolioVirtualTeachingRoomActivityTypeCode } from '@/types/enums/portfolio-virtual-teaching-room-activity-type-enum'
+import { PortfolioVirtualTeachingRoomRoleCode } from '@/types/enums/portfolio-virtual-teaching-room-role-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -73,8 +75,8 @@ const reviewFilter = ref<PortfolioPolicyLedgerReviewStatusCode | ''>('')
 const virtualForm = reactive({
   roomName: '',
   activityTitle: '',
-  activityType: 'JOINT_PREP',
-  roleCode: 'MEMBER',
+  activityType: PortfolioVirtualTeachingRoomActivityTypeCode.JOINT_PREP,
+  roleCode: PortfolioVirtualTeachingRoomRoleCode.MEMBER,
   partnerEnterprise: '',
   leadUnit: '',
 })
@@ -82,7 +84,7 @@ const industryForm = reactive({
   projectName: '',
   projectType: PortfolioIndustryEducationProjectTypeCode.INDUSTRY_COLLEGE,
   stageCode: PortfolioIndustryEducationProjectStageCode.ACCEPT,
-  roleCode: 'LEADER',
+  roleCode: PortfolioVirtualTeachingRoomRoleCode.LEADER,
   enterpriseName: '',
 })
 const saving = ref(false)
@@ -178,6 +180,14 @@ async function loadPage() {
   } finally {
     if (currentToken === pageRequestToken.value) loading.value = false
   }
+}
+
+/** 切换政策台账类型时重置分页并加载对应记录。 */
+function switchLedgerTab(nextTab: 'virtual' | 'industry'): void {
+  if (tab.value === nextTab) return
+  tab.value = nextTab
+  pageNum.value = 1
+  void loadPage()
 }
 
 async function saveVirtual() {
@@ -393,22 +403,14 @@ onMounted(() => {
         <UiButton
           size="sm"
           :variant="tab === 'virtual' ? 'primary' : 'outline'"
-          @click="
-            tab = 'virtual'
-            pageNum = 1
-            loadPage()
-          "
+          @click="switchLedgerTab('virtual')"
         >
           §8.41 虚拟教研室
         </UiButton>
         <UiButton
           size="sm"
           :variant="tab === 'industry' ? 'primary' : 'outline'"
-          @click="
-            tab = 'industry'
-            pageNum = 1
-            loadPage()
-          "
+          @click="switchLedgerTab('industry')"
         >
           §8.46 产教项目
         </UiButton>

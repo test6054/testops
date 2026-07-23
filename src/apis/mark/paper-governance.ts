@@ -1,4 +1,5 @@
 import http from '@/config/axios'
+import { QuestionTypeCode } from '@/types/enums/question-type-enum'
 
 /** 与后端 ExamPaperGovernanceStatus 枚举同码的命题治理状态。 */
 export enum ExamPaperGovernanceStatusCode {
@@ -46,10 +47,14 @@ export enum ExamPaperQuestionTypeCode {
   TERM_EXPLANATION = 'TERM_EXPLANATION',
   SHORT_ANSWER = 'SHORT_ANSWER',
   CASE_ANALYSIS = 'CASE_ANALYSIS',
+  MATERIAL_ANALYSIS = 'MATERIAL_ANALYSIS',
   ESSAY = 'ESSAY',
   PROOF = 'PROOF',
   CALCULATION = 'CALCULATION',
   APPLICATION = 'APPLICATION',
+  TRANSLATION = 'TRANSLATION',
+  DESIGN = 'DESIGN',
+  DRAWING = 'DRAWING',
   COMPOSITION = 'COMPOSITION',
 }
 
@@ -63,28 +68,66 @@ export const ExamPaperQuestionTypeDescription: Record<ExamPaperQuestionTypeCode,
   [ExamPaperQuestionTypeCode.TERM_EXPLANATION]: '名词解释',
   [ExamPaperQuestionTypeCode.SHORT_ANSWER]: '简答题',
   [ExamPaperQuestionTypeCode.CASE_ANALYSIS]: '案例分析题',
+  [ExamPaperQuestionTypeCode.MATERIAL_ANALYSIS]: '材料分析题',
   [ExamPaperQuestionTypeCode.ESSAY]: '论述题',
   [ExamPaperQuestionTypeCode.PROOF]: '证明题',
   [ExamPaperQuestionTypeCode.CALCULATION]: '计算题',
   [ExamPaperQuestionTypeCode.APPLICATION]: '应用题',
-  [ExamPaperQuestionTypeCode.COMPOSITION]: '作文题',
+  [ExamPaperQuestionTypeCode.TRANSLATION]: '翻译题',
+  [ExamPaperQuestionTypeCode.DESIGN]: '设计题',
+  [ExamPaperQuestionTypeCode.DRAWING]: '作图题',
+  [ExamPaperQuestionTypeCode.COMPOSITION]: '写作（作文）题',
 }
 
-export const ALL_EXAM_PAPER_QUESTION_TYPE_CODES: readonly ExamPaperQuestionTypeCode[] = [
+export const EXAM_PAPER_OBJECTIVE_QUESTION_TYPE_CODES: readonly ExamPaperQuestionTypeCode[] = [
   ExamPaperQuestionTypeCode.SINGLE_CHOICE,
   ExamPaperQuestionTypeCode.MULTIPLE_CHOICE,
   ExamPaperQuestionTypeCode.INDEFINITE_CHOICE,
   ExamPaperQuestionTypeCode.FILL_BLANK,
   ExamPaperQuestionTypeCode.TRUE_FALSE,
+]
+
+export const EXAM_PAPER_SUBJECTIVE_QUESTION_TYPE_CODES: readonly ExamPaperQuestionTypeCode[] = [
   ExamPaperQuestionTypeCode.TRUE_FALSE_ANALYSIS,
   ExamPaperQuestionTypeCode.TERM_EXPLANATION,
   ExamPaperQuestionTypeCode.SHORT_ANSWER,
   ExamPaperQuestionTypeCode.CASE_ANALYSIS,
+  ExamPaperQuestionTypeCode.MATERIAL_ANALYSIS,
   ExamPaperQuestionTypeCode.ESSAY,
   ExamPaperQuestionTypeCode.PROOF,
   ExamPaperQuestionTypeCode.CALCULATION,
   ExamPaperQuestionTypeCode.APPLICATION,
+  ExamPaperQuestionTypeCode.TRANSLATION,
+  ExamPaperQuestionTypeCode.DESIGN,
+  ExamPaperQuestionTypeCode.DRAWING,
   ExamPaperQuestionTypeCode.COMPOSITION,
+]
+
+/** 与后端 ExamPaperQuestionType.markingQuestionType 保持一致的阅卷主类型映射。 */
+export const ExamPaperQuestionTypeMarkingCategory: Record<ExamPaperQuestionTypeCode, QuestionTypeCode> = {
+  [ExamPaperQuestionTypeCode.SINGLE_CHOICE]: QuestionTypeCode.OBJECTIVE,
+  [ExamPaperQuestionTypeCode.MULTIPLE_CHOICE]: QuestionTypeCode.OBJECTIVE,
+  [ExamPaperQuestionTypeCode.INDEFINITE_CHOICE]: QuestionTypeCode.OBJECTIVE,
+  [ExamPaperQuestionTypeCode.FILL_BLANK]: QuestionTypeCode.OBJECTIVE,
+  [ExamPaperQuestionTypeCode.TRUE_FALSE]: QuestionTypeCode.OBJECTIVE,
+  [ExamPaperQuestionTypeCode.TRUE_FALSE_ANALYSIS]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.TERM_EXPLANATION]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.SHORT_ANSWER]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.CASE_ANALYSIS]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.MATERIAL_ANALYSIS]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.ESSAY]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.PROOF]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.CALCULATION]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.APPLICATION]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.TRANSLATION]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.DESIGN]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.DRAWING]: QuestionTypeCode.SUBJECTIVE,
+  [ExamPaperQuestionTypeCode.COMPOSITION]: QuestionTypeCode.SUBJECTIVE,
+}
+
+export const ALL_EXAM_PAPER_QUESTION_TYPE_CODES: readonly ExamPaperQuestionTypeCode[] = [
+  ...EXAM_PAPER_OBJECTIVE_QUESTION_TYPE_CODES,
+  ...EXAM_PAPER_SUBJECTIVE_QUESTION_TYPE_CODES,
 ]
 
 export interface ExamPaperRuleCheckResponse {
@@ -126,6 +169,7 @@ export interface ExamPaperGovernanceResponse {
     questionType: ExamPaperQuestionTypeCode
     fullScore: number
     stemText: string
+    answerInstruction: string
     stemDigest: string
     layoutQuestionId?: string
   }>>
@@ -155,6 +199,7 @@ export interface ExamPaperGovernanceQuestionItem {
   questionType: ExamPaperQuestionTypeCode
   fullScore: number
   stemText: string
+  answerInstruction: string
   layoutQuestionId?: string
 }
 

@@ -7,7 +7,15 @@ export enum PortfolioPolicyMatchConclusionCode {
   INSUFFICIENT_EVIDENCE = 'INSUFFICIENT_EVIDENCE',
 }
 
-export const PORTFOLIO_POLICY_MATCH_CONCLUSION_LABEL: Record<
+export const ALL_PORTFOLIO_POLICY_MATCH_CONCLUSION_CODES: readonly PortfolioPolicyMatchConclusionCode[] = [
+  PortfolioPolicyMatchConclusionCode.MATCHED,
+  PortfolioPolicyMatchConclusionCode.PARTIAL,
+  PortfolioPolicyMatchConclusionCode.NEED_SUPPLEMENT,
+  PortfolioPolicyMatchConclusionCode.NOT_MATCHED,
+  PortfolioPolicyMatchConclusionCode.INSUFFICIENT_EVIDENCE,
+]
+
+export const PortfolioPolicyMatchConclusionDescription: Record<
   PortfolioPolicyMatchConclusionCode,
   string
 > = {
@@ -17,3 +25,5 @@ export const PORTFOLIO_POLICY_MATCH_CONCLUSION_LABEL: Record<
   [PortfolioPolicyMatchConclusionCode.NOT_MATCHED]: '不匹配',
   [PortfolioPolicyMatchConclusionCode.INSUFFICIENT_EVIDENCE]: '证据不足',
 }
+
+export const PORTFOLIO_POLICY_MATCH_CONCLUSION_LABEL = PortfolioPolicyMatchConclusionDescription

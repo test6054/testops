@@ -4,6 +4,7 @@ import type {
   PortfolioAchievementStatsVO,
   PortfolioDevelopmentRecordVO,
 } from '@/apis/portfolio/teacher-platform'
+import type { PortfolioHonorLevelCode } from '@/types/enums/portfolio-honor-level-enum'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -77,7 +78,7 @@ async function loadPage() {
     pageNum: query.pageNum,
     pageSize: query.pageSize,
     searchText: query.searchText || undefined,
-    levelCode: query.nationalOnly ? 'NATIONAL' : query.levelCode || undefined,
+    levelCode: (query.nationalOnly ? 'NATIONAL' : query.levelCode || undefined) as PortfolioHonorLevelCode | undefined,
     nationalOnly: query.nationalOnly || undefined,
     recordTypes: [...query.recordTypes],
   }

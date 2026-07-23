@@ -22,6 +22,8 @@ import type {
   PortfolioTargetFieldDefinition,
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
+import type { PortfolioDevelopmentRecordTypeCode } from '@/types/enums/portfolio-development-record-type-enum'
+import type { PortfolioFieldMappingTransformTypeCode } from '@/types/enums/portfolio-field-mapping-transform-type-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -455,7 +457,7 @@ function buildConnectionConfig(): PortfolioIntegrationConnectionConfigDto | unde
   if (isExcelPathway.value) {
     const importContext = {
       fileName: dsForm.importContextFileName.trim() || undefined,
-      defaultRecordType: dsForm.importContextDefaultRecordType.trim() || undefined,
+      defaultRecordType: (dsForm.importContextDefaultRecordType.trim() || undefined) as PortfolioDevelopmentRecordTypeCode | undefined,
       defaultCategoryCode: dsForm.importContextDefaultCategoryCode.trim() || undefined,
       defaultLevelCode: dsForm.importContextDefaultLevelCode.trim() || undefined,
       commit: dsForm.importContextCommit,
@@ -1413,7 +1415,7 @@ async function saveMapping() {
     targetFieldCode: mappingForm.targetFieldCode.trim(),
     targetCategoryCode: mappingForm.targetCategoryCode || undefined,
     dictionaryCode: mappingForm.dictionaryCode.trim() || undefined,
-    transformType: mappingForm.transformType,
+    transformType: mappingForm.transformType as PortfolioFieldMappingTransformTypeCode | undefined,
     transformExpr: mappingTransformExprPlaceholder.value
       ? mappingForm.transformExpr.trim() || undefined
       : undefined,

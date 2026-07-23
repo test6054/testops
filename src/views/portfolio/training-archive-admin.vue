@@ -10,6 +10,7 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -17,7 +18,7 @@ const { loading, rows, pageNum, pageSize, pageTotal, loadError, loadPage, handle
   (params) =>
     portfolioArchiveApi.pageRecords({
       ...params,
-      materialType: 'CERTIFICATE',
+      materialType: PortfolioMaterialTypeCode.CERTIFICATE,
     }),
 )
 

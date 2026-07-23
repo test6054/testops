@@ -311,10 +311,13 @@ export function findPrimaryBlockForQuestion(
 }
 
 /** 仅选择/判断使用客观填涂矩阵；填空/数值虽为主类型 OBJECTIVE，但作答块仍为书写作答区。 */
-const BUBBLE_OCR_SCENES = new Set(['CHOICE', 'TRUE_FALSE'])
+const BUBBLE_OCR_SCENES = new Set<MarkOcrSceneCode>([
+  MarkOcrSceneCode.CHOICE,
+  MarkOcrSceneCode.TRUE_FALSE,
+])
 
 export function isBubbleOcrScene(ocrScene?: string): boolean {
-  return Boolean(ocrScene && BUBBLE_OCR_SCENES.has(ocrScene))
+  return Boolean(ocrScene && BUBBLE_OCR_SCENES.has(ocrScene as MarkOcrSceneCode))
 }
 
 export function expectedAnswerBlockTypeForOcrScene(ocrScene?: string): string {

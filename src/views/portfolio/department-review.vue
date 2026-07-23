@@ -70,6 +70,7 @@ const PORTFOLIO_REVIEW_TASK_STATUS_FILTER_CODES = [
   PortfolioReviewTaskStatusCode.RETURNED,
   PortfolioReviewTaskStatusCode.DISMISSED,
   PortfolioReviewTaskStatusCode.CLOSED,
+  PortfolioReviewTaskStatusCode.SUSPENDED,
 ] satisfies readonly PortfolioReviewTaskStatusCode[]
 
 function reviewTaskStatusLabel(status: PortfolioReviewTaskStatusCode): string {

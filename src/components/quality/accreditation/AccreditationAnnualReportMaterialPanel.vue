@@ -15,7 +15,6 @@ import {
   ANNUAL_REPORT_MATERIAL_STATUS_TONE,
   AnnualReportMaterialCategoryCode,
   AnnualReportMaterialCategoryDescription,
-  AnnualReportMaterialReviewStatusCode,
   AnnualReportMaterialStatusCode,
   AnnualReportMaterialStatusDescription,
 } from '@/apis/quality/accreditation'
@@ -108,11 +107,11 @@ const form = reactive<AnnualReportMaterialSaveRequest>({
 
 const reviewForm = reactive<{
   id: string
-  reviewStatus: AnnualReportMaterialReviewStatusCode
+  reviewStatus: AnnualReportMaterialStatusCode
   reviewComment: string
 }>({
   id: '',
-  reviewStatus: AnnualReportMaterialReviewStatusCode.APPROVED,
+  reviewStatus: AnnualReportMaterialStatusCode.APPROVED,
   reviewComment: '',
 })
 
@@ -316,13 +315,13 @@ async function submitForReview(record: AnnualReportMaterialVO) {
   }
 }
 
-function openReview(record: AnnualReportMaterialVO, status: AnnualReportMaterialReviewStatusCode) {
+function openReview(record: AnnualReportMaterialVO, status: AnnualReportMaterialStatusCode) {
   if (!canReview(record)) {
     void message.error('仅已提交材料可审核')
     return
   }
   reviewDrawerTitle.value
-    = status === AnnualReportMaterialReviewStatusCode.APPROVED
+    = status === AnnualReportMaterialStatusCode.APPROVED
       ? '审核通过年度报备材料'
       : '退回年度报备材料'
   reviewForm.id = record.id
@@ -341,7 +340,7 @@ async function submitReview() {
     return
   }
   if (
-    reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED
+    reviewForm.reviewStatus === AnnualReportMaterialStatusCode.REJECTED
     && !reviewForm.reviewComment.trim()
   ) {
     void message.error('退回材料必须填写审核意见')
@@ -355,7 +354,7 @@ async function submitReview() {
       reviewComment: reviewForm.reviewComment.trim() || undefined,
     })
     void message.success(
-      reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.APPROVED
+      reviewForm.reviewStatus === AnnualReportMaterialStatusCode.APPROVED
         ? '材料已审核通过'
         : '材料已退回',
     )
@@ -398,8 +397,8 @@ function handleMaterialRowAction(key: string, record: AnnualReportMaterialVO) {
   if (key === 'download') void downloadMaterial(record)
   else if (key === 'edit') openEdit(record)
   else if (key === 'submit') void submitForReview(record)
-  else if (key === 'approve') openReview(record, AnnualReportMaterialReviewStatusCode.APPROVED)
-  else if (key === 'reject') openReview(record, AnnualReportMaterialReviewStatusCode.REJECTED)
+  else if (key === 'approve') openReview(record, AnnualReportMaterialStatusCode.APPROVED)
+  else if (key === 'reject') openReview(record, AnnualReportMaterialStatusCode.REJECTED)
   else if (key === 'delete') void removeMaterial(record)
 }
 
@@ -638,7 +637,7 @@ defineExpose({ loadMaterials, openCreate })
         </UiFormItem>
         <UiFormItem
           label="审核意见"
-          :required="reviewForm.reviewStatus === AnnualReportMaterialReviewStatusCode.REJECTED"
+          :required="reviewForm.reviewStatus === AnnualReportMaterialStatusCode.REJECTED"
         >
           <UiTextarea
             size="sm"

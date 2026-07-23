@@ -28,6 +28,7 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
+import { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 
@@ -143,7 +144,7 @@ async function loadAnnualReviewNotices() {
     const requestTeacherId = targetTeacherId.value
     const page = await portfolioEvaluationNoticeApi.pageNotices({
       ...(requestTeacherId ? { teacherId: requestTeacherId } : {}),
-      sceneCode: 'ANNUAL_REVIEW',
+      sceneCode: PortfolioEvaluationSceneCode.ANNUAL_REVIEW,
       activeWindowOnly: true,
       pageNum: 1,
       pageSize: 100,
