@@ -1088,69 +1088,71 @@ watch(
       />
     </UiCard>
 
-    <UiCard v-if="scoreResult" title="档案袋评分" class="teacher-archive__bag">
-      <p>
-        总分 {{ scoreResult.totalScore
-        }}<template v-if="scoreResult.computedTime">
-          · 计算于 {{ scoreResult.computedTime }}
-        </template>
-      </p>
-      <ul v-if="scoreResult.breakdown.length" class="teacher-archive__score-list">
-        <li
-          v-for="(item, idx) in scoreResult.breakdown"
-          :key="`${item.lineType || 'line'}-${item.ruleId || 'x'}-${idx}`"
-          :class="{
-            'teacher-archive__score-item--detail': item.lineType === 'ACHIEVEMENT_ITEM',
-            'teacher-archive__score-item--blank': item.lineType === 'BLANK_PERIOD',
-          }"
-        >
-          <div class="teacher-archive__score-item-head">
-            <strong>{{ item.ruleName }}</strong>
-            <span>{{ item.earnedScore }} 分</span>
-          </div>
-          <div
-            v-if="item.lineType === 'ACHIEVEMENT_ITEM' || item.decayFactor != null"
-            class="teacher-archive__score-decay"
+    <div v-if="bagSummary || scoreResult" class="teacher-archive__bag-grid">
+      <UiCard v-if="bagSummary" title="档案袋汇聚" class="teacher-archive__bag">
+        <div class="teacher-archive__completeness-head">
+          <span>{{ bagAssembleCompletenessHeadline(bagSummary) }}</span>
+          <UiTag
+            v-if="bagSummary.preview?.completenessLevel"
+            :tone="completenessLevelTone(bagSummary.preview.completenessLevel)"
+            size="sm"
           >
-            <template v-if="item.rawScore != null">原始 {{ item.rawScore }} · </template>
-            <template v-if="item.decayFactor != null">
-              衰减系数 {{ item.decayFactor }}
-              <template v-if="item.decayProfileLabel">（{{ item.decayProfileLabel }}）</template>
-              ·
-            </template>
-            <template v-if="item.recognitionYear != null">
-              认定年 {{ item.recognitionYear }} ·
-            </template>
-            <template v-if="item.decayApplied">已衰减</template>
-            <template v-else-if="item.lineType === 'ACHIEVEMENT_ITEM'">未衰减</template>
-          </div>
-          <p class="teacher-archive__score-explain">{{ item.explainText }}</p>
-        </li>
-      </ul>
-    </UiCard>
+            {{ completenessLevelLabel(bagSummary.preview.completenessLevel) }}
+          </UiTag>
+        </div>
+        <p>
+          已归档 {{ bagSummary.archivedCategoryCount }} 类 · 开放补采
+          {{ bagSummary.openGapTaskCount }} 项
+          <template v-if="bagSummary.preview && bagCourseArchiveLabel(bagSummary.preview)">
+            · {{ bagCourseArchiveLabel(bagSummary.preview) }}
+          </template>
+        </p>
+        <p v-if="bagSummary.missingCategoryNames.length">
+          缺失：{{ bagSummary.missingCategoryNames.join('、') }}
+        </p>
+      </UiCard>
 
-    <UiCard v-if="bagSummary" title="档案袋汇聚" class="teacher-archive__bag">
-      <div class="teacher-archive__completeness-head">
-        <span>{{ bagAssembleCompletenessHeadline(bagSummary) }}</span>
-        <UiTag
-          v-if="bagSummary.preview?.completenessLevel"
-          :tone="completenessLevelTone(bagSummary.preview.completenessLevel)"
-          size="sm"
-        >
-          {{ completenessLevelLabel(bagSummary.preview.completenessLevel) }}
-        </UiTag>
-      </div>
-      <p>
-        已归档 {{ bagSummary.archivedCategoryCount }} 类 · 开放补采
-        {{ bagSummary.openGapTaskCount }} 项
-        <template v-if="bagSummary.preview && bagCourseArchiveLabel(bagSummary.preview)">
-          · {{ bagCourseArchiveLabel(bagSummary.preview) }}
-        </template>
-      </p>
-      <p v-if="bagSummary.missingCategoryNames.length">
-        缺失：{{ bagSummary.missingCategoryNames.join('、') }}
-      </p>
-    </UiCard>
+      <UiCard v-if="scoreResult" title="档案袋评分" class="teacher-archive__bag">
+        <p>
+          总分 {{ scoreResult.totalScore
+          }}<template v-if="scoreResult.computedTime">
+            · 计算于 {{ scoreResult.computedTime }}
+          </template>
+        </p>
+        <ul v-if="scoreResult.breakdown.length" class="teacher-archive__score-list">
+          <li
+            v-for="(item, idx) in scoreResult.breakdown"
+            :key="`${item.lineType || 'line'}-${item.ruleId || 'x'}-${idx}`"
+            :class="{
+              'teacher-archive__score-item--detail': item.lineType === 'ACHIEVEMENT_ITEM',
+              'teacher-archive__score-item--blank': item.lineType === 'BLANK_PERIOD',
+            }"
+          >
+            <div class="teacher-archive__score-item-head">
+              <strong>{{ item.ruleName }}</strong>
+              <span>{{ item.earnedScore }} 分</span>
+            </div>
+            <div
+              v-if="item.lineType === 'ACHIEVEMENT_ITEM' || item.decayFactor != null"
+              class="teacher-archive__score-decay"
+            >
+              <template v-if="item.rawScore != null">原始 {{ item.rawScore }} · </template>
+              <template v-if="item.decayFactor != null">
+                衰减系数 {{ item.decayFactor }}
+                <template v-if="item.decayProfileLabel">（{{ item.decayProfileLabel }}）</template>
+                ·
+              </template>
+              <template v-if="item.recognitionYear != null">
+                认定年 {{ item.recognitionYear }} ·
+              </template>
+              <template v-if="item.decayApplied">已衰减</template>
+              <template v-else-if="item.lineType === 'ACHIEVEMENT_ITEM'">未衰减</template>
+            </div>
+            <p class="teacher-archive__score-explain">{{ item.explainText }}</p>
+          </li>
+        </ul>
+      </UiCard>
+    </div>
 
     <UiCard v-if="bagPreview" title="结构化预览" class="teacher-archive__bag-preview">
       <div class="teacher-archive__completeness-head">
@@ -1777,6 +1779,18 @@ watch(
   font-size: 13px;
 }
 
+.teacher-archive__bag-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: var(--dp-space-4);
+  margin-bottom: var(--dp-space-4);
+  align-items: start;
+}
+
+.teacher-archive__bag-grid .teacher-archive__bag {
+  margin-bottom: 0;
+}
+
 .teacher-archive__bag,
 .teacher-archive__bag-filter,
 .teacher-archive__bag-preview {
@@ -1834,6 +1848,10 @@ watch(
 
 @media (max-width: 1100px) {
   .teacher-archive__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-archive__bag-grid {
     grid-template-columns: 1fr;
   }
 }

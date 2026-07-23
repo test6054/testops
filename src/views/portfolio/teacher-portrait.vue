@@ -162,11 +162,11 @@ const compositeItems = computed((): SignalMetric[] => {
       unit: '分',
       tone: 'blue',
     },
-    { key: 'core', label: '发展核心', value: String(row.developmentCoreScore), unit: '分' },
+    { key: 'core', label: '核心素质', value: String(row.developmentCoreScore), unit: '分' },
     { key: 'teaching', label: '教学能力', value: String(row.teachingScore), unit: '分' },
-    { key: 'research', label: '科研教研', value: String(row.researchScore), unit: '分' },
+    { key: 'research', label: '科研能力', value: String(row.researchScore), unit: '分' },
     { key: 'training', label: '培训发展', value: String(row.trainingScore), unit: '分' },
-    { key: 'practice', label: '企业实践', value: String(row.practiceScore), unit: '分' },
+    { key: 'practice', label: '实践指导', value: String(row.practiceScore), unit: '分' },
   ]
 })
 

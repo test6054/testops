@@ -23,6 +23,7 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
@@ -115,6 +116,22 @@ const gapSubmissionAvailable = computed(() => {
 })
 
 const formWritable = computed(() => gapSubmissionAvailable.value && !archiveWriteForbidden.value)
+
+const dueApproaching = computed(() => {
+  if (!detail.value?.dueTime || !gapSubmissionAvailable.value) {
+    return false
+  }
+  const dueMs = new Date(detail.value.dueTime.replace(' ', 'T')).getTime()
+  const remaining = dueMs - Date.now()
+  return remaining > 0 && remaining <= 7 * 24 * 60 * 60 * 1000
+})
+
+const dueAlertMessage = computed(() => {
+  if (!detail.value?.dueTime) {
+    return ''
+  }
+  return `补采截止 ${detail.value.dueTime}，逾期将标记为超期未完成`
+})
 
 /** 清空当前补采表单；请求代际只由加载入口统一推进。 */
 function resetFormState(): void {
@@ -420,6 +437,12 @@ watch(
       />
       <UiSpin :spinning="loading">
         <template v-if="detail">
+          <UiAlertStrip
+            v-if="dueApproaching"
+            tone="warning"
+            :title="dueAlertMessage"
+            class="mb-3"
+          />
           <p class="teacher-gap__meta">
             <UiTag tone="blue">
               {{ statusLabel }}
@@ -472,9 +495,10 @@ watch(
                 :label="field.fieldLabel ?? field.fieldCode"
                 :required="field.missing"
               >
-                <UiInput
+                <UiTextarea
                   v-model="fieldValues[field.fieldCode]"
                   size="sm"
+                  :rows="3"
                   :disabled="!formWritable"
                   placeholder="必填"
                 />

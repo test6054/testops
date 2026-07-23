@@ -62,6 +62,9 @@ const mappingSaving = computed(() => operationKey.value.startsWith('mapping:save
 const detail = ref<PortfolioPolicyDocumentDetailVO | null>(null)
 const supersedeSourceId = ref('')
 const editingId = ref<string | undefined>(undefined)
+/** 含历史版本筛选：勾选后列表应包含同一政策根的历史版本。 */
+// TODO: page 接口尚未支持 includeHistory 查询参数，待后端补充后在 loadPage 请求中传入 includeHistory.value
+const includeHistory = ref(false)
 
 const filterForm = reactive({
   policyLevel: undefined as PortfolioPolicyLevelCode | undefined,
@@ -520,6 +523,13 @@ onMounted(() => {
     <UiCard>
       <div class="policy-admin__toolbar">
         <UiFilterBar v-model="filterModel" :fields="filterFields" @search="onSearch" />
+        <a-checkbox
+          v-model:checked="includeHistory"
+          class="policy-admin__history-toggle"
+          @change="onSearch"
+        >
+          含历史版本
+        </a-checkbox>
         <UiButton size="sm" variant="primary" :disabled="writing" @click="openCreate">
           新建政策
         </UiButton>
@@ -747,9 +757,31 @@ onMounted(() => {
             </UiButton>
           </div>
           <ul v-if="detail.versionHistory.length" class="policy-admin__version-list">
-            <li v-for="item in detail.versionHistory" :key="item.id">
-              v{{ item.versionNo }} · {{ item.documentTitle }} ·
-              {{ statusLabel(item.documentStatus) }}
+            <li
+              v-for="item in detail.versionHistory"
+              :key="item.id"
+              class="policy-admin__version-item"
+            >
+              <span
+                class="policy-admin__version-badge"
+                :class="{
+                  'policy-admin__version-badge--muted':
+                    item.documentStatus !== PortfolioPolicyDocumentStatusCode.EFFECTIVE,
+                }"
+              >
+                v{{ item.versionNo }}
+              </span>
+              <UiTag
+                size="sm"
+                :tone="
+                  item.documentStatus === PortfolioPolicyDocumentStatusCode.EFFECTIVE
+                    ? 'green'
+                    : 'gray'
+                "
+              >
+                {{ statusLabel(item.documentStatus) }}
+              </UiTag>
+              <span class="policy-admin__version-title">{{ item.documentTitle }}</span>
             </li>
           </ul>
         </template>
@@ -848,6 +880,10 @@ onMounted(() => {
   align-items: flex-start;
   margin-bottom: 12px;
 }
+.policy-admin__history-toggle {
+  align-self: center;
+  white-space: nowrap;
+}
 .policy-admin__field {
   display: block;
   width: 100%;
@@ -891,9 +927,42 @@ onMounted(() => {
   margin-top: 8px;
 }
 .policy-admin__version-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin: 0;
-  padding-left: 16px;
+  padding: 0;
+  list-style: none;
   font-size: 13px;
+}
+.policy-admin__version-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--dp-border-subtle);
+  border-radius: var(--dp-radius-control);
+}
+.policy-admin__version-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 32px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: var(--dp-radius-full);
+  background: var(--dp-blue-50);
+  color: var(--dp-blue-600);
+  font-size: 12px;
+  font-weight: 600;
+}
+.policy-admin__version-badge--muted {
+  background: var(--dp-gray-100);
+  color: var(--dp-gray-600);
+}
+.policy-admin__version-title {
+  color: var(--dp-text-secondary);
 }
 .policy-admin__compare-bar {
   display: grid;

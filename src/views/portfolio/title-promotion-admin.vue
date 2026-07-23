@@ -256,6 +256,18 @@ function lifecycleTagTone(record: {
   return 'gray'
 }
 
+/** 匹配度按阈值着色：<60% 红、60-80% 橙、>80% 绿，便于审核台快速识别风险申报。
+ *  后端 matchScore 可能返回 0-1 比率或百分比文本，统一归一到百分制再比阈值。 */
+function matchScoreToneClass(score?: string | number): string {
+  if (score === undefined || score === null || score === '') return ''
+  const parsed = Number.parseFloat(String(score))
+  if (Number.isNaN(parsed)) return ''
+  const percent = parsed <= 1 ? parsed * 100 : parsed
+  if (percent < 60) return 'title-promo__score--low'
+  if (percent <= 80) return 'title-promo__score--mid'
+  return 'title-promo__score--high'
+}
+
 /** 院审/人事读整袋：teacherUserId 即档案 teacherId */
 function goTeacherPortfolioPage(path: string, teacherId?: string) {
   if (!teacherId) {
@@ -1230,6 +1242,9 @@ onMounted(() => {
               }
             "
           />
+          <span class="title-promo__toolbar-hint">
+            校级流程：院审 → 人事复审 → 专家评审 → 公示 → 归档
+          </span>
         </div>
         <UiSpin :spinning="appLoading">
           <UiEmpty size="sm" v-if="!appLoading && !apps.length" description="暂无申报单" />
@@ -1262,6 +1277,11 @@ onMounted(() => {
                   :layers="record.ownerIdentityLayers"
                   :note="record.ownerMultiIdentityNote"
                 />
+              </template>
+              <template v-else-if="column.key === 'matchScore'">
+                <span class="title-promo__score" :class="matchScoreToneClass(record.matchScore)">
+                  {{ record.matchScore || '—' }}
+                </span>
               </template>
               <template v-else-if="column.key === 'redlineBlocked'">
                 <UiTag :tone="record.redlineBlocked ? 'red' : 'green'">
@@ -1848,7 +1868,28 @@ onMounted(() => {
 
 <style scoped>
 .title-promo__filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 12px;
+}
+.title-promo__toolbar-hint {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--dp-text-muted);
+}
+.title-promo__score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.title-promo__score--low {
+  color: var(--dp-red-600);
+}
+.title-promo__score--mid {
+  color: var(--dp-orange-600);
+}
+.title-promo__score--high {
+  color: var(--dp-green-600);
 }
 .title-promo__form {
   display: flex;

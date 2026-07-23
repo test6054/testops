@@ -131,6 +131,12 @@ const resolvedTone = computed<BadgeTone>(() => (props.empty ? 'gray' : props.ton
   --tag-border: var(--dp-purple-200);
 }
 
+.ui-tag--ink {
+  --tag-text: var(--dp-gray-900);
+  --tag-bg: var(--dp-gray-100);
+  --tag-border: var(--dp-gray-300);
+}
+
 .ui-tag--empty {
   opacity: 0.88;
 }

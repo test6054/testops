@@ -367,4 +367,24 @@ watch(
   color: var(--dp-color-warning, #d48806);
   font-size: 13px;
 }
+.expert-review__ai {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.expert-review__ai-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dp-text);
+}
+.expert-review__ai-summary {
+  font-size: 12px;
+  color: var(--dp-text-muted);
+  line-height: 1.4;
+}
+.expert-review__ai-muted {
+  font-size: 12px;
+  color: var(--dp-text-muted);
+}
 </style>

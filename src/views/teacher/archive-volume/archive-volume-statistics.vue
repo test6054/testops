@@ -131,6 +131,16 @@
                 <template v-if="column.key === 'materialType'">
                   {{ materialTypeLabel(record.materialType) }}
                 </template>
+                <template v-else-if="column.key === 'proportion'">
+                  <UiTag
+                    v-if="statisticsSummary && statisticsSummary.totalVolumeCount > 0"
+                    :tone="missingProportionTone(record.missingVolumeCount / statisticsSummary.totalVolumeCount)"
+                    size="sm"
+                  >
+                    {{ Math.round((record.missingVolumeCount / statisticsSummary.totalVolumeCount) * 1000) / 10 }}%
+                  </UiTag>
+                  <span v-else>—</span>
+                </template>
               </template>
             </UiDataTable>
           </WorkbenchSurfaceCard>
@@ -375,6 +385,7 @@ const deptColumns: ColumnsType<ArchiveDepartmentCompletionVO> = [
 const missingColumns: ColumnsType<ArchiveMissingMaterialStatVO> = [
   { title: '材料类型', key: 'materialType' },
   { title: '缺交卷数', dataIndex: 'missingVolumeCount', width: 120 },
+  { title: '占比', key: 'proportion', width: 100, align: 'right' },
 ]
 
 const destructionColumns: ColumnsType<ArchiveVolumeDestructionLedgerRowResponse> = [
@@ -509,6 +520,13 @@ function handleSignalMetricClick(key: string) {
 
 function materialTypeLabel(code: ArchiveMaterialTypeCode) {
   return strictEnumLabel(ArchiveMaterialTypeDescription, code, 'materialType')
+}
+
+/** 缺项占比色阶：≥30% 红色警示、≥15% 橙色关注、其余蓝色常规。 */
+function missingProportionTone(ratio: number): BadgeTone {
+  if (ratio >= 0.3) return 'red'
+  if (ratio >= 0.15) return 'orange'
+  return 'blue'
 }
 
 function destructionStatusLabel(code: ArchiveDestructionStatusCode) {

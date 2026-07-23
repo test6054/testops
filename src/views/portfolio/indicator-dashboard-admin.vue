@@ -146,7 +146,7 @@ const collegeChartOption = computed<EChartsCoreOption>(() =>
       value: item.usageCount,
       tone: 'purple',
     })),
-    { yAxisName: '使用次数', emptyText: '暂无学院对比数据' },
+    { orientation: 'horizontal', xAxisName: '使用次数', emptyText: '暂无学院对比数据' },
   ),
 )
 
@@ -158,7 +158,7 @@ const teacherTypeChartOption = computed<EChartsCoreOption>(() =>
       value: item.usageCount,
       tone: 'orange',
     })),
-    { yAxisName: '使用次数', emptyText: '暂无教师类型对比数据' },
+    { orientation: 'horizontal', xAxisName: '使用次数', emptyText: '暂无教师类型对比数据' },
   ),
 )
 

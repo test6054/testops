@@ -1035,7 +1035,12 @@ watch(
 <template>
   <StageWorkbenchShell>
     <template #context>
-      <ContextBar show-title layout="workbench" title="教师年度规划">
+      <ContextBar
+        show-title
+        layout="workbench"
+        title="教师年度规划"
+        subtitle="教师编制 · 科室审核 · 完成度回流 · 历史规划导入"
+      >
         <template v-if="showAdminStats" #actions>
           <UiButton
             size="sm"

@@ -88,6 +88,20 @@ function statusLabel(status: PortfolioDualTeacherApplicationVO['applicationStatu
   return strictEnumLabel(PortfolioDualTeacherApplicationStatusDescription, status, '双师申请状态')
 }
 
+function statusTone(status: PortfolioDualTeacherApplicationVO['applicationStatus']) {
+  switch (status) {
+    case PortfolioDualTeacherApplicationStatusCode.COLLEGE_PENDING:
+    case PortfolioDualTeacherApplicationStatusCode.ACADEMIC_PENDING:
+      return 'orange' as const
+    case PortfolioDualTeacherApplicationStatusCode.APPROVED:
+      return 'green' as const
+    case PortfolioDualTeacherApplicationStatusCode.REJECTED:
+      return 'red' as const
+    default:
+      return 'gray' as const
+  }
+}
+
 const importModalOpen = ref(false)
 const route = useRoute()
 /** PF-P0-295：院审台账 applicationId 深链高亮 */
@@ -464,7 +478,9 @@ async function handleImportSuccess() {
             }}
           </template>
           <template v-else-if="column.key === 'applicationStatus'">
-            {{ statusLabel(record.applicationStatus) }}
+            <UiTag :tone="statusTone(record.applicationStatus)">
+              {{ statusLabel(record.applicationStatus) }}
+            </UiTag>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
             <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">

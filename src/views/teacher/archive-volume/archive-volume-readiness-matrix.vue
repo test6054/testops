@@ -473,4 +473,28 @@ async function loadCampaignOptions(): Promise<void> {
   color: var(--dp-text-muted);
   font-size: 12px;
 }
+
+.matrix-cell {
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.matrix-cell--good {
+  color: var(--dp-green-700);
+}
+
+.matrix-cell--warn {
+  color: var(--dp-orange-700);
+}
+
+.matrix-cell--fail {
+  color: var(--dp-red-700);
+}
+
+.matrix-cell--empty {
+  color: var(--dp-text-muted);
+  font-weight: 400;
+}
 </style>

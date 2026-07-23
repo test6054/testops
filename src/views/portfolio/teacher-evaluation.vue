@@ -706,7 +706,7 @@ function buildNoticeRowActions(record: PortfolioEvaluationTeacherNoticeVO): UiTa
   if (record.noticeStatus !== PortfolioEvaluationTeacherNoticeStatusEnum.CONFIRMED) {
     actions.push({
       key: 'confirm',
-      label: '确认材料',
+      label: '确认参加',
       tone: 'primary',
       disabled:
         confirming.value
@@ -889,7 +889,7 @@ watch(
     <PortfolioTeacherPickGate v-if="canPickTeachers && !targetTeacherId" />
 
     <template v-else>
-      <UiCard title="评价待办">
+      <UiCard title="评价通知">
         <UiDataTable
           v-if="notices.length || loading"
           v-model:current="pageNum"
@@ -1140,7 +1140,7 @@ watch(
 
       <UiCard
         v-if="resultSummary || resultLoading"
-        title="评价结果与依据"
+        title="评价结果明细"
         class="teacher-evaluation__block"
       >
         <UiSpin :spinning="resultLoading">

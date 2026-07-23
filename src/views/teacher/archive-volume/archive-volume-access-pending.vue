@@ -59,6 +59,7 @@
             <span v-if="record.archiveNo">{{ record.archiveNo }}</span>
             <span v-if="record.archiveTitle"> · {{ record.archiveTitle }}</span>
             <span v-if="record.departmentName"> · {{ record.departmentName }}</span>
+            <span v-if="record.campaignName"> · {{ record.campaignName }}</span>
           </p>
           <p v-if="record.accessReason" class="approval-card__reason">
             <span class="approval-card__reason-label">查阅事由</span>
@@ -141,6 +142,7 @@
 
 <script lang="ts" setup>
 import type { ArchiveVolumeAccessRecordResponse } from '@/apis/mark/archive-volume'
+import type { BadgeTone } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -183,9 +185,16 @@ const rejectingId = ref('')
 const approveComment = ref('')
 const rejectComment = ref('')
 
-/** 密级标签色调：机密用紫色突出，其余密级灰色。 */
-function archiveSecurityLevelTagTone(level: ArchiveSecurityLevelCode): 'purple' | 'gray' {
-  return level === ArchiveSecurityLevelCode.CONFIDENTIAL ? 'purple' : 'gray'
+/** 密级标签色调：公开/内部灰色、限制蓝色、机密深墨色，逐级加重视觉警示。 */
+function archiveSecurityLevelTagTone(level: ArchiveSecurityLevelCode): BadgeTone {
+  switch (level) {
+    case ArchiveSecurityLevelCode.CONFIDENTIAL:
+      return 'ink'
+    case ArchiveSecurityLevelCode.RESTRICTED:
+      return 'blue'
+    default:
+      return 'gray'
+  }
 }
 
 function canApprove(record: ArchiveVolumeAccessRecordResponse): boolean {
