@@ -23,7 +23,9 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -72,6 +74,14 @@ const impactTotal = ref(0)
 const retroactive = ref<PortfolioRulePublishSnapshotVO | null>(null)
 const impactDetail = ref<PortfolioPublishImpactReportVO | null>(null)
 const selectedSnapshotId = ref('')
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
+const exportLoading = ref(false)
+const pendingExport = ref<
+  | null
+  | { type: 'diff', snapshotIdA: string, snapshotIdB: string }
+  | { type: 'impact', id: string }
+>(null)
 const diffSnapshotIdB = ref('')
 const impactQuery = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
 
@@ -202,31 +212,69 @@ async function loadImpactDetail(id: string) {
   }
 }
 
-async function exportDiff(snapshotIdA: string) {
+function openExportDiffConfirm(snapshotIdA: string) {
   if (!diffSnapshotIdB.value) {
     showFormValidationMessage('请填写第二个对比快照编号')
     return
   }
+  exportPurpose.value = ''
+  pendingExport.value = {
+    type: 'diff',
+    snapshotIdA,
+    snapshotIdB: diffSnapshotIdB.value,
+  }
+  exportConfirmOpen.value = true
+}
+
+function openExportImpactConfirm(id: string) {
+  exportPurpose.value = ''
+  pendingExport.value = { type: 'impact', id }
+  exportConfirmOpen.value = true
+}
+
+async function confirmExport() {
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
+  const pending = pendingExport.value
+  if (!pending || exportLoading.value) {
+    return
+  }
+  exportLoading.value = true
   try {
-    const result = await portfolioIndicatorTenantApi.exportSnapshotDiff({
-      snapshotIdA,
-      snapshotIdB: diffSnapshotIdB.value,
-    })
-    await downloadPortfolioIndicatorExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 条差异`)
+    if (pending.type === 'diff') {
+      const result = await portfolioIndicatorTenantApi.exportSnapshotDiff({
+        snapshotIdA: pending.snapshotIdA,
+        snapshotIdB: pending.snapshotIdB,
+        exportPurpose: purpose,
+      })
+      await downloadPortfolioIndicatorExcelExport(result)
+      void message.success(`已导出 ${result.rowCount} 条差异`)
+    } else {
+      const result = await portfolioIndicatorTenantApi.exportImpactReport({
+        id: pending.id,
+        exportPurpose: purpose,
+      })
+      await downloadPortfolioIndicatorExcelExport(result)
+      void message.success('影响报告已导出')
+    }
+    exportConfirmOpen.value = false
+    pendingExport.value = null
   } catch (error) {
-    showUserError(error, '导出快照差异失败')
+    showUserError(error, pending.type === 'diff' ? '导出快照差异失败' : '导出影响报告失败')
+  } finally {
+    exportLoading.value = false
   }
 }
 
+async function exportDiff(snapshotIdA: string) {
+  openExportDiffConfirm(snapshotIdA)
+}
+
 async function exportImpact(id: string) {
-  try {
-    const result = await portfolioIndicatorTenantApi.exportImpactReport({ id })
-    await downloadPortfolioIndicatorExcelExport(result)
-    void message.success('影响报告已导出')
-  } catch (error) {
-    showUserError(error, '导出影响报告失败')
-  }
+  openExportImpactConfirm(id)
 }
 
 function goOps(snapshotId: string) {
@@ -392,6 +440,23 @@ onMounted(loadHistory)
       </template>
     </UiCard>
   </StageWorkbenchShell>
+  <UiDialog
+    v-model:open="exportConfirmOpen"
+    :title="pendingExport?.type === 'impact' ? '导出影响报告' : '导出快照差异'"
+    ok-text="确认导出"
+    cancel-text="取消"
+    :confirm-loading="exportLoading"
+    @ok="confirmExport"
+  >
+    <label class="export-purpose__label">导出用途（必填）</label>
+    <UiTextarea
+      v-model="exportPurpose"
+      size="sm"
+      :rows="3"
+      placeholder="请填写本次导出用途（写入审计）"
+      :disabled="exportLoading"
+    />
+  </UiDialog>
 </template>
 
 <style scoped>

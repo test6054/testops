@@ -1,6 +1,7 @@
 import type { PageResult } from '@/types'
 import type { PortfolioPolicyDocumentStatusCode } from '@/types/enums/portfolio-policy-document-status-enum'
 import type { PortfolioPolicyLevelCode } from '@/types/enums/portfolio-policy-level-enum'
+import type { PortfolioPolicyTextDiffChangeTypeCode } from '@/types/enums/portfolio-policy-text-diff-change-type-enum'
 import http from '@/config/axios'
 
 export interface PortfolioPolicyDocumentVO {
@@ -57,7 +58,7 @@ export interface PortfolioPolicyDocumentDownloadVO {
 }
 
 export interface PortfolioPolicyTextDiffHunkVO {
-  changeType: 'EQUAL' | 'DELETE' | 'INSERT'
+  changeType: PortfolioPolicyTextDiffChangeTypeCode
   leftLineNo?: number
   rightLineNo?: number
   text: string

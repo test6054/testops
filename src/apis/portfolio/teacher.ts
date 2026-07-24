@@ -13,6 +13,7 @@ import type {
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
 import type { PageResult, QueryDto } from '@/types'
+import type { PortfolioDeptTeacherSegmentCode } from '@/types/enums/portfolio-dept-teacher-segment-code-enum'
 import type { PortfolioDevelopmentPlanStatusCode } from '@/types/enums/portfolio-development-plan-status-enum'
 import type { PortfolioTitleTierCode } from '@/types/enums/portfolio-title-tier-enum'
 import http from '@/config/axios'
@@ -119,7 +120,7 @@ export interface PortfolioDeptOneTableTeacherRowVO {
 }
 
 export interface PortfolioDeptTeacherSegmentItemVO {
-  segmentCode: 'NEEDS_SUPPORT' | 'HIGH_POTENTIAL' | 'DATA_ANOMALY'
+  segmentCode: PortfolioDeptTeacherSegmentCode
   segmentLabel: string
   teacherCount: number
   sampleTeacherUserIds: string[]
@@ -155,6 +156,8 @@ export interface PortfolioDeptOneTableExportRequest {
   completenessLevel?: PortfolioCompletenessLevelCode
   portfolioOrgId?: string
   teachingGroupId?: string
+  /** 导出用途（必填） */
+  exportPurpose: string
 }
 
 export interface PortfolioDeptOneTableTeacherPageRequest extends QueryDto {

@@ -29,6 +29,9 @@ export interface PortfolioExportBusinessRef {
   baselinePeriodLabel?: string
   majorGroupName?: string
   reportType?: string
+  doubleHighTaskId?: string
+  pkSessionId?: string
+  maskMode?: boolean
 }
 
 export interface PortfolioExportApprovalVO {

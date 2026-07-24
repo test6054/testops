@@ -7,7 +7,7 @@ import type {
   PortfolioEvaluationTaskVO,
 } from '@/apis/portfolio/teacher-platform'
 import type { EvaluationWorkgroupVO } from '@/apis/quality/evaluation-workgroup'
-import type { BadgeTone, UiStatPanelItem } from '@/components/ui-guide/ui/types'
+import type { UiStatPanelItem } from '@/components/ui-guide/ui/types'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
@@ -25,7 +25,9 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -33,12 +35,15 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const loading = ref(false)
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const tasksLoading = ref(false)
 const analysisRequestToken = ref(0)
 const tasks = ref<PortfolioEvaluationTaskVO[]>([])
@@ -98,17 +103,9 @@ const taskColumns: ColumnsType<PortfolioEvaluationComprehensiveTaskItemVO> = [
   { title: '条目数', dataIndex: 'entryCount', key: 'entryCount', width: 88, align: 'right' },
   { title: '平均分', dataIndex: 'averageScore', key: 'averageScore', width: 88, align: 'right' },
 ]
-
-function lifecycleTagTone(record: { lifecycleStatus?: string }): BadgeTone {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
-
 const teacherColumns: ColumnsType<PortfolioEvaluationComprehensiveTeacherRowVO> = [
   { title: '被评教师', dataIndex: 'subjectTeacherUserId', key: 'subjectTeacherUserId', width: 160 },
-  { title: '涉及场景', dataIndex: 'involvedSceneLabels', key: 'involvedSceneLabels', width: 160 },
+  { title: '涉及场景', key: 'involvedScenes', width: 160 },
   { title: '生命周期', key: 'lifecycleStatus', width: 100 },
   { title: '身份层', key: 'identityLayers', width: 160 },
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
@@ -225,16 +222,39 @@ async function runAnalysis() {
   }
 }
 
-async function exportAnalysis() {
+function openExportConfirm() {
+  if (exporting.value) {
+    return
+  }
   if (!analysis.value || !analysisParamsSnapshot.value) {
+    showFormValidationMessage('请先完成综合分析再导出')
+    return
+  }
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
+async function exportAnalysis() {
+  if (exporting.value) {
+    return
+  }
+  if (!analysis.value || !analysisParamsSnapshot.value) {
+    showFormValidationMessage('请先完成综合分析再导出')
+    return
+  }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
     return
   }
   exporting.value = true
   try {
-    const result = await portfolioEvaluationEntryApi.exportComprehensiveAnalysis(
-      analysisParamsSnapshot.value,
-    )
+    const result = await portfolioEvaluationEntryApi.exportComprehensiveAnalysis({
+      ...analysisParamsSnapshot.value,
+      exportPurpose: purpose,
+    })
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 条填报`)
   } catch (error) {
     showUserError(error, '导出综合分析失败')
@@ -309,7 +329,7 @@ onMounted(async () => {
         >
           分析
         </UiButton>
-        <UiButton size="sm" :loading="exporting" :disabled="!analysis" @click="exportAnalysis">
+        <UiButton size="sm" :loading="exporting" :disabled="!analysis" @click="openExportConfirm">
           导出表格文件
         </UiButton>
       </div>
@@ -366,8 +386,17 @@ onMounted(async () => {
                 )
               }}
             </template>
+            <template v-else-if="column.key === 'involvedScenes'">
+              {{
+                record.involvedScenes?.length
+                  ? record.involvedScenes
+                    .map((scene) => evaluationSceneLabel(scene))
+                    .join(' / ')
+                  : '—'
+              }}
+            </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -395,6 +424,23 @@ onMounted(async () => {
         </UiDataTable>
       </template>
     </UiCard>
+    <UiDialog
+      v-model:open="exportConfirmOpen"
+      title="导出综合分析"
+      ok-text="确认导出"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="exportAnalysis"
+    >
+      <label class="export-purpose__label">导出用途（必填）</label>
+      <UiTextarea
+        v-model="exportPurpose"
+        size="sm"
+        :rows="3"
+        placeholder="请填写本次导出用途（写入审计）"
+        :disabled="exporting"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -409,5 +455,10 @@ onMounted(async () => {
   margin: 16px 0 8px;
   font-size: 14px;
   font-weight: 600;
+}
+.export-purpose__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
 }
 </style>

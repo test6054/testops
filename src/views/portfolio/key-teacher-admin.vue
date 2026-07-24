@@ -15,8 +15,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -29,6 +31,7 @@ import { useQueryTable } from '@/composables/useQueryTable'
 import { useUserStore } from '@/stores/modules/user'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -53,6 +56,8 @@ const activeType = ref<PortfolioKeyTeacherRegistryTypeCode>(
 const saving = ref(false)
 const revokingId = ref('')
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const analyticsLoading = ref(false)
 const analyticsFailed = ref(false)
 const analytics = ref<PortfolioKeyTeacherAnalyticsVO | null>(null)
@@ -134,16 +139,6 @@ const columns: ColumnsType = [
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '操作', key: 'actions', width: 80 },
 ]
-
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
-
 function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): string {
   return strictEnumLabel(PortfolioKeyTeacherRegistryStatusDescription, status, '重点教师名录状态')
 }
@@ -208,14 +203,31 @@ async function revokeRegistry(id: string, teacherUserId?: string) {
   }
 }
 
+function openExportConfirm() {
+  if (exporting.value) {
+    return
+  }
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportRoster() {
   if (exporting.value) {
     return
   }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
   exporting.value = true
   try {
-    const result = await portfolioKeyTeacherApi.exportRoster({ registryType: activeType.value })
+    const result = await portfolioKeyTeacherApi.exportRoster({
+      registryType: activeType.value,
+      exportPurpose: purpose,
+    })
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出重点教师名册失败')
@@ -328,12 +340,12 @@ function switchType(key: string | number) {
         >
           登记
         </UiButton>
-        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster">
+        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="openExportConfirm">
           导出台账
         </UiButton>
       </div>
       <div v-else class="form-row">
-        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster">
+        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="openExportConfirm">
           导出台账
         </UiButton>
       </div>
@@ -363,7 +375,7 @@ function switchType(key: string | number) {
             {{ registryStatusLabel(record.registryStatus) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
 
@@ -396,6 +408,23 @@ function switchType(key: string | number) {
         </template>
       </UiDataTable>
     </UiCard>
+    <UiDialog
+      v-model:open="exportConfirmOpen"
+      title="导出台账"
+      ok-text="确认导出"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="exportRoster"
+    >
+      <label class="export-purpose__label">导出用途（必填）</label>
+      <UiTextarea
+        v-model="exportPurpose"
+        size="sm"
+        :rows="3"
+        placeholder="请填写本次导出用途（写入审计），例如迎评检查、结构统计"
+        :disabled="exporting"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -410,5 +439,10 @@ function switchType(key: string | number) {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
+}
+.export-purpose__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
 }
 </style>

@@ -6,12 +6,14 @@ import type { ConfirmationStatusCode } from '@/types/enums/confirmation-status-e
 import type { PortfolioConflictTicketStatusEnum } from '@/types/enums/portfolio-conflict-ticket-status-enum'
 import type { PortfolioDevelopmentRecordTypeCode } from '@/types/enums/portfolio-development-record-type-enum'
 import type { PortfolioFieldMappingTransformTypeCode } from '@/types/enums/portfolio-field-mapping-transform-type-enum'
+import type { PortfolioHrEmploymentStatusCode } from '@/types/enums/portfolio-hr-employment-status-enum'
 import type { PortfolioIdentityUnmatchedStatusEnum } from '@/types/enums/portfolio-identity-unmatched-status-enum'
 import type { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
 import type { PortfolioIntegrationCleanActionCode } from '@/types/enums/portfolio-integration-clean-action-enum'
 import type { PortfolioIntegrationHealthStatusEnum } from '@/types/enums/portfolio-integration-health-status-enum'
 import type { PortfolioIntegrationMessageInboxStatusEnum } from '@/types/enums/portfolio-integration-message-inbox-status-enum'
 import type { PortfolioIntegrationPathwayCodeEnum } from '@/types/enums/portfolio-integration-pathway-code-enum'
+import type { PortfolioNationalReportIssueCode } from '@/types/enums/portfolio-national-report-issue-code-enum'
 import type { PortfolioNationalReportIssueStatusCode } from '@/types/enums/portfolio-national-report-issue-status-enum'
 import type { PortfolioNationalReportStatusCode } from '@/types/enums/portfolio-national-report-status-enum'
 import type { PortfolioNationalTeacherSyncDirectionEnum } from '@/types/enums/portfolio-national-teacher-sync-direction-enum'
@@ -22,7 +24,7 @@ export interface PortfolioNationalTeacherInboundRecord {
   teacherNumber: string
   teacherName?: string
   title?: string
-  employmentStatus?: string
+  employmentStatus?: PortfolioHrEmploymentStatusCode
 }
 
 /** 对齐后端 PortfolioIntegrationExcelImportContextDto */
@@ -238,7 +240,10 @@ export interface PortfolioNationalReportIssueVO {
   teacherUserId: string
   teacherNumber?: string
   teacherName?: string
+  /** 问题编码拼接串（逗号分隔） */
   issueCodes?: string
+  /** 问题编码枚举列表 */
+  issueCodeList?: PortfolioNationalReportIssueCode[]
   issueDetails?: string[]
   status: PortfolioNationalReportIssueStatusCode
   statusLabel?: string
@@ -454,7 +459,7 @@ export const portfolioIntegrationApi = {
   getNationalReportBatch(id: string) {
     return http.post<PortfolioNationalReportBatchVO>(`${BASE}/national-report/batch/get`, { id })
   },
-  exportNationalReportPackage(data: { syncTaskId: string, maskMode?: boolean }) {
+  exportNationalReportPackage(data: { syncTaskId: string, maskMode?: boolean, exportPurpose: string }) {
     return http.post<PortfolioArchiveBagExportResultVO>(
       `${BASE}/national-report/package/export`,
       data,

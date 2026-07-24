@@ -249,7 +249,7 @@ const canEditFields = computed(
     || activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.TRIAL,
 )
 
-const canDeprecate = computed(() => activeVersion.value?.status === 'PUBLISHED')
+const canDeprecate = computed(() => activeVersion.value?.status === PortfolioArchiveTemplateVersionStatusCode.PUBLISHED)
 
 const publishedVersionId = computed(() => selectedCategory.value?.publishedVersionId ?? null)
 
@@ -1080,7 +1080,7 @@ onMounted(async () => {
             size="sm"
             :loading="operationKey.startsWith('category:deactivate:')"
             :disabled="
-              !selectedCategory || selectedCategory?.status === 'INACTIVE' || interactionLocked
+              !selectedCategory || selectedCategory?.status === PortfolioArchiveCategoryStatusCode.INACTIVE || interactionLocked
             "
             @click="deactivateCategory"
           >
@@ -1408,7 +1408,7 @@ onMounted(async () => {
             :disabled="writing"
           />
         </UiFormItem>
-        <UiFormItem v-if="fieldEditor.fieldType === 'ENUM'" label="枚举引用">
+        <UiFormItem v-if="fieldEditor.fieldType === PortfolioArchiveFieldTypeCode.ENUM" label="枚举引用">
           <UiInput
             size="sm"
             v-model="fieldEditor.enumRef"

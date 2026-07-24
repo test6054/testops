@@ -1050,7 +1050,12 @@ onMounted(async () => {
             />
           </UiFormItem>
           <UiFormItem label="适用对象">
-            <UiInput size="sm" v-model="editForm.applicableTeachers" :disabled="writing" />
+            <UiInput
+              size="sm"
+              v-model="editForm.applicableTeachers"
+              placeholder="正式码，逗号分隔，如 FULL_TIME,DUAL_TEACHER / ALL_TEACHERS"
+              :disabled="writing"
+            />
           </UiFormItem>
           <UiFormItem label="政策对齐">
             <UiInput size="sm" v-model="editForm.policyAlign" :disabled="writing" />

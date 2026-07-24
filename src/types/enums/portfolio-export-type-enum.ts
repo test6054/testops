@@ -21,6 +21,7 @@ export const ALL_PORTFOLIO_EXPORT_APPROVAL_TYPE_CODES: readonly PortfolioExportT
   PortfolioExportTypeCode.DEPARTMENT_REPORT,
   PortfolioExportTypeCode.TEACHER_ARCHIVE,
   PortfolioExportTypeCode.ANALYSIS_REPORT,
+  PortfolioExportTypeCode.TEACHER_PK_COMPARE,
 ]
 
 export const ALL_PORTFOLIO_EXPORT_TYPE_CODES: readonly PortfolioExportTypeCode[] = [

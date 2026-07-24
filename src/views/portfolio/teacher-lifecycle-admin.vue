@@ -19,7 +19,9 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -36,6 +38,9 @@ const loading = ref(false)
 const applying = ref(false)
 const rows = ref<PortfolioTeacherLifecycleEventVO[]>([])
 const total = ref(0)
+const transferExportConfirmOpen = ref(false)
+const transferExportPurpose = ref('')
+const pendingTransferTeacherUserId = ref<string | number | ''>('')
 const operationKey = ref('')
 /** 站内信深链聚焦的事件 ID（eventId 查询参数）。 */
 const focusedEventId = ref('')
@@ -91,12 +96,12 @@ function statusLabel(code?: string) {
 
 /** 目标态是否参评 hold：与 BE holdsEvaluationTasks 对齐（ACTIVE 除外）。 */
 function toStatusEvaluationHeld(code?: string): boolean {
-  return Boolean(code && code !== 'ACTIVE')
+  return Boolean(code && code !== PortfolioTeacherLifecycleStatusCode.ACTIVE)
 }
 
 /** 目标态是否档案写禁：TEMP_HOLD 可填报，其余非 ACTIVE 写禁。 */
-function toStatusArchiveWriteForbidden(code?: string): boolean {
-  return Boolean(code && code !== 'ACTIVE' && code !== 'TEMP_HOLD')
+function toStatusArchiveWriteForbidden(code?: PortfolioTeacherLifecycleStatusCode): boolean {
+  return Boolean(code && code !== PortfolioTeacherLifecycleStatusCode.ACTIVE && code !== PortfolioTeacherLifecycleStatusCode.TEMP_HOLD)
 }
 
 /** PF-P0-397：解析 route query 字符串参数（eventId / teacherUserId）。 */
@@ -111,7 +116,7 @@ function readRouteStringParam(value: unknown): string {
 }
 
 function isPendingSelfDeclare(record: PortfolioTeacherLifecycleEventVO): boolean {
-  return record.approvalStatus === 'PENDING'
+  return record.approvalStatus === PortfolioTeacherLifecycleApprovalStatusCode.PENDING
 }
 
 function eventRowClassName(record: PortfolioTeacherLifecycleEventVO): string {
@@ -194,7 +199,7 @@ async function applyLifecycle() {
     const holdBits: string[] = []
     if (next.evaluationHeld) holdBits.push('参评 hold')
     if (next.archiveWriteForbidden) holdBits.push('档案写禁')
-    else if (next.lifecycleStatus === 'TEMP_HOLD') holdBits.push('档案可填报')
+    else if (next.lifecycleStatus === PortfolioTeacherLifecycleStatusCode.TEMP_HOLD) holdBits.push('档案可填报')
     const holdSuffix = holdBits.length ? `（${holdBits.join(' · ')}）` : ''
     void message.success(
       `已更新为${next.lifecycleStatusLabel || next.lifecycleStatus}${holdSuffix}`,
@@ -208,19 +213,46 @@ async function applyLifecycle() {
   }
 }
 
-async function exportTransfer(teacherUserId: string | number) {
-  const key = `export:${teacherUserId}`
-  if (operationKey.value) return
-  operationKey.value = key
+function openTransferExportConfirm(teacherUserId: string | number) {
+  if (!teacherUserId) {
+    showFormValidationMessage('请填写教师 ID')
+    return
+  }
+  pendingTransferTeacherUserId.value = teacherUserId
+  transferExportPurpose.value = ''
+  transferExportConfirmOpen.value = true
+}
+
+async function exportTransfer() {
+  const teacherUserId = pendingTransferTeacherUserId.value
+  if (!teacherUserId) {
+    showFormValidationMessage('请填写教师 ID')
+    return
+  }
+  const purpose = transferExportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
+  if (operationKey.value) {
+    return
+  }
+  operationKey.value = `export:${teacherUserId}`
   try {
-    const result = await portfolioTeacherLifecycleApi.exportTransferPackage({ teacherUserId })
+    const result = await portfolioTeacherLifecycleApi.exportTransferPackage({
+      teacherUserId,
+      exportPurpose: purpose,
+    })
     if (result.fileNodeId) {
       await downloadPortfolioExcelExport({
         fileName: result.fileName || `teacher-transfer-${teacherUserId}.zip`,
         fileNodeId: String(result.fileNodeId),
       })
     }
-    void message.success(`迁出数据包已生成（正式档 ${result.officialRecordCount ?? 0}）`)
+    transferExportConfirmOpen.value = false
+    void message.success(
+      `迁出数据包已生成（正式档 ${result.officialRecordCount ?? 0}）`,
+    )
     await loadEvents()
   } catch (error) {
     showUserError(error, '导出迁出数据包失败')
@@ -385,7 +417,7 @@ watch(
           <UiButton
             :disabled="!applyForm.teacherUserId || !!operationKey"
             :loading="operationKey.startsWith('export:')"
-            @click="exportTransfer(applyForm.teacherUserId)"
+            @click="openTransferExportConfirm(applyForm.teacherUserId)"
           >
             导出迁出包
           </UiButton>
@@ -473,7 +505,7 @@ watch(
               <UiTag v-if="toStatusArchiveWriteForbidden(record.toStatus)" tone="red" class="ml-1">
                 档案写禁
               </UiTag>
-              <UiTag v-else-if="record.toStatus === 'TEMP_HOLD'" tone="green" class="ml-1">
+              <UiTag v-else-if="record.toStatus === PortfolioTeacherLifecycleStatusCode.TEMP_HOLD" tone="green" class="ml-1">
                 档案可填报
               </UiTag>
             </template>
@@ -482,19 +514,19 @@ watch(
             </template>
             <template v-else-if="column.key === 'approvalStatus'">
               <UiTag
-                v-if="record.approvalStatus === 'PENDING'"
+                v-if="record.approvalStatus === PortfolioTeacherLifecycleApprovalStatusCode.PENDING"
                 tone="orange"
               >
                 {{ record.approvalStatusLabel || '待审批' }}
               </UiTag>
               <UiTag
-                v-else-if="record.approvalStatus === 'APPROVED' || record.approvalStatus === 'APPLIED'"
+                v-else-if="record.approvalStatus === PortfolioTeacherLifecycleApprovalStatusCode.APPROVED || record.approvalStatus === PortfolioTeacherLifecycleApprovalStatusCode.APPLIED"
                 tone="green"
               >
                 {{ record.approvalStatusLabel || record.approvalStatus }}
               </UiTag>
               <UiTag
-                v-else-if="record.approvalStatus === 'REJECTED'"
+                v-else-if="record.approvalStatus === PortfolioTeacherLifecycleApprovalStatusCode.REJECTED"
                 tone="red"
               >
                 {{ record.approvalStatusLabel || '已驳回' }}
@@ -540,6 +572,23 @@ watch(
       </UiCard>
     </div>
   </StageWorkbenchShell>
+
+  <UiDialog
+    v-model:open="transferExportConfirmOpen"
+    title="导出迁出数据包"
+    ok-text="确认导出"
+    cancel-text="取消"
+    :confirm-loading="Boolean(operationKey)"
+    @ok="exportTransfer"
+  >
+    <label class="export-purpose__label">导出用途（必填）</label>
+    <UiTextarea
+      v-model="transferExportPurpose"
+      size="sm"
+      :rows="3"
+      placeholder="请填写本次迁出用途（写入审计）"
+    />
+  </UiDialog>
 </template>
 
 <style scoped>

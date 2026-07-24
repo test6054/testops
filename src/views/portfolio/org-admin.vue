@@ -286,7 +286,7 @@ const canManageAlias = computed(() => {
   if (!node) {
     return false
   }
-  return node.nodeType === 'DEPARTMENT' || node.nodeType === 'MAJOR' || Boolean(node.portfolioOrgId)
+  return node.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.DEPARTMENT || node.nodeType === PortfolioEduUserOrgTreeNodeTypeCode.MAJOR || Boolean(node.portfolioOrgId)
 })
 
 function resolveAliasTarget(

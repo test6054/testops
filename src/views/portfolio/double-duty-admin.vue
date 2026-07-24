@@ -9,8 +9,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
@@ -26,6 +28,7 @@ import {
 } from '@/types/enums/portfolio-key-teacher-registry-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -33,6 +36,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 const saving = ref(false)
 const revokingId = ref('')
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const route = useRoute()
 const userStore = useUserStore()
 /** PF-P0-423：院系读；写控件仅校管默认可见（BE 仍允许院系 manage） */
@@ -110,16 +115,6 @@ const columns: ColumnsType = [
   { title: '当前在岗', key: 'countsInCurrentFacultyStructure', width: 88 },
   { title: '操作', key: 'actions', width: 80 },
 ]
-
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
-
 function registryStatusLabel(status: PortfolioKeyTeacherRegistryStatusCode): string {
   return strictEnumLabel(PortfolioKeyTeacherRegistryStatusDescription, status, '双肩挑台账状态')
 }
@@ -183,14 +178,28 @@ async function revokeRegistry(id: string, teacherUserId?: string) {
   }
 }
 
+function openExportConfirm() {
+  if (exporting.value) {
+    return
+  }
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportRoster() {
   if (exporting.value) {
     return
   }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
   exporting.value = true
   try {
-    const result = await portfolioDoubleDutyApi.exportRoster({})
+    const result = await portfolioDoubleDutyApi.exportRoster({ exportPurpose: purpose })
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出双肩挑台账失败')
@@ -293,7 +302,7 @@ async function exportRoster() {
         >
           登记
         </UiButton>
-        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportRoster">
+        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="openExportConfirm">
           导出台账
         </UiButton>
       </div>
@@ -324,7 +333,7 @@ async function exportRoster() {
             {{ registryStatusLabel(record.registryStatus) }}
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
 
@@ -359,6 +368,23 @@ async function exportRoster() {
         </template>
       </UiDataTable>
     </UiCard>
+    <UiDialog
+      v-model:open="exportConfirmOpen"
+      title="导出台账"
+      ok-text="确认导出"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="exportRoster"
+    >
+      <label class="export-purpose__label">导出用途（必填）</label>
+      <UiTextarea
+        v-model="exportPurpose"
+        size="sm"
+        :rows="3"
+        placeholder="请填写本次导出用途（写入审计），例如迎评检查、结构统计"
+        :disabled="exporting"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -377,5 +403,10 @@ async function exportRoster() {
   display: block;
   font-size: 12px;
   color: var(--dp-text-secondary);
+}
+.export-purpose__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
 }
 </style>

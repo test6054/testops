@@ -15,6 +15,7 @@ import type {
   PortfolioIndicatorAutoCollectPageRequest,
   PortfolioIndicatorAutoCollectRequest,
   PortfolioIndicatorAutoCollectSummaryResponse,
+  PortfolioIndicatorCatalogExportRequest,
   PortfolioIndicatorCollectedValueVO,
   PortfolioIndicatorCollegeCompareVO,
   PortfolioIndicatorComputeLogVO,
@@ -157,8 +158,8 @@ export const portfolioIndicatorTenantApi: PortfolioIndicatorTenantApi = {
     http.post<PageResult<PortfolioEligibilityEvalLogVO>>(`${TENANT}/eligibility/eval-log/page`, data),
   getExplain: (data: PortfolioExplainGetRequest) =>
     http.post<PortfolioExplainVO>(`${TENANT}/explain/get`, data),
-  exportIndicatorCatalog: () =>
-    http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/indicator-catalog`, {}),
+  exportIndicatorCatalog: (data: PortfolioIndicatorCatalogExportRequest) =>
+    http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/indicator-catalog`, data),
   exportSnapshotDiff: (data: PortfolioExportSnapshotDiffRequest) =>
     http.post<PortfolioIndicatorExportResultVO>(`${TENANT}/export/snapshot-diff`, data),
   exportImpactReport: (data: PortfolioPublishImpactReportGetRequest) =>

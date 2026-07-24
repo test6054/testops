@@ -27,6 +27,7 @@ import type { PortfolioCorrectionHandleActionCode } from '@/types/enums/portfoli
 import type { PortfolioCorrectionImpactRecomputeStatusCode } from '@/types/enums/portfolio-correction-impact-recompute-status-enum'
 import type { PortfolioEduUserOrgTreeNodeTypeCode } from '@/types/enums/portfolio-edu-user-org-tree-node-type-enum'
 import type { PortfolioEducatingOutcomeTypeCode } from '@/types/enums/portfolio-educating-outcome-type-enum'
+import type { PortfolioEvaluationIdentityMaterialScopeCode } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import type { PortfolioEvaluationObjectionTypeCode } from '@/types/enums/portfolio-evaluation-objection-type-enum'
 import type { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
 import type { PortfolioEvaluationTaskAdvanceActionCode } from '@/types/enums/portfolio-evaluation-task-advance-action-enum'
@@ -34,7 +35,9 @@ import type { PortfolioEvaluationTaskStatusEnum } from '@/types/enums/portfolio-
 import type { PortfolioGapTaskStatusCode } from '@/types/enums/portfolio-gap-task-status-enum'
 import type { PortfolioGuidanceTypeCode } from '@/types/enums/portfolio-guidance-type-enum'
 import type { PortfolioIndustryEducationProjectTypeCode } from '@/types/enums/portfolio-industry-education-project-type-enum'
+import type { PortfolioIndustryPackHardGapTypeCode } from '@/types/enums/portfolio-industry-pack-hard-gap-type-enum'
 import type { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
+import type { PortfolioMaterialIntakeValidationCode } from '@/types/enums/portfolio-material-intake-validation-code-enum'
 import type { PortfolioMaterialRefFreezeStatusCode } from '@/types/enums/portfolio-material-ref-freeze-status-enum'
 import type { PortfolioMaterialRefScopeCode } from '@/types/enums/portfolio-material-ref-scope-enum'
 import type { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
@@ -47,6 +50,7 @@ import type { PortfolioPortraitCohortTypeCode } from '@/types/enums/portfolio-po
 import type { PortfolioPortraitDimensionCode } from '@/types/enums/portfolio-portrait-dimension-enum'
 import type { PortfolioPortraitIndicatorEvidenceTypeCode } from '@/types/enums/portfolio-portrait-indicator-evidence-type-enum'
 import type { PortfolioPortraitStageCode } from '@/types/enums/portfolio-portrait-stage-code-enum'
+import type { PortfolioPortraitStrengthTagTypeCode } from '@/types/enums/portfolio-portrait-strength-tag-type-enum'
 import type { PortfolioReportSceneCode } from '@/types/enums/portfolio-report-scene-enum'
 import type { PortfolioReviewActionTypeCode } from '@/types/enums/portfolio-review-action-type-enum'
 import type { PortfolioSourceFixAlertStatusCode } from '@/types/enums/portfolio-source-fix-alert-status-enum'
@@ -60,6 +64,7 @@ import type { PortfolioTeacherIdentityTypeCode } from '@/types/enums/portfolio-t
 import type { PortfolioTextbookTypeCode } from '@/types/enums/portfolio-textbook-type-enum'
 import type { PortfolioTodoTypeCode } from '@/types/enums/portfolio-todo-type-enum'
 import type { PortfolioVirtualTeachingRoomActivityTypeCode } from '@/types/enums/portfolio-virtual-teaching-room-activity-type-enum'
+import type { PortfolioWorkShellCode } from '@/types/enums/portfolio-work-shell-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import type { UserStatusEnum } from '@/types/enums/user-status'
 import {
@@ -430,10 +435,20 @@ export {
 } from '@/types/enums/portfolio-gap-task-status-enum'
 
 export {
+  PortfolioMajorGroupSectionItemCategoryCode,
+  PortfolioMajorGroupSectionItemCategoryDescription,
+} from '@/types/enums/portfolio-major-group-section-item-category-enum'
+
+export {
   ALL_PORTFOLIO_MATERIAL_INTAKE_STAGE_CODES,
   PortfolioMaterialIntakeStageCode,
   PortfolioMaterialIntakeStageDescription,
 } from '@/types/enums/portfolio-material-intake-stage-enum'
+
+export {
+  PortfolioMaterialIntakeValidationCode,
+  PortfolioMaterialIntakeValidationCodeDescription,
+} from '@/types/enums/portfolio-material-intake-validation-code-enum'
 
 export const PORTFOLIO_COMPLETENESS_LEVEL_TONE: Record<PortfolioCompletenessLevelCode, BadgeTone>
   = {
@@ -1269,8 +1284,11 @@ export interface PortfolioReviewTaskPageRequest extends QueryDto {
 }
 
 /** 教学档案袋工作壳编码 - PortfolioWorkShellEnum */
-export type PortfolioWorkShellCode
-  = 'TEACHER' | 'DEPARTMENT_REVIEW' | 'SCHOOL_GOVERNANCE' | 'CONFIGURATION' | 'EXTERNAL_EXPERT'
+export {
+  ALL_PORTFOLIO_WORK_SHELL_CODES,
+  PortfolioWorkShellCode,
+  PortfolioWorkShellDescription,
+} from '@/types/enums/portfolio-work-shell-enum'
 
 /** 档案审核台访问范围 - PortfolioReviewAccessScopeVO */
 export interface PortfolioReviewAccessScopeVO {
@@ -1507,7 +1525,7 @@ export interface PortfolioArchiveTeacherReadinessVO {
 }
 
 export interface PortfolioMaterialIntakeValidationDiagnosticVO {
-  code?: string
+  code?: PortfolioMaterialIntakeValidationCode
   fieldCode: string
   message: string
 }
@@ -1676,14 +1694,14 @@ export interface PortfolioPortraitStrengthTagVO {
   tagCode: string
   tagLabel: string
   score: number
-  tagType: string
+  tagType: PortfolioPortraitStrengthTagTypeCode
 }
 
 export interface PortfolioPortraitGapItemVO {
   indicatorCode: string
   indicatorName: string
   dimensionL1Name?: string
-  portraitDimensionCode?: string
+  portraitDimensionCode?: PortfolioPortraitDimensionCode
   gapReason: string
   calcScore?: number
 }
@@ -2044,7 +2062,7 @@ export interface PortfolioIndustryPackDimensionScoreVO {
 
 /** §8.57 行业硬性缺口 */
 export interface PortfolioIndustryPackHardGapItemVO {
-  gapType: string
+  gapType: PortfolioIndustryPackHardGapTypeCode
   dimensionCode?: string
   gapTitle: string
   remediationHint?: string
@@ -2444,6 +2462,8 @@ export interface PortfolioArchiveTimelineItemVO {
 
 export interface PortfolioTeacherOneTableGetRequest {
   teacherId?: string
+  /** 导出用途（导出时必填） */
+  exportPurpose?: string
 }
 
 export interface PortfolioTeacherOneTableCategoryVO {
@@ -2803,7 +2823,7 @@ export interface PortfolioEvaluationMaterialCategoryItemVO {
 }
 
 /** 参评材料身份用途切片：CAMPUS / EXTERNAL / SHARED */
-export type PortfolioEvaluationIdentityMaterialScopeCode = 'CAMPUS' | 'EXTERNAL' | 'SHARED'
+export type { PortfolioEvaluationIdentityMaterialScopeCode }
 
 export interface PortfolioEvaluationIdentityMaterialItemVO {
   archiveRecordId?: string
@@ -2811,7 +2831,7 @@ export interface PortfolioEvaluationIdentityMaterialItemVO {
   categoryName?: string
   academicYear?: string
   sourceType?: PortfolioArchiveRecordSourceTypeCode
-  identityScope?: PortfolioEvaluationIdentityMaterialScopeCode | string
+  identityScope?: PortfolioEvaluationIdentityMaterialScopeCode
   usableForCampusHardCriteria?: boolean
   hasPrimaryFile?: boolean
   citationNote?: string
@@ -2866,6 +2886,9 @@ export interface PortfolioEvaluationMaterialPreviewVO {
 export interface PortfolioEvaluationPublicityListRequest {
   evaluationTaskId?: string
   teacherId?: string
+  /** 导出用途（导出时必填） */
+  exportPurpose?: string
+
 }
 
 export interface PortfolioEvaluationPublicityListItemVO {
@@ -2915,6 +2938,9 @@ export interface PortfolioEvaluationObjectionPageRequest extends QueryDto {
   evaluationTaskId?: string
   teacherId?: string
   objectionStatus?: PortfolioEvaluationObjectionStatusCode
+  /** 导出用途（导出时必填） */
+  exportPurpose?: string
+
 }
 
 export interface PortfolioEvaluationObjectionSummaryVO {

@@ -16,7 +16,11 @@ import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
+import {
+  PortfolioEvaluationIdentityMaterialScopeCode,
+} from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import { showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
@@ -50,26 +54,18 @@ function materialRowKey(record: unknown): string {
   return row.materialRef || row.archiveRecordId || `${row.maskedTeacherLabel}-${row.categoryCode}-${row.academicYear}`
 }
 
-function subjectLifecycleTone(record: unknown): 'green' | 'orange' {
-  return subjectTeacherRow(record).lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'
-}
-
-function materialLifecycleTone(record: unknown): 'green' | 'orange' {
-  return materialRow(record).lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'
-}
-
 function identityScopeTone(record: unknown): 'orange' | 'green' | 'blue' {
   const scope = materialRow(record).identityScope
-  if (scope === 'EXTERNAL') return 'orange'
-  if (scope === 'SHARED') return 'green'
+  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL) return 'orange'
+  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED) return 'green'
   return 'blue'
 }
 
 function identityScopeLabel(record: unknown): string {
   const scope = materialRow(record).identityScope
-  if (scope === 'CAMPUS') return '校内'
-  if (scope === 'EXTERNAL') return '仅外部'
-  if (scope === 'SHARED') return '共享'
+  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.CAMPUS) return '校内'
+  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL) return '仅外部'
+  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED) return '共享'
   if (!scope) return '—'
   throw new Error(`专家审阅材料 identityScope 契约异常: ${scope}`)
 }
@@ -244,7 +240,7 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="subjectTeacherRow(record).lifecycleStatus" :tone="subjectLifecycleTone(record)">
+              <UiTag v-if="subjectTeacherRow(record).lifecycleStatus" :tone="portfolioLifecycleTagTone(subjectTeacherRow(record))">
                 {{ subjectTeacherRow(record).lifecycleStatusLabel || subjectTeacherRow(record).lifecycleStatus }}
               </UiTag>
               <UiTag v-if="subjectTeacherRow(record).evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -279,7 +275,7 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="materialRow(record).lifecycleStatus" :tone="materialLifecycleTone(record)">
+              <UiTag v-if="materialRow(record).lifecycleStatus" :tone="portfolioLifecycleTagTone(materialRow(record))">
                 {{ materialRow(record).lifecycleStatusLabel || materialRow(record).lifecycleStatus }}
               </UiTag>
               <UiTag v-if="materialRow(record).evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>

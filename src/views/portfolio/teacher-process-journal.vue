@@ -36,6 +36,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
+import { PortfolioProcessSessionCategoryCode } from '@/types/enums/portfolio-process-session-category-code-enum'
 import { PortfolioProcessSessionStatusCode } from '@/types/enums/portfolio-process-session-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { message } from '@/utils/feedback'
@@ -198,7 +199,7 @@ function openLinkArchive(row: PortfolioProcessSessionVO) {
     if (categoryOptions.value.length === 0) {
       await loadCategories()
     }
-    const processCat = categoryOptions.value.find((item) => item.code === 'PROCESS_SESSION')
+    const processCat = categoryOptions.value.find((item) => item.code === PortfolioProcessSessionCategoryCode.PROCESS_SESSION)
     if (processCat) {
       linkCategoryId.value = processCat.value
     }

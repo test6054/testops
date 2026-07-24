@@ -1,3 +1,4 @@
+import type { PortfolioComplianceAlertLevelCode } from '@/types/enums/portfolio-compliance-alert-level-enum'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { PortfolioComplianceCompareDirectionCode } from '@/types/enums/portfolio-compliance-compare-direction-enum'
 import type { PortfolioComplianceMetricStatusCode } from '@/types/enums/portfolio-compliance-metric-status-enum'
@@ -31,7 +32,7 @@ export interface PortfolioComplianceMetricVO {
   yellowThreshold?: string
   redThreshold?: string
   metricStatus: PortfolioComplianceMetricStatusCode
-  alertLevel?: string
+  alertLevel?: PortfolioComplianceAlertLevelCode
   summaryText: string
   computedTime?: string
 }

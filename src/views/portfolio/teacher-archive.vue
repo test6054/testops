@@ -31,6 +31,7 @@ import {
   PortfolioArchiveSupportMaterialSourceTypeDescription,
   PortfolioCompletenessLevelDescription,
 } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioMaterialApi } from '@/apis/portfolio/material'
 import { portfolioArchiveBagApi } from '@/apis/portfolio/teacher-platform'
 import {
@@ -45,6 +46,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiFilterBar from '@/components/ui-guide/ui/FilterBar.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
@@ -63,6 +65,9 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { useUserStore } from '@/stores/modules/user'
+import { PortfolioArchiveScoreLineTypeCode } from '@/types/enums/portfolio-archive-score-line-type-enum'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import { SemesterOptions } from '@/types/enums/semester-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
@@ -185,6 +190,7 @@ const materialLibraryColumns: ColumnsType<PortfolioMaterialVO> = [
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
@@ -210,6 +216,8 @@ const bagPreview = ref<PortfolioArchiveBagPreviewVO | null>(null)
 const scoreResult = ref<PortfolioArchiveScoreResultVO | null>(null)
 const scoreLoading = ref(false)
 const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
+const exportApplying = ref(false)
 const requestToken = ref(0)
 const oneTableRequestToken = ref(0)
 const recordRequestToken = ref(0)
@@ -876,6 +884,7 @@ async function previewBag(): Promise<boolean> {
 }
 
 function openExportConfirm() {
+  exportPurpose.value = ''
   if (!bagPreview.value) {
     void previewBag().then((previewed) => {
       if (previewed) {
@@ -891,40 +900,53 @@ async function confirmExportBag() {
   if (!assertArchiveWritable()) {
     return
   }
-  if (!(await confirmProxyWrite('导出一表通'))) {
+  if (!(await confirmProxyWrite('申请导出材料包'))) {
     return
   }
-
-  const currentToken = requestToken.value
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
+  const teacherId = targetTeacherId.value || userStore.userInfo.userId
+  if (!teacherId) {
+    showFormValidationMessage('当前登录用户信息尚未就绪')
+    return
+  }
   if (!canLoadTeacherArchive.value) {
     return
   }
+  if (exportApplying.value) {
+    return
+  }
+  const currentToken = requestToken.value
+  exportApplying.value = true
   bagLoading.value = true
   try {
-    const result = await portfolioArchiveBagApi.buildMaterialPackage(bagRequest.value)
-    if (requestToken.value !== currentToken) {
-      return
-    }
-    if (!result.fileNodeId) {
-      showUserError(new Error('导出未返回压缩包文件编号'), '导出档案袋失败')
-      return
-    }
-    await handleDownloadFile({
-      fileId: result.fileNodeId,
-      fileName: result.fileName,
+    // §7.9：TEACHER_ARCHIVE 须走导出审批，禁止 material-package/build 直下
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.TEACHER_ARCHIVE,
+      businessRef: {
+        teacherId,
+        academicYear: bagRequest.value.academicYear,
+        semester: bagRequest.value.semester,
+      },
+      exportPurpose: purpose,
     })
     if (requestToken.value !== currentToken) {
       return
     }
     exportConfirmOpen.value = false
-    await previewBag()
+    void message.success('材料包导出审批已提交，请在「我的导出」下载')
+    void router.push({ name: 'PortfolioExportApprovalMine' })
   } catch (error) {
     if (requestToken.value !== currentToken) {
       return
     }
-    showUserError(error, '导出档案袋失败')
+    showUserError(error, '提交材料包导出审批失败')
   } finally {
     if (requestToken.value === currentToken) {
+      exportApplying.value = false
       bagLoading.value = false
     }
   }
@@ -1101,8 +1123,8 @@ watch(
           v-for="(item, idx) in scoreResult.breakdown"
           :key="`${item.lineType || 'line'}-${item.ruleId || 'x'}-${idx}`"
           :class="{
-            'teacher-archive__score-item--detail': item.lineType === 'ACHIEVEMENT_ITEM',
-            'teacher-archive__score-item--blank': item.lineType === 'BLANK_PERIOD',
+            'teacher-archive__score-item--detail': item.lineType === PortfolioArchiveScoreLineTypeCode.ACHIEVEMENT_ITEM,
+            'teacher-archive__score-item--blank': item.lineType === PortfolioArchiveScoreLineTypeCode.BLANK_PERIOD,
           }"
         >
           <div class="teacher-archive__score-item-head">
@@ -1110,7 +1132,7 @@ watch(
             <span>{{ item.earnedScore }} 分</span>
           </div>
           <div
-            v-if="item.lineType === 'ACHIEVEMENT_ITEM' || item.decayFactor != null"
+            v-if="item.lineType === PortfolioArchiveScoreLineTypeCode.ACHIEVEMENT_ITEM || item.decayFactor != null"
             class="teacher-archive__score-decay"
           >
             <template v-if="item.rawScore != null">原始 {{ item.rawScore }} · </template>
@@ -1123,7 +1145,7 @@ watch(
               认定年 {{ item.recognitionYear }} ·
             </template>
             <template v-if="item.decayApplied">已衰减</template>
-            <template v-else-if="item.lineType === 'ACHIEVEMENT_ITEM'">未衰减</template>
+            <template v-else-if="item.lineType === PortfolioArchiveScoreLineTypeCode.ACHIEVEMENT_ITEM">未衰减</template>
           </div>
           <p class="teacher-archive__score-explain">{{ item.explainText }}</p>
         </li>
@@ -1555,22 +1577,28 @@ watch(
 
     <UiDialog
       v-model:open="exportConfirmOpen"
-      title="确认导出材料包"
-      ok-text="确认导出"
+      title="申请导出材料包"
+      ok-text="提交审批"
       cancel-text="取消"
-      :confirm-loading="bagLoading"
+      :confirm-loading="bagLoading || exportApplying"
       @ok="confirmExportBag"
     >
       <p v-if="bagPreview">
-        将导出 {{ bagPreview.totalAttachmentCount }} 个附件，目录
-        {{ bagPreview.catalogItems.length }} 条。
+        将按当前预览申请导出约 {{ bagPreview.totalAttachmentCount }} 个附件，目录
+        {{ bagPreview.catalogItems.length }} 条；审批通过后可在「我的导出」下载含水印 ZIP。
       </p>
-      <p v-else>将按当前筛选条件构建压缩包材料包。</p>
+      <p v-else>将按当前筛选条件申请导出材料包；须经租户管理员审批后下载。</p>
       <p v-if="bagPreview?.latestMaterialPackageExport" class="teacher-archive__latest-export">
         上次导出 {{ bagPreview.latestMaterialPackageExport.exportedTime }}， 附件
-        {{ bagPreview.latestMaterialPackageExport.attachmentCount }} 个。 本次将生成新的
-        压缩包，不会覆盖历史导出。
+        {{ bagPreview.latestMaterialPackageExport.attachmentCount }} 个。
       </p>
+      <label class="teacher-archive__export-label">导出用途（必填）</label>
+      <UiTextarea
+        v-model="exportPurpose"
+        size="sm"
+        :rows="3"
+        placeholder="请说明导出用途，例如职称评审、迎评检查"
+      />
     </UiDialog>
   </StageWorkbenchShell>
 </template>

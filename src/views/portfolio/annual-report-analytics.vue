@@ -27,6 +27,7 @@ import {
   PortfolioAnnualReportTaskStatusDescription,
 } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import {
   formatPortfolioTeacherDisplay,
   portfolioTeacherSelectOptionsFromSummaries,
@@ -393,16 +394,7 @@ watch(
               <UiTag
                 v-if="latestTask.lifecycleStatus"
                 size="sm"
-                :tone="
-                  latestTask.lifecycleStatus === 'ACTIVE'
-                    ? 'green'
-                    : latestTask.lifecycleStatus === 'TEMP_HOLD'
-                      ? 'orange'
-                      : latestTask.lifecycleStatus === 'SEALED'
-                        || latestTask.lifecycleStatus === 'TRANSFERRED'
-                        ? 'red'
-                        : 'gray'
-                "
+                :tone="portfolioLifecycleTagTone(latestTask)"
               >
                 {{ latestTask.lifecycleStatusLabel || latestTask.lifecycleStatus }}
               </UiTag>

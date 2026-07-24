@@ -46,7 +46,8 @@ import {
   PortfolioDoubleHighTaskStatusDescription,
 } from '@/types/enums/portfolio-double-high-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
-import { handleDownloadFile } from '@/utils/file-download'
+import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import { strictEnumLabel } from '@/utils/strict-enum'
 
 interface TaskFilterModel extends Record<string, unknown> {
@@ -213,16 +214,6 @@ const reviewOptions = [
 ]
 
 const query = reactive({ pageNum: 1, pageSize: DEFAULT_LIST_PAGE_SIZE })
-
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
-
 const columns: ColumnsType = [
   { title: '任务编码', dataIndex: 'taskCode', key: 'taskCode', width: 140 },
   { title: '任务标题', dataIndex: 'taskTitle', key: 'taskTitle', ellipsis: true },
@@ -530,10 +521,27 @@ async function handleAction(key: string, row: PortfolioDoubleHighTaskVO) {
         showFormValidationMessage('验收包尚未生成')
         return
       }
-      await handleDownloadFile({
-        fileId: row.acceptanceFileNodeId,
-        fileName: row.acceptanceFileName || `双高验收包-${row.taskCode}.zip`,
-      })
+      // §7.9：优先走导出审批下载，写入 EXPORT_DOWNLOAD 审计；无审批台账时拒绝直下文件
+      if (!row.acceptanceExportApprovalId) {
+        showFormValidationMessage('验收包缺少导出审批台账，请联系管理员重新归档生成')
+        return
+      }
+      try {
+        const result = await portfolioSecurityApi.downloadExport({
+          id: row.acceptanceExportApprovalId,
+        })
+        if (!result.fileNodeId) {
+          showFormValidationMessage('审批产物尚未生成')
+          return
+        }
+        await downloadPortfolioExcelExport({
+          fileNodeId: result.fileNodeId,
+          fileName: result.fileName || row.acceptanceFileName || `双高验收包-${row.taskCode}.zip`,
+        })
+        void message.success('已开始下载验收包')
+      } catch (error) {
+        showUserError(error, '下载验收包失败')
+      }
       return
     } else if (key === 'review') {
       activeTask.value = row
@@ -801,7 +809,7 @@ watch(
             <span v-else class="shuanggao-tasks__cell-muted">—</span>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
 
@@ -937,7 +945,7 @@ watch(
           </p>
           <div v-if="detailTask.lifecycleStatus" class="shuanggao-tasks__lifecycle">
             责任人生命周期：
-            <UiTag :tone="lifecycleTagTone(detailTask)">
+            <UiTag :tone="portfolioLifecycleTagTone(detailTask)">
               {{ detailTask.lifecycleStatusLabel || detailTask.lifecycleStatus }}
             </UiTag>
             <span v-if="detailTask.countsInCurrentFacultyStructure === false">（不计入当前在岗结构）</span>

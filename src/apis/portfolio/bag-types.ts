@@ -2,6 +2,7 @@ import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-ident
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioArchiveBagSectionTypeCode } from '@/types/enums/portfolio-archive-bag-section-type-enum'
 import type { PortfolioArchiveBagSourceTypeCode } from '@/types/enums/portfolio-archive-bag-source-type-enum'
+import type { PortfolioArchiveScoreLineTypeCode } from '@/types/enums/portfolio-archive-score-line-type-enum'
 import type { PortfolioCompletenessLevelCode } from '@/types/enums/portfolio-completeness-level-enum'
 import type { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
 import type { PortfolioMaterialTypeCode } from '@/types/enums/portfolio-material-type-enum'
@@ -134,7 +135,7 @@ export interface PortfolioArchiveScoreBreakdownItemVO {
   achievementType?: string
   decayProfileLabel?: string
   decayApplied?: boolean
-  lineType?: string
+  lineType?: PortfolioArchiveScoreLineTypeCode
   explainText: string
 }
 

@@ -13,8 +13,10 @@ import UiPlatformExcelImportModal from '@/components/platform/UiPlatformExcelImp
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -43,6 +45,8 @@ const importModalOpen = ref(false)
 const saving = ref(false)
 const removingId = ref('')
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const form = reactive({ recordTitle: '', descriptionText: '', teacherUserId: '' })
 const formTeacherId = computed(() => form.teacherUserId || undefined)
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
@@ -161,8 +165,17 @@ async function removeRecord(id: string) {
   }
 }
 
+function openExportConfirm() {
+  if (exporting.value) return
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportExcel() {
-  if (exporting.value) {
+  if (exporting.value) return
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
     return
   }
   exporting.value = true
@@ -172,8 +185,10 @@ async function exportExcel() {
       categoryCode: props.categoryCode,
       levelCode: props.levelCode ?? (props.nationalOnly ? PortfolioHonorLevelCode.NATIONAL : undefined),
       nationalOnly: props.nationalOnly,
+      exportPurpose: purpose,
     })
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出发展记录失败')
@@ -233,7 +248,7 @@ watch(
         <UiButton size="sm" variant="primary" v-if="showEditor" @click="importModalOpen = true">
           批量导入
         </UiButton>
-        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="exportExcel">
+        <UiButton size="sm" :loading="exporting" :disabled="exporting" @click="openExportConfirm">
           导出表格文件
         </UiButton>
       </div>
@@ -297,6 +312,24 @@ watch(
       :context="importContext"
       @success="loadPage"
     />
+
+    <UiDialog
+      v-model:open="exportConfirmOpen"
+      title="导出"
+      ok-text="确认导出"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="exportExcel"
+    >
+      <label class="export-purpose__label">导出用途（必填）</label>
+      <UiTextarea
+        v-model="exportPurpose"
+        size="sm"
+        :rows="3"
+        placeholder="请填写本次导出用途（写入审计）"
+        :disabled="exporting"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -319,5 +352,11 @@ watch(
 .input--teacher {
   width: 240px;
   min-width: 200px;
+}
+
+.export-purpose__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
 }
 </style>

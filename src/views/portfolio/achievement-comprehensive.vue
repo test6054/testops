@@ -24,6 +24,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { useUserStore } from '@/stores/modules/user'
 import { showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -159,16 +160,7 @@ onMounted(loadPage)
               <UiTag
                 v-if="record.lifecycleStatus"
                 size="sm"
-                :tone="
-                  record.lifecycleStatus === 'ACTIVE'
-                    ? 'green'
-                    : record.lifecycleStatus === 'TEMP_HOLD'
-                      ? 'orange'
-                      : record.lifecycleStatus === 'SEALED'
-                        || record.lifecycleStatus === 'TRANSFERRED'
-                        ? 'red'
-                        : 'gray'
-                "
+                :tone="portfolioLifecycleTagTone(record)"
               >
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>

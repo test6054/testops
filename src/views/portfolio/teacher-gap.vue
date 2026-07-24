@@ -36,6 +36,7 @@ import {
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 import ScanDispatchResultDialog from '@/views/teacher/archive-volume/components/ScanDispatchResultDialog.vue'
@@ -54,14 +55,6 @@ const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const { confirmProxyWrite } = usePortfolioProxyWriteGuard()
 const { archiveWriteForbidden, archiveWriteBlockMessage, assertArchiveWritable }
   = usePortfolioArchiveWriteGuard()
-
-function lifecycleTagTone(status?: string): 'green' | 'orange' | 'gray' | 'red' {
-  if (status === 'ACTIVE') return 'green'
-  if (status === 'TEMP_HOLD') return 'orange'
-  if (status === 'SEALED' || status === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
-
 const loading = ref(false)
 const submitting = ref(false)
 const saving = ref(false)
@@ -424,7 +417,7 @@ watch(
             <UiTag tone="blue">
               {{ statusLabel }}
             </UiTag>
-            <UiTag v-if="detail.lifecycleStatus" :tone="lifecycleTagTone(detail.lifecycleStatus)">
+            <UiTag v-if="detail.lifecycleStatus" :tone="portfolioLifecycleTagTone(detail.lifecycleStatus)">
               {{ detail.lifecycleStatusLabel || detail.lifecycleStatus }}
             </UiTag>
             <UiTag v-if="detail.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>

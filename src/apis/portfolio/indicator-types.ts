@@ -14,6 +14,7 @@ import type { PfModelStatusCode } from '@/types/enums/pf-model-status-enum'
 import type { PfRuleChangeLevelCode } from '@/types/enums/pf-rule-change-level-enum'
 import type { PfScoreRuleTypeCode } from '@/types/enums/pf-score-rule-type-enum'
 import type { PortfolioIndicatorDefinitionTreeNodeTypeCode } from '@/types/enums/portfolio-indicator-definition-tree-node-type-enum'
+import type { PortfolioRuleTrackCode } from '@/types/enums/portfolio-rule-track-enum'
 import {
   ALL_PF_ELIGIBILITY_AUDIT_STATUS_CODES,
   PfEligibilityAuditStatusDescription,
@@ -599,7 +600,7 @@ export interface PfEligibilityExplainNodeDto {
 }
 
 export interface PfEligibilityExplainStructDto {
-  ruleTrack?: string
+  ruleTrack?: PortfolioRuleTrackCode
   eligibilityCode?: string
   snapshotId?: string
   eligible?: boolean
@@ -629,7 +630,7 @@ export interface PfScoreExplainAuditDto {
 }
 
 export interface PfScoreExplainStructDto {
-  ruleTrack?: string
+  ruleTrack?: PortfolioRuleTrackCode
   indicatorCode?: string
   indicatorName?: string
   snapshotId?: string
@@ -643,7 +644,7 @@ export interface PfScoreExplainStructDto {
 }
 
 export interface PortfolioExplainVO {
-  ruleTrack?: string
+  ruleTrack?: PortfolioRuleTrackCode
   scoreExplain?: PfScoreExplainStructDto
   eligibilityExplain?: PfEligibilityExplainStructDto
 }
@@ -865,6 +866,8 @@ export interface PortfolioEligibilityRuleGetRequest {
 
 export interface PortfolioPublishImpactReportGetRequest {
   id: string
+  /** 仅导出时必填；get 查询可不传 */
+  exportPurpose?: string
 }
 
 export interface PortfolioIndicatorAutoCollectRequest {
@@ -892,6 +895,11 @@ export interface PortfolioEligibilityEvaluateRequest {
 export interface PortfolioExportSnapshotDiffRequest {
   snapshotIdA: string
   snapshotIdB: string
+  exportPurpose: string
+}
+
+export interface PortfolioIndicatorCatalogExportRequest {
+  exportPurpose: string
 }
 
 export interface PortfolioRuleRetroactiveGetRequest {
@@ -1027,7 +1035,9 @@ export interface PortfolioIndicatorTenantApi {
   ) => Promise<PortfolioEligibilityEvalResultDto>
   pageEvalLog: (data: QueryDto) => Promise<PageResult<PortfolioEligibilityEvalLogVO>>
   getExplain: (data: PortfolioExplainGetRequest) => Promise<PortfolioExplainVO>
-  exportIndicatorCatalog: () => Promise<PortfolioIndicatorExportResultVO>
+  exportIndicatorCatalog: (
+    data: PortfolioIndicatorCatalogExportRequest,
+  ) => Promise<PortfolioIndicatorExportResultVO>
   exportSnapshotDiff: (
     data: PortfolioExportSnapshotDiffRequest,
   ) => Promise<PortfolioIndicatorExportResultVO>

@@ -2,6 +2,7 @@ import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-ident
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PageResult } from '@/types'
 import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfolio-archive-record-source-type-enum'
+import type { PortfolioEvaluationIdentityMaterialScopeCode } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import type { PortfolioExpertAssignmentStatusCode } from '@/types/enums/portfolio-expert-assignment-status-enum'
 import http from '@/config/axios'
 
@@ -77,7 +78,7 @@ export interface PortfolioExpertReviewMaterialItemVO {
   /** AI 初审摘要；maskRequired 时不返回 */
   aiPreReviewSummary?: string
   /** 身份用途切片 CAMPUS / EXTERNAL / SHARED */
-  identityScope?: string
+  identityScope?: PortfolioEvaluationIdentityMaterialScopeCode
   /** 是否可用于校内硬性条件 */
   usableForCampusHardCriteria?: boolean
   /** 生命周期状态编码 ACTIVE/SEALED/TEMP_HOLD 等 */

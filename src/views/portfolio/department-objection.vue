@@ -30,6 +30,7 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
 import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -40,6 +41,7 @@ import { confirmAsync } from '@/composables/useConfirmDialog'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { handleDownloadFile } from '@/utils/file-download'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -103,6 +105,8 @@ function requiresCorrectedScore(objectionType: PortfolioEvaluationObjectionTypeC
 const route = useRoute()
 const loading = ref(false)
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const handlingId = ref('')
 const rows = ref<PortfolioEvaluationObjectionSummaryVO[]>([])
 const pageNum = ref(1)
@@ -147,16 +151,6 @@ const showCorrectedScore = computed(() => {
     && requiresCorrectedScore(reviewTarget.value.objectionType)
   )
 })
-
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
-
 function peerScoreRowKey(record: unknown): string {
   const row = record as PortfolioEvaluationObjectionPeerScoreItemVO
   return `${row.anonymousExpertLabel || ''}-${row.indicatorCode || ''}-${row.score ?? ''}`
@@ -454,8 +448,21 @@ function handleObjectionRowAction(key: string, row: PortfolioEvaluationObjection
 }
 
 /** 导出异议台账 Excel（含业务场景）。 */
+async function openExportConfirm(): Promise<void> {
+  if (exporting.value || loading.value || Boolean(handlingId.value)) {
+    return
+  }
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportObjectionExcel(): Promise<void> {
   if (exporting.value || loading.value || Boolean(handlingId.value)) {
+    return
+  }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
     return
   }
   exporting.value = true
@@ -464,8 +471,13 @@ async function exportObjectionExcel(): Promise<void> {
       pageNum: 1,
       pageSize: pageSize.value,
       objectionStatus: objectionStatusFilter.value || undefined,
+      exportPurpose: purpose,
     })
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
+    void message.success('异议台账已导出')
+  } catch (error) {
+    showUserError(error, '导出异议台账失败')
   } finally {
     exporting.value = false
   }
@@ -492,7 +504,7 @@ void loadPage()
             variant="primary"
             :loading="exporting"
             :disabled="exporting || loading || Boolean(handlingId)"
-            @click="() => void exportObjectionExcel()"
+            @click="() => void openExportConfirm()"
           >
             导出台账
           </UiButton>
@@ -571,7 +583,7 @@ void loadPage()
             <span v-else>—</span>
           </template>
           <template v-else-if="column.key === 'lifecycleStatus'">
-            <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+            <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
               {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
             </UiTag>
             <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -735,6 +747,24 @@ void loadPage()
       </template>
     </UiDrawer>
   </StageWorkbenchShell>
+
+  <UiDialog
+    v-model:open="exportConfirmOpen"
+    title="导出评价异议台账"
+    ok-text="确认导出"
+    cancel-text="取消"
+    :confirm-loading="exporting"
+    @ok="exportObjectionExcel"
+  >
+    <label class="export-purpose__label">导出用途（必填）</label>
+    <UiTextarea
+      v-model="exportPurpose"
+      size="sm"
+      :rows="3"
+      placeholder="请填写本次导出用途（写入审计）"
+      :disabled="exporting"
+    />
+  </UiDialog>
 </template>
 
 <style scoped lang="scss">

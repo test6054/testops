@@ -34,6 +34,7 @@ import {
   PortfolioSourceFixTriggerTypeCode,
 } from '@/types/enums/portfolio-source-fix-trigger-type-enum'
 import { showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
 const route = useRoute()
@@ -169,15 +170,6 @@ function statusTone(code?: string) {
 }
 
 /** 明细行生命周期 Tag 色（US-MI：读模型仅标注，不默认过滤）。 */
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
-
 async function loadPage() {
   const currentToken = ++requestToken.value
   loading.value = true
@@ -463,7 +455,7 @@ watch(
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>

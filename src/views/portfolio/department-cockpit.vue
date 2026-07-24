@@ -3,16 +3,21 @@ import type { PortfolioDepartmentPortraitVO } from '@/apis/portfolio/analysis'
 import type { PortfolioCockpitSummaryVO } from '@/apis/portfolio/types'
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { portfolioCockpitApi } from '@/apis/portfolio/cockpit'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import { portfolioTeacherApi } from '@/apis/portfolio/teacher'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiStatPanel from '@/components/ui-guide/ui/UiStatPanel.vue'
@@ -26,7 +31,8 @@ import {
   PortfolioAlertStatusDescription,
 } from '@/types/enums/portfolio-alert-status-enum'
 import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
-import { showUserError } from '@/utils/error-handler'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioCockpitAskPanel from '@/views/portfolio/components/PortfolioCockpitAskPanel.vue'
 
@@ -271,6 +277,68 @@ watch(departmentId, () => {
   void loadSummary()
 })
 
+/** 院系驾驶舱分析报告导出审批（§7.9 ANALYSIS_REPORT） */
+const exportModalOpen = ref(false)
+const exportLoading = ref(false)
+const exportRequestToken = ref(0)
+const exportPurpose = ref('院系驾驶舱师资分析报告')
+const exportAcademicYear = ref('')
+
+function openAnalysisExport() {
+  if (!departmentId.value) {
+    showFormValidationMessage('请先选择院系')
+    return
+  }
+  exportPurpose.value = '院系驾驶舱师资分析报告'
+  exportAcademicYear.value = summary.value?.currentAcademicYear || ''
+  exportModalOpen.value = true
+}
+
+async function submitAnalysisExport() {
+  if (!departmentId.value) {
+    showFormValidationMessage('请先选择院系')
+    return
+  }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
+  if (exportLoading.value) {
+    return
+  }
+  const currentToken = exportRequestToken.value + 1
+  exportRequestToken.value = currentToken
+  const deptId = departmentId.value
+  exportLoading.value = true
+  try {
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.ANALYSIS_REPORT,
+      businessRef: {
+        reportType: 'cockpit',
+        departmentId: deptId,
+        academicYear: exportAcademicYear.value.trim() || undefined,
+      },
+      exportPurpose: purpose,
+    })
+    if (exportRequestToken.value !== currentToken || departmentId.value !== deptId) {
+      return
+    }
+    void message.success('分析报告导出审批已提交')
+    exportModalOpen.value = false
+    void router.push({ name: 'PortfolioExportApprovalMine' })
+  } catch (error) {
+    if (exportRequestToken.value !== currentToken || departmentId.value !== deptId) {
+      return
+    }
+    showUserError(error, '提交分析报告导出审批失败')
+  } finally {
+    if (exportRequestToken.value === currentToken) {
+      exportLoading.value = false
+    }
+  }
+}
+
 onMounted(async () => {
   await loadTree()
   await syncDepartmentContext()
@@ -303,6 +371,13 @@ watch(
         <template #actions>
           <UiButton size="sm" :disabled="!departmentId" @click="goDeptOneTable()">
             部门一张表
+          </UiButton>
+          <UiButton
+            size="sm"
+            :disabled="!departmentId || loading"
+            @click="openAnalysisExport"
+          >
+            申请导出分析报告
           </UiButton>
         </template>
       </ContextBar>
@@ -377,6 +452,28 @@ watch(
         />
       </template>
     </UiSpin>
+    <UiDialog
+      v-model:open="exportModalOpen"
+      title="院系分析报告导出审批"
+      :confirm-loading="exportLoading"
+      @ok="submitAnalysisExport"
+    >
+      <div class="dept-cockpit__export-form">
+        <label class="dept-cockpit__export-label">统计学年（可选）</label>
+        <UiInput
+          v-model="exportAcademicYear"
+          size="sm"
+          placeholder="如 2025-2026，空则按当前学年口径"
+        />
+        <label class="dept-cockpit__export-label">导出用途（必填）</label>
+        <UiTextarea
+          size="sm"
+          v-model="exportPurpose"
+          placeholder="请说明导出用途，提交后由租户管理员审批"
+          :rows="4"
+        />
+      </div>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 

@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ensurePortfolioReviewAccessLoaded } from '@/composables/usePortfolioReviewAccess'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { PortfolioWorkShellCode } from '@/types/enums/portfolio-work-shell-enum'
 
 const router = useRouter()
 const { canPickTeachers } = usePortfolioTeacherAccess()
@@ -17,7 +18,7 @@ async function enterPortfolioWorkShell() {
   if (
     canPickTeachers.value
     && (
-      scope?.defaultWorkShell === 'TEACHER'
+      scope?.defaultWorkShell === PortfolioWorkShellCode.TEACHER
       || target === '/portfolio/teacher/home'
     )
   ) {

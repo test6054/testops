@@ -1,6 +1,7 @@
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
 import type { PortfolioArchiveRecordSourceTypeCode } from '@/types/enums/portfolio-archive-record-source-type-enum'
+import type { PortfolioEvaluationIdentityMaterialScopeCode } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import http from '@/config/axios'
 
 const PUBLIC_EXPERT = '/api/public/portfolio/expert-assignment'
@@ -34,7 +35,7 @@ export interface PortfolioPublicExpertReviewMaterialVO {
   hasPrimaryFile: boolean
   supportMaterialCount: number
   /** 材料身份切片 CAMPUS/EXTERNAL/SHARED（US-MI-01；免登可读） */
-  identityScope?: string
+  identityScope?: PortfolioEvaluationIdentityMaterialScopeCode
   /** EXTERNAL 切片不可用于校内硬性条件 */
   usableForCampusHardCriteria?: boolean
   lifecycleStatus?: PortfolioTeacherLifecycleStatusCode

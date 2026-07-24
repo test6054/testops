@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { PortfolioAnalysisAnnualReportVO } from '@/apis/portfolio/analysis'
 import type { PortfolioEvaluationTeacherNoticeVO } from '@/apis/portfolio/types'
-import type { PortfolioAnnualReportTaskStatusCode } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -27,7 +26,7 @@ import {
   usePortfolioScopedLoader,
 } from '@/composables/usePortfolioPageScope'
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
-import { PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
+import { PortfolioAnnualReportTaskStatusCode, PortfolioAnnualReportTaskStatusDescription } from '@/types/enums/portfolio-annual-report-task-status-enum'
 import { PortfolioEvaluationSceneCode } from '@/types/enums/portfolio-evaluation-scene-enum'
 import { showUserError } from '@/utils/error-handler'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -351,9 +350,9 @@ usePortfolioScopedLoader(
           <UiTag
             size="sm"
             :tone="
-              annualReport.taskStatus === 'SUCCESS'
+              annualReport.taskStatus === PortfolioAnnualReportTaskStatusCode.SUCCESS
                 ? 'green'
-                : annualReport.taskStatus === 'FAILED'
+                : annualReport.taskStatus === PortfolioAnnualReportTaskStatusCode.FAILED
                   ? 'red'
                   : 'blue'
             "

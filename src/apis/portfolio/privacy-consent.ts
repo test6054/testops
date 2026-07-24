@@ -1,8 +1,9 @@
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/types'
+import type { PortfolioPrivacyConsentStatusCode } from '@/types/enums/portfolio-privacy-consent-status-enum'
 import http from '@/config/axios'
 
-export type PortfolioPrivacyConsentStatusCode = 'GRANTED' | 'DECLINED' | 'WITHDRAWN'
+export type { PortfolioPrivacyConsentStatusCode } from '@/types/enums/portfolio-privacy-consent-status-enum'
 
 export interface PortfolioPrivacyConsentVO {
   teacherId: string

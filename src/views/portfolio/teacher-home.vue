@@ -37,6 +37,7 @@ import {
 import { usePortfolioProxyWriteGuard } from '@/composables/usePortfolioProxyWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
 import { PortfolioArchiveRecordStatusCode } from '@/types/enums/portfolio-archive-record-status-enum'
+import { PortfolioTeacherLifecycleApprovalStatusCode } from '@/types/enums/portfolio-teacher-lifecycle-approval-status-enum'
 import { PortfolioTodoTypeCode } from '@/types/enums/portfolio-todo-type-enum'
 import { ResultCode } from '@/types/enums/result-code'
 import { readBusinessResultCode, showUserError } from '@/utils/error-handler'
@@ -83,7 +84,7 @@ const deepLinkLifecycleAlert = computed(() => {
   const toLabel = event.toStatusLabel || event.toStatus || ''
   const statusPath = fromLabel && toLabel ? `${fromLabel} → ${toLabel}` : (toLabel || fromLabel)
   const comment = (event.approvalComment || '').trim()
-  if (event.approvalStatus === 'APPROVED' || event.approvalStatus === 'APPLIED') {
+  if (event.approvalStatus === PortfolioTeacherLifecycleApprovalStatusCode.APPROVED || event.approvalStatus === PortfolioTeacherLifecycleApprovalStatusCode.APPLIED) {
     return {
       tone: 'success' as const,
       title: '生命周期自助申报已通过',
@@ -99,7 +100,7 @@ const deepLinkLifecycleAlert = computed(() => {
       ].filter(Boolean).join('；'),
     }
   }
-  if (event.approvalStatus === 'REJECTED') {
+  if (event.approvalStatus === PortfolioTeacherLifecycleApprovalStatusCode.REJECTED) {
     return {
       tone: 'warning' as const,
       title: '生命周期自助申报已驳回',
@@ -113,7 +114,7 @@ const deepLinkLifecycleAlert = computed(() => {
       ].filter(Boolean).join('；'),
     }
   }
-  if (event.approvalStatus === 'PENDING') {
+  if (event.approvalStatus === PortfolioTeacherLifecycleApprovalStatusCode.PENDING) {
     return {
       tone: 'info' as const,
       title: '生命周期自助申报待审批',

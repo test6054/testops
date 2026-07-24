@@ -17,6 +17,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
+import { PortfolioPrivacyConsentStatusCode } from '@/types/enums/portfolio-privacy-consent-status-enum'
 import { showUserError } from '@/utils/error-handler'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -197,7 +198,7 @@ watch(
       </p>
       <p
         v-else-if="
-          blockedMode || state?.consentStatus === 'DECLINED' || state?.consentStatus === 'WITHDRAWN'
+          blockedMode || state?.consentStatus === PortfolioPrivacyConsentStatusCode.DECLINED || state?.consentStatus === PortfolioPrivacyConsentStatusCode.WITHDRAWN
         "
         class="privacy-consent__warn"
       >

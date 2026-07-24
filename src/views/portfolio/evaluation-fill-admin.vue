@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import type { ColumnsType } from 'ant-design-vue/es/table'
-import type {
-  PortfolioEvaluationModeCode,
-  PortfolioEvaluationSceneCode,
-} from '@/apis/portfolio/enums'
+import type { PortfolioEvaluationSceneCode } from '@/apis/portfolio/enums'
 import type {
   PortfolioEvaluationEntrySummaryItemVO,
   PortfolioEvaluationEntrySummaryVO,
@@ -33,8 +30,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -43,6 +42,7 @@ import ContextBar from '@/components/workbench/ContextBar.vue'
 import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { PortfolioEvaluationModeCode } from '@/types/enums/portfolio-evaluation-mode-enum'
 import {
   PortfolioMultiSourceEvaluatorTypeEnum,
   PortfolioMultiSourceEvaluatorTypeOptions,
@@ -67,6 +67,8 @@ const fillTabItems = computed(() => {
 const loading = ref(false)
 const saving = ref(false)
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 /** 任务列表 / 填报上下文 / 汇总 独立请求 token，防任务切换串写 */
 const tasksRequestToken = ref(0)
 const fillContextRequestToken = ref(0)
@@ -191,7 +193,7 @@ function subjectTeacherOptionLabel(teacher: PortfolioEvaluationSubjectTeacherOpt
   }
   return layerText ? `${base}（${layerText}）` : base
 }
-const isByIndicator = computed(() => selectedTask.value?.evaluationMode === 'BY_INDICATOR')
+const isByIndicator = computed(() => selectedTask.value?.evaluationMode === PortfolioEvaluationModeCode.BY_INDICATOR)
 const entryWritableStatuses = computed(() =>
   isExternalExpertFill.value
     ? PORTFOLIO_EVALUATION_EXTERNAL_EXPERT_ENTRY_WRITABLE_STATUSES
@@ -273,7 +275,7 @@ const summaryColumns = computed<ColumnsType<PortfolioEvaluationEntrySummaryItemV
     { title: '加权分', dataIndex: 'weightedScore', key: 'weightedScore', width: 88 },
     { title: '学生样本', dataIndex: 'studentSampleSize', key: 'studentSampleSize', width: 88 },
   ]
-  if (summary.value?.evaluationMode === 'BY_INDICATOR') {
+  if (summary.value?.evaluationMode === PortfolioEvaluationModeCode.BY_INDICATOR) {
     return [
       { title: '指标编码', dataIndex: 'indicatorCode', key: 'indicatorCode' },
       ...metricColumns,
@@ -492,8 +494,21 @@ async function saveEntry(): Promise<void> {
   }
 }
 
+function openExportConfirm() {
+  if (exporting.value || saving.value) {
+    return
+  }
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportSummaryCsv() {
   if (exporting.value || saving.value) {
+    return
+  }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
     return
   }
   if (!selectedTaskId.value) {
@@ -502,8 +517,12 @@ async function exportSummaryCsv() {
   }
   exporting.value = true
   try {
-    const result = await portfolioEvaluationEntryApi.exportSummary({ id: selectedTaskId.value })
+    const result = await portfolioEvaluationEntryApi.exportSummary({
+      id: selectedTaskId.value,
+      exportPurpose: purpose,
+    })
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success('汇总已导出')
   } catch (error) {
     showUserError(error, '导出评价汇总失败')
@@ -697,7 +716,7 @@ onMounted(async () => {
           <span>平均分 {{ summary.averageScore }}</span>
           <span>模式 {{ evaluationModeLabel(summary.evaluationMode) }}</span>
           <span>场景 {{ evaluationSceneLabel(summary.sceneCode) }}</span>
-          <UiButton size="sm" variant="primary" :loading="exporting" @click="exportSummaryCsv">
+          <UiButton size="sm" variant="primary" :loading="exporting" @click="openExportConfirm">
             导出表格文件
           </UiButton>
         </div>
@@ -720,6 +739,23 @@ onMounted(async () => {
       </template>
     </UiCard>
   </StageWorkbenchShell>
+  <UiDialog
+    v-model:open="exportConfirmOpen"
+    title="导出评价汇总"
+    ok-text="确认导出"
+    cancel-text="取消"
+    :confirm-loading="exporting"
+    @ok="exportSummaryCsv"
+  >
+    <label class="export-purpose__label">导出用途（必填）</label>
+    <UiTextarea
+      v-model="exportPurpose"
+      size="sm"
+      :rows="3"
+      placeholder="请填写本次导出用途（写入审计）"
+      :disabled="exporting"
+    />
+  </UiDialog>
 </template>
 
 <style scoped>
@@ -741,5 +777,10 @@ onMounted(async () => {
 .fill-window-hint {
   color: var(--dp-text-muted);
   font-size: 14px;
+}
+.export-purpose__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
 }
 </style>

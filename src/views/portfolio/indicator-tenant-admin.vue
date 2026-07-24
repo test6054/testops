@@ -66,6 +66,8 @@ const freezing = computed(() => operationKey.value.startsWith('freeze:'))
 const enabling = computed(() => operationKey.value === 'enable-all')
 const binding = computed(() => operationKey.value.startsWith('pack:bind:'))
 const exporting = computed(() => operationKey.value === 'catalog:export')
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const loadState = reactive({ config: false, model: false, packs: false })
 const loadError = reactive({ config: false, model: false, packs: false })
 const requestToken = reactive({ config: 0, model: 0, packs: 0 })
@@ -401,12 +403,29 @@ async function bindPack() {
   }
 }
 
+function openExportCatalogConfirm() {
+  if (writing.value) {
+    return
+  }
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportCatalog() {
+  if (writing.value) {
+    return
+  }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
   const operation = 'catalog:export'
   if (!beginOperation(operation)) return
   try {
-    const result = await portfolioIndicatorTenantApi.exportIndicatorCatalog()
+    const result = await portfolioIndicatorTenantApi.exportIndicatorCatalog({ exportPurpose: purpose })
     await downloadPortfolioIndicatorExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出指标目录失败')
@@ -485,7 +504,7 @@ onMounted(loadConfig)
             size="sm"
             :loading="exporting"
             :disabled="interactionLocked"
-            @click="exportCatalog"
+            @click="openExportCatalogConfirm"
           >
             导出目录
           </UiButton>
@@ -763,6 +782,12 @@ onMounted(loadConfig)
 }
 .meta {
   margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--dp-text-secondary);
+}
+.export-purpose__label {
+  display: block;
+  margin-bottom: 8px;
   font-size: 13px;
   color: var(--dp-text-secondary);
 }

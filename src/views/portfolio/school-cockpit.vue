@@ -3,14 +3,19 @@ import type { PortfolioSchoolPortraitCockpitVO } from '@/apis/portfolio/analysis
 import type { PortfolioComplianceAlertTypeCode } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import type { PortfolioComplianceScopeTypeCode } from '@/types/enums/portfolio-compliance-scope-type-enum'
 import type { SignalMetric } from '@/types/workbench'
+import message from 'ant-design-vue/es/message'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { portfolioAnalysisApi } from '@/apis/portfolio/analysis'
 import { PortfolioOrgUnitTypeCode } from '@/apis/portfolio/enums'
+import { portfolioSecurityApi } from '@/apis/portfolio/governance'
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
+import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -23,7 +28,8 @@ import {
 } from '@/types/enums/portfolio-alert-status-enum'
 import { PortfolioComplianceAlertTypeDescription } from '@/types/enums/portfolio-compliance-alert-type-enum'
 import { PortfolioComplianceScopeTypeDescription } from '@/types/enums/portfolio-compliance-scope-type-enum'
-import { showUserError } from '@/utils/error-handler'
+import { PortfolioExportTypeCode } from '@/types/enums/portfolio-export-type-enum'
+import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioCockpitAskPanel from '@/views/portfolio/components/PortfolioCockpitAskPanel.vue'
 
@@ -209,6 +215,59 @@ watch(campusOrgId, () => {
   void loadCockpit()
 })
 
+/** 学校驾驶舱分析报告导出审批（§7.9 ANALYSIS_REPORT） */
+const exportModalOpen = ref(false)
+const exportLoading = ref(false)
+const exportRequestToken = ref(0)
+const exportPurpose = ref('学校驾驶舱师资分析报告')
+const exportAcademicYear = ref('')
+
+function openAnalysisExport() {
+  exportPurpose.value = '学校驾驶舱师资分析报告'
+  exportAcademicYear.value = cockpit.value?.summary?.currentAcademicYear || ''
+  exportModalOpen.value = true
+}
+
+async function submitAnalysisExport() {
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
+  if (exportLoading.value) {
+    return
+  }
+  const currentToken = exportRequestToken.value + 1
+  exportRequestToken.value = currentToken
+  exportLoading.value = true
+  try {
+    await portfolioSecurityApi.applyExport({
+      exportType: PortfolioExportTypeCode.ANALYSIS_REPORT,
+      businessRef: {
+        reportType: 'cockpit',
+        academicYear: exportAcademicYear.value.trim() || undefined,
+      },
+      exportPurpose: purpose,
+    })
+    if (exportRequestToken.value !== currentToken) {
+      return
+    }
+    void message.success('分析报告导出审批已提交')
+    exportModalOpen.value = false
+    void router.push({ name: 'PortfolioExportApprovalMine' })
+  } catch (error) {
+    if (exportRequestToken.value !== currentToken) {
+      return
+    }
+    showUserError(error, '提交分析报告导出审批失败')
+  } finally {
+    if (exportRequestToken.value === currentToken) {
+      exportLoading.value = false
+    }
+  }
+}
+
+
 onMounted(async () => {
   await loadTree()
   const queryCampus = readRouteStringParam(route.query.campusOrgId)
@@ -244,6 +303,9 @@ onMounted(async () => {
         </template>
         <template #actions>
           <UiButton size="sm" @click="goTeacherAnalytics"> 师资分析看板 </UiButton>
+          <UiButton size="sm" :disabled="loading" @click="openAnalysisExport">
+            申请导出分析报告
+          </UiButton>
           <UiButton size="sm" :loading="loading" @click="loadCockpit">刷新</UiButton>
         </template>
       </ContextBar>
@@ -303,6 +365,28 @@ onMounted(async () => {
         />
       </template>
     </UiSpin>
+    <UiDialog
+      v-model:open="exportModalOpen"
+      title="学校分析报告导出审批"
+      :confirm-loading="exportLoading"
+      @ok="submitAnalysisExport"
+    >
+      <div class="school-cockpit__export-form">
+        <label class="school-cockpit__export-label">统计学年（可选）</label>
+        <UiInput
+          v-model="exportAcademicYear"
+          size="sm"
+          placeholder="如 2025-2026，空则按当前学年口径"
+        />
+        <label class="school-cockpit__export-label">导出用途（必填）</label>
+        <UiTextarea
+          size="sm"
+          v-model="exportPurpose"
+          placeholder="请说明导出用途，提交后由租户管理员审批"
+          :rows="4"
+        />
+      </div>
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 

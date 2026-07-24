@@ -1,24 +1,19 @@
+import type { PortfolioTeacherLifecycleApprovalStatusCode } from '@/types/enums/portfolio-teacher-lifecycle-approval-status-enum'
+import type { PortfolioTeacherLifecycleSourceTypeCode } from '@/types/enums/portfolio-teacher-lifecycle-source-type-enum'
 import http from '@/config/axios'
+import { PortfolioTeacherLifecycleChangeTypeCode } from '@/types/enums/portfolio-teacher-lifecycle-change-type-enum'
+import {
+  PortfolioTeacherLifecycleStatusCode,
+  PortfolioTeacherLifecycleStatusDescription,
+} from '@/types/enums/portfolio-teacher-lifecycle-status-enum'
 
-/** 教师生命周期状态 */
-export type PortfolioTeacherLifecycleStatusCode
-  = | 'ACTIVE'
-    | 'SEALED'
-    | 'TRANSFER_FROZEN'
-    | 'TRANSFERRED'
-    | 'TEMP_HOLD'
-
-/** 教师生命周期变更类型 */
-export type PortfolioTeacherLifecycleChangeTypeCode
-  = | 'LEFT'
-    | 'RETIRED'
-    | 'TRANSFERRED_OUT'
-    | 'STUDY_LEAVE'
-    | 'SECONDMENT'
-    | 'LONG_SICK_LEAVE'
-    | 'REHIRED'
-    | 'RESUME_FROM_HOLD'
-    | 'EXPORT_COMPLETED'
+export { PortfolioTeacherLifecycleApprovalStatusCode } from '@/types/enums/portfolio-teacher-lifecycle-approval-status-enum'
+export { PortfolioTeacherLifecycleChangeTypeCode } from '@/types/enums/portfolio-teacher-lifecycle-change-type-enum'
+export { PortfolioTeacherLifecycleSourceTypeCode } from '@/types/enums/portfolio-teacher-lifecycle-source-type-enum'
+export {
+  PortfolioTeacherLifecycleStatusCode,
+  PortfolioTeacherLifecycleStatusDescription,
+} from '@/types/enums/portfolio-teacher-lifecycle-status-enum'
 
 export interface PortfolioTeacherLifecycleApplyRequest {
   teacherUserId: string | number
@@ -33,6 +28,8 @@ export interface PortfolioTeacherLifecycleGetRequest {
 
 export interface PortfolioTeacherLifecycleExportRequest {
   teacherUserId: string | number
+  /** 导出用途（必填，写入强审计） */
+  exportPurpose: string
 }
 
 export interface PortfolioTeacherLifecycleStateVO {
@@ -98,30 +95,21 @@ export const portfolioTeacherLifecycleApi = {
     http.post<PortfolioTeacherLifecycleEventVO>(`${BASE}/reject-declare`, data),
 }
 
-export const PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL: Record<
-  PortfolioTeacherLifecycleStatusCode,
-  string
-> = {
-  ACTIVE: '在职',
-  SEALED: '封存',
-  TRANSFER_FROZEN: '迁出冻结',
-  TRANSFERRED: '已迁出',
-  TEMP_HOLD: '暂挂',
-}
+export const PORTFOLIO_TEACHER_LIFECYCLE_STATUS_LABEL = PortfolioTeacherLifecycleStatusDescription
 
 export const PORTFOLIO_TEACHER_LIFECYCLE_CHANGE_OPTIONS: Array<{
   value: PortfolioTeacherLifecycleChangeTypeCode
   label: string
   from: PortfolioTeacherLifecycleStatusCode[]
 }> = [
-  { value: 'LEFT', label: '离职（封存）', from: ['ACTIVE'] },
-  { value: 'RETIRED', label: '退休（封存）', from: ['ACTIVE'] },
-  { value: 'TRANSFERRED_OUT', label: '调出（迁出冻结）', from: ['ACTIVE'] },
-  { value: 'STUDY_LEAVE', label: '访学（暂挂）', from: ['ACTIVE'] },
-  { value: 'SECONDMENT', label: '挂职（暂挂）', from: ['ACTIVE'] },
-  { value: 'LONG_SICK_LEAVE', label: '长期病假（暂挂）', from: ['ACTIVE'] },
-  { value: 'REHIRED', label: '返聘（恢复在职）', from: ['SEALED'] },
-  { value: 'RESUME_FROM_HOLD', label: '暂挂恢复在职', from: ['TEMP_HOLD'] },
+  { value: PortfolioTeacherLifecycleChangeTypeCode.LEFT, label: '离职（封存）', from: [PortfolioTeacherLifecycleStatusCode.ACTIVE] },
+  { value: PortfolioTeacherLifecycleChangeTypeCode.RETIRED, label: '退休（封存）', from: [PortfolioTeacherLifecycleStatusCode.ACTIVE] },
+  { value: PortfolioTeacherLifecycleChangeTypeCode.TRANSFERRED_OUT, label: '调出（迁出冻结）', from: [PortfolioTeacherLifecycleStatusCode.ACTIVE] },
+  { value: PortfolioTeacherLifecycleChangeTypeCode.STUDY_LEAVE, label: '访学（暂挂）', from: [PortfolioTeacherLifecycleStatusCode.ACTIVE] },
+  { value: PortfolioTeacherLifecycleChangeTypeCode.SECONDMENT, label: '挂职（暂挂）', from: [PortfolioTeacherLifecycleStatusCode.ACTIVE] },
+  { value: PortfolioTeacherLifecycleChangeTypeCode.LONG_SICK_LEAVE, label: '长期病假（暂挂）', from: [PortfolioTeacherLifecycleStatusCode.ACTIVE] },
+  { value: PortfolioTeacherLifecycleChangeTypeCode.REHIRED, label: '返聘（恢复在职）', from: [PortfolioTeacherLifecycleStatusCode.SEALED] },
+  { value: PortfolioTeacherLifecycleChangeTypeCode.RESUME_FROM_HOLD, label: '暂挂恢复在职', from: [PortfolioTeacherLifecycleStatusCode.TEMP_HOLD] },
 ]
 
 export interface PortfolioTeacherLifecycleEventPageRequest {
@@ -132,9 +120,6 @@ export interface PortfolioTeacherLifecycleEventPageRequest {
   departmentId?: string | number
   approvalStatus?: PortfolioTeacherLifecycleApprovalStatusCode
 }
-
-export type PortfolioTeacherLifecycleSourceTypeCode = 'MANUAL' | 'HR_SYNC' | 'SELF_DECLARE'
-export type PortfolioTeacherLifecycleApprovalStatusCode = 'PENDING' | 'APPROVED' | 'REJECTED' | 'APPLIED'
 
 export interface PortfolioTeacherLifecycleDeclareDecisionRequest {
   eventId: string | number

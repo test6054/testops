@@ -24,10 +24,12 @@ import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
 import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -48,6 +50,8 @@ const userStore = useUserStore()
 const loading = ref(false)
 const teacherLoading = ref(false)
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const summaryRequestToken = ref(0)
 const teacherRequestToken = ref(0)
 const summary = ref<PortfolioDeptOneTableSummaryVO | null>(null)
@@ -299,15 +303,33 @@ function distributionCount(
   return summary.value?.[key] ?? 0
 }
 
-async function exportDeptOneTable() {
-  if (!filter.departmentId) {
-    showFormValidationMessage('请先选择院系')
-    return
-  }
+function openExportConfirm() {
   if (exporting.value) {
     return
   }
   const departmentId = filter.departmentId
+  if (!departmentId) {
+    showFormValidationMessage('请选择院系')
+    return
+  }
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
+async function exportDeptOneTable() {
+  if (exporting.value) {
+    return
+  }
+  const departmentId = filter.departmentId
+  if (!departmentId) {
+    showFormValidationMessage('请选择院系')
+    return
+  }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
   const planYear = filter.planYear.trim() || undefined
   const completenessLevel = completenessLevelFilter.value || undefined
   exporting.value = true
@@ -316,6 +338,7 @@ async function exportDeptOneTable() {
       departmentId,
       planYear,
       completenessLevel,
+      exportPurpose: purpose,
     })
     if (
       filter.departmentId !== departmentId
@@ -325,6 +348,7 @@ async function exportDeptOneTable() {
       return
     }
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 行`)
   } catch (error) {
     showUserError(error, '导出部门一张表失败')
@@ -468,7 +492,7 @@ watch(
             variant="primary"
             :loading="exporting"
             :disabled="!filter.departmentId"
-            @click="exportDeptOneTable"
+            @click="openExportConfirm"
           >
             导出部门一张表
           </UiButton>
@@ -698,6 +722,24 @@ watch(
       </UiSpin>
     </UiCard>
   </StageWorkbenchShell>
+
+  <UiDialog
+    v-model:open="exportConfirmOpen"
+    title="导出部门一张表"
+    ok-text="确认导出"
+    cancel-text="取消"
+    :confirm-loading="exporting"
+    @ok="exportDeptOneTable"
+  >
+    <label class="export-purpose__label">导出用途（必填）</label>
+    <UiTextarea
+      v-model="exportPurpose"
+      size="sm"
+      :rows="3"
+      placeholder="请填写本次导出用途（写入审计）"
+      :disabled="exporting"
+    />
+  </UiDialog>
 </template>
 
 <style scoped>

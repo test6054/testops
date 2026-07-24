@@ -47,6 +47,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useQueryTable } from '@/composables/useQueryTable'
+import { PortfolioEvaluationIdentityMaterialScopeCode } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { loadAllPages } from '@/utils/load-all-pages'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
@@ -67,6 +68,8 @@ const returnDueTime = ref('')
 const returning = ref(false)
 const taskOperationKey = ref('')
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const taskWriting = computed(() => Boolean(taskOperationKey.value))
 
 const categoryColumns = [
@@ -106,16 +109,16 @@ function evaluationCourseArchiveMeta(preview: PortfolioEvaluationMaterialPreview
 }
 
 function identityScopeLabel(scope?: string): string {
-  if (scope === 'CAMPUS') return '校内'
-  if (scope === 'EXTERNAL') return '仅外部'
-  if (scope === 'SHARED') return '共享'
+  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.CAMPUS) return '校内'
+  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL) return '仅外部'
+  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED) return '共享'
   return scope || '—'
 }
 
 function identityScopeTone(scope?: string): 'blue' | 'orange' | 'green' | 'gray' {
-  if (scope === 'CAMPUS') return 'blue'
-  if (scope === 'EXTERNAL') return 'orange'
-  if (scope === 'SHARED') return 'green'
+  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.CAMPUS) return 'blue'
+  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL) return 'orange'
+  if (scope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED) return 'green'
   return 'gray'
 }
 
@@ -124,7 +127,7 @@ function identityMaterialRowKey(record: unknown): string {
     archiveRecordId?: string
     categoryCode?: string
     academicYear?: string
-    identityScope?: string
+    identityScope?: PortfolioEvaluationIdentityMaterialScopeCode
   }
   return [
     item.archiveRecordId ?? '',
@@ -572,14 +575,28 @@ async function publishTask(id: string) {
   }
 }
 
+function openExportConfirm() {
+  if (exporting.value || taskWriting.value) {
+    return
+  }
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportExcel() {
   if (exporting.value || taskWriting.value) {
     return
   }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
   exporting.value = true
   try {
-    const result = await portfolioEvaluationTaskApi.exportExcel()
+    const result = await portfolioEvaluationTaskApi.exportExcel({ exportPurpose: purpose })
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success('评价任务已导出')
   } catch (error) {
     showUserError(error, '导出评价任务失败')
@@ -604,7 +621,7 @@ onMounted(async () => {
             variant="primary"
             :loading="exporting"
             :disabled="exporting || taskWriting"
-            @click="exportExcel"
+            @click="openExportConfirm"
           >
             导出表格文件
           </UiButton>
@@ -928,6 +945,23 @@ onMounted(async () => {
       </template>
     </UiDialog>
   </StageWorkbenchShell>
+  <UiDialog
+    v-model:open="exportConfirmOpen"
+    title="导出评价任务台账"
+    ok-text="确认导出"
+    cancel-text="取消"
+    :confirm-loading="exporting"
+    @ok="exportExcel"
+  >
+    <label class="export-purpose__label">导出用途（必填）</label>
+    <UiTextarea
+      v-model="exportPurpose"
+      size="sm"
+      :rows="3"
+      placeholder="请填写本次导出用途（写入审计）"
+      :disabled="exporting"
+    />
+  </UiDialog>
 </template>
 
 <style scoped>

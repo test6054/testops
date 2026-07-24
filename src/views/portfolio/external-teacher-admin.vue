@@ -31,7 +31,9 @@ import UiDatePicker from '@/components/ui-guide/ui/DatePicker.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
@@ -66,6 +68,8 @@ const statsRequestToken = ref(0)
 const saving = ref(false)
 const revokingId = ref('')
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const editLoading = ref(false)
 const stats = ref<PortfolioExternalTeacherStatsVO | null>(null)
 const detailContribution = ref<PortfolioIndustryMentorContributionVO | null>(null)
@@ -540,14 +544,31 @@ async function openBatchDetail(id: string) {
   }
 }
 
+function openExportConfirm() {
+  if (exporting.value || saving.value) {
+    return
+  }
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportRoster() {
   if (exporting.value || saving.value) {
     return
   }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
   exporting.value = true
   try {
-    const result = await portfolioExternalTeacherApi.exportRoster(buildRosterFilters())
+    const result = await portfolioExternalTeacherApi.exportRoster({
+      ...buildRosterFilters(),
+      exportPurpose: purpose,
+    })
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 条`)
   } catch (error) {
     showUserError(error, '导出外聘教师名册失败')
@@ -626,7 +647,7 @@ onMounted(async () => {
             variant="outline"
             :loading="exporting"
             :disabled="exporting || saving"
-            @click="exportRoster"
+            @click="openExportConfirm"
           >
             导出台账
           </UiButton>
@@ -941,6 +962,23 @@ onMounted(async () => {
         />
       </template>
     </UiDrawer>
+    <UiDialog
+      v-model:open="exportConfirmOpen"
+      title="导出台账"
+      ok-text="确认导出"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="exportRoster"
+    >
+      <label class="export-purpose__label">导出用途（必填）</label>
+      <UiTextarea
+        v-model="exportPurpose"
+        size="sm"
+        :rows="3"
+        placeholder="请填写本次导出用途（写入审计），例如迎评检查、结构统计"
+        :disabled="exporting"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -1005,5 +1043,10 @@ onMounted(async () => {
 .contribution-panel__hint {
   color: var(--dp-text-secondary, #6b7280);
   font-size: 12px;
+}
+.export-purpose__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
 }
 </style>

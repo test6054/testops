@@ -59,6 +59,7 @@ export interface PortfolioDoubleHighTaskVO {
   totalStageCount: number
   acceptanceFileNodeId?: string
   acceptanceFileName?: string
+  acceptanceExportApprovalId?: string
   voidReason?: string
   voidUserId?: string
   voidTime?: string

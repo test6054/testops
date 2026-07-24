@@ -16,9 +16,11 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiDescriptions from '@/components/ui-guide/ui/UiDescriptions.vue'
 import UiDescriptionsItem from '@/components/ui-guide/ui/UiDescriptionsItem.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSpin from '@/components/ui-guide/ui/UiSpin.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
 import ContextBar from '@/components/workbench/ContextBar.vue'
@@ -36,6 +38,8 @@ const router = useRouter()
 const { targetTeacherId, canPickTeachers } = usePortfolioPageScope()
 const loading = ref(false)
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const loadFailed = ref(false)
 const summary = ref<PortfolioTeacherOneTableSummaryVO | null>(null)
 const requestToken = ref(0)
@@ -151,9 +155,26 @@ function openCategoryCorrection(categoryId: string, recordId?: string) {
   })
 }
 
+function openExportConfirm() {
+  if (exporting.value || loading.value) {
+    return
+  }
+  if (canPickTeachers.value && !targetTeacherId.value) {
+    showFormValidationMessage('请先选择目标教师')
+    return
+  }
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportOneTable() {
   if (canPickTeachers.value && !targetTeacherId.value) {
     showFormValidationMessage('请先选择目标教师')
+    return
+  }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
     return
   }
   const scopeToken = requestToken.value
@@ -162,6 +183,7 @@ async function exportOneTable() {
   try {
     const result = await portfolioTeacherApi.exportOneTable({
       teacherId: teacherId || undefined,
+      exportPurpose: purpose,
     })
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
       return
@@ -170,6 +192,7 @@ async function exportOneTable() {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
       return
     }
+    exportConfirmOpen.value = false
     void message.success(`已导出 ${result.rowCount} 行`)
   } catch (error) {
     if (requestToken.value !== scopeToken || targetTeacherId.value !== teacherId) {
@@ -209,7 +232,7 @@ usePortfolioScopedLoader(
             variant="primary"
             :loading="exporting"
             :disabled="loading || (canPickTeachers && !targetTeacherId)"
-            @click="exportOneTable"
+            @click="openExportConfirm"
           >
             导出一张表
           </UiButton>
@@ -329,6 +352,24 @@ usePortfolioScopedLoader(
       </UiCard>
     </UiSpin>
   </StageWorkbenchShell>
+
+  <UiDialog
+    v-model:open="exportConfirmOpen"
+    title="导出教师一张表"
+    ok-text="确认导出"
+    cancel-text="取消"
+    :confirm-loading="exporting"
+    @ok="exportOneTable"
+  >
+    <label class="export-purpose__label">导出用途（必填）</label>
+    <UiTextarea
+      v-model="exportPurpose"
+      size="sm"
+      :rows="3"
+      placeholder="请填写本次导出用途（写入审计）"
+      :disabled="exporting"
+    />
+  </UiDialog>
 </template>
 
 <style scoped>

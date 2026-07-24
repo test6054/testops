@@ -4,6 +4,8 @@ import type {
   PortfolioComplianceMetricVO,
   PortfolioComplianceThresholdVO,
 } from '@/apis/portfolio/compliance'
+import type {
+  PortfolioComplianceAlertLevelCode} from '@/types/enums/portfolio-compliance-alert-level-enum';
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioComplianceApi } from '@/apis/portfolio/compliance'
@@ -21,6 +23,10 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
+import {
+  PortfolioComplianceAlertLevelDescription,
+  PortfolioComplianceAlertLevelToneMap,
+} from '@/types/enums/portfolio-compliance-alert-level-enum'
 import {
   ALL_PORTFOLIO_COMPLIANCE_ALERT_TYPE_CODES,
   PortfolioComplianceAlertTypeCode,
@@ -131,19 +137,18 @@ function metricStatusLabel(code: string) {
   )
 }
 
-function alertLevelLabel(code?: string) {
-  if (code === 'NORMAL') return '正常'
-  if (code === 'YELLOW') return '重要预警'
-  if (code === 'RED') return '严重预警'
+function alertLevelLabel(code?: PortfolioComplianceAlertLevelCode) {
   if (!code) return '未计算'
-  throw new Error(`不支持的合规预警等级: ${code}`)
+  const label = PortfolioComplianceAlertLevelDescription[code]
+  if (!label) {
+    throw new Error(`不支持的合规预警等级: ${code}`)
+  }
+  return label
 }
 
-function alertLevelTone(code?: string) {
-  if (code === 'NORMAL') return 'green'
-  if (code === 'YELLOW') return 'yellow'
-  if (code === 'RED') return 'red'
-  return 'gray'
+function alertLevelTone(code?: PortfolioComplianceAlertLevelCode) {
+  if (!code) return 'gray'
+  return PortfolioComplianceAlertLevelToneMap[code] ?? 'gray'
 }
 
 async function loadMetrics() {

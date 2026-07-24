@@ -3,6 +3,7 @@ import type {
   PortfolioMultiIdentityLayerVO,
   PortfolioTeachingWorkloadByIdentityVO,
 } from '@/apis/portfolio/types'
+import type { PortfolioEvaluationIdentityMaterialScopeCode } from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import type { SemesterCode } from '@/types/enums/semester-enum'
 import http from '@/config/axios'
 
@@ -26,7 +27,7 @@ export interface PortfolioCourseArchiveCourseVO {
   totalFrameworkCount: number
   frameworks: PortfolioCourseArchiveFrameworkVO[]
   /** 教务讲授校内口径 CAMPUS */
-  identityScope?: string
+  identityScope?: PortfolioEvaluationIdentityMaterialScopeCode
 }
 
 export interface PortfolioCourseArchiveOverviewVO {

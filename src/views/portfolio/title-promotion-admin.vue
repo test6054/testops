@@ -73,6 +73,7 @@ import {
   PortfolioTitlePromotionTaskStatusDescription,
 } from '@/types/enums/portfolio-title-promotion-task-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
@@ -246,16 +247,6 @@ const appColumns: ColumnsType = [
   { title: '状态', key: 'applicationStatus', width: 120 },
   { title: '操作', key: 'actions', width: 280 },
 ]
-
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
-
 /** 院审/人事读整袋：teacherUserId 即档案 teacherId */
 function goTeacherPortfolioPage(path: string, teacherId?: string) {
   if (!teacherId) {
@@ -1251,7 +1242,7 @@ onMounted(() => {
                 {{ formatPortfolioTeacherDisplay(record.teacherName, record.teacherNumber) }}
               </template>
               <template v-else-if="column.key === 'lifecycleStatus'">
-                <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+                <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
                   {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
                 </UiTag>
                 <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>

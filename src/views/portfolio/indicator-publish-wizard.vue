@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type {
-  PfImpactApprovalStatusCode,
   PortfolioImpactIndicatorSummaryDto,
   PortfolioIndicatorEngineReadinessVO,
   PortfolioPublishImpactReportVO,
@@ -14,6 +13,7 @@ import {
   PF_SCENE_CODE_OPTIONS,
   PfCurrentTaskRuleStrategyCode,
   pfImpactApprovalAllowsPublish,
+  PfImpactApprovalStatusCode,
   PfImpactApprovalStatusDescription,
   PfRuleChangeLevelCode,
   PfRuleChangeLevelDescription,
@@ -24,6 +24,8 @@ import {
 import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiStep from '@/components/ui-guide/ui/UiStep.vue'
 import UiSteps from '@/components/ui-guide/ui/UiSteps.vue'
@@ -46,6 +48,8 @@ const previewing = computed(() => operationKey.value === 'impact')
 const publishing = computed(() => operationKey.value === 'publish')
 const enabling = computed(() => operationKey.value === 'enable-all')
 const exporting = computed(() => operationKey.value === 'export-impact')
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const impactReportId = ref('')
 const trialPassed = ref(false)
 const readiness = ref<PortfolioIndicatorEngineReadinessVO | null>(null)
@@ -277,8 +281,21 @@ async function publish() {
   }
 }
 
+function openExportImpactConfirm() {
+  if (!impactReportId.value || writing.value) {
+    return
+  }
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportImpact() {
-  if (!impactReportId.value) {
+  if (!impactReportId.value || writing.value) {
+    return
+  }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
     return
   }
   const reportId = impactReportId.value
@@ -287,8 +304,10 @@ async function exportImpact() {
   try {
     const result = await portfolioIndicatorTenantApi.exportImpactReport({
       id: reportId,
+      exportPurpose: purpose,
     })
     await downloadPortfolioIndicatorExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success('影响报告已导出')
   } catch (error) {
     showUserError(error, '导出影响报告失败')
@@ -401,7 +420,7 @@ onMounted(loadReadiness)
                 :tone="
                   canPublish
                     ? 'green'
-                    : impactReport.approvalStatus === 'REJECTED'
+                    : impactReport.approvalStatus === PfImpactApprovalStatusCode.REJECTED
                       ? 'red'
                       : 'orange'
                 "
@@ -420,7 +439,7 @@ onMounted(loadReadiness)
               {{ impactReport.evaluationTaskSummary.publicizedOrArchivedTaskCount ?? 0 }}</span>
             <span>受影响教师 {{ impactReport.evaluationTaskSummary.affectedTeacherCount ?? 0 }}</span>
           </div>
-          <p v-if="requiresApproval && impactReport.approvalStatus === 'PENDING_APPROVAL'">
+          <p v-if="requiresApproval && impactReport.approvalStatus === PfImpactApprovalStatusCode.PENDING_APPROVAL">
             该影响报告已进入独立审批队列，创建人不能审批本人报告。
           </p>
           <div v-if="showTaskStrategy" class="strategy-row">
@@ -469,13 +488,30 @@ onMounted(loadReadiness)
           v-if="impactReportId"
           :loading="exporting"
           :disabled="writing"
-          @click="exportImpact"
+          @click="openExportImpactConfirm"
         >
           导出影响报告
         </UiButton>
       </div>
     </UiCard>
   </StageWorkbenchShell>
+  <UiDialog
+    v-model:open="exportConfirmOpen"
+    title="导出影响报告"
+    ok-text="确认导出"
+    cancel-text="取消"
+    :confirm-loading="exporting"
+    @ok="exportImpact"
+  >
+    <label class="export-purpose__label">导出用途（必填）</label>
+    <UiTextarea
+      v-model="exportPurpose"
+      size="sm"
+      :rows="3"
+      placeholder="请填写本次导出用途（写入审计）"
+      :disabled="exporting"
+    />
+  </UiDialog>
 </template>
 
 <style scoped>

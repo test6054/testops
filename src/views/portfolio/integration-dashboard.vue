@@ -23,7 +23,6 @@ import type {
   PortfolioTeacherSummaryVO,
 } from '@/apis/portfolio/types'
 import type { PortfolioDevelopmentRecordTypeCode } from '@/types/enums/portfolio-development-record-type-enum'
-import type { PortfolioFieldMappingTransformTypeCode } from '@/types/enums/portfolio-field-mapping-transform-type-enum'
 import message from 'ant-design-vue/es/message'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { portfolioArchiveTemplateApi } from '@/apis/portfolio/archive-template'
@@ -42,7 +41,9 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -53,7 +54,9 @@ import WorkbenchSurfaceCard from '@/components/workbench/WorkbenchSurfaceCard.vu
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { usePortfolioArchiveWriteGuard } from '@/composables/usePortfolioArchiveWriteGuard'
 import { DEFAULT_LIST_PAGE_SIZE } from '@/constants/pagination'
+import { ExcelImportSceneKeyCode } from '@/types/enums/excel-import-scene-key-enum'
 import { PortfolioConflictTicketStatusEnum } from '@/types/enums/portfolio-conflict-ticket-status-enum'
+import { PortfolioFieldMappingTransformTypeCode } from '@/types/enums/portfolio-field-mapping-transform-type-enum'
 import { PortfolioIdentityUnmatchedStatusEnum } from '@/types/enums/portfolio-identity-unmatched-status-enum'
 import { PortfolioIntegrationChannelCodeEnum } from '@/types/enums/portfolio-integration-channel-code-enum'
 import { PortfolioIntegrationHealthStatusEnum } from '@/types/enums/portfolio-integration-health-status-enum'
@@ -74,6 +77,9 @@ import { portfolioTeacherSelectOptionsFromSummaries } from '@/utils/portfolio-te
 const IDENTITY_HINT_MISSING_TEACHER_NUMBER = '缺少工号'
 
 const activeTab = ref('datasource')
+const nationalExportConfirmOpen = ref(false)
+const nationalExportPurpose = ref('')
+const pendingNationalSyncTaskId = ref<string>('')
 const tabItems = [
   { key: 'datasource', label: '数据源' },
   { key: 'mapping', label: '字段映射' },
@@ -357,7 +363,7 @@ function changeDatasourcePathway(value: SelectValue) {
     dsForm.channelCode === PortfolioIntegrationChannelCodeEnum.SCIENTIFIC_RESEARCH
     && dsForm.pathwayCode === PortfolioIntegrationPathwayCodeEnum.EXCEL_IMPORT
   ) {
-    dsForm.excelImportSceneKey = 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT'
+    dsForm.excelImportSceneKey = ExcelImportSceneKeyCode.PORTFOLIO_SCIENTIFIC_RESEARCH_FACT
   }
 }
 
@@ -520,7 +526,7 @@ function fillDatasourceForm(row: PortfolioIntegrationDatasourceVO) {
     dsForm.excelImportSceneKey
       = config.excelImportSceneKey
         ?? (row.channelCode === PortfolioIntegrationChannelCodeEnum.SCIENTIFIC_RESEARCH
-        ? 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT'
+        ? ExcelImportSceneKeyCode.PORTFOLIO_SCIENTIFIC_RESEARCH_FACT
         : 'PORTFOLIO_DEVELOPMENT_RECORD')
     dsForm.sourceFileNodeId = config.sourceFileNodeId ?? ''
     const importContext = config.importContext
@@ -555,7 +561,7 @@ const mappingForm = reactive({
   targetFieldCode: '',
   targetCategoryCode: '',
   dictionaryCode: '',
-  transformType: 'NONE',
+  transformType: PortfolioFieldMappingTransformTypeCode.NONE,
   transformExpr: '',
 })
 const mappingTransformOptions = [
@@ -570,11 +576,11 @@ const mappingTransformOptions = [
   { value: 'CONDITIONAL_ASSIGN', label: '条件赋值' },
 ]
 const mappingTransformExprPlaceholder = computed(() => {
-  if (mappingForm.transformType === 'SUBSTRING') return '起始位置,长度，例如 0,8'
-  if (mappingForm.transformType === 'PREFIX_SUFFIX') return '前缀|后缀，例如 工号-| -2026'
-  if (mappingForm.transformType === 'LOOKUP_COURSE_CODE') return '来源系统编码；留空使用数据源渠道'
-  if (mappingForm.transformType === 'REPLACE') return '原串|新串，例如 旧-|新-'
-  if (mappingForm.transformType === 'CONDITIONAL_ASSIGN') return 'A=>甲;B=>乙;*=>默认'
+  if (mappingForm.transformType === PortfolioFieldMappingTransformTypeCode.SUBSTRING) return '起始位置,长度，例如 0,8'
+  if (mappingForm.transformType === PortfolioFieldMappingTransformTypeCode.PREFIX_SUFFIX) return '前缀|后缀，例如 工号-| -2026'
+  if (mappingForm.transformType === PortfolioFieldMappingTransformTypeCode.LOOKUP_COURSE_CODE) return '来源系统编码；留空使用数据源渠道'
+  if (mappingForm.transformType === PortfolioFieldMappingTransformTypeCode.REPLACE) return '原串|新串，例如 旧-|新-'
+  if (mappingForm.transformType === PortfolioFieldMappingTransformTypeCode.CONDITIONAL_ASSIGN) return 'A=>甲;B=>乙;*=>默认'
   return ''
 })
 const courseCodeMapForm = reactive({
@@ -1063,18 +1069,36 @@ function searchNationalIssues() {
   void loadNationalIssues()
 }
 
-async function exportNationalReportForIssue(row: PortfolioNationalReportIssueVO) {
+function openNationalExportConfirm(row: PortfolioNationalReportIssueVO) {
   if (!row.syncTaskId) {
     showFormValidationMessage('该待修正未关联同步任务，无法导出批次包')
     return
   }
-  const operation = `national-export:${row.syncTaskId}`
+  pendingNationalSyncTaskId.value = String(row.syncTaskId)
+  nationalExportPurpose.value = ''
+  nationalExportConfirmOpen.value = true
+}
+
+async function exportNationalReportForIssue() {
+  const syncTaskId = pendingNationalSyncTaskId.value
+  if (!syncTaskId) {
+    showFormValidationMessage('该待修正未关联同步任务，无法导出批次包')
+    return
+  }
+  const purpose = nationalExportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
+  const operation = `national-export:${syncTaskId}`
   if (!beginOperation(operation)) return
   try {
     const res = await portfolioIntegrationApi.exportNationalReportPackage({
-      syncTaskId: String(row.syncTaskId),
+      syncTaskId,
       maskMode: true,
+      exportPurpose: purpose,
     })
+    nationalExportConfirmOpen.value = false
     void message.success(`上报包已导出：${res.fileName || res.fileNodeId}`)
   } catch (error) {
     showUserError(error, '导出全国上报包失败（须批次存在校验通过记录）')
@@ -1428,7 +1452,7 @@ async function saveMapping() {
     mappingForm.targetFieldCode = ''
     mappingForm.targetCategoryCode = ''
     mappingForm.dictionaryCode = ''
-    mappingForm.transformType = 'NONE'
+    mappingForm.transformType = PortfolioFieldMappingTransformTypeCode.NONE
     mappingForm.transformExpr = ''
     if (selectedDatasourceId.value === datasourceConfigId) await loadMappings()
   } catch (error) {
@@ -2166,10 +2190,10 @@ onMounted(async () => {
           :options="
             isScientificResearchChannel
               ? PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS.filter(
-                (item) => item.value === 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
+                (item) => item.value === ExcelImportSceneKeyCode.PORTFOLIO_SCIENTIFIC_RESEARCH_FACT,
               )
               : PORTFOLIO_EXCEL_IMPORT_SCENE_OPTIONS.filter(
-                (item) => item.value !== 'PORTFOLIO_SCIENTIFIC_RESEARCH_FACT',
+                (item) => item.value !== ExcelImportSceneKeyCode.PORTFOLIO_SCIENTIFIC_RESEARCH_FACT,
               )
           "
           :disabled="writing || isScientificResearchChannel"
@@ -2847,7 +2871,7 @@ onMounted(async () => {
               variant="ghost"
               :loading="operationKey === `national-export:${record.syncTaskId}`"
               :disabled="writing"
-              @click="exportNationalReportForIssue(record)"
+              @click="openNationalExportConfirm(record)"
             >
               导出批次包
             </UiButton>
@@ -3180,6 +3204,22 @@ onMounted(async () => {
       </div>
     </div>
   </UiDrawer>
+
+  <UiDialog
+    v-model:open="nationalExportConfirmOpen"
+    title="导出全国教师上报包"
+    ok-text="确认导出"
+    cancel-text="取消"
+    @ok="exportNationalReportForIssue"
+  >
+    <label class="export-purpose__label">导出用途（必填）</label>
+    <UiTextarea
+      v-model="nationalExportPurpose"
+      size="sm"
+      :rows="3"
+      placeholder="请填写本次上报包导出用途（写入审计）"
+    />
+  </UiDialog>
 </template>
 
 <style scoped>

@@ -1,4 +1,3 @@
-import type { PortfolioArchiveBagExportResultVO } from '@/apis/portfolio/bag-types'
 import type { PortfolioPortraitDimensionCode } from '@/apis/portfolio/enums'
 import type { PortfolioMultiIdentityLayerVO } from '@/apis/portfolio/multi-identity'
 import type { PortfolioTeacherLifecycleStatusCode } from '@/apis/portfolio/teacher-lifecycle'
@@ -408,8 +407,6 @@ export const portfolioAnalysisApi = {
       '/api/portfolio/analysis/pk/session/page',
       data,
     ),
-  exportPkSession: (data: { sessionId: string, maskMode?: boolean }) =>
-    http.post<PortfolioArchiveBagExportResultVO>('/api/portfolio/analysis/pk/export', data),
   generateAnnualReport: (data: { teacherId: string, reportYear: string }) =>
     http.post<PortfolioAnalysisAnnualReportVO>(
       '/api/portfolio/analysis/report/annual/generate',

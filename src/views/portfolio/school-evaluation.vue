@@ -41,6 +41,7 @@ import StageWorkbenchShell from '@/components/workbench/StageWorkbenchShell.vue'
 import WorkbenchContextGateStrip from '@/components/workbench/WorkbenchContextGateStrip.vue'
 import { confirmAsync } from '@/composables/useConfirmDialog'
 import { useUserStore } from '@/stores/modules/user'
+import { PortfolioEvaluationRereviewOrderStatusCode } from '@/types/enums/portfolio-evaluation-rereview-order-status-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { formatPortfolioTeacherDisplay } from '@/utils/portfolio-teacher-display'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
@@ -547,7 +548,7 @@ async function openCompleteRereview(row: PortfolioEvaluationTaskVO) {
     const orders = await portfolioEvaluationPublicityApi.listRereview({
       evaluationTaskId: row.id,
     })
-    completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === 'OPEN')
+    completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === PortfolioEvaluationRereviewOrderStatusCode.OPEN)
   } catch (error) {
     completeRereviewModalOpen.value = false
     completeRereviewTarget.value = null
@@ -629,7 +630,7 @@ async function cancelRereviewOrder(order: PortfolioEvaluationRereviewOrderVO): P
     const orders = await portfolioEvaluationPublicityApi.listRereview({
       evaluationTaskId: task.id,
     })
-    completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === 'OPEN')
+    completeRereviewOrders.value = (orders ?? []).filter((item) => item.orderStatus === PortfolioEvaluationRereviewOrderStatusCode.OPEN)
     if (completeRereviewOrders.value.length === 0) {
       completeRereviewModalOpen.value = false
       completeRereviewTarget.value = null

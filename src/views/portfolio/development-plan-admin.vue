@@ -46,8 +46,10 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiDrawer from '@/components/ui-guide/ui/UiDrawer.vue'
 import UiForm from '@/components/ui-guide/ui/UiForm.vue'
 import UiFormItem from '@/components/ui-guide/ui/UiFormItem.vue'
@@ -65,6 +67,7 @@ import { usePortfolioOrgTree } from '@/composables/usePortfolioOrgTree'
 import { usePortfolioTeacherAccess } from '@/composables/usePortfolioTeacherAccess'
 import { useQueryTable } from '@/composables/useQueryTable'
 import { PortfolioImportQualityGradeDescription } from '@/types/enums/portfolio-import-quality-grade-enum'
+import { PortfolioPlanningAchievementLinkStatusCode } from '@/types/enums/portfolio-planning-achievement-link-status-enum'
 import {
   ALL_PORTFOLIO_PLANNING_SYNC_CONFLICT_STRATEGY_CODES,
   PortfolioPlanningSyncConflictStrategyCode,
@@ -77,6 +80,7 @@ import {
 } from '@/types/enums/portfolio-planning-sync-org-scope-enum'
 import { showFormValidationMessage, showUserError } from '@/utils/error-handler'
 import { downloadPortfolioExcelExport } from '@/utils/portfolio-excel-export'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 import { strictEnumLabel, strictEnumTone } from '@/utils/strict-enum'
 import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/PortfolioOwnerIdentityLayersCell.vue'
 
@@ -190,16 +194,6 @@ function historyBatchStatusTone(status: PortfolioDevelopmentPlanHistoryImportBat
       return 'blue' as const
   }
 }
-
-function lifecycleTagTone(record: {
-  lifecycleStatus?: string
-}): 'green' | 'orange' | 'gray' | 'red' {
-  if (record.lifecycleStatus === 'ACTIVE') return 'green'
-  if (record.lifecycleStatus === 'TEMP_HOLD') return 'orange'
-  if (record.lifecycleStatus === 'SEALED' || record.lifecycleStatus === 'TRANSFERRED') return 'red'
-  return 'gray'
-}
-
 async function openHistoryBatchDetail(id: string) {
   const requestToken = ++historyBatchDetailRequestToken.value
   historyBatchDetailOpen.value = true
@@ -434,6 +428,8 @@ const planTabItems = computed(() => {
 
 const activeTab = ref('plans')
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const submitting = ref(false)
 const pageRequestToken = ref(0)
 const yearStats = ref<PortfolioDevelopmentPlanYearStatVO[]>([])
@@ -814,8 +810,17 @@ function orgStatRowKey(record: unknown): string {
   return `${row.portfolioOrgId ?? 'none'}-${row.planStatus}`
 }
 
+function openExportConfirm() {
+  if (exporting.value) return
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportPlans() {
-  if (exporting.value) {
+  if (exporting.value) return
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
     return
   }
   exporting.value = true
@@ -823,8 +828,10 @@ async function exportPlans() {
     const result = await portfolioDevelopmentPlanApi.exportExcel({
       planYear: form.planYear,
       planType: PortfolioDevelopmentPlanTypeCode.TEACHER,
+      exportPurpose: purpose,
     })
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success('规划已导出')
   } catch (error) {
     showUserError(error, '导出规划失败')
@@ -1042,7 +1049,7 @@ watch(
             variant="ghost"
             :loading="exporting"
             :disabled="exporting"
-            @click="exportPlans"
+            @click="openExportConfirm"
           >
             导出表格文件
           </UiButton>
@@ -1116,7 +1123,7 @@ watch(
               </UiTag>
             </template>
             <template v-else-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="lifecycleTagTone(record)">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
 
@@ -1236,9 +1243,9 @@ watch(
                 <span>{{ record.catalogName || '未关联' }}</span>
                 <UiTag
                   v-if="record.achievementLinkStatus"
-                  :tone="record.achievementLinkStatus === 'LOCKED' ? 'green' : 'blue'"
+                  :tone="record.achievementLinkStatus === PortfolioPlanningAchievementLinkStatusCode.LOCKED ? 'green' : 'blue'"
                 >
-                  {{ record.achievementLinkStatus === 'LOCKED' ? '已锁定' : '草稿关联' }}
+                  {{ record.achievementLinkStatus === PortfolioPlanningAchievementLinkStatusCode.LOCKED ? '已锁定' : '草稿关联' }}
                 </UiTag>
                 <span v-if="record.achievementCompletionRate != null">完成度 {{ record.achievementCompletionRate }}%</span>
               </div>
@@ -1630,6 +1637,24 @@ watch(
         </template>
       </UiSpin>
     </UiDrawer>
+
+    <UiDialog
+      v-model:open="exportConfirmOpen"
+      title="导出"
+      ok-text="确认导出"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="exportPlans"
+    >
+      <label class="export-purpose__label">导出用途（必填）</label>
+      <UiTextarea
+        v-model="exportPurpose"
+        size="sm"
+        :rows="3"
+        placeholder="请填写本次导出用途（写入审计）"
+        :disabled="exporting"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -1732,5 +1757,10 @@ watch(
 }
 :deep(.development-plan-admin__row-active) {
   background: var(--dp-color-primary-bg);
+}
+.export-purpose__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
 }
 </style>

@@ -9,7 +9,11 @@ import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
 import UiEmpty from '@/components/ui-guide/ui/UiEmpty.vue'
 import UiTag from '@/components/ui-guide/ui/UiTag.vue'
 import { useUiTableLoadError } from '@/composables/useUiTableLoadError'
+import {
+  PortfolioEvaluationIdentityMaterialScopeCode,
+} from '@/types/enums/portfolio-evaluation-identity-material-scope-enum'
 import { showUserError } from '@/utils/error-handler'
+import { portfolioLifecycleTagTone } from '@/utils/portfolio-lifecycle-tag-tone'
 
 const loading = ref(false)
 const { loadError, beginLoad, failLoad, okLoad } = useUiTableLoadError()
@@ -119,7 +123,7 @@ onMounted(() => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="record.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -137,7 +141,7 @@ onMounted(() => {
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'lifecycleStatus'">
-              <UiTag v-if="record.lifecycleStatus" :tone="record.lifecycleStatus === 'ACTIVE' ? 'green' : 'orange'">
+              <UiTag v-if="record.lifecycleStatus" :tone="portfolioLifecycleTagTone(record.lifecycleStatus)">
                 {{ record.lifecycleStatusLabel || record.lifecycleStatus }}
               </UiTag>
               <UiTag v-if="record.evaluationHeld" tone="orange" class="ml-1">参评 hold</UiTag>
@@ -147,13 +151,13 @@ onMounted(() => {
               {{ record.hasPrimaryFile ? '有' : '无' }}
             </template>
             <template v-else-if="column.key === 'identityScope'">
-              <UiTag :tone="record.identityScope === 'EXTERNAL' ? 'orange' : record.identityScope === 'SHARED' ? 'green' : 'blue'">
+              <UiTag :tone="record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL ? 'orange' : record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED ? 'green' : 'blue'">
                 {{
-                  record.identityScope === 'CAMPUS'
+                  record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.CAMPUS
                     ? '校内'
-                    : record.identityScope === 'EXTERNAL'
+                    : record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.EXTERNAL
                       ? '仅外部'
-                      : record.identityScope === 'SHARED'
+                      : record.identityScope === PortfolioEvaluationIdentityMaterialScopeCode.SHARED
                         ? '共享'
                         : (record.identityScope || '—')
                 }}

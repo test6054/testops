@@ -22,8 +22,10 @@ import UiButton from '@/components/ui-guide/ui/Button.vue'
 import UiCard from '@/components/ui-guide/ui/Card.vue'
 import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiAlertStrip from '@/components/ui-guide/ui/UiAlertStrip.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
 import UiTableActions from '@/components/ui-guide/ui/UiTableActions.vue'
@@ -39,6 +41,8 @@ import PortfolioOwnerIdentityLayersCell from '@/views/portfolio/components/Portf
 const { loadTree, portfolioOrgOptions } = usePortfolioOrgTree()
 const activeTab = ref('plans')
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const submitting = ref(false)
 const planTabItems = [
   { key: 'plans', label: '规划管理' },
@@ -210,8 +214,17 @@ async function submitPlan(id: string) {
   }
 }
 
+function openExportConfirm() {
+  if (exporting.value) return
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportPlans() {
-  if (exporting.value) {
+  if (exporting.value) return
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
     return
   }
   exporting.value = true
@@ -219,8 +232,10 @@ async function exportPlans() {
     const result = await portfolioDevelopmentPlanApi.exportExcel({
       planYear: form.planYear,
       planType: PortfolioDevelopmentPlanTypeCode.DEPARTMENT,
+      exportPurpose: purpose,
     })
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success('规划已导出')
   } catch (error) {
     showUserError(error, '导出规划失败')
@@ -364,7 +379,7 @@ onMounted(async () => {
             variant="primary"
             :loading="exporting"
             :disabled="exporting"
-            @click="exportPlans"
+            @click="openExportConfirm"
           >
             导出表格文件
           </UiButton>
@@ -562,6 +577,24 @@ onMounted(async () => {
         </UiDataTable>
       </template>
     </UiCard>
+
+    <UiDialog
+      v-model:open="exportConfirmOpen"
+      title="导出"
+      ok-text="确认导出"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="exportPlans"
+    >
+      <label class="export-purpose__label">导出用途（必填）</label>
+      <UiTextarea
+        v-model="exportPurpose"
+        size="sm"
+        :rows="3"
+        placeholder="请填写本次导出用途（写入审计）"
+        :disabled="exporting"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
 
@@ -592,5 +625,10 @@ onMounted(async () => {
 }
 .input--short {
   width: 72px;
+}
+.export-purpose__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
 }
 </style>

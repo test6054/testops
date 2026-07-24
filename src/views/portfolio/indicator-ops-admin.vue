@@ -35,7 +35,9 @@ import UiEmpty from '@/components/ui-guide/ui/Empty.vue'
 import UiInput from '@/components/ui-guide/ui/Input.vue'
 import UiSwitch from '@/components/ui-guide/ui/Switch.vue'
 import UiTag from '@/components/ui-guide/ui/Tag.vue'
+import UiTextarea from '@/components/ui-guide/ui/Textarea.vue'
 import UiDataTable from '@/components/ui-guide/ui/UiDataTable.vue'
+import UiDialog from '@/components/ui-guide/ui/UiDialog.vue'
 import UiInputNumber from '@/components/ui-guide/ui/UiInputNumber.vue'
 import UiSectionTabs from '@/components/ui-guide/ui/UiSectionTabs.vue'
 import UiSelect from '@/components/ui-guide/ui/UiSelect.vue'
@@ -79,6 +81,13 @@ const indicatorOpsTabItems = [
 const route = useRoute()
 const userStore = useUserStore()
 const operationKey = ref('')
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
+const pendingExport = ref<
+  | null
+  | { type: 'diff', snapshotIdA: string, snapshotIdB: string }
+  | { type: 'impact', id: string }
+>(null)
 const operating = computed(() => Boolean(operationKey.value))
 const computing = computed(() => operationKey.value.startsWith('compute:'))
 const loadState = reactive({
@@ -428,41 +437,80 @@ async function openExplain(
   }
 }
 
-async function exportSnapshotDiff() {
+function openExportSnapshotDiffConfirm() {
   if (!diffForm.snapshotIdA || !diffForm.snapshotIdB) {
     showFormValidationMessage('请填写两个快照编号')
     return
   }
-  const snapshotIdA = diffForm.snapshotIdA.trim()
-  const snapshotIdB = diffForm.snapshotIdB.trim()
-  const operation = `export:diff:${snapshotIdA}:${snapshotIdB}`
-  if (!beginOperation(operation)) return
-  try {
-    const result = await portfolioIndicatorTenantApi.exportSnapshotDiff({
-      snapshotIdA,
-      snapshotIdB,
-    })
-    await downloadPortfolioIndicatorExcelExport(result)
-    void message.success(`已导出 ${result.rowCount} 条差异`)
-  } catch (error) {
-    showUserError(error, '导出快照差异失败')
-  } finally {
-    endOperation(operation)
+  exportPurpose.value = ''
+  pendingExport.value = {
+    type: 'diff',
+    snapshotIdA: diffForm.snapshotIdA.trim(),
+    snapshotIdB: diffForm.snapshotIdB.trim(),
   }
+  exportConfirmOpen.value = true
 }
 
-async function exportImpact(id: string) {
-  const operation = `export:impact:${id}`
+function openExportImpactConfirm(id: string) {
+  exportPurpose.value = ''
+  pendingExport.value = { type: 'impact', id }
+  exportConfirmOpen.value = true
+}
+
+async function confirmExport() {
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
+    return
+  }
+  const pending = pendingExport.value
+  if (!pending || operating.value) {
+    return
+  }
+  if (pending.type === 'diff') {
+    const operation = `export:diff:${pending.snapshotIdA}:${pending.snapshotIdB}`
+    if (!beginOperation(operation)) return
+    try {
+      const result = await portfolioIndicatorTenantApi.exportSnapshotDiff({
+        snapshotIdA: pending.snapshotIdA,
+        snapshotIdB: pending.snapshotIdB,
+        exportPurpose: purpose,
+      })
+      await downloadPortfolioIndicatorExcelExport(result)
+      exportConfirmOpen.value = false
+      pendingExport.value = null
+      void message.success(`已导出 ${result.rowCount} 条差异`)
+    } catch (error) {
+      showUserError(error, '导出快照差异失败')
+    } finally {
+      endOperation(operation)
+    }
+    return
+  }
+  const operation = `export:impact:${pending.id}`
   if (!beginOperation(operation)) return
   try {
-    const result = await portfolioIndicatorTenantApi.exportImpactReport({ id })
+    const result = await portfolioIndicatorTenantApi.exportImpactReport({
+      id: pending.id,
+      exportPurpose: purpose,
+    })
     await downloadPortfolioIndicatorExcelExport(result)
+    exportConfirmOpen.value = false
+    pendingExport.value = null
     void message.success('影响报告已导出')
   } catch (error) {
     showUserError(error, '导出影响报告失败')
   } finally {
     endOperation(operation)
   }
+}
+
+async function exportSnapshotDiff() {
+  openExportSnapshotDiffConfirm()
+}
+
+async function exportImpact(id: string) {
+  openExportImpactConfirm(id)
 }
 
 async function runAutoCollect() {
@@ -946,6 +994,23 @@ watch(
       :eligibility-explain="eligibilityExplain"
     />
   </StageWorkbenchShell>
+  <UiDialog
+    v-model:open="exportConfirmOpen"
+    :title="pendingExport?.type === 'impact' ? '导出影响报告' : '导出快照差异'"
+    ok-text="确认导出"
+    cancel-text="取消"
+    :confirm-loading="operationKey.startsWith('export:')"
+    @ok="confirmExport"
+  >
+    <label class="export-purpose__label">导出用途（必填）</label>
+    <UiTextarea
+      v-model="exportPurpose"
+      size="sm"
+      :rows="3"
+      placeholder="请填写本次导出用途（写入审计）"
+      :disabled="operating"
+    />
+  </UiDialog>
 </template>
 
 <style scoped>

@@ -94,6 +94,8 @@ const filterFields = computed<FilterField[]>(() => [
 
 const loading = ref(false)
 const exporting = ref(false)
+const exportConfirmOpen = ref(false)
+const exportPurpose = ref('')
 const rows = ref<PortfolioDevelopmentPlanVO[]>([])
 const pageNum = ref(1)
 const pageSize = ref(DEFAULT_LIST_PAGE_SIZE)
@@ -321,23 +323,34 @@ async function confirmReview(): Promise<void> {
   }
 }
 
+function openExportConfirm() {
+  if (exporting.value) return
+  exportPurpose.value = ''
+  exportConfirmOpen.value = true
+}
+
 async function exportPlans() {
-  if (exporting.value) {
-    return
-  }
+  if (exporting.value) return
   if (!filterForm.planYear) {
     showFormValidationMessage('请填写年度')
+    return
+  }
+  const purpose = exportPurpose.value.trim()
+  if (!purpose) {
+    showFormValidationMessage('请填写导出用途')
     return
   }
   exporting.value = true
   try {
     const result = await portfolioDevelopmentPlanApi.exportExcel({
       planYear: filterForm.planYear,
+      exportPurpose: purpose,
     })
     await downloadPortfolioExcelExport(result)
+    exportConfirmOpen.value = false
     void message.success('规划已导出')
   } catch (error) {
-    showUserError(error, '导出发展规划失败')
+    showUserError(error, '导出规划失败')
   } finally {
     exporting.value = false
   }
@@ -375,7 +388,7 @@ watch(
             variant="primary"
             :loading="exporting"
             :disabled="exporting"
-            @click="exportPlans"
+            @click="openExportConfirm"
           >
             导出表格文件
           </UiButton>
@@ -474,5 +487,31 @@ watch(
         </UiButton>
       </template>
     </UiDialog>
+
+    <UiDialog
+      v-model:open="exportConfirmOpen"
+      title="导出"
+      ok-text="确认导出"
+      cancel-text="取消"
+      :confirm-loading="exporting"
+      @ok="exportPlans"
+    >
+      <label class="export-purpose__label">导出用途（必填）</label>
+      <UiTextarea
+        v-model="exportPurpose"
+        size="sm"
+        :rows="3"
+        placeholder="请填写本次导出用途（写入审计）"
+        :disabled="exporting"
+      />
+    </UiDialog>
   </StageWorkbenchShell>
 </template>
+
+<style scoped>
+.export-purpose__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+</style>
